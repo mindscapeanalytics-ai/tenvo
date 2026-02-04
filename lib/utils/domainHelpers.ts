@@ -1,0 +1,874 @@
+/**
+ * Domain Helper Functions
+ * Utilities for working with domain-specific data and configurations
+ */
+
+import { getDomainKnowledge } from '../domainKnowledge';
+export { getDomainKnowledge };
+import { Product, getProductDomain } from '../types/domainTypes';
+import type { domainKnowledge } from '../domainKnowledge';
+
+/**
+ * Get domain-specific product fields for a category
+ * 
+ * @param category - Business category (e.g., 'auto-parts', 'pharmacy')
+ * @returns Array of required product field names
+ */
+export function getDomainProductFields(category: string): string[] {
+  const knowledge = getDomainKnowledge(category);
+  return knowledge?.productFields || [];
+}
+
+/**
+ * Get domain-specific customer fields for a category
+ */
+export function getDomainCustomerFields(category: string): string[] {
+  const knowledge = getDomainKnowledge(category);
+  return knowledge?.customerFields || [];
+}
+
+/**
+ * Get domain-specific vendor fields for a category
+ */
+export function getDomainVendorFields(category: string): string[] {
+  const knowledge = getDomainKnowledge(category);
+  return knowledge?.vendorFields || [];
+}
+
+/**
+ * Get domain-specific tax categories
+ * 
+ * @param category - Business category
+ * @returns Array of tax category strings
+ */
+export function getDomainTaxCategories(category: string): string[] {
+  const knowledge = getDomainKnowledge(category);
+  return knowledge?.taxCategories || [];
+}
+
+/**
+ * Get domain-specific units of measurement
+ * 
+ * @param category - Business category
+ * @returns Array of unit strings
+ */
+export function getDomainUnits(category: string): string[] {
+  const knowledge = getDomainKnowledge(category);
+  return knowledge?.units || ['pcs'];
+}
+
+/**
+ * Get default tax percentage for domain
+ * 
+ * @param category - Business category
+ * @returns Default tax percentage
+ */
+export function getDomainDefaultTax(category: string): number {
+  const knowledge = getDomainKnowledge(category);
+  return knowledge?.defaultTax || 0;
+}
+
+/**
+ * Get default HSN code for domain
+ * 
+ * @param category - Business category
+ * @returns Default HSN code
+ */
+export function getDomainDefaultHSN(category: string): string {
+  const knowledge = getDomainKnowledge(category);
+  return knowledge?.defaultHSN || '';
+}
+
+/**
+ * Get stock valuation method for domain
+ * 
+ * @param category - Business category
+ * @returns Valuation method ('FIFO', 'LIFO', 'Average', 'FEFO')
+ */
+export function getDomainValuationMethod(category: string): string {
+  const knowledge = getDomainKnowledge(category);
+  return knowledge?.stockValuationMethod || 'Average';
+}
+
+/**
+ * Check if domain has batch tracking enabled
+ * 
+ * @param category - Business category
+ * @returns True if batch tracking is enabled
+ */
+export function isBatchTrackingEnabled(category: string): boolean {
+  const knowledge = getDomainKnowledge(category);
+  return knowledge?.batchTrackingEnabled || false;
+}
+
+/**
+ * Check if domain has serial tracking enabled
+ * 
+ * @param category - Business category
+ * @returns True if serial tracking is enabled
+ */
+export function isSerialTrackingEnabled(category: string): boolean {
+  const knowledge = getDomainKnowledge(category);
+  return knowledge?.serialTrackingEnabled || false;
+}
+
+/**
+ * Check if domain has expiry tracking enabled
+ * 
+ * @param category - Business category
+ * @returns True if expiry tracking is enabled
+ */
+export function isExpiryTrackingEnabled(category: string): boolean {
+  const knowledge = getDomainKnowledge(category);
+  return knowledge?.expiryTrackingEnabled || false;
+}
+
+/**
+ * Check if domain has manufacturing enabled
+ * 
+ * @param category - Business category
+ * @returns True if manufacturing is enabled
+ */
+export function isManufacturingEnabled(category: string): boolean {
+  const knowledge = getDomainKnowledge(category);
+  return knowledge?.manufacturingEnabled || false;
+}
+
+/**
+ * Get domain-specific theme colors
+ * 
+ * @param category - Business category
+ * @returns Object with primary color classes
+ */
+export function getDomainTheme(category: string) {
+  const themes: Record<string, { primary: string, text: string, bg: string, border: string }> = {
+    'pharmacy': { primary: 'emerald-600', text: 'emerald-900', bg: 'emerald-50', border: 'emerald-100' },
+    'auto-parts': { primary: 'blue-600', text: 'blue-900', bg: 'blue-50', border: 'blue-100' },
+    'computer-hardware': { primary: 'slate-800', text: 'slate-900', bg: 'slate-50', border: 'slate-100' },
+    'garments': { primary: 'pink-600', text: 'pink-900', bg: 'pink-50', border: 'pink-100' },
+    'book-publishing': { primary: 'amber-700', text: 'amber-900', bg: 'amber-50', border: 'amber-100' },
+    'logistics-transport': { primary: 'orange-600', text: 'orange-900', bg: 'orange-50', border: 'orange-100' },
+    'chemical': { primary: 'red-600', text: 'red-900', bg: 'red-50', border: 'red-100' },
+  };
+
+  return themes[category] || { primary: 'wine', text: 'gray-900', bg: 'gray-50', border: 'gray-100' };
+}
+
+/**
+ * Check if domain has size-color matrix enabled
+ * 
+ * @param category - Business category
+ * @returns True if size-color matrix is enabled
+ */
+export function isSizeColorMatrixEnabled(category: string): boolean {
+  const knowledge = getDomainKnowledge(category);
+  return knowledge?.sizeColorMatrixEnabled ||
+    knowledge?.productFields?.includes('Size-Color Matrix') ||
+    knowledge?.inventoryFeatures?.includes('Size-Color Matrix') ||
+    false;
+}
+
+/**
+ * Get default values for domain-specific product fields
+ * 
+ * @param category - Business category
+ * @param product - Existing product object (optional)
+ * @returns Object with default field values
+ */
+export function getDomainDefaults(category: string, product: any = null): any {
+  const knowledge = getDomainKnowledge(category);
+  const defaults: any = {
+    unit: knowledge?.units?.[0] || 'pcs',
+    taxPercent: knowledge?.defaultTax || 0,
+    hsnCode: knowledge?.defaultHSN || '',
+    stockValuationMethod: knowledge?.stockValuationMethod || 'Average',
+  };
+
+  // 1. Add Intelligent Standard Stock Defaults if it's a new product
+  if (!product) {
+    const stockFields = ['minStock', 'maxStock', 'reorderPoint', 'reorderQuantity', 'leadTime', 'shelfLife'];
+    stockFields.forEach(field => {
+      const intelligentVal = getIntelligentDefaults(category, field);
+      if (intelligentVal !== undefined) {
+        defaults[field] = intelligentVal;
+      }
+    });
+  }
+
+  // Initialize domain-specific fields with empty strings if not present in product
+  const productFields = knowledge?.productFields || [];
+  productFields.forEach(field => {
+    // Standardize to lowercase key (internal representation)
+    const key = normalizeKey(field);
+
+    // Skip standard fields that are handled separately in the UI
+    const skipFields = ['hsncode', 'saccode', 'name', 'sku', 'barcode', 'price', 'mrp', 'costprice'];
+    if (!skipFields.includes(key)) {
+      // Priority: 
+      // 1. Exact normalized key (articleno)
+      // 2. Snake_case key (article_no)
+      // 3. Original field name as key (Article No)
+      // 4. Config default
+      const val = product?.domain_data?.[key] ||
+        product?.domain_data?.[field.toLowerCase().replace(/\s+/g, '_')] ||
+        product?.[key] ||
+        product?.domain_data?.[field];
+
+      defaults[key] = val || (knowledge?.fieldConfig?.[key]?.default ?? '');
+    }
+  });
+
+  return defaults;
+}
+
+/**
+ * Validate product data against domain requirements
+ * 
+ * @param product - Product object to validate
+ * @param category - Business category
+ * @returns Validation result with errors array
+ */
+export interface ValidationResult {
+  valid: boolean;
+  errors: Record<string, string>;
+  warnings: string[];
+}
+
+export function validateDomainProduct(
+  product: Partial<Product>,
+  category: string
+): ValidationResult {
+  const knowledge = getDomainKnowledge(category);
+  const errors: Record<string, string> = {};
+  const warnings: string[] = [];
+
+  if (!knowledge) {
+    warnings.push(`No domain knowledge found for category: ${category}`);
+    return { valid: true, errors, warnings };
+  }
+
+  // Check required fields
+  const requiredFields = knowledge.productFields || [];
+  requiredFields.forEach(field => {
+    // Check if this field is explicitly not required via config
+    if (!isFieldRequired(field, category)) {
+      return;
+    }
+
+    // Some fields might be optional (legacy check)
+    const optionalFields = ['HSN Code', 'SAC Code', 'Description'];
+    if (!optionalFields.includes(field)) {
+      // Use normalized key for lookup
+      const fieldKey = normalizeKey(field);
+
+      // product might use raw keys or flattened keys. 
+      // ProductForm uses field.toLowerCase().replace(/\s+/g, '') which is NOT fully normalized (it keeps parens).
+      // We should check both.
+      // Better: Check if we have the value under normalized key OR the form-generated key.
+      const formKey = field.toLowerCase().replace(/\s+/g, '');
+      const value = product[fieldKey as keyof Product] || product[formKey as keyof Product];
+
+      if ((value === undefined || value === '' || value === null) && fieldKey !== 'hsncode') {
+        errors[fieldKey] = `${field} is required for ${category} products`;
+      }
+    }
+  });
+
+  // Domain-specific validations
+  if (category === 'pharmacy') {
+    if (!(product as any).drugLicense && 'drugLicense' in product) {
+      errors['drugLicense'] = 'Drug License is required for pharmacy products';
+    }
+  }
+
+  if (category === 'food-beverages') {
+    if (!(product as any).psqcaLicense && 'psqcaLicense' in product) {
+      errors['psqcaLicense'] = 'PSQCA License is required for food & beverage products';
+    }
+  }
+
+  // Israeli/Pakistani Market Compliance: MRP Validation
+  if ('mrp' in product || 'price' in product) {
+    const mrp = (product as any).mrp;
+    const price = product.price;
+    if (mrp && price && price > mrp) {
+      errors['price'] = `Selling Price (${price}) cannot exceed MRP (${mrp}) [Pakistani Regulation]`;
+    }
+  }
+
+  // HSN/SAC Code Validation (Pakistani standard is 4, 6, or 8 digits)
+  if (product.hsnCode && !/^\d{4}(\d{2})?(\d{2})?$/.test(product.hsnCode)) {
+    warnings.push('HSN/SAC Code usually follows a 4, 6, or 8 digit format in Pakistan.');
+  }
+
+  return {
+    valid: Object.keys(errors).length === 0,
+    errors,
+    warnings,
+  };
+}
+
+/**
+ * Get domain-specific inventory features
+ * 
+ * @param category - Business category
+ * @returns Array of feature names
+ */
+export function getDomainInventoryFeatures(category: string): string[] {
+  const knowledge = getDomainKnowledge(category);
+  return knowledge?.inventoryFeatures || [];
+}
+
+/**
+ * Get domain-specific reports
+ * 
+ * @param category - Business category
+ * @returns Array of report names
+ */
+export function getDomainReports(category: string): string[] {
+  const knowledge = getDomainKnowledge(category);
+  return knowledge?.reports || [];
+}
+
+/**
+ * Get payment terms for domain
+ * 
+ * @param category - Business category
+ * @returns Array of payment term strings
+ */
+export function getDomainPaymentTerms(category: string): string[] {
+  const knowledge = getDomainKnowledge(category);
+  return knowledge?.paymentTerms || ['Cash'];
+}
+
+/**
+ * Check if reordering is enabled for domain
+ * 
+ * @param category - Business category
+ * @returns True if reordering is enabled
+ */
+export function isReorderEnabled(category: string): boolean {
+  const knowledge = getDomainKnowledge(category);
+  return knowledge?.reorderEnabled || false;
+}
+
+/**
+ * Check if multi-location is enabled for domain
+ * 
+ * @param category - Business category
+ * @returns True if multi-location is enabled
+ */
+export function isMultiLocationEnabled(category: string): boolean {
+  const knowledge = getDomainKnowledge(category);
+  return knowledge?.multiLocationEnabled || false;
+}
+
+/**
+ * Helper to normalize field keys for config lookup
+ * lowercases and removes all non-alphanumeric characters
+ * Exported for use in forms to ensure consistent normalization
+ */
+export function normalizeKey(key: string): string {
+  return key.toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+/**
+ * Get field label for domain-specific field
+ * Maps internal field names to display labels
+ * 
+ * @param field - Field name (e.g., 'partNumber', 'drugLicense')
+ * @param category - Business category
+ * @returns Display label
+ */
+export function getFieldLabel(field: string, category: string): string {
+  const knowledge = getDomainKnowledge(category);
+  // Check if domain-specific config exists for this field
+  // Normalize key to match config keys (articleno, widtharz, etc.)
+  const normalized = normalizeKey(field);
+  const config = knowledge?.fieldConfig?.[field] ||
+    knowledge?.fieldConfig?.[field.toLowerCase()] ||
+    knowledge?.fieldConfig?.[normalized];
+
+  if (config?.label) return config.label;
+
+  const fieldLabels: Record<string, string> = {
+    // ... (existing mapping)
+    partNumber: 'Part Number',
+    partnumber: 'Part Number',
+    // ...
+    articleno: 'Article No',
+    article_no: 'Article No',
+    designno: 'Design No',
+    design_no: 'Design No',
+    thaanlength: 'Thaan Length',
+    suitcutting: 'Suit Cutting',
+    widtharz: 'Width (Arz)',
+    fabrictype: 'Fabric Type',
+    korafinished: 'Kora/Finished',
+  };
+
+  return fieldLabels[field] || fieldLabels[normalized] || field;
+}
+
+/**
+ * Get field input type for domain-specific field
+ * 
+ * @param field - Field name
+ * @param category - Business category
+ * @returns Input type ('text', 'number', 'date', 'select', 'multiselect', etc.)
+ */
+export function getFieldInputType(field: string, category: string): string {
+  const knowledge = getDomainKnowledge(category);
+  const normalized = normalizeKey(field);
+
+  // Check if domain-specific config exists for this field
+  const config = knowledge?.fieldConfig?.[field] ||
+    knowledge?.fieldConfig?.[field.toLowerCase()] ||
+    knowledge?.fieldConfig?.[normalized];
+
+  if (config?.type) return config.type;
+
+  const f = field.toLowerCase();
+  const n = normalized;
+
+  const dateFields = [
+    'expirydate', 'manufacturingdate', 'purchasedate', 'warrantystartdate', 'warrantyenddate',
+    'consumptiondate', 'eventdate', 'validity'
+  ];
+  const numberFields = [
+    'price', 'stock', 'mrp', 'weight', 'warrantyperiod', 'gsm', 'carat', 'area',
+    'weightlimit', 'duration', 'unitcost', 'preptime', 'consultationfee', 'commissionrate',
+    'quantity', 'rate', 'amount', 'taxpercent', 'discountpercent'
+  ];
+  const selectFields = [
+    'marketlocation', 'paymentterms', 'paymentmethod', 'brokername', 'agentname',
+    'qualitygrade', 'korafinished', 'fabrictype', 'sizetype', 'unit', 'status',
+    'province', 'type', 'category'
+  ];
+  const compatibilityFields = ['vehiclecompatibility', 'compatibility', 'models'];
+  const oemFields = ['oemnumber', 'oemspec', 'originalpartnumber'];
+  const partFields = ['partnumber', 'internalid', 'makernumber'];
+  const warrantyFields = ['warrantyperiod', 'warranty'];
+
+  if (compatibilityFields.includes(n)) return 'vehicle-compatibility';
+  if (oemFields.includes(n)) return 'oem-number';
+  if (partFields.includes(n)) return 'part-number';
+  if (warrantyFields.includes(n)) return 'warranty';
+
+  if (dateFields.includes(n)) return 'date';
+  if (numberFields.includes(n)) return 'number';
+  if (selectFields.includes(n)) return 'select';
+
+  return 'text';
+}
+
+/**
+ * Get options for select fields
+ * 
+ * @param field - Field name
+ * @param category - Business category
+ * @returns Array of option strings or objects
+ */
+export function getSelectOptions(field: string, category: string): any[] {
+  const knowledge = getDomainKnowledge(category);
+  const normalized = normalizeKey(field);
+
+  // 1. Check fieldConfig first
+  const config = knowledge?.fieldConfig?.[field] ||
+    knowledge?.fieldConfig?.[field.toLowerCase()] ||
+    knowledge?.fieldConfig?.[normalized];
+
+  if (config?.options && Array.isArray(config.options)) {
+    return config.options;
+  }
+
+  // 2. Fallback aliases for common fields
+  if (normalized === 'marketlocation' && knowledge?.pakistaniFeatures?.marketLocations) {
+    return knowledge.pakistaniFeatures.marketLocations;
+  }
+
+  if (normalized === 'paymentterms' && knowledge?.paymentTerms) {
+    return knowledge.paymentTerms;
+  }
+
+  return [];
+}
+
+/**
+ * Check if field is required for domain
+ * 
+ * @param field - Field name
+ * @param category - Business category
+ * @returns True if field is required
+ */
+export function isFieldRequired(field: string, category: string): boolean {
+  const knowledge = getDomainKnowledge(category);
+  if (!knowledge) return false;
+
+  const normalized = normalizeKey(field);
+
+  // 1. Check explicit config first
+  const config = knowledge.fieldConfig?.[field] ||
+    knowledge.fieldConfig?.[field.toLowerCase()] ||
+    knowledge.fieldConfig?.[normalized];
+
+  if (config && typeof config.required === 'boolean') {
+    return config.required;
+  }
+
+  // 2. Fallback to list inclusion (default true if in productFields)
+  const productFields = knowledge.productFields || [];
+  // We need to compare labels or keys carefully. 
+  // productFields usually contains Labels like "Article No".
+  // If 'field' is "Article No", it matches.
+  // If 'field' is "articleno", we verify against labels?
+  // Easier: Assume strict match or normalize match if needed.
+  // But usually this function is called with the string from productFields list.
+
+  return productFields.includes(field) || productFields.includes(getFieldLabel(field, category));
+}
+
+/**
+ * Get domain display name
+ * 
+ * @param category - Business category slug
+ * @returns Display name
+ */
+export function getDomainDisplayName(category: string): string {
+  const domainNames: Record<string, string> = {
+    'auto-parts': 'Auto Parts',
+    'retail-shop': 'Retail Shop',
+    'pharmacy': 'Pharmacy',
+    'chemical': 'Chemical',
+    'food-beverages': 'Food & Beverages',
+    'ecommerce': 'E-commerce',
+    'computer-hardware': 'Computer Hardware',
+    'furniture': 'Furniture',
+    'book-publishing': 'Book Publishing',
+    'travel': 'Travel',
+    'fmcg': 'FMCG',
+    'electrical': 'Electrical',
+    'paper-mill': 'Paper Mill',
+    'paint': 'Paint',
+    'mobile': 'Mobile',
+    'garments': 'Garments',
+    'agriculture': 'Agriculture',
+    'gems-jewellery': 'Gems & Jewellery',
+    'electronics-goods': 'Electronics Goods',
+    'real-estate': 'Real Estate',
+    'grocery': 'Grocery',
+    'hardware-sanitary': 'Hardware & Sanitary',
+    'poultry-farm': 'Poultry Farm',
+    'solar-energy': 'Solar & Energy',
+    'auto-workshop': 'Auto Workshop',
+    'diagnostic-lab': 'Diagnostic Lab',
+    'restaurant-cafe': 'Restaurant & Cafe',
+    'courier-logistics': 'Courier & Logistics',
+    'school-library': 'School/Library',
+    'gym-fitness': 'Gym & Fitness',
+    'hotel-guesthouse': 'Hotel/Guest House',
+    'event-management': 'Event Management',
+    'rent-a-car': 'Rent-a-Car',
+    'wholesale-distribution': 'Wholesale Distribution',
+    'plastic-manufacturing': 'Plastic Manufacturing',
+    'leather-footwear': 'Leather & Footwear',
+    'ceramics-tiles': 'Ceramics & Tiles',
+    'printing-packaging': 'Printing & Packaging',
+    'petrol-pump': 'Petrol Pump & Oil',
+    'cold-storage': 'Cold Storage',
+    'textile-mill': 'Textile Mill',
+    'textile-wholesale': 'Textile Wholesale (Jama Cloth)',
+  };
+
+  return domainNames[category] || category;
+}
+
+/**
+ * Get intelligent default value for a specific field based on domain intelligence
+ * Uses the intelligence config to suggest smart defaults
+ * 
+ * @param category - Business category
+ * @param fieldName - Field name to get default for
+ * @returns Intelligent default value or undefined
+ */
+export function getIntelligentDefaults(category: string, fieldName: string): any {
+  const knowledge = getDomainKnowledge(category);
+  const intelligence = knowledge?.intelligence;
+
+  if (!intelligence) return undefined;
+
+  const normalized = normalizeKey(fieldName);
+
+  // Determine turnover profile for smarter defaults
+  const isHighTurnover = ['fmcg', 'retail-shop', 'pharmacy', 'grocery', 'food-beverages'].includes(category);
+  const isHighValue = ['gems-jewellery', 'solar-energy', 'electronics-goods', 'computer-hardware'].includes(category);
+
+  switch (normalized) {
+    case 'minstock':
+    case 'minstocklevel':
+      // Base on minimum order quantity with safety buffer
+      const baseMin = intelligence.minOrderQuantity || 10;
+      if (isHighTurnover) return Math.ceil(baseMin * 0.8); // Higher safety stock for FMCG
+      if (isHighValue) return 1; // Low minimum stock for expensive items
+      return Math.ceil(baseMin * 0.5);
+
+    case 'reorderpoint':
+    case 'reorderlevel':
+      // Set reorder point based on lead time and turnover
+      const leadTime = intelligence.leadTime || 7;
+      const minStockLevel = getIntelligentDefaults(category, 'minstock');
+
+      if (isHighTurnover) {
+        // FMCG needs reorder points far earlier
+        return Math.ceil(minStockLevel + (leadTime * 5)); // Buffer for daily sales
+      }
+      return Math.ceil(minStockLevel * 1.5);
+
+    case 'reorderquantity':
+      // Use domain's minimum order quantity
+      const baseQty = intelligence.minOrderQuantity || 50;
+      if (isHighValue) return 5;
+      return baseQty;
+
+    case 'maxstock':
+    case 'maxstocklevel':
+      // Set max stock based on shelf life and demand volatility
+      const baseMax = (intelligence.minOrderQuantity || 10) * (isHighTurnover ? 10 : 3);
+      // Adjust for perishability
+      if (intelligence.perishability === 'high' || intelligence.perishability === 'critical') {
+        return Math.ceil(baseMax * 0.5); // Much lower max for highly perishable items
+      }
+      return baseMax;
+
+    case 'leadtime':
+    case 'leadtimedays':
+      return intelligence.leadTime || 7;
+
+    case 'shelflife':
+    case 'shelflifedays':
+      return intelligence.shelfLife || 365;
+
+    case 'warrantyperiod':
+    case 'warrantymonths':
+      // Suggest warranty based on domain
+      if (category === 'computer-hardware' || category === 'electrical' || category === 'solar-energy') return 12;
+      if (category === 'auto-parts' || category === 'mobile') return 6;
+      return undefined;
+
+    default:
+      return undefined;
+  }
+}
+
+/**
+ * Get display-friendly unit preview for a field
+ * @param field - Normalized field key
+ * @param category - Business domain
+ */
+export function getDomainUnitPreview(field: string, category: string): string | null {
+  const n = normalizeKey(field);
+
+  if (category === 'textile-wholesale' || category === 'garments') {
+    if (n.includes('length') || n.includes('cutting')) return 'Meters / Yards';
+    if (n.includes('width') || n.includes('arz')) return 'Inches';
+    if (n.includes('weight') || n.includes('gsm')) return 'GSM / Grams';
+  }
+
+  if (category === 'pharmacy') {
+    if (n.includes('strength') || n.includes('dosage')) return 'mg / ml';
+    if (n.includes('packsize')) return 'Tabs / Vial';
+  }
+
+  if (category === 'solar-energy') {
+    if (n.includes('capacity') || n.includes('power')) return 'Watts / kWh';
+    if (n.includes('voltage')) return 'Volts (V)';
+  }
+
+  if (category === 'agriculture') {
+    if (n.includes('moisture')) return '% Percent';
+    if (n.includes('weight')) return 'Kgs / Maunds';
+  }
+
+  return null;
+}
+
+/**
+ * Get all enabled features for a domain
+ * Returns a summary object
+ */
+export function getDomainFeatureSummary(category: string) {
+  return {
+    batchTracking: isBatchTrackingEnabled(category),
+    serialTracking: isSerialTrackingEnabled(category),
+    expiryTracking: isExpiryTrackingEnabled(category),
+    manufacturing: isManufacturingEnabled(category),
+    sizeColorMatrix: isSizeColorMatrixEnabled(category),
+    multiLocation: isMultiLocationEnabled(category),
+    reorderEnabled: isReorderEnabled(category),
+    valuationMethod: getDomainValuationMethod(category),
+    defaultTax: getDomainDefaultTax(category),
+    units: getDomainUnits(category),
+    paymentTerms: getDomainPaymentTerms(category),
+  };
+}
+
+/**
+ * Get dynamic table columns for the BusyGrid
+ */
+/**
+ * Get dynamic table columns for the BusyGrid
+ */
+export function getDomainTableColumns(category: string): any[] {
+  const knowledge = getDomainKnowledge(category);
+  const fields = knowledge?.productFields || [];
+
+  // Start with standard fixed columns
+  const columns: any[] = [
+    { accessorKey: 'name', header: 'Product Name', width: 200, flexGrow: 1 },
+    { accessorKey: 'sku', header: 'SKU', width: 100 },
+    { accessorKey: 'category', header: 'Category', width: 100 },
+    { accessorKey: 'stock', header: 'Stock', width: 80 },
+    { accessorKey: 'price', header: 'Price', width: 100 },
+  ];
+
+  // Add domain-specific dynamic columns
+  fields.forEach(field => {
+    // Avoid adding columns that are already standard
+    if (['Name', 'Price', 'Stock', 'Category', 'SKU', 'Barcode'].includes(field)) return;
+
+    // Normalize key to match what is saved in DB (lowercase, alphanumeric)
+    const key = normalizeKey(field);
+
+    let width = 120;
+    if (field.length > 15) width = 150;
+    if (['Description', 'Specifications'].includes(field)) width = 250;
+
+    columns.push({
+      accessorKey: key, // Keep simple key for editing if flattened
+      header: field,
+      width: width,
+      // Custom cell renderer to handle nested domain_data
+      cell: ({ row }: any) => {
+        // Handle both flattened and nested data structures
+        const val = row.original?.[key] ||
+          row.original?.domain_data?.[key] ||
+          row.original?.attributes?.[key] || // Legacy support
+          '-';
+        return val;
+      }
+    });
+  });
+
+  // Add standard financial columns at the end ONLY if they weren't added at the start
+  // Note: Standard columns are already added at the start (lines 727-731)
+  // We only add 'Total Value' here as it's a computed column
+  const hasValue = columns.some(c => c.accessorKey === 'value');
+  if (!hasValue) {
+    columns.push({
+      accessorKey: 'value',
+      header: 'Total Value',
+      width: 130,
+      readOnly: true,
+      cell: ({ row }: any) => {
+        const stock = Number(row.original?.stock) || 0;
+        const price = Number(row.original?.price) || 0;
+        const val = stock * price;
+        return val ? `Rs${val.toLocaleString()}` : 'Rs0';
+      }
+    });
+  }
+
+  return columns;
+}
+
+/**
+ * Get dynamic invoice columns for a domain
+ */
+export function getDomainInvoiceColumns(category: string): any[] {
+  const knowledge = getDomainKnowledge(category);
+  const columns: any[] = [];
+
+  // 1. Traceability columns
+  if (isBatchTrackingEnabled(category)) {
+    columns.push({ field: 'batch_number', header: 'Batch', width: 'w-24' });
+  }
+
+  if (isExpiryTrackingEnabled(category)) {
+    columns.push({ field: 'expiry_date', header: 'Expiry', width: 'w-24', type: 'date' });
+  }
+
+  if (isSerialTrackingEnabled(category)) {
+    columns.push({ field: 'serial_number', header: 'Serial #', width: 'w-32' });
+  }
+
+  // 2. Domain specific identifiers (Article, Design, Part No, etc.)
+  const fields = knowledge?.productFields || [];
+  const identifiers = fields.filter(f => {
+    const l = f.toLowerCase();
+    return l.includes('article') || l.includes('design') || l.includes('part') ||
+      l.includes('model') || l.includes('oem') || l.includes('isbn') ||
+      l.includes('fabric');
+  }).slice(0, 3); // Take first 3 key identifiers
+
+  identifiers.forEach(field => {
+    const key = field.toLowerCase().replace(/\s+/g, '_'); // snake_case for invoice items
+    columns.push({
+      field: key,
+      header: field.replace(' Number', ' #').replace(' No', ' #'),
+      width: 'w-24'
+    });
+  });
+
+  return columns;
+}
+
+/**
+ * Get dynamic customer columns for the DataTable
+ */
+export function getDomainCustomerColumns(category: string): any[] {
+  const knowledge = getDomainKnowledge(category);
+  const fields = knowledge?.customerFields || [];
+  const columns: any[] = [];
+
+  fields.forEach(field => {
+    const key = field.toLowerCase().replace(/\s+/g, '');
+    columns.push({
+      accessorKey: key,
+      header: field,
+      width: field.length > 12 ? 150 : 120,
+      cell: ({ row }: any) => row.original?.domain_data?.[key] || row.original?.[key] || '-'
+    });
+  });
+
+  return columns;
+}
+
+/**
+ * Get dynamic vendor columns for the DataTable
+ */
+export function getDomainVendorColumns(category: string): any[] {
+  const knowledge = getDomainKnowledge(category);
+  const fields = knowledge?.vendorFields || [];
+  const columns: any[] = [];
+
+  fields.forEach(field => {
+    // Normalize key to match DB (lowercase, no spaces)
+    const key = field.toLowerCase().replace(/\s+/g, '');
+
+    columns.push({
+      accessorKey: key,
+      header: field,
+      width: field.length > 12 ? 150 : 120,
+      cell: ({ row }: any) => {
+        // Check for common variations in domain_data
+        const val = row.original?.domain_data?.[key] ||
+          row.original?.domain_data?.[field.toLowerCase().replace(/\s+/g, '_')] || // snake_case
+          row.original?.[key] ||
+          '-';
+        return val;
+      }
+    });
+  });
+
+  return columns;
+}

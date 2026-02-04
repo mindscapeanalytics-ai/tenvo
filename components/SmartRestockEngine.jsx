@@ -1,0 +1,208 @@
+import { useState, useMemo, useCallback, memo } from 'react';
+import { ShoppingCart, ArrowRight, BrainCircuit, CheckCircle2, AlertTriangle, PackagePlus } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
+import { getDomainKnowledge } from '@/lib/domainKnowledge';
+import toast from 'react-hot-toast';
+import { createBulkPurchaseOrdersAction } from '@/lib/actions/purchase';
+
+export const SmartRestockEngine = memo(function SmartRestockEngine({
+    products = [],
+    invoices = [],
+    category = 'retail-shop',
+    businessId,
+    refreshData
+}) {
+    const [selectedItems, setSelectedItems] = useState([]);
+    const [isGenerating, setIsGenerating] = useState(false);
+    const domainKnowledge = getDomainKnowledge(category);
+
+    // Helper to get monthly sales for a product (Last 6 months)
+    const getProductSalesHistory = (productId) => {
+        const history = [0, 0, 0, 0, 0, 0];
+        const now = new Date();
+
+        invoices.forEach(inv => {
+            const invDate = new Date(inv.date);
+            const monthDiff = (now.getFullYear() - invDate.getFullYear()) * 12 + (now.getMonth() - invDate.getMonth());
+
+            if (monthDiff >= 0 && monthDiff < 6) {
+                const items = inv.items || [];
+                const productItem = items.find(item => item.product_id === productId);
+                if (productItem) {
+                    history[5 - monthDiff] += (Number(productItem.quantity) || 0);
+                }
+            }
+        });
+        return history;
+    };
+
+    // Logic to calculate restock needs (optimized to remove duplicate loops)
+    const restockSuggestions = useMemo(() => {
+        if (!products) return [];
+
+        // Get domain intelligence
+        const intelligence = domainKnowledge?.intelligence || {};
+        const defaultLeadTime = intelligence.leadTime || 7;
+        const volatility = intelligence.demandVolatility || 0.1;
+
+        return products.map(p => {
+            const historicalSales = getProductSalesHistory(p.id);
+
+            // Apply volatility factor to WMA weights if high volatility
+            let weights = [0.05, 0.1, 0.15, 0.2, 0.25, 0.25];
+            if (volatility > 0.5) {
+                // Recent months matter much more in volatile markets
+                weights = [0.0, 0.05, 0.1, 0.15, 0.3, 0.4];
+            }
+
+            const wma = historicalSales.reduce((acc, val, i) => acc + (val * weights[i]), 0);
+
+            // Use domain-specific lead time
+            const leadTime = p.leadTime || defaultLeadTime;
+
+            // Calculate Safety Stock dynamically
+            let safetyFactor = 1.5;
+            if (intelligence.perishability === 'critical') safetyFactor = 1.1;
+            if (intelligence.seasonality === 'high') safetyFactor = 2.0; // Stock up for season
+
+            const safetyStock = Math.ceil((wma / 30) * leadTime * safetyFactor);
+            const recommended = Math.ceil(wma + safetyStock);
+
+            // Reorder threshold
+            const threshold = recommended * 0.8;
+
+            if (p.stock >= threshold) return null;
+
+            return {
+                ...p,
+                restockAmount: Math.max(10, recommended - p.stock),
+                priority: p.stock < (recommended * 0.3) ? 'High' : 'Medium',
+                reason: intelligence.perishability === 'critical' ? 'Just-in-Time (Perishable)' : 'Standard Restock'
+            };
+        }).filter(Boolean);
+    }, [products, category, domainKnowledge, invoices]);
+
+    const toggleItem = useCallback((id) => {
+        setSelectedItems(prev =>
+            prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+        );
+    }, []);
+
+    const handleBulkRestock = useCallback(async () => {
+        if (!businessId) {
+            toast.error("Business context missing for order generation");
+            return;
+        }
+
+        setIsGenerating(true);
+        try {
+            const ordersToCreate = selectedItems.map(id => {
+                const item = restockSuggestions.find(s => s.id === id);
+                return {
+                    product_id: item.id,
+                    quantity: item.restockAmount,
+                    unit_cost: item.cost_price || item.price || 0,
+                    total_amount: item.restockAmount * (item.cost_price || item.price || 0),
+                    description: `Auto-restock: ${item.reason}`,
+                    notes: `Generated Priority: ${item.priority}`
+                };
+            });
+
+            const result = await createBulkPurchaseOrdersAction(businessId, ordersToCreate);
+
+            if (result.success) {
+                toast.success(result.message);
+                setSelectedItems([]);
+                if (refreshData) refreshData();
+            } else {
+                toast.error(result.error || "Failed to generate orders");
+            }
+        } catch (error) {
+            console.error("Bulk restock error:", error);
+            toast.error("An error occurred while generating orders");
+        } finally {
+            setIsGenerating(false);
+        }
+    }, [selectedItems, restockSuggestions, businessId, refreshData]);
+
+    return (
+        <Card className="border-wine/20 shadow-xl backdrop-blur-sm bg-white/80">
+            <CardHeader className="bg-gradient-to-br from-wine/10 via-wine/5 to-transparent border-b border-wine/10 rounded-t-xl">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                        <div className="p-3 bg-wine text-white rounded-2xl shadow-lg rotate-3 hover:rotate-0 transition-transform">
+                            <BrainCircuit className="w-6 h-6" />
+                        </div>
+                        <div>
+                            <CardTitle className="text-wine text-xl font-bold tracking-tight">Intelligence Restock Engine</CardTitle>
+                            <CardDescription className="text-wine/70 font-medium">Domain-aware automated purchase planning</CardDescription>
+                        </div>
+                    </div>
+                    <Badge variant="secondary" className="bg-wine/10 text-wine hover:bg-wine/20 border-wine/20 px-3 py-1">
+                        {restockSuggestions.length} Suggestions
+                    </Badge>
+                </div>
+            </CardHeader>
+            <CardContent className="pt-6">
+                <div className="space-y-3">
+                    {restockSuggestions.length === 0 ? (
+                        <div className="text-center py-12 bg-gray-50/50 rounded-2xl border border-dashed border-gray-200">
+                            <div className="p-4 bg-green-50 rounded-full w-fit mx-auto mb-4 border border-green-100">
+                                <CheckCircle2 className="w-8 h-8 text-green-500" />
+                            </div>
+                            <p className="font-bold text-gray-900 text-lg">Inventory is healthy!</p>
+                            <p className="text-sm text-gray-500 max-w-[250px] mx-auto">All stock levels are optimal based on current domain-specific demand trends.</p>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {restockSuggestions.map((item) => (
+                                <div key={item.id} className="group flex items-center justify-between p-4 border border-gray-100 rounded-2xl hover:border-wine/30 hover:bg-wine/5 transition-all duration-300 bg-white/50">
+                                    <div className="flex items-center gap-4">
+                                        <div className="relative">
+                                            <Checkbox
+                                                checked={selectedItems.includes(item.id)}
+                                                onCheckedChange={() => toggleItem(item.id)}
+                                                className="data-[state=checked]:bg-wine data-[state=checked]:border-wine h-5 w-5 rounded-md"
+                                            />
+                                        </div>
+                                        <div>
+                                            <p className="font-bold text-gray-900 group-hover:text-wine transition-colors">{item.name}</p>
+                                            <div className="flex items-center gap-2 mt-1">
+                                                <Badge variant={item.priority === 'High' ? 'destructive' : 'secondary'} className="text-[10px] uppercase font-bold tracking-wider">
+                                                    {item.priority}
+                                                </Badge>
+                                                <span className="text-xs text-gray-500 font-medium">Stock: {item.stock}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="text-right">
+                                        <div className="flex items-center justify-end gap-1 text-wine font-black text-lg">
+                                            <PackagePlus className="w-4 h-4" />
+                                            +{item.restockAmount}
+                                        </div>
+                                        <p className="text-[10px] text-gray-400 font-bold uppercase">Order Recommendation</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </CardContent>
+            {restockSuggestions.length > 0 && (
+                <CardFooter className="bg-wine/[0.02] border-t border-wine/5 p-6">
+                    <Button
+                        className="w-full bg-wine hover:bg-wine/90 text-white font-black text-base h-12 shadow-lg shadow-wine/20 rounded-xl group"
+                        disabled={selectedItems.length === 0 || isGenerating}
+                        onClick={handleBulkRestock}
+                    >
+                        {isGenerating ? "Generating..." : `Create ${selectedItems.length} Smart Purchase Orders`}
+                        <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                    </Button>
+                </CardFooter>
+            )}
+        </Card>
+    );
+});
