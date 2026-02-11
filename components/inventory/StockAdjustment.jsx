@@ -10,25 +10,36 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { toast } from 'react-hot-toast';
 
+import { adjustStockAction } from '@/lib/actions/stock';
+
 /**
  * StockAdjustment Component
- * Manages stock adjustments (increase/decrease) with reasons
+ * Allows manual adjustment of stock levels with reasons
  * 
- * @param {Array} adjustments - Array of adjustment history
- * @param {Array} products - Array of products
- * @param {Function} onAdjust - Adjustment callback
- * @param {string} currency - Currency code
+ * @param {Object} props
+ * @param {any[]} [props.adjustments] - Array of adjustment objects
+ * @param {any[]} [props.products] - Array of products
+ * @param {any[]} [props.warehouses] - Array of warehouses
+ * @param {(data: any) => void} [props.onAdjust] - Adjustment callback
+ * @param {() => void} [props.onSave] - Save callback
+ * @param {string} [props.businessId] - Business ID
+ * @param {string} [props.currency] - Currency code
  */
 export function StockAdjustment({
   adjustments = [],
   products = [],
+  warehouses = [],
   onAdjust,
+  onSave,
+  businessId,
   currency = 'PKR',
 }) {
   const [adjustmentHistory, setAdjustmentHistory] = useState(adjustments);
   const [showForm, setShowForm] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     productId: '',
+    warehouseId: '',
     adjustmentType: 'increase', // increase, decrease
     quantity: 0,
     reason: '',
@@ -47,46 +58,74 @@ export function StockAdjustment({
     'Other',
   ];
 
-  const handleAdjust = () => {
+  const handleAdjust = async () => {
     if (!formData.productId || formData.quantity <= 0) {
       toast.error('Please select a product and enter quantity');
       return;
     }
 
-    const product = products.find(p => p.id === formData.productId);
-    if (!product) return;
-
-    const adjustment = {
-      id: Date.now(),
-      productId: formData.productId,
-      productName: product.name,
-      adjustmentType: formData.adjustmentType,
-      quantity: parseFloat(formData.quantity),
-      previousStock: product.stock || 0,
-      newStock: formData.adjustmentType === 'increase'
-        ? (product.stock || 0) + parseFloat(formData.quantity)
-        : (product.stock || 0) - parseFloat(formData.quantity),
-      reason: formData.reason,
-      notes: formData.notes,
-      costPrice: parseFloat(formData.costPrice) || product.costPrice || 0,
-      createdAt: new Date().toISOString(),
-      createdBy: 'Current User', // In real app, get from auth
-    };
-
-    const updated = [adjustment, ...adjustmentHistory];
-    setAdjustmentHistory(updated);
-
-    // Call onAdjust to update product stock
-    if (onAdjust) {
-      onAdjust({
-        productId: formData.productId,
-        newStock: adjustment.newStock,
-        adjustment: adjustment,
-      });
+    if (!businessId) {
+      toast.error('Business context missing');
+      return;
     }
 
-    setShowForm(false);
-    resetForm();
+    const qtyChange = formData.adjustmentType === 'increase'
+      ? Number(formData.quantity)
+      : -Number(formData.quantity);
+
+    try {
+      setLoading(true);
+
+      const res = await adjustStockAction({
+        business_id: businessId,
+        product_id: formData.productId,
+        warehouse_id: formData.warehouseId || null,
+        quantity_change: qtyChange,
+        reason: formData.reason,
+        notes: formData.notes
+      });
+
+      if (!res.success) {
+        throw new Error(res.error);
+      }
+
+      const product = products.find(p => p.id === formData.productId);
+
+      const adjustment = {
+        id: res.movementId || Date.now(),
+        productId: formData.productId,
+        productName: product?.name || 'Unknown',
+        adjustmentType: formData.adjustmentType,
+        quantity: formData.quantity,
+        previousStock: product?.stock || 0,
+        newStock: res.newStock,
+        reason: formData.reason,
+        notes: formData.notes,
+        costPrice: Number(formData.costPrice) || Number(product?.cost_price) || 0,
+        createdAt: new Date().toISOString(),
+        createdBy: 'Current User',
+      };
+
+      setAdjustmentHistory(prev => [adjustment, ...prev]);
+
+      // Notify parent to refresh local products state
+      if (onAdjust) {
+        onAdjust({
+          productId: formData.productId,
+          newStock: res.newStock,
+          adjustment: adjustment,
+        });
+      }
+
+      toast.success('Stock adjusted and persisted successfully');
+      setShowForm(false);
+      resetForm();
+    } catch (err) {
+      console.error(err);
+      toast.error(err.message || "Failed to adjust stock");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const resetForm = () => {
@@ -126,29 +165,46 @@ export function StockAdjustment({
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Product *</Label>
-                <select
-                  value={formData.productId}
-                  onChange={(e) => {
-                    const productId = e.target.value;
-                    const product = products.find(p => p.id === productId);
-                    setFormData({
-                      ...formData,
-                      productId,
-                      costPrice: product?.costPrice || 0,
-                    });
-                  }}
-                  className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
-                  required
-                >
-                  <option value="">Select Product</option>
-                  {products.map(product => (
-                    <option key={product.id} value={product.id}>
-                      {product.name} (Current Stock: {product.stock || 0})
-                    </option>
-                  ))}
-                </select>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Product *</Label>
+                  <select
+                    value={formData.productId}
+                    onChange={(e) => {
+                      const productId = e.target.value;
+                      const product = products.find(p => p.id === productId);
+                      setFormData({
+                        ...formData,
+                        productId,
+                        costPrice: product?.cost_price || 0,
+                      });
+                    }}
+                    className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
+                    required
+                  >
+                    <option value="">Select Product</option>
+                    {products.map(product => (
+                      <option key={product.id} value={product.id}>
+                        {product.name} (Stock: {product.stock || 0})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Warehouse *</Label>
+                  <select
+                    value={formData.warehouseId}
+                    onChange={(e) => setFormData({ ...formData, warehouseId: e.target.value })}
+                    className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
+                    required
+                  >
+                    <option value="">Select Warehouse</option>
+                    {warehouses.map(wh => (
+                      <option key={wh.id} value={wh.id}>{wh.name} {wh.is_primary ? '(Primary)' : ''}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">

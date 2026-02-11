@@ -43,6 +43,7 @@
     "dotenv": "^17.2.3",
     "drizzle-orm": "^0.45.1",
     "embla-carousel-react": "^8.6.0",
+    "framer-motion": "^12.33.0",
     "jspdf": "^2.5.2",
     "jspdf-autotable": "^3.8.3",
     "kysely": "^0.28.9",

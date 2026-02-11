@@ -13,11 +13,11 @@ export const SmartRestockEngine = memo(function SmartRestockEngine({
     invoices = [],
     category = 'retail-shop',
     businessId,
+    domainKnowledge = getDomainKnowledge(category),
     refreshData
 }) {
     const [selectedItems, setSelectedItems] = useState([]);
     const [isGenerating, setIsGenerating] = useState(false);
-    const domainKnowledge = getDomainKnowledge(category);
 
     // Helper to get monthly sales for a product (Last 6 months)
     const getProductSalesHistory = (productId) => {

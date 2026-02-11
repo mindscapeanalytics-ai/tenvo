@@ -156,12 +156,12 @@ export default function EnhancedPOBuilder({ businessId, onSuccess, onCancel, cat
                 items: items.map(i => ({
                     product_id: i.productId,
                     description: i.description,
-                    quantity: parseFloat(i.quantity),
-                    unit_cost: parseFloat(i.unitCost),
-                    tax_rate: parseFloat(i.taxRate),
+                    quantity: Number(i.quantity || 0),
+                    unit_cost: Number(i.unitCost || 0),
+                    tax_rate: Number(i.taxRate || 0),
                     batch_number: i.batchNumber,
                     expiry_date: i.expiryDate,
-                    total_amount: i.total
+                    total_amount: Number(i.total || 0)
                 }))
             };
 
@@ -184,8 +184,8 @@ export default function EnhancedPOBuilder({ businessId, onSuccess, onCancel, cat
                     <Label className="text-[10px] font-black uppercase text-gray-400">Supplier *</Label>
                     <div className="flex gap-2">
                         <Combobox
-                            options={vendors.map(v => ({ value: v.id, label: v.name, description: v.city }))}
-                            value={header.vendorId}
+                            options={vendors.map(v => ({ value: String(v.id), label: v.name, description: String(v.city || '') }))}
+                            value={String(header.vendorId)}
                             onChange={val => setHeader({ ...header, vendorId: val })}
                             placeholder="Select Vendor"
                         />
@@ -199,8 +199,8 @@ export default function EnhancedPOBuilder({ businessId, onSuccess, onCancel, cat
                     <Label className="text-[10px] font-black uppercase text-gray-400">Warehouse *</Label>
                     <div className="flex gap-2">
                         <Combobox
-                            options={warehouses.map(w => ({ value: w.id, label: w.name, description: w.type }))}
-                            value={header.warehouseId}
+                            options={warehouses.map(w => ({ value: String(w.id), label: w.name, description: String(w.location || '') }))}
+                            value={String(header.warehouseId)}
                             onChange={val => setHeader({ ...header, warehouseId: val })}
                             placeholder="Select Warehouse"
                         />
@@ -218,6 +218,27 @@ export default function EnhancedPOBuilder({ businessId, onSuccess, onCancel, cat
                 <div className="space-y-2">
                     <Label className="text-[10px] font-black uppercase text-gray-400">Date</Label>
                     <Input type="date" value={header.date} onChange={e => setHeader({ ...header, date: e.target.value })} className="h-10" />
+                </div>
+
+                <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase text-gray-400">Inventory Status</Label>
+                    <div className="flex bg-white border border-gray-200 rounded-xl p-1 h-10">
+                        <button
+                            onClick={() => setHeader({ ...header, status: 'draft' })}
+                            className={`flex-1 rounded-lg text-[10px] font-black uppercase transition-all ${header.status === 'draft' ? 'bg-slate-900 text-white shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+                        >
+                            Draft PO
+                        </button>
+                        <button
+                            onClick={() => setHeader({ ...header, status: 'received' })}
+                            className={`flex-1 rounded-lg text-[10px] font-black uppercase transition-all ${header.status === 'received' ? 'bg-emerald-600 text-white shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+                        >
+                            Direct Inward
+                        </button>
+                    </div>
+                    <p className="text-[9px] text-gray-400 italic px-1">
+                        {header.status === 'received' ? '✓ Stock will be added immediately upon save' : '• Pending approval, no stock change'}
+                    </p>
                 </div>
             </div>
 

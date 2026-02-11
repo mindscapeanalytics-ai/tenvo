@@ -18,11 +18,20 @@ import { cn } from '@/lib/utils';
 import { useBusiness } from '@/lib/context/BusinessContext';
 import { Badge } from '@/components/ui/badge';
 import toast from 'react-hot-toast';
+import { useStockAvailability, useCreditLimitCheck, useDueDateCalculator } from '@/lib/hooks/useInvoiceHelpers';
 
 /**
  * Enhanced Invoice Builder Component
  * Fully localized for Pakistani (FBR) and FBR-certified tax systems
  * Conditionally shows features based on domain category
+ * 
+ * @param {Object} props
+ * @param {() => void} props.onClose
+ * @param {(inv: any) => void} props.onSave
+ * @param {any[]} [props.products]
+ * @param {any[]} [props.customers]
+ * @param {string} [props.category]
+ * @param {any} [props.initialData]
  */
 export function EnhancedInvoiceBuilder({
   onClose,
@@ -39,7 +48,7 @@ export function EnhancedInvoiceBuilder({
   const domainKnowledge = getDomainKnowledge(category);
   const isPakistaniDomain = domainKnowledge?.pakistaniFeatures || false;
   // const currency = isPakistaniDomain ? 'PKR' : 'INR'; // Removed static assignment
-  const currencySymbol = business?.settings?.financials?.currencySymbol || (isPakistaniDomain ? 'Rs.' : 'INR');
+  const currencySymbol = business?.settings?.financials?.currencySymbol || (isPakistaniDomain ? '₨' : 'INR');
 
   // Initialize invoice state with conditional fields
   const [invoice, setInvoice] = useState(() => {
@@ -144,6 +153,23 @@ export function EnhancedInvoiceBuilder({
     return baseInvoice;
   });
 
+  // Invoice Intelligence Hooks
+  const { checkAvailability, getStockStatus } = useStockAvailability(business?.id);
+  const autoDueDate = useDueDateCalculator(invoice.date, 30); // 30 days payment terms
+
+  // Auto-update due date if not manually set
+  useEffect(() => {
+    if (autoDueDate && !invoice.dueDate) {
+      setInvoice(prev => ({ ...prev, dueDate: autoDueDate }));
+    }
+  }, [autoDueDate]);
+
+  // Find selected customer for credit limit check
+  const selectedCustomerData = useMemo(() => {
+    if (!invoice.customer?.id) return null;
+    return customers.find(c => c.id === invoice.customer.id);
+  }, [invoice.customer?.id, customers]);
+
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [showTaxCalculator, setShowTaxCalculator] = useState(false);
@@ -152,6 +178,167 @@ export function EnhancedInvoiceBuilder({
   const [isExporting, setIsExporting] = useState(false);
   const [barcodeInput, setBarcodeInput] = useState('');
   const [showKeyboardHints, setShowKeyboardHints] = useState(false);
+
+  // Update item field (Hoisted for use in barcode scan)
+  const updateItem = (id, field, value) => {
+    setInvoice(prev => ({
+      ...prev,
+      items: prev.items.map(item => {
+        if (item.id === id) {
+          const updated = { ...item, [field]: value };
+
+          // Auto-fill from product
+          if (field === 'productId' && value) {
+            const product = products.find(p => p.id === value);
+            if (product) {
+              updated.name = product.name;
+              updated.hsn = product.hsn || product.hsnCode || '';
+              updated.rate = Number(product.price) || 0;
+              updated.taxPercent = Number(product.taxPercent) || (isPakistaniDomain ? 18 : 0);
+              updated.unit = product.unit || 'pcs';
+
+              // Auto-fill domain metadata if available
+              if (product.domain_data) {
+                updated.article_no = product.domain_data.articleno || product.domain_data.article_no || '';
+                updated.design_no = product.domain_data.designno || product.domain_data.design_no || '';
+                updated.fabric_type = product.domain_data.fabrictype || product.domain_data.fabric_type || '';
+              }
+            }
+          }
+
+          // Back-calculate Rate if Amount is changed manually
+          if (field === 'amount') {
+            const taxPerc = Number(updated.taxPercent) || 0;
+            const discPerc = Number(updated.discount) || 0;
+            const qty = Number(updated.quantity) || 1;
+
+            const taxFactor = 1 + (taxPerc / 100);
+            const discFactor = 1 - (discPerc / 100);
+
+            if (qty > 0 && discFactor > 0 && taxFactor > 0) {
+              updated.rate = value / (qty * discFactor * taxFactor);
+            }
+          }
+
+          // Calculate amount (Forward calculation)
+          if (field === 'quantity' || field === 'rate' || field === 'discount' || field === 'taxPercent' || field === 'productId') {
+            const qty = Number(updated.quantity) || 0;
+            const rate = Number(updated.rate) || 0;
+            const disc = Number(updated.discount) || 0;
+            const tax = Number(updated.taxPercent) || 0;
+
+            const baseAmount = qty * rate;
+            const discountAmount = (baseAmount * disc) / 100;
+            const taxableAmount = baseAmount - discountAmount;
+            const taxAmount = (taxableAmount * tax) / 100;
+            updated.amount = taxableAmount + taxAmount;
+          }
+
+          return updated;
+        }
+        return item;
+      })
+    }));
+  };
+
+
+
+  // Calculate totals - supports both GST and Pakistani tax
+  const calculateTotals = useMemo(() => {
+    const subtotal = invoice.items.reduce((sum, item) => {
+      const baseAmount = Number(item.quantity || 0) * Number(item.rate || 0);
+      const discountAmount = (baseAmount * Number(item.discount || 0)) / 100;
+      return sum + baseAmount - discountAmount;
+    }, 0);
+
+    const discountAmount = invoice.discountType === 'percent'
+      ? (subtotal * (invoice.discount || 0)) / 100
+      : (invoice.discount || 0);
+
+    const finalSubtotal = subtotal - discountAmount;
+
+    if (isPakistaniDomain) {
+      // Pakistani tax calculation (Item-level for precision)
+      const province = invoice.customer.province || 'punjab';
+      const globalDiscountFactor = subtotal > 0 ? (subtotal - discountAmount) / subtotal : 1;
+
+      const itemsTaxBreakdown = invoice.items.map(item => {
+        const itemBase = Number(item.quantity || 0) * Number(item.rate || 0);
+        const itemDiscount = (itemBase * Number(item.discount || 0)) / 100;
+        const itemTaxableBeforeGlobal = itemBase - itemDiscount;
+        const itemTaxable = itemTaxableBeforeGlobal * globalDiscountFactor;
+
+        return calculatePakistaniTax(
+          itemTaxable,
+          item.taxCategory || getTaxCategoryForDomain(category),
+          province
+        );
+      });
+
+      const federalSalesTax = itemsTaxBreakdown.reduce((sum, t) => sum + t.federalSalesTax, 0);
+      const provincialSalesTax = itemsTaxBreakdown.reduce((sum, t) => sum + t.provincialSalesTax, 0);
+      const withholdingTax = itemsTaxBreakdown.reduce((sum, t) => sum + t.withholdingTax, 0);
+      const totalTax = federalSalesTax + provincialSalesTax + withholdingTax;
+
+      const total = finalSubtotal + totalTax;
+      const roundedTotal = Math.round(total);
+      const roundOff = roundedTotal - total;
+
+      return {
+        subtotal: finalSubtotal,
+        federalSalesTax,
+        provincialSalesTax,
+        withholdingTax,
+        totalTax,
+        tax_total: totalTax, // Schema aligned
+        total: roundedTotal,
+        grand_total: roundedTotal, // Schema aligned
+        roundOff,
+        discount: discountAmount,
+        discount_total: discountAmount, // Schema aligned
+      };
+    } else {
+      // Indian GST calculation
+      const totalTax = invoice.items.reduce((sum, item) => {
+        const baseAmount = item.quantity * item.rate;
+        const discountAmount = (baseAmount * item.discount) / 100;
+        const taxableAmount = baseAmount - discountAmount;
+        return sum + (taxableAmount * item.taxPercent) / 100;
+      }, 0);
+
+      const isInterState = invoice.customer.stateCode !== '27';
+      const taxPercent = invoice.gstDetails.taxPercent || 0;
+
+      let cgst = 0, sgst = 0, igst = 0;
+      if (isInterState) {
+        igst = totalTax;
+      } else {
+        cgst = totalTax / 2;
+        sgst = totalTax / 2;
+      }
+
+      const total = finalSubtotal + totalTax;
+      const roundedTotal = Math.round(total);
+      const roundOff = roundedTotal - total;
+
+      return {
+        subtotal: finalSubtotal,
+        tax: totalTax,
+        tax_total: totalTax, // Schema aligned
+        cgst,
+        sgst,
+        igst,
+        discount: discountAmount,
+        discount_total: discountAmount, // Schema aligned
+        total: roundedTotal,
+        grand_total: roundedTotal, // Schema aligned
+        roundOff,
+      };
+    }
+  }, [invoice.items, invoice.discount, invoice.discountType, invoice.customer.province, invoice.customer.stateCode, invoice.gstDetails.taxPercent, isPakistaniDomain, category]);
+
+  // Credit limit warning
+  const creditWarning = useCreditLimitCheck(selectedCustomerData, calculateTotals.total);
 
   // Keyboard Shortcuts moved below totals declaration
 
@@ -224,71 +411,7 @@ export function EnhancedInvoiceBuilder({
     }));
   };
 
-  // Update item field
-  const updateItem = (id, field, value) => {
-    setInvoice(prev => ({
-      ...prev,
-      items: prev.items.map(item => {
-        if (item.id === id) {
-          const updated = { ...item, [field]: value };
 
-          // Auto-fill from product
-          if (field === 'productId' && value) {
-            const product = products.find(p => p.id === value);
-            if (product) {
-              updated.name = product.name;
-              updated.hsn = product.hsn || product.hsnCode || '';
-              updated.rate = Number(product.price) || 0;
-              updated.taxPercent = Number(product.taxPercent) || (isPakistaniDomain ? 18 : 0);
-              updated.unit = product.unit || 'pcs';
-
-              // Auto-fill domain metadata if available
-              if (product.domain_data) {
-                updated.article_no = product.domain_data.articleno || product.domain_data.article_no || '';
-                updated.design_no = product.domain_data.designno || product.domain_data.design_no || '';
-                updated.fabric_type = product.domain_data.fabrictype || product.domain_data.fabric_type || '';
-              }
-            }
-          }
-
-          // Back-calculate Rate if Amount is changed manually
-          if (field === 'amount') {
-            const taxPerc = Number(updated.taxPercent) || 0;
-            const discPerc = Number(updated.discount) || 0;
-            const qty = Number(updated.quantity) || 1;
-
-            // Formula: Amount = Rate * Qty * (1 - Disc%) * (1 + Tax%)
-            // Inverse: Rate = Amount / (Qty * (1 - Disc%) * (1 + Tax%))
-
-            const taxFactor = 1 + (taxPerc / 100);
-            const discFactor = 1 - (discPerc / 100);
-
-            if (qty > 0 && discFactor > 0 && taxFactor > 0) {
-              updated.rate = value / (qty * discFactor * taxFactor);
-            }
-          }
-
-          // Calculate amount (Forward calculation)
-          // Run this if any input impacting total changes (Quantity, Rate, Discount, Tax, OR ProductId)
-          if (field === 'quantity' || field === 'rate' || field === 'discount' || field === 'taxPercent' || field === 'productId') {
-            const qty = Number(updated.quantity) || 0;
-            const rate = Number(updated.rate) || 0;
-            const disc = Number(updated.discount) || 0;
-            const tax = Number(updated.taxPercent) || 0;
-
-            const baseAmount = qty * rate;
-            const discountAmount = (baseAmount * disc) / 100;
-            const taxableAmount = baseAmount - discountAmount;
-            const taxAmount = (taxableAmount * tax) / 100;
-            updated.amount = taxableAmount + taxAmount;
-          }
-
-          return updated;
-        }
-        return item;
-      })
-    }));
-  };
 
   // Remove item from invoice
   const removeItem = (id) => {
@@ -298,93 +421,7 @@ export function EnhancedInvoiceBuilder({
     }));
   };
 
-  // Calculate totals - supports both GST and Pakistani tax
-  const calculateTotals = useMemo(() => {
-    const subtotal = invoice.items.reduce((sum, item) => {
-      const baseAmount = item.quantity * item.rate;
-      const discountAmount = (baseAmount * item.discount) / 100;
-      return sum + baseAmount - discountAmount;
-    }, 0);
 
-    const discountAmount = invoice.discountType === 'percent'
-      ? (subtotal * (invoice.discount || 0)) / 100
-      : (invoice.discount || 0);
-
-    const finalSubtotal = subtotal - discountAmount;
-
-    if (isPakistaniDomain) {
-      // Pakistani tax calculation (Item-level for precision)
-      const province = invoice.customer.province || 'punjab';
-      const globalDiscountFactor = subtotal > 0 ? (subtotal - discountAmount) / subtotal : 1;
-
-      const itemsTaxBreakdown = invoice.items.map(item => {
-        const itemBase = item.quantity * item.rate;
-        const itemDiscount = (itemBase * item.discount) / 100;
-        const itemTaxableBeforeGlobal = itemBase - itemDiscount;
-        const itemTaxable = itemTaxableBeforeGlobal * globalDiscountFactor;
-
-        return calculatePakistaniTax(
-          itemTaxable,
-          item.taxCategory || getTaxCategoryForDomain(category),
-          province
-        );
-      });
-
-      const federalSalesTax = itemsTaxBreakdown.reduce((sum, t) => sum + t.federalSalesTax, 0);
-      const provincialSalesTax = itemsTaxBreakdown.reduce((sum, t) => sum + t.provincialSalesTax, 0);
-      const withholdingTax = itemsTaxBreakdown.reduce((sum, t) => sum + t.withholdingTax, 0);
-      const totalTax = federalSalesTax + provincialSalesTax + withholdingTax;
-
-      const total = finalSubtotal + totalTax;
-      const roundedTotal = Math.round(total);
-      const roundOff = roundedTotal - total;
-
-      return {
-        subtotal: finalSubtotal,
-        federalSalesTax,
-        provincialSalesTax,
-        withholdingTax,
-        totalTax,
-        total: roundedTotal,
-        roundOff,
-        discount: discountAmount,
-      };
-    } else {
-      // Indian GST calculation
-      const totalTax = invoice.items.reduce((sum, item) => {
-        const baseAmount = item.quantity * item.rate;
-        const discountAmount = (baseAmount * item.discount) / 100;
-        const taxableAmount = baseAmount - discountAmount;
-        return sum + (taxableAmount * item.taxPercent) / 100;
-      }, 0);
-
-      const isInterState = invoice.customer.stateCode !== '27';
-      const taxPercent = invoice.gstDetails.taxPercent || 0;
-
-      let cgst = 0, sgst = 0, igst = 0;
-      if (isInterState) {
-        igst = totalTax;
-      } else {
-        cgst = totalTax / 2;
-        sgst = totalTax / 2;
-      }
-
-      const total = finalSubtotal + totalTax;
-      const roundedTotal = Math.round(total);
-      const roundOff = roundedTotal - total;
-
-      return {
-        subtotal: finalSubtotal,
-        tax: totalTax,
-        cgst,
-        sgst,
-        igst,
-        discount: discountAmount,
-        total: roundedTotal,
-        roundOff,
-      };
-    }
-  }, [invoice.items, invoice.discount, invoice.customer, isPakistaniDomain, category]);
 
   const totals = calculateTotals;
 
@@ -447,7 +484,11 @@ export function EnhancedInvoiceBuilder({
           ...invoice,
           items: invoice.items.map(item => ({
             ...item,
-            amount: item.amount,
+            quantity: Number(item.quantity || 0),
+            rate: Number(item.rate || 0),
+            discount: Number(item.discount || 0),
+            taxPercent: Number(item.taxPercent || 0),
+            amount: Number(item.amount || 0),
             domain: category,
             article_no: item.article_no,
             design_no: item.design_no,
@@ -922,7 +963,7 @@ export function EnhancedInvoiceBuilder({
                               type="number"
                               value={item.quantity || 0}
                               onChange={(e) => updateItem(item.id, 'quantity', parseFloat(e.target.value) || 0)}
-                              min="0"
+                              min={0}
                               className="h-8 text-xs text-right"
                             />
                           </td>
@@ -931,7 +972,7 @@ export function EnhancedInvoiceBuilder({
                               type="number"
                               value={item.rate || 0}
                               onChange={(e) => updateItem(item.id, 'rate', parseFloat(e.target.value) || 0)}
-                              min="0"
+                              min={0}
                               step="0.01"
                               className="h-8 text-xs text-right"
                             />
@@ -941,8 +982,8 @@ export function EnhancedInvoiceBuilder({
                               type="number"
                               value={item.discount || 0}
                               onChange={(e) => updateItem(item.id, 'discount', parseFloat(e.target.value) || 0)}
-                              min="0"
-                              max="100"
+                              min={0}
+                              max={100}
                               className="h-8 text-xs"
                             />
                           </td>
@@ -956,8 +997,8 @@ export function EnhancedInvoiceBuilder({
                                   if (index === invoice.items.length - 1) addItem();
                                 }
                               }}
-                              min="0"
-                              max="100"
+                              min={0}
+                              max={100}
                               className="h-8 text-xs focus:ring-wine/20"
                             />
                           </td>
@@ -966,8 +1007,8 @@ export function EnhancedInvoiceBuilder({
                               type="number"
                               value={item.amount || 0}
                               onChange={(e) => updateItem(item.id, 'amount', parseFloat(e.target.value) || 0)}
-                              min="0"
-                              step="0.01"
+                              min={0}
+                              step={0.01}
                               className="h-8 text-xs font-semibold focus:ring-wine/20"
                             />
                           </td>
@@ -1007,7 +1048,7 @@ export function EnhancedInvoiceBuilder({
                       onChange={(e) => setInvoice({ ...invoice, discountType: e.target.value })}
                     >
                       <option value="percent">% Ratio</option>
-                      <option value="amount">Fixed Rs.</option>
+                      <option value="amount">Fixed ₨</option>
                     </select>
                   </div>
                   <div className="flex items-center gap-2">

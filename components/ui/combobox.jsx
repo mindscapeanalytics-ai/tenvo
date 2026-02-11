@@ -19,15 +19,25 @@ import {
 } from '@/components/ui/popover';
 
 /**
- * Generic Searchable Combobox Component
- * 
- * @param {Array} options - [{ value: 'id', label: 'Display Name', ...extraData }]
- * @param {String} value - Currently selected value
- * @param {Function} onChange - Callback when selection changes
- * @param {String} placeholder - Placeholder text
- * @param {String} emptyText - Text to show when no results found
- * @param {String} className - Custom classes for the trigger
+ * @typedef {Object} ComboboxOption
+ * @property {string|number} value
+ * @property {string} label
+ * @property {string} [description]
+ * @property {any} [extraData]
  */
+
+/**
+ * @typedef {Object} ComboboxProps
+ * @property {ComboboxOption[]} [options]
+ * @property {string|number} [value]
+ * @property {(value: string|number) => void} [onChange]
+ * @property {string} [placeholder]
+ * @property {string} [emptyText]
+ * @property {() => React.ReactNode} [renderEmpty]
+ * @property {string} [className]
+ */
+
+/** @type {React.FC<ComboboxProps>} */
 export function Combobox({
     options = [],
     value,

@@ -2,8 +2,19 @@ import * as React from "react"
 import * as TabsPrimitive from "@radix-ui/react-tabs"
 import { cn } from "@/lib/utils"
 
+/**
+ * @typedef {Object} TabsProps
+ * @property {string} [className]
+ * @property {string} [value]
+ * @property {string} [defaultValue]
+ * @property {(value: string) => void} [onValueChange]
+ * @property {React.ReactNode} [children]
+ */
+
+/** @type {React.FC<TabsProps & React.ComponentPropsWithoutRef<typeof TabsPrimitive.Root>>} */
 const Tabs = TabsPrimitive.Root
 
+/** @type {React.ForwardRefExoticComponent<TabsProps & React.ComponentPropsWithoutRef<typeof TabsPrimitive.List>>} */
 const TabsList = React.forwardRef(({ className, ...props }, ref) => (
   <TabsPrimitive.List
     ref={ref}
@@ -16,6 +27,7 @@ const TabsList = React.forwardRef(({ className, ...props }, ref) => (
 ))
 TabsList.displayName = TabsPrimitive.List.displayName
 
+/** @type {React.ForwardRefExoticComponent<TabsProps & React.ComponentPropsWithoutRef<typeof TabsPrimitive.Trigger>>} */
 const TabsTrigger = React.forwardRef(({ className, ...props }, ref) => (
   <TabsPrimitive.Trigger
     ref={ref}
@@ -28,6 +40,7 @@ const TabsTrigger = React.forwardRef(({ className, ...props }, ref) => (
 ))
 TabsTrigger.displayName = TabsPrimitive.Trigger.displayName
 
+/** @type {React.ForwardRefExoticComponent<TabsProps & React.ComponentPropsWithoutRef<typeof TabsPrimitive.Content>>} */
 const TabsContent = React.forwardRef(({ className, ...props }, ref) => (
   <TabsPrimitive.Content
     ref={ref}

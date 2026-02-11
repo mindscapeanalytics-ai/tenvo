@@ -6,12 +6,41 @@ import { Check, ChevronRight, Circle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const DropdownMenu = DropdownMenuPrimitive.Root;
-const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger;
 const DropdownMenuGroup = DropdownMenuPrimitive.Group;
 const DropdownMenuPortal = DropdownMenuPrimitive.Portal;
 const DropdownMenuSub = DropdownMenuPrimitive.Sub;
 const DropdownMenuRadioGroup = DropdownMenuPrimitive.RadioGroup;
 
+/**
+ * @typedef {Object} DropdownMenuTriggerProps
+ * @property {React.ReactNode} [children]
+ * @property {boolean} [asChild]
+ * @property {string} [className]
+ */
+/** @type {React.ForwardRefExoticComponent<DropdownMenuTriggerProps & React.RefAttributes<HTMLButtonElement>>} */
+const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger;
+
+/**
+ * @typedef {Object} DropdownMenuSeparatorProps
+ * @property {string} [className]
+ */
+/** @type {React.ForwardRefExoticComponent<DropdownMenuSeparatorProps & React.RefAttributes<HTMLDivElement>>} */
+const DropdownMenuSeparator = React.forwardRef(({ className, ...props }, ref) => (
+  <DropdownMenuPrimitive.Separator
+    ref={ref}
+    className={cn('-mx-1 my-1 h-px bg-gray-200', className)}
+    {...props}
+  />
+));
+DropdownMenuSeparator.displayName = DropdownMenuPrimitive.Separator.displayName;
+
+/**
+ * @typedef {Object} DropdownMenuSubTriggerProps
+ * @property {string} [className]
+ * @property {boolean} [inset]
+ * @property {React.ReactNode} [children]
+ */
+/** @type {React.ForwardRefExoticComponent<DropdownMenuSubTriggerProps & React.RefAttributes<HTMLDivElement>>} */
 const DropdownMenuSubTrigger = React.forwardRef(
   ({ className, inset, children, ...props }, ref) => (
     <DropdownMenuPrimitive.SubTrigger
@@ -30,6 +59,12 @@ const DropdownMenuSubTrigger = React.forwardRef(
 );
 DropdownMenuSubTrigger.displayName = DropdownMenuPrimitive.SubTrigger.displayName;
 
+/**
+ * @typedef {Object} DropdownMenuSubContentProps
+ * @property {string} [className]
+ * @property {React.ReactNode} [children]
+ */
+/** @type {React.ForwardRefExoticComponent<DropdownMenuSubContentProps & React.RefAttributes<HTMLDivElement>>} */
 const DropdownMenuSubContent = React.forwardRef(({ className, ...props }, ref) => (
   <DropdownMenuPrimitive.SubContent
     ref={ref}
@@ -42,6 +77,14 @@ const DropdownMenuSubContent = React.forwardRef(({ className, ...props }, ref) =
 ));
 DropdownMenuSubContent.displayName = DropdownMenuPrimitive.SubContent.displayName;
 
+/**
+ * @typedef {Object} DropdownMenuContentProps
+ * @property {string} [className]
+ * @property {number} [sideOffset]
+ * @property {"start" | "center" | "end"} [align]
+ * @property {React.ReactNode} [children]
+ */
+/** @type {React.ForwardRefExoticComponent<DropdownMenuContentProps & React.RefAttributes<HTMLDivElement>>} */
 const DropdownMenuContent = React.forwardRef(({ className, sideOffset = 4, ...props }, ref) => (
   <DropdownMenuPrimitive.Portal>
     <DropdownMenuPrimitive.Content
@@ -57,6 +100,15 @@ const DropdownMenuContent = React.forwardRef(({ className, sideOffset = 4, ...pr
 ));
 DropdownMenuContent.displayName = DropdownMenuPrimitive.Content.displayName;
 
+/**
+ * @typedef {Object} DropdownMenuItemProps
+ * @property {string} [className]
+ * @property {boolean} [inset]
+ * @property {React.ReactNode} [children]
+ * @property {() => void} [onClick]
+ * @property {React.CSSProperties} [style]
+ */
+/** @type {React.ForwardRefExoticComponent<DropdownMenuItemProps & React.RefAttributes<HTMLDivElement>>} */
 const DropdownMenuItem = React.forwardRef(
   ({ className, inset, ...props }, ref) => (
     <DropdownMenuPrimitive.Item
@@ -72,6 +124,13 @@ const DropdownMenuItem = React.forwardRef(
 );
 DropdownMenuItem.displayName = DropdownMenuPrimitive.Item.displayName;
 
+/**
+ * @typedef {Object} DropdownMenuCheckboxItemProps
+ * @property {string} [className]
+ * @property {boolean} [checked]
+ * @property {React.ReactNode} [children]
+ */
+/** @type {React.ForwardRefExoticComponent<DropdownMenuCheckboxItemProps & React.RefAttributes<HTMLDivElement>>} */
 const DropdownMenuCheckboxItem = React.forwardRef(
   ({ className, children, checked, ...props }, ref) => (
     <DropdownMenuPrimitive.CheckboxItem
@@ -94,6 +153,13 @@ const DropdownMenuCheckboxItem = React.forwardRef(
 );
 DropdownMenuCheckboxItem.displayName = DropdownMenuPrimitive.CheckboxItem.displayName;
 
+/**
+ * @typedef {Object} DropdownMenuRadioItemProps
+ * @property {string} [className]
+ * @property {any} [value]
+ * @property {React.ReactNode} [children]
+ */
+/** @type {React.ForwardRefExoticComponent<DropdownMenuRadioItemProps & React.RefAttributes<HTMLDivElement>>} */
 const DropdownMenuRadioItem = React.forwardRef(
   ({ className, children, ...props }, ref) => (
     <DropdownMenuPrimitive.RadioItem
@@ -115,6 +181,13 @@ const DropdownMenuRadioItem = React.forwardRef(
 );
 DropdownMenuRadioItem.displayName = DropdownMenuPrimitive.RadioItem.displayName;
 
+/**
+ * @typedef {Object} DropdownMenuLabelProps
+ * @property {string} [className]
+ * @property {boolean} [inset]
+ * @property {React.ReactNode} [children]
+ */
+/** @type {React.ForwardRefExoticComponent<DropdownMenuLabelProps & React.RefAttributes<HTMLDivElement>>} */
 const DropdownMenuLabel = React.forwardRef(
   ({ className, inset, ...props }, ref) => (
     <DropdownMenuPrimitive.Label
@@ -125,15 +198,6 @@ const DropdownMenuLabel = React.forwardRef(
   )
 );
 DropdownMenuLabel.displayName = DropdownMenuPrimitive.Label.displayName;
-
-const DropdownMenuSeparator = React.forwardRef(({ className, ...props }, ref) => (
-  <DropdownMenuPrimitive.Separator
-    ref={ref}
-    className={cn('-mx-1 my-1 h-px bg-gray-200', className)}
-    {...props}
-  />
-));
-DropdownMenuSeparator.displayName = DropdownMenuPrimitive.Separator.displayName;
 
 const DropdownMenuShortcut = ({ className, ...props }) => {
   return (

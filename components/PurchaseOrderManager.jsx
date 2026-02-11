@@ -11,7 +11,6 @@ import { formatCurrency } from '@/lib/currency';
 import { getDomainColors } from '@/lib/domainColors';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import EnhancedPOBuilder from './EnhancedPOBuilder';
 import GRNView from './GRNView';
 import { useBusiness } from '@/lib/context/BusinessContext';
 import { Printer, FileText } from 'lucide-react';
@@ -19,12 +18,18 @@ import { Printer, FileText } from 'lucide-react';
 /**
  * Purchase Order Manager
  * Tracking procurement and inventory inflow
+ * 
+ * @param {Object} props
+ * @param {any[]} [props.purchaseOrders]
+ * @param {() => void} [props.onCreate]
+ * @param {any} [props.onUpdateStatus]
+ * @param {string} [props.category]
+ * @param {() => void} [props.refreshData]
  */
 export function PurchaseOrderManager({ purchaseOrders = [], onCreate, onUpdateStatus, category = 'retail-shop', refreshData }) {
   const { business } = useBusiness();
   const colors = getDomainColors(category);
   const [searchTerm, setSearchTerm] = useState('');
-  const [showBuilder, setShowBuilder] = useState(false);
   const [poToView, setPoToView] = useState(null);
 
   const getStatusBadge = (status) => {
@@ -127,32 +132,6 @@ export function PurchaseOrderManager({ purchaseOrders = [], onCreate, onUpdateSt
             columns={columns}
             title="Purchase Orders Report"
           />
-          <Dialog open={showBuilder} onOpenChange={setShowBuilder}>
-            <DialogTrigger asChild>
-              <Button className="text-primary-foreground font-bold shadow-sm rounded-xl px-6" style={{ backgroundColor: colors.primary }}>
-                <Plus className="w-4 h-4 mr-2" />
-                Create Order
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-5xl">
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
-                  <ShoppingCart className="w-5 h-5" />
-                  New Purchase Order
-                </DialogTitle>
-                <DialogDescription>Draft a new procurement request for your suppliers.</DialogDescription>
-              </DialogHeader>
-              <EnhancedPOBuilder
-                businessId={business?.id}
-                category={category}
-                colors={colors}
-                onSuccess={() => {
-                  setShowBuilder(false);
-                  refreshData?.();
-                }}
-              />
-            </DialogContent>
-          </Dialog>
         </div>
       </div>
 

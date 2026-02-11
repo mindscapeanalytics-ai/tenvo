@@ -14,11 +14,12 @@ import { formatCurrency } from '@/lib/currency';
  * DiscountSchemeManager Component
  * Manages various discount schemes (percentage, fixed, quantity-based, etc.)
  * 
- * @param {Array} schemes - Array of discount scheme objects
- * @param {Array} products - Array of products
- * @param {Array} customers - Array of customers
- * @param {Function} onSave - Save callback
- * @param {string} currency - Currency code
+ * @param {Object} props
+ * @param {any[]} [props.schemes] - Array of discount scheme objects
+ * @param {any[]} [props.products] - Array of products
+ * @param {any[]} [props.customers] - Array of customers
+ * @param {(schemes: any[]) => void} [props.onSave] - Save callback
+ * @param {string} [props.currency] - Currency code
  */
 export function DiscountSchemeManager({
   schemes = [],

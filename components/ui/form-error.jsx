@@ -2,32 +2,35 @@ import { AlertCircle, AlertTriangle, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 /**
- * FormError Component
- * Displays field-level error messages with appropriate styling
- * 
- * @param {Object} props
- * @param {string} props.error - Error message
- * @param {string} props.className - Additional CSS classes
+ * @typedef {Object} FormErrorProps
+ * @property {any} [error]
+ * @property {any} [message]
+ * @property {string} [className]
  */
-export function FormError({ error, className }) {
-    if (!error) return null;
+
+/** @param {FormErrorProps} props */
+export function FormError({ error, message, className }) {
+    const rawError = error || message;
+    if (!rawError) return null;
+
+    // Handle array of errors (e.g. from some Zod configurations)
+    const displayError = Array.isArray(rawError) ? rawError[0] : rawError;
 
     return (
         <div className={cn("flex items-center gap-1.5 text-sm text-red-600 mt-1", className)}>
             <AlertCircle className="h-3.5 w-3.5 flex-shrink-0" />
-            <span>{error}</span>
+            <span className="leading-tight">{displayError}</span>
         </div>
     );
 }
 
 /**
- * FormWarning Component
- * Displays field-level warning messages
- * 
- * @param {Object} props
- * @param {string} props.warning - Warning message
- * @param {string} props.className - Additional CSS classes
+ * @typedef {Object} FormWarningProps
+ * @property {any} [warning]
+ * @property {string} [className]
  */
+
+/** @param {FormWarningProps} props */
 export function FormWarning({ warning, className }) {
     if (!warning) return null;
 
@@ -40,13 +43,12 @@ export function FormWarning({ warning, className }) {
 }
 
 /**
- * FormInfo Component
- * Displays helpful information or hints
- * 
- * @param {Object} props
- * @param {string} props.info - Info message
- * @param {string} props.className - Additional CSS classes
+ * @typedef {Object} FormInfoProps
+ * @property {any} [info]
+ * @property {string} [className]
  */
+
+/** @param {FormInfoProps} props */
 export function FormInfo({ info, className }) {
     if (!info) return null;
 

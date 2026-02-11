@@ -105,7 +105,7 @@ export default function Home() {
 
               <div className="flex items-center gap-4">
                 {user ? (
-                  <Button onClick={() => router.push(`/business/${business?.domain || 'retail-shop'}`)} className="bg-wine hover:bg-wine/90 text-white font-black rounded-xl px-8 shadow-lg shadow-wine/20 transition-all active:scale-[0.98]">
+                  <Button onClick={() => router.push('/multi-business')} className="bg-wine hover:bg-wine/90 text-white font-black rounded-xl px-8 shadow-lg shadow-wine/20 transition-all active:scale-[0.98]">
                     Enter Dashboard
                   </Button>
                 ) : (
@@ -176,7 +176,7 @@ export default function Home() {
 
               <div className="flex flex-wrap gap-5">
                 <Button size="lg" className="h-16 px-10 text-lg font-black bg-wine hover:bg-wine/90 text-white rounded-2xl shadow-[0_20px_40px_-15px_rgba(144,20,53,0.3)] transition-all active:scale-[0.98]"
-                  onClick={() => router.push(user ? `/business/${business?.domain || 'retail-shop'}` : '/register')}>
+                  onClick={() => router.push(user ? '/multi-business' : '/register')}>
                   {user ? 'Back to Dashboard' : 'Start Building'}
                   <ArrowRight className="ml-2 w-5 h-5" />
                 </Button>

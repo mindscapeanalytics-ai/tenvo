@@ -1,4 +1,5 @@
 'use client';
+// v2: Forced recompile
 
 import { useState, useEffect, useCallback } from 'react';
 import { X, Save, Loader2, AlertCircle, CheckCircle2, BrainCircuit, Info, ImagePlus, Package, Layers, TrendingUp } from 'lucide-react';
@@ -43,6 +44,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { StockHistory } from '@/components/StockHistory';
 import { CustomParametersManager } from './inventory/CustomParametersManager';
+import { useSafeSmartDefaults, mergeFormDefaults, getCurrentDate } from '@/lib/hooks/useSafeSmartDefaults';
+import { useAutosave, AutosaveIndicator } from '@/hooks/useAutosave';
+import { useKeyboardShortcuts, COMMON_SHORTCUTS } from '@/hooks/useKeyboardShortcuts';
 
 /**
  * ProductForm Component
@@ -73,31 +77,44 @@ export function ProductForm({
         return () => window.removeEventListener('keydown', handleKeys);
     }, []);
 
-    // Form State
-    const [formData, setFormData] = useState({
-        name: product?.name || '',
-        sku: product?.sku || '',
-        barcode: product?.barcode || '',
-        brand: product?.brand || '',
-        description: product?.description || '',
-        category: product?.category || '',
-        unit: product?.unit || getDomainUnits(category)[0],
-        price: Number(product?.price) || 0,
-        costPrice: Number(product?.cost_price) || 0,
-        mrp: Number(product?.mrp) || 0,
-        minStock: Number(product?.min_stock) || 10,
-        maxStock: Number(product?.max_stock) || 100,
-        reorderPoint: Number(product?.reorder_point) || 10,
-        reorderQuantity: Number(product?.reorder_quantity) || 0,
-        hsnCode: product?.hsn_code || '',
-        sacCode: product?.sac_code || '',
-        taxPercent: product?.tax_percent || getDomainDefaultTax(category),
-        image_url: product?.image_url || '',
-        // Domain Specifics: Merge defaults (including intelligent ones) with existing product data
-        ...getDomainDefaults(category, product),
-        batches: product?.batches || [],
-        serialNumbers: product?.serial_numbers || [],
-        customParameters: product?.customParameters || (product?.domain_data?.custom_parameters) || [],
+    // Smart Defaults Integration
+    const { defaults: smartDefaults, error: smartDefaultsError } = useSafeSmartDefaults('product', {
+        businessId: product?.business_id,
+        category
+    });
+
+    // Form State with Smart Defaults
+    const [formData, setFormData] = useState(() => {
+        // Get domain-specific defaults
+        const domainDefaults = getDomainDefaults(category, product);
+
+        // Prepare existing product data
+        const existingData = product ? {
+            name: product.name || '',
+            sku: product.sku || '',
+            barcode: product.barcode || '',
+            brand: product.brand || '',
+            description: product.description || '',
+            category: product.category || '',
+            unit: product.unit || getDomainUnits(category)[0],
+            price: Number(product.price) || 0,
+            costPrice: Number(product.cost_price) || 0,
+            mrp: Number(product.mrp) || 0,
+            minStock: Number(product.min_stock) || 10,
+            maxStock: Number(product.max_stock) || 100,
+            reorderPoint: Number(product.reorder_point) || 10,
+            reorderQuantity: Number(product.reorder_quantity) || 0,
+            hsnCode: product.hsn_code || '',
+            sacCode: product.sac_code || '',
+            taxPercent: product.tax_percent || getDomainDefaultTax(category),
+            image_url: product.image_url || '',
+            batches: product.batches || [],
+            serialNumbers: product.serial_numbers || [],
+            customParameters: product.customParameters || product.domain_data?.custom_parameters || [],
+        } : {};
+
+        // Merge with priority: existingData > domainDefaults > smartDefaults
+        return mergeFormDefaults(smartDefaults, domainDefaults, existingData);
     });
 
     const theme = getDomainTheme(category);
@@ -369,17 +386,23 @@ export function ProductForm({
                 payload.serialNumbers = formData.serialNumbers;
             }
 
-            if (typeof onSave === 'function') {
-                await onSave(payload);
-                toast.success(`Product ${product ? 'updated' : 'created'} successfully`);
+            if (product?.id) {
+                payload.id = product.id;
+            }
 
+            if (typeof onSave === 'function') {
+                // Determine if we should clear the form (Add Another)
+                // We await the onSave to ensure the parent operation succeeds before clearing
+                await onSave(payload);
+
+                // Form clearing logic is now handled by the parent or state reset
                 if (addAnother && !product) {
                     resetForm();
-                    toast.success('Form cleared for next entry');
+                    toast.success('Ready for next product');
                 }
             } else {
-                console.error('Save error: onSave prop is missing or not a function', { onSave });
-                toast.error('System Error: Save functionality not correctly configured. Please contact support.');
+                console.error('Save error: onSave prop is missing or not a function');
+                toast.error('Configuration Error: Save Handler Missing');
             }
         } catch (error) {
             console.error('Save error:', error);
@@ -560,7 +583,7 @@ export function ProductForm({
                                 <div className="space-y-2">
                                     <Label htmlFor="price" className="text-xs font-black uppercase text-gray-400 tracking-wider">Selling Price *</Label>
                                     <div className="relative">
-                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">Rs.</span>
+                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">₨</span>
                                         <Input id="price" type="number" value={formData.price ?? ''} onChange={(e) => updateField('price', parseFloat(e.target.value) || 0)} onBlur={() => handleBlur('price')} className="h-11 pl-12 rounded-xl" />
                                     </div>
                                     {renderError('price')}
@@ -569,19 +592,19 @@ export function ProductForm({
                                 <div className="space-y-2">
                                     <div className="flex items-center justify-between">
                                         <Label htmlFor="mrp" className="text-xs font-black uppercase text-gray-400 tracking-wider">MRP (Max Retail Price) *</Label>
-                                        {formData.price > 0 && formData.costPrice > 0 && (
+                                        {Number(formData.price) > 0 && Number(formData.costPrice) > 0 && (
                                             <Badge className={cn(
                                                 "text-[10px] font-bold px-2 py-0.5 rounded-full border shadow-sm",
-                                                (formData.price - formData.costPrice) / formData.price > 0.2 ? "bg-green-50 text-green-700 border-green-200" :
-                                                    (formData.price - formData.costPrice) / formData.price > 0 ? "bg-orange-50 text-orange-700 border-orange-200" :
+                                                (Number(formData.price) - Number(formData.costPrice)) / Number(formData.price) > 0.2 ? "bg-green-50 text-green-700 border-green-200" :
+                                                    (Number(formData.price) - Number(formData.costPrice)) / Number(formData.price) > 0 ? "bg-orange-50 text-orange-700 border-orange-200" :
                                                         "bg-red-50 text-red-700 border-red-200"
                                             )}>
-                                                {((formData.price - formData.costPrice) / formData.price * 100).toFixed(1)}% Margin
+                                                {((Number(formData.price) - Number(formData.costPrice)) / Number(formData.price) * 100).toFixed(1)}% Margin
                                             </Badge>
                                         )}
                                     </div>
                                     <div className="relative">
-                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">Rs.</span>
+                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">₨</span>
                                         <Input id="mrp" type="number" value={formData.mrp ?? ''} onChange={(e) => updateField('mrp', parseFloat(e.target.value) || 0)} className="h-11 pl-12 rounded-xl" />
                                     </div>
                                     {renderError('mrp')}
@@ -590,7 +613,7 @@ export function ProductForm({
                                 <div className="space-y-2">
                                     <Label htmlFor="costPrice" className="text-xs font-black uppercase text-gray-400 tracking-wider">Landing Cost</Label>
                                     <div className="relative">
-                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">Rs.</span>
+                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">₨</span>
                                         <Input id="costPrice" type="number" value={formData.costPrice ?? ''} onChange={(e) => updateField('costPrice', parseFloat(e.target.value) || 0)} className="h-11 pl-12 rounded-xl" />
                                     </div>
                                     {formData.price > 0 && formData.costPrice > formData.price && (
@@ -628,27 +651,27 @@ export function ProductForm({
                                         <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Gross Margin</p>
                                         <p className={cn(
                                             "text-2xl font-black",
-                                            (formData.price - formData.costPrice) / formData.price > 0.15 ? "text-emerald-400" : "text-amber-400"
+                                            (Number(formData.price) || 0) > 0 && ((Number(formData.price) || 0) - (Number(formData.costPrice) || 0)) / (Number(formData.price) || 0) > 0.15 ? "text-emerald-400" : "text-amber-400"
                                         )}>
-                                            {formData.price > 0 ? (((formData.price - formData.costPrice) / formData.price) * 100).toFixed(1) : '0.0'}%
+                                            {(Number(formData.price) || 0) > 0 ? (((Number(formData.price) || 0) - (Number(formData.costPrice) || 0)) / (Number(formData.price) || 0) * 100).toFixed(1) : '0.0'}%
                                         </p>
                                     </div>
                                     <div>
                                         <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Profit/Unit</p>
                                         <p className="text-2xl font-black text-white">
-                                            {formatCurrency(formData.price - formData.costPrice, currency)}
+                                            {formatCurrency((Number(formData.price) || 0) - (Number(formData.costPrice) || 0), currency)}
                                         </p>
                                     </div>
                                     <div>
                                         <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Markup</p>
                                         <p className="text-2xl font-black text-slate-300">
-                                            {formData.costPrice > 0 ? (((formData.price - formData.costPrice) / formData.costPrice) * 100).toFixed(1) : '0.0'}%
+                                            {(Number(formData.costPrice) || 0) > 0 ? (((Number(formData.price) || 0) - (Number(formData.costPrice) || 0)) / (Number(formData.costPrice) || 0) * 100).toFixed(1) : '0.0'}%
                                         </p>
                                     </div>
                                     <div>
                                         <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Valuation</p>
                                         <p className="text-2xl font-black text-blue-400">
-                                            {formatCurrency((product?.stock || 0) * formData.price, currency)}
+                                            {formatCurrency((Number(formData.stock) || 0) * (Number(formData.price) || 0), currency)}
                                         </p>
                                     </div>
                                 </div>
@@ -942,7 +965,7 @@ export function ProductForm({
                         </div>
                     </div>
                 </CardContent>
-            </Card >
+            </Card>
         </form >
     );
 }

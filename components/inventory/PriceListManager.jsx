@@ -14,11 +14,12 @@ import { formatCurrency } from '@/lib/currency';
  * PriceListManager Component
  * Manages multiple price lists, customer-wise pricing, quantity breaks
  * 
- * @param {Array} priceLists - Array of price list objects
- * @param {Array} products - Array of products
- * @param {Array} customers - Array of customers
- * @param {Function} onSave - Save callback
- * @param {string} currency - Currency code
+ * @param {Object} props
+ * @param {any[]} [props.priceLists] - Array of price list objects
+ * @param {any[]} [props.products] - Array of products
+ * @param {any[]} [props.customers] - Array of customers
+ * @param {(lists: any[]) => void} [props.onSave] - Save callback
+ * @param {string} [props.currency] - Currency code
  */
 export function PriceListManager({
   priceLists = [],

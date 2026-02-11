@@ -35,7 +35,8 @@ import { useBusiness } from '@/lib/context/BusinessContext';
 import { useLanguage } from '@/lib/context/LanguageContext';
 import { translations } from '@/lib/translations';
 import { UserManager } from '../auth/UserManager';
-import { Plus, Zap } from 'lucide-react';
+import { Plus, Zap, Globe } from 'lucide-react';
+import { LanguageToggle } from '../LanguageToggle';
 
 export function Sidebar({ isOpen, onClose }) {
   const { user } = useAuth();
@@ -259,7 +260,7 @@ export function Sidebar({ isOpen, onClose }) {
               {language === 'ur' ? 'ٹ' : 'T'}
             </div>
             <div className="flex flex-col -space-y-1">
-              <span className="font-black text-gray-900 text-2xl tracking-tighter italic uppercase">{t.app_name}</span>
+              <span className="font-black text-gray-900 text-2xl tracking-tighter uppercase">{t.app_name}</span>
               <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ps-0.5">Enterprise Hub</span>
             </div>
           </Link>
@@ -342,7 +343,15 @@ export function Sidebar({ isOpen, onClose }) {
         </nav>
 
         {/* Footer Area */}
-        <div className="p-4 border-t border-gray-100 flex-none bg-white">
+        <div className="p-4 border-t border-gray-100 flex-none bg-white space-y-3">
+          <div className="flex items-center justify-between px-1">
+            <div className="flex items-center gap-2">
+              <Globe className="w-3.5 h-3.5 text-gray-400" />
+              <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Region & Language</span>
+            </div>
+            <LanguageToggle />
+          </div>
+
           <UserManager trigger={
             <button className="w-full bg-gray-50 hover:bg-gray-100 border border-gray-100 rounded-2xl p-3 flex items-center gap-3 transition-all text-left group">
               <div

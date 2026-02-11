@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   TrendingUp, TrendingDown, DollarSign, ShoppingCart, Package, Users,
   AlertTriangle, CheckCircle2, Clock, ArrowUpRight, ArrowDownRight,
@@ -39,111 +39,139 @@ const IconRenderer = ({ name, ...props }) => {
 };
 
 import { useBusiness } from '@/lib/context/BusinessContext';
-import { calculateGrowth } from '@/lib/utils/analytics';
+import { getDashboardMetricsAction } from '@/lib/actions/analytics';
 
-export function EnhancedDashboard({ category, data = {}, onQuickAction, invoices = [] }) {
-  const { business, currency } = useBusiness();
+export function EnhancedDashboard({ businessId, category, onQuickAction }) {
+  const { business, currency: currencyFromContext } = useBusiness();
+  const currency = currencyFromContext || 'PKR';
   const { language } = useLanguage();
-  const t = translations[language];
-  const colors = getDomainColors(category);
-  const knowledge = getDomainKnowledge(category);
+  const t = translations[language] || translations['en'] || {};
+  const colors = getDomainColors(category) || {};
+  const knowledge = getDomainKnowledge(category) || {};
   const [timeRange, setTimeRange] = useState('month');
+  const [loading, setLoading] = useState(true);
+  const [metrics, setMetrics] = useState(null);
+
+  // Fetch dashboard metrics from server
+  useEffect(() => {
+    async function loadMetrics() {
+      if (!businessId) return;
+      setLoading(true);
+      try {
+        const res = await getDashboardMetricsAction(businessId);
+        if (res.success) {
+          setMetrics(res.data);
+        }
+      } catch (error) {
+        console.error('Failed to load dashboard metrics:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadMetrics();
+  }, [businessId]);
 
   const isManufacturing = knowledge?.manufacturingEnabled || knowledge?.inventoryFeatures?.includes('Manufacturing/BOM');
   const isService = !knowledge?.batchTrackingEnabled && !knowledge?.manufacturingEnabled && !knowledge?.inventoryFeatures?.includes('Stock Valuation');
   const hasQuotations = knowledge?.inventoryFeatures?.includes('Quotation Management');
 
-  const stats = [
-    {
-      label: t.total_revenue,
-      value: data.revenue || formatCurrency(0, currency),
-      change: '+20.1%',
-      trend: 'up',
-      icon: DollarSign,
-      ...colors.stats.revenue,
-      target: 300000,
-      current: parseInt(data.revenue?.replace(/[^0-9]/g, '') || '0'),
-    },
-    {
-      label: t.total_orders,
-      value: data.orders || '0',
-      change: '+15.3%',
-      trend: 'up',
-      icon: ShoppingCart,
-      ...colors.stats.orders,
-      target: 1500,
-      current: parseInt(data.orders || '0'),
-    },
-  ];
+  // Build stats from server data
+  const stats = useMemo(() => {
+    if (!metrics) return [];
 
-  // Dynamic Stats Injection
-  if (isManufacturing) {
-    stats.push({
-      label: t.active_productions || 'Active Productions',
-      value: data.activeProductions?.toString() || '0',
-      change: t.on_track || 'On Track',
-      trend: 'up',
-      icon: Wrench,
-      ...colors.stats.products, // Use products theme as fallback for manufacturing
-      target: 10,
-      current: parseInt(data.activeProductions || '0'),
-    });
-  } else {
-    // Default Product count for Retail/Wholesale
-    stats.push({
-      label: t.products_stat,
-      value: data.products || '0',
-      change: '+8.2%',
-      trend: 'up',
-      icon: Package,
-      ...colors.stats.products,
-      target: 500,
-      current: parseInt(data.products || '0'),
-    });
-  }
+    const baseStats = [
+      {
+        label: t.total_revenue || 'Total Revenue',
+        value: formatCurrency(metrics.revenue || 0, currency),
+        change: metrics.growth?.value || '+0%',
+        trend: metrics.growth?.trend || 'up',
+        icon: DollarSign,
+        ...(colors?.stats?.revenue || { bg: 'bg-blue-50', iconColor: 'text-blue-600' }),
+        target: 300000,
+        current: metrics.revenue || 0,
+      },
+      {
+        label: t.total_orders || 'Total Orders',
+        value: metrics.orders?.total?.toString() || '0',
+        change: `${metrics.orders?.paid || 0} paid`,
+        trend: 'up',
+        icon: ShoppingCart,
+        ...(colors?.stats?.orders || { bg: 'bg-green-50', iconColor: 'text-green-600' }),
+        target: 1500,
+        current: metrics.orders?.total || 0,
+      },
+    ];
 
-  // Hide Low Stock for pure service businesses if they don't track stock
-  if (!isService) {
-    stats.push({
-      label: t.low_stock_items,
-      value: data.lowStockCount || '0',
-      change: data.lowStockCount > 0 ? t.action_required : t.optimal,
-      trend: data.lowStockCount > 0 ? 'down' : 'up',
-      icon: AlertTriangle,
-      bg: 'bg-red-50',
-      iconColor: 'text-red-600',
-      target: 10,
-      current: parseInt(data.lowStockCount || '0'),
-    });
-  } else {
-    // Show something else for services? maybe tax liability here as a primary stat
-    stats.push({
-      label: t.tax_liability,
-      value: data.taxLiability || formatCurrency(0, currency),
-      change: t.next_filing,
-      trend: 'none',
-      icon: Receipt,
-      bg: 'bg-orange-50',
-      iconColor: 'text-orange-600',
-      target: 50000,
-      current: parseInt(data.taxLiability?.replace(/[^0-9]/g, '') || '0'),
-    });
-  }
+    // Dynamic Stats Injection
+    if (isManufacturing) {
+      baseStats.push({
+        label: t.active_productions || 'Active Productions',
+        value: '0',
+        change: t.on_track || 'On Track',
+        trend: 'up',
+        icon: Wrench,
+        ...(colors?.stats?.products || { bg: 'bg-purple-50', iconColor: 'text-purple-600' }),
+        target: 10,
+        current: 0,
+      });
+    } else {
+      baseStats.push({
+        label: t.products_stat || 'Products',
+        value: metrics.products?.toString() || '0',
+        change: '+8.2%',
+        trend: 'up',
+        icon: Package,
+        ...(colors?.stats?.products || { bg: 'bg-purple-50', iconColor: 'text-purple-600' }),
+        target: 500,
+        current: metrics.products || 0,
+      });
+    }
 
-  // If we didn't add tax liability above, add it now or another stat
-  if (stats.length < 4 && !stats.find(s => s.label === t.tax_liability)) {
-    stats.push({
-      label: t.tax_liability,
-      value: data.taxLiability || formatCurrency(0, currency),
-      change: t.next_filing,
-      trend: 'none',
-      icon: Receipt,
-      bg: 'bg-orange-50',
-      iconColor: 'text-orange-600',
-      target: 50000,
-      current: parseInt(data.taxLiability?.replace(/[^0-9]/g, '') || '0'),
-    });
-  }
+    // Hide Low Stock for pure service businesses if they don't track stock
+    if (!isService) {
+      baseStats.push({
+        label: t.low_stock_items || 'Low Stock Items',
+        value: metrics.alerts?.lowStock?.toString() || '0',
+        change: metrics.alerts?.lowStock > 0 ? (t.action_required || 'Action Required') : (t.optimal || 'Optimal'),
+        trend: metrics.alerts?.lowStock > 0 ? 'down' : 'up',
+        icon: AlertTriangle,
+        bg: 'bg-red-50',
+        iconColor: 'text-red-600',
+        target: 10,
+        current: metrics.alerts?.lowStock || 0,
+      });
+    } else {
+      // Show something else for services
+      baseStats.push({
+        label: t.tax_liability || 'Tax Liability',
+        value: formatCurrency(0, currency),
+        change: t.next_filing || 'Next Filing',
+        trend: 'none',
+        icon: Receipt,
+        bg: 'bg-orange-50',
+        iconColor: 'text-orange-600',
+        target: 50000,
+        current: 0,
+      });
+    }
+
+    // If we didn't add tax liability above, add it now or another stat
+    if (baseStats.length < 4 && !baseStats.find(s => s.label === (t.tax_liability || 'Tax Liability'))) {
+      baseStats.push({
+        label: t.tax_liability || 'Tax Liability',
+        value: formatCurrency(0, currency),
+        change: t.next_filing || 'Next Filing',
+        trend: 'none',
+        icon: Receipt,
+        bg: 'bg-orange-50',
+        iconColor: 'text-orange-600',
+        target: 50000,
+        current: 0,
+      });
+    }
+
+    return baseStats;
+  }, [metrics, currency, t, colors, isManufacturing, isService]);
 
   const quickActions = [
     { label: t.new_invoice, icon: DollarSign, id: 'new-invoice' },
@@ -165,23 +193,58 @@ export function EnhancedDashboard({ category, data = {}, onQuickAction, invoices
     quickActions.push({ label: t.reports, icon: Download, id: 'generate-report' });
   }
 
+  // Simplified recent activity (no invoices array needed)
   const recentActivity = useMemo(() => {
-    if (invoices.length === 0) {
+    if (!metrics) {
       return [
-        { type: 'system', message: 'No recent activity found', time: 'Just now', status: 'neutral' }
+        { type: 'system', message: 'Loading activity...', time: 'Just now', status: 'neutral' }
       ];
     }
 
-    return invoices.slice(0, 4).map(inv => ({
-      type: 'invoice',
-      message: `New invoice ${inv.invoice_number} - ${inv.customer_name || 'Walk-in'}`,
-      time: format(new Date(inv.date), 'MMM dd, HH:mm'),
-      status: inv.status === 'paid' ? 'success' : 'warning'
-    }));
-  }, [invoices]);
+    const activities = [];
+
+    if (metrics.orders?.pending > 0) {
+      activities.push({
+        type: 'invoice',
+        message: `${metrics.orders.pending} pending invoices`,
+        time: 'Today',
+        status: 'warning'
+      });
+    }
+
+    if (metrics.orders?.paid > 0) {
+      activities.push({
+        type: 'invoice',
+        message: `${metrics.orders.paid} invoices paid`,
+        time: 'This month',
+        status: 'success'
+      });
+    }
+
+    if (metrics.alerts?.lowStock > 0) {
+      activities.push({
+        type: 'alert',
+        message: `${metrics.alerts.lowStock} items low on stock`,
+        time: 'Now',
+        status: 'warning'
+      });
+    }
+
+    if (activities.length === 0) {
+      activities.push({
+        type: 'system',
+        message: 'No recent activity',
+        time: 'Just now',
+        status: 'neutral'
+      });
+    }
+
+    return activities.slice(0, 4);
+  }, [metrics]);
 
   const revenueChartData = useMemo(() => {
-    return data.chartData || [
+    // Chart data will be fetched separately if needed
+    return [
       { date: 'Jan', revenue: 0, expenses: 0 },
       { date: 'Feb', revenue: 0, expenses: 0 },
       { date: 'Mar', revenue: 0, expenses: 0 },
@@ -189,14 +252,35 @@ export function EnhancedDashboard({ category, data = {}, onQuickAction, invoices
       { date: 'May', revenue: 0, expenses: 0 },
       { date: 'Jun', revenue: 0, expenses: 0 },
     ];
-  }, [data.chartData]);
+  }, []);
 
   const alerts = useMemo(() => {
+    if (!metrics) return [];
     const list = [];
-    if (data.lowStockCount > 0) list.push('low_stock');
-    if (invoices.filter(inv => inv.status === 'pending').length > 0) list.push('payment_pending');
+    if (metrics.alerts?.lowStock > 0) list.push('low_stock');
+    if (metrics.alerts?.overdueInvoices > 0) list.push('payment_overdue');
     return list;
-  }, [data.lowStockCount, invoices]);
+  }, [metrics]);
+
+  if (loading || !metrics) {
+    return (
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <Card key={i} className="glass-card border-none">
+              <CardHeader className="pb-2">
+                <div className="h-4 bg-gray-200 rounded animate-pulse w-24" />
+              </CardHeader>
+              <CardContent>
+                <div className="h-8 bg-gray-200 rounded animate-pulse w-32 mb-2" />
+                <div className="h-3 bg-gray-100 rounded animate-pulse w-20" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -327,42 +411,50 @@ export function EnhancedDashboard({ category, data = {}, onQuickAction, invoices
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle className="text-lg font-bold">{t.system_alerts}</CardTitle>
-                <CardDescription>{t.important_notifications}</CardDescription>
+                <CardTitle className="text-lg font-bold">{t.system_alerts || 'System Alerts'}</CardTitle>
+                <CardDescription>{t.important_notifications || 'Important Notifications'}</CardDescription>
               </div>
-              <Badge variant="secondary">{`${alerts.length} ${t.new_alerts}`}</Badge>
+              <Badge variant="secondary">{`${alerts.length} ${t.new_alerts || 'New Alerts'}`}</Badge>
             </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {data.lowStockCount > 0 && (
+              {metrics?.alerts?.lowStock > 0 && (
                 <Alert variant="destructive" className="bg-red-50 text-red-900 border-red-200">
                   <AlertTriangle className="h-4 w-4 text-red-600" />
-                  <AlertTitle>{t.low_stock}</AlertTitle>
+                  <AlertTitle>{t.low_stock || 'Low Stock'}</AlertTitle>
                   <AlertDescription className="text-red-800">
-                    {`${data.lowStockCount} ${t.low_stock_desc}`}
+                    {`${metrics.alerts.lowStock} ${t.low_stock_desc || 'items are below minimum stock level'}`}
                   </AlertDescription>
                 </Alert>
               )}
-              {invoices.filter(inv => inv.status === 'pending').length > 0 && (
+              {metrics?.orders?.pending > 0 && (
                 <Alert variant="default" className="bg-blue-50 text-blue-900 border-blue-200">
                   <Bell className="h-4 w-4 text-blue-600" />
-                  <AlertTitle>{t.payment_pending}</AlertTitle>
+                  <AlertTitle>{t.payment_pending || 'Payment Pending'}</AlertTitle>
                   <AlertDescription className="text-blue-800">
-                    {t.pending_payment_desc.replace('{amount}', formatCurrency(
-                      invoices.filter(inv => inv.status === 'pending').reduce((sum, inv) => sum + (Number(inv.grand_total) || 0), 0),
-                      currency
-                    ))}
+                    {`${metrics.orders.pending} pending invoices`}
                   </AlertDescription>
                 </Alert>
               )}
-              <Alert variant="default" className="bg-green-50 text-green-900 border-green-200">
-                <CheckCircle2 className="h-4 w-4 text-green-600" />
-                <AlertTitle>{t.system_update}</AlertTitle>
-                <AlertDescription className="text-green-800">
-                  {t.smooth_running} {format(new Date(), 'MMM dd, yyyy')}
-                </AlertDescription>
-              </Alert>
+              {metrics?.alerts?.overdueInvoices > 0 && (
+                <Alert variant="destructive" className="bg-orange-50 text-orange-900 border-orange-200">
+                  <Clock className="h-4 w-4 text-orange-600" />
+                  <AlertTitle>Overdue Invoices</AlertTitle>
+                  <AlertDescription className="text-orange-800">
+                    {`${metrics.alerts.overdueInvoices} invoices are overdue`}
+                  </AlertDescription>
+                </Alert>
+              )}
+              {alerts.length === 0 && (
+                <Alert variant="default" className="bg-green-50 text-green-900 border-green-200">
+                  <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  <AlertTitle>{t.system_update || 'System Update'}</AlertTitle>
+                  <AlertDescription className="text-green-800">
+                    {t.smooth_running || 'All systems running smoothly.'} {format(new Date(), 'MMM dd, yyyy')}
+                  </AlertDescription>
+                </Alert>
+              )}
             </div>
           </CardContent>
         </Card>

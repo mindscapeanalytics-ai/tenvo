@@ -12,6 +12,12 @@ const AlertDialogTrigger = AlertDialogPrimitive.Trigger;
 
 const AlertDialogPortal = AlertDialogPrimitive.Portal;
 
+/**
+ * @typedef {Object} AlertDialogOverlayProps
+ * @property {string} [className]
+ * @property {React.ReactNode} [children]
+ */
+/** @type {React.ForwardRefExoticComponent<AlertDialogOverlayProps & React.HTMLAttributes<HTMLDivElement>>} */
 const AlertDialogOverlay = React.forwardRef(({ className, children, ...props }, ref) => (
     <AlertDialogPrimitive.Overlay
         className={cn(
@@ -24,6 +30,12 @@ const AlertDialogOverlay = React.forwardRef(({ className, children, ...props }, 
 ));
 AlertDialogOverlay.displayName = AlertDialogPrimitive.Overlay.displayName;
 
+/**
+ * @typedef {Object} AlertDialogContentProps
+ * @property {string} [className]
+ * @property {React.ReactNode} [children]
+ */
+/** @type {React.ForwardRefExoticComponent<AlertDialogContentProps & React.HTMLAttributes<HTMLDivElement>>} */
 const AlertDialogContent = React.forwardRef(({ className, ...props }, ref) => (
     <AlertDialogPortal>
         <AlertDialogOverlay />
@@ -39,6 +51,17 @@ const AlertDialogContent = React.forwardRef(({ className, ...props }, ref) => (
 ));
 AlertDialogContent.displayName = AlertDialogPrimitive.Content.displayName;
 
+/**
+ * @param {Object} props
+ * @param {string} [props.className]
+ * @param {React.ReactNode} [props.children]
+ */
+/**
+ * @typedef {Object} AlertDialogHeaderProps
+ * @property {string} [className]
+ * @property {React.ReactNode} [children]
+ */
+/** @type {React.FC<AlertDialogHeaderProps & React.HTMLAttributes<HTMLDivElement>>} */
 const AlertDialogHeader = ({ className, ...props }) => (
     <div
         className={cn('flex flex-col space-y-2 text-center sm:text-left', className)}
@@ -47,6 +70,12 @@ const AlertDialogHeader = ({ className, ...props }) => (
 );
 AlertDialogHeader.displayName = 'AlertDialogHeader';
 
+/**
+ * @typedef {Object} AlertDialogFooterProps
+ * @property {string} [className]
+ * @property {React.ReactNode} [children]
+ */
+/** @type {React.FC<AlertDialogFooterProps & React.HTMLAttributes<HTMLDivElement>>} */
 const AlertDialogFooter = ({ className, ...props }) => (
     <div
         className={cn(
@@ -58,6 +87,7 @@ const AlertDialogFooter = ({ className, ...props }) => (
 );
 AlertDialogFooter.displayName = 'AlertDialogFooter';
 
+/** @type {React.ForwardRefExoticComponent<AlertDialogContentProps & React.HTMLAttributes<HTMLHeadingElement>>} */
 const AlertDialogTitle = React.forwardRef(({ className, ...props }, ref) => (
     <AlertDialogPrimitive.Title
         ref={ref}
@@ -67,6 +97,7 @@ const AlertDialogTitle = React.forwardRef(({ className, ...props }, ref) => (
 ));
 AlertDialogTitle.displayName = AlertDialogPrimitive.Title.displayName;
 
+/** @type {React.ForwardRefExoticComponent<AlertDialogContentProps & React.HTMLAttributes<HTMLParagraphElement>>} */
 const AlertDialogDescription = React.forwardRef(({ className, ...props }, ref) => (
     <AlertDialogPrimitive.Description
         ref={ref}
@@ -76,6 +107,7 @@ const AlertDialogDescription = React.forwardRef(({ className, ...props }, ref) =
 ));
 AlertDialogDescription.displayName = AlertDialogPrimitive.Description.displayName;
 
+/** @type {React.ForwardRefExoticComponent<AlertDialogContentProps & React.ButtonHTMLAttributes<HTMLButtonElement>>} */
 const AlertDialogAction = React.forwardRef(({ className, ...props }, ref) => (
     <AlertDialogPrimitive.Action
         ref={ref}
@@ -85,6 +117,7 @@ const AlertDialogAction = React.forwardRef(({ className, ...props }, ref) => (
 ));
 AlertDialogAction.displayName = AlertDialogPrimitive.Action.displayName;
 
+/** @type {React.ForwardRefExoticComponent<AlertDialogContentProps & React.ButtonHTMLAttributes<HTMLButtonElement>>} */
 const AlertDialogCancel = React.forwardRef(({ className, ...props }, ref) => (
     <AlertDialogPrimitive.Cancel
         ref={ref}

@@ -5,8 +5,7 @@
 
 import { getDomainKnowledge } from '../domainKnowledge';
 export { getDomainKnowledge };
-import { Product, getProductDomain } from '../types/domainTypes';
-import type { domainKnowledge } from '../domainKnowledge';
+import { Product } from '../types/domainTypes';
 
 /**
  * Get domain-specific product fields for a category
@@ -15,7 +14,7 @@ import type { domainKnowledge } from '../domainKnowledge';
  * @returns Array of required product field names
  */
 export function getDomainProductFields(category: string): string[] {
-  const knowledge = getDomainKnowledge(category);
+  const knowledge: any = getDomainKnowledge(category);
   return knowledge?.productFields || [];
 }
 
@@ -23,15 +22,15 @@ export function getDomainProductFields(category: string): string[] {
  * Get domain-specific customer fields for a category
  */
 export function getDomainCustomerFields(category: string): string[] {
-  const knowledge = getDomainKnowledge(category);
-  return knowledge?.customerFields || [];
+  const knowledge: any = getDomainKnowledge(category);
+  return (knowledge as any)?.customerFields || [];
 }
 
 /**
  * Get domain-specific vendor fields for a category
  */
 export function getDomainVendorFields(category: string): string[] {
-  const knowledge = getDomainKnowledge(category);
+  const knowledge: any = getDomainKnowledge(category);
   return knowledge?.vendorFields || [];
 }
 
@@ -42,7 +41,7 @@ export function getDomainVendorFields(category: string): string[] {
  * @returns Array of tax category strings
  */
 export function getDomainTaxCategories(category: string): string[] {
-  const knowledge = getDomainKnowledge(category);
+  const knowledge: any = getDomainKnowledge(category);
   return knowledge?.taxCategories || [];
 }
 
@@ -53,7 +52,7 @@ export function getDomainTaxCategories(category: string): string[] {
  * @returns Array of unit strings
  */
 export function getDomainUnits(category: string): string[] {
-  const knowledge = getDomainKnowledge(category);
+  const knowledge: any = getDomainKnowledge(category);
   return knowledge?.units || ['pcs'];
 }
 
@@ -64,7 +63,7 @@ export function getDomainUnits(category: string): string[] {
  * @returns Default tax percentage
  */
 export function getDomainDefaultTax(category: string): number {
-  const knowledge = getDomainKnowledge(category);
+  const knowledge: any = getDomainKnowledge(category);
   return knowledge?.defaultTax || 0;
 }
 
@@ -75,7 +74,7 @@ export function getDomainDefaultTax(category: string): number {
  * @returns Default HSN code
  */
 export function getDomainDefaultHSN(category: string): string {
-  const knowledge = getDomainKnowledge(category);
+  const knowledge: any = getDomainKnowledge(category);
   return knowledge?.defaultHSN || '';
 }
 
@@ -86,7 +85,7 @@ export function getDomainDefaultHSN(category: string): string {
  * @returns Valuation method ('FIFO', 'LIFO', 'Average', 'FEFO')
  */
 export function getDomainValuationMethod(category: string): string {
-  const knowledge = getDomainKnowledge(category);
+  const knowledge: any = getDomainKnowledge(category);
   return knowledge?.stockValuationMethod || 'Average';
 }
 
@@ -97,7 +96,7 @@ export function getDomainValuationMethod(category: string): string {
  * @returns True if batch tracking is enabled
  */
 export function isBatchTrackingEnabled(category: string): boolean {
-  const knowledge = getDomainKnowledge(category);
+  const knowledge: any = getDomainKnowledge(category);
   return knowledge?.batchTrackingEnabled || false;
 }
 
@@ -108,7 +107,7 @@ export function isBatchTrackingEnabled(category: string): boolean {
  * @returns True if serial tracking is enabled
  */
 export function isSerialTrackingEnabled(category: string): boolean {
-  const knowledge = getDomainKnowledge(category);
+  const knowledge: any = getDomainKnowledge(category);
   return knowledge?.serialTrackingEnabled || false;
 }
 
@@ -119,7 +118,7 @@ export function isSerialTrackingEnabled(category: string): boolean {
  * @returns True if expiry tracking is enabled
  */
 export function isExpiryTrackingEnabled(category: string): boolean {
-  const knowledge = getDomainKnowledge(category);
+  const knowledge: any = getDomainKnowledge(category);
   return knowledge?.expiryTrackingEnabled || false;
 }
 
@@ -130,7 +129,7 @@ export function isExpiryTrackingEnabled(category: string): boolean {
  * @returns True if manufacturing is enabled
  */
 export function isManufacturingEnabled(category: string): boolean {
-  const knowledge = getDomainKnowledge(category);
+  const knowledge: any = getDomainKnowledge(category);
   return knowledge?.manufacturingEnabled || false;
 }
 
@@ -161,7 +160,7 @@ export function getDomainTheme(category: string) {
  * @returns True if size-color matrix is enabled
  */
 export function isSizeColorMatrixEnabled(category: string): boolean {
-  const knowledge = getDomainKnowledge(category);
+  const knowledge: any = getDomainKnowledge(category);
   return knowledge?.sizeColorMatrixEnabled ||
     knowledge?.productFields?.includes('Size-Color Matrix') ||
     knowledge?.inventoryFeatures?.includes('Size-Color Matrix') ||
@@ -176,7 +175,7 @@ export function isSizeColorMatrixEnabled(category: string): boolean {
  * @returns Object with default field values
  */
 export function getDomainDefaults(category: string, product: any = null): any {
-  const knowledge = getDomainKnowledge(category);
+  const knowledge: any = getDomainKnowledge(category);
   const defaults: any = {
     unit: knowledge?.units?.[0] || 'pcs',
     taxPercent: knowledge?.defaultTax || 0,
@@ -197,7 +196,7 @@ export function getDomainDefaults(category: string, product: any = null): any {
 
   // Initialize domain-specific fields with empty strings if not present in product
   const productFields = knowledge?.productFields || [];
-  productFields.forEach(field => {
+  productFields.forEach((field: string) => {
     // Standardize to lowercase key (internal representation)
     const key = normalizeKey(field);
 
@@ -238,7 +237,7 @@ export function validateDomainProduct(
   product: Partial<Product>,
   category: string
 ): ValidationResult {
-  const knowledge = getDomainKnowledge(category);
+  const knowledge: any = getDomainKnowledge(category);
   const errors: Record<string, string> = {};
   const warnings: string[] = [];
 
@@ -249,7 +248,7 @@ export function validateDomainProduct(
 
   // Check required fields
   const requiredFields = knowledge.productFields || [];
-  requiredFields.forEach(field => {
+  requiredFields.forEach((field: string) => {
     // Check if this field is explicitly not required via config
     if (!isFieldRequired(field, category)) {
       return;
@@ -315,7 +314,7 @@ export function validateDomainProduct(
  * @returns Array of feature names
  */
 export function getDomainInventoryFeatures(category: string): string[] {
-  const knowledge = getDomainKnowledge(category);
+  const knowledge: any = getDomainKnowledge(category);
   return knowledge?.inventoryFeatures || [];
 }
 
@@ -326,7 +325,7 @@ export function getDomainInventoryFeatures(category: string): string[] {
  * @returns Array of report names
  */
 export function getDomainReports(category: string): string[] {
-  const knowledge = getDomainKnowledge(category);
+  const knowledge: any = getDomainKnowledge(category);
   return knowledge?.reports || [];
 }
 
@@ -337,7 +336,7 @@ export function getDomainReports(category: string): string[] {
  * @returns Array of payment term strings
  */
 export function getDomainPaymentTerms(category: string): string[] {
-  const knowledge = getDomainKnowledge(category);
+  const knowledge: any = getDomainKnowledge(category);
   return knowledge?.paymentTerms || ['Cash'];
 }
 
@@ -348,7 +347,7 @@ export function getDomainPaymentTerms(category: string): string[] {
  * @returns True if reordering is enabled
  */
 export function isReorderEnabled(category: string): boolean {
-  const knowledge = getDomainKnowledge(category);
+  const knowledge: any = getDomainKnowledge(category);
   return knowledge?.reorderEnabled || false;
 }
 
@@ -359,7 +358,7 @@ export function isReorderEnabled(category: string): boolean {
  * @returns True if multi-location is enabled
  */
 export function isMultiLocationEnabled(category: string): boolean {
-  const knowledge = getDomainKnowledge(category);
+  const knowledge: any = getDomainKnowledge(category);
   return knowledge?.multiLocationEnabled || false;
 }
 
@@ -381,7 +380,7 @@ export function normalizeKey(key: string): string {
  * @returns Display label
  */
 export function getFieldLabel(field: string, category: string): string {
-  const knowledge = getDomainKnowledge(category);
+  const knowledge: any = getDomainKnowledge(category);
   // Check if domain-specific config exists for this field
   // Normalize key to match config keys (articleno, widtharz, etc.)
   const normalized = normalizeKey(field);
@@ -418,7 +417,7 @@ export function getFieldLabel(field: string, category: string): string {
  * @returns Input type ('text', 'number', 'date', 'select', 'multiselect', etc.)
  */
 export function getFieldInputType(field: string, category: string): string {
-  const knowledge = getDomainKnowledge(category);
+  const knowledge: any = getDomainKnowledge(category);
   const normalized = normalizeKey(field);
 
   // Check if domain-specific config exists for this field
@@ -428,7 +427,7 @@ export function getFieldInputType(field: string, category: string): string {
 
   if (config?.type) return config.type;
 
-  const f = field.toLowerCase();
+  // const f = field.toLowerCase(); // unused
   const n = normalized;
 
   const dateFields = [
@@ -470,7 +469,7 @@ export function getFieldInputType(field: string, category: string): string {
  * @returns Array of option strings or objects
  */
 export function getSelectOptions(field: string, category: string): any[] {
-  const knowledge = getDomainKnowledge(category);
+  const knowledge: any = getDomainKnowledge(category);
   const normalized = normalizeKey(field);
 
   // 1. Check fieldConfig first
@@ -502,7 +501,7 @@ export function getSelectOptions(field: string, category: string): any[] {
  * @returns True if field is required
  */
 export function isFieldRequired(field: string, category: string): boolean {
-  const knowledge = getDomainKnowledge(category);
+  const knowledge: any = getDomainKnowledge(category);
   if (!knowledge) return false;
 
   const normalized = normalizeKey(field);
@@ -592,7 +591,7 @@ export function getDomainDisplayName(category: string): string {
  * @returns Intelligent default value or undefined
  */
 export function getIntelligentDefaults(category: string, fieldName: string): any {
-  const knowledge = getDomainKnowledge(category);
+  const knowledge: any = getDomainKnowledge(category);
   const intelligence = knowledge?.intelligence;
 
   if (!intelligence) return undefined;
@@ -719,7 +718,7 @@ export function getDomainFeatureSummary(category: string) {
  * Get dynamic table columns for the BusyGrid
  */
 export function getDomainTableColumns(category: string): any[] {
-  const knowledge = getDomainKnowledge(category);
+  const knowledge: any = getDomainKnowledge(category);
   const fields = knowledge?.productFields || [];
 
   // Start with standard fixed columns
@@ -732,7 +731,7 @@ export function getDomainTableColumns(category: string): any[] {
   ];
 
   // Add domain-specific dynamic columns
-  fields.forEach(field => {
+  fields.forEach((field: string) => {
     // Avoid adding columns that are already standard
     if (['Name', 'Price', 'Stock', 'Category', 'SKU', 'Barcode'].includes(field)) return;
 
@@ -773,7 +772,7 @@ export function getDomainTableColumns(category: string): any[] {
         const stock = Number(row.original?.stock) || 0;
         const price = Number(row.original?.price) || 0;
         const val = stock * price;
-        return val ? `Rs${val.toLocaleString()}` : 'Rs0';
+        return val ? `₨${val.toLocaleString()}` : '₨0';
       }
     });
   }
@@ -785,7 +784,7 @@ export function getDomainTableColumns(category: string): any[] {
  * Get dynamic invoice columns for a domain
  */
 export function getDomainInvoiceColumns(category: string): any[] {
-  const knowledge = getDomainKnowledge(category);
+  const knowledge: any = getDomainKnowledge(category);
   const columns: any[] = [];
 
   // 1. Traceability columns
@@ -803,14 +802,14 @@ export function getDomainInvoiceColumns(category: string): any[] {
 
   // 2. Domain specific identifiers (Article, Design, Part No, etc.)
   const fields = knowledge?.productFields || [];
-  const identifiers = fields.filter(f => {
+  const identifiers = fields.filter((f: string) => {
     const l = f.toLowerCase();
     return l.includes('article') || l.includes('design') || l.includes('part') ||
       l.includes('model') || l.includes('oem') || l.includes('isbn') ||
       l.includes('fabric');
   }).slice(0, 3); // Take first 3 key identifiers
 
-  identifiers.forEach(field => {
+  identifiers.forEach((field: string) => {
     const key = field.toLowerCase().replace(/\s+/g, '_'); // snake_case for invoice items
     columns.push({
       field: key,
@@ -826,11 +825,11 @@ export function getDomainInvoiceColumns(category: string): any[] {
  * Get dynamic customer columns for the DataTable
  */
 export function getDomainCustomerColumns(category: string): any[] {
-  const knowledge = getDomainKnowledge(category);
+  const knowledge: any = getDomainKnowledge(category);
   const fields = knowledge?.customerFields || [];
   const columns: any[] = [];
 
-  fields.forEach(field => {
+  fields.forEach((field: string) => {
     const key = field.toLowerCase().replace(/\s+/g, '');
     columns.push({
       accessorKey: key,
@@ -847,11 +846,11 @@ export function getDomainCustomerColumns(category: string): any[] {
  * Get dynamic vendor columns for the DataTable
  */
 export function getDomainVendorColumns(category: string): any[] {
-  const knowledge = getDomainKnowledge(category);
+  const knowledge: any = getDomainKnowledge(category);
   const fields = knowledge?.vendorFields || [];
   const columns: any[] = [];
 
-  fields.forEach(field => {
+  fields.forEach((field: string) => {
     // Normalize key to match DB (lowercase, no spaces)
     const key = field.toLowerCase().replace(/\s+/g, '');
 

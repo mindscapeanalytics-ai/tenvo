@@ -159,9 +159,9 @@ export default function NewPurchasePage() {
                 // Trigger recalc on relevant fields change
                 const fieldsAffectingTotal = ['quantity', 'unitCost', 'taxRate', 'productId'];
                 if (fieldsAffectingTotal.includes(field)) {
-                    const q = field === 'quantity' ? parseFloat(value || 0) : updated.quantity;
-                    const c = field === 'unitCost' ? parseFloat(value || 0) : updated.unitCost;
-                    const t = field === 'taxRate' ? parseFloat(value || 0) : updated.taxRate;
+                    const q = field === 'quantity' ? parseFloat(String(value || 0)) : updated.quantity;
+                    const c = field === 'unitCost' ? parseFloat(String(value || 0)) : updated.unitCost;
+                    const t = field === 'taxRate' ? parseFloat(String(value || 0)) : updated.taxRate;
 
                     updated.total = (q * c) + (q * c * t / 100);
                 }
@@ -206,9 +206,9 @@ export default function NewPurchasePage() {
                 items: items.map(i => ({
                     product_id: i.productId,
                     description: i.description,
-                    quantity: parseFloat(i.quantity),
-                    unit_cost: parseFloat(i.unitCost),
-                    tax_rate: parseFloat(i.taxRate),
+                    quantity: parseFloat(String(i.quantity)),
+                    unit_cost: parseFloat(String(i.unitCost)),
+                    tax_rate: parseFloat(String(i.taxRate)),
                     batch_number: i.batchNumber,
                     manufacturing_date: i.manufacturingDate, // Should be added to UI if needed, currently reusing logic
                     expiry_date: i.expiryDate,
@@ -369,7 +369,7 @@ export default function NewPurchasePage() {
                                                 value={header.warehouseId}
                                                 onChange={(val) => setHeader({ ...header, warehouseId: val })}
                                                 placeholder="Receiving Location"
-                                                renderEmpty={() => (
+                                                renderEmpty={/** @type {() => React.ReactNode} */ () => (
                                                     <div className="py-2 px-3 text-center">
                                                         <p className="text-xs text-gray-400 mb-2 font-medium">No storage locations found</p>
                                                         <Button
@@ -487,7 +487,7 @@ export default function NewPurchasePage() {
                                                 </td>
                                                 <td className="px-4 py-3 align-top">
                                                     <div className="relative">
-                                                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-black text-gray-400">Rs</span>
+                                                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-black text-gray-400">₨</span>
                                                         <Input
                                                             type="number"
                                                             className="h-9 text-right pl-7 rounded-xl border-gray-200 bg-white font-bold text-gray-900 focus:ring-blue-500"
@@ -540,7 +540,7 @@ export default function NewPurchasePage() {
                                         ))}
                                         {items.length === 0 && (
                                             <tr>
-                                                <td colSpan="7" className="p-12 text-center text-gray-400 bg-gray-50/30 dashed-border">
+                                                <td colSpan={7} className="p-12 text-center text-gray-400 bg-gray-50/30 dashed-border">
                                                     No items added. Use the "Add Line" button to start.
                                                 </td>
                                             </tr>

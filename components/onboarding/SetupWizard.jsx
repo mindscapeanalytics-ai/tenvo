@@ -176,7 +176,7 @@ export function SetupWizard({ onComplete, category = 'retail-shop' }) {
                                         <p className="text-xs text-gray-500 line-clamp-2">{product.description}</p>
                                         {product.defaultPrice && (
                                             <Badge variant="secondary" className="mt-2 text-[10px] font-bold">
-                                                Rs. {product.defaultPrice}
+                                                ₨ {product.defaultPrice}
                                             </Badge>
                                         )}
                                     </div>

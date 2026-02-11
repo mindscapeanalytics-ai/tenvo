@@ -57,7 +57,7 @@ import {
     Boxes,
     Snowflake,
     BookOpen,
-    BicepFlexed,
+    BicepsFlexed,
     BrickWall,
     Search
 } from 'lucide-react';

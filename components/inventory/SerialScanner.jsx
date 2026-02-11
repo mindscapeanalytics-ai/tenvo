@@ -15,6 +15,14 @@ import toast from 'react-hot-toast';
 /**
  * Serial Number Scanner and Manager
  * For auto parts, electronics, computer hardware domains
+ * 
+ * @param {Object} props
+ * @param {any} [props.product]
+ * @param {string} [props.businessId]
+ * @param {string} [props.warehouseId]
+ * @param {string} [props.mode] - 'register' | 'scan' | 'view'
+ * @param {Function} [props.onSerialScanned]
+ * @param {Function} [props.onClose]
  */
 export function SerialScanner({
     product,
@@ -56,13 +64,15 @@ export function SerialScanner({
     const loadSerials = async () => {
         try {
             setLoading(true);
-            const data = await SerialService.getProductSerials(product.id);
+            const data = await SerialService.getProductSerials(product.id, businessId || product.business_id);
             setSerials(data || []);
         } catch (error) {
             console.error('Load serials error:', error);
             toast.error('Failed to load serial numbers');
         } finally {
-            setLoading(false);
+            setLoading(true);
+            // Small delay to prevent jitter, then false
+            setTimeout(() => setLoading(false), 300);
         }
     };
 
@@ -79,7 +89,7 @@ export function SerialScanner({
 
             if (mode === 'scan') {
                 // Just scan and verify
-                const serial = await SerialService.getSerial(formData.serialNumber);
+                const serial = await SerialService.getSerial(formData.serialNumber, businessId || product?.business_id);
                 setScannedSerial(serial);
                 onSerialScanned?.(serial);
                 toast.success('Serial number verified');
@@ -90,12 +100,17 @@ export function SerialScanner({
                     return;
                 }
 
-                // Register new serial
+                if (!businessId && !product.business_id) {
+                    toast.error('Business context missing');
+                    return;
+                }
+
+                // Register new serial - Map to snake_case for backend
                 await SerialService.createSerial({
                     business_id: businessId || product.business_id,
                     product_id: product.id,
                     warehouse_id: warehouseId || null,
-                    serial_number: formData.serialNumber,
+                    serial_number: formData.serialNumber.toUpperCase(),
                     imei: formData.imei || null,
                     mac_address: formData.macAddress || null,
                     warranty_period_months: parseInt(formData.warrantyPeriodMonths) || 12,
@@ -113,7 +128,7 @@ export function SerialScanner({
                     notes: ''
                 });
 
-                if (mode === 'view') {
+                if (mode === 'view' || serials.length > 0) {
                     loadSerials();
                 }
             }

@@ -4,6 +4,7 @@ import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { BusinessProvider } from '@/lib/context/BusinessContext'
 import { AuthProvider } from '@/lib/context/AuthContext'
 import { LanguageProvider } from '@/lib/context/LanguageContext'
+import { CommandPalette } from '@/components/layout/CommandPalette'
 
 // Note: ErrorBoundary must be a class component, so it's imported separately
 
@@ -21,6 +22,7 @@ export default function RootLayout({ children }) {
             <BusinessProvider>
               <LanguageProvider>
                 <ToastProvider />
+                <CommandPalette />
                 {children}
               </LanguageProvider>
             </BusinessProvider>

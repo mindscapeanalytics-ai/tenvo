@@ -84,7 +84,7 @@ export function CustomerForm({
         handleInputChange('ntn', formatNTN(val));
     };
 
-    const validateForm = () => {
+    const validateLocalInputs = () => {
         if (!formData.name) {
             toast.error('Customer name is required');
             return false;
@@ -105,11 +105,15 @@ export function CustomerForm({
     };
 
     const handleSubmit = async () => {
+        // 1. Local basic checks
+        if (!validateLocalInputs()) return;
+
+        // 2. Schema validation (Zod)
         const validation = validateForm(customerSchema, formData);
         if (!validation.isValid) {
             setErrors(validation.errors);
             toast.error('Please fix highlighted errors');
-            // If error is in tax fields but we are on basic tab, maybe switch (simple logic)
+            // If error is in tax fields but we are on basic tab, switch to tax tab
             if (activeTab === 'basic' && ['ntn', 'cnic', 'srn'].some(k => validation.errors[k])) {
                 setActiveTab('tax');
             }
@@ -221,7 +225,7 @@ export function CustomerForm({
                                         placeholder="Full Name / Company"
                                         className="h-11 rounded-xl"
                                     />
-                                    {errors.name && <FormError message={errors.name} />}
+                                    {errors?.name && <FormError message={errors.name} />}
                                 </div>
                                 <div className="space-y-2">
                                     <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest after:content-['*'] after:ml-0.5 after:text-red-500">Phone</Label>
@@ -235,7 +239,7 @@ export function CustomerForm({
                                             maxLength={12}
                                         />
                                     </div>
-                                    {errors.phone && <FormError message={errors.phone} />}
+                                    {errors?.phone && <FormError message={errors.phone} />}
                                 </div>
                                 <div className="space-y-2">
                                     <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Email</Label>
@@ -245,7 +249,7 @@ export function CustomerForm({
                                         placeholder="customer@example.com"
                                         className="h-11 rounded-xl"
                                     />
-                                    {errors.email && <FormError message={errors.email} />}
+                                    {errors?.email && <FormError message={errors.email} />}
                                 </div>
                                 <div className="space-y-2">
                                     <CityAutocomplete
@@ -253,7 +257,7 @@ export function CustomerForm({
                                         onChange={(val) => handleInputChange('city', val)}
                                         required={true}
                                     />
-                                    {errors.city && <FormError message={errors.city} />}
+                                    {errors?.city && <FormError message={errors.city} />}
                                 </div>
                                 <div className="col-span-1 md:col-span-2 space-y-2">
                                     <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Billing Address</Label>
@@ -284,7 +288,7 @@ export function CustomerForm({
                                                 className="h-11 rounded-xl font-mono text-sm"
                                                 maxLength={15}
                                             />
-                                            {errors.cnic && <FormError message={errors.cnic} />}
+                                            {errors?.cnic && <FormError message={errors.cnic} />}
                                         </div>
                                         <div className="space-y-2">
                                             <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">NTN (Business)</Label>
@@ -295,17 +299,17 @@ export function CustomerForm({
                                                 className="h-11 rounded-xl font-mono text-sm"
                                                 maxLength={9}
                                             />
-                                            {errors.ntn && <FormError message={errors.ntn} />}
+                                            {errors?.ntn && <FormError message={errors.ntn} />}
                                         </div>
                                         <div className="space-y-2">
-                                            <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">SRN (Sales Tax Reg)</Label>
+                                            <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">SRN (Services)</Label>
                                             <Input
                                                 value={formData.srn || ''}
                                                 onChange={(e) => handleInputChange('srn', e.target.value)}
-                                                placeholder="Sales Tax Reg Number"
-                                                className="h-11 rounded-xl"
+                                                placeholder="12-34-5678-910-1"
+                                                className="h-11 rounded-xl font-mono text-sm"
                                             />
-                                            {errors.srn && <FormError message={errors.srn} />}
+                                            {errors?.srn && <FormError message={errors.srn} />}
                                         </div>
                                         <div className="space-y-2">
                                             <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">FBR Filer Status</Label>
@@ -332,7 +336,7 @@ export function CustomerForm({
                                         <div className="space-y-2">
                                             <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Credit Limit (PKR)</Label>
                                             <div className="relative">
-                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-semibold text-xs">Rs</span>
+                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-semibold text-xs">₨</span>
                                                 <Input
                                                     type="number"
                                                     value={formData.credit_limit || ''}
@@ -346,7 +350,7 @@ export function CustomerForm({
                                         <div className="space-y-2">
                                             <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Opening Balance (PKR)</Label>
                                             <div className="relative">
-                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-semibold text-xs">Rs</span>
+                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-semibold text-xs">₨</span>
                                                 <Input
                                                     type="number"
                                                     value={formData.opening_balance || ''}

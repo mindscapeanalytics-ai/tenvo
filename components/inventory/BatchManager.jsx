@@ -15,11 +15,19 @@ import toast from 'react-hot-toast';
 /**
  * Batch Entry and Management Component
  * For pharmacy, food, FMCG, chemical domains
+ * @param {Object} props
+ * @param {any} props.product
+ * @param {string} props.businessId
+ * @param {string} [props.warehouseId]
+ * @param {any[]} [props.warehouses]
+ * @param {function} [props.onBatchCreated]
+ * @param {function} [props.onClose]
  */
 export function BatchManager({
     product,
     businessId,
     warehouseId,
+    warehouses = [],
     onBatchCreated,
     onClose
 }) {
@@ -36,7 +44,8 @@ export function BatchManager({
         quantity: '',
         costPrice: '',
         mrp: '',
-        notes: ''
+        notes: '',
+        warehouseId: ''
     });
 
     // Load batches on mount
@@ -102,15 +111,15 @@ export function BatchManager({
             setLoading(true);
 
             await BatchService.createBatch({
-                businessId,
-                productId: product.id,
-                warehouseId: warehouseId || null,
-                batchNumber: formData.batchNumber,
-                manufacturingDate: formData.manufacturingDate || null,
-                expiryDate: formData.expiryDate || null,
-                quantity: parseFloat(formData.quantity),
-                costPrice: parseFloat(formData.costPrice) || product?.cost_price || 0,
-                mrp: parseFloat(formData.mrp) || product?.mrp || 0,
+                business_id: businessId,
+                product_id: product.id,
+                warehouse_id: formData.warehouseId || warehouseId || null,
+                batch_number: formData.batchNumber,
+                manufacturing_date: formData.manufacturingDate || null,
+                expiry_date: formData.expiry_date || formData.expiryDate || null,
+                quantity: parseFloat(formData.quantity) || 0,
+                cost_price: parseFloat(formData.costPrice) || parseFloat(product?.cost_price) || 0,
+                mrp: parseFloat(formData.mrp) || parseFloat(product?.mrp) || 0,
                 notes: formData.notes
             });
 
@@ -124,7 +133,8 @@ export function BatchManager({
                 quantity: '',
                 costPrice: '',
                 mrp: '',
-                notes: ''
+                notes: '',
+                warehouseId: ''
             });
 
             setShowAddForm(false);

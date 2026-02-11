@@ -20,6 +20,11 @@ import {
 
 const COLORS = ['#8B1538', '#A01A42', '#C41E3A', '#DC143C', '#FF6B6B', '#FF8787'];
 
+/**
+ * @param {Object} props
+ * @param {any[]} props.data
+ * @param {any} [props.colors]
+ */
 export function SalesChart({ data, colors }) {
   const primary = colors?.primary || '#8B1538';
   const secondary = colors?.primaryLight || '#A01A42';
@@ -39,7 +44,15 @@ export function SalesChart({ data, colors }) {
   );
 }
 
-export function RevenueBarChart({ data }) {
+/**
+ * @param {Object} props
+ * @param {any[]} props.data
+ * @param {any} [props.colors]
+ */
+export function RevenueBarChart({ data, colors }) {
+  const primary = colors?.primary || '#8B1538';
+  const secondary = colors?.primaryLight || '#A01A42';
+
   return (
     <ResponsiveContainer width="100%" height={300}>
       <BarChart data={data}>
@@ -48,13 +61,17 @@ export function RevenueBarChart({ data }) {
         <YAxis />
         <Tooltip />
         <Legend />
-        <Bar dataKey="revenue" fill="#8B1538" />
-        <Bar dataKey="profit" fill="#A01A42" />
+        <Bar dataKey="revenue" fill={primary} />
+        <Bar dataKey="profit" fill={secondary} />
       </BarChart>
     </ResponsiveContainer>
   );
 }
 
+/**
+ * @param {Object} props
+ * @param {any[]} props.data
+ */
 export function CategoryPieChart({ data }) {
   return (
     <ResponsiveContainer width="100%" height={300}>
@@ -79,6 +96,11 @@ export function CategoryPieChart({ data }) {
   );
 }
 
+/**
+ * @param {Object} props
+ * @param {any[]} props.data
+ * @param {any} [props.colors]
+ */
 export function RevenueAreaChart({ data, colors }) {
   const primary = colors?.primary || '#8B1538';
   const secondary = colors?.primaryLight || '#A01A42';
@@ -108,7 +130,14 @@ export function RevenueAreaChart({ data, colors }) {
   );
 }
 
-export function TopProductsChart({ data }) {
+/**
+ * @param {Object} props
+ * @param {any[]} props.data
+ * @param {any} [props.colors]
+ */
+export function TopProductsChart({ data, colors }) {
+  const primary = colors?.primary || '#8B1538';
+
   return (
     <ResponsiveContainer width="100%" height={300}>
       <BarChart data={data} layout="vertical">
@@ -116,7 +145,7 @@ export function TopProductsChart({ data }) {
         <XAxis type="number" />
         <YAxis dataKey="name" type="category" width={100} />
         <Tooltip />
-        <Bar dataKey="sales" fill="#8B1538" />
+        <Bar dataKey="sales" fill={primary} />
       </BarChart>
     </ResponsiveContainer>
   );

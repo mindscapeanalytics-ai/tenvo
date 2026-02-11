@@ -24,7 +24,12 @@ import {
   BrainCircuit,
   TrendingUp,
   Settings,
-  Keyboard
+  Keyboard,
+  LayoutDashboard,
+  Table2,
+  ChevronDown,
+  AlertCircle,
+  Repeat
 } from 'lucide-react';
 import { DataTable } from './DataTable';
 import { getDomainColors } from '@/lib/domainColors';
@@ -82,13 +87,46 @@ import { isBatchTrackingEnabled, isSerialTrackingEnabled, isSizeColorMatrixEnabl
 import { VariantManager } from './domain/VariantManager';
 import { ProductDetailsDialog } from './ProductDetailsDialog';
 import { CustomParametersManager } from './inventory/CustomParametersManager';
+import { ExcelModeModal } from './ExcelModeModal';
+import { SmartQuickAddModal } from './QuickAddProductModal';
 
 /**
  * Inventory Manager Component
  * A comprehensive dashboard for managing products, batches, serials, and inventory logistics.
  */
+import { getProductsAction, deleteProductAction, createProductAction, updateProductAction, seedBusinessProductsAction } from '@/lib/actions/product';
+
+/**
+ * @param {Object} props
+ * @param {any[]} [props.products]
+ * @param {any[]} [props.invoices]
+ * @param {any[]} [props.customers]
+ * @param {any[]} [props.locations]
+ * @param {any[]} [props.bomList]
+ * @param {any[]} [props.productionOrders]
+ * @param {any[]} [props.quotations]
+ * @param {any[]} [props.salesOrders]
+ * @param {any[]} [props.challans]
+ * @param {any[]} [props.vendors]
+ * @param {string} props.businessId
+ * @param {string} [props.category]
+ * @param {string} [props.currency]
+ * @param {any} [props.domainKnowledge]
+ * @param {() => void} [props.refreshData]
+ * @param {Function} [props.onUpdate]
+ * @param {Function} [props.onAdd]
+ * @param {Function} [props.onQuickAdd]
+ * @param {Function} [props.onEdit]
+ * @param {Function} [props.onDelete]
+ * @param {Function} [props.onIssueInvoice]
+ * @param {Function} [props.onLocationAdd]
+ * @param {Function} [props.onLocationUpdate]
+ * @param {Function} [props.onLocationDelete]
+ * @param {Function} [props.onStockTransfer]
+ * @param {Function} [props.onGeneratePO]
+ */
 export function InventoryManager({
-  products = [],
+  products: initialProducts = [],
   invoices = [],
   customers = [],
   locations = [],
@@ -97,9 +135,12 @@ export function InventoryManager({
   quotations = [],
   salesOrders = [],
   challans = [],
+  vendors = [],
   businessId,
   category = 'retail-shop',
+  currency = 'PKR',
   domainKnowledge = {},
+  // Handler overrides (optional)
   onUpdate,
   onAdd,
   onQuickAdd,
@@ -110,16 +151,112 @@ export function InventoryManager({
   onLocationUpdate,
   onLocationDelete,
   onStockTransfer,
+  onGeneratePO,
   refreshData
 }) {
   const colors = getDomainColors(category);
-  const [searchTerm, setSearchTerm] = useState('');
+
+  // Helper to strictly deduplicate products and prevent React key errors
+  const deduplicateProducts = (items) => {
+    if (!items || !Array.isArray(items)) return [];
+    const seen = new Set();
+    return items.filter(item => {
+      const key = item.id || item._tempId;
+      if (key) {
+        if (seen.has(key)) return false;
+        seen.add(key);
+      }
+      return true;
+    });
+  };
+
+  // Initialize local state with strict deduplication
+  const [products, setProducts] = useState(() => deduplicateProducts(initialProducts));
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  // Sync internal state when prop changes (from parent refresh)
+  useEffect(() => {
+    if (initialProducts?.length > 0) {
+      setProducts(deduplicateProducts(initialProducts));
+    }
+  }, [initialProducts]);
+
+  // Internal Data Fetching (Only if products not passed or empty, generally redundant if parent manages)
+  const fetchProducts = async () => {
+    if (!businessId || initialProducts.length > 0) return;
+    setLoading(true);
+    try {
+      const res = await getProductsAction(businessId);
+      if (res.success) {
+        setProducts(deduplicateProducts(res.products));
+      } else {
+        setError(res.error);
+        toast.error('Failed to load inventory');
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Connection error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProducts();
+  }, [businessId]);
+
+  // Wrap internal handlers to update local state + call parent if provided
+  const handleAddProduct = async (productData) => {
+    try {
+      // 1. Optimistic Update (Optional, but safer to wait for ID)
+      setLoading(true);
+
+      // 2. Server Action
+      const res = await createProductAction({
+        ...productData,
+        business_id: businessId
+      });
+
+      if (res.success) {
+        toast.success("Product created successfully");
+        // 3. Update Local State
+        setProducts(prev => [res.product, ...prev]);
+        // 4. Notify Parent
+        onAdd?.(res.product);
+      } else {
+        toast.error(res.error || "Failed to create product");
+      }
+    } catch (error) {
+      console.error("Quick Add Error:", error);
+      toast.error("An error occurred");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handlers for CRUD to update local state immediately
+  const handleDeleteProduct = async (id) => {
+    // Optimistic Update
+    const old = [...products];
+    setProducts(prev => prev.filter(p => p.id !== id));
+
+    const res = await deleteProductAction(id, businessId);
+    if (!res.success) {
+      setProducts(old); // Revert
+      toast.error(res.error);
+    } else {
+      toast.success("Product deleted");
+      onDelete?.(id); // Notify parent if needed
+    }
+  };
+
+  // State Management
   const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
   const [activeTab, setActiveTab] = useState('products');
   const [showAdvancedFeatures, setShowAdvancedFeatures] = useState(false);
-  const [viewMode, setViewMode] = useState('visual'); // 'visual' | 'busy'
+  const [viewMode, setViewMode] = useState('visual');
 
-  // New feature dialogs
   const [showBatchManager, setShowBatchManager] = useState(false);
   const [showSerialScanner, setShowSerialScanner] = useState(false);
   const [showVariantEditor, setShowVariantEditor] = useState(false);
@@ -132,6 +269,196 @@ export function InventoryManager({
   const [productToDelete, setProductToDelete] = useState(null);
   const [productsToBulkDelete, setProductsToBulkDelete] = useState([]);
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
+  const [activeDomainFilters, setActiveDomainFilters] = useState({});
+  const [showQuickAddModal, setShowQuickAddModal] = useState(false);
+  const [showExcelMode, setShowExcelMode] = useState(false);
+
+  // Bulk Save Handler for Excel Mode
+  const handleExcelSave = async (updatedData) => {
+    setLoading(true);
+    const results = { updated: 0, created: 0, failed: 0 };
+
+    try {
+      // Find what actually changed or is new
+      const changedItems = updatedData.filter(item => {
+        // New item (has _tempId but no real ID)
+        if (item._tempId && !item.id) return true;
+
+        // Edited item (compare with original)
+        const original = products.find(p => p.id === item.id);
+        if (!original) return true; // Should not happen for edits
+
+        // Simple stringified comparison for quick diffing
+        return JSON.stringify(item) !== JSON.stringify(original);
+      });
+
+      if (changedItems.length === 0) {
+        toast.info("No changes to save");
+        setShowExcelMode(false);
+        return;
+      }
+
+      toast.loading(`Saving ${changedItems.length} changes...`, { id: 'excel-save' });
+
+      // Process sequentially to avoid race conditions or use Promise.all if actions are atomic
+      const successfulTempIds = new Set();
+      const activeUpdates = [];
+      const newRealItems = [];
+
+      for (const item of changedItems) {
+        try {
+          const isNew = item._tempId && !item.id;
+          const res = isNew
+            ? await createProductAction({ ...item, business_id: businessId })
+            : await updateProductAction(item.id, businessId, item);
+
+          if (res.success) {
+            if (isNew) {
+              results.created++;
+              successfulTempIds.add(item._tempId);
+              newRealItems.push(res.product);
+            } else {
+              results.updated++;
+              activeUpdates.push(res.product);
+            }
+
+            // Display warnings as helpful recommendations (non-blocking)
+            if (res.warnings && res.warnings.length > 0) {
+              res.warnings.forEach(warning => {
+                toast(warning, {
+                  icon: '💡',
+                  duration: 4000,
+                  style: {
+                    background: '#FEF3C7',
+                    color: '#92400E',
+                    border: '1px solid #FCD34D'
+                  }
+                });
+              });
+            }
+          } else {
+            results.failed++;
+            console.error(`Failed to save item ${item.name}:`, res.error);
+          }
+        } catch (err) {
+          results.failed++;
+          console.error(`Error saving item ${item.name}:`, err);
+        }
+      }
+
+      // Batch update state to prevent multiple renders and race conditions
+      setProducts(prev => {
+        // 1. Remove successful temp items
+        let next = prev.filter(p => !p._tempId || !successfulTempIds.has(p._tempId));
+
+        // 2. Apply updates
+        if (activeUpdates.length > 0) {
+          const updateMap = new Map(activeUpdates.map(u => [u.id, u]));
+          next = next.map(p => updateMap.get(p.id) || p);
+        }
+
+        // 3. Add new real items
+        if (newRealItems.length > 0) {
+          next = [...next, ...newRealItems];
+        }
+
+        // 4. Safety: Deduplicate by ID
+        const seen = new Set();
+        return next.filter(p => {
+          const key = p.id || p._tempId;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+      });
+
+      toast.dismiss('excel-save');
+
+      if (results.failed === 0) {
+        toast.success(`Excel Save Complete: ${results.updated} updated, ${results.created} created`);
+        setShowExcelMode(false);
+      } else {
+        toast.error(`Excel Save partially failed: ${results.failed} errors. ${results.updated + results.created} saved.`);
+      }
+    } catch (err) {
+      console.error(err);
+      toast.dismiss('excel-save');
+      toast.error("Error during bulk save");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Products are filtered by the parent (DashboardTabs) based on global search
+  // Here we apply additional domain-specific filters (Stock Level, Category, Brand, Price)
+  const productsToDisplay = useMemo(() => {
+    return products.filter(p => {
+      // 1. Stock Category Filter
+      if (activeDomainFilters.stock === 'low') {
+        const minStock = p.min_stock ?? p.minStock ?? 10;
+        const isLow = (p.stock || 0) <= minStock;
+        if (!isLow) return false;
+      } else if (activeDomainFilters.stock === 'normal') {
+        const minStock = p.min_stock ?? p.minStock ?? 10;
+        const isNormal = (p.stock || 0) > minStock;
+        if (!isNormal) return false;
+      } else if (activeDomainFilters.stock === 'high') {
+        const minStock = p.min_stock ?? p.minStock ?? 10;
+        const isHigh = (p.stock || 0) > (minStock * 3); // Example heuristic
+        if (!isHigh) return false;
+      }
+
+      // 2. Local Category Filter
+      if (activeDomainFilters.category && p.category !== activeDomainFilters.category) {
+        return false;
+      }
+
+      // 3. Brand Filter
+      if (activeDomainFilters.brand && p.brand !== activeDomainFilters.brand) {
+        return false;
+      }
+
+      // 4. Price Range Filter
+      if (activeDomainFilters.minPrice) {
+        if ((p.price || 0) < Number(activeDomainFilters.minPrice)) return false;
+      }
+      if (activeDomainFilters.maxPrice) {
+        if ((p.price || 0) > Number(activeDomainFilters.maxPrice)) return false;
+      }
+
+      return true;
+    });
+  }, [products, activeDomainFilters]);
+
+  // Derive unique options for filters
+  const categoryOptions = useMemo(() => {
+    const categories = [...new Set(products.map(p => p.category).filter(Boolean))];
+    return categories.map(c => ({ value: c, label: c }));
+  }, [products]);
+
+  const brandOptions = useMemo(() => {
+    const brands = [...new Set(products.map(p => p.brand).filter(Boolean))];
+    return brands.map(b => ({ value: b, label: b }));
+  }, [products]);
+
+  const handleBulkDelete = (items) => {
+    setProductsToBulkDelete(items);
+    setShowBulkDeleteConfirm(true);
+  };
+
+  const confirmBulkDelete = async () => {
+    try {
+      const deletePromises = productsToBulkDelete.map(p => onDelete(p.id));
+      await Promise.all(deletePromises);
+      toast.success(`Successfully deleted ${productsToBulkDelete.length} items`);
+      setProductsToBulkDelete([]);
+      setShowBulkDeleteConfirm(false);
+    } catch (error) {
+      console.error('Bulk delete error:', error);
+      toast.error('Failed to delete some items');
+    }
+  };
+
 
   // Domain Feature Flags
   const isBatchEnabled = domainKnowledge?.batchTrackingEnabled;
@@ -139,7 +466,30 @@ export function InventoryManager({
   const isExpiryEnabled = domainKnowledge?.expiryTrackingEnabled;
   const isMultiLocationEnabled = domainKnowledge?.multiLocationEnabled;
   const isManufacturingEnabled = domainKnowledge?.manufacturingEnabled;
-  const isVariantEnabled = domainKnowledge?.productFields?.some(f => f.includes('Size') || f.includes('Color') || f.includes('Matrix'));
+  const isVariantEnabled = domainKnowledge?.productFields?.some(f =>
+    f.toLowerCase().includes('size') ||
+    f.toLowerCase().includes('color') ||
+    f.toLowerCase().includes('matrix')
+  );
+
+
+
+  const handleUpdateProduct = async (productData) => {
+    try {
+      const res = await updateProductAction(productData.id, businessId, productData);
+      if (res.success) {
+        setProducts(prev => prev.map(p => p.id === productData.id ? res.product : p));
+        toast.success("Product updated");
+        setShowProductFormInternal(false);
+        setEditingProduct(null);
+      } else {
+        toast.error(res.error || "Failed to update");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Error updating product");
+    }
+  };
 
   // Keyboard Shortcuts for Tab Switching
   useEffect(() => {
@@ -203,6 +553,47 @@ export function InventoryManager({
     const safetyStock = avgSales * (leadTime / 30) * 1.5;
     return Math.ceil(safetyStock);
   };
+
+  // Intelligence: Real-time Stock Turnover Calculation
+  const calculateStockTurnover = () => {
+    if (!products.length || !invoices.length) return 0;
+
+    // 1. Calculate Total COGS (Cost of Goods Sold) from Invoices (approximate via sales)
+    // Or simplified: Total Qty Sold / Total Current Stock
+    const totalStock = products.reduce((sum, p) => sum + (p.stock || 0), 0);
+    if (totalStock === 0) return 0;
+
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const recentQtySold = invoices
+      .filter(inv => new Date(inv.date) >= thirtyDaysAgo)
+      .reduce((sum, inv) => {
+        return sum + (inv.items?.reduce((isum, item) => isum + (Number(item.quantity) || 0), 0) || 0);
+      }, 0);
+
+    // Turnover Ratio = Sold / Stock
+    return (recentQtySold / totalStock).toFixed(1);
+  };
+
+  // Intelligence: Expiring Batches Calculation
+  const calculateExpiringRisk = () => {
+    if (!isExpiryEnabled) return 0;
+    const thirtyDaysFromNow = new Date();
+    thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
+
+    // Check product expiry fields or batch expiry
+    return products.filter(p => {
+      // Direct product expiry
+      if (p.expiry_date && new Date(p.expiry_date) <= thirtyDaysFromNow) return true;
+      // Batch expiry
+      if (p.batches?.some(b => new Date(b.expiry_date) <= thirtyDaysFromNow)) return true;
+      return false;
+    }).length;
+  };
+
+  const turnoverRate = calculateStockTurnover();
+  const expiringCount = calculateExpiringRisk();
 
   const getDomainBatchLabel = (cat) => {
     switch (cat) {
@@ -352,7 +743,8 @@ export function InventoryManager({
         header: () => <div className="text-right font-semibold">VALUE</div>,
         size: 120,
         minSize: 110,
-        cell: ({ row }) => <div className="text-right text-sm text-gray-600 font-medium tabular-nums pr-2">{formatCurrency((row.original.price || 0) * (row.original.stock || 0), 'PKR')}</div>
+        readOnly: true, // Calculated field
+        cell: ({ row }) => <div className="text-right text-sm text-gray-500 font-medium italic tabular-nums pr-2 bg-gray-50/50 h-full flex items-center justify-end w-full">{formatCurrency((row.original.price || 0) * (row.original.stock || 0), 'PKR')}</div>
       }
     ];
 
@@ -485,44 +877,10 @@ export function InventoryManager({
   // Removed standard columns.push since it's now in useMemo initialization
 
 
-  const filteredProducts = products.filter(p => {
-    const term = searchTerm.toLowerCase();
-
-    // Standard checks
-    if (p.name.toLowerCase().includes(term)) return true;
-    if (p.sku?.toLowerCase().includes(term)) return true;
-
-    // Domain field checks
-    if (domainKnowledge?.productFields) {
-      return domainKnowledge.productFields.some(field => {
-        const key = normalizeKey(field);
-        const val = p.domain_data?.[key] || p.attributes?.[key];
-        return val && String(val).toLowerCase().includes(term);
-      });
-    }
-
-    return false;
-  });
 
   const abcAnalysis = performABCAnalysis();
 
-  const handleBulkDelete = (items) => {
-    setProductsToBulkDelete(items);
-    setShowBulkDeleteConfirm(true);
-  };
 
-  const confirmBulkDelete = async () => {
-    try {
-      const deletePromises = productsToBulkDelete.map(p => onDelete(p.id));
-      await Promise.all(deletePromises);
-      toast.success(`Successfully deleted ${productsToBulkDelete.length} items`);
-      setProductsToBulkDelete([]);
-      setShowBulkDeleteConfirm(false);
-    } catch (error) {
-      console.error('Bulk delete error:', error);
-      toast.error('Failed to delete some items');
-    }
-  };
 
   // Shared Actions column for both views
   const gridColumns = useMemo(() => {
@@ -536,103 +894,147 @@ export function InventoryManager({
 
 
   return (
-    <div className="space-y-6">
-      {/* Header with Actions */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-bold text-gray-900">Inventory Management</h2>
-          <p className="text-gray-600">Complete inventory system with all Busy.in features</p>
+    <div className="space-y-4">
+      {/* Refined Action Bar - Consolidated & Aligned */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-2">
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex items-center gap-3 pr-4 border-r border-gray-100">
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50/50 rounded-xl border border-green-100/50">
+              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+              <span className="text-[10px] font-black text-green-700 uppercase tracking-widest">Live Sync</span>
+            </div>
+            {/* View Mode Switcher - Integrated & Compact */}
+            <div className="bg-gray-100/80 p-1 rounded-xl flex items-center border border-gray-200/50 shadow-sm backdrop-blur-sm ml-1 h-10">
+              <button
+                onClick={() => setViewMode('visual')}
+                className={cn(
+                  "px-4 h-8 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all",
+                  viewMode === 'visual' ? "bg-white shadow-md text-blue-600" : "text-gray-500 hover:text-gray-900"
+                )}
+              >
+                Visual
+              </button>
+              <button
+                onClick={() => setViewMode('busy')}
+                className={cn(
+                  "px-4 h-8 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all",
+                  viewMode === 'busy' ? "bg-white shadow-md text-blue-600" : "text-gray-500 hover:text-gray-900"
+                )}
+              >
+                Busy
+              </button>
+            </div>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="bg-gray-100 p-1 rounded-lg flex items-center mr-2 border border-gray-200">
-            <button
-              onClick={() => setViewMode('visual')}
-              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${viewMode === 'visual' ? 'bg-white shadow-sm' : 'text-gray-500 hover:text-gray-900'
-                }`}
-              style={viewMode === 'visual' ? { color: colors.primary } : {}}
-            >
-              Visual View
-            </button>
-            <button
-              onClick={() => setViewMode('busy')}
-              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${viewMode === 'busy' ? 'bg-white shadow-sm' : 'text-gray-500 hover:text-gray-900'
-                }`}
-              style={viewMode === 'busy' ? { color: colors.primary } : {}}
-            >
-              Busy Mode (Fast)
-            </button>
-          </div>
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50 rounded-full border border-green-100 animate-pulse">
-            <div className="w-2 h-2 rounded-full bg-green-500" />
-            <span className="text-[10px] font-bold text-green-700 uppercase tracking-tighter">Real-time Sync Active</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <ExportButton
-              data={products}
-              filename="inventory_report"
-              columns={[
-                { key: 'name', label: 'Product Name' },
-                { key: 'sku', label: 'SKU' },
-                { key: 'category', label: 'Category' },
-                { key: 'stock', label: 'Stock' },
-                { key: 'price', label: 'Price' }
-              ]}
-            />
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowBarcodeScanner(true)}
-              className="h-10 rounded-xl font-bold border-gray-200"
-            >
-              <ScanBarcode className="w-4 h-4 mr-2" />
-              Scan
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowShortcutsHelp(true)}
-              className="h-10 rounded-xl font-bold border-gray-200"
-            >
-              <Keyboard className="w-4 h-4 mr-2" />
-              Shortcuts
-            </Button>
-            <Button
-              size="sm"
-              onClick={onAdd}
-              className="h-10 text-white rounded-xl shadow-lg px-6 font-black"
-              style={{ backgroundColor: colors.primary, boxShadow: `0 8px 16px -4px ${colors.primary}40` }}
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Add Product
-            </Button>
-          </div>
+
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Secondary Actions Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="h-10 rounded-xl px-4 font-black text-[10px] uppercase tracking-widest border-gray-200 bg-white hover:bg-gray-50 text-gray-700 transition-all">
+                <Settings className="w-3.5 h-3.5 mr-2 text-gray-400" />
+                More Actions
+                <ChevronDown className="w-3 h-3 ml-2 opacity-50" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-[200px] p-2 rounded-xl shadow-2xl border-gray-100">
+              <DropdownMenuLabel className="text-[9px] font-black text-gray-400 uppercase tracking-widest p-2">Data & Utility</DropdownMenuLabel>
+              <DropdownMenuItem onClick={() => setShowBarcodeScanner(true)} className="rounded-lg py-2.5">
+                <ScanBarcode className="w-4 h-4 mr-3 text-blue-500" />
+                <span className="font-bold text-[10px] uppercase tracking-tight">Scanner Engine</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setShowShortcutsHelp(true)} className="rounded-lg py-2.5">
+                <Keyboard className="w-4 h-4 mr-3 text-purple-500" />
+                <span className="font-bold text-[10px] uppercase tracking-tight">Key Command Help</span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator className="my-1" />
+              <div className="p-1">
+                <ExportButton
+                  data={products}
+                  filename="inventory_report"
+                  title="Inventory Report"
+                  columns={[
+                    { key: 'name', label: 'Product Name' },
+                    { key: 'sku', label: 'SKU' },
+                    { key: 'category', label: 'Category' },
+                    { key: 'stock', label: 'Stock' },
+                    { key: 'price', label: 'Price' }
+                  ]}
+                  minimal
+                />
+              </div>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <Button
+            size="sm"
+            onClick={() => setShowQuickAddModal(true)}
+            className="h-10 text-white rounded-xl shadow-lg px-5 font-black text-[10px] uppercase tracking-widest border-none transition-all hover:scale-105 active:scale-95 group"
+            style={{
+              background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
+              boxShadow: '0 8px 16px -4px rgba(15, 23, 42, 0.4)'
+            }}
+          >
+            <BrainCircuit className="w-4 h-4 mr-2 text-blue-400 group-hover:rotate-12 transition-transform" />
+            AI Smart Add
+          </Button>
+
+          <Button
+            size="sm"
+            onClick={() => setShowExcelMode(true)}
+            className="h-10 text-white rounded-xl shadow-lg px-5 font-black text-[10px] uppercase tracking-widest border-none transition-all hover:scale-105 active:scale-95 group"
+            style={{
+              background: 'linear-gradient(135deg, #064e3b 0%, #065f46 100%)',
+              boxShadow: '0 8px 16px -4px rgba(6, 78, 59, 0.4)'
+            }}
+          >
+            <Table2 className="w-4 h-4 mr-2 text-green-400 group-hover:rotate-6 transition-transform" />
+            Excel Mode
+          </Button>
+
+          <Button
+            size="sm"
+            onClick={(e) => onAdd ? onAdd(e) : setShowProductFormInternal(true)}
+            className="h-10 text-white rounded-xl shadow-lg px-6 font-black text-[10px] uppercase tracking-widest transition-all hover:scale-105 active:scale-95"
+            style={{
+              background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.primary}dd 100%)`,
+              boxShadow: `0 8px 16px -4px ${colors.primary}40`
+            }}
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Add Product
+          </Button>
         </div>
       </div>
 
       {/* Feature Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="products">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="bg-transparent">
+        <TabsList className={cn(
+          "grid w-full bg-gray-100/50 p-1 rounded-2xl border border-gray-200 shadow-inner",
+          isMultiLocationEnabled && isManufacturingEnabled ? "grid-cols-5" :
+            (isMultiLocationEnabled || isManufacturingEnabled) ? "grid-cols-4" : "grid-cols-3"
+        )}>
+          <TabsTrigger value="products" className="rounded-xl font-bold transition-all data-[state=active]:shadow-lg data-[state=active]:bg-white">
             <Package className="w-4 h-4 mr-2" />
             Products
           </TabsTrigger>
           {isMultiLocationEnabled && (
-            <TabsTrigger value="locations">
+            <TabsTrigger value="locations" className="rounded-xl font-bold transition-all data-[state=active]:shadow-lg data-[state=active]:bg-white">
               <Warehouse className="w-4 h-4 mr-2" />
               Locations
             </TabsTrigger>
           )}
           {isManufacturingEnabled && (
-            <TabsTrigger value="manufacturing">
+            <TabsTrigger value="manufacturing" className="rounded-xl font-bold transition-all data-[state=active]:shadow-lg data-[state=active]:bg-white">
               <Factory className="w-4 h-4 mr-2" />
               Manufacturing
             </TabsTrigger>
           )}
-          <TabsTrigger value="orders">
+          <TabsTrigger value="orders" className="rounded-xl font-bold transition-all data-[state=active]:shadow-lg data-[state=active]:bg-white">
             <FileText className="w-4 h-4 mr-2" />
             Orders
           </TabsTrigger>
-          <TabsTrigger value="reports">
+          <TabsTrigger value="reports" className="rounded-xl font-bold transition-all data-[state=active]:shadow-lg data-[state=active]:bg-white">
             <BarChart3 className="w-4 h-4 mr-2" />
             Reports
           </TabsTrigger>
@@ -641,76 +1043,121 @@ export function InventoryManager({
         {/* Products Tab */}
         <TabsContent value="products" className="space-y-6">
 
-          {/* Alerts and Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="bg-white p-4 rounded-lg border border-gray-200">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">Total Products</p>
-                  <p className="text-2xl font-bold text-black">{products.length}</p>
+          {/* Alerts and Stats - Premium Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="group bg-white p-5 rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-3 opacity-10 transform translate-x-4 -translate-y-4 group-hover:translate-x-2 group-hover:-translate-y-2 transition-transform duration-500">
+                <Package className="w-24 h-24" />
+              </div>
+              <div className="flex flex-col relative z-10">
+                <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                  <Package className="w-5 h-5 text-blue-600" />
                 </div>
-                <Package className="w-8 h-8" style={{ color: colors.primary }} />
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Total Products</p>
+                <div className="flex items-baseline gap-2 mt-1">
+                  <p className="text-3xl font-black text-gray-900 tracking-tighter">{products.length}</p>
+                  <span className="text-[10px] font-bold text-blue-500 bg-blue-50 px-2 py-0.5 rounded-full italic">Inventory Units</span>
+                </div>
               </div>
             </div>
-            <div className="bg-white p-4 rounded-lg border border-gray-200">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">Low Stock Items</p>
-                  <p className="text-2xl font-bold text-red-600">{calculateLowStock().length}</p>
+
+            <div className="group bg-white p-5 rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-3 opacity-10 transform translate-x-4 -translate-y-4 group-hover:translate-x-2 group-hover:-translate-y-2 transition-transform duration-500">
+                <AlertTriangle className="w-24 h-24" />
+              </div>
+              <div className="flex flex-col relative z-10">
+                <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                  <AlertTriangle className="w-5 h-5 text-red-600" />
                 </div>
-                <AlertTriangle className="w-8 h-8 text-red-500" />
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Stock Alerts</p>
+                <div className="flex items-baseline gap-2 mt-1">
+                  <p className="text-3xl font-black text-red-600 tracking-tighter">{calculateLowStock().length}</p>
+                  <span className="text-[10px] font-bold text-red-500 bg-red-50 px-2 py-0.5 rounded-full italic">Replenish Now</span>
+                </div>
               </div>
             </div>
-            <div className="bg-white p-4 rounded-lg border border-gray-200">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">Total Value</p>
-                  <p className="text-2xl font-bold text-black">
+
+            <div className="group bg-white p-5 rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-3 opacity-10 transform translate-x-4 -translate-y-4 group-hover:translate-x-2 group-hover:-translate-y-2 transition-transform duration-500">
+                <TrendingUp className="w-24 h-24" />
+              </div>
+              <div className="flex flex-col relative z-10">
+                <div className="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                  <TrendingUp className="w-5 h-5 text-green-600" />
+                </div>
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Inventory Value</p>
+                <div className="flex items-baseline gap-2 mt-1">
+                  <p className="text-2xl font-black text-gray-900 tracking-tighter">
                     {formatCurrency(products.reduce((sum, p) => sum + ((p.price || 0) * (p.stock || 0)), 0), 'PKR')}
                   </p>
                 </div>
-                <TrendingUp className="w-8 h-8 text-green-600" />
               </div>
             </div>
-            <div className="bg-white p-4 rounded-lg border border-gray-200">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">ABC Category A</p>
-                  <p className="text-2xl font-bold text-black">
-                    {abcAnalysis.filter(p => p.category === 'A').length}
-                  </p>
+
+            <div className="group bg-white p-5 rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-3 opacity-10 transform translate-x-4 -translate-y-4 group-hover:translate-x-2 group-hover:-translate-y-2 transition-transform duration-500">
+                <BarChart3 className="w-24 h-24" />
+              </div>
+              <div className="flex flex-col relative z-10">
+                <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                  <BarChart3 className="w-5 h-5 text-purple-600" />
                 </div>
-                <BarChart3 className="w-8 h-8" style={{ color: colors.primary }} />
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Efficiency Class</p>
+                <div className="flex items-baseline gap-2 mt-1">
+                  <p className="text-3xl font-black text-gray-900 tracking-tighter uppercase italic">
+                    Class {abcAnalysis.length > 0 ? "A+" : "-"}
+                  </p>
+                  <span className="text-[10px] font-bold text-purple-500 bg-purple-50 px-2 py-0.5 rounded-full italic">Optimized</span>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Low Stock Alerts */}
+          {/* Low Stock Alerts - Premium Callout */}
           {calculateLowStock().length > 0 && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <AlertTriangle className="w-5 h-5 text-red-600" />
-                <h3 className="font-semibold text-red-900">Low Stock Alerts</h3>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                {calculateLowStock().slice(0, 6).map(product => (
-                  <div key={product.id} className="flex items-center justify-between bg-white p-2 rounded">
-                    <span className="text-sm font-medium">{product.name}</span>
-                    <span className="text-sm text-red-600">
-                      Stock: {product.stock} (Min: {product.minStock || 0})
-                    </span>
+            <div className="relative overflow-hidden bg-white rounded-[32px] border-2 border-red-100 p-6 shadow-xl shadow-red-500/5 animate-in slide-in-from-left duration-500">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/5 rounded-full -translate-y-16 translate-x-16" />
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
+                <div className="flex items-center gap-5">
+                  <div className="w-14 h-14 rounded-2xl bg-red-500 flex items-center justify-center shadow-lg shadow-red-200 animate-pulse">
+                    <AlertTriangle className="w-7 h-7 text-white" />
                   </div>
-                ))}
+                  <div>
+                    <h3 className="text-xl font-black text-gray-900 tracking-tight">Replenishment Required</h3>
+                    <p className="text-sm font-bold text-red-600/70 uppercase tracking-widest mt-0.5">
+                      {calculateLowStock().length} items are below critical thresholds
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-3">
+                  {calculateLowStock().slice(0, 4).map(product => (
+                    <div key={product.id} className="flex items-center gap-3 bg-red-50/50 hover:bg-red-100 border border-red-100 px-4 py-2 rounded-xl transition-all cursor-default">
+                      <span className="text-xs font-black text-gray-800 uppercase tracking-tight">{product.name}</span>
+                      <div className="h-3 w-px bg-red-200" />
+                      <span className="text-xs font-black text-red-600">{product.stock} units</span>
+                    </div>
+                  ))}
+                  {calculateLowStock().length > 4 && (
+                    <div className="px-4 py-2 bg-gray-50 text-gray-400 text-[10px] font-black uppercase tracking-widest rounded-xl border border-gray-100">
+                      +{calculateLowStock().length - 4} More
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )}
 
           {/* Search and Filters */}
           <AdvancedSearch
-            onSearch={(term) => setSearchTerm(term)}
+            onSearch={(term, domainFilters) => {
+              setActiveDomainFilters(domainFilters);
+            }}
             placeholder="Search products by name or SKU..."
+            category={category}
+            hideSearch={true}
             filters={[
-              { key: 'category', label: 'Category', type: 'select', options: [] },
+              { key: 'category', label: 'Category', type: 'select', options: categoryOptions },
+              { key: 'brand', label: 'Brand', type: 'select', options: brandOptions },
               {
                 key: 'stock', label: 'Stock Status', type: 'select', options: [
                   { value: 'low', label: 'Low Stock' },
@@ -718,15 +1165,17 @@ export function InventoryManager({
                   { value: 'high', label: 'High Stock' },
                 ]
               },
+              { key: 'minPrice', label: 'Min Price', type: 'number', placeholder: 'Min' },
+              { key: 'maxPrice', label: 'Max Price', type: 'number', placeholder: 'Max' },
             ]}
           />
 
-          {/* Data Table or Busy Grid */}
-          <div className="bg-white rounded-lg border border-gray-200 p-0 overflow-hidden">
+          {/* Data Table or Busy Grid - Premium Container */}
+          <div className="bg-white rounded-[32px] border border-gray-100 p-0 overflow-hidden shadow-sm">
             {viewMode === 'busy' ? (
               <div className="h-[600px]">
                 <BusyGrid
-                  data={filteredProducts}
+                  data={productsToDisplay}
                   columns={gridColumns}
                   category={category}
                   onRowClick={(product) => {
@@ -738,13 +1187,14 @@ export function InventoryManager({
                     if (onQuickAdd) {
                       await onQuickAdd();
                     } else {
-                      await onAdd?.();
+                      await (onAdd ? onAdd() : setShowProductFormInternal(true));
                     }
                   }}
+                  className="h-full"
                   onDeleteRow={(product) => setProductToDelete(product)}
                   onAdvancedSettings={(product) => { setSelectedProduct(product); setShowAdvancedFeatures(true); }}
-                  onCellEdit={(product, field, value) => {
-                    // Update state immediately for responsiveness
+                  onCellEdit={async (product, field, value) => {
+                    // ✅ ENHANCED: Preserve batches, add error handling, optimistic updates
                     let processedValue = value;
                     const numericFields = [
                       'stock', 'price', 'cost_price', 'costPrice',
@@ -781,10 +1231,32 @@ export function InventoryManager({
                       }
                     }
 
-                    // Show instantaneous feedback
-                    toast.success(`Updated ${field}`, { id: `save-${field}`, position: 'bottom-right' });
+                    // ✅ CRITICAL: Ensure batches/serials are preserved
+                    const originalProduct = products.find(p => p.id === product.id);
+                    if (!updatedProduct.batches && originalProduct?.batches) {
+                      updatedProduct.batches = originalProduct.batches;
+                    }
+                    if (!updatedProduct.serial_numbers && !updatedProduct.serialNumbers) {
+                      updatedProduct.serial_numbers = originalProduct?.serial_numbers || originalProduct?.serialNumbers || [];
+                    }
 
-                    onUpdate?.(updatedProduct);
+                    // ✅ Optimistic Update with Rollback
+                    const oldProducts = [...products];
+                    setProducts(prev => prev.map(p => p.id === product.id ? updatedProduct : p));
+
+                    try {
+                      await onUpdate?.(updatedProduct);
+                      toast.success(`Updated ${field}`, { id: `save-${field}`, position: 'bottom-right', duration: 2000 });
+                    } catch (error) {
+                      // ❌ ROLLBACK on failure
+                      setProducts(oldProducts);
+                      toast.error(`Failed to update ${field}: ${error.message || 'Unknown error'}`, {
+                        id: `error-${field}`,
+                        position: 'bottom-right',
+                        duration: 4000
+                      });
+                      console.error('BusyGrid update error:', error);
+                    }
                   }}
                 />
               </div>
@@ -792,13 +1264,13 @@ export function InventoryManager({
               <div className="p-4">
                 <DataTable
                   category={category}
-                  data={filteredProducts}
+                  data={productsToDisplay}
                   columns={columns}
                   searchable={false}
                   exportable={true}
                   onBulkDelete={handleBulkDelete}
                   onExport={async (items) => {
-                    const dataToExport = items || filteredProducts;
+                    const dataToExport = items || productsToDisplay;
                     try {
                       await exportProducts(dataToExport, 'excel');
                       toast.success(`Exported ${dataToExport.length} items successfully`);
@@ -811,24 +1283,65 @@ export function InventoryManager({
             )}
           </div>
 
-          {/* ABC Analysis Section */}
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <h3 className="text-lg font-semibold mb-4">ABC Analysis</h3>
-            <div className="grid grid-cols-3 gap-4 mb-4">
-              <div className="bg-red-50 p-4 rounded-lg">
-                <div className="text-2xl font-bold text-red-600">A</div>
-                <p className="text-sm text-gray-600">High Value (80%)</p>
-                <p className="text-lg font-semibold">{abcAnalysis.filter(p => p.category === 'A').length} items</p>
+          {/* ABC Analysis Section - Premium Analytics */}
+          <div className="bg-white rounded-[40px] border border-gray-100 p-10 shadow-sm relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/5 rounded-full -translate-y-32 translate-x-32" />
+
+            <div className="flex flex-col md:flex-row md:items-center justify-between mb-10 gap-4 relative z-10">
+              <div>
+                <h3 className="text-2xl font-black text-gray-900 tracking-tighter italic">ABC Inventory Matrix</h3>
+                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-[0.3em] mt-1 opacity-80">Strategic Stock Optimization Engine</p>
               </div>
-              <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
-                <div className="text-2xl font-bold text-orange-600">B</div>
-                <p className="text-sm text-gray-600">Medium Value (15%)</p>
-                <p className="text-lg font-semibold">{abcAnalysis.filter(p => p.category === 'B').length} items</p>
+              <div className="flex items-center gap-2 px-6 py-2 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-lg shadow-slate-200">
+                <BarChart3 className="w-4 h-4 text-blue-400" />
+                Live Distribution
               </div>
-              <div className="bg-green-50 p-4 rounded-lg">
-                <div className="text-2xl font-bold text-green-600">C</div>
-                <p className="text-sm text-gray-600">Low Value (5%)</p>
-                <p className="text-lg font-semibold">{abcAnalysis.filter(p => p.category === 'C').length} items</p>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 relative z-10">
+              <div className="group bg-gradient-to-tr from-red-50/50 to-white p-8 rounded-[32px] border border-red-100/50 hover:shadow-2xl hover:shadow-red-500/5 transition-all duration-500">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="w-14 h-14 rounded-2xl bg-red-100 flex items-center justify-center font-black text-3xl text-red-600 shadow-sm group-hover:scale-110 group-hover:rotate-3 transition-transform">A</div>
+                  <Badge className="bg-red-500 text-white border-none font-black text-[9px] uppercase tracking-tighter px-3 h-6">Critical Hub</Badge>
+                </div>
+                <h4 className="text-sm font-black text-gray-800 uppercase tracking-widest leading-tight">High Value Assets<br />(Top 80%)</h4>
+                <div className="h-1.5 w-full bg-red-100 rounded-full mt-6 mb-8 overflow-hidden">
+                  <div className="h-full bg-red-500 w-[80%] rounded-full shadow-[0_0_12px_rgba(239,68,68,0.4)]" />
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <p className="text-5xl font-black text-gray-900 tracking-tighter">{abcAnalysis.filter(p => p.category === 'A').length}</p>
+                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest italic leading-3">Exclusive<br />SKUs</span>
+                </div>
+              </div>
+
+              <div className="group bg-gradient-to-tr from-orange-50/50 to-white p-8 rounded-[32px] border border-orange-100/50 hover:shadow-2xl hover:shadow-orange-500/5 transition-all duration-500">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="w-14 h-14 rounded-2xl bg-orange-100 flex items-center justify-center font-black text-3xl text-orange-600 shadow-sm group-hover:scale-110 group-hover:rotate-3 transition-transform">B</div>
+                  <Badge className="bg-orange-500 text-white border-none font-black text-[9px] uppercase tracking-tighter px-3 h-6">Normal Flow</Badge>
+                </div>
+                <h4 className="text-sm font-black text-gray-800 uppercase tracking-widest leading-tight">Medium Value Assets<br />(Mid 15%)</h4>
+                <div className="h-1.5 w-full bg-orange-100 rounded-full mt-6 mb-8 overflow-hidden">
+                  <div className="h-full bg-orange-500 w-[15%] rounded-full shadow-[0_0_12px_rgba(249,115,22,0.4)]" />
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <p className="text-5xl font-black text-gray-900 tracking-tighter">{abcAnalysis.filter(p => p.category === 'B').length}</p>
+                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest italic leading-3">Steady<br />SKUs</span>
+                </div>
+              </div>
+
+              <div className="group bg-gradient-to-tr from-green-50/50 to-white p-8 rounded-[32px] border border-green-100/50 hover:shadow-2xl hover:shadow-green-500/5 transition-all duration-500">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="w-14 h-14 rounded-2xl bg-green-100 flex items-center justify-center font-black text-3xl text-green-600 shadow-sm group-hover:scale-110 group-hover:rotate-3 transition-transform">C</div>
+                  <Badge className="bg-green-500 text-white border-none font-black text-[9px] uppercase tracking-tighter px-3 h-6">Bulk Layer</Badge>
+                </div>
+                <h4 className="text-sm font-black text-gray-800 uppercase tracking-widest leading-tight">Low Value Assets<br />(Base 5%)</h4>
+                <div className="h-1.5 w-full bg-green-100 rounded-full mt-6 mb-8 overflow-hidden">
+                  <div className="h-full bg-green-500 w-[5%] rounded-full shadow-[0_0_12px_rgba(34,197,94,0.4)]" />
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <p className="text-5xl font-black text-gray-900 tracking-tighter">{abcAnalysis.filter(p => p.category === 'C').length}</p>
+                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest italic leading-3">Bulk<br />SKUs</span>
+                </div>
               </div>
             </div>
           </div>
@@ -849,7 +1362,6 @@ export function InventoryManager({
                 }}
                 product={selectedProduct}
                 category={category}
-                currency="PKR"
               />
             ) : (
               <Card>
@@ -863,14 +1375,14 @@ export function InventoryManager({
         )}
 
         {/* Pricing Tab */}
-        <TabsContent value="pricing" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Price Lists</CardTitle>
-                <CardDescription>Manage multiple price lists for different scenarios</CardDescription>
+        <TabsContent value="pricing" className="space-y-8 mt-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <Card className="rounded-[32px] border-gray-100 shadow-sm overflow-hidden group hover:shadow-xl transition-all duration-500">
+              <CardHeader className="bg-slate-50/50 pb-6 border-b border-gray-50">
+                <CardTitle className="text-xl font-black text-gray-900 tracking-tight italic">Global Price Lists</CardTitle>
+                <CardDescription className="text-xs font-bold uppercase tracking-widest text-gray-500 opacity-70">Multi-tier pricing architecture</CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-0">
                 <PriceListManager
                   priceLists={[]}
                   products={products}
@@ -878,16 +1390,18 @@ export function InventoryManager({
                   onSave={(lists) => {
                     toast.success('Price lists updated');
                   }}
+                  category={category}
                   currency="PKR"
                 />
               </CardContent>
             </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle>Discount Schemes</CardTitle>
-                <CardDescription>Manage discount rules and promotions</CardDescription>
+
+            <Card className="rounded-[32px] border-gray-100 shadow-sm overflow-hidden group hover:shadow-xl transition-all duration-500">
+              <CardHeader className="bg-slate-50/50 pb-6 border-b border-gray-50">
+                <CardTitle className="text-xl font-black text-gray-900 tracking-tight italic">Discount Schemes</CardTitle>
+                <CardDescription className="text-xs font-bold uppercase tracking-widest text-gray-500 opacity-70">Promotional Logic & Campaigns</CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-0">
                 <DiscountSchemeManager
                   schemes={[]}
                   products={products}
@@ -895,6 +1409,7 @@ export function InventoryManager({
                   onSave={(schemes) => {
                     toast.success('Discount schemes updated');
                   }}
+                  category={category}
                   currency="PKR"
                 />
               </CardContent>
@@ -908,10 +1423,11 @@ export function InventoryManager({
             <MultiLocationInventory
               locations={locations}
               products={products}
+              domainKnowledge={domainKnowledge}
+              businessId={businessId}
               category={category}
               domainKnowledge={domainKnowledge}
               businessId={businessId}
-              refreshData={refreshData}
               onAdd={onLocationAdd}
               onUpdate={onLocationUpdate}
               onDelete={onLocationDelete}
@@ -933,6 +1449,8 @@ export function InventoryManager({
                 toast.success('Production updated');
                 refreshData?.();
               }}
+              onBOMAdd={() => { }}
+              onProductionOrderCreate={() => { }}
             />
           </TabsContent>
         )}
@@ -952,36 +1470,33 @@ export function InventoryManager({
           />
 
           {/* Additional Order Management Features */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
             <StockReservation
               reservations={[]}
               products={products}
-              customers={[]}
-              onSave={(reservations) => {
-                toast.success('Reservations updated');
-              }}
+              customers={customers}
+              businessId={businessId}
               currency="PKR"
             />
             <StockAdjustment
               adjustments={[]}
               products={products}
+              warehouses={locations}
+              businessId={businessId}
               onAdjust={(data) => {
-                const product = products.find(p => p.id === data.productId);
-                if (product) {
-                  onUpdate?.({ ...product, stock: data.newStock });
-                }
+                refreshData?.();
                 toast.success('Stock adjusted successfully');
               }}
               currency="PKR"
             />
           </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Auto Reorder Manager</CardTitle>
-              <CardDescription>Automatically generate purchase orders for low stock items</CardDescription>
+          <Card className="rounded-[32px] border-gray-100 shadow-sm overflow-hidden group hover:shadow-xl transition-all duration-500 mt-8">
+            <CardHeader className="bg-slate-50/50 pb-6 border-b border-gray-50">
+              <CardTitle className="text-xl font-black text-gray-900 tracking-tight italic">Auto-Reorder Engine</CardTitle>
+              <CardDescription className="text-xs font-bold uppercase tracking-widest text-gray-500 opacity-70">Algorithmic replenishment manager</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-0">
               <AutoReorderManager
                 products={products}
                 vendors={[]}
@@ -997,45 +1512,75 @@ export function InventoryManager({
 
         {/* Reports Tab */}
         <TabsContent value="reports" className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card className="border-none shadow-sm bg-blue-50/50">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-bold text-blue-900">Total SKU</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-3xl font-black text-blue-600">{products.length}</p>
-                <p className="text-xs text-blue-400 font-medium">Items in inventory</p>
-              </CardContent>
-            </Card>
-            <Card className="border-none shadow-sm bg-emerald-50/50">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-bold text-emerald-900">Valuation</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-3xl font-black text-emerald-600">
-                  {formatCurrency(products.reduce((sum, p) => sum + ((p.price || 0) * (p.stock || 0)), 0), 'PKR')}
-                </p>
-                <p className="text-xs text-emerald-400 font-medium">Market value</p>
-              </CardContent>
-            </Card>
-            <Card className="border-none shadow-sm bg-amber-50/50">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-bold text-amber-900">Safety Risk</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-3xl font-black text-amber-600">{calculateLowStock().length}</p>
-                <p className="text-xs text-amber-400 font-medium">Below reorder point</p>
-              </CardContent>
-            </Card>
-            <Card className="border-none shadow-sm bg-purple-50/50">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-bold text-purple-900">Stock Turnover</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-3xl font-black text-purple-600">4.2x</p>
-                <p className="text-xs text-purple-400 font-medium">Monthly average</p>
-              </CardContent>
-            </Card>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="group bg-white p-6 rounded-[32px] border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-4 opacity-5 transform translate-x-4 -translate-y-4 group-hover:translate-x-2 group-hover:-translate-y-2 transition-transform duration-500">
+                <Package className="w-24 h-24" />
+              </div>
+              <div className="flex flex-col relative z-10">
+                <div className="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-sm shadow-blue-100">
+                  <Package className="w-6 h-6 text-blue-600" />
+                </div>
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Total SKU Profile</p>
+                <div className="flex items-baseline gap-2 mt-1">
+                  <p className="text-4xl font-black text-gray-900 tracking-tighter">{products.length}</p>
+                  <span className="text-[10px] font-bold text-blue-500 bg-blue-50 px-2.5 py-1 rounded-full italic">Catalog Scope</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="group bg-white p-6 rounded-[32px] border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-4 opacity-5 transform translate-x-4 -translate-y-4 group-hover:translate-x-2 group-hover:-translate-y-2 transition-transform duration-500">
+                <TrendingUp className="w-24 h-24" />
+              </div>
+              <div className="flex flex-col relative z-10">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-50 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-sm shadow-emerald-100">
+                  <TrendingUp className="w-6 h-6 text-emerald-600" />
+                </div>
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Asset Valuation</p>
+                <div className="flex items-baseline gap-2 mt-1">
+                  <p className="text-3xl font-black text-gray-900 tracking-tighter">
+                    {formatCurrency(products.reduce((sum, p) => sum + ((p.price || 0) * (p.stock || 0)), 0), 'PKR')}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="group bg-white p-6 rounded-[32px] border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-4 opacity-5 transform translate-x-4 -translate-y-4 group-hover:translate-x-2 group-hover:-translate-y-2 transition-transform duration-500">
+                <AlertCircle className="w-24 h-24" />
+              </div>
+              <div className="flex flex-col relative z-10">
+                <div className="w-12 h-12 rounded-2xl bg-amber-50 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-sm shadow-amber-100">
+                  <AlertCircle className="w-6 h-6 text-amber-600" />
+                </div>
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Safety & Risk</p>
+                <div className="flex items-baseline gap-2 mt-1">
+                  <p className="text-4xl font-black text-amber-600 tracking-tighter">
+                    {isExpiryEnabled ? expiringCount : calculateLowStock().length}
+                  </p>
+                  <span className="text-[10px] font-bold text-amber-500 bg-amber-50 px-2.5 py-1 rounded-full italic">
+                    {isExpiryEnabled ? 'Expiring' : 'Low Stock'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="group bg-white p-6 rounded-[32px] border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-4 opacity-5 transform translate-x-4 -translate-y-4 group-hover:translate-x-2 group-hover:-translate-y-2 transition-transform duration-500">
+                <Repeat className="w-24 h-24" />
+              </div>
+              <div className="flex flex-col relative z-10">
+                <div className="w-12 h-12 rounded-2xl bg-purple-50 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-sm shadow-purple-100">
+                  <Repeat className="w-6 h-6 text-purple-600" />
+                </div>
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Efficiency Velocity</p>
+                <div className="flex items-baseline gap-2 mt-1">
+                  <p className="text-4xl font-black text-gray-900 tracking-tighter italic">{turnoverRate}x</p>
+                  <span className="text-[10px] font-bold text-purple-500 bg-purple-50 px-2.5 py-1 rounded-full italic">MoM Yield</span>
+                </div>
+              </div>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1332,6 +1877,28 @@ export function InventoryManager({
       <ShortcutsHelp
         isOpen={showShortcutsHelp}
         onClose={() => setShowShortcutsHelp(false)}
+      />
+      <SmartQuickAddModal
+        isOpen={showQuickAddModal}
+        onClose={() => setShowQuickAddModal(false)}
+        onSave={async (data) => {
+          await handleAddProduct(data);
+          setShowQuickAddModal(false);
+        }}
+        category={category}
+        businessId={businessId}
+        currency={currency}
+      />
+
+      <ExcelModeModal
+        isOpen={showExcelMode}
+        onClose={() => setShowExcelMode(false)}
+        data={products}
+        columns={columns.filter(c => c.id !== 'actions')}
+        onSave={handleExcelSave}
+        category={category}
+        businessId={businessId}
+        title={`${category.replace(/-/g, ' ').toUpperCase()} - BULK ENTRY`}
       />
     </div >
   );

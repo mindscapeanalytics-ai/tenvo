@@ -11,11 +11,12 @@ import { getDomainColors } from '@/lib/domainColors';
 import toast from 'react-hot-toast';
 
 // Helper for row rendering
+/** @type {React.FC<{label: string, amount: number, type?: 'normal'|'total', indent?: boolean, currency?: import('@/lib/currency').CurrencyCode}>} */
 const ReportRow = ({ label, amount, type = 'normal', indent = false, currency = 'PKR' }) => (
     <div className={`flex justify-between py-2 border-b border-gray-50 ${type === 'total' ? 'font-bold bg-gray-50/50 px-2 rounded mt-1' : ''} ${indent ? 'pl-8' : ''}`}>
         <span className={`${type === 'total' ? 'text-gray-900' : 'text-gray-600'}`}>{label}</span>
         <span className={`${type === 'total' ? 'text-gray-900' : 'text-gray-700 font-mono'}`}>
-            {formatCurrency(amount, currency)}
+            {formatCurrency(amount || 0, currency)}
         </span>
     </div>
 );
@@ -30,6 +31,11 @@ const SectionHeader = ({ title, icon: Icon, color }) => (
     </div>
 );
 
+/**
+ * @param {Object} props
+ * @param {string} props.businessId
+ * @param {string} [props.category]
+ */
 export default function FinancialReports({ businessId, category = 'retail-shop' }) {
     const colors = getDomainColors(category);
     const [activeTab, setActiveTab] = useState('pl');
@@ -174,11 +180,11 @@ export default function FinancialReports({ businessId, category = 'retail-shop' 
                                                 <p className="text-green-600/70 text-xs">Operating Income - COGS</p>
                                             </div>
                                             <div className="text-right">
-                                                <div className={`text-xl font-bold ${plData.grossProfit >= 0 ? 'text-green-700' : 'text-red-700'}`}>
-                                                    {formatCurrency(plData.grossProfit, 'PKR')}
+                                                <div className={`text-xl font-bold ${Number(plData.grossProfit) >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                                                    {formatCurrency(Number(plData.grossProfit), 'PKR')}
                                                 </div>
                                                 <div className="text-[10px] font-bold text-green-600 uppercase tracking-wider">
-                                                    {plData.totalIncome > 0 ? Math.round((plData.grossProfit / plData.totalIncome) * 100) : 0}% Margin
+                                                    {Number(plData.totalIncome) > 0 ? Math.round((Number(plData.grossProfit) / Number(plData.totalIncome)) * 100) : 0}% Margin
                                                 </div>
                                             </div>
                                         </section>
@@ -205,8 +211,8 @@ export default function FinancialReports({ businessId, category = 'retail-shop' 
                                                 <p className="text-gray-400 text-sm">Gross Profit - Operating Expenses</p>
                                             </div>
                                             <div className="text-right">
-                                                <div className={`text-2xl font-bold ${plData.netIncome >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                                    {formatCurrency(plData.netIncome, 'PKR')}
+                                                <div className={`text-2xl font-bold ${Number(plData.netIncome) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                    {formatCurrency(Number(plData.netIncome), 'PKR')}
                                                 </div>
                                             </div>
                                         </section>

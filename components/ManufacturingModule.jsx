@@ -17,16 +17,27 @@ import { Combobox } from './ui/combobox';
 import { manufacturingAPI } from '@/lib/api/manufacturing';
 
 /**
- * ManufacturingModule Component
- * Manages BOMs and Production Orders with direct API integration
+ * @typedef {Object} ManufacturingModuleProps
+ * @property {any[]} [products]
+ * @property {any[]} [bomList]
+ * @property {any[]} [productionOrders]
+ * @property {any[]} [warehouses]
+ * @property {string} [businessId]
+ * @property {() => void} [onSave]
+ * @property {() => void} [onBOMAdd]
+ * @property {() => void} [onProductionOrderCreate]
  */
+
+/** @type {React.FC<ManufacturingModuleProps>} */
 export function ManufacturingModule({
   products = [],
   bomList = [],
   productionOrders = [],
   warehouses = [],
   businessId,
-  onSave, // Used to trigger refresh in parent
+  onSave,
+  onBOMAdd,
+  onProductionOrderCreate
 }) {
   const [activeTab, setActiveTab] = useState('bom');
   const [showBOMForm, setShowBOMForm] = useState(false);
@@ -377,7 +388,7 @@ export function ManufacturingModule({
                   <div className="pt-3 border-t flex justify-between items-center">
                     <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Est. Unit Cost</span>
                     <span className="text-lg font-bold text-wine">
-                      Rs {totalCost.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      ₨ {totalCost.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                     </span>
                   </div>
                 </CardContent>
@@ -612,7 +623,7 @@ export function ManufacturingModule({
               <div className="flex justify-between items-center py-2 px-4 bg-wine/5 rounded-lg border border-wine/10 mb-4">
                 <span className="text-sm font-medium text-wine">Estimated Production Cost:</span>
                 <span className="text-lg font-bold text-wine">
-                  Rs {calculateBOMFormCost().toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  ₨ {calculateBOMFormCost().toLocaleString(undefined, { minimumFractionDigits: 2 })}
                 </span>
               </div>
 

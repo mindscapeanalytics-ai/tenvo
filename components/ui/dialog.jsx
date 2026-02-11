@@ -10,7 +10,13 @@ const DialogTrigger = DialogPrimitive.Trigger;
 const DialogPortal = DialogPrimitive.Portal;
 const DialogClose = DialogPrimitive.Close;
 
-const DialogOverlay = React.forwardRef(({ className, ...props }, ref) => (
+/**
+ * @typedef {Object} DialogOverlayProps
+ * @property {string} [className]
+ * @property {React.ReactNode} [children]
+ */
+/** @type {React.ForwardRefExoticComponent<DialogOverlayProps & React.HTMLAttributes<HTMLDivElement>>} */
+const DialogOverlay = React.forwardRef(({ className, children, ...props }, ref) => (
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
@@ -22,6 +28,12 @@ const DialogOverlay = React.forwardRef(({ className, ...props }, ref) => (
 ));
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 
+/**
+ * @typedef {Object} DialogContentProps
+ * @property {string} [className]
+ * @property {React.ReactNode} [children]
+ */
+/** @type {React.ForwardRefExoticComponent<DialogContentProps & React.HTMLAttributes<HTMLDivElement>>} */
 const DialogContent = React.forwardRef(
   ({ className, children, ...props }, ref) => (
     <DialogPortal>
@@ -45,6 +57,11 @@ const DialogContent = React.forwardRef(
 );
 DialogContent.displayName = DialogPrimitive.Content.displayName;
 
+/**
+ * @param {Object} props
+ * @param {string} [props.className]
+ * @param {React.ReactNode} [props.children]
+ */
 const DialogHeader = ({ className, ...props }) => (
   <div
     className={cn('flex flex-col space-y-1.5 text-center sm:text-left', className)}
@@ -53,6 +70,11 @@ const DialogHeader = ({ className, ...props }) => (
 );
 DialogHeader.displayName = 'DialogHeader';
 
+/**
+ * @param {Object} props
+ * @param {string} [props.className]
+ * @param {React.ReactNode} [props.children]
+ */
 const DialogFooter = ({ className, ...props }) => (
   <div
     className={cn(
@@ -64,6 +86,7 @@ const DialogFooter = ({ className, ...props }) => (
 );
 DialogFooter.displayName = 'DialogFooter';
 
+/** @type {React.ForwardRefExoticComponent<DialogContentProps & React.HTMLAttributes<HTMLHeadingElement>>} */
 const DialogTitle = React.forwardRef(({ className, ...props }, ref) => (
   <DialogPrimitive.Title
     ref={ref}
@@ -76,6 +99,7 @@ const DialogTitle = React.forwardRef(({ className, ...props }, ref) => (
 ));
 DialogTitle.displayName = DialogPrimitive.Title.displayName;
 
+/** @type {React.ForwardRefExoticComponent<DialogContentProps & React.HTMLAttributes<HTMLParagraphElement>>} */
 const DialogDescription = React.forwardRef(({ className, ...props }, ref) => (
   <DialogPrimitive.Description
     ref={ref}

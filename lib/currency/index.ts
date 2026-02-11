@@ -77,6 +77,11 @@ export function formatCurrency(
   currency: CurrencyCode = 'PKR',
   options?: Intl.NumberFormatOptions
 ): string {
+  // Robust NaN handling
+  if (typeof amount !== 'number' || isNaN(amount)) {
+    amount = 0;
+  }
+
   const config = CURRENCY_CONFIG[currency];
 
   if (!config) {
@@ -121,6 +126,11 @@ export function formatAmount(
   amount: number,
   currency: CurrencyCode = 'PKR'
 ): string {
+  // Robust NaN handling
+  if (typeof amount !== 'number' || isNaN(amount)) {
+    amount = 0;
+  }
+
   const config = CURRENCY_CONFIG[currency];
   const formatter = new Intl.NumberFormat(config.locale, {
     minimumFractionDigits: config.decimal,
@@ -135,7 +145,7 @@ export function formatAmount(
  * Removes currency symbols and formatting
  * 
  * @param value - Currency string (e.g., "₨1,000.00" or "1,000")
- * @param currency - Expected currency code (for validation)
+ * @param _currency - Expected currency code (for validation)
  * @returns Parsed number
  * 
  * @example
@@ -144,13 +154,13 @@ export function formatAmount(
  */
 export function parseCurrency(
   value: string,
-  currency: CurrencyCode = 'PKR'
+  _currency: CurrencyCode = 'PKR'
 ): number {
   if (!value || typeof value !== 'string') {
     return 0;
   }
 
-  const config = CURRENCY_CONFIG[currency];
+  // const config = CURRENCY_CONFIG[currency];
 
   // Remove currency symbols
   let cleaned = value

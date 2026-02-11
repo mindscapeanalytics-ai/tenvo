@@ -334,7 +334,7 @@ model product_variants {
   price             Decimal?          @default(0.00) @db.Decimal(12, 2)
   cost_price        Decimal?          @default(0.00) @db.Decimal(12, 2)
   mrp               Decimal?          @default(0.00) @db.Decimal(12, 2)
-  stock             Int?              @default(0)
+  stock             Decimal?          @default(0) @db.Decimal(12, 2)
   min_stock         Int?              @default(0)
   image_url         String?
   is_active         Boolean?          @default(true)
@@ -386,10 +386,11 @@ model products {
   cost_price              Decimal?                  @db.Decimal(12, 2)
   mrp                     Decimal?                  @db.Decimal(12, 2)
   stock                   Decimal?                  @default(0) @db.Decimal
-  min_stock               Int?                      @default(0)
-  max_stock               Int?
-  reorder_point           Int?
-  reorder_quantity        Int?
+  min_stock               Decimal?                  @default(0) @db.Decimal(12, 2)
+  min_stock_level         Decimal?                  @default(5) @db.Decimal(12, 2)
+  max_stock               Decimal?                  @db.Decimal(12, 2)
+  reorder_point           Decimal?                  @db.Decimal(12, 2)
+  reorder_quantity        Decimal?                  @db.Decimal(12, 2)
   unit                    String?                   @default("pcs")
   hsn_code                String?
   sac_code                String?
@@ -440,11 +441,13 @@ model purchases {
   subtotal        Decimal?         @default(0) @db.Decimal(12, 2)
   tax_total       Decimal?         @default(0) @db.Decimal(12, 2)
   notes           String?
+  domain_data     Json?            @default("{}")
   purchase_items  purchase_items[]
   businesses      businesses?      @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   vendors         vendors?         @relation(fields: [vendor_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@unique([business_id, purchase_number])
+  @@index([domain_data], map: "idx_purchases_domain_data", type: Gin)
 }
 
 model stock_movements {
@@ -455,7 +458,7 @@ model stock_movements {
   transaction_type    String
   reference_id        String?              @db.Uuid
   reference_type      String?
-  quantity_change     Int
+  quantity_change     Decimal              @db.Decimal(12, 2)
   unit_cost           Decimal?             @db.Decimal(12, 2)
   notes               String?
   created_at          DateTime?            @default(now()) @db.Timestamptz(6)
@@ -641,8 +644,8 @@ model inventory_ledger {
   transaction_type String
   reference_id     String?    @db.Uuid
   reference_type   String?
-  quantity_change  Int
-  running_balance  Int?
+  quantity_change  Decimal    @db.Decimal(12, 2)
+  running_balance  Decimal?   @db.Decimal(12, 2)
   unit_cost        Decimal?   @db.Decimal(12, 2)
   total_value      Decimal?   @db.Decimal(12, 2)
   batch_number     String?
@@ -669,6 +672,7 @@ model quotations {
   grand_total        Decimal?          @default(0) @db.Decimal(12, 2)
   notes              String?
   terms              String?
+  domain_data        Json?             @default("{}")
   created_at         DateTime?         @default(now()) @db.Timestamptz(6)
   updated_at         DateTime?         @default(now()) @db.Timestamptz(6)
   total_amount       Decimal?          @default(0) @db.Decimal(12, 2)
@@ -682,6 +686,8 @@ model quotations {
   @@index([business_id], map: "idx_quotations_business_id")
   @@index([customer_id], map: "idx_quotations_customer_id")
   @@index([status], map: "idx_quotations_status")
+  @@index([date], map: "idx_quotations_date")
+  @@index([domain_data], map: "idx_quotations_domain_data", type: Gin)
 }
 
 model sales_orders {
@@ -699,6 +705,7 @@ model sales_orders {
   grand_total       Decimal?            @default(0) @db.Decimal(12, 2)
   notes             String?
   shipping_address  String?
+  domain_data       Json?               @default("{}")
   created_at        DateTime?           @default(now()) @db.Timestamptz(6)
   updated_at        DateTime?           @default(now()) @db.Timestamptz(6)
   total_amount      Decimal?            @default(0) @db.Decimal(12, 2)
@@ -712,6 +719,8 @@ model sales_orders {
   @@index([business_id], map: "idx_sales_orders_business_id")
   @@index([customer_id], map: "idx_sales_orders_customer_id")
   @@index([status], map: "idx_sales_orders_status")
+  @@index([delivery_date], map: "idx_sales_orders_delivery_date")
+  @@index([domain_data], map: "idx_sales_orders_domain_data", type: Gin)
 }
 
 model sales_order_items {
@@ -748,6 +757,7 @@ model delivery_challans {
   driver_name            String?
   vehicle_number         String?
   notes                  String?
+  domain_data            Json?                    @default("{}")
   created_at             DateTime?                @default(now()) @db.Timestamptz(6)
   updated_at             DateTime?                @default(now()) @db.Timestamptz(6)
   delivery_address       String?
@@ -761,6 +771,7 @@ model delivery_challans {
   @@index([business_id], map: "idx_delivery_challans_business_id")
   @@index([customer_id], map: "idx_delivery_challans_customer_id")
   @@index([status], map: "idx_delivery_challans_status")
+  @@index([domain_data], map: "idx_delivery_challans_domain_data", type: Gin)
 }
 
 model challan_items {
@@ -795,6 +806,7 @@ model payments {
   cheque_number  String?    @db.VarChar(100)
   transaction_id String?    @db.VarChar(255)
   notes          String?
+  domain_data    Json?      @default("{}")
   created_at     DateTime?  @default(now()) @db.Timestamptz(6)
   updated_at     DateTime?  @default(now()) @db.Timestamptz(6)
   businesses     businesses @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
@@ -806,6 +818,7 @@ model payments {
   @@index([payment_date], map: "idx_payments_date")
   @@index([reference_type, reference_id], map: "idx_payments_reference")
   @@index([vendor_id], map: "idx_payments_vendor_id")
+  @@index([domain_data], map: "idx_payments_domain_data", type: Gin)
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.

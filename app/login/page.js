@@ -55,13 +55,24 @@ export default function LoginPage() {
                 return;
             }
 
-            // Use server action to query DB directly
-            const businessResult = await getBusinessByUserId(user.id);
+            // Check for multiple businesses to decide redirection
+            try {
+                const businesses = await businessAPI.getJoinedBusinesses(user.id);
 
-            if (businessResult.success && businessResult.business) {
-                toast.success(`Welcome back, ${user.name || 'User'}!`);
-                router.push(`/business/${businessResult.business.domain}`);
-                return;
+                if (businesses && businesses.length > 0) {
+                    toast.success(`Welcome back, ${user.name || 'User'}!`);
+
+                    if (businesses.length === 1) {
+                        // Exactly one business - go straight to its dashboard
+                        router.push(`/business/${businesses[0].domain}`);
+                    } else {
+                        // Multiple businesses - go to selection screen
+                        router.push('/multi-business');
+                    }
+                    return;
+                }
+            } catch (bizErr) {
+                console.error("Error fetching businesses during login:", bizErr);
             }
 
             // Fallback - No business found

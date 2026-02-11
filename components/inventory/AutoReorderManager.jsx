@@ -11,10 +11,11 @@ import { formatCurrency } from '@/lib/currency';
  * AutoReorderManager Component
  * Automatically generates purchase orders based on reorder points
  * 
- * @param {Array} products - Array of products
- * @param {Array} vendors - Array of vendors
- * @param {Function} onGeneratePO - Callback to generate purchase order
- * @param {string} currency - Currency code
+ * @param {Object} props
+ * @param {any[]} [props.products] - Array of products
+ * @param {any[]} [props.vendors] - Array of vendors
+ * @param {(poData: any) => void} [props.onGeneratePO] - Callback to generate purchase order
+ * @param {string} [props.currency] - Currency code
  */
 export function AutoReorderManager({
   products = [],

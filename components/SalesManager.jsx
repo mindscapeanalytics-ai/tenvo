@@ -29,7 +29,7 @@ export function SalesManager({
     const metrics = useMemo(() => {
         const total = invoices.reduce((sum, inv) => sum + (Number(inv.grand_total) || 0), 0);
         const count = invoices.length;
-        const avg = count > 0 ? total / count : 0;
+        const avg = count > 0 ? Number(total) / count : 0;
 
         return {
             total: formatCurrency(total, 'PKR'),

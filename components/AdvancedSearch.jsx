@@ -3,7 +3,11 @@
 import { useState } from 'react';
 import { Search, Filter, X } from 'lucide-react';
 
-export function AdvancedSearch({ onSearch, filters = [], placeholder = 'Search...' }) {
+import { getDomainColors } from '@/lib/domainColors';
+import { cn } from '@/lib/utils';
+
+export function AdvancedSearch({ onSearch, filters = [], placeholder = 'Search...', category = 'retail-shop', hideSearch = false }) {
+  const colors = getDomainColors(category);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeFilters, setActiveFilters] = useState({});
   const [showFilters, setShowFilters] = useState(false);
@@ -35,28 +39,34 @@ export function AdvancedSearch({ onSearch, filters = [], placeholder = 'Search..
   const activeFilterCount = Object.keys(activeFilters).filter(key => activeFilters[key]).length;
 
   return (
-    <div className="w-full">
-      <div className="flex items-center gap-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => handleSearch(e.target.value)}
-            placeholder={placeholder}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-wine focus:border-wine"
-          />
-        </div>
+    <div className="w-full space-y-4">
+      <div className="flex items-center gap-3">
+        {!hideSearch && (
+          <div className="relative flex-1 group">
+            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => handleSearch(e.target.value)}
+              placeholder={placeholder}
+              className="w-full pl-12 pr-4 py-3 bg-white border border-gray-200 rounded-2xl shadow-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all placeholder:text-gray-400 font-medium"
+            />
+          </div>
+        )}
         {filters.length > 0 && (
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className={`relative px-4 py-2 border border-gray-300 rounded-lg hover:border-wine transition ${
-              activeFilterCount > 0 ? 'bg-wine text-white border-wine' : ''
-            }`}
+            className={cn(
+              "relative px-5 py-3 border rounded-2xl transition-all flex items-center gap-2 font-black text-[10px] uppercase tracking-widest shadow-sm active:scale-95",
+              activeFilterCount > 0
+                ? "bg-blue-600 text-white border-blue-600 shadow-blue-200"
+                : "bg-white text-gray-700 border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+            )}
           >
             <Filter className="w-4 h-4" />
+            Filters
             {activeFilterCount > 0 && (
-              <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+              <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-black rounded-full w-5 h-5 flex items-center justify-center shadow-lg border-2 border-white">
                 {activeFilterCount}
               </span>
             )}
@@ -65,28 +75,29 @@ export function AdvancedSearch({ onSearch, filters = [], placeholder = 'Search..
         {(searchTerm || activeFilterCount > 0) && (
           <button
             onClick={clearAll}
-            className="px-4 py-2 text-gray-600 hover:text-wine"
+            className="p-3 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+            title="Clear All"
           >
-            <X className="w-4 h-4" />
+            <X className="w-5 h-5" />
           </button>
         )}
       </div>
 
       {showFilters && filters.length > 0 && (
-        <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="p-6 bg-gray-50/50 rounded-3xl border border-gray-200/50 backdrop-blur-sm animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filters.map((filter) => (
-              <div key={filter.key}>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+              <div key={filter.key} className="space-y-1.5">
+                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">
                   {filter.label}
                 </label>
                 {filter.type === 'select' ? (
                   <select
                     value={activeFilters[filter.key] || ''}
                     onChange={(e) => handleFilterChange(filter.key, e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-wine focus:border-wine"
+                    className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl shadow-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all text-sm font-bold text-gray-700 appearance-none cursor-pointer"
                   >
-                    <option value="">All</option>
+                    <option value="">All Categories</option>
                     {filter.options?.map((option) => (
                       <option key={option.value} value={option.value}>
                         {option.label}
@@ -98,7 +109,15 @@ export function AdvancedSearch({ onSearch, filters = [], placeholder = 'Search..
                     type="date"
                     value={activeFilters[filter.key] || ''}
                     onChange={(e) => handleFilterChange(filter.key, e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-wine focus:border-wine"
+                    className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl shadow-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all text-sm font-bold text-gray-700"
+                  />
+                ) : filter.type === 'number' ? (
+                  <input
+                    type="number"
+                    value={activeFilters[filter.key] || ''}
+                    onChange={(e) => handleFilterChange(filter.key, e.target.value)}
+                    placeholder={filter.placeholder}
+                    className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl shadow-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all text-sm font-bold text-gray-700"
                   />
                 ) : (
                   <input
@@ -106,16 +125,8 @@ export function AdvancedSearch({ onSearch, filters = [], placeholder = 'Search..
                     value={activeFilters[filter.key] || ''}
                     onChange={(e) => handleFilterChange(filter.key, e.target.value)}
                     placeholder={filter.placeholder}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-wine focus:border-wine"
+                    className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl shadow-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all text-sm font-bold text-gray-700"
                   />
-                )}
-                {activeFilters[filter.key] && (
-                  <button
-                    onClick={() => clearFilter(filter.key)}
-                    className="mt-1 text-xs text-wine hover:text-wine/80"
-                  >
-                    Clear
-                  </button>
                 )}
               </div>
             ))}
@@ -124,19 +135,20 @@ export function AdvancedSearch({ onSearch, filters = [], placeholder = 'Search..
       )}
 
       {activeFilterCount > 0 && (
-        <div className="mt-2 flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 px-1">
           {Object.entries(activeFilters).map(([key, value]) => {
             if (!value) return null;
             const filter = filters.find(f => f.key === key);
             return (
               <span
                 key={key}
-                className="inline-flex items-center gap-1 px-3 py-1 bg-wine/10 text-wine rounded-full text-sm"
+                className="inline-flex items-center gap-2 px-3 py-1 bg-white border border-blue-100 text-blue-700 rounded-full text-[10px] font-black uppercase tracking-tight shadow-sm animate-in zoom-in-95"
               >
-                {filter?.label}: {value}
+                <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                <span className="opacity-60">{filter?.label}:</span> {value}
                 <button
                   onClick={() => clearFilter(key)}
-                  className="hover:text-wine/80"
+                  className="p-0.5 hover:bg-blue-100 rounded-full transition-colors ml-1"
                 >
                   <X className="w-3 h-3" />
                 </button>

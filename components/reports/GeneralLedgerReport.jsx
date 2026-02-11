@@ -13,12 +13,21 @@ import { format } from 'date-fns';
 import { BookOpen, Filter, Download } from 'lucide-react';
 import { useBusiness } from '@/lib/context/BusinessContext';
 
+import Link from 'next/link';
+
+/**
+ * General Ledger Report Component
+ * 
+ * @param {Object} props
+ * @param {string} props.businessId - Business UUID
+ */
 export function GeneralLedgerReport({ businessId }) {
     const { currency } = useBusiness();
     const [accounts, setAccounts] = useState([]);
 
     const [selectedAccount, setSelectedAccount] = useState('all');
     const [entries, setEntries] = useState([]);
+    const [openingBalance, setOpeningBalance] = useState(0); // [NEW]
     const [loading, setLoading] = useState(false);
     const [startDate, setStartDate] = useState(() => {
         const d = new Date();
@@ -52,6 +61,7 @@ export function GeneralLedgerReport({ businessId }) {
 
             if (!result.success) throw new Error(result.error);
             setEntries(result.entries || []);
+            setOpeningBalance(result.openingBalance || 0); // [NEW]
         } catch (error) {
             console.error('Error fetching GL:', error);
         } finally {
@@ -62,18 +72,38 @@ export function GeneralLedgerReport({ businessId }) {
     useEffect(() => {
         if (businessId) fetchLedger();
     }, [businessId, selectedAccount]);
-    // Should ideally be triggered by a "Search" button for dates, but auto-searching on account change is okay.
 
-    const calculateRunningBalance = (currentEntries) => {
-        let balance = 0;
-        return currentEntries.map(entry => {
-            // Asset/Expense: Debit +, Credit -
-            // Liability/Equity/Income: Credit +, Debit -
-            // For a mixed ledger view, standardizing on Debit - Credit is common, or simplified Dr/Cr columns.
-            // Let's just show Dr and Cr.
-            return { ...entry };
-        });
+    // Calculation Helper for Running Balance
+    let currentBalance = Math.round(Number(openingBalance || 0) * 100) / 100;
+    const entriesWithBalance = entries.map(entry => {
+        const debit = Math.round(Number(entry.debit || 0) * 100) / 100;
+        const credit = Math.round(Number(entry.credit || 0) * 100) / 100;
+        const type = entry.account?.type?.toLowerCase() || 'asset';
+
+        // Asset/Expense: Bal increases with Debit
+        // Liability/Equity/Income: Bal increases with Credit
+        if (['asset', 'expense'].includes(type)) {
+            currentBalance += (debit - credit);
+        } else {
+            currentBalance += (credit - debit);
+        }
+
+        currentBalance = Math.round(currentBalance * 100) / 100;
+
+        return { ...entry, runningBalance: currentBalance };
+    });
+
+    const getReferenceLink = (type, id) => {
+        if (!type || !id) return null;
+        switch (type) {
+            case 'invoices': return `/business/${businessId}?tab=sales&invoiceId=${id}`; // Assumes sales tab
+            case 'purchase': return `/business/${businessId}?tab=inventory&view=purchases`; // Simplified
+            case 'payment': return `/business/${businessId}?tab=finance`;
+            default: return null;
+        }
     };
+
+    const isSingleAccount = selectedAccount !== 'all';
 
     return (
         <Card className="w-full shadow-sm">
@@ -137,43 +167,74 @@ export function GeneralLedgerReport({ businessId }) {
                             <TableHead>Description</TableHead>
                             <TableHead className="text-right">Debit</TableHead>
                             <TableHead className="text-right">Credit</TableHead>
+                            {isSingleAccount && <TableHead className="text-right bg-blue-50/50">Balance</TableHead>}
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {loading ? (
                             <TableRow>
-                                <TableCell colSpan={5} className="text-center py-12 text-gray-400">Loading records...</TableCell>
+                                <TableCell colSpan={isSingleAccount ? 6 : 5} className="text-center py-12 text-gray-400">Loading records...</TableCell>
                             </TableRow>
                         ) : entries.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={5} className="text-center py-12 text-gray-400">No entries found for this period.</TableCell>
+                                <TableCell colSpan={isSingleAccount ? 6 : 5} className="text-center py-12 text-gray-400">No entries found for this period.</TableCell>
                             </TableRow>
                         ) : (
-                            entries.map(entry => (
-                                <TableRow key={entry.id} className="hover:bg-gray-50/50">
-                                    <TableCell className="font-mono text-xs text-gray-600">
-                                        {format(new Date(entry.transaction_date), 'dd MMM yyyy')}
-                                    </TableCell>
-                                    <TableCell>
-                                        <div className="flex flex-col">
-                                            <span className="font-semibold text-sm text-gray-700">{entry.account?.name}</span>
-                                            <span className="text-[10px] text-gray-400 font-mono">{entry.account?.code}</span>
-                                        </div>
-                                    </TableCell>
-                                    <TableCell className="text-sm text-gray-600">
-                                        {entry.description}
-                                        <div className="text-[10px] text-gray-400 mt-0.5 capitalize">
-                                            Ref: {entry.reference_type} #{entry.reference_id?.slice(0, 8)}
-                                        </div>
-                                    </TableCell>
-                                    <TableCell className="text-right font-mono text-gray-900 border-r border-gray-50 bg-gray-50/30">
-                                        {entry.debit > 0 ? formatCurrency(entry.debit, currency) : '-'}
-                                    </TableCell>
-                                    <TableCell className="text-right font-mono text-gray-900">
-                                        {entry.credit > 0 ? formatCurrency(entry.credit, currency) : '-'}
-                                    </TableCell>
-                                </TableRow>
-                            ))
+                            <>
+                                {/* Opening Balance Row */}
+                                {isSingleAccount && (
+                                    <TableRow className="bg-yellow-50/50 font-medium">
+                                        <TableCell colSpan={3} className="text-right pr-4 text-yellow-700">Opening Balance:</TableCell>
+                                        <TableCell></TableCell>
+                                        <TableCell></TableCell>
+                                        <TableCell className="text-right text-yellow-800 font-mono">
+                                            {formatCurrency(openingBalance, currency)}
+                                        </TableCell>
+                                    </TableRow>
+                                )}
+
+                                {entriesWithBalance.map(entry => {
+                                    const link = getReferenceLink(entry.reference_type, entry.reference_id);
+
+                                    return (
+                                        <TableRow key={entry.id} className="hover:bg-gray-50/50">
+                                            <TableCell className="font-mono text-xs text-gray-600">
+                                                {format(new Date(entry.transaction_date), 'dd MMM yyyy')}
+                                            </TableCell>
+                                            <TableCell>
+                                                <div className="flex flex-col">
+                                                    <span className="font-semibold text-sm text-gray-700">{entry.account?.name}</span>
+                                                    <span className="text-[10px] text-gray-400 font-mono">{entry.account?.code}</span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="text-sm text-gray-600">
+                                                {entry.description}
+                                                <div className="text-[10px] text-gray-400 mt-0.5 capitalize flex items-center gap-1">
+                                                    <span className="opacity-75">Ref: {entry.reference_type}</span>
+                                                    {link ? (
+                                                        <Link href={link} className="text-blue-600 hover:underline font-medium">
+                                                            #{entry.reference_id?.slice(0, 8)}
+                                                        </Link>
+                                                    ) : (
+                                                        <span>#{entry.reference_id?.slice(0, 8)}</span>
+                                                    )}
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="text-right font-mono text-gray-900 border-r border-gray-50 bg-gray-50/30">
+                                                {parseFloat(entry.debit) > 0 ? formatCurrency(entry.debit, currency) : '-'}
+                                            </TableCell>
+                                            <TableCell className="text-right font-mono text-gray-900">
+                                                {parseFloat(entry.credit) > 0 ? formatCurrency(entry.credit, currency) : '-'}
+                                            </TableCell>
+                                            {isSingleAccount && (
+                                                <TableCell className="text-right font-mono font-medium text-gray-800 bg-blue-50/10">
+                                                    {formatCurrency(entry.runningBalance, currency)}
+                                                </TableCell>
+                                            )}
+                                        </TableRow>
+                                    );
+                                })}
+                            </>
                         )}
                     </TableBody>
                 </Table>

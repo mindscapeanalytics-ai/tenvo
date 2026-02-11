@@ -8,6 +8,11 @@ import { formatCurrency } from '@/lib/currency';
 import { accountingAPI } from '@/lib/api/accounting';
 import toast from 'react-hot-toast';
 
+/**
+ * @param {Object} props
+ * @param {string} props.businessId
+ * @param {any} [props.colors]
+ */
 export default function TrialBalanceView({ businessId, colors }) {
     const [loading, setLoading] = useState(true);
     const [data, setData] = useState({ trialBalance: [], totals: { debit: 0, credit: 0, balanced: false } });
@@ -84,10 +89,10 @@ export default function TrialBalanceView({ businessId, colors }) {
                                     <td className="px-6 py-3 font-medium text-gray-900">{row.name}</td>
                                     <td className="px-6 py-3 text-xs uppercase tracking-wide text-gray-500">{row.type}</td>
                                     <td className="px-6 py-3 text-right font-mono text-gray-700">
-                                        {row.total_debit > 0 ? formatCurrency(row.total_debit, 'PKR') : '-'}
+                                        {Number(row.total_debit) > 0 ? formatCurrency(Number(row.total_debit), 'PKR') : '-'}
                                     </td>
                                     <td className="px-6 py-3 text-right font-mono text-gray-700">
-                                        {row.total_credit > 0 ? formatCurrency(row.total_credit, 'PKR') : '-'}
+                                        {Number(row.total_credit) > 0 ? formatCurrency(Number(row.total_credit), 'PKR') : '-'}
                                     </td>
                                 </tr>
                             ))}
@@ -98,10 +103,10 @@ export default function TrialBalanceView({ businessId, colors }) {
                                     Total
                                 </td>
                                 <td className="px-6 py-4 text-right text-base text-gray-900">
-                                    {formatCurrency(data.totals.debit, 'PKR')}
+                                    {formatCurrency(Number(data.totals.debit), 'PKR')}
                                 </td>
                                 <td className="px-6 py-4 text-right text-base text-gray-900">
-                                    {formatCurrency(data.totals.credit, 'PKR')}
+                                    {formatCurrency(Number(data.totals.credit), 'PKR')}
                                 </td>
                             </tr>
                         </tfoot>

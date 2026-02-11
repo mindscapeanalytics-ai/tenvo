@@ -12,6 +12,12 @@ import { accountingAPI } from '@/lib/api/accounting';
 import toast from 'react-hot-toast';
 import { Combobox } from '@/components/ui/combobox';
 
+/**
+ * @param {Object} props
+ * @param {string} props.businessId
+ * @param {() => void} [props.onSuccess]
+ * @param {any} [props.colors]
+ */
 export default function JournalEntryManager({ businessId, onSuccess, colors }) {
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
@@ -73,8 +79,8 @@ export default function JournalEntryManager({ businessId, onSuccess, colors }) {
                     const updated = { ...l, [field]: value };
 
                     // Logic: If entering Debit, clear Credit and vice versa
-                    if (field === 'debit' && parseFloat(value) > 0) updated.credit = 0;
-                    if (field === 'credit' && parseFloat(value) > 0) updated.debit = 0;
+                    if (field === 'debit' && parseFloat(String(value)) > 0) updated.credit = 0;
+                    if (field === 'credit' && parseFloat(String(value)) > 0) updated.debit = 0;
 
                     return updated;
                 }
@@ -84,8 +90,8 @@ export default function JournalEntryManager({ businessId, onSuccess, colors }) {
     };
 
     const totals = useMemo(() => {
-        const debit = entry.lines.reduce((sum, l) => sum + (parseFloat(l.debit) || 0), 0);
-        const credit = entry.lines.reduce((sum, l) => sum + (parseFloat(l.credit) || 0), 0);
+        const debit = entry.lines.reduce((sum, l) => sum + (parseFloat(String(l.debit)) || 0), 0);
+        const credit = entry.lines.reduce((sum, l) => sum + (parseFloat(String(l.credit)) || 0), 0);
         return { debit, credit, diff: Math.abs(debit - credit) };
     }, [entry.lines]);
 
@@ -104,8 +110,8 @@ export default function JournalEntryManager({ businessId, onSuccess, colors }) {
                 description: entry.description,
                 entries: entry.lines.map(l => ({
                     accountId: l.accountId,
-                    debit: parseFloat(l.debit) || 0,
-                    credit: parseFloat(l.credit) || 0
+                    debit: parseFloat(String(l.debit)) || 0,
+                    credit: parseFloat(String(l.credit)) || 0
                 }))
             });
 
@@ -232,25 +238,25 @@ export default function JournalEntryManager({ businessId, onSuccess, colors }) {
                                     <td className="px-4 py-2">
                                         <Input
                                             type="number"
-                                            min="0"
-                                            step="0.01"
+                                            min={0}
+                                            step={0.01}
                                             placeholder="0.00"
                                             value={line.debit || ''}
                                             onChange={e => updateLine(line.id, 'debit', e.target.value)}
                                             className="text-right border-gray-100 bg-transparent focus:bg-white transition-colors"
-                                            disabled={parseFloat(line.credit) > 0}
+                                            disabled={Number(line.credit) > 0}
                                         />
                                     </td>
                                     <td className="px-4 py-2">
                                         <Input
                                             type="number"
-                                            min="0"
-                                            step="0.01"
+                                            min={0}
+                                            step={0.01}
                                             placeholder="0.00"
                                             value={line.credit || ''}
                                             onChange={e => updateLine(line.id, 'credit', e.target.value)}
                                             className="text-right border-gray-100 bg-transparent focus:bg-white transition-colors"
-                                            disabled={parseFloat(line.debit) > 0}
+                                            disabled={Number(line.debit) > 0}
                                         />
                                     </td>
                                     <td className="px-4 py-2 text-center">

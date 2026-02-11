@@ -11,27 +11,38 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { DatePicker } from '@/components/DatePicker';
 import { toast } from 'react-hot-toast';
 
+import { reserveStockAction, releaseStockAction } from '@/lib/actions/stock';
+import { BatchService } from '@/lib/services/BatchService';
+
 /**
  * StockReservation Component
  * Manages stock reservations for sales orders, customers, etc.
  * 
- * @param {Array} reservations - Array of reservation objects
- * @param {Array} products - Array of products
- * @param {Array} customers - Array of customers
- * @param {Function} onSave - Save callback
- * @param {string} currency - Currency code
+ * @param {Object} props
+ * @param {any[]} [props.reservations] - Array of reservation objects
+ * @param {any[]} [props.products] - Array of products
+ * @param {any[]} [props.customers] - Array of customers
+ * @param {any[]} [props.quotations] - Array of quotations
+ * @param {any[]} [props.salesOrders] - Array of sales orders
+ * @param {string} [props.businessId] - Business ID
+ * @param {string} [props.currency] - Currency code
  */
 export function StockReservation({
   reservations = [],
   products = [],
   customers = [],
-  onSave,
+  quotations = [],
+  salesOrders = [],
+  businessId,
   currency = 'PKR',
 }) {
   const [reservationList, setReservationList] = useState(reservations);
+  const [batches, setBatches] = useState([]);
   const [showForm, setShowForm] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     productId: '',
+    batchId: '',
     quantity: 0,
     customerId: '',
     orderId: '',
@@ -40,63 +51,106 @@ export function StockReservation({
     notes: '',
   });
 
-  const handleReserve = () => {
+  const loadBatches = async (productId) => {
+    if (!productId) return;
+    try {
+      const data = await BatchService.getProductBatches(productId);
+      setBatches(data || []);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleReserve = async () => {
     if (!formData.productId || formData.quantity <= 0) {
       toast.error('Please select a product and enter quantity');
       return;
     }
 
-    const product = products.find(p => p.id === formData.productId);
-    if (!product) return;
-
-    // Check available stock
-    const reservedQty = reservationList
-      .filter(r => r.productId === formData.productId && r.status === 'active')
-      .reduce((sum, r) => sum + r.quantity, 0);
-
-    const availableStock = (product.stock || 0) - reservedQty;
-
-    if (formData.quantity > availableStock) {
-      toast.error(`Only ${availableStock} units available for reservation`);
+    if (!businessId) {
+      toast.error('Business context missing');
       return;
     }
 
-    const reservation = {
-      id: Date.now(),
-      productId: formData.productId,
-      quantity: parseFloat(formData.quantity),
-      customerId: formData.customerId || null,
-      orderId: formData.orderId || null,
-      reservedUntil: formData.reservedUntil || '',
-      reason: formData.reason || '',
-      notes: formData.notes || '',
-      status: 'active',
-      createdAt: new Date().toISOString(),
-    };
+    try {
+      setLoading(true);
+      const res = await reserveStockAction({
+        businessId,
+        productId: formData.productId,
+        batchId: formData.batchId || null,
+        warehouseId: null,
+        quantity: Number(formData.quantity)
+      });
 
-    const updated = [...reservationList, reservation];
-    setReservationList(updated);
-    if (onSave) {
-      onSave(updated);
+      if (!res.success) {
+        throw new Error(res.error);
+      }
+
+      const product = products.find(p => p.id === formData.productId);
+      const batch = batches.find(b => b.id === formData.batchId);
+
+      const reservation = {
+        id: Date.now(), // Real app should get from DB if we had a reservations table
+        batchId: formData.batchId,
+        batchNumber: batch?.batch_number,
+        productId: formData.productId,
+        productName: product?.name || 'Unknown',
+        quantity: Number(formData.quantity),
+        customerId: formData.customerId || null,
+        orderId: formData.orderId || null,
+        reservedUntil: formData.reservedUntil || '',
+        reason: formData.reason || '',
+        notes: formData.notes || '',
+        status: 'active',
+        createdAt: new Date().toISOString(),
+      };
+
+      setReservationList(prev => [reservation, ...prev]);
+      toast.success('Stock reserved successfully');
+      setShowForm(false);
+      resetForm();
+    } catch (err) {
+      console.error(err);
+      toast.error(err.message || 'Failed to reserve stock');
+    } finally {
+      setLoading(false);
     }
-
-    setShowForm(false);
-    resetForm();
   };
 
-  const handleRelease = (id) => {
-    const updated = reservationList.map(r =>
-      r.id === id ? { ...r, status: 'released', releasedAt: new Date().toISOString() } : r
-    );
-    setReservationList(updated);
-    if (onSave) {
-      onSave(updated);
+  const handleRelease = async (res) => {
+    if (!businessId) {
+      toast.error('Business context missing');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const result = await releaseStockAction({
+        businessId,
+        batchId: res.batchId,
+        quantity: res.quantity
+      });
+
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+
+      setReservationList(prev => prev.map(r =>
+        r.id === res.id ? { ...r, status: 'released', releasedAt: new Date().toISOString() } : r
+      ));
+      toast.success('Stock released successfully');
+    } catch (err) {
+      console.error(err);
+      toast.error(err.message || 'Failed to release stock');
+    } finally {
+      setLoading(false);
     }
   };
 
   const resetForm = () => {
     setFormData({
       productId: '',
+      batchId: '',
       quantity: 0,
       customerId: '',
       orderId: '',
@@ -104,6 +158,7 @@ export function StockReservation({
       reason: '',
       notes: '',
     });
+    setBatches([]);
   };
 
   const activeReservations = reservationList.filter(r => r.status === 'active');
@@ -138,33 +193,43 @@ export function StockReservation({
                   onChange={(e) => {
                     const productId = e.target.value;
                     const product = products.find(p => p.id === productId);
-                    const reservedQty = reservationList
-                      .filter(r => r.productId === productId && r.status === 'active')
-                      .reduce((sum, r) => sum + r.quantity, 0);
-                    const available = (product?.stock || 0) - reservedQty;
-
-                    setFormData({ ...formData, productId });
-                    if (product) {
-                      // Show available stock
-                      console.log(`Available: ${available} units`);
-                    }
+                    setFormData({ ...formData, productId, batchId: '' });
+                    loadBatches(productId);
                   }}
                   className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
                   required
                 >
                   <option value="">Select Product</option>
-                  {products.map(product => {
-                    const reservedQty = reservationList
-                      .filter(r => r.productId === product.id && r.status === 'active')
-                      .reduce((sum, r) => sum + r.quantity, 0);
-                    const available = (product.stock || 0) - reservedQty;
+                  {products.map(product => (
+                    <option key={product.id} value={product.id}>
+                      {product.name} (In Stock: {product.stock || 0})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Batch *</Label>
+                <select
+                  value={formData.batchId}
+                  onChange={(e) => setFormData({ ...formData, batchId: e.target.value })}
+                  className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
+                  required
+                  disabled={!formData.productId}
+                >
+                  <option value="">Select Batch</option>
+                  {batches.map(batch => {
+                    const available = (Number(batch.quantity) || 0) - (Number(batch.reserved_quantity) || 0);
                     return (
-                      <option key={product.id} value={product.id}>
-                        {product.name} (Available: {available}, Reserved: {reservedQty})
+                      <option key={batch.id} value={batch.id} disabled={available <= 0}>
+                        {batch.batch_number} (Available: {available}) {available <= 0 ? '- No stock' : ''}
                       </option>
                     );
                   })}
                 </select>
+                {formData.productId && batches.length === 0 && (
+                  <p className="text-xs text-amber-600">No active batches found for this product.</p>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -236,8 +301,8 @@ export function StockReservation({
                 <Button variant="outline" onClick={() => { setShowForm(false); resetForm(); }}>
                   Cancel
                 </Button>
-                <Button onClick={handleReserve} disabled={!formData.productId || formData.quantity <= 0}>
-                  Reserve Stock
+                <Button onClick={handleReserve} disabled={loading || !formData.productId || !formData.batchId || formData.quantity <= 0}>
+                  {loading ? 'Reserving...' : 'Reserve Stock'}
                 </Button>
               </div>
             </div>
@@ -300,7 +365,8 @@ export function StockReservation({
                       <div>
                         <div className="font-medium">{product?.name || 'Unknown Product'}</div>
                         <div className="text-sm text-gray-500">
-                          Quantity: {reservation.quantity}
+                          Qty: {reservation.quantity}
+                          {reservation.batchNumber && ` • Batch: ${reservation.batchNumber}`}
                           {customer && ` • Customer: ${customer.name}`}
                           {reservation.orderId && ` • Order: ${reservation.orderId}`}
                         </div>
@@ -319,10 +385,11 @@ export function StockReservation({
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => handleRelease(reservation.id)}
+                      onClick={() => handleRelease(reservation)}
+                      disabled={loading}
                     >
                       <Unlock className="w-4 h-4 mr-2" />
-                      Release
+                      {loading ? 'Releasing...' : 'Release'}
                     </Button>
                   )}
                 </div>

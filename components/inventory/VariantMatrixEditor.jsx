@@ -121,7 +121,7 @@ export function VariantMatrixEditor({
       if (variantForm.stock !== '') {
         const stockChange = parseFloat(variantForm.stock) - editingVariant.stock;
         if (stockChange !== 0) {
-          await VariantService.updateVariantStock(editingVariant.id, stockChange);
+          await VariantService.updateVariantStock(editingVariant.id, stockChange, businessId || product?.business_id);
         }
       }
 

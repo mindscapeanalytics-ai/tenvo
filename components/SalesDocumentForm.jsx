@@ -192,13 +192,12 @@ export function SalesDocumentForm({
         }
         // Validation for Batch/Serial
         if (showBatch && formData.items.some(item => !item.batch_number)) {
-            // Check if product actually supports batch? For now, if domain enables batch, we enforce it?
-            // Ideally we check product.batch_tracking, but that info might not be in the products list efficiently.
-            // Let's assume for now user must pick if domain is batch-enabled.
-            // Or better: valid only if available options exist?
-            // Let's be lenient for this iteration: Just warn if missing but proceed? NO, inventory will break.
-            // We should enforce it. But what if product doesn't have batch (e.g. Service)?
-            // TODO: Refine validation based on product type.
+            toast.error('Batch number is required for all items');
+            return;
+        }
+        if (showSerial && formData.items.some(item => !item.serial_number)) {
+            toast.error('Serial number is required for all items');
+            return;
         }
 
         setIsSaving(true);
@@ -361,8 +360,8 @@ export function SalesDocumentForm({
                                                     {item.product_id && (
                                                         <div className="mt-1 flex items-center gap-1.5 px-1 animate-in fade-in slide-in-from-top-1 duration-300">
                                                             <div className={`w-1.5 h-1.5 rounded-full ${(products.find(p => p.id === item.product_id)?.stock || 0) > 0
-                                                                    ? 'bg-green-500 shadow-[0_0_4px_rgba(34,197,94,0.5)]'
-                                                                    : 'bg-red-500 shadow-[0_0_4px_rgba(239,68,68,0.5)]'
+                                                                ? 'bg-green-500 shadow-[0_0_4px_rgba(34,197,94,0.5)]'
+                                                                : 'bg-red-500 shadow-[0_0_4px_rgba(239,68,68,0.5)]'
                                                                 }`} />
                                                             <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">
                                                                 In Stock: <span className="text-gray-900">{products.find(p => p.id === item.product_id)?.stock || 0}</span>

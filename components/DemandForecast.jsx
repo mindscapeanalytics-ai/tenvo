@@ -1,4 +1,5 @@
-import { useMemo, memo } from 'react';
+import { useMemo, memo, useState, useEffect } from 'react';
+import { getDemandForecastAction } from '@/lib/actions/analytics';
 import { TrendingUp, TrendingDown, AlertCircle, Package, Rocket, Info } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { getDomainKnowledge } from '@/lib/domainKnowledge';
@@ -6,96 +7,39 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
-export const DemandForecast = memo(function DemandForecast({ products = [], invoices = [], category = 'retail-shop' }) {
-  const domainKnowledge = getDomainKnowledge(category);
 
-  // Helper to get monthly sales for a product
-  const getProductSalesHistory = (productId) => {
-    const history = [0, 0, 0, 0, 0, 0]; // Last 6 months
-    const now = new Date();
+/**
+ * @typedef {Object} DemandForecastProps
+ * @property {string} [businessId]
+ * @property {string} [category]
+ * @property {any[]} [products]
+ * @property {any[]} [invoices]
+ * @property {any} [domainKnowledge]
+ */
 
-    invoices.forEach(inv => {
-      const invDate = new Date(inv.date);
-      // Check if invoice falls within last 6 months
-      const monthDiff = (now.getFullYear() - invDate.getFullYear()) * 12 + (now.getMonth() - invDate.getMonth());
+/** @type {React.NamedExoticComponent<DemandForecastProps>} */
+export const DemandForecast = memo(function DemandForecast({
+  businessId,
+  category = 'retail-shop',
+  products = [],
+  invoices = [],
+  domainKnowledge: propDomainKnowledge
+}) {
+  const domainKnowledge = propDomainKnowledge || getDomainKnowledge(category);
+  const [forecastData, setForecastData] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-      if (monthDiff >= 0 && monthDiff < 6) {
-        // Find items in invoice (assuming inv.items exists from join)
-        const items = inv.items || [];
-        const productItem = items.find(item => item.product_id === productId);
-        if (productItem) {
-          history[5 - monthDiff] += (Number(productItem.quantity) || 0);
-        }
+  useEffect(() => {
+    async function load() {
+      if (!businessId) return;
+      const res = await getDemandForecastAction(businessId, domainKnowledge?.intelligence);
+      if (res.success) {
+        setForecastData(res.data);
       }
-    });
-    return history;
-  };
-
-  // Advanced Weighted Moving Average & Lead Time Logic
-  const forecastData = useMemo(() => {
-    if (!products || products.length === 0) return [];
-
-    return products.map(product => {
-      if (!product || !product.name) return null;
-
-      // Calculate real history or fall back to [0,0,0,0,0,0] which effectively forecasts 0 (correct behavior for new product)
-      // We do NOT use hardcoded [100, 120...] anymore
-      const realHistory = getProductSalesHistory(product.id);
-      const totalSalesSixMonths = realHistory.reduce((a, b) => a + b, 0);
-
-      // If absolutely no sales, we might want a tiny baseline or just 0
-      const historicalSales = totalSalesSixMonths > 0 ? realHistory : [0, 0, 0, 0, 0, 0];
-
-      // ... existing logic ...
-      if (historicalSales.length < 2) return null;
-
-      const intelligence = domainKnowledge?.intelligence || {};
-      const weights = [0.05, 0.1, 0.15, 0.2, 0.25, 0.25];
-      const wma = historicalSales.reduce((acc, val, i) => acc + (val * weights[i]), 0);
-      const dailyDemand = wma / 30;
-
-      const isPerishable = intelligence.perishability === 'critical';
-      const isHighSeason = intelligence.seasonality === 'high';
-      const leadTime = isPerishable ? 3 : (intelligence.leadTime || 7);
-
-      let safetyFactor = 1.5;
-      if (isPerishable) safetyFactor = 1.2;
-      if (isHighSeason) safetyFactor = 2.0;
-
-      const safetyStock = Math.ceil(dailyDemand * leadTime * safetyFactor);
-      const trend = historicalSales[historicalSales.length - 1] > historicalSales[historicalSales.length - 2] ? 'up' : 'down';
-
-      let seasonalityMultiplier = 1.0;
-      if (trend === 'up') seasonalityMultiplier = 1.05;
-      if (trend === 'down') seasonalityMultiplier = 0.95;
-
-      // Pakistani Seasonality Checks
-      const currentMonth = new Date().toLocaleString('default', { month: 'long' });
-      const peakMonths = ['Ramadan', 'December', 'July', 'March'];
-      if (peakMonths.includes(currentMonth) && isHighSeason) {
-        seasonalityMultiplier = 1.35; // Aggressive boost for peak season
-      }
-
-      const forecast = wma * seasonalityMultiplier;
-      const recommendedStock = Math.ceil(forecast + safetyStock);
-
-      let insight = '';
-      if (isPerishable && trend === 'down') insight = 'Risk of waste: Optimize perishables.';
-      if (isHighSeason && trend === 'up') insight = 'High demand expected: Secure supply chain.';
-      if (product.stock < recommendedStock * 0.4) insight = 'Critical Stock Shortage: Order ASAP.';
-
-      return {
-        name: product.name,
-        current: product.stock || 0,
-        forecast: Math.ceil(forecast),
-        recommended: recommendedStock,
-        trend,
-        variance: Math.abs((product.stock || 0) - recommendedStock),
-        insight,
-        priority: product.stock < recommendedStock * 0.4 ? 'high' : 'normal'
-      };
-    }).filter(Boolean);
-  }, [products, category, domainKnowledge]);
+      setLoading(false);
+    }
+    load();
+  }, [businessId, domainKnowledge]);
 
   const chartData = useMemo(() =>
     forecastData.slice(0, 5).map((item) => ({
@@ -105,19 +49,23 @@ export const DemandForecast = memo(function DemandForecast({ products = [], invo
       recommended: item.recommended,
     })), [forecastData]);
 
-  if (!products || products.length === 0) {
+  if (loading) {
+    return <div className="p-12 text-center text-gray-400">Loading Forecast Engine...</div>;
+  }
+
+  if (!forecastData || forecastData.length === 0) {
     return (
       <Card className="border-dashed border-2 bg-gray-50/50">
         <CardContent className="flex flex-col items-center justify-center p-12 text-gray-400">
           <Package className="w-12 h-12 mb-4 opacity-20" />
-          <p className="font-medium">No inventory data available for forecasting.</p>
+          <p className="font-medium">No sales history available for forecasting logic.</p>
         </CardContent>
       </Card>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-in fade-in duration-700">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-bold text-gray-900">Demand Forecast</h2>

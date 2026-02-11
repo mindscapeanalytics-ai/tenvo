@@ -12,17 +12,27 @@ import {
 import { ChevronLeft, ChevronRight, Search, Download, Filter, Trash2, AlertCircle, X, Settings2 } from 'lucide-react';
 import { getDomainColors } from '@/lib/domainColors';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
-  DropdownMenuTrigger,
+  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+/**
+ * @param {Object} props
+ * @param {any[]} props.data
+ * @param {any[]} props.columns
+ * @param {boolean} [props.searchable]
+ * @param {boolean} [props.exportable]
+ * @param {Function} [props.onExport]
+ * @param {Function} [props.onBulkDelete]
+ * @param {string} [props.category]
+ */
 export function DataTable({
   data,
   columns: userColumns,
@@ -159,10 +169,10 @@ export function DataTable({
                 onChange={(e) => setGlobalFilter(e.target.value)}
                 placeholder="Search..."
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:outline-none transition-all"
-                style={{
+                style={/** @type {React.CSSProperties} */ ({
                   '--tw-ring-color': `${colors.primary}30`,
                   borderColor: globalFilter ? colors.primary : '#D1D5DB'
-                }}
+                })}
                 onFocus={(e) => e.target.style.borderColor = colors.primary}
                 onBlur={(e) => e.target.style.borderColor = globalFilter ? colors.primary : '#D1D5DB'}
               />
@@ -232,7 +242,7 @@ export function DataTable({
                         header.column.getIsSorted() && "border-blue-500 text-blue-600 bg-blue-50/30",
                         index === 0 && "sticky left-0 z-30 bg-gray-50/95 backdrop-blur-sm shadow-[2px_0_10px_-4px_rgba(0,0,0,0.1)]"
                       )}
-                      onClick={header.column.getCanSort() ? header.column.getToggleSortingHandler() : undefined}
+                      onClick={(e) => header.column.getToggleSortingHandler()?.(e)}
                     >
                       <div className="flex items-center gap-2">
                         {flexRender(header.column.columnDef.header, header.getContext())}

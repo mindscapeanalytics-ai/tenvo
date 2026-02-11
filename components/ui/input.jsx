@@ -1,6 +1,23 @@
 import * as React from "react"
 import { cn } from "@/lib/utils"
 
+/**
+ * @typedef {Object} InputProps
+ * @property {string} [className]
+ * @property {string} [type]
+ * @property {any} [value]
+ * @property {(e: any) => void} [onChange]
+ * @property {string} [placeholder]
+ * @property {boolean} [required]
+ * @property {boolean} [readOnly]
+ * @property {number} [maxLength]
+ * @property {string | number} [min]
+ * @property {string | number} [max]
+ * @property {string | number} [step]
+ * @property {(e: any) => void} [onKeyDown]
+ */
+
+/** @type {React.ForwardRefExoticComponent<InputProps & React.InputHTMLAttributes<HTMLInputElement> & React.RefAttributes<HTMLInputElement>>} */
 const Input = React.forwardRef(({ className, type, ...props }, ref) => {
   return (
     <input
