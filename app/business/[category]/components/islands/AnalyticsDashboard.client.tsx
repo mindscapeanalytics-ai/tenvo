@@ -1,19 +1,20 @@
-'use client';
-
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { RevenueAreaChart } from '@/components/AdvancedCharts';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { IntegratedPerformanceChart } from './charts/IntegratedPerformanceChart.client';
 import { DemandForecast } from '@/components/DemandForecast';
 import { motion } from 'framer-motion';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { BarChart3, LineChart } from 'lucide-react';
+import { BarChart3 } from 'lucide-react';
 
 interface AnalyticsDashboardProps {
+    businessId?: string;
     chartData: any[];
     products: any[];
+    invoices: any[]; // New prop for Dual-Source engine
     colors?: any;
+    category?: string;
 }
 
-export function AnalyticsDashboard({ chartData, products, colors }: AnalyticsDashboardProps) {
+export function AnalyticsDashboard({ businessId, chartData, products, invoices, colors, category }: AnalyticsDashboardProps) {
     if (!chartData || chartData.length === 0) {
         return (
             <Card className="h-[400px] flex flex-col items-center justify-center border-dashed border-2">
@@ -26,36 +27,52 @@ export function AnalyticsDashboard({ chartData, products, colors }: AnalyticsDas
 
     return (
         <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="space-y-6"
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.4 }}
         >
-            <Tabs defaultValue="revenue" className="w-full">
-                <Card className="backdrop-blur-sm bg-white/60 border-primary/10 shadow-sm overflow-hidden">
-                    <CardHeader className="flex flex-row items-center justify-between pb-2 border-b bg-muted/30">
-                        <div>
-                            <CardTitle className="text-lg flex items-center gap-2">
-                                <LineChart className="w-5 h-5 text-primary" />
-                                Business Performance
-                            </CardTitle>
-                            <CardDescription>Financial trends over the last 6 months</CardDescription>
+            <Tabs defaultValue="visual" className="w-full">
+                <Card className="bg-white border-slate-200 shadow-sm overflow-hidden border">
+                    <CardHeader className="flex flex-row items-center justify-between py-3 px-5 border-b bg-gray-50/30 backdrop-blur-md space-y-0">
+                        <div className="flex items-center gap-6">
+                            <div className="flex flex-col">
+                                <CardTitle className="text-[10px] font-black text-slate-800 uppercase tracking-[0.2em] flex items-center gap-2">
+                                    <BarChart3 className="w-3.5 h-3.5 text-wine" />
+                                    Performance Analytics
+                                </CardTitle>
+                                <span className="text-[8px] font-bold text-slate-400 mt-0.5 uppercase tracking-wider">AI-Enhanced Growth Monitoring</span>
+                            </div>
+
+                            <TabsList className="bg-slate-200/40 h-8 p-1 rounded-lg">
+                                <TabsTrigger value="visual" className="text-[9px] px-4 h-6 uppercase font-black data-[state=active]:bg-white data-[state=active]:text-wine">Trends</TabsTrigger>
+                                <TabsTrigger value="predictive" className="text-[9px] px-4 h-6 uppercase font-black data-[state=active]:bg-white data-[state=active]:text-wine">Projections</TabsTrigger>
+                            </TabsList>
                         </div>
-                        <TabsList className="bg-muted/50">
-                            <TabsTrigger value="revenue" className="text-xs">Revenue Trend</TabsTrigger>
-                            <TabsTrigger value="forecast" className="text-xs">Demand Forecast</TabsTrigger>
-                        </TabsList>
+
+                        <div className="hidden md:flex items-center gap-4 border-l border-slate-200 pl-4">
+                            <div className="flex flex-col items-end">
+                                <span className="text-[8px] font-black text-slate-400 uppercase tracking-tight">System Status</span>
+                                <div className="flex items-center gap-1.5 mt-0.5">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                    <span className="text-[9px] font-black text-emerald-600 uppercase">Live Intelligence Active</span>
+                                </div>
+                            </div>
+                        </div>
                     </CardHeader>
-                    <CardContent className="pt-6">
-                        <TabsContent value="revenue" className="mt-0">
-                            <div className="h-[300px] w-full">
-                                <RevenueAreaChart data={chartData} colors={colors} />
+
+                    <CardContent className="p-0">
+                        <TabsContent value="visual" className="m-0 p-4 pt-6">
+                            <div className="h-[320px] w-full">
+                                <IntegratedPerformanceChart revenueData={chartData} invoices={invoices} colors={colors} />
                             </div>
                         </TabsContent>
-                        <TabsContent value="forecast" className="mt-0">
-                            <div className="h-[300px] w-full">
-                                <DemandForecast products={products} />
-                            </div>
+
+                        <TabsContent value="predictive" className="m-0 p-4 overflow-y-auto max-h-[450px]">
+                            <DemandForecast
+                                businessId={businessId}
+                                category={category}
+                                products={products}
+                            />
                         </TabsContent>
                     </CardContent>
                 </Card>

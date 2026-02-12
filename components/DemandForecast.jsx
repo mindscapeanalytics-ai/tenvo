@@ -6,6 +6,7 @@ import { getDomainKnowledge } from '@/lib/domainKnowledge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { cn } from '@/lib/utils';
 
 
 /**
@@ -33,8 +34,8 @@ export const DemandForecast = memo(function DemandForecast({
     async function load() {
       if (!businessId) return;
       const res = await getDemandForecastAction(businessId, domainKnowledge?.intelligence);
-      if (res.success) {
-        setForecastData(res.data);
+      if (res && res.success) {
+        setForecastData(res.data || []);
       }
       setLoading(false);
     }
@@ -43,7 +44,7 @@ export const DemandForecast = memo(function DemandForecast({
 
   const chartData = useMemo(() =>
     forecastData.slice(0, 5).map((item) => ({
-      name: item.name.split(' ')[0],
+      name: (item.name || 'Product').split(' ')[0],
       current: item.current,
       forecast: item.forecast,
       recommended: item.recommended,
@@ -81,43 +82,34 @@ export const DemandForecast = memo(function DemandForecast({
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {forecastData.slice(0, 6).map((item, idx) => (
-          <Card key={idx} className={`group hover:shadow-xl transition-all duration-300 border-wine/10 overflow-hidden ${item.priority === 'high' ? 'ring-2 ring-red-500/20' : ''}`}>
-            <CardHeader className="pb-2 space-y-0">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-bold truncate max-w-[150px]">{item.name}</CardTitle>
-                <div className={`p-1.5 rounded-full ${item.trend === 'up' ? 'bg-green-50' : 'bg-red-50'}`}>
-                  {item.trend === 'up' ? (
-                    <TrendingUp className="w-3.5 h-3.5 text-green-600" />
-                  ) : (
-                    <TrendingDown className="w-3.5 h-3.5 text-red-600" />
-                  )}
-                </div>
+          <Card key={idx} className={`group hover:shadow-xl transition-all duration-300 border-wine/10 overflow-hidden ${item.priority === 'high' ? 'ring-2 ring-wine/20' : ''}`}>
+            <CardHeader className="pb-2 space-y-0 px-3 pt-3">
+              <div className="flex items-center justify-between gap-2">
+                <CardTitle className="text-[11px] font-[900] truncate uppercase tracking-tight text-slate-800">{item.name}</CardTitle>
+                <Badge variant={item.priority === 'high' ? 'destructive' : 'secondary'} className="text-[8px] py-0 px-1 font-black uppercase">
+                  {item.priority === 'high' ? 'Critical' : 'Stable'}
+                </Badge>
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-3 pb-3">
               <div className="space-y-2">
-                <div className="flex justify-between items-end">
-                  <span className="text-xs text-gray-500 font-bold uppercase tracking-wider">Current Stock</span>
-                  <span className="font-black text-lg">{item.current}</span>
+                <div className="flex justify-between items-end border-b border-slate-50 pb-1">
+                  <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Current Stock</span>
+                  <span className="font-black text-xs text-slate-900">{item.current} <span className="text-[8px] font-medium text-slate-400">units</span></span>
                 </div>
-                <div className="flex justify-between items-end border-b border-dashed border-gray-100 pb-2">
-                  <span className="text-xs text-gray-500 font-bold uppercase tracking-wider">Forecasted Demand</span>
-                  <span className="font-black text-lg text-wine">{item.forecast}</span>
+                <div className="flex justify-between items-end border-b border-slate-50 pb-1">
+                  <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">AI Forecast (30D)</span>
+                  <span className="font-black text-xs text-wine">{item.forecast}</span>
                 </div>
-                <div className="pt-2">
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="text-[10px] text-gray-400 font-bold uppercase">Optimal Level</span>
-                    <Badge variant={item.priority === 'high' ? 'destructive' : 'secondary'} className="text-[9px] py-0">
-                      {item.recommended} Units
-                    </Badge>
+                {item.insight && (
+                  <div className={cn(
+                    "p-2 rounded-lg text-[9px] font-bold flex items-start gap-2 leading-tight mt-1",
+                    item.priority === 'high' ? "bg-red-50 text-red-700" : "bg-wine/5 text-wine"
+                  )}>
+                    <Info className="w-3 h-3 flex-shrink-0 mt-0.5" />
+                    <span>{item.insight}</span>
                   </div>
-                  {item.insight && (
-                    <div className={`p-2 rounded-lg text-[10px] font-bold flex items-start gap-2 mt-2 leading-tight ${item.priority === 'high' ? 'bg-red-50 text-red-700 border border-red-100' : 'bg-wine/5 text-wine border border-wine/10'}`}>
-                      <Info className="w-3 h-3 flex-shrink-0 mt-0.5" />
-                      {item.insight}
-                    </div>
-                  )}
-                </div>
+                )}
               </div>
             </CardContent>
           </Card>

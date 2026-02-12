@@ -209,6 +209,7 @@ export function DashboardTabs({
                 <TabsContent value="dashboard" className="space-y-6 outline-none">
                     {wrapTab(
                         <DashboardTab
+                            businessId={business?.id}
                             category={category}
                             invoices={filteredInvoices}
                             products={filteredProducts}
@@ -218,6 +219,7 @@ export function DashboardTabs({
                             onQuickAction={handlers.handleQuickAction}
                             accountingSummary={accountingSummary}
                             chartData={dashboardChartData}
+                            domainKnowledge={domainKnowledge}
                         />
                     )}
                 </TabsContent>

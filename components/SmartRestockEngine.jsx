@@ -1,12 +1,15 @@
-import { useState, useMemo, useCallback, memo } from 'react';
-import { ShoppingCart, ArrowRight, BrainCircuit, CheckCircle2, AlertTriangle, PackagePlus } from 'lucide-react';
+import { useState, useMemo, useCallback, memo, useEffect } from 'react';
+import { ShoppingCart, ArrowRight, BrainCircuit, CheckCircle2, AlertTriangle, PackagePlus, Sparkles } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { getDomainKnowledge } from '@/lib/domainKnowledge';
 import toast from 'react-hot-toast';
 import { createBulkPurchaseOrdersAction } from '@/lib/actions/purchase';
+import { getAiRestockSuggestionsAction } from '@/lib/actions/ai';
 
 export const SmartRestockEngine = memo(function SmartRestockEngine({
     products = [],
@@ -18,6 +21,24 @@ export const SmartRestockEngine = memo(function SmartRestockEngine({
 }) {
     const [selectedItems, setSelectedItems] = useState([]);
     const [isGenerating, setIsGenerating] = useState(false);
+    const [aiSuggestions, setAiSuggestions] = useState([]);
+    const [useAI, setUseAI] = useState(true);
+
+    const fetchAiSuggestions = useCallback(async () => {
+        if (!businessId) return;
+        try {
+            const result = await getAiRestockSuggestionsAction(businessId);
+            if (result.success) {
+                setAiSuggestions(result.suggestions);
+            }
+        } catch (error) {
+            console.error("Failed to fetch AI suggestions:", error);
+        }
+    }, [businessId]);
+
+    useEffect(() => {
+        if (useAI) fetchAiSuggestions();
+    }, [useAI, fetchAiSuggestions]);
 
     // Helper to get monthly sales for a product (Last 6 months)
     const getProductSalesHistory = (productId) => {
@@ -39,9 +60,9 @@ export const SmartRestockEngine = memo(function SmartRestockEngine({
         return history;
     };
 
-    // Logic to calculate restock needs (optimized to remove duplicate loops)
-    const restockSuggestions = useMemo(() => {
-        if (!products) return [];
+    // Logic to calculate restock needs (Fallback/Standard)
+    const standardSuggestions = useMemo(() => {
+        if (!products || (useAI && aiSuggestions.length > 0)) return [];
 
         // Get domain intelligence
         const intelligence = domainKnowledge?.intelligence || {};
@@ -54,24 +75,18 @@ export const SmartRestockEngine = memo(function SmartRestockEngine({
             // Apply volatility factor to WMA weights if high volatility
             let weights = [0.05, 0.1, 0.15, 0.2, 0.25, 0.25];
             if (volatility > 0.5) {
-                // Recent months matter much more in volatile markets
                 weights = [0.0, 0.05, 0.1, 0.15, 0.3, 0.4];
             }
 
             const wma = historicalSales.reduce((acc, val, i) => acc + (val * weights[i]), 0);
-
-            // Use domain-specific lead time
             const leadTime = p.leadTime || defaultLeadTime;
 
-            // Calculate Safety Stock dynamically
             let safetyFactor = 1.5;
             if (intelligence.perishability === 'critical') safetyFactor = 1.1;
-            if (intelligence.seasonality === 'high') safetyFactor = 2.0; // Stock up for season
+            if (intelligence.seasonality === 'high') safetyFactor = 2.0;
 
             const safetyStock = Math.ceil((wma / 30) * leadTime * safetyFactor);
             const recommended = Math.ceil(wma + safetyStock);
-
-            // Reorder threshold
             const threshold = recommended * 0.8;
 
             if (p.stock >= threshold) return null;
@@ -83,7 +98,9 @@ export const SmartRestockEngine = memo(function SmartRestockEngine({
                 reason: intelligence.perishability === 'critical' ? 'Just-in-Time (Perishable)' : 'Standard Restock'
             };
         }).filter(Boolean);
-    }, [products, category, domainKnowledge, invoices]);
+    }, [products, category, domainKnowledge, invoices, useAI, aiSuggestions]);
+
+    const restockSuggestions = useAI && aiSuggestions.length > 0 ? aiSuggestions : standardSuggestions;
 
     const toggleItem = useCallback((id) => {
         setSelectedItems(prev =>
@@ -103,10 +120,10 @@ export const SmartRestockEngine = memo(function SmartRestockEngine({
                 const item = restockSuggestions.find(s => s.id === id);
                 return {
                     product_id: item.id,
-                    quantity: item.restockAmount,
+                    quantity: item.restockAmount || (item.forecast?.forecastedQuantity),
                     unit_cost: item.cost_price || item.price || 0,
-                    total_amount: item.restockAmount * (item.cost_price || item.price || 0),
-                    description: `Auto-restock: ${item.reason}`,
+                    total_amount: (item.restockAmount || item.forecast?.forecastedQuantity) * (item.cost_price || item.price || 0),
+                    description: `Auto-restock: ${item.reason || item.forecast?.reasoning}`,
                     notes: `Generated Priority: ${item.priority}`
                 };
             });
@@ -134,16 +151,26 @@ export const SmartRestockEngine = memo(function SmartRestockEngine({
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
                         <div className="p-3 bg-wine text-white rounded-2xl shadow-lg rotate-3 hover:rotate-0 transition-transform">
-                            <BrainCircuit className="w-6 h-6" />
+                            {useAI ? <Sparkles className="w-6 h-6 animate-pulse" /> : <BrainCircuit className="w-6 h-6" />}
                         </div>
                         <div>
-                            <CardTitle className="text-wine text-xl font-bold tracking-tight">Intelligence Restock Engine</CardTitle>
-                            <CardDescription className="text-wine/70 font-medium">Domain-aware automated purchase planning</CardDescription>
+                            <CardTitle className="text-wine text-xl font-bold tracking-tight">
+                                {useAI ? 'AI Predictive Restock' : 'Intelligence Restock Engine'}
+                            </CardTitle>
+                            <CardDescription className="text-wine/70 font-medium">
+                                {useAI ? '2026 AI-driven forecasting active' : 'Domain-aware automated purchase planning'}
+                            </CardDescription>
                         </div>
                     </div>
-                    <Badge variant="secondary" className="bg-wine/10 text-wine hover:bg-wine/20 border-wine/20 px-3 py-1">
-                        {restockSuggestions.length} Suggestions
-                    </Badge>
+                    <div className="flex items-center gap-4">
+                        <div className="flex items-center space-x-2">
+                            <Switch id="ai-mode" checked={useAI} onCheckedChange={setUseAI} />
+                            <Label htmlFor="ai-mode" className="text-xs font-bold text-wine">AI MODE</Label>
+                        </div>
+                        <Badge variant="secondary" className="bg-wine/10 text-wine hover:bg-wine/20 border-wine/20 px-3 py-1">
+                            {restockSuggestions.length} Suggestions
+                        </Badge>
+                    </div>
                 </div>
             </CardHeader>
             <CardContent className="pt-6">
@@ -176,12 +203,17 @@ export const SmartRestockEngine = memo(function SmartRestockEngine({
                                                 </Badge>
                                                 <span className="text-xs text-gray-500 font-medium">Stock: {item.stock}</span>
                                             </div>
+                                            {useAI && item.forecast && (
+                                                <p className="text-[10px] text-blue-600 font-italic mt-1">
+                                                    Confidence: {(item.forecast.confidenceScore * 100).toFixed(0)}%
+                                                </p>
+                                            )}
                                         </div>
                                     </div>
                                     <div className="text-right">
                                         <div className="flex items-center justify-end gap-1 text-wine font-black text-lg">
                                             <PackagePlus className="w-4 h-4" />
-                                            +{item.restockAmount}
+                                            +{item.restockAmount || item.forecast?.forecastedQuantity}
                                         </div>
                                         <p className="text-[10px] text-gray-400 font-bold uppercase">Order Recommendation</p>
                                     </div>

@@ -192,6 +192,8 @@ model businesses {
   tax_configurations      tax_configurations[]
   vendors                 vendors[]
   warehouse_locations     warehouse_locations[]
+  workflow_rules          workflow_rules[]
+  workflow_history        workflow_history[]
 }
 
 model customers {
@@ -872,4 +874,35 @@ model quotation_items {
 
   @@index([product_id], map: "idx_quotation_items_product_id")
   @@index([quotation_id], map: "idx_quotation_items_quotation_id")
+}
+
+model workflow_rules {
+  id               String            @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  business_id      String            @db.Uuid
+  name             String
+  rule_text        String
+  rule_logic       Json?             @default("{}")
+  is_active        Boolean           @default(true)
+  created_at       DateTime          @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime          @default(now()) @db.Timestamptz(6)
+  businesses       businesses        @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  workflow_history workflow_history[]
+
+  @@index([business_id], map: "idx_workflow_rules_business_id")
+}
+
+model workflow_history {
+  id              String         @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  business_id     String         @db.Uuid
+  rule_id         String?        @db.Uuid
+  event_type      String
+  description     String
+  context         Json?          @default("{}")
+  result          Json?          @default("{}")
+  created_at      DateTime       @default(now()) @db.Timestamptz(6)
+  businesses      businesses     @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  workflow_rules  workflow_rules? @relation(fields: [rule_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@index([business_id], map: "idx_workflow_history_business_id")
+  @@index([rule_id], map: "idx_workflow_history_rule_id")
 }
