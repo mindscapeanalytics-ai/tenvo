@@ -39,7 +39,7 @@ const IconRenderer = ({ name, ...props }) => {
 };
 
 import { useBusiness } from '@/lib/context/BusinessContext';
-import { getDashboardMetricsAction } from '@/lib/actions/analytics';
+import { getDashboardMetricsAction } from '@/lib/actions/premium/ai/analytics';
 
 export function EnhancedDashboard({ businessId, category, onQuickAction }) {
   const { business, currency: currencyFromContext } = useBusiness();

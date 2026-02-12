@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { BatchService } from '@/lib/services/BatchService';
+import { batchAPI } from '@/lib/api/batch';
 import { formatCurrency } from '@/lib/currency';
 import toast from 'react-hot-toast';
 
@@ -59,7 +59,7 @@ export function BatchManager({
     const loadBatches = async () => {
         try {
             setLoading(true);
-            const data = await BatchService.getProductBatches(product.id, warehouseId);
+            const data = await batchAPI.getByProduct(product.id, businessId);
             setBatches(data || []);
         } catch (error) {
             console.error('Load batches error:', error);
@@ -71,7 +71,7 @@ export function BatchManager({
 
     const loadExpiringBatches = async () => {
         try {
-            const data = await BatchService.getExpiringBatches(businessId, 30);
+            const data = await batchAPI.getExpiring(businessId, 30);
             const productExpiring = data?.filter(b => b.product_id === product.id) || [];
             setExpiringBatches(productExpiring);
         } catch (error) {
@@ -110,7 +110,7 @@ export function BatchManager({
         try {
             setLoading(true);
 
-            await BatchService.createBatch({
+            await batchAPI.create({
                 business_id: businessId,
                 product_id: product.id,
                 warehouse_id: formData.warehouseId || warehouseId || null,

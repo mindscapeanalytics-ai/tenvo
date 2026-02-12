@@ -11,7 +11,7 @@ import { getDomainColors } from '@/lib/domainColors';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import toast from 'react-hot-toast';
-import { seedBusinessProductsAction } from '@/lib/actions/product';
+import { seedBusinessProductsAction } from '@/lib/actions/standard/inventory/product';
 
 /**
  * SetupWizard Component

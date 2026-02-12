@@ -11,7 +11,7 @@ import {
     createQuotationAction,
     createSalesOrderAction,
     createChallanAction
-} from '@/lib/actions/quotation';
+} from '@/lib/actions/standard/quotation';
 import {
     getDomainDefaultTax,
     getDomainTheme,

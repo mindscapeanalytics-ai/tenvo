@@ -1,9 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { addStockAction } from '@/lib/actions/stock';
-import { createInvoiceAction } from '@/lib/actions/invoice';
-import { createGLEntryAction } from '@/lib/actions/accounting';
+import { addStockAction } from '@/lib/actions/standard/inventory/stock';
+import { createInvoiceAction } from '@/lib/actions/basic/invoice';
+import { createGLEntryAction } from '@/lib/actions/basic/accounting';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useSession } from '@/lib/auth-client';

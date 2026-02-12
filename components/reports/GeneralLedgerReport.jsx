@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 // import { supabase } from '@/lib/supabase/client'; // Removed
-import { getGLEntriesAction, getGLAccountsAction } from '@/lib/actions/accounting';
+import { getGLEntriesAction, getGLAccountsAction } from '@/lib/actions/basic/accounting';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';

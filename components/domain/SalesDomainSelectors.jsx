@@ -3,8 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2 } from 'lucide-react';
-import { getAvailableBatchesAction } from '@/lib/actions/batch';
-import { getAvailableSerialsAction } from '@/lib/actions/serial';
+import { getAvailableBatchesAction } from '@/lib/actions/standard/inventory/batch';
+import { getAvailableSerialsAction } from '@/lib/actions/standard/inventory/serial';
 import { getDomainKnowledge } from '@/lib/utils/domainHelpers';
 
 /**

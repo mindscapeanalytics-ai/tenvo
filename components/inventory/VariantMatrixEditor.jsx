@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { VariantService } from '@/lib/services/VariantService';
+import { variantAPI } from '@/lib/api/variant';
 import { formatCurrency } from '@/lib/currency';
 import toast from 'react-hot-toast';
 
@@ -55,11 +55,11 @@ export function VariantMatrixEditor({
   const loadVariants = async () => {
     try {
       setLoading(true);
-      const data = await VariantService.getProductVariants(product.id);
+      const data = await variantAPI.getByProduct(product.id);
       setVariants(data || []);
 
       // Load matrix structure
-      const matrix = await VariantService.getVariantMatrix(product.id);
+      const matrix = await variantAPI.getMatrix(product.id);
       setMatrixData(matrix);
     } catch (error) {
       console.error('Load variants error:', error);
@@ -87,7 +87,7 @@ export function VariantMatrixEditor({
         return;
       }
 
-      await VariantService.createVariantMatrix({
+      await variantAPI.createMatrix({
         business_id: businessId || product.business_id,
         product_id: product.id,
         base_price: parseFloat(matrixForm.basePrice) || product?.price || 0,
@@ -121,7 +121,7 @@ export function VariantMatrixEditor({
       if (variantForm.stock !== '') {
         const stockChange = parseFloat(variantForm.stock) - editingVariant.stock;
         if (stockChange !== 0) {
-          await VariantService.updateVariantStock(editingVariant.id, stockChange, businessId || product?.business_id);
+          await variantAPI.updateStock(editingVariant.id, businessId || product?.business_id, stockChange);
         }
       }
 
@@ -132,7 +132,7 @@ export function VariantMatrixEditor({
       if (variantForm.mrp !== '') pricingUpdate.mrp = parseFloat(variantForm.mrp);
 
       if (Object.keys(pricingUpdate).length > 0) {
-        await VariantService.updateVariantPricing(editingVariant.id, pricingUpdate);
+        await variantAPI.updatePricing(editingVariant.id, businessId || product?.business_id, pricingUpdate);
       }
 
       toast.success('Variant updated successfully');

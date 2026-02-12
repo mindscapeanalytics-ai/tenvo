@@ -6,8 +6,8 @@ import { useAuth } from '@/lib/context/AuthContext';
 import { useBusiness } from '@/lib/context/BusinessContext';
 // Supabase removed - using Better Auth + Server Actions
 import { businessAPI } from '@/lib/api/business';
-import { createBusiness } from '@/lib/actions/business';
-import { seedBusinessProductsAction } from '@/lib/actions/seed';
+import { createBusiness } from '@/lib/actions/basic/business';
+import { seedBusinessProductsAction } from '@/lib/actions/standard/inventory/product';
 import { domainKnowledge } from '@/lib/domainKnowledge';
 import { authClient } from '@/lib/auth-client';
 import { toast } from 'react-hot-toast';

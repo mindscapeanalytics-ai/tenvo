@@ -11,8 +11,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { DatePicker } from '@/components/DatePicker';
 import { toast } from 'react-hot-toast';
 
-import { reserveStockAction, releaseStockAction } from '@/lib/actions/stock';
-import { BatchService } from '@/lib/services/BatchService';
+import { reserveStockAction, releaseStockAction } from '@/lib/actions/standard/inventory/stock';
+import { batchAPI } from '@/lib/api/batch';
 
 /**
  * StockReservation Component
@@ -52,9 +52,9 @@ export function StockReservation({
   });
 
   const loadBatches = async (productId) => {
-    if (!productId) return;
+    if (!productId || !businessId) return;
     try {
-      const data = await BatchService.getProductBatches(productId);
+      const data = await batchAPI.getByProduct(productId, businessId);
       setBatches(data || []);
     } catch (err) {
       console.error(err);

@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { SerialService } from '@/lib/services/SerialService';
+import { serialAPI } from '@/lib/api/serial';
 import { formatCurrency } from '@/lib/currency';
 import toast from 'react-hot-toast';
 
@@ -64,7 +64,7 @@ export function SerialScanner({
     const loadSerials = async () => {
         try {
             setLoading(true);
-            const data = await SerialService.getProductSerials(product.id, businessId || product.business_id);
+            const data = await serialAPI.getByProduct(product.id, businessId || product.business_id);
             setSerials(data || []);
         } catch (error) {
             console.error('Load serials error:', error);
@@ -88,8 +88,14 @@ export function SerialScanner({
             setLoading(true);
 
             if (mode === 'scan') {
-                // Just scan and verify
-                const serial = await SerialService.getSerial(formData.serialNumber, businessId || product?.business_id);
+                // Optimized single-serial lookup
+                const serial = await serialAPI.getSerial(businessId || product?.business_id, formData.serialNumber);
+
+                if (!serial) {
+                    toast.error('Serial number not found or invalid for this business');
+                    return;
+                }
+
                 setScannedSerial(serial);
                 onSerialScanned?.(serial);
                 toast.success('Serial number verified');
@@ -106,7 +112,7 @@ export function SerialScanner({
                 }
 
                 // Register new serial - Map to snake_case for backend
-                await SerialService.createSerial({
+                await serialAPI.create({
                     business_id: businessId || product.business_id,
                     product_id: product.id,
                     warehouse_id: warehouseId || null,
@@ -166,13 +172,17 @@ export function SerialScanner({
                 return;
             }
 
-            await SerialService.createBulkSerials({
-                business_id: businessId || product.business_id,
-                product_id: product.id,
-                warehouse_id: warehouseId || null,
-                serial_numbers: serialNumbers,
-                warranty_period_months: parseInt(formData.warrantyPeriodMonths) || 12
-            });
+            // Bulk registration currently not in serialAPI, let's loop for now 
+            // Better to add createBulk to serialAPI/Action later
+            for (const sn of serialNumbers) {
+                await serialAPI.create({
+                    business_id: businessId || product.business_id,
+                    product_id: product.id,
+                    warehouse_id: warehouseId || null,
+                    serial_number: sn.toUpperCase(),
+                    warranty_period_months: parseInt(formData.warrantyPeriodMonths) || 12
+                });
+            }
 
             toast.success(`${serialNumbers.length} serial numbers registered`);
             setBulkSerials('');

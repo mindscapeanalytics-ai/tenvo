@@ -10,7 +10,8 @@ import { formatCurrency as baseCurrencyFormatter, type CurrencyCode } from '@/li
  * Re-exports the base currency formatter for consistency
  */
 export function formatCurrency(amount: number | string | null | undefined, currency: CurrencyCode = 'PKR'): string {
-    return baseCurrencyFormatter(amount, currency);
+    const numericAmount = typeof amount === 'string' ? parseFloat(amount) || 0 : (amount ?? 0);
+    return baseCurrencyFormatter(numericAmount, currency);
 }
 
 /**

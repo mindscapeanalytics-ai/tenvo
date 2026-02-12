@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 // import { supabase } from '@/lib/supabase/client';
-import { getStockMovementsAction } from '@/lib/actions/stock';
+import { getStockMovementsAction } from '@/lib/actions/standard/inventory/stock';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';

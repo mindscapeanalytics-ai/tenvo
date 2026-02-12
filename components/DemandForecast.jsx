@@ -1,5 +1,5 @@
 import { useMemo, memo, useState, useEffect } from 'react';
-import { getDemandForecastAction } from '@/lib/actions/analytics';
+import { getDemandForecastAction } from '@/lib/actions/premium/ai/analytics';
 import { TrendingUp, TrendingDown, AlertCircle, Package, Rocket, Info } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { getDomainKnowledge } from '@/lib/domainKnowledge';

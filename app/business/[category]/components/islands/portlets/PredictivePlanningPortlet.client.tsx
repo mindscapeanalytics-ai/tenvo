@@ -3,7 +3,7 @@
 import { useState, memo, useEffect } from 'react';
 import { Portlet } from '@/components/ui/portlet';
 import { Sparkles, TrendingUp, TrendingDown, Info, ShoppingCart } from 'lucide-react';
-import { getDemandForecastAction } from '@/lib/actions/analytics';
+import { getDemandForecastAction } from '@/lib/actions/premium/ai/analytics';
 import { cn } from '@/lib/utils';
 
 interface DemandForecastItem {

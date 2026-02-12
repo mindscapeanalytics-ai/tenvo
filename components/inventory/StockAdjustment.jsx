@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { toast } from 'react-hot-toast';
 
-import { adjustStockAction } from '@/lib/actions/stock';
+import { adjustStockAction } from '@/lib/actions/standard/inventory/stock';
 
 /**
  * StockAdjustment Component

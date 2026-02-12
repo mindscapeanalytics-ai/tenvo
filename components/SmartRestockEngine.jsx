@@ -8,8 +8,8 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { getDomainKnowledge } from '@/lib/domainKnowledge';
 import toast from 'react-hot-toast';
-import { createBulkPurchaseOrdersAction } from '@/lib/actions/purchase';
-import { getAiRestockSuggestionsAction } from '@/lib/actions/ai';
+import { createBulkPurchaseOrdersAction } from '@/lib/actions/standard/purchase';
+import { getAiRestockSuggestionsAction } from '@/lib/actions/premium/ai/ai';
 
 export const SmartRestockEngine = memo(function SmartRestockEngine({
     products = [],

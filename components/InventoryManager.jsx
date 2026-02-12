@@ -94,7 +94,7 @@ import { SmartQuickAddModal } from './QuickAddProductModal';
  * Inventory Manager Component
  * A comprehensive dashboard for managing products, batches, serials, and inventory logistics.
  */
-import { getProductsAction, deleteProductAction, createProductAction, updateProductAction, seedBusinessProductsAction } from '@/lib/actions/product';
+import { getProductsAction, deleteProductAction, createProductAction, updateProductAction, seedBusinessProductsAction } from '@/lib/actions/standard/inventory/product';
 
 /**
  * @param {Object} props

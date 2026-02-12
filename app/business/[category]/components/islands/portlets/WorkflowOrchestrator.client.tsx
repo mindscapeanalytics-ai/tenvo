@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Sparkles, History, Play, CheckCircle2, Brain } from 'lucide-react';
-import { processAiFuzzyRuleAction } from '@/lib/actions/ai';
+import { processAiFuzzyRuleAction } from '@/lib/actions/premium/ai/ai';
 import toast from 'react-hot-toast';
 
 interface HistoryItem {

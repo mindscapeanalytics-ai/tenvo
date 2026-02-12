@@ -5,9 +5,9 @@ import { QuickActionTiles } from '../islands/portlets/QuickActionTiles.client';
 import { WorkflowOrchestrator } from '../islands/portlets/WorkflowOrchestrator.client';
 import { PredictivePlanningPortlet } from '../islands/portlets/PredictivePlanningPortlet.client';
 import { KPIScorecard } from '../islands/portlets/KPIScorecard.client';
-import { TopSellingItems } from '../islands/portlets/TopSellingItems.client';
 import { AnalyticsDashboard } from '../islands/AnalyticsDashboard.client';
-import { RecentInvoices } from '../islands/RecentInvoices.client';
+import { RecentActivityFeed } from '../islands/portlets/RecentActivityFeed.client';
+import { ExpenseBreakdownChart } from '../islands/portlets/ExpenseBreakdownChart.client';
 import { getDomainColors } from '@/lib/domainColors';
 
 import type { Product, Invoice, Customer } from '@/types';
@@ -24,6 +24,8 @@ interface DashboardTabProps {
     onQuickAction?: (actionId: string) => void;
     accountingSummary?: any;
     chartData?: any[];
+    dashboardMetrics?: any;
+    expenseBreakdown?: any[];
     domainKnowledge?: any;
 }
 
@@ -34,21 +36,68 @@ export function DashboardTab({
     products,
     customers,
     dateRange,
-    currency = 'PKR',
+    // currency = 'PKR', // Unused
     onQuickAction,
     chartData = [],
+    dashboardMetrics,
+    expenseBreakdown = [],
     domainKnowledge
 }: DashboardTabProps) {
     const colors = getDomainColors(category);
 
     const {
-        baseStats,
-        kpiData,
-        topSellingItems
+        baseStats, // Legacy fallback
     } = calculateStats(invoices, products, customers, dateRange);
 
-    const recentInvoices = invoices.slice(0, 10);
-    const remindersData = {
+    // Use Server-Side Metrics if available, else fallback to client-side calc
+    const kpiData = dashboardMetrics ? [
+        {
+            id: 'revenue',
+            label: 'Total Revenue',
+            period: 'This Month',
+            current: dashboardMetrics.revenue.toLocaleString('en-US', { style: 'currency', currency: 'PKR', maximumFractionDigits: 0 }),
+            previous: 'Target', // We could calc prev from growth %
+            change: dashboardMetrics.growth.percentage,
+            trend: dashboardMetrics.growth.trend,
+            isCurrency: true
+        },
+        {
+            id: 'orders',
+            label: 'Active Orders',
+            period: 'Processing',
+            current: dashboardMetrics.orders.total,
+            previous: dashboardMetrics.orders.pending + ' Pending',
+            change: 0,
+            trend: 'neutral',
+            isCurrency: false
+        },
+        {
+            id: 'customers',
+            label: 'Active Customers',
+            period: 'Total Base',
+            current: dashboardMetrics.customers?.active || customers.length,
+            previous: 'growing',
+            change: dashboardMetrics.customers?.growth || 0,
+            trend: 'up',
+            isCurrency: false
+        },
+        {
+            id: 'cashflow',
+            label: 'Cash Flow',
+            period: 'MTD',
+            current: (dashboardMetrics.cashFlow?.current || 0).toLocaleString('en-US', { style: 'currency', currency: 'PKR', maximumFractionDigits: 0 }),
+            previous: 'Healthy',
+            change: dashboardMetrics.cashFlow?.growth || 0,
+            trend: 'up',
+            isCurrency: true
+        }
+    ] : calculateStats(invoices, products, customers, dateRange).kpiData;
+
+    const remindersData = dashboardMetrics ? {
+        lowStock: dashboardMetrics.alerts.lowStock,
+        overdueInvoices: dashboardMetrics.alerts.overdueInvoices,
+        pendingOrders: dashboardMetrics.orders.pending
+    } : {
         lowStock: baseStats.lowStockCount,
         overdueInvoices: invoices.filter(inv => inv.status === 'overdue').length,
         pendingOrders: invoices.filter(inv => inv.status === 'pending').length
@@ -117,19 +166,19 @@ export function DashboardTab({
                 {/* Middle: KPI Scorecard & Meter */}
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
                     <div className="md:col-span-8 h-full">
-                        <KPIScorecard data={kpiData} />
+                        <KPIScorecard data={kpiData as any} />
                     </div>
                     <div className="md:col-span-4 h-full">
                         <KPIMeter
                             title="Inventory Health"
-                            value={Math.round(((products.length - baseStats.lowStockCount) / (products.length || 1)) * 100)}
+                            value={Math.round(((products.length - (dashboardMetrics?.alerts.lowStock || baseStats.lowStockCount)) / (products.length || 1)) * 100)}
                             target={95}
                             suffix="%"
                         />
                     </div>
                 </div>
 
-                {/* Bottom: Analytics & Top Items */}
+                {/* Bottom: Analytics & Activity */}
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
                     <div className="md:col-span-8">
                         <AnalyticsDashboard
@@ -141,8 +190,13 @@ export function DashboardTab({
                             colors={colors}
                         />
                     </div>
-                    <div className="md:col-span-4">
-                        <TopSellingItems data={topSellingItems} />
+                    <div className="md:col-span-4 gap-6 flex flex-col">
+                        <div className="h-[250px] bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+                            <ExpenseBreakdownChart data={expenseBreakdown} />
+                        </div>
+                        <div className="flex-1 bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+                            <RecentActivityFeed businessId={businessId} />
+                        </div>
                     </div>
                 </div>
 
@@ -151,12 +205,6 @@ export function DashboardTab({
                     <PredictivePlanningPortlet businessId={businessId} domainKnowledge={domainKnowledge} />
                     <WorkflowOrchestrator businessId={businessId} />
                 </div>
-
-                <RecentInvoices
-                    invoices={recentInvoices}
-                    currency={currency}
-                    onViewInvoice={() => onQuickAction?.('view-invoice')}
-                />
             </div>
         </NetsuiteDashboard>
     );

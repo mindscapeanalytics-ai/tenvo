@@ -13,7 +13,7 @@ import {
   getTopProductsAction,
   getCategoryDistributionAction,
   getKPIMetricsAction
-} from '@/lib/actions/analytics';
+} from '@/lib/actions/premium/ai/analytics';
 
 /**
  * Advanced Analytics Component

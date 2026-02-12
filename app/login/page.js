@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 // Client side supabase used mostly for listeners now or removed if not needed, 
 // but we keep it if other parts need it, though for login we use action.
 import { authClient } from '@/lib/auth-client';
-import { getBusinessByUserId } from '@/lib/actions/business';
+import { getBusinessByUserId } from '@/lib/actions/basic/business';
 import { businessAPI } from '@/lib/api/business';
 import { useBusiness } from '@/lib/context/BusinessContext';
 import { toast } from 'react-hot-toast';

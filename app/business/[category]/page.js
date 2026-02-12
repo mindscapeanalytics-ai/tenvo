@@ -15,7 +15,7 @@ import {
   warehouseAPI,
   quotationAPI,
 } from '@/lib/api';
-import { bulkDeleteAction } from '@/lib/actions/bulk';
+import { bulkDeleteAction } from '@/lib/actions/premium/automation/bulk';
 import {
   Plus,
   FileText,
@@ -83,19 +83,17 @@ import FinancialReports from '@/components/FinancialReports';
 import { MultiLocationInventory } from '@/components/MultiLocationInventory';
 import { FinancialOverview } from '@/components/dashboard/FinancialOverview';
 import { BatchManager } from '@/components/inventory/BatchManager';
-import { BatchService } from '@/lib/services/BatchService';
-import { SerialService } from '@/lib/services/SerialService';
 import { SerialScanner } from '@/components/inventory/SerialScanner';
 import PaymentManager from '@/components/payment/PaymentManager';
 import { SetupWizard } from '@/components/onboarding/SetupWizard';
-import { getInvoicesAction, deleteInvoiceAction, createInvoiceAction, updateInvoiceAction } from '@/lib/actions/invoice';
-import { getWarehouseLocationsAction } from '@/lib/actions/warehouse';
-import { getBOMsAction, getProductionOrdersAction } from '@/lib/actions/manufacturing';
+import { getInvoicesAction, deleteInvoiceAction, createInvoiceAction, updateInvoiceAction } from '@/lib/actions/basic/invoice';
+import { getWarehouseLocationsAction } from '@/lib/actions/standard/inventory/warehouse';
+import { getBOMsAction, getProductionOrdersAction } from '@/lib/actions/premium/manufacturing';
 import { getDomainColors } from '@/lib/domainColors';
 import { getDomainKnowledge } from '@/lib/domainKnowledge';
 import { formatCurrency } from '@/lib/currency';
 // import { aggregateMonthlyData } from '@/lib/utils/analytics'; // DEPRECATED: Using Server Action now
-import { getMonthlyFinancialsAction, getAccountingSummaryAction } from '@/lib/actions/report';
+import { getMonthlyFinancialsAction, getAccountingSummaryAction } from '@/lib/actions/standard/report';
 import toast from 'react-hot-toast';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { DashboardTab } from './components/tabs/DashboardTab';
@@ -327,6 +325,8 @@ function BusinessDashboardContent() {
     productionOrders,
     accountingSummary,
     dashboardChartData,
+    dashboardMetrics,
+    expenseBreakdown,
     isDataLoaded,
     refreshAllData
   } = useData();
@@ -960,6 +960,8 @@ function BusinessDashboardContent() {
           productionOrders={productionOrders}
           accountingSummary={accountingSummary}
           dashboardChartData={dashboardChartData}
+          dashboardMetrics={dashboardMetrics}
+          expenseBreakdown={expenseBreakdown}
           dateRange={dateRange}
           currency={currency}
           colors={colors}
