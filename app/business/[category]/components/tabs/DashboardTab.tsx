@@ -27,6 +27,7 @@ interface DashboardTabProps {
     dashboardMetrics?: any;
     expenseBreakdown?: any[];
     domainKnowledge?: any;
+    isLoading?: boolean;
 }
 
 export function DashboardTab({
@@ -41,7 +42,8 @@ export function DashboardTab({
     chartData = [],
     dashboardMetrics,
     expenseBreakdown = [],
-    domainKnowledge
+    domainKnowledge,
+    isLoading = false
 }: DashboardTabProps) {
     const colors = getDomainColors(category);
 
@@ -102,6 +104,43 @@ export function DashboardTab({
         overdueInvoices: invoices.filter(inv => inv.status === 'overdue').length,
         pendingOrders: invoices.filter(inv => inv.status === 'pending').length
     };
+
+    if (isLoading) {
+        return (
+            <NetsuiteDashboard>
+                {/* Left Sidebar Skeleton */}
+                <div className="space-y-4 lg:col-span-3">
+                    <div className="h-48 bg-white rounded-xl border border-gray-200 animate-pulse" />
+                    <div className="h-96 bg-white rounded-xl border border-gray-200 animate-pulse" />
+                </div>
+
+                {/* Main Content Skeleton */}
+                <div className="space-y-6 lg:col-span-9">
+                    {/* Quick Actions */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        {[1, 2, 3, 4].map(i => (
+                            <div key={i} className="h-24 bg-white rounded-xl border border-gray-200 animate-pulse" />
+                        ))}
+                    </div>
+
+                    {/* KPI Scorecard */}
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+                        <div className="md:col-span-8 h-48 bg-white rounded-xl border border-gray-200 animate-pulse" />
+                        <div className="md:col-span-4 h-48 bg-white rounded-xl border border-gray-200 animate-pulse" />
+                    </div>
+
+                    {/* Analytics */}
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+                        <div className="md:col-span-8 h-80 bg-white rounded-xl border border-gray-200 animate-pulse" />
+                        <div className="md:col-span-4 flex flex-col gap-6">
+                            <div className="h-40 bg-white rounded-xl border border-gray-200 animate-pulse" />
+                            <div className="flex-1 bg-white rounded-xl border border-gray-200 animate-pulse" />
+                        </div>
+                    </div>
+                </div>
+            </NetsuiteDashboard>
+        );
+    }
 
     return (
         <NetsuiteDashboard>

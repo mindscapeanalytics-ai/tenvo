@@ -815,19 +815,14 @@ function BusinessDashboardContent() {
   };
 
 
-  if (businessLoading || authLoading) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center bg-gray-50/50">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-16 h-16 rounded-2xl bg-gray-200 animate-pulse" />
-          <div className="space-y-2 text-center">
-            <div className="h-4 w-48 bg-gray-200 rounded animate-pulse" />
-            <div className="h-3 w-32 bg-gray-200 rounded animate-pulse mx-auto" />
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // BLOCKING LOADER REMOVED FOR INSTANT SHELL RENDER
+  // if (businessLoading || authLoading) {
+  //   return (
+  //     <div className="flex h-screen w-full items-center justify-center bg-gray-50/50">
+  //       ...
+  //     </div>
+  //   );
+  // }
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
@@ -965,7 +960,9 @@ function BusinessDashboardContent() {
           dateRange={dateRange}
           currency={currency}
           colors={colors}
+          colors={colors}
           domainKnowledge={domainKnowledge}
+          isLoading={!isDataLoaded}
           handlers={{
             handleTabChange,
             handleDeleteInvoice,

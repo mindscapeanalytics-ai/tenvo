@@ -47,11 +47,14 @@ export function DashboardTabs({
     productionOrders = [],
     accountingSummary,
     dashboardChartData,
+    dashboardMetrics,
+    expenseBreakdown = [],
     dateRange,
     currency,
     colors,
     domainKnowledge,
-    handlers
+    handlers,
+    isLoading = false
 }) {
     // Memoized Filtering Logic
     const filteredProducts = React.useMemo(() => {
@@ -219,7 +222,10 @@ export function DashboardTabs({
                             onQuickAction={handlers.handleQuickAction}
                             accountingSummary={accountingSummary}
                             chartData={dashboardChartData}
+                            dashboardMetrics={dashboardMetrics}
+                            expenseBreakdown={expenseBreakdown}
                             domainKnowledge={domainKnowledge}
+                            isLoading={isLoading}
                         />
                     )}
                 </TabsContent>

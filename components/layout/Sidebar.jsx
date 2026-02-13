@@ -40,7 +40,7 @@ import { LanguageToggle } from '../LanguageToggle';
 
 export function Sidebar({ isOpen, onClose }) {
   const { user } = useAuth();
-  const { business, role } = useBusiness();
+  const { business, role, isLoading: businessLoading } = useBusiness();
   const { language } = useLanguage();
   const t = translations[language];
   const pathname = usePathname();
@@ -224,8 +224,9 @@ export function Sidebar({ isOpen, onClose }) {
 
   // Filter items based on role and domain capabilities
   const navItems = allNavItems.filter(item => {
-    // Check role permission (default to owner if loading/null)
-    const effectiveRole = role || 'owner';
+    // Optimistic UI: If loading or role is null, assume 'owner' to show full menu immediately
+    // This prevents "pop-in" effect. Unauthorized routes are protected by middleware anyway.
+    const effectiveRole = (businessLoading || !role) ? 'owner' : role;
     const hasRole = item.roles.includes(effectiveRole);
     // Check domain condition (if specified)
     const meetsCondition = item.alwaysShow || item.condition === true;

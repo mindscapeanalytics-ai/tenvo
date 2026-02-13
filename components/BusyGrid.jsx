@@ -2,10 +2,11 @@
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { cn } from '@/lib/utils';
-import { ChevronDown, ChevronUp, Check, X, Plus, Trash2, Settings, AlertCircle, Copy } from 'lucide-react';
+import { ChevronDown, ChevronUp, Check, X, Plus, Trash2, Settings, AlertCircle, Copy, Sigma, FunctionSquare, Zap } from 'lucide-react';
 import { useLanguage } from '@/lib/context/LanguageContext';
 import { translations } from '@/lib/translations';
 import { getDomainColors } from '@/lib/domainColors';
+import { useBusyMode } from '@/lib/context/BusyModeContext';
 
 /**
  * BusyGrid Component
@@ -27,6 +28,7 @@ export function BusyGrid({
     const t = translations[language];
     const colors = getDomainColors(category);
 
+    const { isBusyMode } = useBusyMode();
     const [selectedCell, setSelectedCell] = useState({ row: 0, col: 0 });
     const [editingCell, setEditingCell] = useState(null);
     const [editValue, setEditValue] = useState('');
@@ -215,6 +217,26 @@ export function BusyGrid({
             onKeyDown={handleKeyDown}
             style={{ outline: 'none' }}
         >
+            {/* Liquid-Style Formula Bar (Busy Mode Only) */}
+            {isBusyMode && (
+                <div className="bg-slate-50 border-b border-slate-200 p-1.5 flex items-center gap-2 h-10 shadow-inner">
+                    <div className="bg-white border px-3 h-7 flex items-center font-black text-[10px] text-indigo-600 rounded shadow-sm">
+                        {headerLetters[selectedCell.col]}{selectedCell.row + 1}
+                    </div>
+                    <div className="text-slate-400 font-black px-1 italic flex items-center gap-1">
+                        <FunctionSquare className="w-3.5 h-3.5" />
+                        <span>=</span>
+                    </div>
+                    <div className="flex-1 bg-white border border-slate-200 h-7 rounded px-3 flex items-center text-xs font-medium text-slate-700 shadow-sm overflow-hidden truncate">
+                        {editingCell ? editValue : (getValue(sortedData[selectedCell.row], columns[selectedCell.col]?.accessorKey) || '')}
+                    </div>
+                    <div className="flex items-center gap-2 px-2">
+                        <Zap className="w-3.5 h-3.5 text-indigo-500 animate-pulse" />
+                        <span className="text-[10px] font-black text-indigo-400 uppercase tracking-tighter">Command Engine Active</span>
+                    </div>
+                </div>
+            )}
+
             <div ref={scrollRef} className="flex-1 overflow-auto bg-white custom-scrollbar relative">
                 <table className="w-full table-fixed border-separate border-spacing-0">
                     <thead className="sticky top-0 z-30">
@@ -254,7 +276,23 @@ export function BusyGrid({
                                         const hasError = validationErrors[`${rowIndex}-${col.accessorKey}`];
 
                                         return (
-                                            <td key={colIndex} className={cn("p-0 relative h-10 border-r border-gray-100", isSelected && !isEditing && "ring-2 ring-inset ring-blue-500 z-10 bg-blue-50/20", col.readOnly && "bg-gray-50/10", hasError && "bg-red-50/50 ring-1 ring-inset ring-red-300")} style={{ width }} onClick={() => setSelectedCell({ row: rowIndex, col: colIndex })} onDoubleClick={() => !col.readOnly && startEditing()}>
+                                            <td
+                                                key={colIndex}
+                                                className={cn(
+                                                    "p-0 relative h-10 border-r border-gray-100 transition-all duration-200",
+                                                    isBusyMode && "h-8", // Reduced height in Busy Mode
+                                                    isSelected && !isEditing && "ring-2 ring-inset ring-indigo-500 z-10 bg-indigo-50/20",
+                                                    col.readOnly && "bg-gray-50/10",
+                                                    hasError && "bg-red-50/50 ring-1 ring-inset ring-red-300"
+                                                )}
+                                                style={{ width }}
+                                                onClick={() => setSelectedCell({ row: rowIndex, col: colIndex })}
+                                                onDoubleClick={() => !col.readOnly && startEditing()}
+                                            >
+                                                {/* Smart Fill Handle (Busy Mode & Selected Only) */}
+                                                {isSelected && !isEditing && isBusyMode && (
+                                                    <div className="absolute -bottom-1 -right-1 w-2.5 h-2.5 bg-indigo-600 border border-white z-50 cursor-crosshair shadow-sm hover:scale-125 transition-transform" />
+                                                )}
                                                 {isEditing ? (
                                                     <div className="absolute inset-0 z-40 p-0.5">
                                                         <input ref={inputRef} className="w-full h-full px-2.5 bg-white outline-none ring-2 ring-blue-600 shadow-xl font-medium text-gray-900 z-50 text-sm" value={editValue} onChange={(e) => setEditValue(e.target.value)} onBlur={(e) => saveEdit(e.target.value)} onKeyDown={(e) => {

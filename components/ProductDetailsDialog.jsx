@@ -190,7 +190,7 @@ export function ProductDetailsDialog({
                                         <DetailItem label="Margin Percent" value={product.cost_price && product.price ? `${(((product.price - product.cost_price) / (product.cost_price || 1)) * 100).toFixed(2)}%` : null} className="text-emerald-600" />
                                     </DetailSection>
 
-                                    {((product.batches?.length > 0) || (product.serial_numbers?.length > 0)) && (
+                                    {((product.batches?.length > 0) || (product.serial_numbers?.length > 0) || (product.variants?.length > 0)) && (
                                         <DetailSection title="Logistics & Tracking" icon={Layers}>
                                             {product.batches?.length > 0 && (
                                                 <div className="col-span-full space-y-3">
@@ -220,6 +220,28 @@ export function ProductDetailsDialog({
                                                             <Badge key={idx} variant="secondary" className="font-mono text-[9px] font-black py-1 px-3 border-gray-200 text-gray-600 bg-gray-50 rounded-xl">
                                                                 {typeof serial === 'string' ? serial : (serial.serial_number || serial.number)}
                                                             </Badge>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+                                            {product.variants?.length > 0 && (
+                                                <div className="col-span-full space-y-3 mt-4">
+                                                    <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Product Variations ({product.variants.length})</label>
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                                                        {product.variants.map((v, idx) => (
+                                                            <div key={idx} className="p-3 bg-gray-50 rounded-2xl border border-gray-100 flex justify-between items-center">
+                                                                <div>
+                                                                    <div className="text-[10px] font-black text-gray-900 leading-tight">
+                                                                        {v.sku}
+                                                                    </div>
+                                                                    <div className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">
+                                                                        {v.size || 'N/A'} • {v.color || 'N/A'}
+                                                                    </div>
+                                                                </div>
+                                                                <Badge className="bg-white border-gray-100 text-gray-600 font-black text-[9px] px-2 py-0.5">
+                                                                    {v.stock}
+                                                                </Badge>
+                                                            </div>
                                                         ))}
                                                     </div>
                                                 </div>

@@ -116,6 +116,8 @@ export function InventoryTab({
                         onLocationDelete={onLocationDelete}
                         onStockTransfer={onStockTransfer}
                         onGeneratePO={onGeneratePO}
+                        // @ts-ignore
+                        isLoading={false} // Will be passed from parent if available, for now assume false or update types
                     />
                 </Suspense>
             </ErrorBoundary>

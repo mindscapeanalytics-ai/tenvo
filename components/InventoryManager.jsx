@@ -182,9 +182,10 @@ export function InventoryManager({
     }
   }, [initialProducts]);
 
-  // Internal Data Fetching (Only if products not passed or empty, generally redundant if parent manages)
+  // Internal Data Fetching (Only if products not passed or empty, and not controlled by parent)
   const fetchProducts = async () => {
-    if (!businessId || initialProducts.length > 0) return;
+    // If businessId missing OR products provided OR parent controls data refresh => SKIP
+    if (!businessId || initialProducts.length > 0 || refreshData) return;
     setLoading(true);
     try {
       const res = await getProductsAction(businessId);
