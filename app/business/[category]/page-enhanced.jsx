@@ -19,7 +19,6 @@ import { GSTManager } from '@/components/GSTManager';
 import { SettingsManager } from '@/components/SettingsManager';
 import { CustomerManager } from '@/components/CustomerManager';
 import { ProductForm } from '@/components/ProductForm';
-import { VendorsAndPO } from '@/components/VendorsAndPO';
 import { getDomainColors } from '@/lib/domainColors';
 import { getDomainKnowledge } from '@/lib/domainKnowledge';
 import { formatCurrency } from '@/lib/currency';
@@ -419,7 +418,7 @@ export default function BusinessDashboard() {
               </CardContent>
             </Card>
           </div>
-          <VendorsAndPO category={category} />
+
         </TabsContent>
 
         {/* Reports Tab */}

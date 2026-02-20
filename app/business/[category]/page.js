@@ -64,7 +64,6 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { EnhancedInvoiceBuilder } from '@/components/EnhancedInvoiceBuilder';
 import { CustomerForm } from '@/components/CustomerForm';
 import { SalesManager } from '@/components/SalesManager';
-import { VendorsAndPO } from '@/components/VendorsAndPO';
 import { VendorManager } from '@/components/VendorManager';
 import { PurchaseOrderManager } from '@/components/PurchaseOrderManager';
 import { QuotationOrderChallanManager } from '@/components/QuotationOrderChallanManager';

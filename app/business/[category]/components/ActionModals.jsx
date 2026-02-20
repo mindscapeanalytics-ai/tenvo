@@ -24,6 +24,7 @@ import {
 import { VendorForm } from '@/components/VendorForm';
 import EnhancedPOBuilder from '@/components/EnhancedPOBuilder';
 import { ProductForm } from '@/components/ProductForm';
+import { ProductWizard } from '@/components/inventory/ProductWizard';
 import { EnhancedInvoiceBuilder } from '@/components/EnhancedInvoiceBuilder';
 import { CustomerForm } from '@/components/CustomerForm';
 import toast from 'react-hot-toast';
@@ -97,27 +98,40 @@ export function ActionModals({
                 category={category}
             />
 
-            {/* Product Form Modal */}
+            {/* Product Form Modal — Wizard for new, Full form for edit */}
             <Dialog open={showProductForm} onOpenChange={setShowProductForm}>
-                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-                    <DialogHeader>
-                        <DialogTitle>
-                            {editingProduct ? 'Edit Product' : 'Add New Product'}
-                        </DialogTitle>
+                <DialogContent className={editingProduct ? "max-w-4xl max-h-[90vh] overflow-y-auto" : "max-w-3xl p-0 border-none bg-transparent shadow-none"}>
+                    <DialogHeader className="sr-only">
+                        <DialogTitle>{editingProduct ? 'Edit Product' : 'Add New Product'}</DialogTitle>
                         <DialogDescription>
-                            {editingProduct ? 'Modify the details of the selected product.' : 'Enter the specifications and pricing for a new inventory item.'}
+                            {editingProduct ? 'Modify the details of the selected product.' : 'Add a new product using the guided wizard.'}
                         </DialogDescription>
                     </DialogHeader>
-                    <ProductForm
-                        product={editingProduct}
-                        category={category}
-                        onSave={onSaveProduct}
-                        onCancel={() => {
-                            setShowProductForm(false);
-                            setEditingProduct(null);
-                        }}
-                        currency={currency}
-                    />
+                    {editingProduct ? (
+                        <ProductForm
+                            product={editingProduct}
+                            category={category}
+                            onSave={onSaveProduct}
+                            onCancel={() => {
+                                setShowProductForm(false);
+                                setEditingProduct(null);
+                            }}
+                            currency={currency}
+                        />
+                    ) : (
+                        <ProductWizard
+                            category={category}
+                            onSave={async (data) => {
+                                await onSaveProduct?.(data);
+                                setShowProductForm(false);
+                            }}
+                            onCancel={() => {
+                                setShowProductForm(false);
+                                setEditingProduct(null);
+                            }}
+                            currency={currency}
+                        />
+                    )}
                 </DialogContent>
             </Dialog>
 

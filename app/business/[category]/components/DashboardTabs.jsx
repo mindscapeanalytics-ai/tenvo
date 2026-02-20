@@ -7,7 +7,7 @@ import { Tabs as BaseTabs, TabsContent, TabsList, TabsTrigger } from '@/componen
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Package, Search, AlertTriangle, Lock, ShoppingCart, DollarSign as DollarIcon, TrendingUp, TrendingDown, Package as PackageIcon } from 'lucide-react';
-import { DashboardTab } from './tabs/DashboardTab';
+import { DomainDashboard } from './tabs/DomainDashboard';
 import { InventoryTab } from './tabs/InventoryTab';
 import { InvoiceTab } from './tabs/InvoiceTab';
 import { CustomersTab } from './tabs/CustomersTab';
@@ -29,10 +29,20 @@ import { SettingsManager } from '@/components/SettingsManager';
 import { SerialScanner } from '@/components/inventory/SerialScanner';
 // Phase 3+5+6 New Module Components
 import { PosTerminal } from '@/components/pos/PosTerminal';
+import { SuperStorePOS } from '@/components/pos/SuperStorePOS';
 import { RestaurantManager } from '@/components/restaurant/RestaurantManager';
+import { RestaurantPOS } from '@/components/restaurant/RestaurantPOS';
+import { FloorPlanEditor } from '@/components/restaurant/FloorPlanEditor';
+import { KitchenDisplaySystem } from '@/components/restaurant/KitchenDisplaySystem';
 import { ExpenseManager } from '@/components/finance/ExpenseManager';
+import FinanceHub from '@/components/finance/FinanceHub';
 import { PayrollDashboard } from '@/components/hr/PayrollDashboard';
 import { ApprovalInbox } from '@/components/workflow/ApprovalInbox';
+import { LoyaltyManager } from '@/components/crm/LoyaltyManager';
+import { PosRefundPanel } from '@/components/pos/PosRefundPanel';
+import { AuditTrailViewer } from '@/components/audit/AuditTrailViewer';
+import { PromotionEngine } from '@/components/crm/PromotionEngine';
+import { AIInsightsPanel } from '@/components/intelligence/AIInsightsPanel';
 import { UpgradePrompt } from '@/components/subscription/UpgradePrompt';
 
 export function DashboardTabs({
@@ -163,6 +173,8 @@ export function DashboardTabs({
             (o.status && o.status.toLowerCase().includes(lowerTerm))
         );
     }, [productionOrders, searchTerm]);
+    const [showFloorPlan, setShowFloorPlan] = React.useState(false);
+
     const {
         handleTabChange,
         handleDeleteInvoice,
@@ -218,7 +230,7 @@ export function DashboardTabs({
             <div key={activeTab}>
                 <TabsContent value="dashboard" className="space-y-6 outline-none">
                     {wrapTab(
-                        <DashboardTab
+                        <DomainDashboard
                             businessId={business?.id}
                             category={category}
                             invoices={filteredInvoices}
@@ -227,8 +239,6 @@ export function DashboardTabs({
                             dateRange={dateRange}
                             currency={currency}
                             onQuickAction={handlers.handleQuickAction}
-                            accountingSummary={accountingSummary}
-                            chartData={dashboardChartData}
                             dashboardMetrics={dashboardMetrics}
                             expenseBreakdown={expenseBreakdown}
                             domainKnowledge={domainKnowledge}
@@ -630,39 +640,78 @@ export function DashboardTabs({
 
                 <TabsContent value="pos" className="space-y-6 outline-none">
                     {wrapTab(
-                        <PosTerminal
-                            businessId={business?.id}
-                            products={filteredProducts}
-                            onCompleteSale={handlers.handlePosCheckout}
-                            currency={currency}
-                            session={handlers.posSession}
-                        />
+                        category === 'restaurant-cafe' ? (
+                            <RestaurantPOS
+                                businessId={business?.id}
+                                products={filteredProducts}
+                                onCompleteSale={refreshAllData}
+                                currency={currency}
+                            />
+                        ) : ['supermarket', 'grocery', 'wholesale'].includes(category) ? (
+                            <SuperStorePOS
+                                businessId={business?.id}
+                                products={filteredProducts}
+                                onCompleteSale={handlers.handlePosCheckout}
+                                currency={currency}
+                                session={handlers.posSession}
+                            />
+                        ) : (
+                            <PosTerminal
+                                businessId={business?.id}
+                                products={filteredProducts}
+                                onCompleteSale={handlers.handlePosCheckout}
+                                currency={currency}
+                                session={handlers.posSession}
+                            />
+                        )
                     )}
                 </TabsContent>
 
                 <TabsContent value="restaurant" className="space-y-6 outline-none">
                     {wrapTab(
-                        <RestaurantManager
-                            businessId={business?.id}
-                            tables={handlers.restaurantTables || []}
-                            kitchenQueue={handlers.kitchenQueue || []}
-                            onTableAction={handlers.handleTableAction}
-                            onNewOrder={handlers.handleNewRestaurantOrder}
-                            onKitchenStatusUpdate={handlers.handleKitchenStatusUpdate}
-                            onRefresh={refreshAllData}
-                        />
+                        <div className="space-y-6">
+                            <div className="flex items-center justify-between">
+                                <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight">Restaurant Operations</h2>
+                                <Button
+                                    variant="outline"
+                                    onClick={() => setShowFloorPlan(!showFloorPlan)}
+                                    className="h-10 rounded-xl text-xs font-bold border-2"
+                                >
+                                    <Layout className="w-4 h-4 mr-2" />
+                                    {showFloorPlan ? 'Switch to Manager' : 'Visual Floor Plan'}
+                                </Button>
+                            </div>
+
+                            {showFloorPlan ? (
+                                <FloorPlanEditor
+                                    businessId={business?.id}
+                                    initialTables={handlers.restaurantTables || []}
+                                    onSave={(data) => {
+                                        handlers.handleTableAction('bulk_update', data.tables);
+                                        setShowFloorPlan(false);
+                                    }}
+                                />
+                            ) : (
+                                <>
+                                    <RestaurantManager
+                                        businessId={business?.id}
+                                        tables={handlers.restaurantTables || []}
+                                        kitchenQueue={handlers.kitchenQueue || []}
+                                        onTableAction={handlers.handleTableAction}
+                                        onNewOrder={handlers.handleNewRestaurantOrder}
+                                        onKitchenStatusUpdate={handlers.handleKitchenStatusUpdate}
+                                        onRefresh={refreshAllData}
+                                    />
+                                    <KitchenDisplaySystem businessId={business?.id} />
+                                </>
+                            )}
+                        </div>
                     )}
                 </TabsContent>
 
                 <TabsContent value="expenses" className="space-y-6 outline-none">
                     {wrapTab(
-                        <ExpenseManager
-                            businessId={business?.id}
-                            expenses={handlers.expenses || []}
-                            onCreateExpense={handlers.handleCreateExpense}
-                            onDeleteExpense={handlers.handleDeleteExpense}
-                            currency={currency}
-                        />
+                        <FinanceHub businessId={business?.id} />
                     )}
                 </TabsContent>
 
@@ -689,6 +738,35 @@ export function DashboardTabs({
                             onReject={handlers.handleRejectRequest}
                             currency={currency}
                         />
+                    )}
+                </TabsContent>
+
+                <TabsContent value="loyalty" className="space-y-6 outline-none">
+                    {wrapTab(
+                        <div className="space-y-8">
+                            <PromotionEngine businessId={business?.id} currency={currency} />
+                            <div className="border-t border-gray-100 pt-8">
+                                <LoyaltyManager businessId={business?.id} />
+                            </div>
+                        </div>
+                    )}
+                </TabsContent>
+
+                <TabsContent value="refunds" className="space-y-6 outline-none">
+                    {wrapTab(
+                        <PosRefundPanel businessId={business?.id} />
+                    )}
+                </TabsContent>
+
+                <TabsContent value="audit" className="space-y-6 outline-none">
+                    {wrapTab(
+                        <AuditTrailViewer businessId={business?.id} />
+                    )}
+                </TabsContent>
+
+                <TabsContent value="reports" className="space-y-6 outline-none">
+                    {wrapTab(
+                        <AIInsightsPanel businessId={business?.id} />
                     )}
                 </TabsContent>
 
