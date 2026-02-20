@@ -25,6 +25,7 @@ import { PLAN_TIERS, FEATURE_LABELS, FEATURE_MIN_PLAN } from '@/lib/config/plans
 import { UserManager } from '../auth/UserManager';
 import { LanguageToggle } from '../LanguageToggle';
 import { motion, AnimatePresence } from 'framer-motion';
+import { BusinessSwitcher } from './BusinessSwitcher';
 
 // ─── Grouped Navigation Definition ──────────────────────────────────────────
 // Each item has: key (matches tab param), label, icon, and optional:
@@ -229,41 +230,13 @@ export function Sidebar({ isOpen, onClose, isSidebarCollapsed, setIsSidebarColla
             )}
           </button>
 
-          {/* Business Context */}
+          {/* Business Switcher */}
           {business?.name && (
             <div className={cn(
-              "mt-3 flex items-center gap-2.5 p-2 bg-gray-50 border border-gray-100 rounded-xl transition-all",
-              isSidebarCollapsed ? "mx-1.5 p-1 justify-center border-none bg-transparent" : "mx-0"
+              "mt-3",
+              isSidebarCollapsed ? "mx-1.5" : "mx-0"
             )}>
-              <div
-                className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-xs shadow-sm shrink-0"
-                style={{ backgroundColor: colors.primary }}
-              >
-                {business.name.substring(0, 2).toUpperCase()}
-              </div>
-              {!isSidebarCollapsed && (
-                <>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-bold text-gray-900 truncate leading-tight">{business.name}</p>
-                    <div className="flex items-center gap-1 mt-0.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                      <p className="text-[9px] text-gray-400 font-semibold uppercase tracking-wider truncate">
-                        {business.domain?.replace(/-/g, ' ') || 'Active'}
-                      </p>
-                    </div>
-                  </div>
-                  {/* Plan Badge */}
-                  <span className={cn(
-                    "px-1.5 py-0.5 text-[8px] font-black rounded-full leading-none shrink-0",
-                    planTier === 'enterprise' && "bg-violet-100 text-violet-700",
-                    planTier === 'premium' && "bg-amber-100 text-amber-700",
-                    planTier === 'standard' && "bg-blue-100 text-blue-700",
-                    planTier === 'basic' && "bg-gray-100 text-gray-500",
-                  )}>
-                    {planName}
-                  </span>
-                </>
-              )}
+              <BusinessSwitcher isCollapsed={isSidebarCollapsed} />
             </div>
           )}
         </div>

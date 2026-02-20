@@ -6,7 +6,7 @@ import { Tabs as BaseTabs, TabsContent, TabsList, TabsTrigger } from '@/componen
 
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Package, Search, AlertTriangle, Lock, ShoppingCart, DollarSign as DollarIcon, TrendingUp, TrendingDown, Package as PackageIcon } from 'lucide-react';
+import { Package, Search, AlertTriangle, Lock, ShoppingCart, DollarSign as DollarIcon, TrendingUp, TrendingDown, Package as PackageIcon, Layout, Clock } from 'lucide-react';
 import { DomainDashboard } from './tabs/DomainDashboard';
 import { InventoryTab } from './tabs/InventoryTab';
 import { InvoiceTab } from './tabs/InvoiceTab';
@@ -34,15 +34,21 @@ import { RestaurantManager } from '@/components/restaurant/RestaurantManager';
 import { RestaurantPOS } from '@/components/restaurant/RestaurantPOS';
 import { FloorPlanEditor } from '@/components/restaurant/FloorPlanEditor';
 import { KitchenDisplaySystem } from '@/components/restaurant/KitchenDisplaySystem';
+import { ReservationManager } from '@/components/restaurant/ReservationManager';
 import { ExpenseManager } from '@/components/finance/ExpenseManager';
 import FinanceHub from '@/components/finance/FinanceHub';
 import { PayrollDashboard } from '@/components/hr/PayrollDashboard';
+import { AttendanceTracker } from '@/components/hr/AttendanceTracker';
+import { ShiftScheduler } from '@/components/hr/ShiftScheduler';
 import { ApprovalInbox } from '@/components/workflow/ApprovalInbox';
+import { WorkflowBuilder } from '@/components/workflow/WorkflowBuilder';
 import { LoyaltyManager } from '@/components/crm/LoyaltyManager';
 import { PosRefundPanel } from '@/components/pos/PosRefundPanel';
 import { AuditTrailViewer } from '@/components/audit/AuditTrailViewer';
 import { PromotionEngine } from '@/components/crm/PromotionEngine';
+import { CustomerLoyaltyPortal } from '@/components/crm/CustomerLoyaltyPortal';
 import { AIInsightsPanel } from '@/components/intelligence/AIInsightsPanel';
+import { ReportBuilder } from '@/components/reports/ReportBuilder';
 import { UpgradePrompt } from '@/components/subscription/UpgradePrompt';
 
 export function DashboardTabs({
@@ -173,7 +179,10 @@ export function DashboardTabs({
             (o.status && o.status.toLowerCase().includes(lowerTerm))
         );
     }, [productionOrders, searchTerm]);
-    const [showFloorPlan, setShowFloorPlan] = React.useState(false);
+    const [restaurantView, setRestaurantView] = React.useState('manager');
+    const [hrView, setHrView] = React.useState('payroll');
+    const [reportsView, setReportsView] = React.useState('ai');
+    const [approvalsView, setApprovalsView] = React.useState('inbox'); // 'inbox' | 'builder'
 
     const {
         handleTabChange,
@@ -204,7 +213,15 @@ export function DashboardTabs({
         setShowVendorForm,
         setEditingVendor,
         setShowPOBuilder,
-        formatCurrency
+        formatCurrency,
+        // POS & Restaurant
+        posSession,
+        restaurantTables,
+        kitchenQueue,
+        handlePosCheckout,
+        handleTableAction,
+        handleNewRestaurantOrder,
+        handleKitchenStatusUpdate
     } = handlers;
 
     const tabVariants = {
@@ -651,17 +668,17 @@ export function DashboardTabs({
                             <SuperStorePOS
                                 businessId={business?.id}
                                 products={filteredProducts}
-                                onCompleteSale={handlers.handlePosCheckout}
+                                onCompleteSale={handlePosCheckout}
                                 currency={currency}
-                                session={handlers.posSession}
+                                session={posSession}
                             />
                         ) : (
                             <PosTerminal
                                 businessId={business?.id}
                                 products={filteredProducts}
-                                onCompleteSale={handlers.handlePosCheckout}
+                                onCompleteSale={handlePosCheckout}
                                 currency={currency}
-                                session={handlers.posSession}
+                                session={posSession}
                             />
                         )
                     )}
@@ -672,34 +689,49 @@ export function DashboardTabs({
                         <div className="space-y-6">
                             <div className="flex items-center justify-between">
                                 <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight">Restaurant Operations</h2>
-                                <Button
-                                    variant="outline"
-                                    onClick={() => setShowFloorPlan(!showFloorPlan)}
-                                    className="h-10 rounded-xl text-xs font-bold border-2"
-                                >
-                                    <Layout className="w-4 h-4 mr-2" />
-                                    {showFloorPlan ? 'Switch to Manager' : 'Visual Floor Plan'}
-                                </Button>
+                                <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1">
+                                    {[
+                                        { key: 'manager', label: 'Manager' },
+                                        { key: 'floorplan', label: 'Floor Plan' },
+                                        { key: 'reservations', label: 'Reservations' },
+                                    ].map(v => (
+                                        <button
+                                            key={v.key}
+                                            onClick={() => setRestaurantView(v.key)}
+                                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${restaurantView === v.key ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'
+                                                }`}
+                                        >
+                                            {v.label}
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
 
-                            {showFloorPlan ? (
+                            {restaurantView === 'floorplan' && (
                                 <FloorPlanEditor
                                     businessId={business?.id}
-                                    initialTables={handlers.restaurantTables || []}
+                                    initialTables={restaurantTables || []}
                                     onSave={(data) => {
-                                        handlers.handleTableAction('bulk_update', data.tables);
-                                        setShowFloorPlan(false);
+                                        handleTableAction('bulk_update', null, data);
+                                        setRestaurantView('manager');
                                     }}
                                 />
-                            ) : (
+                            )}
+                            {restaurantView === 'reservations' && (
+                                <ReservationManager
+                                    businessId={business?.id}
+                                    tables={restaurantTables || []}
+                                />
+                            )}
+                            {restaurantView === 'manager' && (
                                 <>
                                     <RestaurantManager
                                         businessId={business?.id}
-                                        tables={handlers.restaurantTables || []}
-                                        kitchenQueue={handlers.kitchenQueue || []}
-                                        onTableAction={handlers.handleTableAction}
-                                        onNewOrder={handlers.handleNewRestaurantOrder}
-                                        onKitchenStatusUpdate={handlers.handleKitchenStatusUpdate}
+                                        tables={restaurantTables || []}
+                                        kitchenQueue={kitchenQueue || []}
+                                        onTableAction={handleTableAction}
+                                        onNewOrder={handleNewRestaurantOrder}
+                                        onKitchenStatusUpdate={handleKitchenStatusUpdate}
                                         onRefresh={refreshAllData}
                                     />
                                     <KitchenDisplaySystem businessId={business?.id} />
@@ -717,34 +749,93 @@ export function DashboardTabs({
 
                 <TabsContent value="payroll" className="space-y-6 outline-none">
                     {wrapTab(
-                        <PayrollDashboard
-                            businessId={business?.id}
-                            employees={handlers.payrollEmployees || []}
-                            payrollRuns={handlers.payrollRuns || []}
-                            onProcessPayroll={handlers.handleProcessPayroll}
-                            onViewPayslips={handlers.handleViewPayslips}
-                            onAddEmployee={handlers.handleAddEmployee}
-                            currency={currency}
-                        />
+                        <div className="space-y-6">
+                            <div className="flex items-center justify-between">
+                                <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight">HR & Payroll</h2>
+                                <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1">
+                                    {[
+                                        { key: 'payroll', label: 'Payroll' },
+                                        { key: 'attendance', label: 'Attendance' },
+                                        { key: 'shifts', label: 'Shifts' },
+                                    ].map(v => (
+                                        <button
+                                            key={v.key}
+                                            onClick={() => setHrView(v.key)}
+                                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${hrView === v.key ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'
+                                                }`}
+                                        >
+                                            {v.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {hrView === 'payroll' && (
+                                <PayrollDashboard
+                                    businessId={business?.id}
+                                    employees={handlers.payrollEmployees || []}
+                                    payrollRuns={handlers.payrollRuns || []}
+                                    onProcessPayroll={handlers.handleProcessPayroll}
+                                    onViewPayslips={handlers.handleViewPayslips}
+                                    onAddEmployee={handlers.handleAddEmployee}
+                                    currency={currency}
+                                />
+                            )}
+                            {hrView === 'attendance' && (
+                                <AttendanceTracker businessId={business?.id} />
+                            )}
+                            {hrView === 'shifts' && (
+                                <ShiftScheduler businessId={business?.id} />
+                            )}
+                        </div>
                     )}
                 </TabsContent>
 
                 <TabsContent value="approvals" className="space-y-6 outline-none">
                     {wrapTab(
-                        <ApprovalInbox
-                            pendingRequests={handlers.pendingApprovals || []}
-                            historyRequests={handlers.approvalHistory || []}
-                            onApprove={handlers.handleApproveRequest}
-                            onReject={handlers.handleRejectRequest}
-                            currency={currency}
-                        />
+                        <div className="space-y-6">
+                            <div className="flex items-center justify-between">
+                                <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight">Approvals & Workflows</h2>
+                                <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1">
+                                    {[
+                                        { key: 'inbox', label: 'Approval Inbox' },
+                                        { key: 'builder', label: 'Workflow Builder' },
+                                    ].map(v => (
+                                        <button
+                                            key={v.key}
+                                            onClick={() => setApprovalsView(v.key)}
+                                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${approvalsView === v.key ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'
+                                                }`}
+                                        >
+                                            {v.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {approvalsView === 'inbox' && (
+                                <ApprovalInbox
+                                    pendingRequests={handlers.pendingApprovals || []}
+                                    historyRequests={handlers.approvalHistory || []}
+                                    onApprove={handlers.handleApproveRequest}
+                                    onReject={handlers.handleRejectRequest}
+                                    currency={currency}
+                                />
+                            )}
+                            {approvalsView === 'builder' && (
+                                <WorkflowBuilder businessId={business?.id} />
+                            )}
+                        </div>
                     )}
                 </TabsContent>
 
                 <TabsContent value="loyalty" className="space-y-6 outline-none">
                     {wrapTab(
                         <div className="space-y-8">
-                            <PromotionEngine businessId={business?.id} currency={currency} />
+                            <CustomerLoyaltyPortal businessId={business?.id} currency={currency} />
+                            <div className="border-t border-gray-100 pt-8">
+                                <PromotionEngine businessId={business?.id} currency={currency} />
+                            </div>
                             <div className="border-t border-gray-100 pt-8">
                                 <LoyaltyManager businessId={business?.id} />
                             </div>
@@ -766,7 +857,29 @@ export function DashboardTabs({
 
                 <TabsContent value="reports" className="space-y-6 outline-none">
                     {wrapTab(
-                        <AIInsightsPanel businessId={business?.id} />
+                        <div className="space-y-6">
+                            <div className="flex items-center justify-between">
+                                <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight">Analytics & Reports</h2>
+                                <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1">
+                                    {[
+                                        { key: 'ai', label: 'AI Insights' },
+                                        { key: 'builder', label: 'Report Builder' },
+                                    ].map(v => (
+                                        <button
+                                            key={v.key}
+                                            onClick={() => setReportsView(v.key)}
+                                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${reportsView === v.key ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'
+                                                }`}
+                                        >
+                                            {v.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {reportsView === 'ai' && <AIInsightsPanel businessId={business?.id} />}
+                            {reportsView === 'builder' && <ReportBuilder businessId={business?.id} currency={currency} />}
+                        </div>
                     )}
                 </TabsContent>
 

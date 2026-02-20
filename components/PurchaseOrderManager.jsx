@@ -14,6 +14,11 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import GRNView from './GRNView';
 import { useBusiness } from '@/lib/context/BusinessContext';
 import { Printer, FileText } from 'lucide-react';
+import { PurchaseDocumentForm } from './PurchaseDocumentForm';
+import { getVendorsAction } from '@/lib/actions/basic/vendor';
+import { getGLAccountsAction } from '@/lib/actions/basic/accounting';
+import { getWarehouseLocationsAction } from '@/lib/actions/standard/inventory/warehouse';
+import { getProductsAction } from '@/lib/actions/standard/inventory/product';
 
 /**
  * Purchase Order Manager
@@ -31,6 +36,29 @@ export function PurchaseOrderManager({ purchaseOrders = [], onCreate, onUpdateSt
   const colors = getDomainColors(category);
   const [searchTerm, setSearchTerm] = useState('');
   const [poToView, setPoToView] = useState(null);
+  const [showPOForm, setShowPOForm] = useState(false);
+  const [vendors, setVendors] = useState([]);
+  const [warehouses, setWarehouses] = useState([]);
+  const [products, setProducts] = useState([]);
+
+  useEffect(() => {
+    async function fetchData() {
+      if (!business?.id) return;
+      try {
+        const [vResult, wResult, pResult] = await Promise.all([
+          getVendorsAction(business.id),
+          getWarehouseLocationsAction(business.id),
+          getProductsAction(business.id)
+        ]);
+        if (vResult.success) setVendors(vResult.vendors);
+        if (wResult.success) setWarehouses(wResult.locations || wResult.warehouses || []);
+        if (pResult.success) setProducts(pResult.products);
+      } catch (error) {
+        console.error('Error fetching procurement data:', error);
+      }
+    }
+    fetchData();
+  }, [business?.id]);
 
   const getStatusBadge = (status) => {
     const styles = {
@@ -126,6 +154,13 @@ export function PurchaseOrderManager({ purchaseOrders = [], onCreate, onUpdateSt
           <p className="text-muted-foreground font-medium">Coordinate inventory procurement and tracking</p>
         </div>
         <div className="flex gap-2">
+          <Button
+            onClick={() => setShowPOForm(true)}
+            className="bg-primary text-white rounded-xl shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all font-bold h-11 px-6"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Create Purchase
+          </Button>
           <ExportButton
             data={filteredOrders}
             filename="purchase_orders"
@@ -195,6 +230,16 @@ export function PurchaseOrderManager({ purchaseOrders = [], onCreate, onUpdateSt
           />
         </DialogContent>
       </Dialog>
+
+      {showPOForm && (
+        <PurchaseDocumentForm
+          onClose={() => setShowPOForm(false)}
+          onSave={() => refreshData?.()}
+          vendors={vendors}
+          warehouses={warehouses}
+          products={products}
+        />
+      )}
     </div>
   );
 }

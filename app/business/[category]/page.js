@@ -348,6 +348,20 @@ function BusinessDashboardContent() {
   const [hasCheckedSetup, setHasCheckedSetup] = useState(false);
   // Date Range and Search Filtering
   const { dateRange, setDateRange, searchQuery, setSearchQuery } = useFilters();
+
+  // POS & Restaurant States
+  const [posSession, setPosSession] = useState({ id: `sess-${Date.now()}`, startTime: new Date() });
+  const [restaurantTables, setRestaurantTables] = useState([
+    { id: '1', name: 'Table 1', status: 'available', capacity: 4, zone_id: '1' },
+    { id: '2', name: 'Table 2', status: 'available', capacity: 2, zone_id: '1' },
+    { id: '3', name: 'Table 3', status: 'occupied', capacity: 6, zone_id: '1', currentOrder: { id: 'ord-123', items: [], total: 5000 } },
+    { id: '4', name: 'Table 4', status: 'reserved', capacity: 4, zone_id: '2' },
+    { id: '5', name: 'Table 5', status: 'available', capacity: 4, zone_id: '2' },
+  ]);
+  const [kitchenQueue, setKitchenQueue] = useState([
+    { id: 'k-1', orderId: 'ord-123', items: [{ name: 'Biryani', qty: 2 }, { name: 'Coke', qty: 2 }], status: 'preparing', time: '12:45' },
+    { id: 'k-2', orderId: 'ord-124', items: [{ name: 'Karahi', qty: 1 }], status: 'pending', time: '13:02' },
+  ]);
   const [viewingItem, setViewingItem] = useState(null);
   const [viewingType, setViewingType] = useState(null);
 
@@ -807,6 +821,75 @@ function BusinessDashboardContent() {
     }
   };
 
+  // ─── POS Handlers ──────────────────────────────────────────────────────────
+
+  const handlePosCheckout = async (checkoutData) => {
+    try {
+      toast.loading('Processing POS Checkout...', { id: 'pos' });
+      const invoiceData = {
+        customer_id: checkoutData.customerId || null,
+        items: checkoutData.items.map(item => ({
+          product_id: item.id,
+          quantity: item.quantity,
+          unit_price: item.price,
+          name: item.name
+        })),
+        payment_method: checkoutData.paymentMethod || 'cash',
+        amount: checkoutData.total,
+        status: 'paid',
+        date: new Date().toISOString(),
+        payment_status: 'paid',
+        business_id: business.id
+      };
+      await invoiceAPI.create(business.id, invoiceData);
+      toast.success('Sale completed successfully', { id: 'pos' });
+      refreshAllData();
+      return { success: true };
+    } catch (error) {
+      console.error('POS Checkout Error:', error);
+      toast.error('Sale failed: ' + error.message, { id: 'pos' });
+      return { success: false, error };
+    }
+  };
+
+  // ─── Restaurant Handlers ────────────────────────────────────────────────────
+
+  const handleTableAction = (action, tableId, data) => {
+    if (action === 'bulk_update') {
+      setRestaurantTables(data);
+      toast.success('Floor plan layout saved');
+      return;
+    }
+    setRestaurantTables(prev => prev.map(t => {
+      if (t.id === tableId) {
+        if (action === 'occupy') return { ...t, status: 'occupied', currentOrder: data };
+        if (action === 'clear') return { ...t, status: 'available', currentOrder: null };
+        if (action === 'reserve') return { ...t, status: 'reserved' };
+        return { ...t, status: action };
+      }
+      return t;
+    }));
+  };
+
+  const handleNewRestaurantOrder = (order) => {
+    const kItem = {
+      id: `k-${Date.now()}`,
+      orderId: order.id,
+      items: order.items,
+      status: 'pending',
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+    setKitchenQueue(prev => [...prev, kItem]);
+    toast.success('Order sent to kitchen');
+  };
+
+  const handleKitchenStatusUpdate = (itemId, newStatus) => {
+    setKitchenQueue(prev => prev.map(item =>
+      item.id === itemId ? { ...item, status: newStatus } : item
+    ));
+    if (newStatus === 'ready') toast.success('Order ready for serving', { icon: '🍽️' });
+  };
+
 
   // BLOCKING LOADER REMOVED FOR INSTANT SHELL RENDER
   // if (businessLoading || authLoading) {
@@ -884,7 +967,15 @@ function BusinessDashboardContent() {
             handleQuickAction,
             setShowVendorForm,
             setEditingVendor,
-            setShowPOBuilder
+            setShowPOBuilder,
+            // New POS & Restaurant Handlers
+            posSession,
+            restaurantTables,
+            kitchenQueue,
+            handlePosCheckout,
+            handleTableAction,
+            handleNewRestaurantOrder,
+            handleKitchenStatusUpdate
           }}
         />
       </Tabs >

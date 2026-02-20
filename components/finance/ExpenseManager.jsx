@@ -11,9 +11,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+import { ExpenseEntryForm } from '@/components/ExpenseEntryForm';
 
 const EXPENSE_CATEGORIES = [
     { value: 'rent', label: 'Rent & Utilities', color: 'bg-blue-100 text-blue-700' },
@@ -26,9 +26,8 @@ const EXPENSE_CATEGORIES = [
     { value: 'other', label: 'Other', color: 'bg-gray-100 text-gray-700' },
 ];
 
-export function ExpenseManager({ businessId, expenses = [], onCreateExpense, onDeleteExpense, currency = 'Rs.' }) {
+export function ExpenseManager({ businessId, expenses = [], onCreateExpense, onDeleteExpense, currency = 'Rs.', vendors = [] }) {
     const [showForm, setShowForm] = useState(false);
-    const [formData, setFormData] = useState({ description: '', amount: '', category: 'other', date: new Date().toISOString().split('T')[0] });
     const [filterCategory, setFilterCategory] = useState('all');
 
     const filtered = filterCategory === 'all'
@@ -45,18 +44,6 @@ export function ExpenseManager({ businessId, expenses = [], onCreateExpense, onD
         total: expenses.filter(e => e.category === cat.value).reduce((sum, e) => sum + parseFloat(e.amount || 0), 0),
     })).filter(c => c.total > 0).sort((a, b) => b.total - a.total);
 
-    const handleSubmit = async () => {
-        if (!formData.description || !formData.amount) return;
-        await onCreateExpense?.({
-            businessId,
-            description: formData.description,
-            amount: parseFloat(formData.amount),
-            category: formData.category,
-            date: formData.date,
-        });
-        setFormData({ description: '', amount: '', category: 'other', date: new Date().toISOString().split('T')[0] });
-        setShowForm(false);
-    };
 
     return (
         <div className="space-y-6">
@@ -159,62 +146,13 @@ export function ExpenseManager({ businessId, expenses = [], onCreateExpense, onD
                 </CardContent>
             </Card>
 
-            {/* Create Expense Dialog */}
-            <Dialog open={showForm} onOpenChange={setShowForm}>
-                <DialogContent className="sm:max-w-[425px]">
-                    <DialogHeader>
-                        <DialogTitle className="text-lg font-bold">Record Expense</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4 pt-2">
-                        <div>
-                            <Label className="text-xs font-semibold">Description</Label>
-                            <Input
-                                placeholder="What was the expense for?"
-                                value={formData.description}
-                                onChange={(e) => setFormData(p => ({ ...p, description: e.target.value }))}
-                                className="mt-1"
-                            />
-                        </div>
-                        <div className="grid grid-cols-2 gap-3">
-                            <div>
-                                <Label className="text-xs font-semibold">Amount (PKR)</Label>
-                                <Input
-                                    type="number"
-                                    placeholder="0"
-                                    value={formData.amount}
-                                    onChange={(e) => setFormData(p => ({ ...p, amount: e.target.value }))}
-                                    className="mt-1"
-                                />
-                            </div>
-                            <div>
-                                <Label className="text-xs font-semibold">Date</Label>
-                                <Input
-                                    type="date"
-                                    value={formData.date}
-                                    onChange={(e) => setFormData(p => ({ ...p, date: e.target.value }))}
-                                    className="mt-1"
-                                />
-                            </div>
-                        </div>
-                        <div>
-                            <Label className="text-xs font-semibold">Category</Label>
-                            <Select value={formData.category} onValueChange={(v) => setFormData(p => ({ ...p, category: v }))}>
-                                <SelectTrigger className="mt-1">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {EXPENSE_CATEGORIES.map(cat => (
-                                        <SelectItem key={cat.value} value={cat.value}>{cat.label}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <Button onClick={handleSubmit} className="w-full bg-indigo-600 hover:bg-indigo-700 font-bold">
-                            <Plus className="w-4 h-4 mr-1" /> Save Expense
-                        </Button>
-                    </div>
-                </DialogContent>
-            </Dialog>
+            {showForm && (
+                <ExpenseEntryForm
+                    vendors={vendors}
+                    onClose={() => setShowForm(false)}
+                    onSave={() => onCreateExpense?.()}
+                />
+            )}
         </div>
     );
 }

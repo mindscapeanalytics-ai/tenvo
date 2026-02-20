@@ -16,6 +16,10 @@ import { getCreditNotesAction } from '@/lib/actions/basic/creditNote';
 import { getFiscalPeriodsAction } from '@/lib/actions/basic/fiscal';
 import { getExchangeRatesAction } from '@/lib/actions/basic/exchangeRate';
 import { ExpenseManager } from '@/components/finance/ExpenseManager';
+import { PaymentReceiptForm } from '@/components/PaymentReceiptForm';
+import { JournalEntryForm } from '@/components/JournalEntryForm';
+import { getCustomersAction } from '@/lib/actions/basic/customer';
+import { getVendorsAction } from '@/lib/actions/basic/vendor';
 
 // ─── Sub-Tab Definitions ─────────────────────────────────────────────────────
 
@@ -23,6 +27,8 @@ const FINANCE_TABS = [
     { key: 'overview', label: 'Overview', icon: BarChart3, permission: 'finance.view_reports', feature: null },
     { key: 'accounts', label: 'Chart of Accounts', icon: BookOpen, permission: 'finance.view_gl', feature: 'basic_accounting' },
     { key: 'expenses', label: 'Expenses', icon: Receipt, permission: 'finance.manage_expenses', feature: 'expense_tracking' },
+    { key: 'vouchers', label: 'Vouchers', icon: CreditCard, permission: 'finance.manage_payments', feature: 'basic_accounting' },
+    { key: 'journal', label: 'Journal Entry', icon: Landmark, permission: 'finance.view_gl', feature: 'basic_accounting' },
     { key: 'credit-notes', label: 'Credit Notes', icon: RefreshCcw, permission: 'finance.credit_notes', feature: 'credit_notes' },
     { key: 'fiscal', label: 'Fiscal Periods', icon: Calendar, permission: 'finance.close_period', feature: 'fiscal_periods' },
     { key: 'exchange', label: 'Exchange Rates', icon: Globe, permission: 'finance.exchange_rates', feature: 'exchange_rates' },
@@ -349,6 +355,11 @@ export default function FinanceHub({ businessId }) {
     const [creditNotes, setCreditNotes] = useState([]);
     const [periods, setPeriods] = useState([]);
     const [rates, setRates] = useState([]);
+    const [customers, setCustomers] = useState([]);
+    const [vendors, setVendors] = useState([]);
+    const [showVoucherForm, setShowVoucherForm] = useState(false);
+    const [voucherType, setVoucherType] = useState('receipt');
+    const [showJournalForm, setShowJournalForm] = useState(false);
 
     const effectiveCurrency = currencySymbol || 'Rs.';
     const effectiveBusinessId = businessId || business?.id;
@@ -371,6 +382,14 @@ export default function FinanceHub({ businessId }) {
             if (cnRes.status === 'fulfilled' && cnRes.value.success) setCreditNotes(cnRes.value.creditNotes || cnRes.value.credit_notes || []);
             if (fpRes.status === 'fulfilled' && fpRes.value.success) setPeriods(fpRes.value.periods || []);
             if (exRes.status === 'fulfilled' && exRes.value.success) setRates(exRes.value.rates || []);
+
+            // Also fetch basic entities for forms
+            const [custRes, vendRes] = await Promise.all([
+                getCustomersAction(effectiveBusinessId),
+                getVendorsAction(effectiveBusinessId)
+            ]);
+            if (custRes.success) setCustomers(custRes.customers || []);
+            if (vendRes.success) setVendors(custRes.vendors || vendRes.vendors || []);
         } catch (err) {
             console.error('[FinanceHub] Load failed:', err);
         } finally {
@@ -403,7 +422,47 @@ export default function FinanceHub({ businessId }) {
                         onCreateExpense={() => loadData()}
                         onDeleteExpense={() => loadData()}
                         currency={effectiveCurrency}
+                        vendors={vendors}
                     />
+                );
+            case 'vouchers':
+                return (
+                    <div className="space-y-6">
+                        <div className="flex gap-4">
+                            <Button
+                                onClick={() => { setVoucherType('receipt'); setShowVoucherForm(true); }}
+                                className="flex-1 h-24 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl flex flex-col gap-2 shadow-xl shadow-emerald-500/10"
+                            >
+                                <DollarSign className="w-6 h-6" />
+                                <span className="font-black text-xs uppercase tracking-widest">Customer Receipt</span>
+                            </Button>
+                            <Button
+                                onClick={() => { setVoucherType('payment'); setShowVoucherForm(true); }}
+                                className="flex-1 h-24 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl flex flex-col gap-2 shadow-xl shadow-blue-500/10"
+                            >
+                                <CreditCard className="w-6 h-6" />
+                                <span className="font-black text-xs uppercase tracking-widest">Vendor Payment</span>
+                            </Button>
+                        </div>
+                        {/* Summary of recent vouchers could go here */}
+                    </div>
+                );
+            case 'journal':
+                return (
+                    <div className="space-y-6">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <h3 className="text-lg font-black text-gray-900">Journal Entries</h3>
+                                <p className="text-xs text-gray-400">Manual double-entry GL posting</p>
+                            </div>
+                            <Button
+                                onClick={() => setShowJournalForm(true)}
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs px-6 shadow-lg shadow-emerald-500/20"
+                            >
+                                <BookOpen className="w-4 h-4 mr-2" /> New Journal Entry
+                            </Button>
+                        </div>
+                    </div>
                 );
             case 'credit-notes':
                 return <CreditNotesPanel businessId={effectiveBusinessId} creditNotes={creditNotes} currency={effectiveCurrency} />;
@@ -464,6 +523,24 @@ export default function FinanceHub({ businessId }) {
                     {renderContent()}
                 </motion.div>
             </AnimatePresence>
+
+            {/* Global Overlays */}
+            {showVoucherForm && (
+                <PaymentReceiptForm
+                    type={voucherType}
+                    customers={customers}
+                    vendors={vendors}
+                    onClose={() => setShowVoucherForm(false)}
+                    onSave={() => loadData()}
+                />
+            )}
+
+            {showJournalForm && (
+                <JournalEntryForm
+                    onClose={() => setShowJournalForm(false)}
+                    onSave={() => loadData()}
+                />
+            )}
         </div>
     );
 }

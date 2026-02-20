@@ -72,6 +72,8 @@ import { DiscountSchemeManager } from './inventory/DiscountSchemeManager';
 import { StockReservation } from './inventory/StockReservation';
 import { StockAdjustment } from './inventory/StockAdjustment';
 import { AutoReorderManager } from './inventory/AutoReorderManager';
+import { StockAdjustmentForm } from './StockAdjustmentForm';
+import { StockTransferForm } from './StockTransferForm';
 import { exportProducts } from '@/lib/utils/export';
 
 import {
@@ -282,6 +284,8 @@ export function InventoryManager({
   const [activeDomainFilters, setActiveDomainFilters] = useState({});
   const [showQuickAddModal, setShowQuickAddModal] = useState(false);
   const [showExcelMode, setShowExcelMode] = useState(false);
+  const [showStockAdjustForm, setShowStockAdjustForm] = useState(false);
+  const [showStockTransferForm, setShowStockTransferForm] = useState(false);
 
   // Bulk Save Handler for Excel Mode
   const handleExcelSave = async (updatedData) => {
@@ -978,6 +982,16 @@ export function InventoryManager({
               <DropdownMenuItem onClick={() => setShowShortcutsHelp(true)} className="rounded-lg py-2.5">
                 <Keyboard className="w-4 h-4 mr-3 text-purple-500" />
                 <span className="font-bold text-[10px] uppercase tracking-tight">Key Command Help</span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator className="my-1" />
+              <DropdownMenuLabel className="text-[9px] font-black text-gray-400 uppercase tracking-widest p-2">Stock Operations</DropdownMenuLabel>
+              <DropdownMenuItem onClick={() => setShowStockAdjustForm(true)} className="rounded-lg py-2.5">
+                <AlertTriangle className="w-4 h-4 mr-3 text-amber-500" />
+                <span className="font-bold text-[10px] uppercase tracking-tight">Adjust Stock</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setShowStockTransferForm(true)} className="rounded-lg py-2.5">
+                <Repeat className="w-4 h-4 mr-3 text-violet-500" />
+                <span className="font-bold text-[10px] uppercase tracking-tight">Transfer Stock</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator className="my-1" />
               <div className="p-1">
@@ -1932,6 +1946,26 @@ export function InventoryManager({
         businessId={businessId}
         title={`${category.replace(/-/g, ' ').toUpperCase()} - BULK ENTRY`}
       />
+
+      {/* Stock Adjustment Form Overlay */}
+      {showStockAdjustForm && (
+        <StockAdjustmentForm
+          onClose={() => setShowStockAdjustForm(false)}
+          onSave={() => { fetchProducts(); setShowStockAdjustForm(false); }}
+          products={products}
+          warehouses={locations}
+        />
+      )}
+
+      {/* Stock Transfer Form Overlay */}
+      {showStockTransferForm && (
+        <StockTransferForm
+          onClose={() => setShowStockTransferForm(false)}
+          onSave={() => { fetchProducts(); setShowStockTransferForm(false); }}
+          products={products}
+          warehouses={locations}
+        />
+      )}
     </div >
   );
 }

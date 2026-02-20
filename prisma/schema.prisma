@@ -520,7 +520,14 @@ model purchases {
   warehouse_id    String?          @db.Uuid
   subtotal        Decimal?         @default(0) @db.Decimal(12, 2)
   tax_total       Decimal?         @default(0) @db.Decimal(12, 2)
+  discount_total  Decimal?         @default(0) @db.Decimal(12, 2)
+  payment_status  String?          @default("pending")
+  expected_delivery DateTime?        @db.Date
+  shipping_address  String?
+  approval_status   String?          @default("pending")
   notes           String?
+  is_deleted      Boolean          @default(false)
+  deleted_at      DateTime?        @db.Timestamptz(6)
   domain_data     Json?            @default("{}")
   purchase_items       purchase_items[]
   payment_allocations  payment_allocations[]
