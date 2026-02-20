@@ -533,6 +533,28 @@ export function InventoryManager({
     return () => window.removeEventListener('keydown', handleGlobalShortcuts);
   }, []);
 
+  // Handle global events from Header Page Controls
+  useEffect(() => {
+    const handleToggleFilters = () => {
+      // Focus the advanced search or toggle its visibility if we add a toggle state later
+      toast.success("Filters focused", { icon: '🔍' });
+      // Heuristic: Scroll to search or just show toast for now
+    };
+
+    const handleExportGlobal = () => {
+      toast.success("Preparing export...", { icon: '📊' });
+      handleExcelSave(products); // Trigger export logic
+    };
+
+    window.addEventListener('toggle-filters', handleToggleFilters);
+    window.addEventListener('export-data', handleExportGlobal);
+
+    return () => {
+      window.removeEventListener('toggle-filters', handleToggleFilters);
+      window.removeEventListener('export-data', handleExportGlobal);
+    };
+  }, [products]);
+
   const calculateLowStock = () => {
     return products.filter(p => p.stock <= (p.minStock || 0));
   };

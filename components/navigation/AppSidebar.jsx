@@ -106,24 +106,28 @@ export function AppSidebar({
                 )}
                 layout
             >
-                {/* Header */}
+                {/* Header - Aligned to Global Header height (h-14 / 56px) */}
                 <div className={cn(
-                    'flex items-center border-b border-gray-100 px-4 py-4',
+                    'h-14 flex items-center border-b border-gray-100 px-4 shrink-0',
                     collapsed ? 'justify-center' : 'justify-between'
                 )}>
                     {!collapsed && (
                         <div className="flex items-center gap-2.5 min-w-0">
-                            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center text-white font-black text-sm shadow-lg shadow-indigo-200">
+                            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center text-white font-black text-sm shadow-md shadow-indigo-200">
                                 T
                             </div>
-                            <div className="min-w-0">
-                                <p className="text-sm font-bold text-gray-900 truncate">{businessName || 'Tenvo'}</p>
-                                <p className="text-[10px] text-gray-400 uppercase tracking-wider truncate">{category}</p>
+                            <div className="min-w-0 flex flex-col -space-y-0.5">
+                                <p className="text-[11px] font-black text-gray-900 truncate uppercase tracking-tight">
+                                    {businessName || 'Tenvo'}
+                                </p>
+                                <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest truncate">
+                                    {category || 'Organization'}
+                                </p>
                             </div>
                         </div>
                     )}
                     {collapsed && (
-                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center text-white font-black text-sm shadow-lg shadow-indigo-200">
+                        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center text-white font-black text-sm shadow-md shadow-indigo-200">
                             T
                         </div>
                     )}

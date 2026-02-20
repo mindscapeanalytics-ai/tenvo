@@ -104,7 +104,6 @@ import { useFilters } from '@/lib/context/FilterContext';
 import { useData } from '@/lib/context/DataContext';
 import { ActionModals } from './components/ActionModals';
 import { DashboardTabs } from './components/DashboardTabs';
-import { DashboardHeader } from './components/DashboardHeader';
 
 const businessCategories = {
   // Retail & FMCG (12)
@@ -828,22 +827,7 @@ function BusinessDashboardContent() {
         </div>
       )}
 
-
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full mt-2">
-        <DashboardHeader
-          category={category}
-          colors={colors}
-          domainKnowledge={domainKnowledge}
-          activeTab={activeTab}
-          onQuickAction={handleQuickAction}
-          onExport={handleExport}
-          searchValue={searchQuery}
-          onSearchChange={setSearchQuery}
-        >
-          {/* TabsList removed — sidebar is now the primary navigation */}
-          <div />
-        </DashboardHeader>
-
         <DashboardTabs
           activeTab={activeTab}
           searchTerm={searchQuery}
