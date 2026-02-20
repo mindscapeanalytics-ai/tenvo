@@ -13,7 +13,8 @@ import { calculatePakistaniTax, generateFBRInvoice, formatNTN, getTaxCategoryFor
 import { getDomainKnowledge } from '@/lib/domainKnowledge';
 import { getDomainTheme, getDomainDefaults, getDomainUnits, getDomainUnits as getUnits, getDomainProductFields, getDomainInvoiceColumns } from '@/lib/utils/domainHelpers';
 import { getDomainColors } from '@/lib/domainColors';
-import { formatCurrency, formatAmount, calculateTax } from '@/lib/currency';
+import { formatCurrency, formatAmount, calculateTax as baseCalculateTax } from '@/lib/utils/formatting';
+import { getTaxStrategy } from '@/lib/utils/taxStrategies';
 import { cn } from '@/lib/utils';
 import { useBusiness } from '@/lib/context/BusinessContext';
 import { Badge } from '@/components/ui/badge';
@@ -42,50 +43,35 @@ export function EnhancedInvoiceBuilder({
   initialData = null,
   ...props
 }) {
-  const { business, currency } = useBusiness();
+  const { business, currency, regionalStandards } = useBusiness();
+  const standards = regionalStandards || { taxLabel: 'Tax', taxIdLabel: 'Tax ID', currency: 'PKR', countryCode: 'PK' };
+  const strategy = getTaxStrategy(standards);
   const theme = getDomainTheme(category);
   const colors = getDomainColors(category);
   const domainKnowledge = getDomainKnowledge(category);
-  const isPakistaniDomain = domainKnowledge?.pakistaniFeatures || false;
-  // const currency = isPakistaniDomain ? 'PKR' : 'INR'; // Removed static assignment
-  const currencySymbol = business?.settings?.financials?.currencySymbol || (isPakistaniDomain ? '₨' : 'INR');
+  const isPakistaniDomain = standards.countryCode === 'PK';
+  const currencySymbol = business?.settings?.financials?.currencySymbol || standards.currencySymbol;
 
   // Initialize invoice state with conditional fields
   const [invoice, setInvoice] = useState(() => {
     const baseInvoice = {
       invoiceNumber: `INV-${Date.now()}`,
+      documentType: standards.taxLabel,
       date: new Date().toISOString().split('T')[0],
       dueDate: '',
-      invoiceType: isPakistaniDomain ? 'fbr' : 'tax',
+      invoiceType: standards.taxStrategy === 'VAT' ? 'vat' : 'tax',
       customer: {
         name: '',
         email: '',
         phone: '',
         address: '',
-        // Indian fields
-        gstin: '',
-        state: '',
-        stateCode: '',
-        // Pakistani fields
-        ntn: '',
-        srn: '',
-        province: 'punjab',
+        taxId: '',
+        secondaryTaxId: '',
       },
       items: [],
-      // Indian GST
-      gstDetails: {
-        cgst: 0,
-        sgst: 0,
-        igst: 0,
-        taxPercent: 0,
-      },
-      // Pakistani Tax
-      pakistaniTax: {
-        federalSalesTax: 0,
-        provincialSalesTax: 0,
-        withholdingTax: 0,
+      taxDetails: {
+        breakdown: {},
         totalTax: 0,
-        province: 'punjab',
       },
       paymentMethod: isPakistaniDomain ? 'cod' : 'cash',
       discount: 0,
@@ -257,85 +243,40 @@ export function EnhancedInvoiceBuilder({
 
     const finalSubtotal = subtotal - discountAmount;
 
-    if (isPakistaniDomain) {
-      // Pakistani tax calculation (Item-level for precision)
-      const province = invoice.customer.province || 'punjab';
-      const globalDiscountFactor = subtotal > 0 ? (subtotal - discountAmount) / subtotal : 1;
+    const globalDiscountFactor = subtotal > 0 ? (subtotal - discountAmount) / subtotal : 1;
 
-      const itemsTaxBreakdown = invoice.items.map(item => {
-        const itemBase = Number(item.quantity || 0) * Number(item.rate || 0);
-        const itemDiscount = (itemBase * Number(item.discount || 0)) / 100;
-        const itemTaxableBeforeGlobal = itemBase - itemDiscount;
-        const itemTaxable = itemTaxableBeforeGlobal * globalDiscountFactor;
-
-        return calculatePakistaniTax(
-          itemTaxable,
-          item.taxCategory || getTaxCategoryForDomain(category),
-          province
-        );
-      });
-
-      const federalSalesTax = itemsTaxBreakdown.reduce((sum, t) => sum + t.federalSalesTax, 0);
-      const provincialSalesTax = itemsTaxBreakdown.reduce((sum, t) => sum + t.provincialSalesTax, 0);
-      const withholdingTax = itemsTaxBreakdown.reduce((sum, t) => sum + t.withholdingTax, 0);
-      const totalTax = federalSalesTax + provincialSalesTax + withholdingTax;
-
-      const total = finalSubtotal + totalTax;
-      const roundedTotal = Math.round(total);
-      const roundOff = roundedTotal - total;
+    const itemsForTax = invoice.items.map(item => {
+      const itemBase = Number(item.quantity || 0) * Number(item.rate || 0);
+      const itemDiscount = (itemBase * Number(item.discount || 0)) / 100;
+      const itemTaxable = itemBase - itemDiscount;
 
       return {
-        subtotal: finalSubtotal,
-        federalSalesTax,
-        provincialSalesTax,
-        withholdingTax,
-        totalTax,
-        tax_total: totalTax, // Schema aligned
-        total: roundedTotal,
-        grand_total: roundedTotal, // Schema aligned
-        roundOff,
-        discount: discountAmount,
-        discount_total: discountAmount, // Schema aligned
+        amount: itemTaxable * globalDiscountFactor,
+        taxPercent: item.taxPercent,
+        category: item.taxCategory,
+        domain: category
       };
-    } else {
-      // Indian GST calculation
-      const totalTax = invoice.items.reduce((sum, item) => {
-        const baseAmount = item.quantity * item.rate;
-        const discountAmount = (baseAmount * item.discount) / 100;
-        const taxableAmount = baseAmount - discountAmount;
-        return sum + (taxableAmount * item.taxPercent) / 100;
-      }, 0);
+    });
 
-      const isInterState = invoice.customer.stateCode !== '27';
-      const taxPercent = invoice.gstDetails.taxPercent || 0;
+    const taxResult = strategy.calculateBulk(itemsForTax, standards);
+    const totalTax = taxResult.totalTax;
 
-      let cgst = 0, sgst = 0, igst = 0;
-      if (isInterState) {
-        igst = totalTax;
-      } else {
-        cgst = totalTax / 2;
-        sgst = totalTax / 2;
-      }
+    const total = finalSubtotal + totalTax;
+    const roundedTotal = Math.round(total);
+    const roundOff = roundedTotal - total;
 
-      const total = finalSubtotal + totalTax;
-      const roundedTotal = Math.round(total);
-      const roundOff = roundedTotal - total;
-
-      return {
-        subtotal: finalSubtotal,
-        tax: totalTax,
-        tax_total: totalTax, // Schema aligned
-        cgst,
-        sgst,
-        igst,
-        discount: discountAmount,
-        discount_total: discountAmount, // Schema aligned
-        total: roundedTotal,
-        grand_total: roundedTotal, // Schema aligned
-        roundOff,
-      };
-    }
-  }, [invoice.items, invoice.discount, invoice.discountType, invoice.customer.province, invoice.customer.stateCode, invoice.gstDetails.taxPercent, isPakistaniDomain, category]);
+    return {
+      subtotal: finalSubtotal,
+      totalTax,
+      tax_total: totalTax,
+      taxDetails: taxResult.details,
+      total: roundedTotal,
+      grand_total: roundedTotal,
+      roundOff,
+      discount: discountAmount,
+      discount_total: discountAmount,
+    };
+  }, [invoice.items, invoice.discount, invoice.discountType, standards, category]);
 
   // Credit limit warning
   const creditWarning = useCreditLimitCheck(selectedCustomerData, calculateTotals.total);
@@ -547,7 +488,7 @@ export function EnhancedInvoiceBuilder({
         <CardHeader className="flex flex-row items-center justify-between border-b py-8 px-8" style={{ backgroundColor: `${colors.primary}08` }}>
           <div className="space-y-1">
             <CardTitle className="text-3xl font-black tracking-tighter uppercase italic" style={{ color: colors.primary }}>
-              FBR Invoicing Engine
+              {standards.taxLabel} Compliance Engine
             </CardTitle>
             <div className="flex items-center gap-3">
               <span className="text-gray-500 font-bold text-xs uppercase tracking-widest">Compliance Mode:</span>
@@ -648,25 +589,15 @@ export function EnhancedInvoiceBuilder({
               />
             </div>
             <div>
-              <Label>Invoice Type</Label>
+              <Label>Document Type</Label>
               <select
                 value={invoice.invoiceType}
                 onChange={(e) => setInvoice({ ...invoice, invoiceType: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg"
               >
-                {isPakistaniDomain ? (
-                  <>
-                    <option value="fbr">FBR Invoice</option>
-                    <option value="retail">Retail Invoice</option>
-                    <option value="export">Export Invoice</option>
-                  </>
-                ) : (
-                  <>
-                    <option value="tax">Tax Invoice</option>
-                    <option value="retail">Retail Invoice</option>
-                    <option value="export">Export Invoice</option>
-                  </>
-                )}
+                <option value="tax">{standards.taxLabel} Invoice</option>
+                <option value="retail">Retail Invoice</option>
+                <option value="export">Export Invoice</option>
               </select>
             </div>
           </div>
@@ -703,87 +634,35 @@ export function EnhancedInvoiceBuilder({
                 />
               </div>
               {/* Conditional tax fields */}
-              {isPakistaniDomain ? (
-                <>
-                  <div>
-                    <Label>NTN (National Tax Number)</Label>
-                    <Input
-                      value={invoice.customer.ntn || ''}
-                      onChange={(e) => {
-                        const ntn = e.target.value.replace(/\D/g, '');
-                        setInvoice({
-                          ...invoice,
-                          customer: { ...invoice.customer, ntn }
-                        });
-                      }}
-                      placeholder="12345-1234567-1"
-                      maxLength={15}
-                    />
-                  </div>
-                  <div>
-                    <Label>SRN (Sales Tax Registration Number)</Label>
-                    <Input
-                      value={invoice.customer.srn || ''}
-                      onChange={(e) => setInvoice({
-                        ...invoice,
-                        customer: { ...invoice.customer, srn: e.target.value.toUpperCase() }
-                      })}
-                      placeholder="SRN-123456"
-                    />
-                  </div>
-                  <div className="mt-2 flex items-center gap-2">
-                    <Label className="text-[10px] font-bold text-gray-400">Province</Label>
-                    <select
-                      value={invoice.customer.province}
-                      onChange={(e) => setInvoice({
-                        ...invoice,
-                        customer: { ...invoice.customer, province: e.target.value }
-                      })}
-                      className="bg-transparent border-0 font-bold text-wine text-xs focus:ring-0 cursor-pointer"
-                    >
-                      <option value="punjab">Punjab</option>
-                      <option value="sindh">Sindh</option>
-                      <option value="kp">Khyber Pakhtunkhwa</option>
-                      <option value="balochistan">Balochistan</option>
-                      <option value="islamabad">Islamabad (Federal)</option>
-                    </select>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div>
-                    <Label>GSTIN</Label>
-                    <Input
-                      value={invoice.customer.gstin || ''}
-                      onChange={(e) => setInvoice({
-                        ...invoice,
-                        customer: { ...invoice.customer, gstin: e.target.value.toUpperCase() }
-                      })}
-                      placeholder="29ABCDE1234F1Z5"
-                    />
-                  </div>
-                  <div>
-                    <Label>State</Label>
-                    <Input
-                      value={invoice.customer.state || ''}
-                      onChange={(e) => setInvoice({
-                        ...invoice,
-                        customer: { ...invoice.customer, state: e.target.value }
-                      })}
-                    />
-                  </div>
-                  <div>
-                    <Label>State Code</Label>
-                    <Input
-                      value={invoice.customer.stateCode || ''}
-                      onChange={(e) => setInvoice({
-                        ...invoice,
-                        customer: { ...invoice.customer, stateCode: e.target.value }
-                      })}
-                      placeholder="27"
-                    />
-                  </div>
-                </>
+              <div>
+                <Label>{standards.taxIdLabel}</Label>
+                <Input
+                  value={invoice.customer.taxId || ''}
+                  onChange={(e) => setInvoice({
+                    ...invoice,
+                    customer: { ...invoice.customer, taxId: e.target.value }
+                  })}
+                  placeholder={`${standards.taxIdLabel} Number`}
+                />
+              </div>
+              {standards.countryCode === 'PK' && (
+                <div className="mt-2 flex items-center gap-2">
+                  <Label className="text-[10px] font-bold text-gray-400">Province</Label>
+                  <select
+                    value={invoice.customer.province}
+                    onChange={(e) => setInvoice({
+                      ...invoice,
+                      customer: { ...invoice.customer, province: e.target.value }
+                    })}
+                    className="bg-transparent border-0 font-bold text-wine text-xs focus:ring-0 cursor-pointer"
+                  >
+                    <option value="punjab">Punjab</option>
+                    <option value="sindh">Sindh</option>
+                    <option value="kp">Khyber Pakhtunkhwa</option>
+                    <option value="balochistan">Balochistan</option>
+                    <option value="islamabad">Islamabad (Federal)</option>
+                  </select>
+                </div>
               )}
               {invoice.customer.credit_limit > 0 && (
                 <div className={cn(
@@ -1048,7 +927,7 @@ export function EnhancedInvoiceBuilder({
                       onChange={(e) => setInvoice({ ...invoice, discountType: e.target.value })}
                     >
                       <option value="percent">% Ratio</option>
-                      <option value="amount">Fixed ₨</option>
+                      <option value="amount">Fixed {standards.currencySymbol}</option>
                     </select>
                   </div>
                   <div className="flex items-center gap-2">
@@ -1061,50 +940,17 @@ export function EnhancedInvoiceBuilder({
                     <span className="font-semibold text-red-600">-{formatCurrency(totals.discount, currency)}</span>
                   </div>
                 </div>
-                {/* Conditional tax display */}
-                {isPakistaniDomain ? (
-                  <>
-                    {totals.federalSalesTax > 0 && (
-                      <div className="flex justify-between">
-                        <span>Federal Sales Tax (18%):</span>
-                        <span>{formatCurrency(totals.federalSalesTax, currency)}</span>
-                      </div>
-                    )}
-                    {totals.provincialSalesTax > 0 && (
-                      <div className="flex justify-between">
-                        <span>Provincial Tax:</span>
-                        <span>{formatCurrency(totals.provincialSalesTax, currency)}</span>
-                      </div>
-                    )}
-                    {totals.withholdingTax > 0 && (
-                      <div className="flex justify-between">
-                        <span>Withholding Tax (WHT):</span>
-                        <span>{formatCurrency(totals.withholdingTax, currency)}</span>
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <>
-                    {totals.cgst > 0 && (
-                      <div className="flex justify-between">
-                        <span>CGST:</span>
-                        <span>{formatCurrency(totals.cgst, currency)}</span>
-                      </div>
-                    )}
-                    {totals.sgst > 0 && (
-                      <div className="flex justify-between">
-                        <span>SGST:</span>
-                        <span>{formatCurrency(totals.sgst, currency)}</span>
-                      </div>
-                    )}
-                    {totals.igst > 0 && (
-                      <div className="flex justify-between">
-                        <span>IGST:</span>
-                        <span>{formatCurrency(totals.igst, currency)}</span>
-                      </div>
-                    )}
-                  </>
-                )}
+                {/* Render dynamic tax breakdown from strategy */}
+                {Object.entries(totals.taxDetails || {}).map(([label, detail]) => {
+                  const taxVal = (detail.amount * detail.rate) / 100;
+                  if (taxVal <= 0) return null;
+                  return (
+                    <div key={label} className="flex justify-between">
+                      <span>{label}:</span>
+                      <span>{formatCurrency(taxVal, standards.currency)}</span>
+                    </div>
+                  );
+                })}
                 {totals.roundOff !== 0 && (
                   <div className="flex justify-between text-gray-600">
                     <span>Round Off:</span>
@@ -1189,7 +1035,7 @@ export function EnhancedInvoiceBuilder({
                 className="flex-1 md:flex-none font-bold border-gray-200 rounded-xl h-12 px-6"
               >
                 {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Printer className="w-4 h-4 mr-2" />}
-                Print FBR Invoice
+                Print {standards.taxLabel} Invoice
               </Button>
               <Button
                 disabled={isSaving}

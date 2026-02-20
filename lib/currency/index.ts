@@ -89,25 +89,26 @@ export function formatCurrency(
     return formatCurrency(amount, 'PKR', options);
   }
 
-  // For PKR, use custom formatting to ensure ₨ symbol is displayed
-  if (currency === 'PKR') {
-    const formatter = new Intl.NumberFormat(config.locale, {
-      minimumFractionDigits: config.decimal,
-      maximumFractionDigits: config.decimal,
-      ...options,
-    });
-    const formattedNumber = formatter.format(amount);
-    return `₨${formattedNumber}`;
-  }
-
-  // For other currencies, use standard Intl formatting
+  // Use Intl.NumberFormat with regional config
+  // For specific currencies like PKR, we might need to force the symbol if the locale is inconsistent
   const formatter = new Intl.NumberFormat(config.locale, {
     style: 'currency',
     currency: currency,
+    currencyDisplay: 'symbol',
     minimumFractionDigits: config.decimal,
     maximumFractionDigits: config.decimal,
     ...options,
   });
+
+  // Fallback for PKR if symbol is not ₨
+  if (currency === 'PKR') {
+    const parts = new Intl.NumberFormat('en-PK', {
+      minimumFractionDigits: config.decimal,
+      maximumFractionDigits: config.decimal,
+      ...options
+    }).format(amount);
+    return `₨${parts}`;
+  }
 
   return formatter.format(amount);
 }

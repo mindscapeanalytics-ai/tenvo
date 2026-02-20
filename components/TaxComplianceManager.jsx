@@ -9,7 +9,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Download, FileText, Calculator, Receipt, TrendingUp, ShieldCheck } from 'lucide-react';
 import { generateReportPDF } from '@/lib/pdf';
-import { formatCurrency } from '@/lib/currency';
+import { formatCurrency } from '@/lib/utils/formatting';
+import { useBusiness } from '@/lib/context/BusinessContext';
+import { getTaxStrategy } from '@/lib/utils/taxStrategies';
 import toast from 'react-hot-toast';
 
 /**
@@ -17,32 +19,35 @@ import toast from 'react-hot-toast';
  * Manages Sales Tax, Provincial Tax, and FBR Filings
  */
 export function TaxComplianceManager({ invoices = [], purchaseOrders = [], business = {} }) {
+    const { regionalStandards, currency } = useBusiness();
     const [selectedPeriod, setSelectedPeriod] = useState('month');
+
+    const standards = regionalStandards || { taxLabel: 'Tax', taxIdLabel: 'Tax ID', currency: 'PKR', countryCode: 'PK' };
+    const strategy = getTaxStrategy(standards);
 
     // Calculate real tax data from invoices and purchases
     const taxMetrics = useMemo(() => {
         const totalSales = invoices.reduce((sum, inv) => sum + (Number(inv.grand_total) || 0), 0);
         const outputTax = invoices.reduce((sum, inv) => sum + (Number(inv.tax_total) || 0), 0);
 
-        // Calculate Input Tax from Purchase Orders (Credits)
         const totalPurchases = purchaseOrders.reduce((sum, po) => sum + (Number(po.total_amount) || 0), 0);
         const inputTax = purchaseOrders.reduce((sum, po) => sum + (Number(po.tax_total) || 0), 0);
 
-        // Pakistani FBR Breakdown (Estimated based on standard 18% Sales Tax)
-        // In a real app, these would come from the 'tax_details' JSONB column
-        const fst = outputTax * 0.8; // Federal Sales Tax portion
-        const pst = outputTax * 0.2; // Provincial Sales Tax portion (e.g. PRA in Punjab)
+        // Calculate using Strategy
+        const taxBreakdown = strategy.calculateBulk(invoices.map(inv => ({
+            amount: Number(inv.subtotal) || 0,
+            taxPercent: inv.tax_percent || 18
+        })), standards);
 
         return {
             totalSales,
             totalPurchases,
             outputTax,
             inputTax,
-            fst,
-            pst,
-            payable: Math.max(0, outputTax - inputTax), // Net tax payable to FBR (cannot be negative)
+            details: taxBreakdown.details,
+            payable: Math.max(0, outputTax - inputTax),
         };
-    }, [invoices, purchaseOrders]);
+    }, [invoices, purchaseOrders, strategy, standards]);
 
     const fbrReturns = [
         { period: 'Nov 2025', status: 'Filed', amount: 15400, dueDate: '2025-12-15' },
@@ -50,7 +55,7 @@ export function TaxComplianceManager({ invoices = [], purchaseOrders = [], busin
         { period: 'Sep 2024', status: 'Draft', amount: 0, dueDate: '2025-10-15' },
     ];
 
-    const handleFBRExport = (type) => {
+    const handleTaxExport = (type) => {
         try {
             const columns = [
                 { header: 'Invoice No', dataKey: 'invoice_number' },
@@ -66,7 +71,7 @@ export function TaxComplianceManager({ invoices = [], purchaseOrders = [], busin
                 customer_name: inv.customer?.name || 'Walk-in'
             }));
 
-            generateReportPDF(`FBR ${type} Filing Data`, reportData, columns);
+            generateReportPDF(`${standards.taxLabel} ${type} Filing Data`, reportData, columns);
             toast.success(`${type} statement exported successfully`);
         } catch (error) {
             console.error('Export error:', error);
@@ -78,17 +83,17 @@ export function TaxComplianceManager({ invoices = [], purchaseOrders = [], busin
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h2 className="text-xl font-bold text-gray-900">Tax & FBR Compliance</h2>
-                    <p className="text-gray-500 font-medium">Manage FBR sales tax filings and provincial compliance</p>
+                    <h2 className="text-xl font-bold text-gray-900">{standards.taxLabel} & Compliance</h2>
+                    <p className="text-gray-500 font-medium">Manage {standards.taxLabel} filings and regional compliance</p>
                 </div>
                 <div className="flex gap-2">
-                    <Button variant="outline" onClick={() => handleFBRExport('Annexure C')} className="border-wine/20 text-wine hover:bg-wine/5 font-bold">
+                    <Button variant="outline" onClick={() => handleTaxExport('Statement')} className="border-wine/20 text-wine hover:bg-wine/5 font-bold">
                         <FileText className="w-4 h-4 mr-2" />
-                        Export Annex C
+                        Export Statement
                     </Button>
-                    <Button onClick={() => handleFBRExport('Sales Tax Register')} className="bg-wine hover:bg-wine/90 text-white font-bold shadow-lg shadow-wine/20">
+                    <Button onClick={() => handleTaxExport('Summary')} className="bg-wine hover:bg-wine/90 text-white font-bold shadow-lg shadow-wine/20">
                         <ShieldCheck className="w-4 h-4 mr-2" />
-                        FBR Summary
+                        {standards.taxLabel} Summary
                     </Button>
                 </div>
             </div>
@@ -96,7 +101,7 @@ export function TaxComplianceManager({ invoices = [], purchaseOrders = [], busin
             <Tabs defaultValue="overview" className="w-full">
                 <TabsList className="grid w-full grid-cols-4 bg-gray-100/50 p-1 rounded-xl">
                     <TabsTrigger value="overview" className="rounded-lg">Financial Summary</TabsTrigger>
-                    <TabsTrigger value="returns" className="rounded-lg">FBR Filings</TabsTrigger>
+                    <TabsTrigger value="returns" className="rounded-lg">{standards.taxIdLabel} Filings</TabsTrigger>
                     <TabsTrigger value="calculator" className="rounded-lg">Tax Calculator</TabsTrigger>
                     <TabsTrigger value="config" className="rounded-lg">Tax Settings</TabsTrigger>
                 </TabsList>
@@ -108,28 +113,28 @@ export function TaxComplianceManager({ invoices = [], purchaseOrders = [], busin
                                 <CardTitle className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Total Taxable Sales</CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <div className="text-2xl font-black text-gray-900">{formatCurrency(taxMetrics.totalSales, 'PKR')}</div>
+                                <div className="text-2xl font-black text-gray-900">{formatCurrency(taxMetrics.totalSales, currency)}</div>
                                 <Badge variant="secondary" className="mt-2 bg-green-50 text-green-700 hover:bg-green-100 text-[10px]">Current Month</Badge>
                             </CardContent>
                         </Card>
 
                         <Card className="border-wine/5 shadow-sm">
                             <CardHeader className="pb-2">
-                                <CardTitle className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Sales Tax Output</CardTitle>
+                                <CardTitle className="text-[10px] font-black uppercase text-gray-400 tracking-widest">{standards.taxLabel} Output</CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <div className="text-2xl font-black text-wine">{formatCurrency(taxMetrics.outputTax, 'PKR')}</div>
-                                <p className="text-xs text-gray-500 mt-1 font-medium">Standard 18% Sales Tax</p>
+                                <div className="text-2xl font-black text-wine">{formatCurrency(taxMetrics.outputTax, currency)}</div>
+                                <p className="text-xs text-gray-500 mt-1 font-medium">Regional {standards.taxLabel} Rates</p>
                             </CardContent>
                         </Card>
 
                         <Card className="border-wine/5 shadow-sm">
                             <CardHeader className="pb-2">
-                                <CardTitle className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Net Payable (FBR)</CardTitle>
+                                <CardTitle className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Net Payable</CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <div className="text-2xl font-black text-red-600">{formatCurrency(taxMetrics.payable, 'PKR')}</div>
-                                <p className="text-xs text-red-500 mt-1 font-medium animate-pulse">Due by 15th</p>
+                                <div className="text-2xl font-black text-red-600">{formatCurrency(taxMetrics.payable, currency)}</div>
+                                <p className="text-xs text-red-500 mt-1 font-medium animate-pulse">Upcoming Due Date</p>
                             </CardContent>
                         </Card>
 
@@ -138,7 +143,7 @@ export function TaxComplianceManager({ invoices = [], purchaseOrders = [], busin
                                 <CardTitle className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Input Tax Credit</CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <div className="text-2xl font-black text-green-600">{formatCurrency(taxMetrics.inputTax, 'PKR')}</div>
+                                <div className="text-2xl font-black text-green-600">{formatCurrency(taxMetrics.inputTax, currency)}</div>
                                 <p className="text-xs text-gray-500 mt-1 font-medium">From Verified Bills</p>
                             </CardContent>
                         </Card>
@@ -154,21 +159,15 @@ export function TaxComplianceManager({ invoices = [], purchaseOrders = [], busin
                                 <CardDescription className="text-wine/60 font-medium">Federal vs Provincial Distribution</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-4 pt-6">
-                                <div className="flex justify-between items-center group">
-                                    <span className="text-sm font-bold text-gray-500 group-hover:text-gray-900 transition-colors">Federal Sales Tax (FST)</span>
-                                    <span className="font-black text-gray-900">{formatCurrency(taxMetrics.fst, 'PKR')}</span>
-                                </div>
-                                <div className="flex justify-between items-center group">
-                                    <span className="text-sm font-bold text-gray-500 group-hover:text-gray-900 transition-colors">Provincial Tax ({business.city === 'Karachi' ? 'SRB' : 'PRA'})</span>
-                                    <span className="font-black text-gray-900">{formatCurrency(taxMetrics.pst, 'PKR')}</span>
-                                </div>
-                                <div className="flex justify-between items-center group">
-                                    <span className="text-sm font-bold text-gray-500 group-hover:text-gray-900 transition-colors">Withholding Tax (WHT)</span>
-                                    <span className="font-black text-gray-900">{formatCurrency(0, 'PKR')}</span>
-                                </div>
+                                {Object.entries(taxMetrics.details || {}).map(([key, val]) => (
+                                    <div key={key} className="flex justify-between items-center group">
+                                        <span className="text-sm font-bold text-gray-500 group-hover:text-gray-900 transition-colors">{key}</span>
+                                        <span className="font-black text-gray-900">{formatCurrency(val.amount, currency)}</span>
+                                    </div>
+                                ))}
                                 <div className="flex justify-between pt-4 border-t border-gray-100">
                                     <span className="text-md font-black text-gray-900">Total Tax Liability</span>
-                                    <span className="text-md font-black text-wine">{formatCurrency(taxMetrics.outputTax, 'PKR')}</span>
+                                    <span className="text-md font-black text-wine">{formatCurrency(taxMetrics.outputTax, currency)}</span>
                                 </div>
                             </CardContent>
                         </Card>
@@ -195,8 +194,8 @@ export function TaxComplianceManager({ invoices = [], purchaseOrders = [], busin
                 <TabsContent value="returns" className="space-y-4 pt-4 animate-in slide-in-from-right-5 duration-300">
                     <Card className="border-wine/10 shadow-xl">
                         <CardHeader>
-                            <CardTitle className="text-gray-900 font-black">FBR Return History</CardTitle>
-                            <CardDescription>Track monthly sales tax returns (Annexure C, I, J, F)</CardDescription>
+                            <CardTitle className="text-gray-900 font-black">{standards.taxIdLabel} Return History</CardTitle>
+                            <CardDescription>Track monthly {standards.taxLabel} returns</CardDescription>
                         </CardHeader>
                         <CardContent>
                             <div className="space-y-3">
@@ -214,7 +213,7 @@ export function TaxComplianceManager({ invoices = [], purchaseOrders = [], busin
                                         <div className="flex items-center gap-6">
                                             <div className="text-right">
                                                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Amount Filed</p>
-                                                <p className="font-black text-gray-900">{formatCurrency(item.amount, 'PKR')}</p>
+                                                <p className="font-black text-gray-900">{formatCurrency(item.amount, currency)}</p>
                                             </div>
                                             <Badge className={
                                                 item.status === 'Filed'
@@ -246,8 +245,8 @@ export function TaxComplianceManager({ invoices = [], purchaseOrders = [], busin
                 <TabsContent value="config" className="pt-4 animate-in fade-in duration-300">
                     <Card className="p-12 text-center border-dashed">
                         <ShieldCheck className="w-12 h-12 mx-auto text-gray-300 mb-4" />
-                        <CardTitle className="text-gray-400">NTN & FBR Configuration</CardTitle>
-                        <CardDescription>Verify your tax integration status and CPR credentials</CardDescription>
+                        <CardTitle className="text-gray-400">{standards.taxIdLabel} Configuration</CardTitle>
+                        <CardDescription>Verify your tax integration status and credentials</CardDescription>
                     </Card>
                 </TabsContent>
             </Tabs>

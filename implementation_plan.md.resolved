@@ -1,0 +1,635 @@
+# Enterprise System Audit & Expansion Roadmap
+## POS + Inventory + Finance All-in-One Suite
+
+> **System Under Review**: Financial Hub — Multi-tenant, multi-domain inventory management platform  
+> **Current Scale**: 55+ tenants | Next.js App Router + Supabase/Neon PostgreSQL + Prisma  
+> **Audit Date**: 2026-02-20
+
+---
+
+## Table of Contents
+1. [Schema & Backend Audit](#1-schema--backend-audit)
+2. [Feature Gap Analysis](#2-feature-gap-analysis)
+3. [Best Practices & 2026 Approaches](#3-best-practices--2026-approaches)
+4. [Implementation Roadmap](#4-implementation-roadmap)
+5. [Security & Compliance Checklist](#5-security--compliance-checklist)
+
+---
+
+## 1. Schema & Backend Audit
+
+### 1.1 Schema Overview (40 Models, 1137 Lines)
+
+The current [schema.prisma](file:///c:/Users/zaliz/Downloads/APP_CHAT/financial-hub/prisma/schema.prisma) is well-structured for a multi-tenant inventory system. Here is the domain breakdown:
+
+| Domain | Models | Status |
+|--------|--------|--------|
+| **Auth & Access** | `User`, `Session`, [Account](file:///c:/Users/zaliz/Downloads/APP_CHAT/financial-hub/lib/services/AccountingService.js#17-20), `Verification`, `TwoFactor`, `business_users` | ✅ Solid |
+| **Core Business** | `businesses` (tenant root) | ✅ Solid |
+| **Products** | `products`, `product_variants`, `product_batches`, `product_serials`, `product_stock_locations` | ✅ Comprehensive |
+| **Inventory** | `stock_movements`, `stock_transfers`, `inventory_ledger`, `inventory_reservations` | ✅ Strong |
+| **Manufacturing** | `boms`, `bom_materials`, `production_orders` | ⚠️ Basic |
+| **Sales Flow** | `quotations`, `quotation_items`, `sales_orders`, `sales_order_items`, `delivery_challans`, `challan_items`, `delivery_challan_items` | ✅ Complete |
+| **Finance/GL** | `gl_accounts`, `gl_entries` | ⚠️ Foundation only |
+| **Invoicing** | `invoices`, `invoice_items` | ✅ Good |
+| **Payments** | `payments` | ⚠️ Single table, limited |
+| **Tax** | `tax_configurations` | ⚠️ Basic |
+| **Procurement** | `purchases`, `purchase_items`, `vendors`, `supplier_quotes` | ✅ Good |
+| **CRM/Marketing** | `customers`, `customer_segments`, `segment_customers`, `campaigns`, `campaign_messages` | ✅ Good |
+| **Pricing** | `price_lists`, `price_list_items`, `promotions`, `promotion_products` | ✅ Good |
+| **Warehouse** | `warehouse_locations` | ⚠️ Flat hierarchy |
+| **Workflow** | `workflow_rules`, `workflow_history` | ✅ Extensible |
+| **Audit** | `audit_logs` | ✅ Good |
+
+### 1.2 Schema Findings — Critical Issues
+
+#### 🔴 High Priority
+
+| # | Issue | Location | Impact |
+|---|-------|----------|--------|
+| 1 | **No POS transactions model** | Missing | Cannot record point-of-sale transactions, cash register sessions, or terminal data |
+| 2 | **GL entries lack journal grouping** | `gl_entries` | No `journal_id` or `transaction_id` to group double-entry pairs — impossible to verify balance integrity per transaction |
+| 3 | **No fiscal periods / closing** | Missing | Cannot close books, lock periods, or generate period-end reports (IFRS/GAAP requirement) |
+| 4 | **Payments model is flat** | `payments` | Missing: payment allocation to invoices, partial payments, refund tracking, payment reconciliation |
+| 5 | **Duplicate stock tracking** | `products.stock` + `product_stock_locations.quantity` + `product_batches.quantity` | Three sources of truth for stock — high risk of desync |
+| 6 | **Inconsistent nullable `business_id`** | `invoices`, `purchases`, `product_serials`, `product_variants` | Should be `NOT NULL` for multi-tenant integrity — nullable allows orphaned records |
+
+#### 🟡 Medium Priority
+
+| # | Issue | Location | Impact |
+|---|-------|----------|--------|
+| 7 | **No warehouse hierarchy** | `warehouse_locations` | Cannot model zones, aisles, shelves, bins (needed for warehouse management) |
+| 8 | **No expense tracking** | Missing | COA has expense codes but no expense model to record business expenses |
+| 9 | **JSON escape hatches overused** | `products.batches`, `products.serial_numbers`, `products.variants` | Relational models exist (`product_batches`, etc.) but JSON columns duplicate data — legacy debt |
+| 10 | **No currency exchange table** | Missing | `businesses.currency` exists but no rates table — blocks multi-currency operations |
+| 11 | **No bank reconciliation model** | Missing | `payments.bank_name` exists but no model to reconcile bank statements |
+| 12 | **Manufacturing lacks work centers** | `production_orders` | No work center, shift, or labor tracking — basic production only |
+
+### 1.3 Backend Architecture Review
+
+```mermaid
+graph TB
+    subgraph "Frontend Layer"
+        A[Next.js App Router] --> B[React Components 68+]
+        B --> C[Server Actions]
+    end
+    
+    subgraph "Service Layer"
+        C --> D["AccountingService"]
+        C --> E["InventoryService"]
+        C --> F["BatchService"]
+        C --> G["ManufacturingService"]
+        C --> H["PakistaniTaxService"]
+        C --> I["PromotionService"]
+        C --> J["MarketingAgentService"]
+        C --> K["SupplierAutomationService"]
+    end
+    
+    subgraph "Actions Layer (Tiered)"
+        D --> L["basic/ (accounting, payment, invoice, customer, vendor, audit, business)"]
+        E --> M["standard/ (inventory/stock, batch, serial, variant, warehouse, product, purchase, quotation, report, tax)"]
+        G --> N["premium/ (manufacturing, AI forecasting, automation)"]
+    end
+    
+    subgraph "Data Layer"
+        L --> O["PostgreSQL via pg pool"]
+        M --> O
+        N --> O
+    end
+```
+
+#### Backend Strengths
+
+| Area | Implementation | Quality |
+|------|---------------|---------|
+| **Auth** | BetterAuth with 2FA, role-based `business_users` | ✅ Production-ready |
+| **Multi-tenancy** | `business_id` FK on all tables + `verifyBusinessAccess()` | ✅ Solid |
+| **Tiered Actions** | basic/standard/premium separation | ✅ Clean separation |
+| **GL Integration** | Invoice creation → GL entries auto-posted | ✅ Good pattern |
+| **Tax Service** | FBR/NTN/SRN/WHT with filer status rates | ✅ Pakistan-specific |
+| **AI Layer** | AI forecasting, marketing agent, supplier automation | ✅ Forward-thinking |
+| **Audit Logging** | Dedicated `audit_logs` model with change tracking | ✅ Compliance-ready |
+
+#### Backend Issues
+
+| # | Issue | Impact | Files |
+|---|-------|--------|-------|
+| 1 | **Raw SQL via `pg` pool** instead of Prisma Client in actions | Bypasses Prisma type safety, migrations, and RLS | All `lib/actions/` files |
+| 2 | **No transaction isolation** in multi-step operations | Race conditions on concurrent stock updates | `stock.js` (50K lines) |
+| 3 | **COA missing key accounts** | Only 10 default accounts seeded — missing WHT payable, retained earnings, petty cash, depreciation | [accounting.js](file:///c:/Users/zaliz/Downloads/APP_CHAT/financial-hub/lib/config/accounting.js) |
+| 4 | **No idempotency keys** on payment/invoice creation | Duplicate submissions cause double-posting | `payment.js`, `invoice.js` |
+| 5 | **Validation inconsistency** | Some actions use Zod schemas, others don't validate | Mixed across actions |
+| 6 | **No event bus / pub-sub** | Services call each other directly — tight coupling | All services |
+
+---
+
+## 2. Feature Gap Analysis
+
+### 2.1 POS Module
+
+| Feature | Current Status | Gap | Upgrade Path |
+|---------|---------------|-----|-------------|
+| **POS Terminal/Session** | ❌ Missing | No register/terminal model | New `pos_sessions`, `pos_terminals` models |
+| **POS Transactions** | ❌ Missing | Sales only via Invoice flow | New `pos_transactions`, `pos_transaction_items` models |
+| **Cash Drawer Management** | ❌ Missing | No cash tracking | Add `cash_drawer_events` with open/close float |
+| **Multi-terminal Sync** | ❌ Missing | No terminal concept | WebSocket sync layer + terminal registry |
+| **Offline-first Design** | ❌ Missing | Fully server-dependent | Service worker + IndexedDB queue + conflict resolution |
+| **Receipt Printing** | ⚠️ Partial | PDF generation exists | Extend to thermal printer formats (ESC/POS) |
+| **Quick Checkout UI** | ❌ Missing | Full invoice builder only | New streamlined POS checkout component |
+| **Barcode Scanning** | ⚠️ Partial | `BarcodeScanner.jsx` exists | Extend for POS-speed scanning + product lookup |
+| **Split Payments** | ❌ Missing | Single payment per invoice | Support cash + card + wallet splitting |
+| **POS Returns/Refunds** | ❌ Missing | No return flow | New `pos_returns` model with GL reversal entries |
+| **Customer Display** | ❌ Missing | No secondary display | Dual-screen support for customer-facing display |
+| **Tax at POS** | ⚠️ Partial | `PakistaniTaxService` exists | Integrate real-time tax calc into POS transaction |
+| **Daily Z-Report** | ❌ Missing | No shift-end reporting | Aggregate POS session data into daily summary |
+| **Discount/Promo at POS** | ⚠️ Partial | `promotions` model exists | Wire promotions into POS transaction flow |
+| **Loyalty Points** | ❌ Missing | Customer segments exist | New `loyalty_program`, `loyalty_transactions` models |
+
+### 2.2 Inventory Module (Enhancements)
+
+| Feature | Current Status | Gap | Upgrade Path |
+|---------|---------------|-----|-------------|
+| **Basic Stock Tracking** | ✅ Complete | — | Maintained |
+| **Batch/Lot Tracking** | ✅ Complete | — | Maintained |
+| **Serial Number Tracking** | ✅ Complete | IMEI/MAC included | Maintained |
+| **Multi-Warehouse** | ✅ Implemented | Flat hierarchy | Add `warehouse_zones` for bin-level tracking |
+| **Stock Transfers** | ✅ Implemented | — | Add in-transit status tracking |
+| **Inventory Reservations** | ✅ Implemented | — | Add TTL-based auto-expiry worker |
+| **Stock Valuation** | ⚠️ Basic | No FIFO/LIFO/WAC method | Implement costing methods on `product_batches` |
+| **Cycle Counting** | ❌ Missing | No count workflow | New `cycle_counts`, `count_sheets` models |
+| **Scrap/Write-off** | ❌ Missing | Adjustment only | Dedicated scrap workflow with approval + GL posting |
+| **Inventory Aging** | ❌ Missing | No aging report | Query `product_batches.created_at` for aging buckets |
+| **ABC Classification** | ❌ Missing | No auto-classification | ML-based classification on `products` |
+| **Demand Forecasting** | ⚠️ Partial | `AIOrderForecaster` stub | Complete ML pipeline with historical sales data |
+| **Inter-company Transfers** | ❌ Missing | Single-business transfers | Cross-business transfer model |
+| **Kit/Bundle Management** | ⚠️ Partial | BOM exists | Lightweight kit model for POS bundle sales |
+| **Consignment Stock** | ❌ Missing | No consignment concept | New `consignment_agreements`, consignment stock state |
+
+### 2.3 Finance Module
+
+| Feature | Current Status | Gap | Upgrade Path |
+|---------|---------------|-----|-------------|
+| **Chart of Accounts** | ⚠️ Basic | 10 default accounts | Expand to 40+ accounts, support account hierarchies |
+| **Double-Entry Bookkeeping** | ⚠️ Foundation | GL entries exist, no journal grouping | Add `journal_entries` parent model |
+| **Trial Balance** | ✅ Implemented | `getTrialBalanceAction` | Maintained |
+| **Balance Sheet** | ❌ Missing | No report | Aggregate from GL by account type |
+| **P&L / Income Statement** | ❌ Missing | No report | Aggregate income/expense GL entries by period |
+| **Cash Flow Statement** | ❌ Missing | No report | Derive from payment + GL data |
+| **Fiscal Periods** | ❌ Missing | No period model | New `fiscal_periods` with open/closed/locked states |
+| **Budget Management** | ❌ Missing | No budget concept | New `budgets`, `budget_lines` models |
+| **Expense Tracking** | ❌ Missing | COA has expense codes | New `expenses` model with receipt uploads |
+| **Bank Reconciliation** | ❌ Missing | Payments exist | New `bank_statements`, `reconciliation_entries` |
+| **Multi-Currency** | ❌ Missing | Currency field exists | New `exchange_rates` table + conversion logic |
+| **Aging Reports (AR/AP)** | ❌ Missing | Balances exist | Aging buckets from invoice dates |
+| **Recurring Invoices** | ❌ Missing | No recurrence concept | Add `recurrence_rule` to invoices + cron worker |
+| **Credit Notes** | ❌ Missing | No credit memo | New `credit_notes` model with GL reversal |
+| **Debit Notes** | ❌ Missing | No debit memo | New `debit_notes` model |
+| **Payment Allocation** | ❌ Missing | Flat payments table | New `payment_allocations` junction table |
+| **Tax Returns** | ❌ Missing | Tax calc exists | Aggregate tax data into FBR return format |
+| **IFRS/GAAP Compliance** | ❌ Missing | No standards enforcement | Enforce closing entries, period locks, depreciation |
+| **Financial Dashboards** | ⚠️ Partial | `FinancialReports.jsx` exists | Expand with real-time KPIs, cash runway, margins |
+
+---
+
+## 3. Best Practices & 2026 Approaches
+
+### 3.1 Architecture Recommendations
+
+```mermaid
+graph TB
+    subgraph "Proposed Architecture"
+        direction TB
+        A["API Gateway / Next.js Edge"] --> B["Event Bus<br/>(pg_notify + Redis Streams)"]
+        
+        B --> C["Inventory Domain"]
+        B --> D["Finance Domain"]
+        B --> E["POS Domain"]
+        B --> F["CRM Domain"]
+        
+        C --> G["PostgreSQL<br/>(Neon Serverless)"]
+        D --> G
+        E --> G
+        F --> G
+        
+        B --> H["Background Workers<br/>(Inngest / Trigger.dev)"]
+        H --> I["ML Pipeline<br/>(Demand Forecast, Fraud, Anomaly)"]
+    end
+```
+
+| Pattern | Recommendation | Rationale |
+|---------|---------------|-----------|
+| **Domain-Driven Design** | Organize into bounded contexts: `inventory`, `finance`, `pos`, `crm` | Current `lib/actions/` tier split mixes concerns within tiers |
+| **Event Sourcing (Selective)** | Event-source GL entries, stock movements, POS transactions | Immutable audit trail, replay capability, CQRS for reports |
+| **CQRS for Reports** | Separate read models for dashboards/reports | Avoid expensive JOINs on write-path tables |
+| **Saga Pattern** | Use sagas for multi-step transactions (Invoice → Stock → GL → Payment) | Current direct calls break atomicity on partial failure |
+| **Background Workers** | Move AI, reconciliation, aging reports to async workers | Keep request-response path fast (<200ms) |
+
+### 3.2 ML/AI Integration Recommendations
+
+| Capability | Approach | Data Source |
+|-----------|----------|------------|
+| **Demand Forecasting** | Time-series on `stock_movements` + `invoice_items` | 12+ months sales data per SKU |
+| **Fraud Detection** | Anomaly detection on `pos_transactions` + `payments` | Transaction amounts, frequency, time patterns |
+| **Dynamic Pricing** | Price elasticity from `invoice_items` + `promotions` | Sales velocity at different price points |
+| **Customer Churn** | Predict from `customers` + purchase frequency | RFM (Recency, Frequency, Monetary) analysis |
+| **Anomaly Spotting** | Statistical process control on `gl_entries` | Unexpected debit/credit patterns, outlier amounts |
+| **Smart Reordering** | Safety stock + lead time optimization | Current `reorder_point` + actual lead times |
+
+### 3.3 Scalability for 100+ Tenants
+
+| Strategy | Implementation |
+|----------|---------------|
+| **Row-Level Security (RLS)** | Already noted in schema (`delivery_challan_items`). Extend Supabase RLS policies to ALL tenant-specific tables |
+| **Connection Pooling** | Use PgBouncer or Neon's built-in pooling. Current raw `pg` pool may exhaust connections at scale |
+| **Read Replicas** | Route reporting queries to read replicas — protect writes from heavy report loads |
+| **Tenant Sharding** | Future: shard by `business_id` range when >500 tenants. Current single-DB works to ~200 tenants |
+| **Caching Layer** | Add Redis for: session data, product catalogs, tax configs, frequently-accessed business settings |
+| **Rate Limiting** | Per-tenant rate limiting on API routes to prevent noisy-neighbor issues |
+
+---
+
+## 4. Implementation Roadmap
+
+```mermaid
+gantt
+    title Expansion Roadmap
+    dateFormat YYYY-MM
+    axisFormat %b %Y
+    
+    section Phase 1 - Foundation
+    Schema Normalization       :p1a, 2026-03, 4w
+    Event Bus Setup           :p1b, after p1a, 2w
+    Domain Refactor           :p1c, after p1b, 4w
+    
+    section Phase 2 - POS
+    POS Schema & API          :p2a, after p1c, 4w
+    POS Frontend              :p2b, after p2a, 4w
+    Offline-First Layer       :p2c, after p2b, 3w
+    
+    section Phase 3 - Finance
+    Journal & Fiscal Periods  :p3a, after p1c, 3w
+    Financial Statements      :p3b, after p3a, 4w
+    Bank Reconciliation       :p3c, after p3b, 3w
+    
+    section Phase 4 - Intelligence
+    ML Pipeline               :p4a, after p3c, 4w
+    Dashboards & Analytics    :p4b, after p4a, 3w
+    Compliance Reports        :p4c, after p4b, 2w
+```
+
+### Phase 1: Schema Normalization & Modular Refactor (10 weeks)
+
+> [!IMPORTANT]
+> Phase 1 is entirely **non-breaking** — no changes to existing UI behavior. All changes are additive schema extensions and internal refactors.
+
+#### 1A. Schema Normalization (4 weeks)
+
+**New models to add:**
+
+```sql
+-- Journal Entries (groups GL double-entries)
+CREATE TABLE journal_entries (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    business_id UUID NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+    journal_number VARCHAR(50),
+    transaction_date DATE NOT NULL,
+    description TEXT,
+    reference_type VARCHAR(50),
+    reference_id UUID,
+    is_reversed BOOLEAN DEFAULT false,
+    reversed_by UUID REFERENCES journal_entries(id),
+    created_by VARCHAR(255),
+    created_at TIMESTAMPTZ DEFAULT now(),
+    UNIQUE(business_id, journal_number)
+);
+
+-- Add journal_id FK to gl_entries
+ALTER TABLE gl_entries ADD COLUMN journal_id UUID REFERENCES journal_entries(id);
+
+-- Fiscal Periods
+CREATE TABLE fiscal_periods (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    business_id UUID NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+    name VARCHAR(100) NOT NULL,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    status VARCHAR(20) DEFAULT 'open', -- open, closed, locked
+    closed_by VARCHAR(255),
+    closed_at TIMESTAMPTZ,
+    UNIQUE(business_id, start_date, end_date)
+);
+
+-- Payment Allocations (links payments to invoices)
+CREATE TABLE payment_allocations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    payment_id UUID NOT NULL REFERENCES payments(id) ON DELETE CASCADE,
+    invoice_id UUID NOT NULL REFERENCES invoices(id),
+    amount DECIMAL(12,2) NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Expenses
+CREATE TABLE expenses (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    business_id UUID NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+    expense_number VARCHAR(50),
+    category VARCHAR(100),
+    account_id UUID REFERENCES gl_accounts(id),
+    amount DECIMAL(12,2) NOT NULL,
+    tax_amount DECIMAL(12,2) DEFAULT 0,
+    vendor_id UUID REFERENCES vendors(id),
+    payment_method VARCHAR(50),
+    date DATE NOT NULL,
+    description TEXT,
+    receipt_url TEXT,
+    status VARCHAR(20) DEFAULT 'pending', -- pending, approved, paid
+    created_at TIMESTAMPTZ DEFAULT now(),
+    UNIQUE(business_id, expense_number)
+);
+
+-- Exchange Rates
+CREATE TABLE exchange_rates (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    business_id UUID NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+    from_currency VARCHAR(3) NOT NULL,
+    to_currency VARCHAR(3) NOT NULL,
+    rate DECIMAL(18,8) NOT NULL,
+    effective_date DATE NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+```
+
+**Schema fixes (non-breaking):**
+- Make `business_id` `NOT NULL` on `invoices`, `purchases`, `product_serials`, `product_variants`
+- Deprecate JSON columns (`products.batches`, `products.serial_numbers`, `products.variants`) — keep for backward compat, stop writing to them
+- Add missing indexes on `gl_entries(journal_id)`, `payment_allocations(payment_id, invoice_id)`
+
+#### 1B. Event Bus Setup (2 weeks)
+
+- Implement `pg_notify` channels for: `inventory.stock_changed`, `finance.entry_posted`, `sales.invoice_created`, `pos.transaction_completed`
+- Create event listener service using `lib/services/events/EventBus.js`
+- Wire existing actions to emit events after successful operations
+
+#### 1C. Domain Refactor (4 weeks)
+
+Reorganize `lib/actions/` from tier-based to domain-based:
+
+```diff
+- lib/actions/basic/accounting.js
+- lib/actions/basic/payment.js
+- lib/actions/basic/invoice.js
+- lib/actions/standard/inventory/stock.js
++ lib/domains/finance/actions/accounting.js
++ lib/domains/finance/actions/payment.js
++ lib/domains/finance/actions/invoice.js
++ lib/domains/inventory/actions/stock.js
++ lib/domains/pos/actions/transaction.js
++ lib/domains/pos/actions/session.js
+```
+
+**Migration strategy**: Create new domain-based actions that import from existing files. Once stable, swap imports in components one-by-one. Zero downtime.
+
+---
+
+### Phase 2: POS Integration (11 weeks)
+
+#### 2A. POS Schema & API (4 weeks)
+
+**New models:**
+
+```sql
+-- POS Terminals
+CREATE TABLE pos_terminals (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    business_id UUID NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+    name VARCHAR(100) NOT NULL,
+    code VARCHAR(20),
+    warehouse_id UUID REFERENCES warehouse_locations(id),
+    status VARCHAR(20) DEFAULT 'active',
+    hardware_config JSONB DEFAULT '{}',
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- POS Sessions (Cash Register Shifts)
+CREATE TABLE pos_sessions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    business_id UUID NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+    terminal_id UUID NOT NULL REFERENCES pos_terminals(id),
+    user_id VARCHAR(255) NOT NULL,
+    opening_balance DECIMAL(12,2) NOT NULL DEFAULT 0,
+    closing_balance DECIMAL(12,2),
+    expected_balance DECIMAL(12,2),
+    difference DECIMAL(12,2),
+    status VARCHAR(20) DEFAULT 'open', -- open, closing, closed
+    opened_at TIMESTAMPTZ DEFAULT now(),
+    closed_at TIMESTAMPTZ,
+    notes TEXT
+);
+
+-- POS Transactions
+CREATE TABLE pos_transactions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    business_id UUID NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+    session_id UUID NOT NULL REFERENCES pos_sessions(id),
+    transaction_number VARCHAR(50) NOT NULL,
+    customer_id UUID REFERENCES customers(id),
+    subtotal DECIMAL(12,2) NOT NULL,
+    tax_amount DECIMAL(12,2) DEFAULT 0,
+    discount_amount DECIMAL(12,2) DEFAULT 0,
+    total_amount DECIMAL(12,2) NOT NULL,
+    payment_status VARCHAR(20) DEFAULT 'completed',
+    transaction_type VARCHAR(20) DEFAULT 'sale', -- sale, return, exchange
+    is_voided BOOLEAN DEFAULT false,
+    voided_by VARCHAR(255),
+    voided_at TIMESTAMPTZ,
+    void_reason TEXT,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    UNIQUE(business_id, transaction_number)
+);
+
+-- POS Transaction Items
+CREATE TABLE pos_transaction_items (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    transaction_id UUID NOT NULL REFERENCES pos_transactions(id) ON DELETE CASCADE,
+    product_id UUID NOT NULL REFERENCES products(id),
+    variant_id UUID REFERENCES product_variants(id),
+    batch_id UUID REFERENCES product_batches(id),
+    serial_number VARCHAR(255),
+    quantity DECIMAL(12,2) NOT NULL,
+    unit_price DECIMAL(12,2) NOT NULL,
+    discount_amount DECIMAL(12,2) DEFAULT 0,
+    tax_amount DECIMAL(12,2) DEFAULT 0,
+    total_amount DECIMAL(12,2) NOT NULL,
+    promotion_id UUID REFERENCES promotions(id)
+);
+
+-- POS Payments (split payment support)
+CREATE TABLE pos_payments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    transaction_id UUID NOT NULL REFERENCES pos_transactions(id) ON DELETE CASCADE,
+    method VARCHAR(50) NOT NULL, -- cash, card, wallet, transfer
+    amount DECIMAL(12,2) NOT NULL,
+    reference VARCHAR(255),
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+```
+
+#### 2B. POS Frontend (4 weeks)
+
+- **Quick-sale checkout** component with barcode scan → auto-add
+- **Cash register** with session open/close flow
+- **Receipt builder** supporting thermal printers (ESC/POS format)
+- **POS dashboard** with live sales, top products, hourly trends
+
+#### 2C. Offline-First Layer (3 weeks)
+
+- Service Worker + IndexedDB queue for offline transaction capture
+- Conflict resolution: last-write-wins for stock, append-only for transactions
+- Sync indicator UI with retry queue management
+
+---
+
+### Phase 3: Finance Module (10 weeks)
+
+#### 3A. Journal & Fiscal Periods (3 weeks)
+
+- Implement `journal_entries` as parent to `gl_entries`
+- Add fiscal period management with open/close/lock
+- Expand default COA to 40+ accounts
+- Implement closing entries automation (year-end, period-end)
+
+#### 3B. Financial Statements (4 weeks)
+
+| Statement | Data Source | Implementation |
+|-----------|-----------|----------------|
+| **Balance Sheet** | GL entries grouped by account type (asset, liability, equity) | Aggregate query + template component |
+| **Income Statement** | GL entries for income/expense accounts within fiscal period | Period-filtered aggregation |
+| **Cash Flow** | Payments + GL entries for cash-related accounts | Direct + indirect method |
+| **Aged AR/AP** | Invoices + payments with aging buckets (0-30, 31-60, 61-90, 90+) | Date arithmetic on outstanding invoices |
+| **General Ledger** | Already exists (`getGLEntriesAction`) | Enhance with filters and export |
+
+#### 3C. Bank Reconciliation (3 weeks)
+
+- Bank statement import (CSV/OFX)
+- Auto-matching algorithm (amount + date + reference)
+- Manual matching UI for unmatched items
+- Reconciliation report with discrepancies
+
+---
+
+### Phase 4: Advanced Analytics & ML (9 weeks)
+
+#### 4A. ML Pipeline (4 weeks)
+
+- Deploy demand forecasting using `stock_movements` + `invoice_items` historical data
+- Fraud detection rules engine on `pos_transactions`
+- Anomaly detection on `gl_entries` (unusual debit/credit patterns)
+
+#### 4B. Dashboards (3 weeks)
+
+- Real-time business health dashboard (revenue, margins, cash position)
+- Inventory intelligence (aging, turnover, dead stock)
+- POS analytics (peak hours, basket size, payment method distribution)
+
+#### 4C. Compliance Reports (2 weeks)
+
+- FBR tax return auto-generation from `invoices` + `tax_configurations`
+- Withholding tax certificates
+- IFRS-compliant financial statement formatting
+
+---
+
+### Migration Strategy (Zero-Downtime)
+
+| Step | Approach |
+|------|----------|
+| **Schema Changes** | Additive only — new columns, tables, indexes. Never drop or rename existing columns in production |
+| **Data Migration** | Background workers to backfill new columns. Dual-write period where both old and new paths write data |
+| **API Migration** | Version existing endpoints. New domains run alongside old actions. Swap imports gradually |
+| **Component Migration** | Feature-flag new components. Roll out per-tenant. Monitor error rates before full rollout |
+| **Rollback Plan** | Every migration has a corresponding rollback script. Schema changes are reversible for 30 days |
+
+---
+
+## 5. Security & Compliance Checklist
+
+### 5.1 OWASP Top 10 Compliance
+
+| Risk | Current Status | Remediation |
+|------|---------------|-------------|
+| **Injection** | ⚠️ Raw SQL in actions | Parameterized queries used (`$1, $2`) — **verify no string interpolation in 50K+ LOC** |
+| **Broken Auth** | ✅ BetterAuth + 2FA | Maintain; add rate limiting on login |
+| **Sensitive Data** | ⚠️ Review | Encrypt NTN, CNIC at rest; mask in API responses |
+| **XXE** | ✅ N/A | JSON-only API, no XML parsing |
+| **Broken Access** | ✅ `verifyBusinessAccess()` | Extend to row-level for POS terminal permissions |
+| **Security Misconfig** | ⚠️ Review | Audit `.env` for exposed secrets; enforce HTTPS-only |
+| **XSS** | ✅ React handles | Maintained by framework |
+| **Deserialization** | ⚠️ Zod partial | Enforce Zod validation on ALL server actions |
+| **Known Vulns** | ⚠️ Check | Run `npm audit` regularly; pin dependencies |
+| **Logging** | ✅ `audit_logs` | Ensure all write operations are logged |
+
+### 5.2 Financial Compliance (IFRS/GAAP/FBR)
+
+| Requirement | Status | Action |
+|-------------|--------|--------|
+| **Double-entry integrity** | ⚠️ No journal grouping | Add `journal_entries` model; validate debit = credit per journal |
+| **Period closing** | ❌ Missing | `fiscal_periods` with lock; prevent backdated entries |
+| **Audit trail** | ✅ `audit_logs` | Ensure GL, POS, payments are immutable (no UPDATE/DELETE) |
+| **Tax compliance (FBR)** | ⚠️ Partial | NTN validation exists; add automated return generation |
+| **Withholding tax** | ⚠️ Model exists | Wire into payment flow; generate WHT certificates |
+| **Multi-currency** | ❌ Missing | Exchange rate table + realized/unrealized gain/loss entries |
+| **Document numbering** | ✅ Unique constraints | Maintain sequential, gap-free numbering per document type |
+| **Data retention** | ❌ No policy | Define 7-year retention for financial data (Pakistani law) |
+
+### 5.3 Data Privacy & Security
+
+| Area | Recommendation |
+|------|---------------|
+| **PII Encryption** | Encrypt CNIC, NTN, bank details at application level using AES-256 |
+| **Tenant Isolation** | Enable Supabase RLS on ALL tables; test with cross-tenant queries |
+| **API Security** | Rate limit per tenant; implement request signing for POS terminals |
+| **Backup** | Daily encrypted backups with point-in-time recovery; test monthly |
+| **Access Logging** | Log all admin actions, permission changes, data exports |
+| **Secret Management** | Migrate to Infisical or Vercel Environment Variables; rotate keys quarterly |
+
+---
+
+## Recommended Schema Modifications Summary
+
+### New Tables (17 total)
+
+| Table | Domain | Purpose |
+|-------|--------|---------|
+| `journal_entries` | Finance | Group GL double-entry pairs |
+| `fiscal_periods` | Finance | Accounting period management |
+| `payment_allocations` | Finance | Link payments to invoices |
+| `expenses` | Finance | Business expense tracking |
+| `exchange_rates` | Finance | Multi-currency support |
+| `credit_notes` | Finance | Credit memos with GL reversal |
+| `bank_statements` | Finance | Bank reconciliation import |
+| `reconciliation_entries` | Finance | Bank matching records |
+| `budgets` | Finance | Budget management |
+| `budget_lines` | Finance | Budget line items |
+| `pos_terminals` | POS | Terminal registry |
+| `pos_sessions` | POS | Cash register sessions |
+| `pos_transactions` | POS | Point-of-sale transactions |
+| `pos_transaction_items` | POS | POS line items |
+| `pos_payments` | POS | Split payment records |
+| `warehouse_zones` | Inventory | Warehouse hierarchy (bin-level) |
+| `cycle_counts` | Inventory | Stock count workflows |
+
+### Modified Tables (6 total)
+
+| Table | Change |
+|-------|--------|
+| `gl_entries` | Add `journal_id` FK |
+| `invoices` | Make `business_id` NOT NULL |
+| `purchases` | Make `business_id` NOT NULL |
+| `product_serials` | Make `business_id` NOT NULL |
+| `product_variants` | Make `business_id` NOT NULL |
+| `businesses` | Add `fiscal_year_start`, `default_payment_terms` |
+
+---
+
+> [!TIP]
+> **Next Steps**: Review this audit, approve the phased approach, and we can begin Phase 1A (Schema Normalization) with the exact Prisma migration files and server action implementations.

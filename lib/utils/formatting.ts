@@ -4,6 +4,7 @@
  */
 
 import { formatCurrency as baseCurrencyFormatter, type CurrencyCode } from '@/lib/currency';
+import { RegionalStandards } from './regionalHelpers';
 
 /**
  * Format currency with proper symbol and locale
@@ -83,40 +84,66 @@ export function truncate(text: string | null | undefined, maxLength: number = 50
 }
 
 /**
- * Format phone number (Pakistan format)
+ * Format phone number based on regional standards
  */
-export function formatPhone(phone: string | null | undefined): string {
+export function formatPhone(phone: string | null | undefined, standards?: RegionalStandards): string {
     if (!phone) return 'N/A';
 
     // Remove all non-digit characters
     const cleaned = phone.replace(/\D/g, '');
 
-    // Format as: +92 XXX XXXXXXX or 0XXX XXXXXXX
-    if (cleaned.startsWith('92')) {
-        return `+${cleaned.substring(0, 2)} ${cleaned.substring(2, 5)} ${cleaned.substring(5)}`;
-    } else if (cleaned.startsWith('0')) {
-        return `${cleaned.substring(0, 4)} ${cleaned.substring(4)}`;
+    // Pakistan Standards
+    if (!standards || standards.countryCode === 'PK') {
+        if (cleaned.startsWith('92')) {
+            return `+${cleaned.substring(0, 2)} ${cleaned.substring(2, 5)} ${cleaned.substring(5)}`;
+        } else if (cleaned.startsWith('0')) {
+            return `${cleaned.substring(0, 4)} ${cleaned.substring(4)}`;
+        }
     }
+
+    // UAE Standards
+    if (standards?.countryCode === 'AE') {
+        if (cleaned.startsWith('971')) {
+            return `+${cleaned.substring(0, 3)} ${cleaned.substring(3, 4)} ${cleaned.substring(4)}`;
+        }
+    }
+
+    // Generic fallback: Add plus if it looks like international code
+    if (cleaned.length > 10) return `+${cleaned}`;
 
     return phone;
 }
 
 /**
- * Format NTN (National Tax Number)
+ * Format Tax Identifier (NTN for PK, TRN for UAE)
  */
-export function formatNTN(ntn: string | null | undefined): string {
-    if (!ntn) return 'N/A';
+export function formatTaxId(taxId: string | null | undefined, standards?: RegionalStandards): string {
+    if (!taxId) return 'N/A';
 
     // Remove all non-digit characters
-    const cleaned = ntn.replace(/\D/g, '');
+    const cleaned = taxId.replace(/\D/g, '');
 
-    // Format as: XXXXXXX-X
-    if (cleaned.length === 8) {
-        return `${cleaned.substring(0, 7)}-${cleaned.substring(7)}`;
+    // Pakistan (NTN: XXXXXXX-X)
+    if (!standards || standards.countryCode === 'PK') {
+        if (cleaned.length === 8) {
+            return `${cleaned.substring(0, 7)}-${cleaned.substring(7)}`;
+        }
     }
 
-    return ntn;
+    // UAE (TRN: 15 digits)
+    if (standards?.countryCode === 'AE' || standards?.countryCode === 'SA') {
+        if (cleaned.length === 15) {
+            return `${cleaned.substring(0, 3)}-${cleaned.substring(3, 7)}-${cleaned.substring(7, 11)}-${cleaned.substring(11)}`;
+        }
+    }
+
+    return taxId;
 }
+
+/**
+ * @deprecated Use formatTaxId instead
+ */
+export const formatNTN = formatTaxId;
 
 /**
  * Capitalize first letter of each word

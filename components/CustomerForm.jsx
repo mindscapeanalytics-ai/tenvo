@@ -15,6 +15,17 @@ import { validateNTN, formatNTN } from '@/lib/tax/pakistaniTax';
 import { formatPakistaniPhone, isValidCNIC, isValidPakistaniPhone, customerSchema, validateForm } from '@/lib/validation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FormError } from '@/components/ui/form-error';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
+const COUNTRY_CODES = [
+    { code: '+92', label: 'PK (+92)' },
+    { code: '+1', label: 'US (+1)' },
+    { code: '+44', label: 'UK (+44)' },
+    { code: '+971', label: 'UAE (+971)' },
+    { code: '+966', label: 'SA (+966)' },
+    { code: '+91', label: 'IN (+91)' },
+    { code: '+86', label: 'CN (+86)' },
+];
 
 export function CustomerForm({
     onSave,
@@ -42,6 +53,45 @@ export function CustomerForm({
         ...initialData
     });
 
+    const [countryCode, setCountryCode] = useState('+92');
+    const [localPhone, setLocalPhone] = useState('');
+
+    // Initialize phone state from initialData or formData
+    useEffect(() => {
+        const phone = formData.phone || '';
+        if (!phone) {
+            setLocalPhone('');
+            return;
+        }
+
+        // Try to match existing prefix
+        const matcheCode = COUNTRY_CODES.find(c => phone.startsWith(c.code));
+        if (matcheCode) {
+            setCountryCode(matcheCode.code);
+            setLocalPhone(phone.slice(matcheCode.code.length).trim());
+        } else {
+            // Default fallback if no match or manually entered differently
+            setLocalPhone(phone);
+        }
+    }, [initialData]);
+
+    // Sync to formData when parts change
+    useEffect(() => {
+        // Clean local phone of double spaces
+        const cleanLocal = localPhone.replace(/\s+/g, ' ').trim();
+        if (cleanLocal) {
+            handleInputChange('phone', `${countryCode} ${cleanLocal}`);
+        } else {
+            handleInputChange('phone', '');
+        }
+    }, [countryCode, localPhone]);
+
+    const handleLocalPhoneChange = (e) => {
+        // Allow digits, spaces, dashes
+        const val = e.target.value.replace(/[^\d\s-]/g, '');
+        setLocalPhone(val);
+    };
+
     const domainFields = getDomainCustomerFields(category);
 
     useEffect(() => {
@@ -63,11 +113,7 @@ export function CustomerForm({
         }
     };
 
-    // Auto-formatters
-    const handlePhoneChange = (e) => {
-        const formatted = formatPakistaniPhone(e.target.value);
-        handleInputChange('phone', formatted);
-    };
+    // Auto-formatters (removed handlePhoneChange as we use split input now)
 
     const handleCNICChange = (e) => {
         let val = e.target.value.replace(/\D/g, ''); // Remove non-digits
@@ -90,8 +136,9 @@ export function CustomerForm({
             return false;
         }
 
-        if (formData.phone && !isValidPakistaniPhone(formData.phone)) {
-            toast.error('Invalid Phone Number (e.g. +92 3XX XXXXXXX)');
+        // Lenient phone validation (just check minimum length)
+        if (formData.phone && formData.phone.length < 8) {
+            toast.error('Phone number seems too short');
             return false;
         }
 
@@ -144,9 +191,12 @@ export function CustomerForm({
         const isTextile = category.includes('textile');
         const isPharmacy = category === 'pharmacy';
 
+        const randomLocal = '3' + Math.floor(Math.random() * 90 + 10) + ' ' + Math.floor(Math.random() * 9000000 + 1000000);
+
         const demoData = {
             name: isTextile ? 'Zubair Fabrics & Sons' : (isPharmacy ? 'Al-Shifa Medicos' : 'Global Traders'),
-            phone: '03' + Math.floor(Math.random() * 900000000 + 100000000), // Random 03... number
+            // phone is now handled via state sync, but we set it here for completeness if needed, 
+            // though the effect will overwrite it based on countryCode/localPhone
             email: 'contact@' + (isTextile ? 'zubairfabrics' : 'demo-client') + '.com',
             ntn: Math.floor(Math.random() * 9000000 + 1000000) + '-' + Math.floor(Math.random() * 9),
             cnic: '42201-' + Math.floor(Math.random() * 9000000 + 1000000) + '-' + Math.floor(Math.random() * 9),
@@ -161,6 +211,8 @@ export function CustomerForm({
             }
         };
 
+        setCountryCode('+92');
+        setLocalPhone(randomLocal);
         setFormData(prev => ({ ...prev, ...demoData }));
         toast.success('Generated realistic demo data');
     };
@@ -229,15 +281,28 @@ export function CustomerForm({
                                 </div>
                                 <div className="space-y-2">
                                     <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest after:content-['*'] after:ml-0.5 after:text-red-500">Phone</Label>
-                                    <div className="relative">
-                                        <Smartphone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                                        <Input
-                                            value={formData.phone || ''}
-                                            onChange={handlePhoneChange}
-                                            placeholder="0300 1234567"
-                                            className="h-11 rounded-xl pl-10"
-                                            maxLength={12}
-                                        />
+                                    <div className="flex gap-2">
+                                        <Select value={countryCode} onValueChange={setCountryCode}>
+                                            <SelectTrigger className="w-[110px] h-11 rounded-xl bg-gray-50 border-gray-200">
+                                                <SelectValue placeholder="Code" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {COUNTRY_CODES.map((c) => (
+                                                    <SelectItem key={c.code} value={c.code}>
+                                                        {c.label}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        <div className="relative flex-1">
+                                            <Smartphone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                                            <Input
+                                                value={localPhone}
+                                                onChange={handleLocalPhoneChange}
+                                                placeholder="300 1234567"
+                                                className="h-11 rounded-xl pl-10"
+                                            />
+                                        </div>
                                     </div>
                                     {errors?.phone && <FormError message={errors.phone} />}
                                 </div>
@@ -417,6 +482,6 @@ export function CustomerForm({
                     </div>
                 </CardContent>
             </Card>
-        </div>
+        </div >
     );
 }

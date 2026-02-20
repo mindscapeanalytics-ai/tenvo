@@ -286,18 +286,18 @@ export function validateDomainProduct(
     }
   }
 
-  // Israeli/Pakistani Market Compliance: MRP Validation
+  // Price Compliance: MRP Validation
   if ('mrp' in product || 'price' in product) {
     const mrp = (product as any).mrp;
     const price = product.price;
     if (mrp && price && price > mrp) {
-      errors['price'] = `Selling Price (${price}) cannot exceed MRP (${mrp}) [Pakistani Regulation]`;
+      errors['price'] = `Selling Price (${price}) cannot exceed MRP (${mrp}) [Local Regulation]`;
     }
   }
 
-  // HSN/SAC Code Validation (Pakistani standard is 4, 6, or 8 digits)
-  if (product.hsnCode && !/^\d{4}(\d{2})?(\d{2})?$/.test(product.hsnCode)) {
-    warnings.push('HSN/SAC Code usually follows a 4, 6, or 8 digit format in Pakistan.');
+  // HSN/SAC Code Validation (Regional standard check)
+  if (product.hsnCode && !/^\d{4,10}$/.test(product.hsnCode)) {
+    warnings.push('HSN/SAC Code usually follows a numeric format of 4 to 10 digits.');
   }
 
   return {
@@ -717,7 +717,7 @@ export function getDomainFeatureSummary(category: string) {
 /**
  * Get dynamic table columns for the BusyGrid
  */
-export function getDomainTableColumns(category: string): any[] {
+export function getDomainTableColumns(category: string, currencySymbol: string = '₨'): any[] {
   const knowledge: any = getDomainKnowledge(category);
   const fields = knowledge?.productFields || [];
 
@@ -772,7 +772,7 @@ export function getDomainTableColumns(category: string): any[] {
         const stock = Number(row.original?.stock) || 0;
         const price = Number(row.original?.price) || 0;
         const val = stock * price;
-        return val ? `₨${val.toLocaleString()}` : '₨0';
+        return val ? `${currencySymbol}${val.toLocaleString()}` : `${currencySymbol}0`;
       }
     });
   }

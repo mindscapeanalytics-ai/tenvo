@@ -1,14 +1,16 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context/AuthContext';
 import { useBusiness } from '@/lib/context/BusinessContext';
 // Supabase removed - using Better Auth + Server Actions
 import { businessAPI } from '@/lib/api/business';
-import { createBusiness } from '@/lib/actions/basic/business';
+import { createBusiness, checkDomainAvailabilityAction } from '@/lib/actions/basic/business';
 import { seedBusinessProductsAction } from '@/lib/actions/standard/inventory/product';
 import { domainKnowledge } from '@/lib/domainKnowledge';
+import { getRegionalStandards } from '@/lib/utils/regionalHelpers';
 import { authClient } from '@/lib/auth-client';
 import { toast } from 'react-hot-toast';
 import {
@@ -108,22 +110,57 @@ export default function RegisterWizard() {
     const [step, setStep] = useState(1);
     const [searchTerm, setSearchTerm] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [handleStatus, setHandleStatus] = useState({ checking: false, available: true, error: '' });
     const [formData, setFormData] = useState({
         businessName: '',
         email: '',
         password: '',
         phone: '',
         country: 'Pakistan',
-        domain: '',
-        category: '',
+        handle: '', // The unique routing slug (e.g., 'abid-textiles')
+        category: '', // The industry vertical (e.g., 'textile-wholesale')
         logo: ''
     });
+
+    // Slug generation helper
+    const generateSlug = (name) => {
+        return name
+            .toLowerCase()
+            .replace(/[^\w\s-]/g, '')
+            .replace(/[\s_-]+/g, '-')
+            .replace(/^-+|-+$/g, '');
+    };
+
+    const handleBusinessNameChange = (name) => {
+        setFormData(prev => ({
+            ...prev,
+            businessName: name,
+            handle: generateSlug(name)
+        }));
+    };
 
     const nextStep = () => setStep(s => s + 1);
     const prevStep = () => setStep(s => s - 1);
 
-    const handleDomainSelect = (domain) => {
-        setFormData(prev => ({ ...prev, domain }));
+    // Debounced domain availability check
+    useEffect(() => {
+        if (!formData.handle || formData.handle.length < 3) return;
+
+        const timer = setTimeout(async () => {
+            setHandleStatus(prev => ({ ...prev, checking: true, error: '' }));
+            try {
+                const res = await checkDomainAvailabilityAction(formData.handle);
+                setHandleStatus({ checking: false, available: res.available, error: res.available ? '' : 'This handle is already taken' });
+            } catch (err) {
+                setHandleStatus({ checking: false, available: false, error: 'Failed to verify handle' });
+            }
+        }, 500);
+
+        return () => clearTimeout(timer);
+    }, [formData.handle]);
+
+    const handleDomainSelect = (categoryKey) => {
+        setFormData(prev => ({ ...prev, category: categoryKey }));
         nextStep();
     };
 
@@ -152,9 +189,12 @@ export default function RegisterWizard() {
         );
     };
 
-    const seedBusinessData = async (businessId, domainKey) => {
+    const seedBusinessData = async (businessId, domainKey, country) => {
         try {
-            console.log(`Starting seeding for business ${businessId} with domain ${domainKey}`);
+            console.log(`Starting seeding for business ${businessId} with domain ${domainKey} in ${country}`);
+
+            const standards = getRegionalStandards(country);
+            const regionalTaxRate = standards.defaultTaxRate;
 
             // 1. Get Domain Knowledge
             const knowledge = domainKnowledge[domainKey] || domainKnowledge['retail-shop'];
@@ -183,7 +223,7 @@ export default function RegisterWizard() {
                     unit: item.unit || 'pcs',
                     price: 0, // Default
                     stock: 0, // Default
-                    tax_percent: knowledge.defaultTax || 0,
+                    tax_percent: regionalTaxRate || knowledge.defaultTax || 0,
                     is_active: true,
                     domain_data: {} // Initialize domain_data
                 };
@@ -225,7 +265,7 @@ export default function RegisterWizard() {
     const handleFinish = async () => {
         // Validation: If user is logged in, only check businessName and domain. If not, check all.
         const isAuth = !!user;
-        if (!formData.businessName || (!isAuth && (!formData.email || !formData.password)) || !formData.domain) {
+        if (!formData.businessName || (!isAuth && (!formData.email || !formData.password)) || !formData.handle || !formData.category) {
             toast.error("Please fill in all required fields.");
             return;
         }
@@ -271,15 +311,15 @@ export default function RegisterWizard() {
                     email: newUser.email || formData.email, // Use authenticated email
                     phone: formData.phone,
                     country: formData.country,
-                    domain: formData.domain,
-                    category: formData.category || 'retail'
+                    domain: formData.handle, // Use the unique handle as 'domain'
+                    category: formData.category || 'retail-shop'
                 });
 
                 if (bizResult.success) {
                     toast.success('Registration successful! Welcome to the hub.');
 
                     // 3. Seed initial products using server action
-                    await seedBusinessData(bizResult.businessId, formData.domain);
+                    await seedBusinessData(bizResult.businessId, formData.category, formData.country);
 
                     // 4. Mark setup as complete
                     try {
@@ -291,10 +331,16 @@ export default function RegisterWizard() {
                     }
 
                     // Update local context if needed, but router push is cleaner
-                    router.push(`/business/${formData.domain}`);
+                    router.push(`/business/${formData.handle}`);
                 } else {
                     console.error("Business provision failed:", bizResult.error);
-                    toast.error(bizResult.error || 'Identity created, but dashboard could not be provisioned.');
+
+                    // Specific Handling for Multi-Tenant Domain Collision
+                    if (bizResult.error?.includes("Domain Handle") || bizResult.error?.includes("already taken")) {
+                        toast.error(`The domain "${formData.domain}" is already in use. Please pick a unique handle.`, { duration: 6000 });
+                    } else {
+                        toast.error(bizResult.error || 'Identity created, but dashboard could not be provisioned.');
+                    }
                 }
             }
         } catch (error) {
@@ -388,9 +434,36 @@ export default function RegisterWizard() {
                                                     <Input
                                                         placeholder="Nexus Trading Co."
                                                         value={formData.businessName}
-                                                        onChange={e => setFormData({ ...formData, businessName: e.target.value })}
+                                                        onChange={e => handleBusinessNameChange(e.target.value)}
                                                         className="h-12 rounded-2xl border-gray-100 focus:ring-wine/20"
                                                     />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest ml-1 flex justify-between items-center">
+                                                        <span>Workspace URL Handle</span>
+                                                        {formData.handle && (
+                                                            <span className={cn(
+                                                                "text-[10px] font-black",
+                                                                handleStatus.checking ? "text-gray-400" : (handleStatus.available ? "text-emerald-500" : "text-rose-500")
+                                                            )}>
+                                                                {handleStatus.checking ? "Checking..." : (handleStatus.available ? "Available ✓" : "Already Taken ✗")}
+                                                            </span>
+                                                        )}
+                                                    </Label>
+                                                    <div className="relative">
+                                                        <Input
+                                                            placeholder="nexus-trading"
+                                                            value={formData.handle}
+                                                            onChange={e => setFormData({ ...formData, handle: generateSlug(e.target.value) })}
+                                                            className={cn(
+                                                                "h-12 rounded-2xl border-gray-100 focus:ring-wine/20 pr-32",
+                                                                !handleStatus.available && formData.handle && "border-rose-200 bg-rose-50/30"
+                                                            )}
+                                                        />
+                                                        <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-gray-400 pointer-events-none">
+                                                            .financial-hub.com
+                                                        </div>
+                                                    </div>
                                                 </div>
                                                 <div className="space-y-2">
                                                     <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest ml-1">Business Region</Label>
@@ -401,7 +474,8 @@ export default function RegisterWizard() {
                                                         <SelectContent className="rounded-2xl border-gray-100">
                                                             <SelectItem value="Pakistan">Pakistan (Localized)</SelectItem>
                                                             <SelectItem value="UAE">UAE (VAT Compliant)</SelectItem>
-                                                            <SelectItem value="Saudi Arabia">Saudi Arabia (ZATCA)</SelectItem>
+                                                            <SelectItem value="Saudi Arabia">Saudi Arabia (ZATCA Compliant)</SelectItem>
+                                                            <SelectItem value="USA">USA (Sales Tax)</SelectItem>
                                                         </SelectContent>
                                                     </Select>
                                                 </div>
@@ -436,7 +510,7 @@ export default function RegisterWizard() {
                                             <Button
                                                 className="w-full h-14 mt-4 text-lg font-black bg-wine hover:bg-wine/90 text-white rounded-2xl shadow-xl shadow-wine/20 transition-all active:scale-[0.98]"
                                                 onClick={nextStep}
-                                                disabled={!formData.businessName || (!user && (!formData.email || !formData.password))}
+                                                disabled={!formData.businessName || !formData.handle || !handleStatus.available || handleStatus.checking || (!user && (!formData.email || !formData.password))}
                                             >
                                                 Continue to Setup <ChevronRight className="ml-2 w-5 h-5" />
                                             </Button>
@@ -517,23 +591,23 @@ export default function RegisterWizard() {
                                             <div className="bg-wine/5 border border-wine/10 rounded-3xl p-8 flex flex-col items-center text-center space-y-6">
                                                 <div className="w-20 h-20 bg-wine rounded-[28px] flex items-center justify-center text-white shadow-2xl shadow-wine/30 relative">
                                                     <div className="absolute inset-0 animate-ping bg-wine/20 rounded-[28px]" />
-                                                    {LucideIcons[domainKnowledge[formData.domain]?.icon] ?
-                                                        React.createElement(LucideIcons[domainKnowledge[formData.domain].icon], { className: "w-10 h-10 relative z-10" }) :
+                                                    {LucideIcons[domainKnowledge[formData.category]?.icon] ?
+                                                        React.createElement(LucideIcons[domainKnowledge[formData.category].icon], { className: "w-10 h-10 relative z-10" }) :
                                                         <Rocket className="w-10 h-10 relative z-10" />
                                                     }
                                                 </div>
                                                 <div className="space-y-2">
                                                     <h3 className="text-2xl font-black text-gray-900 tracking-tight">Enterprise Infrastructure Ready</h3>
                                                     <p className="text-gray-500 font-medium max-w-md">
-                                                        We've calibrated the dashboard for <span className="text-wine font-black uppercase tracking-tight">{translations[language]?.domains?.[formData.domain] || formData.domain?.replace('-', ' ')}</span> with Pakistani tax compliance.
+                                                        We've calibrated the dashboard for <span className="text-wine font-black uppercase tracking-tight">{translations[language]?.domains?.[formData.category] || formData.category?.replace('-', ' ')}</span> with Pakistani tax compliance.
                                                     </p>
                                                 </div>
 
-                                                {domainKnowledge[formData.domain]?.setupTemplate?.categories?.length > 0 && (
+                                                {domainKnowledge[formData.category]?.setupTemplate?.categories?.length > 0 && (
                                                     <div className="w-full pt-4 border-t border-wine/10">
                                                         <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Pre-built Industry Setup</p>
                                                         <div className="flex flex-wrap justify-center gap-2">
-                                                            {domainKnowledge[formData.domain].setupTemplate.categories.map(cat => (
+                                                            {domainKnowledge[formData.category].setupTemplate.categories.map(cat => (
                                                                 <span key={cat} className="px-3 py-1 bg-white border border-wine/5 rounded-full text-[10px] font-bold text-wine shadow-sm">
                                                                     {cat}
                                                                 </span>
@@ -552,7 +626,7 @@ export default function RegisterWizard() {
                                                     </div>
                                                     <div className="p-4 bg-white rounded-2xl shadow-sm border border-gray-100/50">
                                                         <span className="text-[10px] font-black text-gray-400 uppercase block mb-1">Vertical</span>
-                                                        <span className="font-bold text-wine capitalize">{formData.domain.replace('-', ' ')}</span>
+                                                        <span className="font-bold text-wine capitalize">{formData.category.replace('-', ' ')}</span>
                                                     </div>
                                                 </div>
                                             </div>

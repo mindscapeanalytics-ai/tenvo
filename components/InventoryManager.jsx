@@ -63,7 +63,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from 'react-hot-toast';
 import { useBusiness } from '@/lib/context/BusinessContext';
-import { formatCurrency } from '@/lib/currency';
+import { formatCurrency } from '@/lib/utils/formatting';
 import { VariantMatrixEditor } from './inventory/VariantMatrixEditor';
 import { BatchManager } from './inventory/BatchManager';
 import { SerialScanner } from './inventory/SerialScanner';
@@ -138,7 +138,7 @@ export function InventoryManager({
   vendors = [],
   businessId,
   category = 'retail-shop',
-  currency = 'PKR',
+  currency: propCurrency, // renamed to avoid conflict with context
   domainKnowledge = {},
   // Handler overrides (optional)
   onUpdate,
@@ -154,6 +154,15 @@ export function InventoryManager({
   onGeneratePO,
   refreshData
 }) {
+  const { regionalStandards, currency } = useBusiness();
+  const standards = regionalStandards || {
+    currencySymbol: '₨',
+    currency: 'PKR',
+    taxLabel: 'Sales Tax',
+    taxIdLabel: 'NTN',
+    countryCode: 'PK'
+  };
+
   const colors = getDomainColors(category);
 
   // Helper to strictly deduplicate products and prevent React key errors
@@ -736,7 +745,7 @@ export function InventoryManager({
         header: () => <div className="text-right font-semibold">PRICE</div>,
         size: 110,
         minSize: 100,
-        cell: ({ row }) => <div className="text-right font-semibold text-sm text-gray-900 tabular-nums pr-2">{formatCurrency(row.original.price || 0, 'PKR')}</div>
+        cell: ({ row }) => <div className="text-right font-semibold text-sm text-gray-900 tabular-nums pr-2">{formatCurrency(row.original.price || 0, standards.currency)}</div>
       },
       {
         id: 'value',
@@ -745,7 +754,7 @@ export function InventoryManager({
         size: 120,
         minSize: 110,
         readOnly: true, // Calculated field
-        cell: ({ row }) => <div className="text-right text-sm text-gray-500 font-medium italic tabular-nums pr-2 bg-gray-50/50 h-full flex items-center justify-end w-full">{formatCurrency((row.original.price || 0) * (row.original.stock || 0), 'PKR')}</div>
+        cell: ({ row }) => <div className="text-right text-sm text-gray-500 font-medium italic tabular-nums pr-2 bg-gray-50/50 h-full flex items-center justify-end w-full">{formatCurrency((row.original.price || 0) * (row.original.stock || 0), standards.currency)}</div>
       }
     ];
 
@@ -888,9 +897,9 @@ export function InventoryManager({
     const actionsCol = columns.find(c => c.id === 'actions');
     return [
       actionsCol, // Actions column first
-      ...getDomainTableColumns(category)
+      ...getDomainTableColumns(category, standards.currencySymbol)
     ].filter(Boolean);
-  }, [category, columns]);
+  }, [category, columns, standards.currencySymbol]);
 
 
 
@@ -1089,7 +1098,7 @@ export function InventoryManager({
                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Inventory Value</p>
                 <div className="flex items-baseline gap-2 mt-1">
                   <p className="text-2xl font-black text-gray-900 tracking-tighter">
-                    {formatCurrency(products.reduce((sum, p) => sum + ((p.price || 0) * (p.stock || 0)), 0), 'PKR')}
+                    {formatCurrency(products.reduce((sum, p) => sum + ((p.price || 0) * (p.stock || 0)), 0), standards.currency)}
                   </p>
                 </div>
               </div>
@@ -1541,7 +1550,7 @@ export function InventoryManager({
                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Asset Valuation</p>
                 <div className="flex items-baseline gap-2 mt-1">
                   <p className="text-3xl font-black text-gray-900 tracking-tighter">
-                    {formatCurrency(products.reduce((sum, p) => sum + ((p.price || 0) * (p.stock || 0)), 0), 'PKR')}
+                    {formatCurrency(products.reduce((sum, p) => sum + ((p.price || 0) * (p.stock || 0)), 0), standards.currency)}
                   </p>
                 </div>
               </div>

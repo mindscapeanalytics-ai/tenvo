@@ -29,7 +29,8 @@ import {
     Edit3,
     Eye
 } from 'lucide-react';
-import { formatCurrency } from '@/lib/currency';
+import { useBusiness } from '@/lib/context/BusinessContext';
+import { formatCurrency } from '@/lib/utils/formatting';
 import { getDomainDefaults } from '@/lib/domainKnowledge';
 import { ProductForm } from './ProductForm';
 import toast from 'react-hot-toast';
@@ -63,13 +64,21 @@ const DetailItem = ({ label, value, className = "", fullWidth = false, isCurrenc
         </div>
     );
 };
-
 export function ProductDetailsDialog({
     product: initialProduct,
     open,
     onClose,
     category = 'retail-shop'
 }) {
+    const { regionalStandards } = useBusiness();
+    const standards = regionalStandards || {
+        currency: 'PKR',
+        currencySymbol: '₨',
+        taxLabel: 'Sales Tax',
+        taxIdLabel: 'NTN',
+        countryCode: 'PK'
+    };
+
     const [isEditing, setIsEditing] = useState(false);
     const [product, setProduct] = useState(initialProduct);
 
@@ -133,7 +142,7 @@ export function ProductDetailsDialog({
                         {!isEditing && (
                             <div className="text-right flex flex-col items-end">
                                 <div className={`text-3xl font-black tracking-tighter ${product.price > 0 ? 'text-gray-950' : 'text-gray-300'}`}>
-                                    {product.price > 0 ? formatCurrency(product.price, 'PKR') : '---'}
+                                    {product.price > 0 ? formatCurrency(product.price, standards.currency) : '---'}
                                 </div>
                                 <div className="flex items-center gap-1.5 mt-1 justify-end">
                                     <Tag className="w-3 h-3 text-emerald-500" />
@@ -161,7 +170,7 @@ export function ProductDetailsDialog({
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                     {[
                                         { label: 'In Stock', value: product.stock || 0, color: isLowStock ? 'text-red-600' : 'text-blue-600', sub: product.unit || 'units' },
-                                        { label: 'Asset Value', value: formatCurrency(stockValue, 'PKR'), color: 'text-gray-900', sub: 'Est. Valuation' },
+                                        { label: 'Asset Value', value: formatCurrency(stockValue, standards.currency), color: 'text-gray-900', sub: 'Est. Valuation' },
                                         { label: 'Min Level', value: product.min_stock || 0, color: 'text-gray-500', sub: 'Buffer limit' },
                                         { label: 'Growth', value: product.price && product.cost_price ? `${(((product.price - product.cost_price) / (product.cost_price || 1)) * 100).toFixed(0)}%` : '0%', color: 'text-emerald-600', sub: 'Gross Margin' }
                                     ].map((card, i) => (
@@ -184,9 +193,9 @@ export function ProductDetailsDialog({
                                     </DetailSection>
 
                                     <DetailSection title="Financial Profile" icon={DollarSign}>
-                                        <DetailItem label="Landed Cost" value={product.cost_price && formatCurrency(product.cost_price, 'PKR')} isCurrency />
-                                        <DetailItem label="Market Status (MRP)" value={product.mrp && formatCurrency(product.mrp, 'PKR')} isCurrency />
-                                        <DetailItem label="Profit Contribution" value={product.cost_price && product.price ? formatCurrency(product.price - product.cost_price, 'PKR') : null} className="text-emerald-600" />
+                                        <DetailItem label="Landed Cost" value={product.cost_price && formatCurrency(product.cost_price, standards.currency)} isCurrency />
+                                        <DetailItem label="Market Status (MRP)" value={product.mrp && formatCurrency(product.mrp, standards.currency)} isCurrency />
+                                        <DetailItem label="Profit Contribution" value={product.cost_price && product.price ? formatCurrency(product.price - product.cost_price, standards.currency) : null} className="text-emerald-600" />
                                         <DetailItem label="Margin Percent" value={product.cost_price && product.price ? `${(((product.price - product.cost_price) / (product.cost_price || 1)) * 100).toFixed(2)}%` : null} className="text-emerald-600" />
                                     </DetailSection>
 

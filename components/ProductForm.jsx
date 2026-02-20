@@ -37,7 +37,7 @@ import {
 } from '@/lib/utils/domainHelpers';
 import { validateDomainProduct as validateDomainRegex } from '@/lib/utils/domainValidation';
 import { TaxCategorySelector } from '@/components/domain/TaxCategorySelector';
-import { formatCurrency } from '@/lib/currency';
+import { formatCurrency } from '@/lib/utils/formatting';
 import { productSchema, validateForm } from '@/lib/validation';
 import toast from 'react-hot-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -59,6 +59,15 @@ export function ProductForm({
     onCancel,
     currency = 'PKR',
 }) {
+    const { regionalStandards } = useBusiness();
+    const standards = regionalStandards || {
+        currencySymbol: '₨',
+        currency: 'PKR',
+        taxLabel: 'Sales Tax',
+        taxIdLabel: 'NTN',
+        countryCode: 'PK'
+    };
+
     const [activeTab, setActiveTab] = useState('basic');
 
     // Keyboard shortcuts for tabs
@@ -583,7 +592,7 @@ export function ProductForm({
                                 <div className="space-y-2">
                                     <Label htmlFor="price" className="text-xs font-black uppercase text-gray-400 tracking-wider">Selling Price *</Label>
                                     <div className="relative">
-                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">₨</span>
+                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">{standards.currencySymbol}</span>
                                         <Input id="price" type="number" value={formData.price ?? ''} onChange={(e) => updateField('price', parseFloat(e.target.value) || 0)} onBlur={() => handleBlur('price')} className="h-11 pl-12 rounded-xl" />
                                     </div>
                                     {renderError('price')}
@@ -604,7 +613,7 @@ export function ProductForm({
                                         )}
                                     </div>
                                     <div className="relative">
-                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">₨</span>
+                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">{standards.currencySymbol}</span>
                                         <Input id="mrp" type="number" value={formData.mrp ?? ''} onChange={(e) => updateField('mrp', parseFloat(e.target.value) || 0)} className="h-11 pl-12 rounded-xl" />
                                     </div>
                                     {renderError('mrp')}
@@ -613,7 +622,7 @@ export function ProductForm({
                                 <div className="space-y-2">
                                     <Label htmlFor="costPrice" className="text-xs font-black uppercase text-gray-400 tracking-wider">Landing Cost</Label>
                                     <div className="relative">
-                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">₨</span>
+                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">{standards.currencySymbol}</span>
                                         <Input id="costPrice" type="number" value={formData.costPrice ?? ''} onChange={(e) => updateField('costPrice', parseFloat(e.target.value) || 0)} className="h-11 pl-12 rounded-xl" />
                                     </div>
                                     {formData.price > 0 && formData.costPrice > formData.price && (
@@ -659,7 +668,7 @@ export function ProductForm({
                                     <div>
                                         <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Profit/Unit</p>
                                         <p className="text-2xl font-black text-white">
-                                            {formatCurrency((Number(formData.price) || 0) - (Number(formData.costPrice) || 0), currency)}
+                                            {formatCurrency((Number(formData.price) || 0) - (Number(formData.costPrice) || 0), standards.currency)}
                                         </p>
                                     </div>
                                     <div>
@@ -671,7 +680,7 @@ export function ProductForm({
                                     <div>
                                         <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Valuation</p>
                                         <p className="text-2xl font-black text-blue-400">
-                                            {formatCurrency((Number(formData.stock) || 0) * (Number(formData.price) || 0), currency)}
+                                            {formatCurrency((Number(formData.stock) || 0) * (Number(formData.price) || 0), standards.currency)}
                                         </p>
                                     </div>
                                 </div>
@@ -889,8 +898,8 @@ export function ProductForm({
 
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-6 border-t border-gray-100">
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">HSN Code</Label>
-                                    <Input value={formData.hsnCode ?? ''} onChange={(e) => updateField('hsnCode', e.target.value)} placeholder="4-8 digits" className="h-11 rounded-xl" />
+                                    <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">{standards.countryCode === 'PK' ? 'HSN Code' : 'Tax/HSN Code'}</Label>
+                                    <Input value={formData.hsnCode ?? ''} onChange={(e) => updateField('hsnCode', e.target.value)} placeholder="Code" className="h-11 rounded-xl" />
                                 </div>
                                 <div className="space-y-2">
                                     <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">SAC Code</Label>

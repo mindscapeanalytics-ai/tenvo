@@ -328,7 +328,10 @@ function BusinessDashboardContent() {
     dashboardMetrics,
     expenseBreakdown,
     isDataLoaded,
-    refreshAllData
+    refreshAllData,
+    fetchInventory,
+    fetchSales,
+    fetchPurchases
   } = useData();
   const [showInvoiceBuilder, setShowInvoiceBuilder] = useState(false);
   const [invoiceInitialData, setInvoiceInitialData] = useState(null); // New state for pre-filling invoice
@@ -510,8 +513,8 @@ function BusinessDashboardContent() {
   const handleDeleteProduct = async (productId) => {
     try {
       await productAPI.delete(productId, business.id);
-      setProducts(products.filter(p => p.id !== productId));
-      // toast.success('Product deleted successfully'); // Handled by caller or internal toast
+      await fetchInventory();
+      toast.success('Product deleted successfully');
     } catch (error) {
       console.error('Error deleting product:', error);
       toast.error('Failed to delete product');
@@ -521,17 +524,16 @@ function BusinessDashboardContent() {
   const handleSaveCustomer = async (customerData) => {
     try {
       if (customerData.id) {
-        const updated = await customerAPI.update(customerData.id, customerData);
-        setCustomers(customers.map(c => c.id === customerData.id ? updated : c));
+        await customerAPI.update(customerData.id, customerData);
         toast.success('Customer updated successfully');
       } else {
-        const created = await customerAPI.create({
+        await customerAPI.create({
           ...customerData,
           business_id: business.id
         });
-        setCustomers([...customers, created]);
         toast.success('Customer added successfully');
       }
+      await fetchSales();
       setShowCustomerForm(false);
       setEditingCustomer(null);
     } catch (error) {
@@ -543,17 +545,16 @@ function BusinessDashboardContent() {
   const handleSaveVendor = async (vendorData) => {
     try {
       if (vendorData.id) {
-        const updated = await vendorAPI.update(vendorData.id, vendorData);
-        setVendors(vendors.map(v => v.id === vendorData.id ? updated : v));
+        await vendorAPI.update(vendorData.id, vendorData);
         toast.success('Vendor updated');
       } else {
-        const created = await vendorAPI.create({
+        await vendorAPI.create({
           ...vendorData,
           business_id: business.id
         });
-        setVendors([...vendors, created]);
         toast.success('Vendor added');
       }
+      await fetchPurchases();
       setShowVendorForm(false);
       setEditingVendor(null);
     } catch (error) {
@@ -619,7 +620,7 @@ function BusinessDashboardContent() {
     if (confirm('De-register this supplier?')) {
       try {
         await vendorAPI.delete(business.id, vendorId);
-        setVendors(vendors.filter(v => v.id !== vendorId));
+        await fetchPurchases();
         toast.success('Vendor removed');
       } catch (error) {
         console.error('Error deleting vendor:', error);
@@ -632,7 +633,7 @@ function BusinessDashboardContent() {
     if (confirm('Are you sure you want to delete this customer?')) {
       try {
         await customerAPI.delete(customerId, business.id);
-        setCustomers(customers.filter(c => c.id !== customerId));
+        await fetchSales();
         toast.success('Customer deleted successfully');
       } catch (error) {
         console.error('Error deleting customer:', error);
@@ -695,10 +696,6 @@ function BusinessDashboardContent() {
       setShowInvoiceBuilder(false);
       setInvoiceInitialData(null);
 
-      // Explicitly re-fetch to ensure we have full data
-      const freshInvoices = await invoiceAPI.getAll(business.id);
-      setInvoices(freshInvoices);
-
       // Refresh products as stock might have changed
       refreshAllData();
     } catch (error) {
@@ -712,7 +709,6 @@ function BusinessDashboardContent() {
     if (confirm('Are you sure you want to delete this invoice? Stock will be restored to inventory.')) {
       try {
         await invoiceAPI.delete(business.id, invoiceId);
-        setInvoices(invoices.filter(inv => inv.id !== invoiceId));
         toast.success('Invoice deleted and stock restored');
         refreshAllData();
       } catch (error) {
@@ -726,11 +722,10 @@ function BusinessDashboardContent() {
   const handleUpdatePOStatus = async (poId, status) => {
     try {
       const updated = await purchaseOrderAPI.updateStatus(business.id, poId, status);
-      setPurchaseOrders(purchaseOrders.map(p => p.id === poId ? { ...p, status: updated.status } : p));
+      await fetchPurchases();
 
       if (status === 'received' && business?.id) {
-        const result = await productAPI.getAll(business.id);
-        setProducts(result || []);
+        await fetchInventory();
         toast.success('Inventory updated automatically');
       } else {
         toast.success(`Order marked as ${status}`);
@@ -746,8 +741,8 @@ function BusinessDashboardContent() {
 
   const handleCreateBOM = async (data) => {
     try {
-      const newBOM = await manufacturingAPI.createBOM({ ...data, business_id: business.id });
-      setBomList([newBOM, ...bomList]);
+      await manufacturingAPI.createBOM({ ...data, business_id: business.id });
+      await fetchManufacturing();
       toast.success('BOM created successfully');
     } catch (error) {
       console.error('Create BOM Error:', error);
@@ -757,8 +752,8 @@ function BusinessDashboardContent() {
 
   const handleCreateProductionOrder = async (data) => {
     try {
-      const newOrder = await manufacturingAPI.createProductionOrder({ ...data, business_id: business.id });
-      setProductionOrders([newOrder, ...productionOrders]);
+      await manufacturingAPI.createProductionOrder({ ...data, business_id: business.id });
+      await fetchManufacturing();
       toast.success('Production Order scheduled');
     } catch (error) {
       console.error('Create Prod Order Error:', error);
@@ -768,8 +763,8 @@ function BusinessDashboardContent() {
 
   const handleLocationAdd = async (data) => {
     try {
-      const newLoc = await warehouseAPI.createLocation({ ...data, business_id: business.id });
-      setLocations([...locations, newLoc]);
+      await warehouseAPI.createLocation({ ...data, business_id: business.id });
+      await fetchInventory();
       toast.success('Warehouse location added');
     } catch (error) {
       console.error('Add Location Error:', error);
@@ -780,8 +775,8 @@ function BusinessDashboardContent() {
 
   const handleLocationUpdate = async (locationId, updates) => {
     try {
-      const updated = await warehouseAPI.updateLocation(business.id, locationId, updates);
-      setLocations(locations.map(l => l.id === locationId ? updated : l));
+      await warehouseAPI.updateLocation(business.id, locationId, updates);
+      await fetchInventory();
       toast.success('Location updated successfully');
     } catch (error) {
       console.error('Update Location Error:', error);
@@ -793,7 +788,7 @@ function BusinessDashboardContent() {
   const handleLocationDelete = async (locationId) => {
     try {
       await warehouseAPI.deleteLocation(business.id, locationId);
-      setLocations(locations.filter(l => l.id !== locationId));
+      await fetchInventory();
       toast.success('Location deleted successfully');
     } catch (error) {
       console.error('Delete Location Error:', error);
