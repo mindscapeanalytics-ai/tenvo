@@ -79,7 +79,7 @@ export function Header({ onMenuClick }) {
         const parts = text.split(new RegExp(`(${term})`, 'gi'));
         return parts.map((part, i) =>
             part.toLowerCase() === term.toLowerCase()
-                ? <span key={i} className="text-wine bg-wine/10 font-black">{part}</span>
+                ? <span key={i} className="text-indigo-600 bg-indigo-50 font-black">{part}</span>
                 : part
         );
     };
@@ -236,9 +236,9 @@ export function Header({ onMenuClick }) {
     const activeTitle = labels[currentTab] || currentTab;
 
     return (
-        <header className="h-14 bg-white/80 backdrop-blur-md border-b border-gray-200/50 flex items-center px-4 lg:px-6 sticky top-0 z-40 shadow-sm transition-all duration-300">
+        <header className="h-14 bg-white/90 backdrop-blur-xl border-b border-gray-200/50 flex items-center px-4 lg:px-6 sticky top-0 z-40 shadow-sm">
             <div className="flex items-center justify-between w-full max-w-[1600px] mx-auto gap-4">
-                {/* Left: Mobile Menu & Breadcrumb Branding */}
+                {/* Left: Mobile Menu & Breadcrumb */}
                 <div className="flex items-center gap-3 shrink-0">
                     <Button
                         variant="ghost"
@@ -250,24 +250,12 @@ export function Header({ onMenuClick }) {
                     </Button>
 
                     <div className="flex items-center gap-2">
-                        <div className="hidden sm:flex items-center gap-2 px-2.5 py-1 bg-gray-50 rounded-lg border border-gray-100">
-                            <div
-                                className="w-5 h-5 rounded flex items-center justify-center text-[10px] font-black text-white shrink-0"
-                                style={{ backgroundColor: colors?.primary || '#1a1a1a' }}
-                            >
-                                {business?.name?.substring(0, 1).toUpperCase() || 'B'}
-                            </div>
-                            <span className="text-[11px] font-black text-gray-900 truncate max-w-[100px]">
-                                {business?.name || 'Business'}
-                            </span>
-                        </div>
-                        <ChevronIcon className="w-3 h-3 text-gray-300 shrink-0" />
                         <div className="flex flex-col">
-                            <span className="text-xs font-black text-gray-900 uppercase tracking-tight">
+                            <span className="text-sm font-bold text-gray-900 tracking-tight">
                                 {activeTitle}
                             </span>
-                            <span className="text-[8px] font-bold text-gray-400 uppercase tracking-[0.2em]">
-                                Universal Control
+                            <span className="text-[10px] text-gray-400 capitalize">
+                                {business?.domain?.replace(/-/g, ' ') || 'Dashboard'}
                             </span>
                         </div>
                     </div>
@@ -276,10 +264,10 @@ export function Header({ onMenuClick }) {
                 {/* Center: Search (Compact) */}
                 <div className="hidden xl:flex flex-1 justify-center max-w-sm px-2" ref={searchRef}>
                     <div className="relative w-full group">
-                        <Search className={`absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 group-focus-within:text-wine transition-colors ${language === 'ur' ? 'right-3' : 'left-3'}`} />
+                        <Search className={`absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 group-focus-within:text-indigo-500 transition-colors ${language === 'ur' ? 'right-3' : 'left-3'}`} />
                         <Input
                             placeholder={t.search_placeholder}
-                            className={`h-8 text-xs bg-gray-100/50 border-transparent focus:bg-white focus:border-wine/30 focus:ring-wine/20 transition-all rounded-lg ${language === 'ur' ? 'pr-9' : 'pl-9'}`}
+                            className={`h-8 text-xs bg-gray-100/50 border-transparent focus:bg-white focus:border-indigo-300 focus:ring-indigo-500/20 transition-all rounded-lg ${language === 'ur' ? 'pr-9' : 'pl-9'}`}
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             onFocus={() => setIsSearchFocused(true)}
@@ -336,17 +324,17 @@ export function Header({ onMenuClick }) {
                                                                             key={idx}
                                                                             onClick={() => handleResultClick(category, item)}
                                                                             onMouseEnter={() => setActiveIndex(currentGlobalIdx)}
-                                                                            className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-colors group text-left border border-transparent ${isSelected ? 'bg-wine/5 border-wine/20' : 'hover:bg-gray-50'}`}
+                                                                            className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-colors group text-left border border-transparent ${isSelected ? 'bg-indigo-50 border-indigo-200' : 'hover:bg-gray-50'}`}
                                                                         >
                                                                             <div className="flex flex-col">
-                                                                                <span className={`text-xs font-bold uppercase tracking-tight ${isSelected ? 'text-wine' : 'text-gray-900'}`}>
+                                                                                <span className={`text-xs font-bold tracking-tight ${isSelected ? 'text-indigo-700' : 'text-gray-900'}`}>
                                                                                     {highlightMatch(item.name || item.number || item.product_name || 'Unnamed Item', searchQuery)}
                                                                                 </span>
                                                                                 <span className="text-[10px] text-gray-500 line-clamp-1">
                                                                                     {highlightMatch(item.sku || item.customer_name || item.company_name || item.category || item.status || '', searchQuery)}
                                                                                 </span>
                                                                             </div>
-                                                                            <ChevronIcon className={`w-3 h-3 transition-all ${isSelected ? 'text-wine translate-x-0.5' : 'text-gray-300'}`} />
+                                                                            <ChevronIcon className={`w-3 h-3 transition-all ${isSelected ? 'text-indigo-600 translate-x-0.5' : 'text-gray-300'}`} />
                                                                         </button>
                                                                     );
                                                                 })}
@@ -421,19 +409,16 @@ export function Header({ onMenuClick }) {
                         <Button
                             size="sm"
                             onClick={() => window.dispatchEvent(new CustomEvent('open-modal', { detail: { modalId: 'invoice' } }))}
-                            className="h-9 text-white font-black text-[9px] uppercase tracking-widest rounded-lg px-4 shadow-md transition-all active:scale-95 border-none hidden sm:flex"
-                            style={{
-                                backgroundColor: colors?.primary || '#1a1a1a',
-                            }}
+                            className="h-9 text-white font-bold text-xs rounded-lg px-4 shadow-md shadow-indigo-500/20 transition-all active:scale-95 border-none hidden sm:flex bg-indigo-600 hover:bg-indigo-700"
                         >
                             <Plus className="w-3.5 h-3.5 mr-1.5" />
-                            NEW INVOICE
+                            New Invoice
                         </Button>
                     </div>
 
                     <div className="h-6 w-px bg-gray-100 mx-1 hidden sm:block"></div>
 
-                    <Button variant="ghost" size="icon" className="relative text-gray-400 hover:text-wine hover:bg-wine/5 rounded-lg transition-colors h-9 w-9">
+                    <Button variant="ghost" size="icon" className="relative text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors h-9 w-9">
                         <Bell className="w-4 h-4" />
                         <span className="absolute top-2.5 right-2.5 w-1.5 h-1.5 bg-red-500 rounded-full border border-white"></span>
                     </Button>

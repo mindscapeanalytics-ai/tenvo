@@ -27,6 +27,13 @@ import { FinancialOverview } from '@/components/dashboard/FinancialOverview';
 import { TaxComplianceManager } from '@/components/TaxComplianceManager';
 import { SettingsManager } from '@/components/SettingsManager';
 import { SerialScanner } from '@/components/inventory/SerialScanner';
+// Phase 3+5+6 New Module Components
+import { PosTerminal } from '@/components/pos/PosTerminal';
+import { RestaurantManager } from '@/components/restaurant/RestaurantManager';
+import { ExpenseManager } from '@/components/finance/ExpenseManager';
+import { PayrollDashboard } from '@/components/hr/PayrollDashboard';
+import { ApprovalInbox } from '@/components/workflow/ApprovalInbox';
+import { UpgradePrompt } from '@/components/subscription/UpgradePrompt';
 
 export function DashboardTabs({
     activeTab,
@@ -616,6 +623,72 @@ export function DashboardTabs({
                                 <p className="text-gray-500">Only authorized personnel can access Tax & GST data.</p>
                             </Card>
                         )
+                    )}
+                </TabsContent>
+
+                {/* ─── Phase 3+5+6: New Module Tabs ──────────────────────────── */}
+
+                <TabsContent value="pos" className="space-y-6 outline-none">
+                    {wrapTab(
+                        <PosTerminal
+                            businessId={business?.id}
+                            products={filteredProducts}
+                            onCompleteSale={handlers.handlePosCheckout}
+                            currency={currency}
+                            session={handlers.posSession}
+                        />
+                    )}
+                </TabsContent>
+
+                <TabsContent value="restaurant" className="space-y-6 outline-none">
+                    {wrapTab(
+                        <RestaurantManager
+                            businessId={business?.id}
+                            tables={handlers.restaurantTables || []}
+                            kitchenQueue={handlers.kitchenQueue || []}
+                            onTableAction={handlers.handleTableAction}
+                            onNewOrder={handlers.handleNewRestaurantOrder}
+                            onKitchenStatusUpdate={handlers.handleKitchenStatusUpdate}
+                            onRefresh={refreshAllData}
+                        />
+                    )}
+                </TabsContent>
+
+                <TabsContent value="expenses" className="space-y-6 outline-none">
+                    {wrapTab(
+                        <ExpenseManager
+                            businessId={business?.id}
+                            expenses={handlers.expenses || []}
+                            onCreateExpense={handlers.handleCreateExpense}
+                            onDeleteExpense={handlers.handleDeleteExpense}
+                            currency={currency}
+                        />
+                    )}
+                </TabsContent>
+
+                <TabsContent value="payroll" className="space-y-6 outline-none">
+                    {wrapTab(
+                        <PayrollDashboard
+                            businessId={business?.id}
+                            employees={handlers.payrollEmployees || []}
+                            payrollRuns={handlers.payrollRuns || []}
+                            onProcessPayroll={handlers.handleProcessPayroll}
+                            onViewPayslips={handlers.handleViewPayslips}
+                            onAddEmployee={handlers.handleAddEmployee}
+                            currency={currency}
+                        />
+                    )}
+                </TabsContent>
+
+                <TabsContent value="approvals" className="space-y-6 outline-none">
+                    {wrapTab(
+                        <ApprovalInbox
+                            pendingRequests={handlers.pendingApprovals || []}
+                            historyRequests={handlers.approvalHistory || []}
+                            onApprove={handlers.handleApproveRequest}
+                            onReject={handlers.handleRejectRequest}
+                            currency={currency}
+                        />
                     )}
                 </TabsContent>
 

@@ -17,22 +17,22 @@ export function DashboardHeader({
     onExport,
     searchValue,
     onSearchChange,
-    children // This will be the TabsList
+    children // kept for backward compatibility but no longer renders tabs
 }) {
     const { t, language } = useLanguage();
 
     return (
-        <div className="sticky top-0 z-30 pb-4 pt-2 -mx-4 px-4 bg-gray-50/80 backdrop-blur-xl border-b border-gray-200/50">
-            <div className="max-w-[1600px] mx-auto space-y-4">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div className="flex items-center gap-4 flex-1">
-                        {/* Search Bar - Glassmorphism style */}
+        <div className="sticky top-0 z-30 pb-3 pt-2 -mx-4 px-4 bg-gray-50/80 backdrop-blur-xl border-b border-gray-200/50">
+            <div className="max-w-[1600px] mx-auto">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 flex-1">
+                        {/* Search Bar */}
                         <div className="relative flex-1 max-w-md group">
-                            <Search className={`absolute top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-primary transition-colors ${language === 'ur' ? 'right-3' : 'left-3'}`} />
+                            <Search className={`absolute top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-indigo-500 transition-colors ${language === 'ur' ? 'right-3' : 'left-3'}`} />
                             <Input
                                 id="dashboard-search"
                                 placeholder={t.search_placeholder}
-                                className={`h-10 bg-white/50 border-gray-200/50 focus:bg-white focus:ring-primary/20 transition-all rounded-xl ${language === 'ur' ? 'pr-10' : 'pl-10'}`}
+                                className={`h-10 bg-white/70 border-gray-200/50 focus:bg-white focus:ring-indigo-500/20 focus:border-indigo-300 transition-all rounded-xl ${language === 'ur' ? 'pr-10' : 'pl-10'}`}
                                 value={searchValue}
                                 onChange={(e) => onSearchChange?.(e.target.value)}
                             />
@@ -46,10 +46,10 @@ export function DashboardHeader({
                             )}
                         </div>
 
-                        {/* Quick Filter button */}
-                        <Button variant="outline" className="h-10 px-3 rounded-xl gap-2 border-gray-200/50 bg-white/50">
+                        {/* Quick Filter */}
+                        <Button variant="outline" className="h-10 px-3 rounded-xl gap-2 border-gray-200/50 bg-white/50 hover:bg-white">
                             <ListFilter className="w-4 h-4" />
-                            <span className="hidden sm:inline">Filters</span>
+                            <span className="hidden sm:inline text-xs">Filters</span>
                         </Button>
                     </div>
 
@@ -57,16 +57,15 @@ export function DashboardHeader({
                         <Button
                             variant="outline"
                             size="sm"
-                            className="h-10 rounded-xl gap-2 border-gray-200/50 bg-white/50"
+                            className="h-10 rounded-xl gap-2 border-gray-200/50 bg-white/50 hover:bg-white"
                             onClick={onExport}
                         >
                             <Download className="w-4 h-4" />
-                            <span className="hidden lg:inline">Export</span>
+                            <span className="hidden lg:inline text-xs">Export</span>
                         </Button>
 
                         <Button
-                            className="h-10 rounded-xl gap-2 shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all px-4 font-bold"
-                            style={{ backgroundColor: colors.primary }}
+                            className="h-10 rounded-xl gap-2 shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/40 transition-all px-4 font-bold bg-indigo-600 hover:bg-indigo-700"
                             onClick={() => {
                                 if (activeTab === 'inventory') {
                                     onQuickAction?.('add-product');
@@ -87,11 +86,6 @@ export function DashboardHeader({
                             </span>
                         </Button>
                     </div>
-                </div>
-
-                {/* The Tab Switcher Container */}
-                <div className="overflow-x-auto pb-1 -mb-1 hide-scrollbar">
-                    {children}
                 </div>
             </div>
         </div>
