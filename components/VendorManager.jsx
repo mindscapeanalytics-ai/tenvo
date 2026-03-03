@@ -9,6 +9,7 @@ import { Building2, Phone, Mail, MapPin, TrendingUp, Edit, Trash2, Plus, Search,
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { DataTable } from './DataTable';
 import { ExportButton } from './ExportButton';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { formatCurrency } from '@/lib/currency';
 import { getDomainColors } from '@/lib/domainColors';
 import { FormError } from '@/components/ui/form-error';
@@ -247,7 +248,7 @@ export function VendorManager({ vendors = [], onAdd, onUpdate, onDelete, categor
           </div>
         </CardHeader>
         <CardContent>
-          <DataTable category={category} data={filteredVendors} columns={allColumns} />
+          <DataTable category={category} data={filteredVendors} columns={allColumns} emptyComponent={<EmptyState module="vendors" compact onAction={onAdd} />} />
         </CardContent>
       </Card>
 

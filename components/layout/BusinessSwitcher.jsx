@@ -3,14 +3,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
+import toast from 'react-hot-toast';
 import {
-    Building2, ChevronDown, Check, Plus, Loader2, Briefcase,
-    Store, UtensilsCrossed, Factory, Truck, ShoppingCart, Globe
+    Building2, ChevronDown, Check, Plus, Loader2,
+    Store, UtensilsCrossed, Factory, Truck, ShoppingCart
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useBusiness } from '@/lib/context/BusinessContext';
-import { useAuth } from '@/lib/context/AuthContext';
 import { getJoinedBusinessesAction } from '@/lib/actions/basic/business';
 
 const DOMAIN_ICONS = {
@@ -36,26 +35,44 @@ const DOMAIN_COLORS = {
 export function BusinessSwitcher({ isCollapsed = false }) {
     const router = useRouter();
     const { business, switchBusinessByDomain } = useBusiness();
-    const { user } = useAuth();
     const [isOpen, setIsOpen] = useState(false);
     const [businesses, setBusinesses] = useState([]);
     const [loading, setLoading] = useState(false);
     const [switching, setSwitching] = useState(null);
 
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const cached = localStorage.getItem('joinedBusinesses');
+        if (!cached) return;
+
+        try {
+            const parsed = JSON.parse(cached);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+                setBusinesses(parsed);
+            }
+        } catch {
+            localStorage.removeItem('joinedBusinesses');
+        }
+    }, []);
+
     const fetchBusinesses = useCallback(async () => {
-        if (!user?.id) return;
         setLoading(true);
         try {
-            const result = await getJoinedBusinessesAction(user.id);
+            const result = await getJoinedBusinessesAction();
             if (result.success) {
-                setBusinesses(result.businesses || []);
+                const nextBusinesses = result.businesses || [];
+                setBusinesses(nextBusinesses);
+                if (typeof window !== 'undefined') {
+                    localStorage.setItem('joinedBusinesses', JSON.stringify(nextBusinesses));
+                }
             }
         } catch (err) {
             console.error('Failed to fetch businesses:', err);
+            toast.error('Could not refresh business list');
         } finally {
             setLoading(false);
         }
-    }, [user?.id]);
+    }, []);
 
     useEffect(() => {
         if (isOpen && businesses.length === 0) {
@@ -72,7 +89,10 @@ export function BusinessSwitcher({ isCollapsed = false }) {
         try {
             const result = await switchBusinessByDomain(biz.domain);
             if (result.success) {
+                toast.success(`Switched to ${biz.name}`);
                 router.push(`/business/${biz.domain}?tab=dashboard`);
+            } else {
+                toast.error(result.error || 'Unable to switch business');
             }
         } finally {
             setSwitching(null);

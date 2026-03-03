@@ -38,8 +38,8 @@ export default function PurchasesPage() {
             setLoading(true);
             // In a real app, we'd filter by business_id in the API call if RLS didn't handle it automatically.
             // But RLS policies I set up use auth.uid() -> business mapping, so basic fetch is safe.
-            const data = await purchaseAPI.getAll();
-            setPurchases(data || []);
+            const data = await purchaseAPI.getAll(business.id);
+            setPurchases(data?.purchaseOrders || []);
         } catch (error) {
             console.error('Failed to load purchases:', error);
             toast.error('Could not load purchase history');

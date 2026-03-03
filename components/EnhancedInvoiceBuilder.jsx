@@ -16,10 +16,12 @@ import { getDomainColors } from '@/lib/domainColors';
 import { formatCurrency, formatAmount, calculateTax as baseCalculateTax } from '@/lib/utils/formatting';
 import { getTaxStrategy } from '@/lib/utils/taxStrategies';
 import { cn } from '@/lib/utils';
+import { Combobox } from '@/components/ui/combobox';
 import { useBusiness } from '@/lib/context/BusinessContext';
 import { Badge } from '@/components/ui/badge';
 import toast from 'react-hot-toast';
 import { useStockAvailability, useCreditLimitCheck, useDueDateCalculator } from '@/lib/hooks/useInvoiceHelpers';
+import { invoiceSchema, validateWithSchema } from '@/lib/validation/schemas';
 
 /**
  * Enhanced Invoice Builder Component
@@ -390,13 +392,39 @@ export function EnhancedInvoiceBuilder({
 
   // Handle save with validation
   const handleSave = async () => {
-    // Validation
-    if (!invoice.customer.name) {
-      toast.error('Please enter customer name');
+    // Zod schema validation
+    const schemaData = {
+      business_id: business?.id,
+      customer_id: invoice.customer?.id || null,
+      invoice_number: invoice.invoiceNumber || `INV-${Date.now()}`,
+      date: invoice.date || new Date().toISOString(),
+      due_date: invoice.dueDate || null,
+      items: invoice.items.map(item => ({
+        product_id: item.product_id || item.id || null,
+        name: item.name || item.description || 'Item',
+        quantity: Number(item.quantity || 0),
+        unit_price: Number(item.rate || item.unit_price || 0),
+        tax_percent: Number(item.taxPercent || 17),
+        discount_amount: Number(item.discount || 0),
+      })),
+      subtotal: totals.subtotal || 0,
+      total_tax: totals.tax || 0,
+      discount_total: totals.discount || 0,
+      grand_total: totals.total || 0,
+      status: 'draft',
+      notes: invoice.notes || null,
+      terms: invoice.terms || null,
+    };
+    const validation = validateWithSchema(invoiceSchema, schemaData);
+    if (!validation.success) {
+      const firstError = Object.values(validation.errors)[0];
+      toast.error(firstError || 'Please fix validation errors');
       return;
     }
-    if (invoice.items.length === 0) {
-      toast.error('Please add at least one item');
+
+    // Additional UI checks
+    if (!invoice.customer.name) {
+      toast.error('Please enter customer name');
       return;
     }
 
@@ -590,15 +618,17 @@ export function EnhancedInvoiceBuilder({
             </div>
             <div>
               <Label>Document Type</Label>
-              <select
+              <Combobox
+                options={[
+                  { value: 'tax', label: `${standards.taxLabel} Invoice` },
+                  { value: 'retail', label: 'Retail Invoice' },
+                  { value: 'export', label: 'Export Invoice' },
+                ]}
                 value={invoice.invoiceType}
-                onChange={(e) => setInvoice({ ...invoice, invoiceType: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-              >
-                <option value="tax">{standards.taxLabel} Invoice</option>
-                <option value="retail">Retail Invoice</option>
-                <option value="export">Export Invoice</option>
-              </select>
+                onChange={(val) => setInvoice({ ...invoice, invoiceType: val })}
+                placeholder="Select type..."
+                className="h-10"
+              />
             </div>
           </div>
 
@@ -607,18 +637,21 @@ export function EnhancedInvoiceBuilder({
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-semibold text-lg">Customer Details</h3>
               {customers.length > 0 && (
-                <select
-                  onChange={(e) => {
-                    const customer = customers.find(c => c.id === parseInt(e.target.value));
+                <Combobox
+                  options={customers.map(c => ({
+                    value: String(c.id),
+                    label: c.name,
+                    description: c.phone || c.email || ''
+                  }))}
+                  value=""
+                  onChange={(val) => {
+                    const customer = customers.find(c => String(c.id) === String(val));
                     if (customer) setSelectedCustomer(customer);
                   }}
-                  className="px-3 py-2 border border-gray-300 rounded-lg"
-                >
-                  <option value="">Select Customer</option>
-                  {customers.map(c => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                </select>
+                  placeholder="Search customers..."
+                  emptyText="No customers found"
+                  className="w-[280px]"
+                />
               )}
             </div>
             <div className="grid grid-cols-2 gap-4">
@@ -812,16 +845,18 @@ export function EnhancedInvoiceBuilder({
                         <tr key={item.id} className="bg-white border-b hover:bg-gray-50">
                           <td className="px-3 py-2 text-center">{index + 1}</td>
                           <td className="px-3 py-2">
-                            <select
-                              value={item.productId}
-                              onChange={(e) => updateItem(item.id, 'productId', e.target.value)}
-                              className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
-                            >
-                              <option value="">Select Product</option>
-                              {products.map(p => (
-                                <option key={p.id} value={p.id}>{p.name}</option>
-                              ))}
-                            </select>
+                            <Combobox
+                              options={products.map(p => ({
+                                value: String(p.id),
+                                label: p.name,
+                                description: p.sku ? `SKU: ${p.sku}` : (p.price ? `${formatCurrency(p.price, currency)}` : '')
+                              }))}
+                              value={String(item.productId || '')}
+                              onChange={(val) => updateItem(item.id, 'productId', val)}
+                              placeholder="Search products..."
+                              emptyText="No products found"
+                              className="h-8 border-none bg-transparent shadow-none text-sm"
+                            />
                           </td>
 
                           {/* Domain Specific Columns */}

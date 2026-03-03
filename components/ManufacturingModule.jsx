@@ -10,10 +10,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
+import { Combobox } from './ui/combobox';
 import { Badge } from './ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
 import { Progress } from './ui/progress';
-import { Combobox } from './ui/combobox';
 import { manufacturingAPI } from '@/lib/api/manufacturing';
 
 /**
@@ -651,17 +651,17 @@ export function ManufacturingModule({
             <div className="space-y-4 py-4">
               <div>
                 <Label htmlFor="bom">Select BOM *</Label>
-                <select
-                  id="bom"
-                  value={productionData.bom || ''}
-                  onChange={(e) => setProductionData({ ...productionData, bom: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-lg"
-                >
-                  <option value="">Select BOM</option>
-                  {bomList.map(b => (
-                    <option key={b.id} value={b.id}>{b.name || b.finishedProductName || getProductName(b.product_id)}</option>
-                  ))}
-                </select>
+                <Combobox
+                  options={bomList.map(b => ({
+                    value: String(b.id),
+                    label: b.name || b.finishedProductName || getProductName(b.product_id),
+                    description: b.components ? `${b.components.length} components` : ''
+                  }))}
+                  value={String(productionData.bom || '')}
+                  onChange={(val) => setProductionData({ ...productionData, bom: val })}
+                  placeholder="Search BOMs..."
+                  emptyText="No BOMs found"
+                />
                 {productionData.bom && productionData.quantity && (
                   <div className="mt-2 text-xs space-y-1">
                     <p className="font-semibold text-gray-500 uppercase tracking-wider">Stock Check for {productionData.quantity} units:</p>
@@ -704,21 +704,23 @@ export function ManufacturingModule({
                 </div>
                 <div>
                   <Label htmlFor="warehouse">Target Warehouse *</Label>
-                  <select
-                    id="warehouse"
-                    value={productionData.warehouseId}
-                    onChange={(e) => setProductionData({ ...productionData, warehouseId: e.target.value })}
-                    className="w-full px-3 py-2 border rounded-lg"
-                  >
-                    <option value="">Select Warehouse</option>
-                    {warehouses.map(w => (
-                      <option key={w.id} value={w.id}>{w.name}</option>
-                    ))}
-                    {/* Fallback if no warehouses passed but products have one */}
-                    {warehouses.length === 0 && products.length > 0 && products[0].warehouse_id && (
-                      <option value={products[0].warehouse_id}>Default Warehouse</option>
-                    )}
-                  </select>
+                  <Combobox
+                    options={[
+                      ...warehouses.map(w => ({
+                        value: String(w.id),
+                        label: w.name,
+                        description: w.location || ''
+                      })),
+                      ...(warehouses.length === 0 && products.length > 0 && products[0].warehouse_id
+                        ? [{ value: String(products[0].warehouse_id), label: 'Default Warehouse' }]
+                        : []
+                      )
+                    ]}
+                    value={String(productionData.warehouseId || '')}
+                    onChange={(val) => setProductionData({ ...productionData, warehouseId: val })}
+                    placeholder="Select warehouse..."
+                    emptyText="No warehouses found"
+                  />
                 </div>
               </div>
 

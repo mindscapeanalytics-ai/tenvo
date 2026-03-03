@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { formatCurrency } from '@/lib/currency';
 import { useBusiness } from '@/lib/context/BusinessContext';
+import { EmptyState } from '@/components/ui/EmptyState';
 
 export function SalesOrdersTable({ data, onView, onConvert, isLoading }) {
     const { currency } = useBusiness();
@@ -30,7 +31,7 @@ export function SalesOrdersTable({ data, onView, onConvert, isLoading }) {
     }
 
     if (data.length === 0) {
-        return <div className="p-8 text-center text-muted-foreground border rounded-lg bg-gray-50">No sales orders found.</div>;
+        return <EmptyState module="orders" compact />;
     }
 
     return (

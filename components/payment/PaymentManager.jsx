@@ -7,6 +7,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Combobox } from "@/components/ui/combobox";
 import {
     Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from "@/components/ui/select";
@@ -220,25 +221,20 @@ export default function PaymentManager({
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <Label>{paymentType === 'receipt' ? 'Customer' : 'Vendor'}</Label>
-                                        <Select
-                                            value={paymentType === 'receipt' ? formData.customerId : formData.vendorId}
-                                            onValueChange={(val) => setFormData({
+                                        <Combobox
+                                            options={paymentType === 'receipt'
+                                                ? customers.map(c => ({ value: String(c.id), label: c.name, description: c.phone || c.email || '' }))
+                                                : vendors.map(v => ({ value: String(v.id), label: v.name, description: v.city || v.phone || '' }))
+                                            }
+                                            value={String(paymentType === 'receipt' ? formData.customerId : formData.vendorId) || ''}
+                                            onChange={(val) => setFormData({
                                                 ...formData,
                                                 [paymentType === 'receipt' ? 'customerId' : 'vendorId']: val,
                                                 referenceId: ''
                                             })}
-                                        >
-                                            <SelectTrigger>
-                                                <SelectValue placeholder={`Select ${paymentType === 'receipt' ? 'Customer' : 'Vendor'}`} />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {paymentType === 'receipt' ? (
-                                                    customers.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)
-                                                ) : (
-                                                    vendors.map(v => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)
-                                                )}
-                                            </SelectContent>
-                                        </Select>
+                                            placeholder={`Search ${paymentType === 'receipt' ? 'customers' : 'vendors'}...`}
+                                            emptyText={`No ${paymentType === 'receipt' ? 'customers' : 'vendors'} found`}
+                                        />
                                     </div>
 
                                     <div className="space-y-2">
@@ -283,22 +279,20 @@ export default function PaymentManager({
 
                                 <div className="space-y-2">
                                     <Label>Reference (Optional)</Label>
-                                    <Select
-                                        value={formData.referenceId || "none"}
-                                        onValueChange={(val) => setFormData({ ...formData, referenceId: val === 'none' ? '' : val })}
-                                    >
-                                        <SelectTrigger>
-                                            <SelectValue placeholder={`Link to ${paymentType === 'receipt' ? 'Invoice' : 'Purchase Order'}`} />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="none">No Reference</SelectItem>
-                                            {filteredReferences.map(doc => (
-                                                <SelectItem key={doc.id} value={doc.id}>
-                                                    {doc.invoice_number || doc.purchase_number || doc.id} - {formatCurrency(doc.grand_total || doc.total_amount, currency)}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
+                                    <Combobox
+                                        options={[
+                                            { value: 'none', label: 'No Reference', description: '' },
+                                            ...filteredReferences.map(doc => ({
+                                                value: String(doc.id),
+                                                label: doc.invoice_number || doc.purchase_number || String(doc.id),
+                                                description: formatCurrency(doc.grand_total || doc.total_amount, currency)
+                                            }))
+                                        ]}
+                                        value={String(formData.referenceId || 'none')}
+                                        onChange={(val) => setFormData({ ...formData, referenceId: val === 'none' ? '' : val })}
+                                        placeholder={`Link to ${paymentType === 'receipt' ? 'Invoice' : 'Purchase Order'}`}
+                                        emptyText="No outstanding documents found"
+                                    />
                                 </div>
 
                                 {(formData.paymentMode === 'bank' || formData.paymentMode === 'cheque') && (

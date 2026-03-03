@@ -68,6 +68,18 @@ export function TaxCategorySelector({
 
     const selectedTaxInfo = value ? getTaxInfo(value) : null;
 
+    // Static class map for Tailwind JIT
+    const TAX_COLOR_CLASSES = {
+        blue: 'bg-blue-50 text-blue-700 border-blue-200',
+        green: 'bg-green-50 text-green-700 border-green-200',
+        purple: 'bg-purple-50 text-purple-700 border-purple-200',
+        orange: 'bg-orange-50 text-orange-700 border-orange-200',
+        red: 'bg-red-50 text-red-700 border-red-200',
+        indigo: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+        yellow: 'bg-yellow-50 text-yellow-700 border-yellow-200',
+        gray: 'bg-gray-50 text-gray-700 border-gray-200',
+    };
+
     const handleChange = (e) => {
         const selectedCategory = e.target.value;
         const taxInfo = getTaxInfo(selectedCategory);
@@ -83,7 +95,7 @@ export function TaxCategorySelector({
                 {selectedTaxInfo && (
                     <Badge
                         variant="outline"
-                        className={`text-[10px] font-black uppercase bg-${selectedTaxInfo.color}-50 text-${selectedTaxInfo.color}-700 border-${selectedTaxInfo.color}-200`}
+                        className={`text-[10px] font-black uppercase ${TAX_COLOR_CLASSES[selectedTaxInfo.color] || TAX_COLOR_CLASSES.gray}`}
                     >
                         {selectedTaxInfo.rate}%
                     </Badge>

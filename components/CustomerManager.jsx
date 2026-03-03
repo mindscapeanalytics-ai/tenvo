@@ -9,6 +9,7 @@ import { Plus, Search, Mail, Phone, MapPin, TrendingUp, Edit, Trash2, User, Buil
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { DataTable } from './DataTable';
 import { ExportButton } from './ExportButton';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { FormError, FormWarning } from '@/components/ui/form-error';
 import { getDomainKnowledge } from '@/lib/domainKnowledge';
 import { formatCurrency } from '@/lib/currency';
@@ -154,7 +155,7 @@ export function CustomerManager({ customers = [], onAdd, onUpdate, onDelete, cat
           </div>
         </CardHeader>
         <CardContent>
-          <DataTable category={category} data={filteredCustomers} columns={allColumns} />
+          <DataTable category={category} data={filteredCustomers} columns={allColumns} emptyComponent={<EmptyState module="customers" compact onAction={onAdd} />} />
         </CardContent>
       </Card>
 

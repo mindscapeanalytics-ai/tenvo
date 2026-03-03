@@ -7,10 +7,12 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Combobox } from '@/components/ui/combobox';
 import { useBusiness } from '@/lib/context/BusinessContext';
 import { formatCurrency } from '@/lib/currency';
 import { createGLEntryAction, getGLAccountsAction } from '@/lib/actions/basic/accounting';
 import toast from 'react-hot-toast';
+import { journalEntrySchema, validateWithSchema } from '@/lib/validation/schemas';
 
 // ─── Quick templates for common journal entries ──────────────────────────────
 const JOURNAL_TEMPLATES = [
@@ -151,11 +153,27 @@ export function JournalEntryForm({ onClose, onSave }) {
     };
 
     const handleSave = async () => {
-        // Validation
-        if (!formData.description.trim()) {
-            toast.error('Description is required');
+        // Schema validation
+        const schemaData = {
+            businessId: business?.id,
+            date: formData.date,
+            description: formData.description,
+            referenceType: formData.reference ? 'manual' : null,
+            referenceId: formData.reference || null,
+            entries: formData.entries.map(e => ({
+                account_id: e.account_id || undefined,
+                debit: e.type === 'debit' ? parseFloat(e.amount) || 0 : 0,
+                credit: e.type === 'credit' ? parseFloat(e.amount) || 0 : 0,
+            }))
+        };
+        const validation = validateWithSchema(journalEntrySchema, schemaData);
+        if (!validation.success) {
+            const firstError = Object.values(validation.errors)[0];
+            toast.error(firstError || 'Please fix validation errors');
             return;
         }
+
+        // Additional business logic checks
         if (!totals.isBalanced) {
             toast.error('Journal entry must be balanced (Debits = Credits)');
             return;
@@ -292,22 +310,18 @@ export function JournalEntryForm({ onClose, onSave }) {
                                 {debitEntries.map(entry => (
                                     <div key={entry.id} className="flex gap-2 items-start bg-white p-3 rounded-xl border border-blue-100 shadow-sm hover:shadow-md transition-shadow group">
                                         <div className="flex-1 space-y-2">
-                                            <select
-                                                className="w-full h-10 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 transition-all outline-none font-medium px-3 text-sm"
-                                                value={entry.account_id}
-                                                onChange={(e) => updateEntry(entry.id, 'account_id', e.target.value)}
-                                            >
-                                                <option value="">Select GL Account</option>
-                                                {Object.entries(groupedAccounts).map(([type, accounts]) => (
-                                                    <optgroup key={type} label={type}>
-                                                        {accounts.map(acc => (
-                                                            <option key={acc.id} value={acc.id}>
-                                                                {acc.account_code ? `${acc.account_code} — ` : ''}{acc.account_name || acc.name}
-                                                            </option>
-                                                        ))}
-                                                    </optgroup>
-                                                ))}
-                                            </select>
+                                            <Combobox
+                                                options={glAccounts.map(acc => ({
+                                                    value: String(acc.id),
+                                                    label: `${acc.account_code ? `${acc.account_code} — ` : ''}${acc.account_name || acc.name}`,
+                                                    description: acc.account_type || 'Other'
+                                                }))}
+                                                value={String(entry.account_id || '')}
+                                                onChange={(val) => updateEntry(entry.id, 'account_id', val)}
+                                                placeholder="Search GL accounts..."
+                                                emptyText="No accounts found"
+                                                className="h-10"
+                                            />
                                             <Input
                                                 type="number"
                                                 min="0"
@@ -349,22 +363,18 @@ export function JournalEntryForm({ onClose, onSave }) {
                                 {creditEntries.map(entry => (
                                     <div key={entry.id} className="flex gap-2 items-start bg-white p-3 rounded-xl border border-emerald-100 shadow-sm hover:shadow-md transition-shadow group">
                                         <div className="flex-1 space-y-2">
-                                            <select
-                                                className="w-full h-10 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 transition-all outline-none font-medium px-3 text-sm"
-                                                value={entry.account_id}
-                                                onChange={(e) => updateEntry(entry.id, 'account_id', e.target.value)}
-                                            >
-                                                <option value="">Select GL Account</option>
-                                                {Object.entries(groupedAccounts).map(([type, accounts]) => (
-                                                    <optgroup key={type} label={type}>
-                                                        {accounts.map(acc => (
-                                                            <option key={acc.id} value={acc.id}>
-                                                                {acc.account_code ? `${acc.account_code} — ` : ''}{acc.account_name || acc.name}
-                                                            </option>
-                                                        ))}
-                                                    </optgroup>
-                                                ))}
-                                            </select>
+                                            <Combobox
+                                                options={glAccounts.map(acc => ({
+                                                    value: String(acc.id),
+                                                    label: `${acc.account_code ? `${acc.account_code} — ` : ''}${acc.account_name || acc.name}`,
+                                                    description: acc.account_type || 'Other'
+                                                }))}
+                                                value={String(entry.account_id || '')}
+                                                onChange={(val) => updateEntry(entry.id, 'account_id', val)}
+                                                placeholder="Search GL accounts..."
+                                                emptyText="No accounts found"
+                                                className="h-10"
+                                            />
                                             <Input
                                                 type="number"
                                                 min="0"

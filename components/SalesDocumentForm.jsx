@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Combobox } from '@/components/ui/combobox';
 import { useBusiness } from '@/lib/context/BusinessContext';
 import { formatCurrency } from '@/lib/currency';
 import {
@@ -256,16 +257,17 @@ export function SalesDocumentForm({
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <Label>Customer *</Label>
-                            <select
-                                className="w-full p-2 border rounded-md"
-                                value={formData.customer_id}
-                                onChange={(e) => setFormData(prev => ({ ...prev, customer_id: e.target.value }))}
-                            >
-                                <option value="">Select Customer</option>
-                                {customers.map(c => (
-                                    <option key={c.id} value={c.id}>{c.name}</option>
-                                ))}
-                            </select>
+                            <Combobox
+                                options={customers.map(c => ({
+                                    value: String(c.id),
+                                    label: c.name,
+                                    description: c.phone || c.email || ''
+                                }))}
+                                value={String(formData.customer_id || '')}
+                                onChange={(val) => setFormData(prev => ({ ...prev, customer_id: val }))}
+                                placeholder="Search customers..."
+                                emptyText="No customers found"
+                            />
                         </div>
                         <div className="grid grid-cols-2 gap-2">
                             <div className="space-y-2">
@@ -297,16 +299,17 @@ export function SalesDocumentForm({
                                 </div>
                                 <div className="space-y-2 col-span-2">
                                     <Label>Warehouse *</Label>
-                                    <select
-                                        className="w-full p-2 border rounded-md"
-                                        value={formData.warehouse_id || ''}
-                                        onChange={(e) => setFormData(prev => ({ ...prev, warehouse_id: e.target.value }))}
-                                    >
-                                        <option value="">Select Warehouse</option>
-                                        {warehouses.map(w => (
-                                            <option key={w.id} value={w.id}>{w.name}</option>
-                                        ))}
-                                    </select>
+                                    <Combobox
+                                        options={warehouses.map(w => ({
+                                            value: String(w.id),
+                                            label: w.name,
+                                            description: w.location || ''
+                                        }))}
+                                        value={String(formData.warehouse_id || '')}
+                                        onChange={(val) => setFormData(prev => ({ ...prev, warehouse_id: val }))}
+                                        placeholder="Select warehouse..."
+                                        emptyText="No warehouses found"
+                                    />
                                     <p className="text-xs text-gray-500">Stock will be deducted from this warehouse</p>
                                 </div>
                             </>
@@ -347,16 +350,18 @@ export function SalesDocumentForm({
                                         formData.items.map((item) => (
                                             <tr key={item.id} className="border-b last:border-0">
                                                 <td className="px-4 py-2">
-                                                    <select
-                                                        className="w-full p-1 border rounded"
-                                                        value={item.product_id}
-                                                        onChange={(e) => updateItem(item.id, 'product_id', e.target.value)}
-                                                    >
-                                                        <option value="">Select Product</option>
-                                                        {products.map(p => (
-                                                            <option key={p.id} value={p.id}>{p.name}</option>
-                                                        ))}
-                                                    </select>
+                                                    <Combobox
+                                                        options={products.map(p => ({
+                                                            value: String(p.id),
+                                                            label: p.name,
+                                                            description: p.sku ? `SKU: ${p.sku}` : (p.price ? `Price: ${p.price}` : '')
+                                                        }))}
+                                                        value={String(item.product_id || '')}
+                                                        onChange={(val) => updateItem(item.id, 'product_id', val)}
+                                                        placeholder="Search products..."
+                                                        emptyText="No products found"
+                                                        className="h-8 border-none bg-transparent shadow-none"
+                                                    />
                                                     {item.product_id && (
                                                         <div className="mt-1 flex items-center gap-1.5 px-1 animate-in fade-in slide-in-from-top-1 duration-300">
                                                             <div className={`w-1.5 h-1.5 rounded-full ${(products.find(p => p.id === item.product_id)?.stock || 0) > 0

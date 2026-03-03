@@ -154,6 +154,55 @@ export function getDomainTheme(category: string) {
 }
 
 /**
+ * Tailwind JIT safelist — all dynamically composed domain theme classes.
+ * These must appear as literal strings so Tailwind's scanner includes them in
+ * the generated CSS. Do NOT delete or tree-shake this constant.
+ */
+const _TW_DOMAIN_SAFELIST = [
+  // pharmacy — emerald
+  'bg-emerald-600','text-emerald-600','border-emerald-600','ring-emerald-600','shadow-emerald-600/20',
+  'bg-emerald-600/5','bg-emerald-600/10','bg-emerald-600/20','hover:bg-emerald-600/20','border-emerald-600/20',
+  'data-[state=active]:text-emerald-600','bg-emerald-50','bg-emerald-50/20','bg-emerald-50/30',
+  'to-emerald-50/20','hover:bg-emerald-50','border-emerald-100','border-emerald-100/50',
+  // auto-parts — blue
+  'bg-blue-600','text-blue-600','border-blue-600','ring-blue-600','shadow-blue-600/20',
+  'bg-blue-600/5','bg-blue-600/10','bg-blue-600/20','hover:bg-blue-600/20','border-blue-600/20',
+  'data-[state=active]:text-blue-600','bg-blue-50','bg-blue-50/20','bg-blue-50/30',
+  'to-blue-50/20','hover:bg-blue-50','border-blue-100','border-blue-100/50',
+  // computer-hardware — slate
+  'bg-slate-800','text-slate-800','border-slate-800','ring-slate-800','shadow-slate-800/20',
+  'bg-slate-800/5','bg-slate-800/10','bg-slate-800/20','hover:bg-slate-800/20','border-slate-800/20',
+  'data-[state=active]:text-slate-800','bg-slate-50','bg-slate-50/20','bg-slate-50/30',
+  'to-slate-50/20','hover:bg-slate-50','border-slate-100','border-slate-100/50',
+  // garments — pink
+  'bg-pink-600','text-pink-600','border-pink-600','ring-pink-600','shadow-pink-600/20',
+  'bg-pink-600/5','bg-pink-600/10','bg-pink-600/20','hover:bg-pink-600/20','border-pink-600/20',
+  'data-[state=active]:text-pink-600','bg-pink-50','bg-pink-50/20','bg-pink-50/30',
+  'to-pink-50/20','hover:bg-pink-50','border-pink-100','border-pink-100/50',
+  // book-publishing — amber
+  'bg-amber-700','text-amber-700','border-amber-700','ring-amber-700','shadow-amber-700/20',
+  'bg-amber-700/5','bg-amber-700/10','bg-amber-700/20','hover:bg-amber-700/20','border-amber-700/20',
+  'data-[state=active]:text-amber-700','bg-amber-50','bg-amber-50/20','bg-amber-50/30',
+  'to-amber-50/20','hover:bg-amber-50','border-amber-100','border-amber-100/50',
+  // logistics-transport — orange
+  'bg-orange-600','text-orange-600','border-orange-600','ring-orange-600','shadow-orange-600/20',
+  'bg-orange-600/5','bg-orange-600/10','bg-orange-600/20','hover:bg-orange-600/20','border-orange-600/20',
+  'data-[state=active]:text-orange-600','bg-orange-50','bg-orange-50/20','bg-orange-50/30',
+  'to-orange-50/20','hover:bg-orange-50','border-orange-100','border-orange-100/50',
+  // chemical — red
+  'bg-red-600','text-red-600','border-red-600','ring-red-600','shadow-red-600/20',
+  'bg-red-600/5','bg-red-600/10','bg-red-600/20','hover:bg-red-600/20','border-red-600/20',
+  'data-[state=active]:text-red-600','bg-red-50','bg-red-50/20','bg-red-50/30',
+  'to-red-50/20','hover:bg-red-50','border-red-100','border-red-100/50',
+  // default — wine / gray
+  'bg-wine','text-wine','border-wine','ring-wine','shadow-wine/20',
+  'bg-wine/5','bg-wine/10','bg-wine/20','hover:bg-wine/20','border-wine/20',
+  'data-[state=active]:text-wine','bg-gray-50','bg-gray-50/20','bg-gray-50/30',
+  'to-gray-50/20','hover:bg-gray-50','border-gray-100','border-gray-100/50',
+] as const;
+void _TW_DOMAIN_SAFELIST; // prevent unused-var warning
+
+/**
  * Check if domain has size-color matrix enabled
  * 
  * @param category - Business category

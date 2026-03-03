@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,6 +13,7 @@ import { authClient } from '@/lib/auth-client';
 import { productAPI, businessAPI } from '@/lib/api';
 import { getDomainKnowledge } from '@/lib/utils/domainHelpers';
 import { useBusiness } from '@/lib/context/BusinessContext';
+import { PLAN_TIERS } from '@/lib/config/plans';
 import { useRouter } from 'next/navigation';
 import { CityAutocomplete } from './CityAutocomplete';
 import {
@@ -37,22 +38,88 @@ export function SettingsManager({ category }) {
     city: business?.city || 'Karachi',
   });
   const [team, setTeam] = useState([]);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteRole, setInviteRole] = useState('salesperson');
+  const [teamBusy, setTeamBusy] = useState(false);
+  const [planBusy, setPlanBusy] = useState(false);
   const router = useRouter();
   const [loadingTools, setLoadingTools] = useState(false);
 
-  useEffect(() => {
-    const fetchTeam = async () => {
-      if (business?.id) {
-        try {
-          const members = await businessAPI.getUsers(business.id);
-          setTeam(members);
-        } catch (error) {
-          console.error('Failed to fetch team:', error);
-        }
-      }
-    };
-    fetchTeam();
+  const fetchTeam = useCallback(async () => {
+    if (!business?.id) return;
+    try {
+      const members = await businessAPI.getUsers(business.id);
+      setTeam(members || []);
+    } catch (error) {
+      console.error('Failed to fetch team:', error);
+    }
   }, [business?.id]);
+
+  useEffect(() => {
+    fetchTeam();
+  }, [fetchTeam]);
+
+  const handleInviteMember = async () => {
+    if (!inviteEmail.trim() || !business?.id) {
+      toast.error('Enter member email first');
+      return;
+    }
+
+    setTeamBusy(true);
+    try {
+      await businessAPI.addMember(business.id, inviteEmail.trim(), inviteRole);
+      toast.success('Member added successfully');
+      setInviteEmail('');
+      setInviteRole('salesperson');
+      await fetchTeam();
+    } catch (error) {
+      toast.error(error.message || 'Failed to add member');
+    } finally {
+      setTeamBusy(false);
+    }
+  };
+
+  const handleRoleUpdate = async (member, nextRole) => {
+    if (!business?.id || !member?.user_id) return;
+    setTeamBusy(true);
+    try {
+      await businessAPI.updateUserRole(member.user_id, business.id, nextRole);
+      toast.success('Role updated');
+      await fetchTeam();
+    } catch (error) {
+      toast.error(error.message || 'Failed to update role');
+    } finally {
+      setTeamBusy(false);
+    }
+  };
+
+  const handleRemoveMember = async (member) => {
+    if (!business?.id || !member?.user_id) return;
+    setTeamBusy(true);
+    try {
+      await businessAPI.removeMember(business.id, member.user_id);
+      toast.success('Member removed');
+      await fetchTeam();
+    } catch (error) {
+      toast.error(error.message || 'Failed to remove member');
+    } finally {
+      setTeamBusy(false);
+    }
+  };
+
+  const handlePlanUpdate = async (tier) => {
+    if (!business?.id) return;
+    setPlanBusy(true);
+    try {
+      const updated = await businessAPI.updatePlan(business.id, tier);
+      updateBusiness(updated);
+      toast.success(`Plan updated to ${tier}`);
+    } catch (error) {
+      toast.error(error.message || 'Failed to update plan');
+    } finally {
+      setPlanBusy(false);
+    }
+  };
 
   const handleProfileSave = async () => {
     setIsSaving(true);
@@ -153,10 +220,11 @@ export function SettingsManager({ category }) {
       </div>
 
       <Tabs defaultValue="profile" className="w-full">
-        <TabsList className="grid w-full grid-cols-7 bg-gray-100/50 p-1 rounded-xl">
+        <TabsList className="grid w-full grid-cols-8 bg-gray-100/50 p-1 rounded-xl">
           <TabsTrigger value="profile" className="rounded-lg font-bold">Business Profile</TabsTrigger>
           <TabsTrigger value="compliance" className="rounded-lg font-bold">Compliance</TabsTrigger>
           <TabsTrigger value="financials" className="rounded-lg font-bold">Financials</TabsTrigger>
+          <TabsTrigger value="billing" className="rounded-lg font-bold">Billing</TabsTrigger>
           <TabsTrigger value="team" className="rounded-lg font-bold">Team</TabsTrigger>
           <TabsTrigger value="notifications" className="rounded-lg font-bold">Automation</TabsTrigger>
           <TabsTrigger value="security" className="rounded-lg font-bold">Security</TabsTrigger>
@@ -443,11 +511,33 @@ export function SettingsManager({ category }) {
             </CardHeader>
             <CardContent className="pt-6">
               <div className="space-y-6">
-                <div className="flex justify-between items-center">
+                <div className="space-y-3">
                   <h4 className="text-sm font-black text-gray-900 uppercase tracking-widest">Active Members</h4>
-                  <Button size="sm" className="bg-wine hover:bg-wine/90 text-[10px] font-black uppercase">
-                    Invite Member
-                  </Button>
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+                    <Input
+                      placeholder="member@company.com"
+                      value={inviteEmail}
+                      onChange={(e) => setInviteEmail(e.target.value)}
+                      className="md:col-span-2"
+                    />
+                    <select
+                      value={inviteRole}
+                      onChange={(e) => setInviteRole(e.target.value)}
+                      className="h-10 px-3 bg-white border border-gray-200 rounded-xl text-sm font-medium"
+                    >
+                      {['admin', 'manager', 'accountant', 'cashier', 'salesperson', 'warehouse_manager', 'waiter', 'viewer'].map(role => (
+                        <option key={role} value={role}>{role.replace('_', ' ')}</option>
+                      ))}
+                    </select>
+                    <Button
+                      size="sm"
+                      onClick={handleInviteMember}
+                      disabled={teamBusy}
+                      className="bg-wine hover:bg-wine/90 text-[10px] font-black uppercase"
+                    >
+                      Invite Member
+                    </Button>
+                  </div>
                 </div>
 
                 <div className="border rounded-2xl overflow-hidden">
@@ -461,13 +551,26 @@ export function SettingsManager({ category }) {
                       </tr>
                     </thead>
                     <tbody className="divide-y">
-                      {team.length > 0 ? team.map((member) => (
+                      {team.length > 0 ? team.filter(m => m.status === 'active').map((member) => (
                         <tr key={member.id} className="hover:bg-gray-50/50 transition-colors">
                           <td className="px-6 py-4 font-bold text-gray-900 text-sm">{member.user?.email || 'Unknown User'}</td>
                           <td className="px-6 py-4">
-                            <Badge variant="outline" className="capitalize font-black text-[10px] py-1 px-3 rounded-full border-wine/20 text-wine bg-wine/5">
-                              {member.role}
-                            </Badge>
+                            {member.role === 'owner' ? (
+                              <Badge variant="outline" className="capitalize font-black text-[10px] py-1 px-3 rounded-full border-wine/20 text-wine bg-wine/5">
+                                {member.role}
+                              </Badge>
+                            ) : (
+                              <select
+                                value={member.role}
+                                onChange={(e) => handleRoleUpdate(member, e.target.value)}
+                                disabled={teamBusy}
+                                className="h-9 px-2 bg-white border border-gray-200 rounded-lg text-xs font-bold"
+                              >
+                                {['admin', 'manager', 'accountant', 'cashier', 'salesperson', 'warehouse_manager', 'waiter', 'viewer'].map(role => (
+                                  <option key={role} value={role}>{role.replace('_', ' ')}</option>
+                                ))}
+                              </select>
+                            )}
                           </td>
                           <td className="px-6 py-4">
                             <div className="flex items-center gap-2">
@@ -476,9 +579,19 @@ export function SettingsManager({ category }) {
                             </div>
                           </td>
                           <td className="px-6 py-4">
-                            <Button variant="ghost" size="sm" className="text-wine font-black text-[10px] uppercase hover:bg-wine/5">
-                              Edit Role
-                            </Button>
+                            {member.role === 'owner' ? (
+                              <span className="text-[10px] font-black uppercase text-gray-400">Protected</span>
+                            ) : (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                disabled={teamBusy}
+                                onClick={() => handleRemoveMember(member)}
+                                className="text-rose-600 font-black text-[10px] uppercase hover:bg-rose-50"
+                              >
+                                Remove
+                              </Button>
+                            )}
                           </td>
                         </tr>
                       )) : (
@@ -491,6 +604,42 @@ export function SettingsManager({ category }) {
                     </tbody>
                   </table>
                 </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="billing" className="space-y-4 pt-4">
+          <Card className="border-none shadow-xl">
+            <CardHeader className="bg-indigo-50/50 border-b border-indigo-100">
+              <CardTitle className="text-indigo-900 flex items-center gap-2">
+                <CreditCard className="w-5 h-5 text-indigo-600" />
+                Subscription & Plan
+              </CardTitle>
+              <CardDescription>Select a plan based on seats and required capabilities</CardDescription>
+            </CardHeader>
+            <CardContent className="pt-6 space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {Object.entries(PLAN_TIERS).map(([tier, config]) => {
+                  const selected = (business?.plan_tier || 'free') === tier;
+                  return (
+                    <button
+                      key={tier}
+                      type="button"
+                      onClick={() => handlePlanUpdate(tier)}
+                      disabled={planBusy}
+                      className={`text-left rounded-2xl border p-4 transition-all ${selected ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 bg-white hover:border-indigo-300'}`}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-sm font-black text-gray-900">{config.name}</span>
+                        {selected && <span className="text-[10px] font-black uppercase text-indigo-600">Current</span>}
+                      </div>
+                      <p className="text-xs text-gray-500">{config.tagline}</p>
+                      <p className="text-xs font-black text-indigo-700 mt-2">PKR {config.price_pkr}/mo</p>
+                      <p className="text-[11px] text-gray-600 mt-2">Seats: {config.limits.max_users === -1 ? 'Unlimited' : config.limits.max_users}</p>
+                    </button>
+                  );
+                })}
               </div>
             </CardContent>
           </Card>

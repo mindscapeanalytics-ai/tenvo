@@ -37,8 +37,9 @@ function isRateLimited(ip: string): boolean {
 if (typeof globalThis !== 'undefined') {
     const CLEANUP_INTERVAL = 5 * 60 * 1000;
     const cleanupKey = '__proxy_cleanup_initialized__';
-    if (!(globalThis as any)[cleanupKey]) {
-        (globalThis as any)[cleanupKey] = true;
+    const globalScope = globalThis as typeof globalThis & { [key: string]: boolean | undefined };
+    if (!globalScope[cleanupKey]) {
+        globalScope[cleanupKey] = true;
         setInterval(() => {
             const now = Date.now();
             for (const [key, value] of rateLimitMap.entries()) {
@@ -65,7 +66,7 @@ function addSecurityHeaders(response: NextResponse): NextResponse {
 const PUBLIC_ROUTES = new Set([
     '/', '/login', '/signup', '/register',
     '/forgot-password', '/reset-password', '/verify-email',
-    '/api/health', '/api/migrate'
+    '/api/health'
 ]);
 
 const AUTH_ROUTES = new Set(['/login', '/signup', '/register']);

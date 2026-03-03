@@ -91,13 +91,13 @@ export default function NewPurchasePage() {
                 ]);
 
                 console.log('NewPurchasePage Data Load Stats:', {
-                    vendors: vendRes.vendors?.length || 0,
-                    products: prodRes.products?.length || 0,
+                    vendors: vendRes?.length || 0,
+                    products: prodRes?.length || 0,
                     warehouses: whRes?.length || 0
                 });
 
-                setVendors(vendRes.vendors || []);
-                setProducts(prodRes.products || []);
+                setVendors(vendRes || []);
+                setProducts(prodRes || []);
 
                 const locations = whRes || [];
                 setWarehouses(locations);

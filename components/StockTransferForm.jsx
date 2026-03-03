@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Combobox } from '@/components/ui/combobox';
 import { useBusiness } from '@/lib/context/BusinessContext';
 import { transferStockAction } from '@/lib/actions/standard/inventory/stock';
 import toast from 'react-hot-toast';
@@ -153,16 +154,18 @@ export function StockTransferForm({ onClose, onSave, products = [], warehouses =
                     <div className="flex items-center gap-4">
                         <div className="flex-1 space-y-2">
                             <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Source Warehouse *</Label>
-                            <select
-                                className="w-full h-12 px-4 bg-white border border-violet-200 rounded-xl focus:ring-2 focus:ring-violet-500 transition-all outline-none font-bold shadow-sm"
-                                value={formData.source_warehouse_id}
-                                onChange={(e) => setFormData(prev => ({ ...prev, source_warehouse_id: e.target.value }))}
-                            >
-                                <option value="">Select Source</option>
-                                {warehouses.map(w => (
-                                    <option key={w.id} value={w.id}>{w.name} {w.location ? `(${w.location})` : ''}</option>
-                                ))}
-                            </select>
+                            <Combobox
+                                options={warehouses.map(w => ({
+                                    value: String(w.id),
+                                    label: w.name,
+                                    description: w.location || ''
+                                }))}
+                                value={String(formData.source_warehouse_id || '')}
+                                onChange={(val) => setFormData(prev => ({ ...prev, source_warehouse_id: val }))}
+                                placeholder="Select source..."
+                                emptyText="No warehouses found"
+                                className="h-12"
+                            />
                         </div>
 
                         <div className="flex-shrink-0 mt-6">
@@ -173,16 +176,18 @@ export function StockTransferForm({ onClose, onSave, products = [], warehouses =
 
                         <div className="flex-1 space-y-2">
                             <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Destination Warehouse *</Label>
-                            <select
-                                className="w-full h-12 px-4 bg-white border border-violet-200 rounded-xl focus:ring-2 focus:ring-violet-500 transition-all outline-none font-bold shadow-sm"
-                                value={formData.destination_warehouse_id}
-                                onChange={(e) => setFormData(prev => ({ ...prev, destination_warehouse_id: e.target.value }))}
-                            >
-                                <option value="">Select Destination</option>
-                                {warehouses.filter(w => w.id !== formData.source_warehouse_id).map(w => (
-                                    <option key={w.id} value={w.id}>{w.name} {w.location ? `(${w.location})` : ''}</option>
-                                ))}
-                            </select>
+                            <Combobox
+                                options={warehouses.filter(w => String(w.id) !== String(formData.source_warehouse_id)).map(w => ({
+                                    value: String(w.id),
+                                    label: w.name,
+                                    description: w.location || ''
+                                }))}
+                                value={String(formData.destination_warehouse_id || '')}
+                                onChange={(val) => setFormData(prev => ({ ...prev, destination_warehouse_id: val }))}
+                                placeholder="Select destination..."
+                                emptyText="No warehouses found"
+                                className="h-12"
+                            />
                         </div>
                     </div>
 

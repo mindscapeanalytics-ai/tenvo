@@ -176,7 +176,7 @@ export function QuickVendorForm({ onSave, onCancel }) {
                 <div className="space-y-2">
                     <Label>Payment Terms</Label>
                     <select
-                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                        className="flex h-11 w-full rounded-xl border border-input bg-background px-3 text-sm font-medium"
                         value={formData.payment_terms}
                         onChange={e => handleInputChange('payment_terms', e.target.value)}
                     >

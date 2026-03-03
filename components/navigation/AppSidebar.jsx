@@ -19,40 +19,40 @@ const NAV_SECTIONS = [
     {
         label: 'CORE',
         items: [
-            { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, plan: 'basic' },
-            { key: 'inventory', label: 'Inventory', icon: Package, plan: 'basic' },
-            { key: 'invoices', label: 'Invoices & Sales', icon: FileText, plan: 'basic' },
-            { key: 'customers', label: 'Customers', icon: Users, plan: 'basic' },
-            { key: 'vendors', label: 'Vendors & Purchases', icon: Truck, plan: 'basic' },
+            { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, plan: 'free' },
+            { key: 'inventory', label: 'Inventory', icon: Package, plan: 'free' },
+            { key: 'invoices', label: 'Invoices & Sales', icon: FileText, plan: 'free' },
+            { key: 'customers', label: 'Customers', icon: Users, plan: 'free' },
+            { key: 'vendors', label: 'Vendors & Purchases', icon: Truck, plan: 'free' },
         ]
     },
     {
         label: 'SALES',
         items: [
-            { key: 'pos', label: 'Point of Sale', icon: ShoppingCart, plan: 'standard', badge: 'NEW' },
-            { key: 'restaurant', label: 'Restaurant', icon: UtensilsCrossed, plan: 'standard', badge: 'NEW' },
-            { key: 'loyalty', label: 'Loyalty & CRM', icon: Heart, plan: 'standard', badge: 'NEW' },
-            { key: 'quotations', label: 'Quotations', icon: ClipboardList, plan: 'basic' },
+            { key: 'pos', label: 'Point of Sale', icon: ShoppingCart, plan: 'starter', badge: 'NEW' },
+            { key: 'restaurant', label: 'Restaurant', icon: UtensilsCrossed, plan: 'starter', badge: 'NEW' },
+            { key: 'loyalty', label: 'Loyalty & CRM', icon: Heart, plan: 'starter', badge: 'NEW' },
+            { key: 'quotations', label: 'Quotations', icon: ClipboardList, plan: 'free' },
         ]
     },
     {
         label: 'FINANCE',
         items: [
-            { key: 'accounting', label: 'Accounting', icon: Landmark, plan: 'basic' },
-            { key: 'payments', label: 'Payments', icon: CreditCard, plan: 'basic' },
-            { key: 'expenses', label: 'Expenses', icon: Receipt, plan: 'standard', badge: 'NEW' },
-            { key: 'credit-notes', label: 'Credit Notes', icon: RotateCcw, plan: 'basic', badge: 'NEW' },
-            { key: 'exchange-rates', label: 'Exchange Rates', icon: ArrowLeftRight, plan: 'premium' },
-            { key: 'fiscal', label: 'Fiscal Periods', icon: Calendar, plan: 'standard' },
-            { key: 'finance', label: 'Financial Statements', icon: BarChart3, plan: 'basic' },
-            { key: 'gst', label: 'Tax / GST', icon: BadgeDollarSign, plan: 'standard' },
+            { key: 'accounting', label: 'Accounting', icon: Landmark, plan: 'free' },
+            { key: 'payments', label: 'Payments', icon: CreditCard, plan: 'free' },
+            { key: 'expenses', label: 'Expenses', icon: Receipt, plan: 'starter', badge: 'NEW' },
+            { key: 'credit-notes', label: 'Credit Notes', icon: RotateCcw, plan: 'free', badge: 'NEW' },
+            { key: 'exchange-rates', label: 'Exchange Rates', icon: ArrowLeftRight, plan: 'professional' },
+            { key: 'fiscal', label: 'Fiscal Periods', icon: Calendar, plan: 'starter' },
+            { key: 'finance', label: 'Financial Statements', icon: BarChart3, plan: 'free' },
+            { key: 'gst', label: 'Tax / GST', icon: BadgeDollarSign, plan: 'starter' },
         ]
     },
     {
         label: 'OPERATIONS',
         items: [
-            { key: 'warehouses', label: 'Warehouses', icon: Building2, plan: 'standard' },
-            { key: 'manufacturing', label: 'Manufacturing', icon: Factory, plan: 'standard' },
+            { key: 'warehouses', label: 'Warehouses', icon: Building2, plan: 'starter' },
+            { key: 'manufacturing', label: 'Manufacturing', icon: Factory, plan: 'professional' },
             { key: 'payroll', label: 'Payroll & HR', icon: UserCog, plan: 'enterprise', badge: 'NEW' },
             { key: 'approvals', label: 'Approvals', icon: CheckSquare, plan: 'enterprise', badge: 'NEW' },
         ]
@@ -60,18 +60,23 @@ const NAV_SECTIONS = [
     {
         label: 'ADMIN',
         items: [
-            { key: 'reports', label: 'Analytics & AI', icon: Brain, plan: 'premium' },
-            { key: 'settings', label: 'Settings', icon: Settings, plan: 'basic', roles: ['owner', 'admin'] },
+            { key: 'reports', label: 'Analytics & AI', icon: Brain, plan: 'professional' },
+            { key: 'settings', label: 'Settings', icon: Settings, plan: 'free', roles: ['owner', 'admin'] },
         ]
     },
 ];
 
-const PLAN_ORDER = ['basic', 'standard', 'premium', 'enterprise'];
+const PLAN_ORDER = ['free', 'starter', 'professional', 'business', 'enterprise'];
 const PLAN_COLORS = {
+    free: 'bg-gray-100 text-gray-600',
+    starter: 'bg-blue-100 text-blue-700',
+    professional: 'bg-indigo-100 text-indigo-700',
+    business: 'bg-amber-100 text-amber-700',
+    enterprise: 'bg-purple-100 text-purple-700',
+    // Legacy aliases
     basic: 'bg-gray-100 text-gray-600',
     standard: 'bg-blue-100 text-blue-700',
     premium: 'bg-amber-100 text-amber-700',
-    enterprise: 'bg-purple-100 text-purple-700',
 };
 
 function isPlanUnlocked(currentPlan, requiredPlan) {
@@ -81,7 +86,7 @@ function isPlanUnlocked(currentPlan, requiredPlan) {
 export function AppSidebar({
     activeTab,
     onTabChange,
-    currentPlan = 'basic',
+    currentPlan = 'free',
     role = 'owner',
     businessName = '',
     category = '',
@@ -141,7 +146,7 @@ export function AppSidebar({
                             PLAN_COLORS[currentPlan]
                         )}>
                             <Crown className="w-3.5 h-3.5" />
-                            <span>{currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1)} Plan</span>
+                            <span>{(currentPlan || 'free').charAt(0).toUpperCase() + (currentPlan || 'free').slice(1)} Plan</span>
                             {currentPlan !== 'enterprise' && (
                                 <button
                                     className="ml-auto text-[10px] underline opacity-70 hover:opacity-100"

@@ -29,6 +29,8 @@ import { EnhancedInvoiceBuilder } from '@/components/EnhancedInvoiceBuilder';
 import { CustomerForm } from '@/components/CustomerForm';
 import toast from 'react-hot-toast';
 import { EntityDetailsDialog } from '@/components/EntityDetailsDialog';
+import { getNavItemAccess } from '@/lib/rbac/permissions';
+import { isPosRelevant } from '@/lib/config/domains';
 
 export function ActionModals({
     // Visibility States
@@ -78,6 +80,9 @@ export function ActionModals({
     setPoInitialData,
     refreshData,
     business,
+    role = 'owner',
+    planTier = 'free',
+    domainKnowledge,
 
     // Details Viewer Props
     viewingItem,
@@ -85,6 +90,24 @@ export function ActionModals({
     viewingType,
     setViewingType
 }) {
+    const posRelevant = isPosRelevant(category, domainKnowledge);
+
+    const canOpenTab = (tabKey) => {
+        const access = getNavItemAccess(tabKey, role, planTier);
+        if (!access.visible) return false;
+        if (access.locked) {
+            toast.error(`Requires ${access.requiredPlan || 'higher'} plan`);
+            return false;
+        }
+        return true;
+    };
+
+    const safeTabChange = (tabKey) => {
+        if (!canOpenTab(tabKey)) return;
+        onTabChange(tabKey);
+        setShowQuickAction(false);
+    };
+
     return (
         <>
             <EntityDetailsDialog
@@ -152,9 +175,10 @@ export function ActionModals({
                             { label: 'New Invoice', icon: FileText, action: () => { setShowInvoiceBuilder(true); setShowQuickAction(false); } },
                             { label: 'Add Product', icon: Package, action: () => { setEditingProduct(null); setShowProductForm(true); setShowQuickAction(false); } },
                             { label: 'New Customer', icon: Users, action: () => { setShowCustomerForm(true); setShowQuickAction(false); } },
-                            { label: 'Record Stock', icon: Warehouse, action: () => { onTabChange('inventory'); setShowQuickAction(false); } },
-                            { label: 'View Reports', icon: BarChart3, action: () => { onTabChange('analytics'); setShowQuickAction(false); } },
-                            { label: 'Manage Settings', icon: Settings, action: () => { onTabChange('settings'); setShowQuickAction(false); } },
+                            { label: 'Record Stock', icon: Warehouse, action: () => safeTabChange('inventory') },
+                            { label: 'View Reports', icon: BarChart3, action: () => safeTabChange('reports') },
+                            { label: 'Manage Settings', icon: Settings, action: () => safeTabChange('settings') },
+                            ...(posRelevant ? [{ label: 'Campaigns', icon: BarChart3, action: () => safeTabChange('campaigns') }] : []),
                         ].map((item, i) => (
                             <button
                                 key={i}

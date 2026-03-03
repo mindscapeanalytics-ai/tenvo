@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Combobox } from '@/components/ui/combobox';
 import { Badge } from '@/components/ui/badge';
 import { useBusiness } from '@/lib/context/BusinessContext';
 import { formatCurrency } from '@/lib/currency';
@@ -13,6 +14,7 @@ import { getPurchasesAction } from '@/lib/actions/standard/purchase';
 import toast from 'react-hot-toast';
 import { useLanguage } from '@/lib/context/LanguageContext';
 import { translations } from '@/lib/translations';
+import { paymentSchema, validateWithSchema } from '@/lib/validation/schemas';
 
 export function PaymentReceiptForm({
     type = 'receipt', // 'receipt' (Customer) or 'payment' (Vendor)
@@ -142,16 +144,23 @@ export function PaymentReceiptForm({
     const handleSave = async (e) => {
         e.preventDefault();
 
-        if (type === 'receipt' && !formData.customer_id) {
-            toast.error('Please select a customer');
-            return;
-        }
-        if (type === 'payment' && !formData.vendor_id) {
-            toast.error('Please select a vendor');
-            return;
-        }
-        if (formData.amount <= 0) {
-            toast.error('Please enter a payment amount');
+        // Zod schema validation
+        const validation = validateWithSchema(paymentSchema, {
+            business_id: business?.id,
+            amount: parseFloat(formData.amount),
+            payment_type: type === 'receipt' ? 'received' : 'paid',
+            payment_mode: formData.payment_mode || null,
+            payment_date: formData.payment_date,
+            customer_id: formData.customer_id || null,
+            vendor_id: formData.vendor_id || null,
+            bank_name: formData.bank_name || null,
+            cheque_number: formData.cheque_number || null,
+            transaction_id: formData.transaction_id || null,
+            notes: formData.notes || null,
+        });
+        if (!validation.success) {
+            const firstError = Object.values(validation.errors)[0];
+            toast.error(firstError || 'Please fix validation errors');
             return;
         }
 
@@ -209,20 +218,22 @@ export function PaymentReceiptForm({
                                 <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400">
                                     {isCustomer ? 'From Customer *' : 'To Vendor *'}
                                 </Label>
-                                <select
-                                    className="w-full h-12 px-4 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 transition-all outline-none font-medium shadow-sm"
-                                    value={isCustomer ? formData.customer_id : formData.vendor_id}
-                                    onChange={(e) => setFormData(prev => ({
-                                        ...prev,
-                                        [isCustomer ? 'customer_id' : 'vendor_id']: e.target.value,
-                                        allocations: [] // Reset allocations when entity changes
+                                <Combobox
+                                    options={(isCustomer ? customers : vendors).map(e => ({
+                                        value: String(e.id),
+                                        label: e.name,
+                                        description: e.city || e.phone || ''
                                     }))}
-                                >
-                                    <option value="">Select {isCustomer ? 'Customer' : 'Vendor'}</option>
-                                    {(isCustomer ? customers : vendors).map(e => (
-                                        <option key={e.id} value={e.id}>{e.name} {e.city ? `(${e.city})` : ''}</option>
-                                    ))}
-                                </select>
+                                    value={String(isCustomer ? formData.customer_id : formData.vendor_id) || ''}
+                                    onChange={(val) => setFormData(prev => ({
+                                        ...prev,
+                                        [isCustomer ? 'customer_id' : 'vendor_id']: val,
+                                        allocations: []
+                                    }))}
+                                    placeholder={`Search ${isCustomer ? 'customers' : 'vendors'}...`}
+                                    emptyText={`No ${isCustomer ? 'customers' : 'vendors'} found`}
+                                    className="h-12"
+                                />
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">

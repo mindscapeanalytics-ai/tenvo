@@ -91,6 +91,7 @@ import { ProductDetailsDialog } from './ProductDetailsDialog';
 import { CustomParametersManager } from './inventory/CustomParametersManager';
 import { ExcelModeModal } from './ExcelModeModal';
 import { SmartQuickAddModal } from './QuickAddProductModal';
+import { QuickAddTemplates } from './QuickAddTemplates';
 
 /**
  * Inventory Manager Component
@@ -1038,6 +1039,12 @@ export function InventoryManager({
             Excel Mode
           </Button>
 
+          <QuickAddTemplates
+            domain={category}
+            currency={currency}
+            onAddProduct={handleAddProduct}
+          />
+
           <Button
             size="sm"
             onClick={(e) => onAdd ? onAdd(e) : setShowProductFormInternal(true)}
@@ -1291,7 +1298,14 @@ export function InventoryManager({
                     setProducts(prev => prev.map(p => p.id === product.id ? updatedProduct : p));
 
                     try {
-                      await onUpdate?.(updatedProduct);
+                      if (onUpdate) {
+                        await onUpdate(updatedProduct);
+                      } else {
+                        const saveRes = await updateProductAction(updatedProduct.id, businessId, updatedProduct);
+                        if (!saveRes?.success) {
+                          throw new Error(saveRes?.error || 'Failed to persist update');
+                        }
+                      }
                       toast.success(`Updated ${field}`, { id: `save-${field}`, position: 'bottom-right', duration: 2000 });
                     } catch (error) {
                       // ❌ ROLLBACK on failure
@@ -1472,8 +1486,6 @@ export function InventoryManager({
               domainKnowledge={domainKnowledge}
               businessId={businessId}
               category={category}
-              domainKnowledge={domainKnowledge}
-              businessId={businessId}
               onAdd={onLocationAdd}
               onUpdate={onLocationUpdate}
               onDelete={onLocationDelete}
@@ -1942,6 +1954,11 @@ export function InventoryManager({
         data={products}
         columns={columns.filter(c => c.id !== 'actions')}
         onSave={handleExcelSave}
+        onDeleteRow={async (row) => {
+          if (row?.id) {
+            await handleDeleteProduct(row.id);
+          }
+        }}
         category={category}
         businessId={businessId}
         title={`${category.replace(/-/g, ' ').toUpperCase()} - BULK ENTRY`}

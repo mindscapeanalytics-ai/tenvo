@@ -7,6 +7,7 @@ import { useLanguage } from '@/lib/context/LanguageContext';
 import { translations } from '@/lib/translations';
 import { getDomainColors } from '@/lib/domainColors';
 import { useBusyMode } from '@/lib/context/BusyModeContext';
+import { EmptyState } from '@/components/ui/EmptyState';
 
 /**
  * BusyGrid Component
@@ -316,12 +317,7 @@ export function BusyGrid({
                     </tbody>
                 </table>
                 {sortedData.length === 0 && (
-                    <div className="flex flex-col items-center justify-center p-20 text-gray-400">
-                        <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4 border border-dashed border-gray-200"><Plus className="w-8 h-8 opacity-40" /></div>
-                        <h3 className="text-lg font-medium text-gray-600 mb-1">No Inventory Data</h3>
-                        <p className="text-sm text-gray-400 mb-6 font-sans text-center">Start by adding a new product or pasting from Excel.</p>
-                        <kbd className="flex items-center gap-2 bg-white border border-gray-200 px-3 py-1.5 rounded-lg shadow-sm font-mono text-xs"><span className="text-blue-500 font-bold">F2</span><span className="text-gray-400">to quick add</span></kbd>
-                    </div>
+                    <EmptyState module="products" onAction={() => document.dispatchEvent(new CustomEvent('open-quick-add'))} />
                 )}
             </div>
 

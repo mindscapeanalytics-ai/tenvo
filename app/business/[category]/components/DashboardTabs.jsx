@@ -50,6 +50,13 @@ import { CustomerLoyaltyPortal } from '@/components/crm/CustomerLoyaltyPortal';
 import { AIInsightsPanel } from '@/components/intelligence/AIInsightsPanel';
 import { ReportBuilder } from '@/components/reports/ReportBuilder';
 import { UpgradePrompt } from '@/components/subscription/UpgradePrompt';
+import { TabGuard } from '@/components/guards/TabGuard';
+import { ResourceLimitBanner } from '@/components/ui/ResourceLimitBanner';
+import { planHasFeature } from '@/lib/config/plans';
+import { isPosRelevant, isHospitality, isCampaignRelevant } from '@/lib/config/domains';
+
+// Lazy load heavy admin panel
+const PlatformAdminPanel = React.lazy(() => import('@/components/admin/PlatformAdminPanel'));
 
 export function DashboardTabs({
     activeTab,
@@ -75,10 +82,25 @@ export function DashboardTabs({
     dateRange,
     currency,
     colors,
+    planTier = 'free',
+    resourceLimits,
     domainKnowledge,
     handlers,
-    isLoading = false
+    isLoading = false,
+    isPlatformOwner = false
 }) {
+    const posRelevant = isPosRelevant(category, domainKnowledge);
+    const hospitalityDomain = isHospitality(category);
+    const campaignRelevant = isCampaignRelevant(category, domainKnowledge);
+
+    const domainNotRelevant = (title, message) => (
+        <Card className="p-12 text-center border-none shadow-sm">
+            <AlertTriangle className="w-12 h-12 text-orange-400 mx-auto mb-4" />
+            <h3 className="text-xl font-bold">{title}</h3>
+            <p className="text-gray-500">{message}</p>
+        </Card>
+    );
+
     // Memoized Filtering Logic
     const filteredProducts = React.useMemo(() => {
         if (!searchTerm) return products;
@@ -153,7 +175,7 @@ export function DashboardTabs({
         if (!searchTerm) return purchaseOrders;
         const lowerTerm = searchTerm.toLowerCase();
         return purchaseOrders.filter(po =>
-            po.number?.toLowerCase().includes(lowerTerm) ||
+            po.purchase_number?.toLowerCase().includes(lowerTerm) ||
             po.vendor_name?.toLowerCase().includes(lowerTerm) ||
             po.vendor?.name?.toLowerCase().includes(lowerTerm)
         );
@@ -181,7 +203,7 @@ export function DashboardTabs({
     }, [productionOrders, searchTerm]);
     const [restaurantView, setRestaurantView] = React.useState('manager');
     const [hrView, setHrView] = React.useState('payroll');
-    const [reportsView, setReportsView] = React.useState('ai');
+    const [reportsView, setReportsView] = React.useState('analytics');
     const [approvalsView, setApprovalsView] = React.useState('inbox'); // 'inbox' | 'builder'
 
     const {
@@ -265,6 +287,11 @@ export function DashboardTabs({
                 </TabsContent>
 
                 <TabsContent value="invoices" className="space-y-6 outline-none">
+                    <ResourceLimitBanner
+                        message={resourceLimits?.getLimitMessage?.('invoices')}
+                        isAtLimit={resourceLimits?.limitReached?.('invoices')}
+                        onUpgrade={handlers?.handleUpgrade}
+                    />
                     {wrapTab(
                         <InvoiceTab
                             invoices={filteredInvoices}
@@ -283,6 +310,11 @@ export function DashboardTabs({
                 </TabsContent>
 
                 <TabsContent value="inventory" className="space-y-6 outline-none">
+                    <ResourceLimitBanner
+                        message={resourceLimits?.getLimitMessage?.('products')}
+                        isAtLimit={resourceLimits?.limitReached?.('products')}
+                        onUpgrade={handlers?.handleUpgrade}
+                    />
                     {wrapTab(
                         <InventoryTab
                             products={filteredProducts}
@@ -581,15 +613,6 @@ export function DashboardTabs({
                     )}
                 </TabsContent>
 
-                <TabsContent value="reports" className="space-y-6 outline-none">
-                    {wrapTab(
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            <AdvancedAnalytics businessId={business?.id} category={category} />
-                            <DemandForecast businessId={business?.id} category={category} />
-                        </div>
-                    )}
-                </TabsContent>
-
                 <TabsContent value="finance" className="space-y-6 outline-none">
                     {wrapTab(
                         <BaseTabs defaultValue="journal" className="w-full">
@@ -598,7 +621,6 @@ export function DashboardTabs({
                                 <TabsTrigger value="ledger" className="data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-lg font-bold">General Ledger</TabsTrigger>
                                 <TabsTrigger value="statements" className="data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-lg font-bold">Financial Statements</TabsTrigger>
                             </TabsList>
-                            {/* Internal tabs for Finance */}
                             <div className="TabsContent-Finance-Scroll-Fix">
                                 <TabsContent value="journal" className="mt-6">
                                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -635,6 +657,51 @@ export function DashboardTabs({
                     )}
                 </TabsContent>
 
+                <TabsContent value="reports" className="space-y-6 outline-none">
+                    {wrapTab(
+                        <TabGuard tabKey="reports" role={role} planTier={planTier} requiredPlan="professional" featureName="Analytics & AI" onUpgrade={() => handleTabChange('settings')}>
+                            <div className="space-y-6">
+                                <div className="flex items-center justify-between">
+                                    <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight">Analytics & Reports</h2>
+                                    <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1">
+                                        {[
+                                            { key: 'analytics', label: 'Analytics' },
+                                            { key: 'forecast', label: 'Demand Forecast' },
+                                            { key: 'ai', label: 'AI Insights' },
+                                            { key: 'builder', label: 'Report Builder' },
+                                        ].map(v => (
+                                            <button
+                                                key={v.key}
+                                                onClick={() => setReportsView(v.key)}
+                                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${reportsView === v.key ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+                                            >
+                                                {v.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                                {reportsView === 'analytics' && <AdvancedAnalytics businessId={business?.id} category={category} />}
+                                {reportsView === 'forecast' && <DemandForecast businessId={business?.id} category={category} products={products} invoices={invoices} domainKnowledge={domainKnowledge} />}
+                                {reportsView === 'ai' && <AIInsightsPanel businessId={business?.id} />}
+                                {reportsView === 'builder' && <ReportBuilder businessId={business?.id} currency={currency} />}
+                            </div>
+                        </TabGuard>
+                    )}
+                </TabsContent>
+
+                <TabsContent value="campaigns" className="space-y-6 outline-none">
+                    {wrapTab(
+                        <TabGuard tabKey="campaigns" role={role} planTier={planTier} domainCheck={campaignRelevant} domainTitle="Campaigns & Marketing not relevant for this domain" domainMessage="Marketing automations are enabled for customer-facing retail and service domains." requiredPlan="professional" featureName="Campaigns & Marketing" onUpgrade={() => handleTabChange('settings')}>
+                            <div className="space-y-8">
+                                <PromotionEngine businessId={business?.id} currency={currency} />
+                                <div className="border-t border-gray-100 pt-8">
+                                    <AIInsightsPanel businessId={business?.id} />
+                                </div>
+                            </div>
+                        </TabGuard>
+                    )}
+                </TabsContent>
+
                 <TabsContent value="gst" className="space-y-6 outline-none">
                     {wrapTab(
                         ['owner', 'admin', 'accountant'].includes(role) ? (
@@ -657,7 +724,12 @@ export function DashboardTabs({
 
                 <TabsContent value="pos" className="space-y-6 outline-none">
                     {wrapTab(
-                        category === 'restaurant-cafe' ? (
+                        !posRelevant ? (
+                            domainNotRelevant(
+                                'Point of Sale not relevant for this domain',
+                                'Switch to a retail or hospitality domain profile to enable POS workflows.'
+                            )
+                        ) : category === 'restaurant-cafe' ? (
                             <RestaurantPOS
                                 businessId={business?.id}
                                 products={filteredProducts}
@@ -686,7 +758,13 @@ export function DashboardTabs({
 
                 <TabsContent value="restaurant" className="space-y-6 outline-none">
                     {wrapTab(
-                        <div className="space-y-6">
+                        !hospitalityDomain ? (
+                            domainNotRelevant(
+                                'Restaurant module is domain-specific',
+                                'This module is available for bakery, restaurant, and hotel domains only.'
+                            )
+                        ) : (
+                            <div className="space-y-6">
                             <div className="flex items-center justify-between">
                                 <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight">Restaurant Operations</h2>
                                 <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1">
@@ -737,7 +815,8 @@ export function DashboardTabs({
                                     <KitchenDisplaySystem businessId={business?.id} />
                                 </>
                             )}
-                        </div>
+                            </div>
+                        )
                     )}
                 </TabsContent>
 
@@ -749,6 +828,7 @@ export function DashboardTabs({
 
                 <TabsContent value="payroll" className="space-y-6 outline-none">
                     {wrapTab(
+                        <TabGuard tabKey="payroll" role={role} planTier={planTier} requiredPlan="enterprise" featureName="HR & Payroll" onUpgrade={() => handleTabChange('settings')}>
                         <div className="space-y-6">
                             <div className="flex items-center justify-between">
                                 <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight">HR & Payroll</h2>
@@ -788,11 +868,13 @@ export function DashboardTabs({
                                 <ShiftScheduler businessId={business?.id} />
                             )}
                         </div>
+                        </TabGuard>
                     )}
                 </TabsContent>
 
                 <TabsContent value="approvals" className="space-y-6 outline-none">
                     {wrapTab(
+                        <TabGuard tabKey="approvals" role={role} planTier={planTier} requiredPlan="enterprise" featureName="Approval Workflows" onUpgrade={() => handleTabChange('settings')}>
                         <div className="space-y-6">
                             <div className="flex items-center justify-between">
                                 <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight">Approvals & Workflows</h2>
@@ -826,76 +908,89 @@ export function DashboardTabs({
                                 <WorkflowBuilder businessId={business?.id} />
                             )}
                         </div>
+                        </TabGuard>
                     )}
                 </TabsContent>
 
                 <TabsContent value="loyalty" className="space-y-6 outline-none">
                     {wrapTab(
-                        <div className="space-y-8">
-                            <CustomerLoyaltyPortal businessId={business?.id} currency={currency} />
-                            <div className="border-t border-gray-100 pt-8">
-                                <PromotionEngine businessId={business?.id} currency={currency} />
+                        <TabGuard tabKey="loyalty" role={role} planTier={planTier} domainCheck={posRelevant} domainTitle="Loyalty & CRM not relevant for this domain" domainMessage="Loyalty and POS CRM are available for customer-facing retail and hospitality domains." requiredPlan="starter" featureName="Loyalty & CRM" onUpgrade={() => handleTabChange('settings')}>
+                            <div className="space-y-8">
+                                <CustomerLoyaltyPortal businessId={business?.id} currency={currency} />
+                                <div className="border-t border-gray-100 pt-8">
+                                    <PromotionEngine businessId={business?.id} currency={currency} />
+                                </div>
+                                <div className="border-t border-gray-100 pt-8">
+                                    <LoyaltyManager businessId={business?.id} />
+                                </div>
                             </div>
-                            <div className="border-t border-gray-100 pt-8">
-                                <LoyaltyManager businessId={business?.id} />
-                            </div>
-                        </div>
+                        </TabGuard>
                     )}
                 </TabsContent>
 
                 <TabsContent value="refunds" className="space-y-6 outline-none">
                     {wrapTab(
-                        <PosRefundPanel businessId={business?.id} />
+                        <TabGuard tabKey="refunds" role={role} planTier={planTier} domainCheck={posRelevant} domainTitle="Refunds & Returns not relevant for this domain" domainMessage="Refund workflows are available only for POS-enabled domains." requiredPlan="starter" featureName="POS & Refunds" onUpgrade={() => handleTabChange('settings')}>
+                            <PosRefundPanel businessId={business?.id} />
+                        </TabGuard>
                     )}
                 </TabsContent>
 
                 <TabsContent value="audit" className="space-y-6 outline-none">
                     {wrapTab(
-                        <AuditTrailViewer businessId={business?.id} />
-                    )}
-                </TabsContent>
-
-                <TabsContent value="reports" className="space-y-6 outline-none">
-                    {wrapTab(
-                        <div className="space-y-6">
-                            <div className="flex items-center justify-between">
-                                <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight">Analytics & Reports</h2>
-                                <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1">
-                                    {[
-                                        { key: 'ai', label: 'AI Insights' },
-                                        { key: 'builder', label: 'Report Builder' },
-                                    ].map(v => (
-                                        <button
-                                            key={v.key}
-                                            onClick={() => setReportsView(v.key)}
-                                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${reportsView === v.key ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'
-                                                }`}
-                                        >
-                                            {v.label}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {reportsView === 'ai' && <AIInsightsPanel businessId={business?.id} />}
-                            {reportsView === 'builder' && <ReportBuilder businessId={business?.id} currency={currency} />}
-                        </div>
+                        <TabGuard tabKey="audit" role={role} planTier={planTier} requiredPlan="business" featureName="Audit Trail" onUpgrade={() => handleTabChange('settings')}>
+                            <AuditTrailViewer businessId={business?.id} />
+                        </TabGuard>
                     )}
                 </TabsContent>
 
                 <TabsContent value="settings" className="space-y-6 outline-none">
                     {wrapTab(
-                        ['owner', 'admin'].includes(role) ? (
+                        <TabGuard tabKey="settings" role={role} planTier={planTier} featureName="Settings" onUpgrade={() => handleTabChange('settings')}>
                             <SettingsManager category={category} />
-                        ) : (
-                            <Card className="p-12 text-center border-none shadow-sm">
-                                <Lock className="w-12 h-12 text-wine/40 mx-auto mb-4" />
-                                <h3 className="text-xl font-bold">Settings Locked</h3>
-                                <p className="text-gray-500">You do not have permission to modify settings.</p>
-                            </Card>
-                        )
+                        </TabGuard>
                     )}
                 </TabsContent>
+
+                {/* ─── Finance Sub-Tabs (promoted to top-level navigation) ─── */}
+                <TabsContent value="credit-notes" className="space-y-6 outline-none">
+                    {wrapTab(
+                        <TabGuard tabKey="credit-notes" role={role} planTier={planTier} featureName="Credit Notes" onUpgrade={() => handleTabChange('settings')}>
+                            <FinanceHub businessId={business?.id} initialTab="credit-notes" />
+                        </TabGuard>
+                    )}
+                </TabsContent>
+
+                <TabsContent value="fiscal" className="space-y-6 outline-none">
+                    {wrapTab(
+                        <TabGuard tabKey="fiscal" role={role} planTier={planTier} requiredPlan="starter" featureName="Fiscal Periods" onUpgrade={() => handleTabChange('settings')}>
+                            <FinanceHub businessId={business?.id} initialTab="fiscal" />
+                        </TabGuard>
+                    )}
+                </TabsContent>
+
+                <TabsContent value="exchange-rates" className="space-y-6 outline-none">
+                    {wrapTab(
+                        <TabGuard tabKey="exchange-rates" role={role} planTier={planTier} requiredPlan="professional" featureName="Exchange Rates" onUpgrade={() => handleTabChange('settings')}>
+                            <FinanceHub businessId={business?.id} initialTab="exchange" />
+                        </TabGuard>
+                    )}
+                </TabsContent>
+
+                {/* ─── Platform Admin (Owner Only) ─── */}
+                {isPlatformOwner && (
+                    <TabsContent value="platform-admin" className="space-y-6 outline-none">
+                        {wrapTab(
+                            <React.Suspense fallback={
+                                <div className="flex items-center justify-center py-20">
+                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
+                                </div>
+                            }>
+                                <PlatformAdminPanel />
+                            </React.Suspense>
+                        )}
+                    </TabsContent>
+                )}
             </div>
         </AnimatePresence>
     );

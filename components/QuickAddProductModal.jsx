@@ -249,7 +249,7 @@ export function SmartQuickAddModal({
                                             type="number"
                                             value={formData.costPrice || ''}
                                             onChange={e => setFormData(prev => ({ ...prev, costPrice: parseFloat(e.target.value) || 0 }))}
-                                            className="h-10 pl-8 rounded-lg border-blue-200 focus:ring-blue-500 font-bold"
+                                            className="h-12 pl-8 rounded-xl border-blue-200 focus:ring-blue-500 font-bold"
                                         />
                                     </div>
                                 </div>
@@ -261,7 +261,7 @@ export function SmartQuickAddModal({
                                             type="number"
                                             value={formData.marginPercent || ''}
                                             onChange={e => setFormData(prev => ({ ...prev, marginPercent: parseFloat(e.target.value) || 0 }))}
-                                            className="h-10 pr-8 rounded-lg border-blue-200 focus:ring-blue-500 font-bold text-blue-700"
+                                            className="h-12 pr-8 rounded-xl border-blue-200 focus:ring-blue-500 font-bold text-blue-700"
                                         />
                                     </div>
                                 </div>

@@ -18,6 +18,7 @@ import { ProductForm } from '@/components/ProductForm';
 import { QuickVendorForm } from '@/components/QuickVendorForm';
 import { QuickWarehouseForm } from '@/components/QuickWarehouseForm';
 import toast from 'react-hot-toast';
+import { purchaseSchema, validateWithSchema } from '@/lib/validation/schemas';
 
 export default function EnhancedPOBuilder({ businessId, onSuccess, onCancel, category = 'retail-shop', colors }) {
     const [loading, setLoading] = useState(true);
@@ -67,8 +68,8 @@ export default function EnhancedPOBuilder({ businessId, onSuccess, onCancel, cat
                     warehouseAPI.getLocations(businessId)
                 ]);
 
-                setVendors(vendRes.vendors || []);
-                setProducts(prodRes.products || []);
+                setVendors(vendRes || []);
+                setProducts(prodRes || []);
                 setWarehouses(whRes || []);
 
                 if (whRes?.length > 0) {
@@ -134,11 +135,34 @@ export default function EnhancedPOBuilder({ businessId, onSuccess, onCancel, cat
     }, [items]);
 
     const handleSubmit = async () => {
+        // Zod schema validation
+        const validation = validateWithSchema(purchaseSchema, {
+            business_id: businessId,
+            vendor_id: header.vendorId || undefined,
+            purchase_number: header.purchaseNumber,
+            date: header.date,
+            warehouse_id: header.warehouseId || undefined,
+            status: header.status,
+            items: items.map(i => ({
+                product_id: i.productId || undefined,
+                name: i.description || 'Item',
+                quantity: Number(i.quantity || 0),
+                unit_cost: Number(i.unitCost || 0),
+                tax_rate: Number(i.taxRate || 0),
+            })),
+            subtotal: totals.subtotal,
+            tax_total: totals.taxTotal,
+            total_amount: totals.total,
+            notes: header.notes || null,
+        });
+        if (!validation.success) {
+            const firstError = Object.values(validation.errors)[0];
+            toast.error(firstError || 'Please fix validation errors');
+            return;
+        }
+
         if (!header.vendorId) return toast.error('Please select a vendor');
         if (!header.warehouseId) return toast.error('Please select a warehouse');
-        if (items.length === 0 || items.some(i => !i.productId || i.quantity <= 0)) {
-            return toast.error('Please check your items');
-        }
 
         try {
             setIsSubmitting(true);

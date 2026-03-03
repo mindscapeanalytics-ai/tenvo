@@ -5,22 +5,25 @@ import { useRouter } from 'next/navigation';
 // Client side supabase used mostly for listeners now or removed if not needed, 
 // but we keep it if other parts need it, though for login we use action.
 import { authClient } from '@/lib/auth-client';
-import { getBusinessByUserId } from '@/lib/actions/basic/business';
 import { businessAPI } from '@/lib/api/business';
-import { useBusiness } from '@/lib/context/BusinessContext';
 import { toast } from 'react-hot-toast';
 import { Building2, Key, Mail, Loader2, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
 export default function LoginPage() {
     const router = useRouter();
-    const { updateBusiness } = useBusiness();
     const [isLoading, setIsLoading] = useState(false);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+
+    const normalizeErrorMessage = (error) => {
+        if (!error) return 'Login failed. Please verify your credentials.';
+        if (typeof error.message === 'string' && error.message.trim()) return error.message;
+        if (typeof error.error === 'string' && error.error.trim()) return error.error;
+        return 'Login failed. Please verify your credentials.';
+    };
 
     const handleLogin = async (e) => {
         e.preventDefault();
@@ -28,19 +31,28 @@ export default function LoginPage() {
         console.log("Starting login process with Better Auth...");
 
         try {
+            const normalizedEmail = email.trim().toLowerCase();
+            const normalizedPassword = password;
+
+            if (!normalizedEmail || !normalizedPassword) {
+                toast.error('Please enter both email and password.');
+                setIsLoading(false);
+                return;
+            }
+
             const { data, error } = await authClient.signIn.email({
-                email,
-                password,
+                email: normalizedEmail,
+                password: normalizedPassword,
             });
 
             if (error) {
-                console.error("Login error:", error);
                 if (error.status === 401 || error.code === 'INVALID_EMAIL_OR_PASSWORD') {
                     toast.error("Incorrect email or password. Please try again.");
                 } else if (error.code === 'USER_BANNED') {
                     toast.error("This account has been suspended. Please contact support.");
                 } else {
-                    toast.error(error.message || 'Login failed. Please verify your credentials.');
+                    console.error('Unexpected login response:', error);
+                    toast.error(normalizeErrorMessage(error));
                 }
                 setIsLoading(false);
                 return;
@@ -165,7 +177,13 @@ export default function LoginPage() {
                             <div className="space-y-2">
                                 <div className="flex items-center justify-between ml-1">
                                     <Label htmlFor="password" className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Secret Password</Label>
-                                    <button type="button" className="text-[10px] font-black uppercase text-wine hover:underline tracking-widest">Forgot Access?</button>
+                                    <button
+                                        type="button"
+                                        onClick={() => router.push('/forgot-password')}
+                                        className="text-[10px] font-black uppercase text-wine hover:underline tracking-widest"
+                                    >
+                                        Forgot Access?
+                                    </button>
                                 </div>
                                 <div className="relative group">
                                     <Key className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-wine transition-all" />

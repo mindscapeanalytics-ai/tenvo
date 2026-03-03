@@ -8,6 +8,7 @@ import {
     BarChart3, ChevronRight, Loader2, AlertTriangle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 import { useBusiness } from '@/lib/context/BusinessContext';
 import { usePermissions, FeatureGate } from '@/lib/hooks/usePermissions';
 import { getGLAccountsAction, getTrialBalanceAction } from '@/lib/actions/basic/accounting';
@@ -343,10 +344,10 @@ function FinanceOverview({ accounts, expenses, creditNotes, currency, loading })
 // MAIN FINANCE HUB
 // ═══════════════════════════════════════════════════════════════════════════════
 
-export default function FinanceHub({ businessId }) {
+export default function FinanceHub({ businessId, initialTab }) {
     const { business, currency, currencySymbol } = useBusiness();
     const { can, planCan } = usePermissions();
-    const [activeTab, setActiveTab] = useState('overview');
+    const [activeTab, setActiveTab] = useState(initialTab || 'overview');
     const [loading, setLoading] = useState(true);
 
     // Data state
@@ -389,7 +390,7 @@ export default function FinanceHub({ businessId }) {
                 getVendorsAction(effectiveBusinessId)
             ]);
             if (custRes.success) setCustomers(custRes.customers || []);
-            if (vendRes.success) setVendors(custRes.vendors || vendRes.vendors || []);
+            if (vendRes.success) setVendors(vendRes.vendors || []);
         } catch (err) {
             console.error('[FinanceHub] Load failed:', err);
         } finally {

@@ -10,6 +10,8 @@ import { businessAPI } from '@/lib/api/business';
 import { createBusiness, checkDomainAvailabilityAction } from '@/lib/actions/basic/business';
 import { seedBusinessProductsAction } from '@/lib/actions/standard/inventory/product';
 import { domainKnowledge } from '@/lib/domainKnowledge';
+import { PLAN_TIERS } from '@/lib/config/plans';
+import { suggestPlanTier } from '@/lib/config/domains';
 import { getRegionalStandards } from '@/lib/utils/regionalHelpers';
 import { authClient } from '@/lib/auth-client';
 import { toast } from 'react-hot-toast';
@@ -74,7 +76,7 @@ import { useLanguage } from '@/lib/context/LanguageContext';
 import { translations } from '@/lib/translations';
 import * as LucideIcons from 'lucide-react';
 
-const DOMAIN_CATEGORIES = [
+const DOMAIN_CATEGORY_BLUEPRINTS = [
     {
         id: 'retail',
         name: 'Retail & Shops',
@@ -91,7 +93,7 @@ const DOMAIN_CATEGORIES = [
         id: 'services',
         name: 'Services',
         icon: HeartPulse,
-        domains: ['travel', 'auto-workshop', 'diagnostic-lab', 'restaurant-cafe', 'gym-fitness', 'hotel-guesthouse', 'event-management', 'rent-a-car', 'school-library', 'clinics-healthcare', 'logistics-transport']
+        domains: ['travel', 'auto-workshop', 'diagnostic-lab', 'restaurant-cafe', 'gym-fitness', 'hotel-guesthouse', 'event-management', 'rent-a-car', 'school-library', 'clinics-healthcare', 'logistics-transport', 'salon-spa', 'dental-clinic', 'veterinary-clinic']
     },
     {
         id: 'specialized',
@@ -100,6 +102,28 @@ const DOMAIN_CATEGORIES = [
         domains: ['auto-parts', 'pharmacy', 'computer-hardware', 'electrical', 'agriculture', 'gems-jewellery', 'real-estate', 'hardware-sanitary', 'poultry-farm', 'solar-energy', 'courier-logistics', 'wholesale-distribution', 'petrol-pump', 'cold-storage', 'book-publishing', 'steel-iron', 'construction-material', 'dairy-farm']
     }
 ];
+
+const knownDomainSet = new Set(DOMAIN_CATEGORY_BLUEPRINTS.flatMap(group => group.domains));
+const unassignedDomains = Object.keys(domainKnowledge).filter(domain => !knownDomainSet.has(domain));
+const DOMAIN_CATEGORIES = DOMAIN_CATEGORY_BLUEPRINTS.map(group => {
+    if (group.id !== 'specialized' || unassignedDomains.length === 0) return group;
+    return {
+        ...group,
+        domains: [...group.domains, ...unassignedDomains].sort((a, b) => a.localeCompare(b))
+    };
+});
+
+const PLAN_HIGHLIGHTS = {
+    basic: ['Core inventory + invoicing', '2 users', 'Domain-tailored setup'],
+    standard: ['POS + loyalty + warehouses', '5 users', 'Storefront operations'],
+    premium: ['Manufacturing + payroll + AI', '15 users', 'Campaigns + automations'],
+    enterprise: ['Multi-domain + API + white-label', 'Unlimited users', 'Advanced governance'],
+};
+
+const PLAN_ORDER = { basic: 0, standard: 1, premium: 2, enterprise: 3 };
+function recommendedPlanForDomain(domainKey) {
+    return suggestPlanTier(domainKey, domainKnowledge[domainKey]);
+}
 
 export default function RegisterWizard() {
     const router = useRouter();
@@ -119,6 +143,7 @@ export default function RegisterWizard() {
         country: 'Pakistan',
         handle: '', // The unique routing slug (e.g., 'abid-textiles')
         category: '', // The industry vertical (e.g., 'textile-wholesale')
+        planTier: 'free',
         logo: ''
     });
 
@@ -160,7 +185,12 @@ export default function RegisterWizard() {
     }, [formData.handle]);
 
     const handleDomainSelect = (categoryKey) => {
-        setFormData(prev => ({ ...prev, category: categoryKey }));
+        const recommendedPlan = recommendedPlanForDomain(categoryKey);
+        setFormData(prev => ({
+            ...prev,
+            category: categoryKey,
+            planTier: PLAN_ORDER[prev.planTier] >= PLAN_ORDER[recommendedPlan] ? prev.planTier : recommendedPlan,
+        }));
         nextStep();
     };
 
@@ -280,6 +310,7 @@ export default function RegisterWizard() {
                     email: formData.email,
                     password: formData.password,
                     name: formData.businessName,
+                    username: formData.handle,
                 });
 
                 if (authError) {
@@ -312,7 +343,8 @@ export default function RegisterWizard() {
                     phone: formData.phone,
                     country: formData.country,
                     domain: formData.handle, // Use the unique handle as 'domain'
-                    category: formData.category || 'retail-shop'
+                    category: formData.category || 'retail-shop',
+                    planTier: formData.planTier || 'free',
                 });
 
                 if (bizResult.success) {
@@ -337,7 +369,7 @@ export default function RegisterWizard() {
 
                     // Specific Handling for Multi-Tenant Domain Collision
                     if (bizResult.error?.includes("Domain Handle") || bizResult.error?.includes("already taken")) {
-                        toast.error(`The domain "${formData.domain}" is already in use. Please pick a unique handle.`, { duration: 6000 });
+                        toast.error(`The domain "${formData.handle}" is already in use. Please pick a unique handle.`, { duration: 6000 });
                     } else {
                         toast.error(bizResult.error || 'Identity created, but dashboard could not be provisioned.');
                     }
@@ -423,7 +455,7 @@ export default function RegisterWizard() {
                                                         <p className="text-gray-500 text-sm mt-1">You are logged in as <span className="font-bold text-gray-900">{user.email}</span></p>
                                                     </div>
                                                     <p className="text-sm font-medium text-wine bg-white/50 p-3 rounded-xl">
-                                                        Let's set up a new business entity under your existing account.
+                                                        Let&apos;s set up a new business entity under your existing account.
                                                     </p>
                                                 </div>
                                             ) : null}
@@ -599,7 +631,7 @@ export default function RegisterWizard() {
                                                 <div className="space-y-2">
                                                     <h3 className="text-2xl font-black text-gray-900 tracking-tight">Enterprise Infrastructure Ready</h3>
                                                     <p className="text-gray-500 font-medium max-w-md">
-                                                        We've calibrated the dashboard for <span className="text-wine font-black uppercase tracking-tight">{translations[language]?.domains?.[formData.category] || formData.category?.replace('-', ' ')}</span> with Pakistani tax compliance.
+                                                        We&apos;ve calibrated the dashboard for <span className="text-wine font-black uppercase tracking-tight">{translations[language]?.domains?.[formData.category] || formData.category?.replace('-', ' ')}</span> with Pakistani tax compliance.
                                                     </p>
                                                 </div>
 
@@ -628,6 +660,39 @@ export default function RegisterWizard() {
                                                         <span className="text-[10px] font-black text-gray-400 uppercase block mb-1">Vertical</span>
                                                         <span className="font-bold text-wine capitalize">{formData.category.replace('-', ' ')}</span>
                                                     </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="bg-gray-50 rounded-3xl p-6 space-y-4">
+                                                <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Subscription Plan</h4>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                    {Object.entries(PLAN_TIERS).map(([tier, config]) => {
+                                                        const isSelected = formData.planTier === tier;
+                                                        const isRecommended = recommendedPlanForDomain(formData.category) === tier;
+                                                        return (
+                                                            <button
+                                                                key={tier}
+                                                                type="button"
+                                                                onClick={() => setFormData(prev => ({ ...prev, planTier: tier }))}
+                                                                className={cn(
+                                                                    'text-left rounded-2xl border p-4 transition-all',
+                                                                    isSelected ? 'border-wine bg-wine/5 shadow-sm' : 'border-gray-200 bg-white hover:border-wine/30'
+                                                                )}
+                                                            >
+                                                                <div className="flex items-center justify-between mb-2">
+                                                                    <span className="text-sm font-black text-gray-900 capitalize">{config.name}</span>
+                                                                    {isRecommended && <span className="text-[10px] font-black uppercase text-emerald-600">Recommended</span>}
+                                                                </div>
+                                                                <p className="text-xs text-gray-500 font-medium">{config.tagline}</p>
+                                                                <p className="text-xs font-black text-wine mt-2">PKR {config.price_pkr} / mo</p>
+                                                                <ul className="mt-2 space-y-1">
+                                                                    {(PLAN_HIGHLIGHTS[tier] || []).map(item => (
+                                                                        <li key={item} className="text-[11px] text-gray-600">• {item}</li>
+                                                                    ))}
+                                                                </ul>
+                                                            </button>
+                                                        );
+                                                    })}
                                                 </div>
                                             </div>
 

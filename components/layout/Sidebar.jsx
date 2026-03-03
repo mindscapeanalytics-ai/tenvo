@@ -11,7 +11,8 @@ import {
   Lock, Crown, Sparkles, TrendingUp, BadgeDollarSign,
   ChevronDown, Warehouse, Hash, History, X, Globe, Megaphone,
   Scale, RefreshCcw, BookOpen, ScrollText, FileCheck,
-  ChevronLeft, ChevronRight, PanelLeftClose, PanelLeftOpen
+  ChevronLeft, ChevronRight, PanelLeftClose, PanelLeftOpen,
+  RotateCcw, ArrowLeftRight, Calendar, Shield
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/lib/context/AuthContext';
@@ -21,11 +22,74 @@ import { translations } from '@/lib/translations';
 import { getDomainColors } from '@/lib/domainColors';
 import { getDomainKnowledge } from '@/lib/domainKnowledge';
 import { getNavItemAccess } from '@/lib/rbac/permissions';
-import { PLAN_TIERS, FEATURE_LABELS, FEATURE_MIN_PLAN } from '@/lib/config/plans';
+import { PLAN_TIERS, FEATURE_LABELS, FEATURE_MIN_PLAN, resolvePlanTier } from '@/lib/config/plans';
+import {
+  POS_RELEVANT_DOMAINS, HOSPITALITY_DOMAINS, CAMPAIGN_RELEVANT_DOMAINS,
+  isPosRelevant, isHospitality, isCampaignRelevant
+} from '@/lib/config/domains';
 import { UserManager } from '../auth/UserManager';
 import { LanguageToggle } from '../LanguageToggle';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BusinessSwitcher } from './BusinessSwitcher';
+
+function isPosRelevantDomain(category, domainKnowledge) {
+  return isPosRelevant(category, domainKnowledge);
+}
+
+function isHospitalityDomain(category) {
+  return isHospitality(category);
+}
+
+function isCampaignRelevantDomain(category, domainKnowledge) {
+  return isCampaignRelevant(category, domainKnowledge);
+}
+
+function getDomainGapSuggestions({ category, planTier, domainKnowledge }) {
+  const suggestions = [];
+  const resolved = resolvePlanTier(planTier);
+  const posRelevant = isPosRelevantDomain(category, domainKnowledge);
+  const hospitality = isHospitalityDomain(category);
+  const campaignRelevant = isCampaignRelevantDomain(category, domainKnowledge);
+  const manufacturingRelevant = domainKnowledge?.manufacturingEnabled;
+
+  if (posRelevant && resolved === 'free') {
+    suggestions.push({
+      key: 'pos-starter',
+      title: 'POS requires Starter',
+      message: 'Upgrade to Starter to enable Point of Sale and Refunds & Returns.',
+      requiredPlan: 'starter'
+    });
+  }
+
+  if (hospitality && (resolved === 'free' || resolved === 'starter')) {
+    suggestions.push({
+      key: 'hospitality-business',
+      title: 'Hospitality Suite recommendation',
+      message: 'For bakery/restaurant operations, Business plan enables restaurant workflows, campaigns, and advanced automation.',
+      requiredPlan: 'business'
+    });
+  }
+
+  if (manufacturingRelevant && (resolved === 'free' || resolved === 'starter')) {
+    suggestions.push({
+      key: 'manufacturing-professional',
+      title: 'Manufacturing requires Professional',
+      message: 'Upgrade to Professional for BOM, production orders, and manufacturing analytics.',
+      requiredPlan: 'professional'
+    });
+  }
+
+  if (campaignRelevant && (resolved === 'free' || resolved === 'starter')) {
+    suggestions.push({
+      key: 'campaigns-professional',
+      title: 'Campaigns & Marketing requires Professional',
+      message: 'Upgrade to Professional to run campaigns, promotions, and CRM-driven automations.',
+      requiredPlan: 'professional'
+    });
+  }
+
+  return suggestions;
+}
 
 // ─── Grouped Navigation Definition ──────────────────────────────────────────
 // Each item has: key (matches tab param), label, icon, and optional:
@@ -49,15 +113,15 @@ const NAV_SECTIONS = [
   {
     label: 'STOREFRONT',
     items: [
-      { key: 'pos', label: 'Point of Sale', icon: ShoppingCart },
-      { key: 'refunds', label: 'Refunds & Returns', icon: RefreshCcw },
+      { key: 'pos', label: 'Point of Sale', icon: ShoppingCart, domainRule: 'posRelevant' },
+      { key: 'refunds', label: 'Refunds & Returns', icon: RefreshCcw, domainRule: 'posRelevant' },
       {
         key: 'restaurant',
         label: 'Restaurant',
         icon: UtensilsCrossed,
-        domainOnly: ['restaurant-cafe', 'bakery-confectionery', 'hotel-guesthouse'],
+        domainRule: 'hospitality',
       },
-      { key: 'loyalty', label: 'Loyalty & CRM', icon: Heart },
+      { key: 'loyalty', label: 'Loyalty & CRM', icon: Heart, domainRule: 'posRelevant' },
       { key: 'quotations', label: 'Quotations', icon: ClipboardList, conditionKey: 'quotations' },
       { key: 'sales', label: 'Sales Manager', icon: TrendingUp, alwaysShow: true },
     ]
@@ -67,7 +131,11 @@ const NAV_SECTIONS = [
     items: [
       { key: 'accounting', label: 'Accounting', icon: Landmark, alwaysShow: true },
       { key: 'payments', label: 'Payments', icon: CreditCard, alwaysShow: true },
+      { key: 'expenses', label: 'Expenses', icon: Receipt, alwaysShow: true, badge: 'NEW' },
+      { key: 'credit-notes', label: 'Credit Notes', icon: RotateCcw, alwaysShow: true, badge: 'NEW' },
       { key: 'finance', label: 'Finance Hub', icon: BarChart3, alwaysShow: true },
+      { key: 'fiscal', label: 'Fiscal Periods', icon: Calendar },
+      { key: 'exchange-rates', label: 'Exchange Rates', icon: ArrowLeftRight },
       { key: 'gst', label: 'Tax / GST', icon: BadgeDollarSign, alwaysShow: true },
     ]
   },
@@ -84,7 +152,7 @@ const NAV_SECTIONS = [
     label: 'INTELLIGENCE',
     items: [
       { key: 'reports', label: 'Analytics & AI', icon: Brain, alwaysShow: true },
-      { key: 'campaigns', label: 'Campaigns & Marketing', icon: Megaphone },
+      { key: 'campaigns', label: 'Campaigns & Marketing', icon: Megaphone, domainRule: 'campaignRelevant' },
       { key: 'audit', label: 'Audit Trail', icon: ScrollText },
     ]
   },
@@ -92,13 +160,14 @@ const NAV_SECTIONS = [
     label: 'SYSTEM',
     items: [
       { key: 'settings', label: 'Settings', icon: Settings },
+      { key: 'platform-admin', label: 'Platform Admin', icon: Shield, platformOnly: true },
     ]
   },
 ];
 
 export function Sidebar({ isOpen, onClose, isSidebarCollapsed, setIsSidebarCollapsed }) {
   const { user } = useAuth();
-  const { business, role, isLoading: businessLoading } = useBusiness();
+  const { business, role, planTier: contextPlanTier, isLoading: businessLoading, isPlatformOwner } = useBusiness();
   const { language } = useLanguage();
   const t = translations[language];
   const pathname = usePathname();
@@ -117,9 +186,13 @@ export function Sidebar({ isOpen, onClose, isSidebarCollapsed, setIsSidebarColla
   };
 
   const domainKnowledge = getDomainKnowledge(category);
+  const posRelevant = isPosRelevantDomain(category, domainKnowledge);
+  const hospitalityDomain = isHospitalityDomain(category);
+  const campaignRelevant = isCampaignRelevantDomain(category, domainKnowledge);
   const effectiveRole = (businessLoading || !role) ? 'owner' : role;
-  const planTier = business?.plan_tier || 'basic';
-  const planName = PLAN_TIERS[planTier]?.name || 'Basic';
+  const planTier = isPlatformOwner ? 'enterprise' : resolvePlanTier(contextPlanTier || business?.plan_tier || 'free');
+  const planName = isPlatformOwner ? 'Platform Owner' : (PLAN_TIERS[planTier]?.name || 'Free');
+  const domainGapSuggestions = useMemo(() => getDomainGapSuggestions({ category, planTier, domainKnowledge }), [category, planTier, domainKnowledge]);
 
   const [collapsedSections, setCollapsedSections] = useState({});
 
@@ -147,6 +220,11 @@ export function Sidebar({ isOpen, onClose, isSidebarCollapsed, setIsSidebarColla
   // ─── Navigation access control ─────────────────────────────────────────────
   // Check if a nav item should be visible + whether it's locked behind subscription
   const getItemState = (item) => {
+    // Platform-only items: only visible to platform owner/admin
+    if (item.platformOnly && !isPlatformOwner) {
+      return { visible: false, locked: false, requiredPlan: null };
+    }
+
     // Always-show items bypass all checks
     if (item.alwaysShow) {
       return { visible: true, locked: false, requiredPlan: null };
@@ -154,6 +232,16 @@ export function Sidebar({ isOpen, onClose, isSidebarCollapsed, setIsSidebarColla
 
     // Domain-only items: only show for specific business domains
     if (item.domainOnly && !item.domainOnly.includes(category)) {
+      return { visible: false, locked: false, requiredPlan: null };
+    }
+
+    if (item.domainRule === 'posRelevant' && !posRelevant) {
+      return { visible: false, locked: false, requiredPlan: null };
+    }
+    if (item.domainRule === 'hospitality' && !hospitalityDomain) {
+      return { visible: false, locked: false, requiredPlan: null };
+    }
+    if (item.domainRule === 'campaignRelevant' && !campaignRelevant) {
       return { visible: false, locked: false, requiredPlan: null };
     }
 
@@ -370,8 +458,8 @@ export function Sidebar({ isOpen, onClose, isSidebarCollapsed, setIsSidebarColla
           })}
         </nav>
 
-        {/* ─── Upgrade Banner (shown for basic/standard plans, hidden in compact mode) ─── */}
-        {!isSidebarCollapsed && (planTier === 'basic' || planTier === 'standard') && (
+        {/* ─── Upgrade Banner (shown for free/starter plans, hidden for platform owner and compact mode) ─── */}
+        {!isSidebarCollapsed && !isPlatformOwner && (planTier === 'free' || planTier === 'starter') && (
           <div className="flex-none mx-3 mb-2.5">
             <div className="bg-gradient-to-r from-indigo-500 to-violet-600 rounded-xl p-3 text-white">
               <div className="flex items-center gap-2 mb-1">
@@ -379,15 +467,42 @@ export function Sidebar({ isOpen, onClose, isSidebarCollapsed, setIsSidebarColla
                 <span className="text-[11px] font-bold">Unlock more features</span>
               </div>
               <p className="text-[9px] text-indigo-100 leading-relaxed mb-2">
-                {planTier === 'basic'
-                  ? 'Get POS, Expenses, CRM and more with Standard'
-                  : 'Get Manufacturing, Payroll, AI and more with Premium'}
+                {hospitalityDomain
+                  ? 'Hospitality Growth: move to Business plan for restaurant + marketing automations.'
+                  : planTier === 'free'
+                    ? 'Get POS, Expenses, CRM and more with Starter'
+                    : 'Get Manufacturing, Payroll, AI and more with Professional'}
               </p>
               <Link
                 href={`${baseUrl}?tab=settings&section=billing`}
                 className="block text-center text-[10px] font-bold bg-white/20 hover:bg-white/30 rounded-lg py-1.5 transition-colors"
               >
                 Upgrade Now →
+              </Link>
+            </div>
+          </div>
+        )}
+
+        {!isSidebarCollapsed && !isPlatformOwner && domainGapSuggestions.length > 0 && (
+          <div className="flex-none mx-3 mb-2.5">
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                <span className="text-[10px] font-black uppercase tracking-widest text-amber-700">Domain Gaps</span>
+              </div>
+              <div className="space-y-2">
+                {domainGapSuggestions.slice(0, 2).map(gap => (
+                  <div key={gap.key} className="bg-white rounded-lg border border-amber-100 p-2">
+                    <p className="text-[10px] font-bold text-gray-900">{gap.title}</p>
+                    <p className="text-[10px] text-gray-600 leading-snug">{gap.message}</p>
+                  </div>
+                ))}
+              </div>
+              <Link
+                href={`${baseUrl}?tab=settings&section=billing`}
+                className="mt-2 block text-center text-[10px] font-bold text-amber-700 hover:text-amber-800"
+              >
+                Review upgrade path
               </Link>
             </div>
           </div>
@@ -425,7 +540,7 @@ export function Sidebar({ isOpen, onClose, isSidebarCollapsed, setIsSidebarColla
                     {user?.user_metadata?.full_name || 'My Account'}
                   </p>
                   <p className="text-[10px] text-gray-400 truncate">
-                    {effectiveRole.charAt(0).toUpperCase() + effectiveRole.slice(1)} · {user?.email}
+                    {(effectiveRole || 'User').charAt(0).toUpperCase() + (effectiveRole || 'User').slice(1)} · {user?.email}
                   </p>
                 </div>
               )}

@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Combobox } from '@/components/ui/combobox';
 import { useBusiness } from '@/lib/context/BusinessContext';
 import { formatCurrency } from '@/lib/currency';
 import { createExpenseAction } from '@/lib/actions/basic/expense';
@@ -11,6 +12,7 @@ import { getGLAccountsAction } from '@/lib/actions/basic/accounting';
 import toast from 'react-hot-toast';
 import { useLanguage } from '@/lib/context/LanguageContext';
 import { translations } from '@/lib/translations';
+import { expenseSchema, validateWithSchema } from '@/lib/validation/schemas';
 
 export function ExpenseEntryForm({
     onClose,
@@ -62,12 +64,20 @@ export function ExpenseEntryForm({
     const handleSave = async (e) => {
         e.preventDefault();
 
-        if (!formData.accountId) {
-            toast.error('Please select an expense account');
+        // Zod schema validation
+        const validation = validateWithSchema(expenseSchema, {
+            ...formData,
+            amount: parseFloat(formData.amount),
+            taxAmount: parseFloat(formData.taxAmount || 0)
+        });
+        if (!validation.success) {
+            const firstError = Object.values(validation.errors)[0];
+            toast.error(firstError || 'Please fix validation errors');
             return;
         }
-        if (formData.amount <= 0) {
-            toast.error('Please enter a valid amount');
+
+        if (!formData.accountId) {
+            toast.error('Please select an expense account');
             return;
         }
 
@@ -125,31 +135,32 @@ export function ExpenseEntryForm({
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-2">
                                 <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Expense Account (GL) *</Label>
-                                <select
-                                    disabled={isLoadingAccounts}
-                                    className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 transition-all outline-none font-medium text-sm"
-                                    value={formData.accountId}
-                                    onChange={(e) => setFormData(prev => ({ ...prev, accountId: e.target.value }))}
-                                    required
-                                >
-                                    <option value="">{isLoadingAccounts ? 'Loading accounts...' : 'Select GL Account'}</option>
-                                    {glAccounts.map(a => (
-                                        <option key={a.id} value={a.id}>{a.code} - {a.name}</option>
-                                    ))}
-                                </select>
+                                <Combobox
+                                    options={glAccounts.map(a => ({
+                                        value: String(a.id),
+                                        label: `${a.code} - ${a.name}`,
+                                        description: a.type || 'Expense'
+                                    }))}
+                                    value={String(formData.accountId || '')}
+                                    onChange={(val) => setFormData(prev => ({ ...prev, accountId: val }))}
+                                    placeholder={isLoadingAccounts ? 'Loading accounts...' : 'Search GL accounts...'}
+                                    emptyText="No expense accounts found"
+                                    className="h-12"
+                                />
                             </div>
                             <div className="space-y-2">
                                 <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Category Tag</Label>
-                                <select
-                                    className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 transition-all outline-none font-medium text-sm"
-                                    value={formData.category}
-                                    onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
-                                >
-                                    <option value="">Select Category</option>
-                                    {expenseCategories.map(c => (
-                                        <option key={c} value={c}>{c}</option>
-                                    ))}
-                                </select>
+                                <Combobox
+                                    options={expenseCategories.map(c => ({
+                                        value: c,
+                                        label: c
+                                    }))}
+                                    value={formData.category || ''}
+                                    onChange={(val) => setFormData(prev => ({ ...prev, category: val }))}
+                                    placeholder="Select category..."
+                                    emptyText="No categories found"
+                                    className="h-12"
+                                />
                             </div>
                         </div>
 
@@ -219,16 +230,18 @@ export function ExpenseEntryForm({
 
                         <div className="space-y-2">
                             <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Paid to Vendor (Optional)</Label>
-                            <select
-                                className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 transition-all outline-none font-medium text-sm"
-                                value={formData.vendorId}
-                                onChange={(e) => setFormData(prev => ({ ...prev, vendorId: e.target.value }))}
-                            >
-                                <option value="">Internal / No Vendor</option>
-                                {vendors.map(v => (
-                                    <option key={v.id} value={v.id}>{v.name}</option>
-                                ))}
-                            </select>
+                            <Combobox
+                                options={vendors.map(v => ({
+                                    value: String(v.id),
+                                    label: v.name,
+                                    description: v.city || v.phone || ''
+                                }))}
+                                value={String(formData.vendorId || '')}
+                                onChange={(val) => setFormData(prev => ({ ...prev, vendorId: val }))}
+                                placeholder="Search vendors..."
+                                emptyText="No vendors — internal expense"
+                                className="h-12"
+                            />
                         </div>
 
                         <div className="space-y-2">

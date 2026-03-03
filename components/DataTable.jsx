@@ -40,7 +40,8 @@ export function DataTable({
   exportable = false,
   onExport,
   onBulkDelete,
-  category = 'retail-shop'
+  category = 'retail-shop',
+  emptyComponent,
 }) {
   const colors = getDomainColors(category);
   const [sorting, setSorting] = useState([]);
@@ -263,16 +264,18 @@ export function DataTable({
             <tbody className="bg-white divide-y divide-gray-200">
               {table.getRowModel().rows.length === 0 ? (
                 <tr>
-                  <td colSpan={columns.length} className="px-4 py-16 text-center text-gray-500">
-                    <div className="flex flex-col items-center justify-center space-y-3">
-                      <div className="p-3 bg-gray-50 rounded-full">
-                        <Search className="w-8 h-8 text-gray-300" />
+                  <td colSpan={columns.length} className="px-4 py-2 text-center text-gray-500">
+                    {emptyComponent || (
+                      <div className="flex flex-col items-center justify-center space-y-3 py-12">
+                        <div className="p-3 bg-gray-50 rounded-full">
+                          <Search className="w-8 h-8 text-gray-300" />
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-base font-bold text-gray-900">No results found</p>
+                          <p className="text-sm text-gray-500">Try adjusting your search or filters to find what you're looking for.</p>
+                        </div>
                       </div>
-                      <div className="space-y-1">
-                        <p className="text-base font-bold text-gray-900">No results found</p>
-                        <p className="text-sm text-gray-500">Try adjusting your search or filters to find what you're looking for.</p>
-                      </div>
-                    </div>
+                    )}
                   </td>
                 </tr>
               ) : (

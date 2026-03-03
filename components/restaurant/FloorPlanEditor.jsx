@@ -30,6 +30,17 @@ const TABLE_SHAPES = [
 
 const GRID_SIZE = 20;
 
+// Static class map for Tailwind JIT — zone colors
+const ZONE_COLOR_CLASSES = {
+    indigo: 'bg-indigo-600 text-white shadow-lg shadow-indigo-200',
+    emerald: 'bg-emerald-600 text-white shadow-lg shadow-emerald-200',
+    amber: 'bg-amber-600 text-white shadow-lg shadow-amber-200',
+    blue: 'bg-blue-600 text-white shadow-lg shadow-blue-200',
+    red: 'bg-red-600 text-white shadow-lg shadow-red-200',
+    green: 'bg-green-600 text-white shadow-lg shadow-green-200',
+    purple: 'bg-purple-600 text-white shadow-lg shadow-purple-200',
+};
+
 // ─── FloorPlanEditor Component ───────────────────────────────────────────────
 
 export function FloorPlanEditor({
@@ -110,7 +121,7 @@ export function FloorPlanEditor({
                                 className={cn(
                                     "px-4 py-2 rounded-lg text-xs font-black transition-all",
                                     activeZoneId === zone.id
-                                        ? `bg-${zone.color}-600 text-white shadow-lg shadow-${zone.color}-200`
+                                        ? (ZONE_COLOR_CLASSES[zone.color] || 'bg-gray-600 text-white shadow-lg shadow-gray-200')
                                         : "text-gray-400 hover:text-gray-600 hover:bg-gray-50"
                                 )}
                             >

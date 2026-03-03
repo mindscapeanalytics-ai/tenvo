@@ -15,75 +15,14 @@ import {
   warehouseAPI,
   quotationAPI,
 } from '@/lib/api';
+import { payrollAPI } from '@/lib/api/payroll';
+import { workflowAPI } from '@/lib/api/workflow';
 import { bulkDeleteAction } from '@/lib/actions/premium/automation/bulk';
-import {
-  Plus,
-  FileText,
-  Package,
-  Users,
-  DollarSign,
-  Search,
-  Bell,
-  Settings,
-  TrendingDown,
-  TrendingUp,
-  BarChart3,
-  ShoppingCart,
-  LayoutDashboard,
-  Package as PackageIcon,
-  Users as UsersIcon,
-  DollarSign as DollarIcon,
-  Truck,
-  AlertTriangle,
-  ChevronDown,
-  Building2,
-  Factory,
-  Warehouse,
-  Layers,
-  Hash,
-  ClipboardList,
-  Pencil, // Replaces Edit
-  Trash2,
-  Lock,
-} from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Tabs } from '@/components/ui/tabs';
+import { ProductForm } from '@/components/ProductForm';
 import { EnhancedInvoiceBuilder } from '@/components/EnhancedInvoiceBuilder';
 import { CustomerForm } from '@/components/CustomerForm';
-import { SalesManager } from '@/components/SalesManager';
-import { VendorManager } from '@/components/VendorManager';
-import { PurchaseOrderManager } from '@/components/PurchaseOrderManager';
-import { QuotationOrderChallanManager } from '@/components/QuotationOrderChallanManager';
-import { ExportButton } from '@/components/ExportButton';
-import { DataTable } from '@/components/DataTable';
-import { ProductForm } from '@/components/ProductForm';
-import { SettingsManager } from '@/components/SettingsManager';
-import { TaxComplianceManager } from '@/components/TaxComplianceManager';
-import { AdvancedAnalytics } from '@/components/AdvancedAnalytics';
-import { RevenueAreaChart } from '@/components/AdvancedCharts';
-import { DemandForecast } from '@/components/DemandForecast';
-import { ManufacturingModule } from '@/components/ManufacturingModule';
-import JournalEntryManager from '@/components/JournalEntryManager';
-import TrialBalanceView from '@/components/TrialBalanceView';
-import FinancialReports from '@/components/FinancialReports';
-import { MultiLocationInventory } from '@/components/MultiLocationInventory';
-import { FinancialOverview } from '@/components/dashboard/FinancialOverview';
-import { BatchManager } from '@/components/inventory/BatchManager';
-import { SerialScanner } from '@/components/inventory/SerialScanner';
-import PaymentManager from '@/components/payment/PaymentManager';
 import { SetupWizard } from '@/components/onboarding/SetupWizard';
 import { getInvoicesAction, deleteInvoiceAction, createInvoiceAction, updateInvoiceAction } from '@/lib/actions/basic/invoice';
 import { getWarehouseLocationsAction } from '@/lib/actions/standard/inventory/warehouse';
@@ -103,6 +42,8 @@ import { useFilters } from '@/lib/context/FilterContext';
 import { useData } from '@/lib/context/DataContext';
 import { ActionModals } from './components/ActionModals';
 import { DashboardTabs } from './components/DashboardTabs';
+import { BusinessLoadingBoundary } from '@/components/guards/BusinessLoadingBoundary';
+import { useResourceLimits } from '@/lib/hooks/useResourceLimits';
 
 const businessCategories = {
   // Retail & FMCG (12)
@@ -206,7 +147,7 @@ function BusinessDashboardContent() {
         handleTabChange('customers');
         break;
       case 'analytics':
-        handleTabChange('analytics');
+        handleTabChange('reports');
         break;
       case 'manufacturing':
       case 'new-production':
@@ -309,6 +250,10 @@ function BusinessDashboardContent() {
   const colors = getDomainColors(category);
   const domainKnowledge = getDomainKnowledge(category);
 
+  // Auth & Business context — must come before any hook that references `business`
+  const { user, loading: authLoading } = useAuth();
+  const { business, role, planTier: contextPlanTier, updateBusiness, isLoading: businessLoading, switchBusinessByDomain, isPlatformOwner } = useBusiness();
+
   const {
     invoices,
     products,
@@ -321,6 +266,10 @@ function BusinessDashboardContent() {
     locations,
     bomList,
     productionOrders,
+    payrollEmployees,
+    payrollRuns,
+    pendingApprovals,
+    approvalHistory,
     accountingSummary,
     dashboardChartData,
     dashboardMetrics,
@@ -329,8 +278,22 @@ function BusinessDashboardContent() {
     refreshAllData,
     fetchInventory,
     fetchSales,
-    fetchPurchases
+    fetchPurchases,
+    fetchManufacturing,
+    fetchPayroll,
+    fetchApprovals
   } = useData();
+
+  // Resource limit enforcement
+  const resourceLimits = useResourceLimits({
+    planTier: contextPlanTier || business?.plan_tier || 'free',
+    counts: {
+      products: products?.length || 0,
+      invoices: invoices?.length || 0,
+      warehouses: locations?.length || 0,
+    },
+  });
+
   const [showInvoiceBuilder, setShowInvoiceBuilder] = useState(false);
   const [invoiceInitialData, setInvoiceInitialData] = useState(null); // New state for pre-filling invoice
   const [showProductForm, setShowProductForm] = useState(false);
@@ -364,9 +327,6 @@ function BusinessDashboardContent() {
   ]);
   const [viewingItem, setViewingItem] = useState(null);
   const [viewingType, setViewingType] = useState(null);
-
-  const { user, loading: authLoading } = useAuth();
-  const { business, role, updateBusiness, isLoading: businessLoading, switchBusinessByDomain } = useBusiness();
 
   // Load business if not in context but id exists in localStorage or searchParams
   useEffect(() => {
@@ -812,9 +772,8 @@ function BusinessDashboardContent() {
     try {
       await warehouseAPI.createTransfer({ ...data, business_id: business.id });
       toast.success('Stock transfer initiated');
-      // Refresh products to reflect stock changes
-      const result = await productAPI.getAll(business.id);
-      setProducts(result.products || []);
+      // Refresh inventory via DataProvider to reflect stock changes
+      await fetchInventory();
     } catch (error) {
       console.error('Stock Transfer Error:', error);
       toast.error('Failed to transfer stock');
@@ -826,22 +785,25 @@ function BusinessDashboardContent() {
   const handlePosCheckout = async (checkoutData) => {
     try {
       toast.loading('Processing POS Checkout...', { id: 'pos' });
+      const items = checkoutData.items.map(item => ({
+        product_id: item.id,
+        quantity: item.quantity,
+        unit_price: item.price,
+        name: item.name
+      }));
+      const subtotal = items.reduce((sum, i) => sum + (i.quantity * i.unit_price), 0);
       const invoiceData = {
+        business_id: business.id,
         customer_id: checkoutData.customerId || null,
-        items: checkoutData.items.map(item => ({
-          product_id: item.id,
-          quantity: item.quantity,
-          unit_price: item.price,
-          name: item.name
-        })),
         payment_method: checkoutData.paymentMethod || 'cash',
-        amount: checkoutData.total,
+        grand_total: checkoutData.total || subtotal,
+        subtotal: subtotal,
+        tax_total: (checkoutData.total || subtotal) - subtotal,
         status: 'paid',
         date: new Date().toISOString(),
         payment_status: 'paid',
-        business_id: business.id
       };
-      await invoiceAPI.create(business.id, invoiceData);
+      await invoiceAPI.create(invoiceData, items);
       toast.success('Sale completed successfully', { id: 'pos' });
       refreshAllData();
       return { success: true };
@@ -890,6 +852,91 @@ function BusinessDashboardContent() {
     if (newStatus === 'ready') toast.success('Order ready for serving', { icon: '🍽️' });
   };
 
+  // ─── Payroll Handlers ──────────────────────────────────────────────────────
+
+  const handleProcessPayroll = async (data) => {
+    try {
+      toast.loading('Processing payroll...', { id: 'payroll' });
+      const result = await payrollAPI.processPayroll({ ...data, businessId: business.id });
+      if (result.success) {
+        toast.success('Payroll processed successfully', { id: 'payroll' });
+        await fetchPayroll();
+      } else {
+        toast.error(result.error || 'Failed to process payroll', { id: 'payroll' });
+      }
+      return result;
+    } catch (error) {
+      console.error('Process Payroll Error:', error);
+      toast.error('Failed to process payroll', { id: 'payroll' });
+      return { success: false, error: error.message };
+    }
+  };
+
+  const handleAddEmployee = async (data) => {
+    try {
+      const result = await payrollAPI.addEmployee({ ...data, businessId: business.id });
+      if (result.success) {
+        toast.success('Employee added');
+        await fetchPayroll();
+      } else {
+        toast.error(result.error || 'Failed to add employee');
+      }
+      return result;
+    } catch (error) {
+      console.error('Add Employee Error:', error);
+      toast.error('Failed to add employee');
+    }
+  };
+
+  const handleViewPayslips = async (runId) => {
+    try {
+      return await payrollAPI.getPayslips(business.id, runId);
+    } catch (error) {
+      console.error('View Payslips Error:', error);
+      toast.error('Failed to load payslips');
+    }
+  };
+
+  // ─── Approval Handlers ─────────────────────────────────────────────────────
+
+  const handleApproveRequest = async (requestId) => {
+    try {
+      const result = await workflowAPI.resolve({
+        requestId,
+        businessId: business.id,
+        action: 'approved'
+      });
+      if (result.success) {
+        toast.success('Request approved');
+        await fetchApprovals();
+      } else {
+        toast.error(result.error || 'Failed to approve');
+      }
+    } catch (error) {
+      console.error('Approve Request Error:', error);
+      toast.error('Failed to approve request');
+    }
+  };
+
+  const handleRejectRequest = async (requestId) => {
+    try {
+      const result = await workflowAPI.resolve({
+        requestId,
+        businessId: business.id,
+        action: 'rejected'
+      });
+      if (result.success) {
+        toast.success('Request rejected');
+        await fetchApprovals();
+      } else {
+        toast.error(result.error || 'Failed to reject');
+      }
+    } catch (error) {
+      console.error('Reject Request Error:', error);
+      toast.error('Failed to reject request');
+    }
+  };
+
 
   // BLOCKING LOADER REMOVED FOR INSTANT SHELL RENDER
   // if (businessLoading || authLoading) {
@@ -909,6 +956,7 @@ function BusinessDashboardContent() {
         </div>
       )}
 
+      <BusinessLoadingBoundary isLoading={!isDataLoaded && !businessLoading}>
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full mt-2">
         <DashboardTabs
           activeTab={activeTab}
@@ -934,8 +982,10 @@ function BusinessDashboardContent() {
           dateRange={dateRange}
           currency={currency}
           colors={colors}
-          colors={colors}
+          planTier={contextPlanTier || business?.plan_tier || 'free'}
+          resourceLimits={resourceLimits}
           domainKnowledge={domainKnowledge}
+          isPlatformOwner={isPlatformOwner}
           isLoading={!isDataLoaded}
           handlers={{
             handleTabChange,
@@ -975,10 +1025,23 @@ function BusinessDashboardContent() {
             handlePosCheckout,
             handleTableAction,
             handleNewRestaurantOrder,
-            handleKitchenStatusUpdate
+            handleKitchenStatusUpdate,
+            // Upgrade Handler
+            handleUpgrade: () => handleTabChange('settings'),
+            // Payroll & Approval Handlers
+            payrollEmployees,
+            payrollRuns,
+            handleProcessPayroll,
+            handleViewPayslips,
+            handleAddEmployee,
+            pendingApprovals,
+            approvalHistory,
+            handleApproveRequest,
+            handleRejectRequest,
           }}
         />
       </Tabs >
+      </BusinessLoadingBoundary>
 
       <ActionModals
         showProductForm={showProductForm}
@@ -1023,6 +1086,9 @@ function BusinessDashboardContent() {
         setPoInitialData={setPoInitialData}
         refreshData={refreshAllData}
         business={business}
+        role={role}
+        planTier={business?.plan_tier || 'free'}
+        domainKnowledge={domainKnowledge}
 
         // Details Viewer Props
         viewingItem={viewingItem}

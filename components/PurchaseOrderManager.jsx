@@ -1,22 +1,21 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ShoppingCart, Plus, CheckCircle2, Clock, X, Package, Search, ExternalLink } from 'lucide-react';
+import { ShoppingCart, Plus, CheckCircle2, Clock, Package, Search, ExternalLink, Printer, FileText } from 'lucide-react';
 import { DataTable } from './DataTable';
 import { ExportButton } from './ExportButton';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { formatCurrency } from '@/lib/currency';
 import { getDomainColors } from '@/lib/domainColors';
 import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import GRNView from './GRNView';
 import { useBusiness } from '@/lib/context/BusinessContext';
-import { Printer, FileText } from 'lucide-react';
 import { PurchaseDocumentForm } from './PurchaseDocumentForm';
 import { getVendorsAction } from '@/lib/actions/basic/vendor';
-import { getGLAccountsAction } from '@/lib/actions/basic/accounting';
 import { getWarehouseLocationsAction } from '@/lib/actions/standard/inventory/warehouse';
 import { getProductsAction } from '@/lib/actions/standard/inventory/product';
 
@@ -146,6 +145,11 @@ export function PurchaseOrderManager({ purchaseOrders = [], onCreate, onUpdateSt
     (o.vendor_name && o.vendor_name.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
+  const openOrdersCount = purchaseOrders.filter(p => ['draft', 'sent'].includes(p.status)).length;
+  const procurementValue = purchaseOrders.reduce((sum, order) => sum + (Number(order.total_amount) || 0), 0);
+  const pendingReceiptCount = purchaseOrders.filter(p => p.status === 'sent').length;
+  const receivedCount = purchaseOrders.filter(p => p.status === 'received').length;
+
   return (
     <div className="space-y-6 animate-in slide-in-from-right-5 duration-500">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -155,7 +159,9 @@ export function PurchaseOrderManager({ purchaseOrders = [], onCreate, onUpdateSt
         </div>
         <div className="flex gap-2">
           <Button
-            onClick={() => setShowPOForm(true)}
+            onClick={() => {
+              setShowPOForm(true);
+            }}
             className="bg-primary text-white rounded-xl shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all font-bold h-11 px-6"
           >
             <Plus className="w-4 h-4 mr-2" />
@@ -172,19 +178,45 @@ export function PurchaseOrderManager({ purchaseOrders = [], onCreate, onUpdateSt
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card className="border-border shadow-sm bg-card">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs font-black uppercase tracking-widest text-muted-foreground">Open Orders</CardTitle>
+            <CardDescription>Draft and sent purchase orders</CardDescription>
+          </CardHeader>
           <CardContent className="pt-6">
-            <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Open Orders</p>
             <p className="text-2xl font-bold text-foreground">
-              {purchaseOrders.filter(p => ['draft', 'sent'].includes(p.status)).length}
+              {openOrdersCount}
             </p>
           </CardContent>
         </Card>
         <Card className="border-border shadow-sm bg-card">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs font-black uppercase tracking-widest text-muted-foreground">Procurement Value</CardTitle>
+            <CardDescription>Total of listed orders</CardDescription>
+          </CardHeader>
           <CardContent className="pt-6">
-            <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Procurement Value</p>
             <p className="text-2xl font-bold text-blue-600">
-              {formatCurrency(purchaseOrders.reduce((s, o) => s + (Number(o.total_amount) || 0), 0), 'PKR')}
+              {formatCurrency(procurementValue, 'PKR')}
             </p>
+          </CardContent>
+        </Card>
+        <Card className="border-border shadow-sm bg-card">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs font-black uppercase tracking-widest text-muted-foreground">Pending Receipt</CardTitle>
+            <CardDescription>Orders waiting inbound receipt</CardDescription>
+          </CardHeader>
+          <CardContent className="pt-6 flex items-center justify-between gap-3">
+            <p className="text-2xl font-bold text-amber-600">{pendingReceiptCount}</p>
+            <Clock className="w-5 h-5 text-amber-500" />
+          </CardContent>
+        </Card>
+        <Card className="border-border shadow-sm bg-card">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs font-black uppercase tracking-widest text-muted-foreground">Received</CardTitle>
+            <CardDescription>Orders completed into stock</CardDescription>
+          </CardHeader>
+          <CardContent className="pt-6 flex items-center justify-between gap-3">
+            <p className="text-2xl font-bold text-green-600">{receivedCount}</p>
+            <Package className="w-5 h-5 text-green-500" />
           </CardContent>
         </Card>
       </div>
@@ -202,15 +234,27 @@ export function PurchaseOrderManager({ purchaseOrders = [], onCreate, onUpdateSt
           </div>
         </CardHeader>
         <CardContent>
-          <DataTable category={category} data={filteredOrders} columns={columns} searchable={false} />
+          <DataTable category={category} data={filteredOrders} columns={columns} searchable={false} emptyComponent={<EmptyState module="purchases" compact onAction={onCreate} />} />
         </CardContent>
       </Card>
       <Dialog open={!!poToView} onOpenChange={(open) => !open && setPoToView(null)}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <FileText className="w-5 h-5 text-blue-500" />
-              {poToView?.status === 'received' ? 'Good Receipt Note (GRN)' : 'Purchase Order Detail'}
+            <DialogTitle className="flex items-center justify-between gap-2">
+              <span className="flex items-center gap-2">
+                <FileText className="w-5 h-5 text-blue-500" />
+                {poToView?.status === 'received' ? 'Good Receipt Note (GRN)' : 'Purchase Order Detail'}
+              </span>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8"
+                onClick={() => window.print()}
+              >
+                <Printer className="w-4 h-4 mr-1" />
+                Print
+              </Button>
             </DialogTitle>
             <DialogDescription>
               Reference: <span className="font-bold text-gray-900">{poToView?.purchase_number}</span>
@@ -234,7 +278,10 @@ export function PurchaseOrderManager({ purchaseOrders = [], onCreate, onUpdateSt
       {showPOForm && (
         <PurchaseDocumentForm
           onClose={() => setShowPOForm(false)}
-          onSave={() => refreshData?.()}
+          onSave={() => {
+            onCreate?.();
+            refreshData?.();
+          }}
           vendors={vendors}
           warehouses={warehouses}
           products={products}

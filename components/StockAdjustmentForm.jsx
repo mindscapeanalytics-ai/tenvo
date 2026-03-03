@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Combobox } from '@/components/ui/combobox';
 import { useBusiness } from '@/lib/context/BusinessContext';
 import { formatCurrency } from '@/lib/currency';
 import { adjustStockAction } from '@/lib/actions/standard/inventory/stock';
@@ -31,6 +32,13 @@ const ADJUSTMENT_TYPES = [
     { value: 'decrease', label: 'Decrease Stock', icon: ArrowDown, color: 'red' },
     { value: 'set_to', label: 'Set Exact Quantity', icon: RotateCcw, color: 'blue' },
 ];
+
+// Static class map for Tailwind JIT
+const ADJ_COLOR_CLASSES = {
+    emerald: { active: 'border-emerald-500 bg-emerald-50 shadow-lg', icon: 'text-emerald-600', text: 'text-emerald-700' },
+    red: { active: 'border-red-500 bg-red-50 shadow-lg', icon: 'text-red-600', text: 'text-red-700' },
+    blue: { active: 'border-blue-500 bg-blue-50 shadow-lg', icon: 'text-blue-600', text: 'text-blue-700' },
+};
 
 export function StockAdjustmentForm({ onClose, onSave, products = [], warehouses = [] }) {
     const { business, currency } = useBusiness();
@@ -204,12 +212,12 @@ export function StockAdjustmentForm({ onClose, onSave, products = [], warehouses
                                         key={type.value}
                                         onClick={() => setFormData(prev => ({ ...prev, adjustment_type: type.value }))}
                                         className={`flex flex-col items-center gap-2 p-4 rounded-2xl border-2 transition-all ${isActive
-                                                ? `border-${type.color}-500 bg-${type.color}-50 shadow-lg`
+                                                ? ADJ_COLOR_CLASSES[type.color]?.active
                                                 : 'border-gray-200 bg-white hover:border-gray-300'
                                             }`}
                                     >
-                                        <TypeIcon className={`w-5 h-5 ${isActive ? `text-${type.color}-600` : 'text-gray-400'}`} />
-                                        <span className={`text-xs font-black uppercase tracking-widest ${isActive ? `text-${type.color}-700` : 'text-gray-500'}`}>
+                                        <TypeIcon className={`w-5 h-5 ${isActive ? ADJ_COLOR_CLASSES[type.color]?.icon : 'text-gray-400'}`} />
+                                        <span className={`text-xs font-black uppercase tracking-widest ${isActive ? ADJ_COLOR_CLASSES[type.color]?.text : 'text-gray-500'}`}>
                                             {type.label}
                                         </span>
                                     </button>
@@ -236,16 +244,18 @@ export function StockAdjustmentForm({ onClose, onSave, products = [], warehouses
                         </div>
                         <div className="space-y-2">
                             <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Warehouse</Label>
-                            <select
-                                className="w-full h-12 px-4 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 transition-all outline-none font-medium shadow-sm"
-                                value={formData.warehouse_id}
-                                onChange={(e) => setFormData(prev => ({ ...prev, warehouse_id: e.target.value }))}
-                            >
-                                <option value="">Default Warehouse</option>
-                                {warehouses.map(w => (
-                                    <option key={w.id} value={w.id}>{w.name}</option>
-                                ))}
-                            </select>
+                            <Combobox
+                                options={warehouses.map(w => ({
+                                    value: String(w.id),
+                                    label: w.name,
+                                    description: w.location || ''
+                                }))}
+                                value={String(formData.warehouse_id || '')}
+                                onChange={(val) => setFormData(prev => ({ ...prev, warehouse_id: val }))}
+                                placeholder="Select warehouse..."
+                                emptyText="No warehouses found"
+                                className="h-12"
+                            />
                         </div>
                     </div>
 
