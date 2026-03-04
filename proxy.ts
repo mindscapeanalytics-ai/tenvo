@@ -15,22 +15,40 @@ import { NextRequest, NextResponse } from 'next/server';
 const SESSION_COOKIE_NAME = 'better-auth.session_token';
 const SECURE_SESSION_COOKIE_NAME = '__Secure-better-auth.session_token';
 const RATE_LIMIT_WINDOW_MS = 60_000;
-const RATE_LIMIT_MAX_REQUESTS = 100;
+const RATE_LIMIT_MAX_REQUESTS = Number(process.env.RATE_LIMIT_MAX_REQUESTS || 120);
+const AUTH_RATE_LIMIT_MAX_REQUESTS = Number(process.env.AUTH_RATE_LIMIT_MAX_REQUESTS || 20);
+const ACTION_RATE_LIMIT_MAX_REQUESTS = Number(process.env.ACTION_RATE_LIMIT_MAX_REQUESTS || 80);
+const ENABLE_SERVER_ACTION_RATE_LIMIT = process.env.NODE_ENV === 'production';
 
 // ─── Rate Limiting State ───────────────────────────────────────────────────
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
 
-function isRateLimited(ip: string): boolean {
+function isRateLimited(key: string, maxRequests: number): boolean {
     const now = Date.now();
-    const entry = rateLimitMap.get(ip);
+    const entry = rateLimitMap.get(key);
 
     if (!entry || now > entry.resetTime) {
-        rateLimitMap.set(ip, { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS });
+        rateLimitMap.set(key, { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS });
         return false;
     }
 
     entry.count++;
-    return entry.count > RATE_LIMIT_MAX_REQUESTS;
+    return entry.count > maxRequests;
+}
+
+function getClientKey(request: NextRequest): string {
+    const forwarded = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
+    const realIp = request.headers.get('x-real-ip')?.trim();
+    const cfIp = request.headers.get('cf-connecting-ip')?.trim();
+    const ip = forwarded || realIp || cfIp;
+    if (ip) return ip;
+
+    const ua = request.headers.get('user-agent') || 'unknown-ua';
+    const sessionHint = request.cookies.get(SESSION_COOKIE_NAME)?.value ||
+        request.cookies.get(SECURE_SESSION_COOKIE_NAME)?.value ||
+        'anon';
+
+    return `${ua.slice(0, 80)}:${sessionHint.slice(0, 24)}`;
 }
 
 // Cleanup interval (standard singleton pattern for edge)
@@ -75,19 +93,39 @@ const AUTH_ROUTES = new Set(['/login', '/signup', '/register']);
 export async function proxy(request: NextRequest) {
     const { pathname } = request.nextUrl;
     const requestId = `req_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
+    const clientKey = getClientKey(request);
+    const isServerAction = request.method === 'POST' && request.headers.has('next-action');
 
-    // 0. Bypass Auth Internal
+    // 0. Auth endpoint rate limiting (brute-force protection)
     if (pathname.startsWith('/api/auth')) {
+        const authKey = `auth:${clientKey}`;
+        if (isRateLimited(authKey, AUTH_RATE_LIMIT_MAX_REQUESTS)) {
+            return new NextResponse(JSON.stringify({ error: 'Too many authentication attempts' }), {
+                status: 429,
+                headers: { 'Content-Type': 'application/json', 'X-Request-Id': requestId }
+            });
+        }
         return NextResponse.next();
     }
 
-    // 1. API Rate Limiting
+    // 1. API and Server Action Rate Limiting
     if (pathname.startsWith('/api/')) {
-        const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
-        if (isRateLimited(ip)) {
+        const key = `api:${clientKey}:${pathname}`;
+        if (isRateLimited(key, RATE_LIMIT_MAX_REQUESTS)) {
             return new NextResponse(JSON.stringify({ error: 'Too many requests' }), {
                 status: 429,
                 headers: { 'Content-Type': 'application/json', 'X-Request-Id': requestId }
+            });
+        }
+    }
+
+    if (isServerAction && ENABLE_SERVER_ACTION_RATE_LIMIT) {
+        const actionId = request.headers.get('next-action') || 'unknown-action';
+        const actionKey = `action:${clientKey}:${pathname}:${actionId}`;
+        if (isRateLimited(actionKey, ACTION_RATE_LIMIT_MAX_REQUESTS)) {
+            return new NextResponse('Too many server action requests', {
+                status: 429,
+                headers: { 'X-Request-Id': requestId }
             });
         }
     }

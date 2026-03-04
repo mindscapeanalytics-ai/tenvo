@@ -1,18 +1,18 @@
 'use client';
 
-import { useState } from 'react';
-import { Lock, Unlock, Calendar, Package, User } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Lock, Unlock, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { DatePicker } from '@/components/DatePicker';
 import { toast } from 'react-hot-toast';
 
-import { reserveStockAction, releaseStockAction } from '@/lib/actions/standard/inventory/stock';
+import { stockAPI } from '@/lib/api/stock';
 import { batchAPI } from '@/lib/api/batch';
+import { usePermissions } from '@/lib/hooks/usePermissions';
 
 /**
  * StockReservation Component
@@ -36,10 +36,16 @@ export function StockReservation({
   businessId,
   currency = 'PKR',
 }) {
+  const { can } = usePermissions();
+  const canViewInventory = can('inventory.view');
+  const canAdjustStock = can('inventory.adjust_stock');
+
   const [reservationList, setReservationList] = useState(reservations);
   const [batches, setBatches] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [releasingId, setReleasingId] = useState(null);
   const [formData, setFormData] = useState({
     productId: '',
     batchId: '',
@@ -50,6 +56,70 @@ export function StockReservation({
     reason: '',
     notes: '',
   });
+
+  const normalizeReservation = useCallback((reservation) => {
+    let parsedReference = {};
+    try {
+      parsedReference = reservation.reference ? JSON.parse(reservation.reference) : {};
+    } catch (error) {
+      parsedReference = {};
+    }
+
+    return {
+      ...reservation,
+      customerId: parsedReference.customerId || null,
+      orderId: parsedReference.orderId || null,
+      reason: parsedReference.reason || '',
+      notes: parsedReference.notes || '',
+    };
+  }, []);
+
+  const loadReservations = useCallback(async ({ runExpiry = true, silent = true } = {}) => {
+    if (!businessId) return;
+
+    try {
+      setIsSyncing(true);
+
+      if (runExpiry) {
+        await stockAPI.expireOverdueReservations(businessId, 500);
+      }
+
+      const data = await stockAPI.getReservations(businessId, 'all', 200);
+      const normalized = data.map(normalizeReservation);
+      setReservationList(normalized);
+
+      if (!silent) {
+        toast.success('Reservations synced');
+      }
+    } catch (error) {
+      console.error('Failed to load reservations:', error);
+      if (!silent) {
+        toast.error('Failed to sync reservations');
+      }
+    } finally {
+      setIsSyncing(false);
+    }
+  }, [businessId, normalizeReservation]);
+
+  useEffect(() => {
+    loadReservations({ runExpiry: true, silent: true });
+  }, [loadReservations]);
+
+  const handleExpireOverdueNow = async () => {
+    if (!businessId) return;
+
+    try {
+      setIsSyncing(true);
+      const result = await stockAPI.expireOverdueReservations(businessId, 1000);
+      await loadReservations({ runExpiry: false, silent: true });
+      toast.success(`Expired ${result.expiredCount || 0} overdue reservations`);
+    } catch (error) {
+      console.error('Failed to expire overdue reservations:', error);
+      toast.error('Failed to expire overdue reservations');
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   const loadBatches = async (productId) => {
     if (!productId || !businessId) return;
@@ -72,40 +142,42 @@ export function StockReservation({
       return;
     }
 
+    const selectedBatch = batches.find(b => b.id === formData.batchId);
+    const availableBatchQty = selectedBatch
+      ? ((Number(selectedBatch.quantity) || 0) - (Number(selectedBatch.reserved_quantity) || 0))
+      : null;
+
+    if (selectedBatch && Number(formData.quantity) > availableBatchQty) {
+      toast.error(`Requested quantity exceeds available batch stock (${availableBatchQty})`);
+      return;
+    }
+
+    if (formData.reservedUntil) {
+      const selectedDate = new Date(`${formData.reservedUntil}T23:59:59`);
+      if (selectedDate < new Date()) {
+        toast.error('Reserved Until cannot be in the past');
+        return;
+      }
+    }
+
     try {
       setLoading(true);
-      const res = await reserveStockAction({
-        businessId,
-        productId: formData.productId,
-        batchId: formData.batchId || null,
-        warehouseId: null,
-        quantity: Number(formData.quantity)
+      await stockAPI.reserve({
+        business_id: businessId,
+        product_id: formData.productId,
+        batch_id: formData.batchId || undefined,
+        warehouse_id: undefined,
+        quantity: Number(formData.quantity),
+        expires_at: formData.reservedUntil ? new Date(`${formData.reservedUntil}T00:00:00`) : undefined,
+        reference: JSON.stringify({
+          customerId: formData.customerId || null,
+          orderId: formData.orderId || null,
+          reason: formData.reason || '',
+          notes: formData.notes || ''
+        })
       });
 
-      if (!res.success) {
-        throw new Error(res.error);
-      }
-
-      const product = products.find(p => p.id === formData.productId);
-      const batch = batches.find(b => b.id === formData.batchId);
-
-      const reservation = {
-        id: Date.now(), // Real app should get from DB if we had a reservations table
-        batchId: formData.batchId,
-        batchNumber: batch?.batch_number,
-        productId: formData.productId,
-        productName: product?.name || 'Unknown',
-        quantity: Number(formData.quantity),
-        customerId: formData.customerId || null,
-        orderId: formData.orderId || null,
-        reservedUntil: formData.reservedUntil || '',
-        reason: formData.reason || '',
-        notes: formData.notes || '',
-        status: 'active',
-        createdAt: new Date().toISOString(),
-      };
-
-      setReservationList(prev => [reservation, ...prev]);
+      await loadReservations({ runExpiry: false, silent: true });
       toast.success('Stock reserved successfully');
       setShowForm(false);
       resetForm();
@@ -125,25 +197,22 @@ export function StockReservation({
 
     try {
       setLoading(true);
-      const result = await releaseStockAction({
-        businessId,
-        batchId: res.batchId,
+      setReleasingId(res.id);
+      await stockAPI.release({
+        business_id: businessId,
+        reservation_id: res.id,
+        batch_id: res.batchId,
         quantity: res.quantity
       });
 
-      if (!result.success) {
-        throw new Error(result.error);
-      }
-
-      setReservationList(prev => prev.map(r =>
-        r.id === res.id ? { ...r, status: 'released', releasedAt: new Date().toISOString() } : r
-      ));
+      await loadReservations({ runExpiry: false, silent: true });
       toast.success('Stock released successfully');
     } catch (err) {
       console.error(err);
       toast.error(err.message || 'Failed to release stock');
     } finally {
       setLoading(false);
+      setReleasingId(null);
     }
   };
 
@@ -163,6 +232,14 @@ export function StockReservation({
 
   const activeReservations = reservationList.filter(r => r.status === 'active');
   const totalReserved = activeReservations.reduce((sum, r) => sum + r.quantity, 0);
+  const now = useMemo(() => new Date(), [reservationList.length, isSyncing]);
+  const twoDaysAhead = useMemo(() => new Date(Date.now() + (48 * 60 * 60 * 1000)), [reservationList.length, isSyncing]);
+  const expiringSoonCount = activeReservations.filter(r => {
+    if (!r.reservedUntil) return false;
+    const d = new Date(r.reservedUntil);
+    return d >= now && d <= twoDaysAhead;
+  }).length;
+  const expiredCount = reservationList.filter(r => r.status === 'expired').length;
 
   return (
     <div className="space-y-6">
@@ -171,9 +248,26 @@ export function StockReservation({
           <h3 className="text-xl font-bold">Stock Reservations</h3>
           <p className="text-sm text-gray-500">Reserve stock for orders and customers</p>
         </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => loadReservations({ runExpiry: true, silent: false })}
+            disabled={isSyncing || loading || !canViewInventory}
+          >
+            <RefreshCw className={`w-4 h-4 mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+          <Button
+            variant="outline"
+            onClick={handleExpireOverdueNow}
+            disabled={isSyncing || loading || !canAdjustStock}
+          >
+            Expire Overdue
+          </Button>
+        </div>
         <Dialog open={showForm} onOpenChange={setShowForm}>
           <DialogTrigger asChild>
-            <Button onClick={resetForm}>
+            <Button onClick={resetForm} disabled={!canAdjustStock}>
               <Lock className="w-4 h-4 mr-2" />
               Reserve Stock
             </Button>
@@ -301,7 +395,7 @@ export function StockReservation({
                 <Button variant="outline" onClick={() => { setShowForm(false); resetForm(); }}>
                   Cancel
                 </Button>
-                <Button onClick={handleReserve} disabled={loading || !formData.productId || !formData.batchId || formData.quantity <= 0}>
+                <Button onClick={handleReserve} disabled={loading || !canAdjustStock || !formData.productId || !formData.batchId || formData.quantity <= 0}>
                   {loading ? 'Reserving...' : 'Reserve Stock'}
                 </Button>
               </div>
@@ -311,7 +405,7 @@ export function StockReservation({
       </div>
 
       {/* Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Active Reservations</CardTitle>
@@ -330,11 +424,19 @@ export function StockReservation({
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Released</CardTitle>
+            <CardTitle className="text-sm font-medium">Expiring (48h)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-amber-600">{expiringSoonCount}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Released/Expired</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {reservationList.filter(r => r.status === 'released').length}
+              {reservationList.filter(r => r.status === 'completed').length + expiredCount}
             </div>
           </CardContent>
         </Card>
@@ -350,6 +452,10 @@ export function StockReservation({
             {reservationList.map((reservation) => {
               const product = products.find(p => p.id === reservation.productId);
               const customer = customers.find(c => c.id === reservation.customerId);
+              const isActive = reservation.status === 'active';
+              const isExpired = reservation.status === 'expired';
+              const untilDate = reservation.reservedUntil ? new Date(reservation.reservedUntil) : null;
+              const isExpiringSoon = isActive && untilDate && untilDate >= now && untilDate <= twoDaysAhead;
               return (
                 <div
                   key={reservation.id}
@@ -357,7 +463,7 @@ export function StockReservation({
                 >
                   <div className="flex items-center gap-4 flex-1">
                     <div className="flex items-center gap-2">
-                      {reservation.status === 'active' ? (
+                      {isActive ? (
                         <Lock className="w-5 h-5 text-blue-600" />
                       ) : (
                         <Unlock className="w-5 h-5 text-gray-400" />
@@ -372,24 +478,34 @@ export function StockReservation({
                         </div>
                         {reservation.reservedUntil && (
                           <div className="text-xs text-gray-400 mt-1">
-                            Until: {new Date(reservation.reservedUntil + 'T00:00:00').toLocaleDateString()}
+                            Until: {new Date(reservation.reservedUntil).toLocaleDateString()}
+                          </div>
+                        )}
+                        {(reservation.createdAt || reservation.updatedAt) && (
+                          <div className="text-xs text-gray-400 mt-1">
+                            Created: {reservation.createdAt ? new Date(reservation.createdAt).toLocaleString() : 'N/A'}
+                          </div>
+                        )}
+                        {reservation.reason && (
+                          <div className="text-xs text-gray-500 mt-1">
+                            Reason: {reservation.reason}
                           </div>
                         )}
                       </div>
                     </div>
-                    <Badge variant={reservation.status === 'active' ? 'default' : 'secondary'}>
-                      {reservation.status}
+                    <Badge variant={isActive ? 'default' : 'secondary'}>
+                      {isActive ? (isExpiringSoon ? 'expiring soon' : 'active') : (isExpired ? 'expired' : 'completed')}
                     </Badge>
                   </div>
-                  {reservation.status === 'active' && (
+                  {isActive && (
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => handleRelease(reservation)}
-                      disabled={loading}
+                      disabled={loading || releasingId === reservation.id || !canAdjustStock}
                     >
                       <Unlock className="w-4 h-4 mr-2" />
-                      {loading ? 'Releasing...' : 'Release'}
+                      {releasingId === reservation.id ? 'Releasing...' : 'Release'}
                     </Button>
                   )}
                 </div>

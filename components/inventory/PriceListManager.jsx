@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Plus, Trash2, Edit, DollarSign, Users, Package } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,6 +31,7 @@ export function PriceListManager({
   const [lists, setLists] = useState(priceLists);
   const [showForm, setShowForm] = useState(false);
   const [editingList, setEditingList] = useState(null);
+  const counterRef = useRef(Date.now());
   const [formData, setFormData] = useState({
     name: '',
     type: 'standard', // standard, customer, quantity, seasonal, promotional
@@ -52,7 +53,7 @@ export function PriceListManager({
   const handleSave = () => {
     const listData = {
       ...formData,
-      id: editingList?.id || Date.now(),
+      id: editingList?.id || counterRef.current++,
       updatedAt: new Date().toISOString(),
     };
 

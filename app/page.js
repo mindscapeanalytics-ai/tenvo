@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import * as LucideIcons from 'lucide-react';
 import {
-  Quote, Calendar, Clock, Lock, Layers, Briefcase, Award, Factory, ChevronRight, Store, Globe, Package, ShoppingCart, TrendingUp, Receipt, Building2, Smartphone, Shield, Users, Menu, X, ChevronDown, Check, PieChart, Zap, BarChart3, FileText, ArrowRight, Star, Target, DollarSign, CreditCard, FileCheck, Database, Tag, Cloud, Rocket
+  Quote, Briefcase, Factory, ChevronRight, Store, Globe, Package, TrendingUp, Receipt, Building2, Shield, Menu, X, ChevronDown, PieChart, ArrowRight, Cloud, Rocket
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { domainKnowledge } from '@/lib/domainKnowledge';
@@ -23,7 +23,6 @@ export default function Home() {
   const { business, loading: businessLoading } = useBusiness();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [expandedMenu, setExpandedMenu] = useState(null);
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   // Auto-redirect to dashboard if logged in - REMOVED to allow visiting landing page
   /*
@@ -33,20 +32,6 @@ export default function Home() {
     }
   }, [user, business, authLoading, businessLoading, router]);
   */
-
-  // High-quality professional imagery
-  const inventoryImages = [
-    'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=1200&h=800&fit=crop', // Business Analytics
-    'https://images.unsplash.com/photo-1556742049-0cfed4f7a07d?w=1200&h=800&fit=crop', // Payment
-    'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=1200&h=800&fit=crop', // Warehouse
-  ];
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentImageIndex((prev) => (prev + 1) % inventoryImages.length);
-    }, 6000);
-    return () => clearInterval(interval);
-  }, []);
 
   const toggleMenu = (menu) => {
     setExpandedMenu(expandedMenu === menu ? null : menu);
@@ -97,8 +82,8 @@ export default function Home() {
                   </div>
                 </NavDropdown>
 
-                <button className="text-sm font-bold text-gray-600 hover:text-wine transition-colors">Enterprise</button>
-                <button className="text-sm font-bold text-gray-600 hover:text-wine transition-colors">Pricing</button>
+                <button className="text-sm font-bold text-gray-600 hover:text-wine transition-colors" onClick={() => document.getElementById('operations')?.scrollIntoView({ behavior: 'smooth' })}>Enterprise</button>
+                <button className="text-sm font-bold text-gray-600 hover:text-wine transition-colors" onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })}>Pricing</button>
               </div>
 
               <div className="h-4 w-px bg-gray-200 mx-2" />
@@ -152,7 +137,7 @@ export default function Home() {
 
 
       {/* --- Hero Section --- */}
-      <section className="relative pt-24 pb-32 overflow-hidden">
+      <section className="relative pt-24 pb-28 overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12">
           <div className="grid lg:grid-cols-2 gap-20 items-center">
             <div className="space-y-10 animate-in fade-in slide-in-from-bottom-12 duration-1000">
@@ -164,7 +149,7 @@ export default function Home() {
                 V4.0 Enterprise Edition
               </div>
 
-              <h1 className="text-6xl md:text-7xl font-black tracking-tighter text-gray-900 leading-[0.95]">
+              <h1 className="text-5xl md:text-7xl font-black tracking-tighter text-gray-900 leading-[0.95]">
                 The Intelligent <br />
                 <span className="text-wine">Operating System</span> <br />
                 for Pakistan.
@@ -203,14 +188,14 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Hero Visual */}
+            {/* Hero Visual - Product-led 2 Column */}
             <div className="relative group perspective-1000">
               <div className="relative rounded-[40px] overflow-hidden shadow-[0_50px_100px_-20px_rgba(0,0,0,0.15)] border border-gray-100 bg-white p-4">
                 <div className="relative rounded-[32px] overflow-hidden aspect-[4/3]">
                   <img
-                    src={inventoryImages[currentImageIndex]}
-                    alt="Dashboard Preview"
-                    className="w-full h-full object-cover transition-all duration-1000 scale-105 group-hover:scale-100"
+                    src="/industrial_hero_image.png"
+                    alt="TENVO Inventory and Operations Dashboard"
+                    className="w-full h-full object-cover transition-all duration-700 group-hover:scale-[1.02]"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
                 </div>
@@ -227,6 +212,14 @@ export default function Home() {
                     </div>
                   </div>
                 </div>
+
+                <div className="absolute -bottom-10 right-8 hidden xl:block w-56 rounded-2xl border border-gray-100 bg-white p-2 shadow-2xl">
+                  <img
+                    src="/retail_hero_image.png"
+                    alt="TENVO retail terminal"
+                    className="w-full h-28 object-cover rounded-xl"
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -234,8 +227,46 @@ export default function Home() {
       </section>
 
 
+      {/* --- Missing Section: Operations Flow --- */}
+      <section id="operations" className="py-24 bg-white border-y border-gray-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12">
+          <div className="text-center max-w-3xl mx-auto mb-16 space-y-4">
+            <h2 className="text-[11px] font-black text-wine uppercase tracking-[0.3em]">How It Works</h2>
+            <h3 className="text-4xl md:text-5xl font-black text-gray-900 tracking-tighter">One flow. Full control.</h3>
+            <p className="text-lg text-gray-500 font-medium">From receiving stock to financial close, every movement stays connected, auditable, and real-time.</p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-8">
+            <div className="rounded-[28px] border border-gray-100 p-8 bg-gray-50/40">
+              <div className="w-12 h-12 rounded-2xl bg-white border border-gray-100 flex items-center justify-center mb-6">
+                <Package className="w-6 h-6 text-wine" />
+              </div>
+              <h4 className="text-2xl font-black text-gray-900 tracking-tight">Capture</h4>
+              <p className="text-gray-500 font-medium mt-3">Create products, batches, serials, and warehouse locations with enterprise-grade validation.</p>
+            </div>
+
+            <div className="rounded-[28px] border border-gray-100 p-8 bg-gray-50/40">
+              <div className="w-12 h-12 rounded-2xl bg-white border border-gray-100 flex items-center justify-center mb-6">
+                <TrendingUp className="w-6 h-6 text-wine" />
+              </div>
+              <h4 className="text-2xl font-black text-gray-900 tracking-tight">Operate</h4>
+              <p className="text-gray-500 font-medium mt-3">Run reservations, transfers, adjustments, and auto-reorder from a single operational cockpit.</p>
+            </div>
+
+            <div className="rounded-[28px] border border-gray-100 p-8 bg-gray-50/40">
+              <div className="w-12 h-12 rounded-2xl bg-white border border-gray-100 flex items-center justify-center mb-6">
+                <Shield className="w-6 h-6 text-wine" />
+              </div>
+              <h4 className="text-2xl font-black text-gray-900 tracking-tight">Control</h4>
+              <p className="text-gray-500 font-medium mt-3">Maintain audit-ready traceability with role-based permissions and compliance-first workflows.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+
       {/* --- Features Grid --- */}
-      <section className="py-32 bg-gray-50/50 relative">
+      <section id="features" className="py-32 bg-gray-50/50 relative">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12">
           <div className="text-center max-w-3xl mx-auto mb-24 space-y-4">
             <h2 className="text-[11px] font-black text-wine uppercase tracking-[0.3em] mb-4">Enterprise Capabilities</h2>
@@ -289,7 +320,7 @@ export default function Home() {
               <h2 className="text-[11px] font-black text-wine uppercase tracking-[0.3em] mb-4">Market Verticals</h2>
               <h3 className="text-4xl font-black text-gray-900 tracking-tighter">Localized for your Industry</h3>
               <p className="text-gray-500 font-medium text-lg leading-relaxed">
-                We've built specialized ERP frameworks pre-configured for Pakistan's most critical business sectors.
+                We&apos;ve built specialized ERP frameworks pre-configured for Pakistan&apos;s most critical business sectors.
               </p>
             </div>
             <Button variant="ghost" className="font-bold text-wine hover:bg-wine/5 px-8 h-12 rounded-xl" onClick={() => router.push('/register')}>
@@ -489,7 +520,7 @@ function TestimonialCard({ quote, author, role }) {
   return (
     <div className="bg-white/5 backdrop-blur-md p-10 rounded-[40px] border border-white/10 relative group hover:bg-white/10 transition-all duration-500">
       <Quote className="w-10 h-10 mb-8 text-white/20" />
-      <p className="text-xl leading-relaxed mb-8 font-bold text-white/90 italic">"{quote}"</p>
+      <p className="text-xl leading-relaxed mb-8 font-bold text-white/90 italic">&ldquo;{quote}&rdquo;</p>
       <div>
         <div className="font-black text-white uppercase tracking-widest text-[10px]">{author}</div>
         <div className="text-xs text-white/40 font-bold mt-1">{role}</div>

@@ -1,7 +1,7 @@
 // This file usually uses formatCurrency, but checking for hardcoded symbols
 
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { X, Plus, Trash2, Download, Printer, Save, Calculator, FileText, Loader2, Scan, Keyboard, AlertCircle, ShoppingCart } from 'lucide-react';
+import { X, Plus, Trash2, Download, Printer, Save, Calculator, FileText, Loader2, Scan, Keyboard, AlertCircle, ShoppingCart, WandSparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -13,7 +13,7 @@ import { calculatePakistaniTax, generateFBRInvoice, formatNTN, getTaxCategoryFor
 import { getDomainKnowledge } from '@/lib/domainKnowledge';
 import { getDomainTheme, getDomainDefaults, getDomainUnits, getDomainUnits as getUnits, getDomainProductFields, getDomainInvoiceColumns } from '@/lib/utils/domainHelpers';
 import { getDomainColors } from '@/lib/domainColors';
-import { formatCurrency, formatAmount, calculateTax as baseCalculateTax } from '@/lib/utils/formatting';
+import { formatCurrency } from '@/lib/utils/formatting';
 import { getTaxStrategy } from '@/lib/utils/taxStrategies';
 import { cn } from '@/lib/utils';
 import { Combobox } from '@/components/ui/combobox';
@@ -54,6 +54,51 @@ export function EnhancedInvoiceBuilder({
   const isPakistaniDomain = standards.countryCode === 'PK';
   const currencySymbol = business?.settings?.financials?.currencySymbol || standards.currencySymbol;
 
+  const normalizeProvince = (value = 'punjab') => {
+    const raw = String(value || '').trim().toLowerCase();
+    const map = {
+      punjab: 'punjab',
+      sindh: 'sindh',
+      kp: 'kp',
+      kpk: 'kp',
+      'khyber pakhtunkhwa': 'kp',
+      balochistan: 'balochistan',
+      'islamabad (federal)': 'islamabad',
+      islamabad: 'islamabad',
+    };
+    return map[raw] || 'punjab';
+  };
+
+  const mapPreferredPaymentMethod = (value) => {
+    const raw = String(value || '').trim().toLowerCase();
+    if (!raw) return null;
+    if (raw.includes('jazz')) return 'jazzcash';
+    if (raw.includes('easy')) return 'easypaisa';
+    if (raw.includes('payfast') || raw.includes('card')) return 'payfast';
+    if (raw.includes('bank')) return 'bank_transfer';
+    if (raw.includes('cod') || raw.includes('cash on delivery') || raw === 'cash') return 'cod';
+    return null;
+  };
+
+  const extractCreditDays = (customer) => {
+    const direct = Number(customer?.credit_days || customer?.creditDays || 0);
+    if (Number.isFinite(direct) && direct > 0) return direct;
+    const term = String(customer?.payment_terms || customer?.paymentTerms || '').match(/(\d{1,3})/);
+    const parsed = Number(term?.[1] || 0);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+  };
+
+  const addDaysLocal = (dateString, daysToAdd) => {
+    const [year, month, day] = String(dateString || '').split('-').map(Number);
+    if (!year || !month || !day) return '';
+    const localDate = new Date(year, month - 1, day);
+    localDate.setDate(localDate.getDate() + Number(daysToAdd || 0));
+    const y = localDate.getFullYear();
+    const m = String(localDate.getMonth() + 1).padStart(2, '0');
+    const d = String(localDate.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  };
+
   // Initialize invoice state with conditional fields
   const [invoice, setInvoice] = useState(() => {
     const baseInvoice = {
@@ -69,6 +114,7 @@ export function EnhancedInvoiceBuilder({
         address: '',
         taxId: '',
         secondaryTaxId: '',
+        province: 'punjab',
       },
       items: [],
       taxDetails: {
@@ -130,6 +176,8 @@ export function EnhancedInvoiceBuilder({
           email: initialData.customer_email || customerDetail.email || '',
           phone: customerDetail.phone || '',
           address: initialData.delivery_address || customerDetail.address || '',
+          taxId: initialData.customer_tax_id || initialData.customer?.taxId || customerDetail.tax_id || customerDetail.ntn || customerDetail.gstin || '',
+          province: normalizeProvince(initialData.customer?.province || customerDetail.province || 'punjab'),
           ...customerDetail,
         },
         items: mappedItems,
@@ -150,7 +198,7 @@ export function EnhancedInvoiceBuilder({
     if (autoDueDate && !invoice.dueDate) {
       setInvoice(prev => ({ ...prev, dueDate: autoDueDate }));
     }
-  }, [autoDueDate]);
+  }, [autoDueDate, invoice.dueDate]);
 
   // Find selected customer for credit limit check
   const selectedCustomerData = useMemo(() => {
@@ -160,6 +208,8 @@ export function EnhancedInvoiceBuilder({
 
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [isDueDateManuallyEdited, setIsDueDateManuallyEdited] = useState(Boolean(initialData?.due_date || initialData?.dueDate));
+  const [smartDraftMeta, setSmartDraftMeta] = useState(null);
   const [showTaxCalculator, setShowTaxCalculator] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const isSubmittingRef = useRef(false); // Submission lock
@@ -169,11 +219,25 @@ export function EnhancedInvoiceBuilder({
 
   // Update item field (Hoisted for use in barcode scan)
   const updateItem = (id, field, value) => {
+    const clampNumber = (num, min, max) => Math.min(max, Math.max(min, num));
+
     setInvoice(prev => ({
       ...prev,
       items: prev.items.map(item => {
         if (item.id === id) {
-          const updated = { ...item, [field]: value };
+          let normalizedValue = value;
+
+          if (field === 'quantity') {
+            normalizedValue = clampNumber(Number(value) || 0, 0, 999999);
+          }
+          if (field === 'rate' || field === 'amount') {
+            normalizedValue = clampNumber(Number(value) || 0, 0, 999999999);
+          }
+          if (field === 'discount' || field === 'taxPercent') {
+            normalizedValue = clampNumber(Number(value) || 0, 0, 100);
+          }
+
+          const updated = { ...item, [field]: normalizedValue };
 
           // Auto-fill from product
           if (field === 'productId' && value) {
@@ -204,7 +268,7 @@ export function EnhancedInvoiceBuilder({
             const discFactor = 1 - (discPerc / 100);
 
             if (qty > 0 && discFactor > 0 && taxFactor > 0) {
-              updated.rate = value / (qty * discFactor * taxFactor);
+              updated.rate = normalizedValue / (qty * discFactor * taxFactor);
             }
           }
 
@@ -263,22 +327,22 @@ export function EnhancedInvoiceBuilder({
     const taxResult = strategy.calculateBulk(itemsForTax, standards);
     const totalTax = taxResult.totalTax;
 
-    const total = finalSubtotal + totalTax;
-    const roundedTotal = Math.round(total);
-    const roundOff = roundedTotal - total;
+    const total = Number((finalSubtotal + totalTax).toFixed(2));
+    const manualRoundOff = Number(invoice.roundOff || 0) || 0;
+    const grandTotal = Number((total + manualRoundOff).toFixed(2));
 
     return {
       subtotal: finalSubtotal,
       totalTax,
       tax_total: totalTax,
       taxDetails: taxResult.details,
-      total: roundedTotal,
-      grand_total: roundedTotal,
-      roundOff,
+      total: grandTotal,
+      grand_total: grandTotal,
+      roundOff: manualRoundOff,
       discount: discountAmount,
       discount_total: discountAmount,
     };
-  }, [invoice.items, invoice.discount, invoice.discountType, standards, category]);
+  }, [invoice.items, invoice.discount, invoice.discountType, invoice.roundOff, standards, category]);
 
   // Credit limit warning
   const creditWarning = useCreditLimitCheck(selectedCustomerData, calculateTotals.total);
@@ -317,34 +381,75 @@ export function EnhancedInvoiceBuilder({
   };
 
   // Update customer details when selected
-  useEffect(() => {
-    if (selectedCustomer) {
-      setInvoice(prev => ({
+  const applyCustomerProfile = (customer, preserveDueDate = false) => {
+    if (!customer) return;
+
+    const preferredGateway = mapPreferredPaymentMethod(
+      customer.preferred_payment_method || customer.payment_method || customer.preferredPaymentMethod
+    );
+    const creditDays = extractCreditDays(customer);
+
+    setInvoice(prev => {
+      const computedDueDate = creditDays > 0
+        ? addDaysLocal(prev.date || new Date().toISOString().split('T')[0], creditDays)
+        : '';
+
+      return {
         ...prev,
+        paymentMethod: preferredGateway || prev.paymentMethod,
+        dueDate: preserveDueDate ? prev.dueDate : (computedDueDate || prev.dueDate),
         customer: {
           ...prev.customer,
-          ...selectedCustomer,
-          // Preserve existing tax fields if not in customer data
-          gstin: selectedCustomer.gstin || prev.customer.gstin,
-          ntn: selectedCustomer.ntn || prev.customer.ntn,
-          srn: selectedCustomer.srn || prev.customer.srn,
+          id: customer.id || prev.customer.id,
+          name: customer.name || prev.customer.name,
+          email: customer.email || prev.customer.email,
+          phone: customer.phone || prev.customer.phone,
+          address: customer.address || customer.delivery_address || prev.customer.address,
+          taxId: customer.tax_id || customer.ntn || customer.gstin || prev.customer.taxId,
+          secondaryTaxId: customer.srn || prev.customer.secondaryTaxId,
+          province: normalizeProvince(customer.province || prev.customer.province || 'punjab'),
+          credit_limit: Number(customer.credit_limit || customer.creditLimit || prev.customer.credit_limit || 0),
+          outstanding_balance: Number(customer.outstanding_balance || customer.outstandingBalance || prev.customer.outstanding_balance || 0),
         }
-      }));
+      };
+    });
+
+    if (!preserveDueDate) {
+      setIsDueDateManuallyEdited(false);
+    }
+  };
+
+  useEffect(() => {
+    if (selectedCustomer) {
+      applyCustomerProfile(selectedCustomer, isDueDateManuallyEdited);
     }
   }, [selectedCustomer]);
 
+  useEffect(() => {
+    if (!selectedCustomer || isDueDateManuallyEdited) return;
+    const creditDays = extractCreditDays(selectedCustomer);
+    if (creditDays <= 0) return;
+
+    const recomputedDueDate = addDaysLocal(invoice.date || new Date().toISOString().split('T')[0], creditDays);
+
+    if (invoice.dueDate !== recomputedDueDate) {
+      setInvoice(prev => ({ ...prev, dueDate: recomputedDueDate }));
+    }
+  }, [invoice.date, selectedCustomer, isDueDateManuallyEdited]);
+
   // Add item to invoice
   const addItem = () => {
+    const lastItem = invoice.items[invoice.items.length - 1];
     const newItem = {
       id: Date.now(),
       productId: '',
       name: '',
       hsn: '',
       quantity: 1,
-      unit: 'pcs',
+      unit: lastItem?.unit || 'pcs',
       rate: 0,
       discount: 0,
-      taxPercent: isPakistaniDomain ? 18 : 0, // Default 18% for Pakistan (Latest)
+      taxPercent: lastItem?.taxPercent ?? (isPakistaniDomain ? 18 : 0),
       amount: 0,
       taxCategory: isPakistaniDomain ? getTaxCategoryForDomain(category) : 'retail-standard',
     };
@@ -352,6 +457,105 @@ export function EnhancedInvoiceBuilder({
       ...prev,
       items: [...prev.items, newItem]
     }));
+  };
+
+  const applySmartDraft = (scope = 'items') => {
+    if (!products?.length) {
+      toast.error('No products available for smart draft');
+      return;
+    }
+
+    if (invoice.items.length > 0) {
+      const proceed = confirm('Smart Draft will replace current line items. Continue?');
+      if (!proceed) return;
+    }
+
+    const domainHint = String(category || '').split('-')[0].toLowerCase();
+    const getCustomerScore = (customer) => {
+      const spend = Number(customer?.total_spent || customer?.lifetime_value || 0) || 0;
+      const orders = Number(customer?.order_count || customer?.total_orders || 0) || 0;
+      const outstanding = Number(customer?.outstanding_balance || 0) || 0;
+      const contactBonus = customer?.phone || customer?.email ? 200 : 0;
+      return (spend * 0.1) + (orders * 50) - (outstanding * 0.05) + contactBonus;
+    };
+
+    const getProductScore = (product) => {
+      const sold = Number(product?.total_sold || product?.sales_count || product?.sold_quantity || 0) || 0;
+      const stock = Number(product?.stock || 0) || 0;
+      const categoryMatch = String(product?.category || '').toLowerCase().includes(domainHint) ? 150 : 0;
+      return (sold * 20) + (stock * 2) + categoryMatch;
+    };
+
+    const recommendedCustomer = [...(customers || [])]
+      .filter(c => c?.id)
+      .sort((a, b) => getCustomerScore(b) - getCustomerScore(a))[0] || null;
+
+    const candidateProducts = [...products]
+      .filter(product => {
+        const price = Number(product?.price || product?.selling_price || 0) || 0;
+        return product?.is_active !== false && price > 0;
+      })
+      .sort((a, b) => getProductScore(b) - getProductScore(a))
+      .slice(0, 3);
+
+    if (candidateProducts.length === 0) {
+      toast.error('No priced products available for smart draft');
+      return;
+    }
+
+    const suggestedItems = candidateProducts.map((product, index) => {
+      const quantity = 1;
+      const rate = Number(product?.price || product?.selling_price || 0) || 0;
+      const taxPercent = Number(product?.taxPercent || product?.tax_percent || (isPakistaniDomain ? 18 : 0)) || 0;
+      const amount = rate + ((rate * taxPercent) / 100);
+
+      return {
+        id: Date.now() + index,
+        productId: product.id,
+        name: product.name || 'Item',
+        hsn: product.hsn || product.hsn_code || product.hsnCode || '',
+        quantity,
+        unit: product.unit || 'pcs',
+        rate,
+        discount: 0,
+        taxPercent,
+        amount,
+        taxCategory: isPakistaniDomain ? getTaxCategoryForDomain(category) : 'retail-standard',
+        article_no: product?.domain_data?.articleno || product?.domain_data?.article_no || '',
+        design_no: product?.domain_data?.designno || product?.domain_data?.design_no || '',
+        fabric_type: product?.domain_data?.fabrictype || product?.domain_data?.fabric_type || '',
+      };
+    });
+
+    const hasManualCustomer = Boolean(invoice.customer?.id || invoice.customer?.name);
+    const shouldApplyCustomer = scope === 'full' && recommendedCustomer;
+
+    if (shouldApplyCustomer) {
+      setSelectedCustomer(recommendedCustomer);
+      applyCustomerProfile(recommendedCustomer, false);
+    }
+
+    setInvoice(prev => ({
+      ...prev,
+      items: suggestedItems,
+      notes: prev.notes || `Smart draft generated for ${category.replace('-', ' ')} workflow.`,
+    }));
+
+    setSmartDraftMeta({
+      generatedAt: new Date().toISOString(),
+      customerLabel: shouldApplyCustomer
+        ? (recommendedCustomer?.name || 'No customer recommendation')
+        : (invoice.customer?.name || 'Customer unchanged'),
+      productLabels: suggestedItems.map(item => item.name).slice(0, 3),
+      customerMode: shouldApplyCustomer ? 'recommended' : (hasManualCustomer ? 'preserved' : 'unchanged'),
+      scope,
+    });
+
+    toast.success(
+      scope === 'full'
+        ? `Smart draft applied (customer + ${suggestedItems.length} item${suggestedItems.length > 1 ? 's' : ''})`
+        : `Smart items applied (${suggestedItems.length} suggestion${suggestedItems.length > 1 ? 's' : ''})`
+    );
   };
 
 
@@ -367,6 +571,20 @@ export function EnhancedInvoiceBuilder({
 
 
   const totals = calculateTotals;
+
+  const postingHealth = useMemo(() => {
+    const debit = Number(totals.total) || 0;
+    const tax = Number(totals.totalTax || totals.tax_total || 0) || 0;
+    const revenue = Math.max(0, debit - tax);
+    const credit = revenue + tax;
+    const difference = Math.abs(debit - credit);
+    return {
+      debit,
+      credit,
+      balanced: difference < 0.01,
+      difference,
+    };
+  }, [totals]);
 
   // Keyboard Shortcuts (Re-inserted here to access totals)
   useEffect(() => {
@@ -392,6 +610,22 @@ export function EnhancedInvoiceBuilder({
 
   // Handle save with validation
   const handleSave = async () => {
+    if (!invoice.items.length) {
+      toast.error('Add at least one item before finalizing invoice');
+      return;
+    }
+
+    const invalidRowIndex = invoice.items.findIndex(item => {
+      const quantity = Number(item.quantity || 0);
+      const rate = Number(item.rate || 0);
+      return !item.name || quantity <= 0 || rate < 0;
+    });
+
+    if (invalidRowIndex !== -1) {
+      toast.error(`Please complete row ${invalidRowIndex + 1} (item, quantity, rate)`);
+      return;
+    }
+
     // Zod schema validation
     const schemaData = {
       business_id: business?.id,
@@ -400,15 +634,15 @@ export function EnhancedInvoiceBuilder({
       date: invoice.date || new Date().toISOString(),
       due_date: invoice.dueDate || null,
       items: invoice.items.map(item => ({
-        product_id: item.product_id || item.id || null,
+        product_id: item.productId || item.product_id || null,
         name: item.name || item.description || 'Item',
         quantity: Number(item.quantity || 0),
         unit_price: Number(item.rate || item.unit_price || 0),
         tax_percent: Number(item.taxPercent || 17),
-        discount_amount: Number(item.discount || 0),
+        discount_amount: ((Number(item.quantity || 0) * Number(item.rate || 0)) * Number(item.discount || 0)) / 100,
       })),
       subtotal: totals.subtotal || 0,
-      total_tax: totals.tax || 0,
+      total_tax: totals.totalTax || totals.tax_total || 0,
       discount_total: totals.discount || 0,
       grand_total: totals.total || 0,
       status: 'draft',
@@ -428,9 +662,14 @@ export function EnhancedInvoiceBuilder({
       return;
     }
 
+    if (!postingHealth.balanced) {
+      toast.error(`Posting check failed: debit ${postingHealth.debit.toFixed(2)} vs credit ${postingHealth.credit.toFixed(2)}`);
+      return;
+    }
+
     if (isPakistaniDomain) {
       // NTN is optional but recommended
-      if (!invoice.customer.ntn && invoice.invoiceType === 'fbr') {
+      if (!invoice.customer.taxId && invoice.invoiceType === 'fbr') {
         const proceed = confirm('NTN not provided. Continue anyway?');
         if (!proceed) return;
       }
@@ -470,7 +709,7 @@ export function EnhancedInvoiceBuilder({
       // Success toast handled by parent
     } catch (error) {
       console.error('Error saving invoice:', error);
-      toast.error('Failed to save invoice. Please try again.');
+      toast.error(error?.message || 'Failed to save invoice. Please try again.');
       isSubmittingRef.current = false; // Reset only on error
     } finally {
       setIsSaving(false);
@@ -613,7 +852,10 @@ export function EnhancedInvoiceBuilder({
               <Input
                 type="date"
                 value={invoice.dueDate || ''}
-                onChange={(e) => setInvoice({ ...invoice, dueDate: e.target.value })}
+                onChange={(e) => {
+                  setIsDueDateManuallyEdited(true);
+                  setInvoice({ ...invoice, dueDate: e.target.value });
+                }}
               />
             </div>
             <div>
@@ -643,10 +885,13 @@ export function EnhancedInvoiceBuilder({
                     label: c.name,
                     description: c.phone || c.email || ''
                   }))}
-                  value=""
+                  value={String(invoice.customer?.id || '')}
                   onChange={(val) => {
                     const customer = customers.find(c => String(c.id) === String(val));
-                    if (customer) setSelectedCustomer(customer);
+                    if (customer) {
+                      setSelectedCustomer(customer);
+                      applyCustomerProfile(customer, isDueDateManuallyEdited);
+                    }
                   }}
                   placeholder="Search customers..."
                   emptyText="No customers found"
@@ -675,6 +920,19 @@ export function EnhancedInvoiceBuilder({
                     ...invoice,
                     customer: { ...invoice.customer, taxId: e.target.value }
                   })}
+                  onBlur={() => {
+                    const entered = String(invoice.customer.taxId || '').trim().toLowerCase();
+                    if (!entered || selectedCustomer) return;
+                    const matched = customers.find(c => {
+                      const candidate = String(c.tax_id || c.ntn || c.gstin || '').trim().toLowerCase();
+                      return candidate && candidate === entered;
+                    });
+                    if (matched) {
+                      setSelectedCustomer(matched);
+                      applyCustomerProfile(matched, isDueDateManuallyEdited);
+                      toast.success('Customer auto-filled from tax ID');
+                    }
+                  }}
                   placeholder={`${standards.taxIdLabel} Number`}
                 />
               </div>
@@ -736,6 +994,16 @@ export function EnhancedInvoiceBuilder({
                     ...invoice,
                     customer: { ...invoice.customer, phone: e.target.value }
                   })}
+                  onBlur={() => {
+                    const entered = String(invoice.customer.phone || '').replace(/\D/g, '');
+                    if (!entered || selectedCustomer) return;
+                    const matched = customers.find(c => String(c.phone || '').replace(/\D/g, '') === entered);
+                    if (matched) {
+                      setSelectedCustomer(matched);
+                      applyCustomerProfile(matched, isDueDateManuallyEdited);
+                      toast.success('Customer auto-filled from phone');
+                    }
+                  }}
                 />
               </div>
               <div className="col-span-2">
@@ -754,12 +1022,13 @@ export function EnhancedInvoiceBuilder({
           {/* Payment Method - Pakistani domains only */}
           {isPakistaniDomain && (
             <div className="border-t pt-4">
-              <h3 className="font-semibold text-lg mb-4">Payment Method</h3>
               <PakistaniPaymentSelector
                 selectedGateway={invoice.paymentMethod}
                 onSelect={(gatewayId) => setInvoice({ ...invoice, paymentMethod: gatewayId })}
                 amount={totals.total}
                 showCOD={true}
+                showHeader={false}
+                compact={true}
               />
             </div>
           )}
@@ -925,6 +1194,19 @@ export function EnhancedInvoiceBuilder({
                               step={0.01}
                               className="h-8 text-xs font-semibold focus:ring-wine/20"
                             />
+                                            <div className="mt-1 text-[10px] text-gray-400 text-right whitespace-nowrap">
+                                              {(() => {
+                                                const qty = Number(item.quantity || 0);
+                                                const rate = Number(item.rate || 0);
+                                                const discountPct = Number(item.discount || 0);
+                                                const taxPct = Number(item.taxPercent || 0);
+                                                const base = qty * rate;
+                                                const discountValue = (base * discountPct) / 100;
+                                                const taxable = base - discountValue;
+                                                const taxValue = (taxable * taxPct) / 100;
+                                                return `${formatCurrency(taxable, currency)} + ${formatCurrency(taxValue, currency)} tax`;
+                                              })()}
+                                            </div>
                           </td>
                           <td className="px-3 py-2 text-center">
                             <Button
@@ -996,6 +1278,13 @@ export function EnhancedInvoiceBuilder({
                   <span>Total:</span>
                   <span>{formatCurrency(totals.total, currency)}</span>
                 </div>
+                <div className={cn(
+                  'flex items-center justify-between text-[11px] px-2 py-1.5 rounded-lg border',
+                  postingHealth.balanced ? 'bg-emerald-50 border-emerald-100 text-emerald-700' : 'bg-red-50 border-red-100 text-red-700'
+                )}>
+                  <span className="font-bold uppercase tracking-wider">Posting Health</span>
+                  <span className="font-semibold">{postingHealth.balanced ? 'Balanced' : `Diff ${postingHealth.difference.toFixed(2)}`}</span>
+                </div>
               </div>
             </div>
           </div>
@@ -1042,21 +1331,40 @@ export function EnhancedInvoiceBuilder({
 
           {/* Actions */}
           <div className="flex flex-col md:flex-row items-center justify-between gap-4 pt-8 border-t">
-            <div className="flex gap-4">
-              <Button
-                variant="outline"
-                onClick={() => setShowTaxCalculator(true)}
-                className="rounded-xl border-gray-200 font-bold text-gray-600 hover:bg-gray-50 h-12 px-6"
-              >
-                <Calculator className="w-4 h-4 mr-2 text-wine" /> Tax Helper
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => toast.success('Link generated for WhatsApp message')}
-                className="rounded-xl border-emerald-100 text-emerald-600 hover:bg-emerald-50 font-bold h-12 px-6"
-              >
-                Share via WhatsApp
-              </Button>
+            <div className="space-y-2 w-full md:w-auto">
+              <div className="flex gap-4">
+                <Button
+                  variant="outline"
+                  onClick={() => applySmartDraft('items')}
+                  className="rounded-xl border-indigo-100 text-indigo-600 hover:bg-indigo-50 font-bold h-12 px-6"
+                >
+                  <WandSparkles className="w-4 h-4 mr-2" />
+                  Smart Items
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => applySmartDraft('full')}
+                  className="rounded-xl border-violet-100 text-violet-600 hover:bg-violet-50 font-bold h-12 px-6"
+                >
+                  <WandSparkles className="w-4 h-4 mr-2" />
+                  Smart Full
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => toast.success('Link generated for WhatsApp message')}
+                  className="rounded-xl border-emerald-100 text-emerald-600 hover:bg-emerald-50 font-bold h-12 px-6"
+                >
+                  Share via WhatsApp
+                </Button>
+              </div>
+              {smartDraftMeta && (
+                <div className="text-[11px] text-gray-500 bg-indigo-50/60 border border-indigo-100 rounded-lg px-3 py-2">
+                  <span className="font-bold text-indigo-700">Smart Draft:</span>{' '}
+                  {smartDraftMeta.scope === 'full'
+                    ? `Customer ${smartDraftMeta.customerLabel}`
+                    : (smartDraftMeta.customerMode === 'preserved' ? 'Customer preserved' : 'Customer unchanged')}; items {smartDraftMeta.productLabels.join(', ')}
+                </div>
+              )}
             </div>
 
             <div className="flex gap-4 w-full md:w-auto">

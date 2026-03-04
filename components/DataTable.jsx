@@ -272,7 +272,7 @@ export function DataTable({
                         </div>
                         <div className="space-y-1">
                           <p className="text-base font-bold text-gray-900">No results found</p>
-                          <p className="text-sm text-gray-500">Try adjusting your search or filters to find what you're looking for.</p>
+                          <p className="text-sm text-gray-500">Try adjusting your search or filters to find what you&apos;re looking for.</p>
                         </div>
                       </div>
                     )}

@@ -1,11 +1,11 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
-    Brain, TrendingUp, TrendingDown, BarChart3, PieChart, Package,
+    Brain, TrendingUp, BarChart3, PieChart, Package,
     AlertTriangle, Sparkles, Target, ShoppingCart, RefreshCcw,
-    Lightbulb, Activity, ArrowUpRight, ArrowDownRight, Zap
+    Lightbulb, Activity, ArrowUpRight, ArrowDownRight
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useBusiness } from '@/lib/context/BusinessContext';
@@ -168,6 +168,14 @@ export function AIInsightsPanel({ businessId }) {
     const loadAll = useCallback(async () => {
         if (!effectiveBusinessId) return;
         setLoading(true);
+        setSalesTrend([]);
+        setTopProducts([]);
+        setCategories([]);
+        setKpiData(null);
+        setForecastData([]);
+        setExpenseBreakdown([]);
+        setPromos([]);
+        setRestockSuggestions([]);
         try {
             const [salesRes, prodRes, catRes, kpiRes, forecastRes, expRes, promoRes, restockRes] = await Promise.allSettled([
                 getSalesTrendAction(effectiveBusinessId),

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
     Dialog,
     DialogContent,
@@ -27,10 +27,6 @@ import toast from 'react-hot-toast';
 export function EntityDetailsDialog({ item: initialItem, type, open, onClose, category = 'retail-shop' }) {
     const [isEditing, setIsEditing] = useState(false);
     const [item, setItem] = useState(initialItem);
-
-    useEffect(() => {
-        if (initialItem) setItem(initialItem);
-    }, [initialItem]);
 
     if (!item) return null;
 

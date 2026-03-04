@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { CreditCard, Smartphone, Building2, Wallet, Truck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,9 +17,15 @@ export function PakistaniPaymentSelector({
   onSelect,
   amount = 0,
   showCOD = true,
+  showHeader = true,
+  compact = false,
 }) {
   const gateways = getEnabledGateways();
   const [selected, setSelected] = useState(selectedGateway || null);
+
+  useEffect(() => {
+    setSelected(selectedGateway || null);
+  }, [selectedGateway]);
 
   const handleSelect = (gatewayId) => {
     setSelected(gatewayId);
@@ -39,12 +45,14 @@ export function PakistaniPaymentSelector({
 
   return (
     <div className="space-y-4">
-      <div>
-        <h3 className="text-lg font-semibold mb-2">Payment Method</h3>
-        <p className="text-sm text-gray-500">Select your preferred payment method</p>
-      </div>
+      {showHeader && (
+        <div>
+          <h3 className="text-lg font-semibold mb-2">Payment Method</h3>
+          <p className="text-sm text-gray-500">Select your preferred payment method</p>
+        </div>
+      )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+      <div className={compact ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2' : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3'}>
         {gateways
           .filter(g => showCOD || g.id !== 'cod')
           .map((gateway) => (
@@ -54,23 +62,23 @@ export function PakistaniPaymentSelector({
                 }`}
               onClick={() => handleSelect(gateway.id)}
             >
-              <CardHeader className="pb-3">
+              <CardHeader className={compact ? 'pb-2 pt-3 px-3' : 'pb-3'}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    {getGatewayIcon(gateway.id)}
-                    <CardTitle className="text-base">{gateway.name}</CardTitle>
+                    <div className={compact ? 'scale-90' : ''}>{getGatewayIcon(gateway.id)}</div>
+                    <CardTitle className={compact ? 'text-sm' : 'text-base'}>{gateway.name}</CardTitle>
                   </div>
                   {selected === gateway.id && (
                     <Badge variant="default">Selected</Badge>
                   )}
                 </div>
-                <CardDescription className="text-xs">
+                <CardDescription className={compact ? 'text-[11px]' : 'text-xs'}>
                   {gateway.features.slice(0, 2).join(', ')}
                 </CardDescription>
               </CardHeader>
               {gateway.id === 'cod' && (
-                <CardContent>
-                  <p className="text-xs text-gray-500">
+                <CardContent className={compact ? 'pt-0 pb-3 px-3' : ''}>
+                  <p className={compact ? 'text-[11px] text-gray-500' : 'text-xs text-gray-500'}>
                     Pay cash when your order is delivered
                   </p>
                 </CardContent>

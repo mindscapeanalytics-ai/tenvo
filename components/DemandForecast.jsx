@@ -32,12 +32,25 @@ export const DemandForecast = memo(function DemandForecast({
 
   useEffect(() => {
     async function load() {
-      if (!businessId) return;
-      const res = await getDemandForecastAction(businessId, domainKnowledge?.intelligence);
-      if (res && res.success) {
-        setForecastData(res.data || []);
+      if (!businessId) {
+        setForecastData([]);
+        setLoading(false);
+        return;
       }
-      setLoading(false);
+
+      try {
+        const res = await getDemandForecastAction(businessId, domainKnowledge?.intelligence);
+        if (res && res.success) {
+          setForecastData(res.data || []);
+        } else {
+          setForecastData([]);
+        }
+      } catch (error) {
+        console.error('Demand forecast load failed:', error);
+        setForecastData([]);
+      } finally {
+        setLoading(false);
+      }
     }
     load();
   }, [businessId, domainKnowledge]);

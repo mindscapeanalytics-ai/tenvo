@@ -78,7 +78,7 @@ export function CityAutocomplete({ value, onChange, required = false }) {
                                             <div className="p-1.5 rounded-lg bg-wine/5 text-wine">
                                                 <Plus className="w-3.5 h-3.5" />
                                             </div>
-                                            <span className="font-bold text-gray-800 italic">Use "{searchQuery}"</span>
+                                            <span className="font-bold text-gray-800 italic">Use &quot;{searchQuery}&quot;</span>
                                         </div>
                                     </CommandItem>
                                 )}

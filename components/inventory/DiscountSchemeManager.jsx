@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Percent, DollarSign, Tag, Users, Package } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,6 +31,7 @@ export function DiscountSchemeManager({
   const [schemeList, setSchemeList] = useState(schemes);
   const [showForm, setShowForm] = useState(false);
   const [editingScheme, setEditingScheme] = useState(null);
+  const counterRef = useRef(Date.now());
   const [formData, setFormData] = useState({
     name: '',
     type: 'percentage', // percentage, fixed, quantity, customer-category, product-category, bulk, loyalty
@@ -59,7 +60,7 @@ export function DiscountSchemeManager({
   const handleSave = () => {
     const schemeData = {
       ...formData,
-      id: editingScheme?.id || Date.now(),
+      id: editingScheme?.id || counterRef.current++,
       updatedAt: new Date().toISOString(),
     };
 

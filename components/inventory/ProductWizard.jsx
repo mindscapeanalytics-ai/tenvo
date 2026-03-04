@@ -631,14 +631,23 @@ export function ProductWizard({
         if (isSaving) return;
         setIsSaving(true);
         try {
+            const toNumber = (value, fallback = 0) => {
+                if (value === '' || value === null || value === undefined) return fallback;
+                const parsed = Number(value);
+                return Number.isFinite(parsed) ? parsed : fallback;
+            };
+
             const payload = {
                 ...formData,
-                cost_price: parseFloat(formData.cost_price) || 0,
-                selling_price: parseFloat(formData.selling_price) || 0,
-                price: parseFloat(formData.selling_price) || 0,
-                tax_percent: parseFloat(formData.tax_percent) || 17,
-                stock: parseInt(formData.stock) || 0,
-                reorder_point: parseInt(formData.reorder_point) || 10,
+                cost_price: toNumber(formData.cost_price, 0),
+                selling_price: toNumber(formData.selling_price, 0),
+                price: toNumber(formData.selling_price, 0),
+                tax_percent: toNumber(formData.tax_percent, 17),
+                stock: toNumber(formData.stock, 0),
+                reorder_point: toNumber(formData.reorder_point, 10),
+                max_stock: toNumber(formData.max_stock, 0),
+                min_order_qty: toNumber(formData.min_order_qty, 1),
+                wholesale_price: toNumber(formData.wholesale_price, 0),
             };
             await onSave?.(payload);
         } catch (err) {

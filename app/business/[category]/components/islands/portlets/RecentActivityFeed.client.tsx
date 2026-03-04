@@ -9,9 +9,10 @@ import { formatDistanceToNow } from 'date-fns';
 
 interface RecentActivityFeedProps {
     businessId?: string;
+    onViewAll?: () => void;
 }
 
-export const RecentActivityFeed = memo(function RecentActivityFeed({ businessId }: RecentActivityFeedProps) {
+export const RecentActivityFeed = memo(function RecentActivityFeed({ businessId, onViewAll }: RecentActivityFeedProps) {
     const [activities, setActivities] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -110,7 +111,10 @@ export const RecentActivityFeed = memo(function RecentActivityFeed({ businessId 
                     </div>
                 ))}
                 <div className="pt-2">
-                    <button className="w-full text-center text-[10px] font-bold text-slate-400 hover:text-wine uppercase tracking-wider transition-colors py-2 border border-slate-100 rounded-lg hover:border-wine/20 hover:bg-wine/5">
+                    <button
+                        onClick={onViewAll}
+                        className="w-full text-center text-[10px] font-bold text-slate-400 hover:text-wine uppercase tracking-wider transition-colors py-2 border border-slate-100 rounded-lg hover:border-wine/20 hover:bg-wine/5"
+                    >
                         View All Activity
                     </button>
                 </div>

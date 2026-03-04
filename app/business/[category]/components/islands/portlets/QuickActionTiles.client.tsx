@@ -8,22 +8,33 @@ import {
     ArrowLeftRight,
     Truck,
     Users,
-    Settings2
+    Settings2,
+    Megaphone
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface QuickActionTilesProps {
     onAction?: (actionId: string) => void;
+    campaignEnabled?: boolean;
+    multiLocationEnabled?: boolean;
 }
 
-export const QuickActionTiles = memo(function QuickActionTiles({ onAction }: QuickActionTilesProps) {
+export const QuickActionTiles = memo(function QuickActionTiles({
+    onAction,
+    campaignEnabled = false,
+    multiLocationEnabled = false
+}: QuickActionTilesProps) {
+    const transferAction = multiLocationEnabled ? 'warehouses' : 'add-purchase';
+
     const actions = [
-        { id: 'sales', label: 'New Invoice', icon: FilePlus, color: 'bg-[#334155]', hover: 'hover:bg-[#1e293b]', desc: 'Direct Sale' },
-        { id: 'transfer', label: 'Stock Transfer', icon: ArrowLeftRight, color: 'bg-[#8B1538]', hover: 'hover:bg-[#72112e]', desc: 'Inter-branch' },
-        { id: 'receive', label: 'Inventory Adj', icon: Truck, color: 'bg-[#15803d]', hover: 'hover:bg-[#166534]', desc: 'Stock Corrections' },
-        { id: 'customers', label: 'Customers', icon: Users, color: 'bg-[#0369a1]', hover: 'hover:bg-[#075985]', desc: 'CRM Manage' },
-        { id: 'product', label: 'New Product', icon: PlusCircle, color: 'bg-[#6d28d9]', hover: 'hover:bg-[#5b21b6]', desc: 'Entry & Catalog' },
-        { id: 'settings', label: 'Settings', icon: Settings2, color: 'bg-[#475569]', hover: 'hover:bg-[#334155]', desc: 'System Config' },
+        { id: 'new-invoice', label: 'New Invoice', icon: FilePlus, color: 'bg-[#334155]', hover: 'hover:bg-[#1e293b]', desc: 'Direct Sale' },
+        { id: transferAction, label: 'Stock Transfer', icon: ArrowLeftRight, color: 'bg-[#8B1538]', hover: 'hover:bg-[#72112e]', desc: multiLocationEnabled ? 'Inter-branch' : 'Procurement' },
+        { id: 'inventory', label: 'Inventory Adj', icon: Truck, color: 'bg-[#15803d]', hover: 'hover:bg-[#166534]', desc: 'Stock Corrections' },
+        { id: 'new-customer', label: 'Customers', icon: Users, color: 'bg-[#0369a1]', hover: 'hover:bg-[#075985]', desc: 'CRM Manage' },
+        { id: 'new-product', label: 'New Product', icon: PlusCircle, color: 'bg-[#6d28d9]', hover: 'hover:bg-[#5b21b6]', desc: 'Entry & Catalog' },
+        campaignEnabled
+            ? { id: 'campaigns', label: 'Campaigns', icon: Megaphone, color: 'bg-[#475569]', hover: 'hover:bg-[#334155]', desc: 'Marketing Ops' }
+            : { id: 'reports', label: 'Analytics', icon: Settings2, color: 'bg-[#475569]', hover: 'hover:bg-[#334155]', desc: 'System Insights' },
     ];
 
     return (

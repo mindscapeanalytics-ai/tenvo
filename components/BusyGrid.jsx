@@ -36,7 +36,6 @@ export function BusyGrid({
     const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
     const [columnWidths, setColumnWidths] = useState({});
     const [contextMenu, setContextMenu] = useState(null);
-    const [shouldAutoEdit, setShouldAutoEdit] = useState(false);
 
     const gridRef = useRef(null);
     const inputRef = useRef(null);
@@ -79,12 +78,31 @@ export function BusyGrid({
         }));
     };
 
-    useEffect(() => {
-        if (shouldAutoEdit && selectedCell) {
-            startEditing();
-            setShouldAutoEdit(false);
-        }
-    }, [selectedCell, shouldAutoEdit]);
+    const moveSelection = (dRow, dCol) => {
+        setSelectedCell(prev => {
+            let newRow = prev.row + dRow;
+            let newCol = prev.col + dCol;
+            if (newCol >= columns.length) {
+                if (newRow < sortedData.length - 1) { newRow += 1; newCol = 0; }
+                else newCol = columns.length - 1;
+            } else if (newCol < 0) {
+                if (newRow > 0) { newRow -= 1; newCol = columns.length - 1; }
+                else newCol = 0;
+            }
+            if (newRow < 0) newRow = 0;
+            if (newRow >= sortedData.length) newRow = sortedData.length - 1;
+            return { row: newRow, col: newCol };
+        });
+    };
+
+    const startEditing = (initialChar = null) => {
+        const colDef = columns[selectedCell.col];
+        if (colDef.readOnly) return;
+        const row = data[selectedCell.row];
+        let val = getValue(row, colDef.accessorKey);
+        setEditingCell(selectedCell);
+        setEditValue(initialChar !== null ? initialChar : val);
+    };
 
     useEffect(() => {
         if (editingCell && inputRef.current) {
@@ -131,7 +149,7 @@ export function BusyGrid({
         const val = getValue(row, colDef.accessorKey);
         navigator.clipboard.writeText(String(val));
         setContextMenu(null);
-    }, [selectedCell, sortedData, columns, getValue]);
+    }, [selectedCell, sortedData, columns, getValue, setContextMenu]);
 
     const pasteFromClipboard = useCallback(async () => {
         try {
@@ -141,7 +159,7 @@ export function BusyGrid({
             if (!colDef.readOnly) onCellEdit?.(row, colDef.accessorKey, text);
         } catch (err) { console.error(err); }
         setContextMenu(null);
-    }, [selectedCell, sortedData, columns, onCellEdit]);
+    }, [selectedCell, sortedData, columns, onCellEdit, setContextMenu]);
 
     const handleKeyDown = useCallback((e) => {
         if (editingCell) {
@@ -173,33 +191,7 @@ export function BusyGrid({
                 if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) startEditing(e.key);
                 break;
         }
-    }, [selectedCell, editingCell, sortedData, columns, onAddRow, onDeleteRow, onCellEdit, copyToClipboard, pasteFromClipboard]);
-
-    const moveSelection = (dRow, dCol) => {
-        setSelectedCell(prev => {
-            let newRow = prev.row + dRow;
-            let newCol = prev.col + dCol;
-            if (newCol >= columns.length) {
-                if (newRow < sortedData.length - 1) { newRow += 1; newCol = 0; }
-                else newCol = columns.length - 1;
-            } else if (newCol < 0) {
-                if (newRow > 0) { newRow -= 1; newCol = columns.length - 1; }
-                else newCol = 0;
-            }
-            if (newRow < 0) newRow = 0;
-            if (newRow >= sortedData.length) newRow = sortedData.length - 1;
-            return { row: newRow, col: newCol };
-        });
-    };
-
-    const startEditing = (initialChar = null) => {
-        const colDef = columns[selectedCell.col];
-        if (colDef.readOnly) return;
-        const row = data[selectedCell.row];
-        let val = getValue(row, colDef.accessorKey);
-        setEditingCell(selectedCell);
-        setEditValue(initialChar !== null ? initialChar : val);
-    };
+    }, [selectedCell, editingCell, sortedData, columns, onAddRow, onDeleteRow, onCellEdit, copyToClipboard, pasteFromClipboard, moveSelection, startEditing]);
 
     const saveEdit = (forcedValue = undefined) => {
         if (!editingCell) return;
@@ -297,8 +289,8 @@ export function BusyGrid({
                                                 {isEditing ? (
                                                     <div className="absolute inset-0 z-40 p-0.5">
                                                         <input ref={inputRef} className="w-full h-full px-2.5 bg-white outline-none ring-2 ring-blue-600 shadow-xl font-medium text-gray-900 z-50 text-sm" value={editValue} onChange={(e) => setEditValue(e.target.value)} onBlur={(e) => saveEdit(e.target.value)} onKeyDown={(e) => {
-                                                            if (e.key === 'Enter') { e.preventDefault(); saveEdit(e.target.value); moveSelection(0, 1); setShouldAutoEdit(true); }
-                                                            else if (e.key === 'Tab') { e.preventDefault(); saveEdit(e.target.value); moveSelection(0, e.shiftKey ? -1 : 1); setShouldAutoEdit(true); }
+                                                            if (e.key === 'Enter') { e.preventDefault(); saveEdit(e.target.value); moveSelection(0, 1); requestAnimationFrame(() => startEditing()); }
+                                                            else if (e.key === 'Tab') { e.preventDefault(); saveEdit(e.target.value); moveSelection(0, e.shiftKey ? -1 : 1); requestAnimationFrame(() => startEditing()); }
                                                             else if (e.key === 'Escape') { e.preventDefault(); setEditingCell(null); }
                                                         }} autoFocus />
                                                     </div>

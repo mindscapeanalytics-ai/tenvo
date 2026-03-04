@@ -25,7 +25,8 @@ import {
     ListFilter,
     Download,
     LayoutGrid,
-    Eye
+    Eye,
+    RefreshCcw
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DateRangePicker } from '@/components/islands/DateRangePicker.client';
@@ -238,10 +239,13 @@ export function Header({ onMenuClick }) {
     };
 
     const activeTitle = labels[currentTab] || currentTab;
+    const dispatchHeaderEvent = (eventName, detail) => {
+        window.dispatchEvent(new CustomEvent(eventName, detail ? { detail } : undefined));
+    };
 
     return (
         <header className="h-14 bg-white/90 backdrop-blur-xl border-b border-gray-200/50 flex items-center px-4 lg:px-6 sticky top-0 z-40 shadow-sm">
-            <div className="flex items-center justify-between w-full max-w-[1600px] mx-auto gap-4">
+            <div className="flex items-center justify-between w-full max-w-[1600px] mx-auto gap-3">
                 {/* Left: Mobile Menu & Module Breadcrumb */}
                 <div className="flex items-center gap-3 shrink-0">
                     <Button
@@ -264,7 +268,7 @@ export function Header({ onMenuClick }) {
                 </div>
 
                 {/* Center: Global Search Bar */}
-                <div className="hidden md:flex flex-1 justify-center max-w-lg px-4" ref={searchRef}>
+                <div className="hidden md:flex flex-1 justify-center max-w-md lg:max-w-lg px-2 lg:px-4" ref={searchRef}>
                     <div className="relative w-full group">
                         <Search className={`absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 group-focus-within:text-indigo-600 transition-colors ${language === 'ur' ? 'right-3' : 'left-3'}`} />
                         <Input
@@ -368,17 +372,35 @@ export function Header({ onMenuClick }) {
                                     setDateRange(newRange);
                                 }
                             }}
-                            className="w-[220px]"
+                            className="w-[210px] lg:w-[220px]"
                         />
+
+                        <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-9 w-9 rounded-xl text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 transition-all"
+                            onClick={() => dispatchHeaderEvent('refresh-dashboard-data')}
+                        >
+                            <RefreshCcw className="w-3.5 h-3.5" />
+                        </Button>
 
                         <Button
                             size="sm"
                             variant="ghost"
-                            className="h-9 px-2.5 rounded-xl font-bold text-[10px] uppercase tracking-wider text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 transition-all hidden lg:flex"
-                            onClick={() => window.dispatchEvent(new CustomEvent('switch-tab', { detail: { tab: 'analytics' } }))}
+                            className="h-9 px-2.5 rounded-xl font-bold text-[10px] uppercase tracking-wider text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 transition-all hidden xl:flex"
+                            onClick={() => dispatchHeaderEvent('switch-tab', { tab: 'reports' })}
                         >
                             <BarChart3 className="w-3.5 h-3.5 mr-1.5 opacity-60" />
                             INTEL
+                        </Button>
+
+                        <Button
+                            size="icon"
+                            variant="ghost"
+                            className="hidden lg:flex xl:hidden h-9 w-9 rounded-xl text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 transition-all"
+                            onClick={() => dispatchHeaderEvent('switch-tab', { tab: 'reports' })}
+                        >
+                            <BarChart3 className="w-3.5 h-3.5" />
                         </Button>
                     </div>
 
@@ -393,24 +415,29 @@ export function Header({ onMenuClick }) {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-56 rounded-2xl shadow-xl p-2 border-gray-100/80 backdrop-blur-xl">
                                 <DropdownMenuLabel className="text-[9px] uppercase font-black tracking-[0.2em] text-gray-400 px-3 py-2">Page Controls</DropdownMenuLabel>
-                                <DropdownMenuItem onClick={() => window.dispatchEvent(new CustomEvent('toggle-filters'))} className="rounded-xl py-2.5 cursor-pointer">
+                                <DropdownMenuItem onClick={() => dispatchHeaderEvent('refresh-dashboard-data')} className="rounded-xl py-2.5 cursor-pointer">
+                                    <RefreshCcw className="w-4 h-4 mr-3 text-cyan-600" />
+                                    <span className="font-bold text-xs">Refresh Data</span>
+                                    <DropdownMenuShortcut>R</DropdownMenuShortcut>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => dispatchHeaderEvent('toggle-filters')} className="rounded-xl py-2.5 cursor-pointer">
                                     <ListFilter className="w-4 h-4 mr-3 text-indigo-500" />
                                     <span className="font-bold text-xs">Toggle Filters</span>
                                     <DropdownMenuShortcut>⌘F</DropdownMenuShortcut>
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => window.dispatchEvent(new CustomEvent('export-data'))} className="rounded-xl py-2.5 cursor-pointer">
+                                <DropdownMenuItem onClick={() => dispatchHeaderEvent('export-data')} className="rounded-xl py-2.5 cursor-pointer">
                                     <Download className="w-4 h-4 mr-3 text-emerald-500" />
                                     <span className="font-bold text-xs">Export Data</span>
                                     <DropdownMenuShortcut>S</DropdownMenuShortcut>
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator className="bg-gray-50 my-1" />
-                                <DropdownMenuItem onClick={() => window.dispatchEvent(new CustomEvent('change-layout'))} className="rounded-xl py-2.5 cursor-pointer">
+                                <DropdownMenuItem onClick={() => dispatchHeaderEvent('change-layout')} className="rounded-xl py-2.5 cursor-pointer">
                                     <LayoutGrid className="w-4 h-4 mr-3 text-orange-500" />
                                     <span className="font-bold text-xs">Change Layout</span>
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => window.dispatchEvent(new CustomEvent('personalize-view'))} className="rounded-xl py-2.5 cursor-pointer">
+                                <DropdownMenuItem onClick={() => dispatchHeaderEvent('switch-tab', { tab: 'reports' })} className="rounded-xl py-2.5 cursor-pointer">
                                     <Eye className="w-4 h-4 mr-3 text-blue-500" />
-                                    <span className="font-bold text-xs">Personalize View</span>
+                                    <span className="font-bold text-xs">Open Analytics</span>
                                 </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
@@ -432,6 +459,14 @@ export function Header({ onMenuClick }) {
                                 <DropdownMenuItem onClick={() => window.dispatchEvent(new CustomEvent('open-modal', { detail: { modalId: 'customer' } }))} className="rounded-xl py-2.5 cursor-pointer">
                                     <UsersIcon className="w-4 h-4 mr-3 text-green-500" />
                                     <span className="font-bold text-xs">New Customer</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => window.dispatchEvent(new CustomEvent('open-modal', { detail: { modalId: 'vendor' } }))} className="rounded-xl py-2.5 cursor-pointer">
+                                    <Truck className="w-4 h-4 mr-3 text-amber-500" />
+                                    <span className="font-bold text-xs">New Vendor</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => window.dispatchEvent(new CustomEvent('open-modal', { detail: { modalId: 'purchase' } }))} className="rounded-xl py-2.5 cursor-pointer">
+                                    <ShoppingCart className="w-4 h-4 mr-3 text-violet-500" />
+                                    <span className="font-bold text-xs">New Purchase Order</span>
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator className="bg-gray-50 my-1" />
                                 <DropdownMenuItem onClick={() => window.dispatchEvent(new CustomEvent('open-modal', { detail: { modalId: 'invoice' } }))} className="rounded-xl py-2.5 cursor-pointer text-indigo-600 bg-indigo-50/50">

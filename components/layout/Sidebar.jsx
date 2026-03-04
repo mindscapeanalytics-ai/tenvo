@@ -144,6 +144,7 @@ const NAV_SECTIONS = [
     items: [
       { key: 'warehouses', label: 'Warehouses', icon: Warehouse, conditionKey: 'multiLocation' },
       { key: 'manufacturing', label: 'Manufacturing', icon: Factory, conditionKey: 'manufacturing' },
+      { key: 'batches', label: 'Batches & Serials', icon: Hash, conditionKey: 'batchTracking' },
       { key: 'payroll', label: 'Payroll & HR', icon: UserCog },
       { key: 'approvals', label: 'Approvals', icon: CheckSquare },
     ]
@@ -189,7 +190,7 @@ export function Sidebar({ isOpen, onClose, isSidebarCollapsed, setIsSidebarColla
   const posRelevant = isPosRelevantDomain(category, domainKnowledge);
   const hospitalityDomain = isHospitalityDomain(category);
   const campaignRelevant = isCampaignRelevantDomain(category, domainKnowledge);
-  const effectiveRole = (businessLoading || !role) ? 'owner' : role;
+  const effectiveRole = (businessLoading || !role) ? 'viewer' : role;
   const planTier = isPlatformOwner ? 'enterprise' : resolvePlanTier(contextPlanTier || business?.plan_tier || 'free');
   const planName = isPlatformOwner ? 'Platform Owner' : (PLAN_TIERS[planTier]?.name || 'Free');
   const domainGapSuggestions = useMemo(() => getDomainGapSuggestions({ category, planTier, domainKnowledge }), [category, planTier, domainKnowledge]);
@@ -250,6 +251,9 @@ export function Sidebar({ isOpen, onClose, isSidebarCollapsed, setIsSidebarColla
       return { visible: false, locked: false, requiredPlan: null };
     }
     if (item.conditionKey === 'multiLocation' && !domainKnowledge?.multiLocationEnabled) {
+      return { visible: false, locked: false, requiredPlan: null };
+    }
+    if (item.conditionKey === 'batchTracking' && !domainKnowledge?.batchTrackingEnabled) {
       return { visible: false, locked: false, requiredPlan: null };
     }
     if (item.conditionKey === 'quotations' && !domainKnowledge?.inventoryFeatures?.includes('Quotation Management')) {
@@ -374,14 +378,19 @@ export function Sidebar({ isOpen, onClose, isSidebarCollapsed, setIsSidebarColla
                       className="overflow-hidden"
                     >
                       {visibleItems.map((item) => {
-                        const isActive = currentTab === item.key;
+                        const isActive = item.key === 'platform-admin'
+                          ? pathname === '/admin'
+                          : currentTab === item.key;
                         const Icon = item.icon;
                         const isLocked = item.locked;
+                        const itemHref = item.key === 'platform-admin'
+                          ? '/admin'
+                          : (item.key === 'dashboard' ? baseUrl : `${baseUrl}?tab=${item.key}`);
 
                         return (
                           <Link
                             key={item.key}
-                            href={isLocked ? '#' : (item.key === 'dashboard' ? baseUrl : `${baseUrl}?tab=${item.key}`)}
+                            href={isLocked ? '#' : itemHref}
                             onClick={(e) => {
                               if (isLocked) {
                                 e.preventDefault();

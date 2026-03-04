@@ -9,16 +9,7 @@ export function BarcodeScanner({ onScan, onClose }) {
   const videoRef = useRef(null);
   const streamRef = useRef(null);
 
-  useEffect(() => {
-    if (isScanning) {
-      startCamera();
-    } else {
-      stopCamera();
-    }
-    return () => stopCamera();
-  }, [isScanning]);
-
-  const startCamera = async () => {
+  async function startCamera() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'environment' }
@@ -31,14 +22,23 @@ export function BarcodeScanner({ onScan, onClose }) {
       toast.error('Unable to access camera');
       console.error('Camera error:', error);
     }
-  };
+  }
 
-  const stopCamera = () => {
+  function stopCamera() {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
       streamRef.current = null;
     }
-  };
+  }
+
+  useEffect(() => {
+    if (isScanning) {
+      startCamera();
+    } else {
+      stopCamera();
+    }
+    return () => stopCamera();
+  }, [isScanning]);
 
   const handleManualInput = (e) => {
     if (e.key === 'Enter' && e.target.value) {

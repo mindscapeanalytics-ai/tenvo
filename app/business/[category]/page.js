@@ -108,31 +108,85 @@ const businessCategories = {
   'book-publishing': { name: 'Book Publishing', icon: '📚', color: 'teal' },
 };
 
+const VALID_TABS = new Set([
+  'dashboard',
+  'inventory',
+  'invoices',
+  'customers',
+  'vendors',
+  'payments',
+  'purchases',
+  'sales',
+  'manufacturing',
+  'warehouses',
+  'quotations',
+  'batches',
+  'accounting',
+  'finance',
+  'reports',
+  'campaigns',
+  'gst',
+  'pos',
+  'restaurant',
+  'expenses',
+  'payroll',
+  'approvals',
+  'loyalty',
+  'refunds',
+  'audit',
+  'settings',
+  'credit-notes',
+  'fiscal',
+  'exchange-rates',
+]);
+
+function normalizeTabKey(tab) {
+  if (!tab) return 'dashboard';
+  const key = String(tab).trim().toLowerCase();
+
+  const aliases = {
+    analytics: 'reports',
+    report: 'reports',
+    'multi-location': 'warehouses',
+  };
+
+  return aliases[key] || key;
+}
+
 function BusinessDashboardContent() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
   const category = String(params?.category || 'retail-shop');
 
-  // Initialize tab from URL or default to 'dashboard'
-  const initialTab = searchParams.get('tab') || 'dashboard';
-  const [activeTab, setActiveTab] = useState(initialTab);
-
-  // Sync state with URL when URL changes (e.g. sidebar click)
-  useEffect(() => {
-    const tabFromUrl = searchParams.get('tab') || 'dashboard';
-    if (tabFromUrl !== activeTab) {
-      setActiveTab(tabFromUrl);
-    }
-  }, [searchParams, activeTab]);
+  const normalizedUrlTab = normalizeTabKey(searchParams.get('tab') || 'dashboard');
+  const activeTab = VALID_TABS.has(normalizedUrlTab) ? normalizedUrlTab : 'dashboard';
 
   // Sync URL when state changes (e.g. valid tab click)
   const handleTabChange = useCallback((val) => {
-    setActiveTab(val);
-    router.push(`/business/${category}?tab=${val}`, { scroll: false });
+    const normalizedTab = normalizeTabKey(val);
+
+    if (normalizedTab === 'platform-admin') {
+      router.push('/admin', { scroll: false });
+      return;
+    }
+
+    const targetTab = VALID_TABS.has(normalizedTab) ? normalizedTab : 'dashboard';
+    router.push(`/business/${category}?tab=${targetTab}`, { scroll: false });
   }, [category, router]);
 
   const [showQuickAction, setShowQuickAction] = useState(false);
+  const [showInvoiceBuilder, setShowInvoiceBuilder] = useState(false);
+  const [invoiceInitialData, setInvoiceInitialData] = useState(null); // New state for pre-filling invoice
+  const [showProductForm, setShowProductForm] = useState(false);
+  const [showCustomerForm, setShowCustomerForm] = useState(false);
+  const [editingProduct, setEditingProduct] = useState(null);
+  const [showVendorForm, setShowVendorForm] = useState(false);
+  const [editingVendor, setEditingVendor] = useState(null);
+  const [showPOBuilder, setShowPOBuilder] = useState(false);
+  const [poInitialData, setPoInitialData] = useState(null);
+  const [viewingItem, setViewingItem] = useState(null);
+  const [viewingType, setViewingType] = useState(null);
 
   const handleQuickAction = useCallback((actionId) => {
     switch (actionId) {
@@ -190,7 +244,9 @@ function BusinessDashboardContent() {
         toast.success("Excel Mode active in Inventory", { icon: '📊' });
         break;
       default:
-        // No default modal opening
+        if (VALID_TABS.has(normalizeTabKey(actionId))) {
+          handleTabChange(normalizeTabKey(actionId));
+        }
         break;
     }
   }, [handleTabChange]);
@@ -252,7 +308,8 @@ function BusinessDashboardContent() {
 
   // Auth & Business context — must come before any hook that references `business`
   const { user, loading: authLoading } = useAuth();
-  const { business, role, planTier: contextPlanTier, updateBusiness, isLoading: businessLoading, switchBusinessByDomain, isPlatformOwner } = useBusiness();
+  const { business, role, planTier: contextPlanTier, updateBusiness, isLoading: businessLoading, switchBusinessByDomain } = useBusiness();
+  const [showSetupWizard, setShowSetupWizard] = useState(false);
 
   const {
     invoices,
@@ -274,6 +331,7 @@ function BusinessDashboardContent() {
     dashboardChartData,
     dashboardMetrics,
     expenseBreakdown,
+    expenses,
     isDataLoaded,
     refreshAllData,
     fetchInventory,
@@ -281,8 +339,54 @@ function BusinessDashboardContent() {
     fetchPurchases,
     fetchManufacturing,
     fetchPayroll,
-    fetchApprovals
+    fetchApprovals,
+    fetchExpenses
   } = useData();
+
+  useEffect(() => {
+    const onRefreshDashboardData = async () => {
+      try {
+        await refreshAllData();
+        toast.success('Dashboard refreshed');
+      } catch (error) {
+        console.error('Refresh event failed:', error);
+        toast.error('Failed to refresh dashboard data');
+      }
+    };
+
+    window.addEventListener('refresh-dashboard-data', onRefreshDashboardData);
+    return () => window.removeEventListener('refresh-dashboard-data', onRefreshDashboardData);
+  }, [refreshAllData]);
+
+  useEffect(() => {
+    const suppressKey = 'fh_setup_wizard_suppressed';
+    let timer;
+
+    if (authLoading || businessLoading) {
+      setShowSetupWizard(false);
+      return;
+    }
+
+    if (business?.id) {
+      sessionStorage.removeItem(suppressKey);
+      setShowSetupWizard(false);
+      return;
+    }
+
+    const isSuppressed = sessionStorage.getItem(suppressKey) === '1';
+    if (!user || isSuppressed) {
+      setShowSetupWizard(false);
+      return;
+    }
+
+    timer = setTimeout(() => {
+      setShowSetupWizard(true);
+    }, 1200);
+
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [authLoading, businessLoading, business?.id, user]);
 
   // Resource limit enforcement
   const resourceLimits = useResourceLimits({
@@ -294,26 +398,15 @@ function BusinessDashboardContent() {
     },
   });
 
-  const [showInvoiceBuilder, setShowInvoiceBuilder] = useState(false);
-  const [invoiceInitialData, setInvoiceInitialData] = useState(null); // New state for pre-filling invoice
-  const [showProductForm, setShowProductForm] = useState(false);
-  const [showCustomerForm, setShowCustomerForm] = useState(false);
   const [customerFormData, setCustomerFormData] = useState({ name: '', phone: '', email: '' });
-  const [editingProduct, setEditingProduct] = useState(null);
   const [editingCustomer, setEditingCustomer] = useState(null);
 
-  const [showVendorForm, setShowVendorForm] = useState(false);
-  const [editingVendor, setEditingVendor] = useState(null);
-  const [showPOBuilder, setShowPOBuilder] = useState(false);
-  const [poInitialData, setPoInitialData] = useState(null);
   const [currency] = useState('PKR');
-  const [showSetupWizard, setShowSetupWizard] = useState(false);
-  const [hasCheckedSetup, setHasCheckedSetup] = useState(false);
   // Date Range and Search Filtering
   const { dateRange, setDateRange, searchQuery, setSearchQuery } = useFilters();
 
   // POS & Restaurant States
-  const [posSession, setPosSession] = useState({ id: `sess-${Date.now()}`, startTime: new Date() });
+  const [posSession, setPosSession] = useState({ id: 'sess-initial', startTime: null });
   const [restaurantTables, setRestaurantTables] = useState([
     { id: '1', name: 'Table 1', status: 'available', capacity: 4, zone_id: '1' },
     { id: '2', name: 'Table 2', status: 'available', capacity: 2, zone_id: '1' },
@@ -325,8 +418,6 @@ function BusinessDashboardContent() {
     { id: 'k-1', orderId: 'ord-123', items: [{ name: 'Biryani', qty: 2 }, { name: 'Coke', qty: 2 }], status: 'preparing', time: '12:45' },
     { id: 'k-2', orderId: 'ord-124', items: [{ name: 'Karahi', qty: 1 }], status: 'pending', time: '13:02' },
   ]);
-  const [viewingItem, setViewingItem] = useState(null);
-  const [viewingType, setViewingType] = useState(null);
 
   // Load business if not in context but id exists in localStorage or searchParams
   useEffect(() => {
@@ -358,55 +449,6 @@ function BusinessDashboardContent() {
   // Local page state only manages UI toggles and local interactions
 
 
-
-  const handleSetupComplete = async () => {
-    setShowSetupWizard(false);
-    if (business?.id) {
-      try {
-        // Persist setup completion to database
-        const updatedSettings = {
-          ...(business.settings || {}),
-          setup_completed: true,
-          setup_at: new Date().toISOString()
-        };
-        await businessAPI.update(business.id, { settings: updatedSettings });
-        toast.success('Business setup finalized');
-        refreshAllData();
-      } catch (error) {
-        console.error('Failed to save setup status:', error);
-      }
-    }
-  };
-
-  // Check if we should show the setup wizard
-  useEffect(() => {
-    // Only check once per session when data is loaded
-    if (!isDataLoaded || !business?.id || businessLoading) return;
-
-    const isSetupCompleted = business?.settings?.setup_completed;
-
-    // Strict check: Only show if NOT completed AND NO products exist
-    // This handles the case where setup was done but flag wasn't set (legacy)
-    if (!isSetupCompleted && products.length === 0 && !hasCheckedSetup) {
-      setShowSetupWizard(true);
-      setHasCheckedSetup(true);
-    } else if (products.length > 0 || isSetupCompleted) {
-      // If products exist, we assume setup is done or not needed
-      setHasCheckedSetup(true);
-
-      // Auto-fix: If products exist but flag is false, silent update
-      if (!isSetupCompleted && products.length > 0) {
-        const fixSettings = async () => {
-          try {
-            await businessAPI.update(business.id, {
-              settings: { ...(business.settings || {}), setup_completed: true }
-            });
-          } catch (e) { console.error('Silent setup fix failed', e); }
-        };
-        fixSettings();
-      }
-    }
-  }, [isDataLoaded, business?.id, business?.settings?.setup_completed, products.length, businessLoading, hasCheckedSetup, business?.settings]);
 
   // Calculate stats
   const totalRevenue = useMemo(() => invoices
@@ -442,21 +484,40 @@ function BusinessDashboardContent() {
   const handleSaveProduct = async (productData) => {
     if (!business?.id) {
       toast.error('System is initializing. Please try again in 2 seconds.');
-      return;
+      throw new Error('Business context not ready');
     }
     try {
       const isEditing = !!(editingProduct || productData.id);
       const productId = productData.id || editingProduct?.id;
+      const toNumber = (value, fallback = 0) => {
+        if (value === '' || value === null || value === undefined) return fallback;
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : fallback;
+      };
 
       // Extract batches and serials (Send ALL to backend for reconciliation)
       const allBatches = productData.batches || [];
       const allSerials = productData.serialNumbers || [];
+      const normalizedProductData = {
+        ...productData,
+        price: toNumber(productData.price, 0),
+        cost_price: toNumber(productData.cost_price, 0),
+        mrp: toNumber(productData.mrp, 0),
+        tax_percent: toNumber(productData.tax_percent, 0),
+        min_stock: toNumber(productData.min_stock, 0),
+        max_stock: toNumber(productData.max_stock, 0),
+        min_stock_level: toNumber(productData.min_stock_level, 0),
+        reorder_point: toNumber(productData.reorder_point, 0),
+        reorder_quantity: toNumber(productData.reorder_quantity, 0),
+        expiry_date: productData.expiry_date || null,
+        manufacturing_date: productData.manufacturing_date || null,
+      };
 
       // 🚀 ATOMIC PERSISTENCE CALL
       // This single call replaces 3+ sequential network requests with a single ACID transaction
       await productAPI.upsertIntegrated({
         productData: {
-          ...productData,
+          ...normalizedProductData,
           business_id: business.id,
           batches: undefined, // Don't send nested arrays in cleanProductData if not handled by action
           serialNumbers: undefined
@@ -477,6 +538,7 @@ function BusinessDashboardContent() {
     } catch (error) {
       console.error('Error saving product:', error);
       toast.error('Failed to save product: ' + (error.message || 'Unknown error'));
+      throw error;
     }
   };
 
@@ -637,15 +699,38 @@ function BusinessDashboardContent() {
     try {
       const { items, totals, ...header } = invoiceData;
       const invoiceTotals = totals || header;
+      const toNumber = (value, fallback = 0) => {
+        if (value === '' || value === null || value === undefined) return fallback;
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : fallback;
+      };
+
+      const computedGrandTotal = toNumber(
+        invoiceTotals.total || invoiceTotals.grand_total || header.grand_total,
+        items.reduce((sum, item) => sum + toNumber(item.amount || item.total, 0), 0)
+      );
+      const computedSubtotal = toNumber(
+        invoiceTotals.subtotal || header.subtotal,
+        items.reduce((sum, item) => sum + (toNumber(item.quantity, 0) * toNumber(item.rate || item.unit_price, 0)), 0)
+      );
+      const computedTaxTotal = toNumber(
+        invoiceTotals.taxTotal || invoiceTotals.tax_total || invoiceTotals.totalTax || header.tax_total,
+        0
+      );
+      const computedDiscountTotal = toNumber(
+        invoiceTotals.discount || invoiceTotals.discount_total || header.discount_total,
+        0
+      );
 
       const payload = {
         ...header,
         business_id: business.id,
         invoice_number: header.invoiceNumber || header.invoice_number || `INV-${Date.now()}`,
-        grand_total: invoiceTotals.total || invoiceTotals.grand_total || header.grand_total || items.reduce((sum, item) => sum + (item.amount || item.total || 0), 0) || 0,
-        subtotal: invoiceTotals.subtotal || header.subtotal || items.reduce((sum, item) => sum + (item.quantity * item.rate), 0) || 0,
-        tax_total: invoiceTotals.taxTotal || invoiceTotals.tax_total || invoiceTotals.totalTax || header.tax_total || 0,
-        discount_total: invoiceTotals.discount || invoiceTotals.discount_total || header.discount_total || 0
+        grand_total: computedGrandTotal,
+        subtotal: computedSubtotal,
+        tax_total: computedTaxTotal,
+        total_tax: computedTaxTotal,
+        discount_total: computedDiscountTotal
       };
 
       const mappedItems = items.map(item => ({
@@ -950,9 +1035,15 @@ function BusinessDashboardContent() {
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       {/* Onboarding Wizard - Global */}
-      {!businessLoading && !business && (
+      {showSetupWizard && (
         <div className="mb-8">
-          <SetupWizard onComplete={() => window.location.reload()} />
+          <SetupWizard
+            category={category}
+            onComplete={() => {
+              sessionStorage.setItem('fh_setup_wizard_suppressed', '1');
+              setShowSetupWizard(false);
+            }}
+          />
         </div>
       )}
 
@@ -979,13 +1070,13 @@ function BusinessDashboardContent() {
           dashboardChartData={dashboardChartData}
           dashboardMetrics={dashboardMetrics}
           expenseBreakdown={expenseBreakdown}
+          expenses={expenses}
           dateRange={dateRange}
           currency={currency}
           colors={colors}
           planTier={contextPlanTier || business?.plan_tier || 'free'}
           resourceLimits={resourceLimits}
           domainKnowledge={domainKnowledge}
-          isPlatformOwner={isPlatformOwner}
           isLoading={!isDataLoaded}
           handlers={{
             handleTabChange,
@@ -1018,6 +1109,9 @@ function BusinessDashboardContent() {
             setShowVendorForm,
             setEditingVendor,
             setShowPOBuilder,
+            handleExpenseSaved: async () => {
+              await Promise.allSettled([fetchExpenses(), refreshAllData()]);
+            },
             // New POS & Restaurant Handlers
             posSession,
             restaurantTables,

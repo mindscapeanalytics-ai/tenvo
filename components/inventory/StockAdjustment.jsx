@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Plus, Minus, RotateCcw, Package, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { toast } from 'react-hot-toast';
+import { stockAPI } from '@/lib/api/stock';
 
 import { adjustStockAction } from '@/lib/actions/standard/inventory/stock';
 
@@ -46,6 +47,29 @@ export function StockAdjustment({
     notes: '',
     costPrice: 0,
   });
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadAdjustments = async () => {
+      if (!businessId) return;
+
+      try {
+        const data = await stockAPI.getRecentAdjustments(businessId, 100);
+        if (isMounted && Array.isArray(data)) {
+          setAdjustmentHistory(data);
+        }
+      } catch (error) {
+        console.error('Failed to load adjustment history:', error);
+      }
+    };
+
+    loadAdjustments();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [businessId]);
 
   const adjustmentReasons = [
     'Stock Count Correction',

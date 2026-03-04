@@ -12,15 +12,30 @@ interface AnalyticsDashboardProps {
     invoices: any[]; // New prop for Dual-Source engine
     colors?: any;
     category?: string;
+    onQuickAction?: (actionId: string) => void;
 }
 
-export function AnalyticsDashboard({ businessId, chartData, products, invoices, colors, category }: AnalyticsDashboardProps) {
+export function AnalyticsDashboard({ businessId, chartData, products, invoices, colors, category, onQuickAction }: AnalyticsDashboardProps) {
     if (!chartData || chartData.length === 0) {
         return (
             <Card className="h-[400px] flex flex-col items-center justify-center border-dashed border-2">
                 <BarChart3 className="w-12 h-12 text-muted-foreground opacity-20 mb-4" />
                 <p className="text-muted-foreground">Insufficient data for financial trends</p>
                 <p className="text-xs text-muted-foreground mt-1">Record more transactions to see analytics</p>
+                <div className="mt-4 flex items-center gap-2">
+                    <button
+                        onClick={() => onQuickAction?.('new-invoice')}
+                        className="px-3 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
+                    >
+                        Create Invoice
+                    </button>
+                    <button
+                        onClick={() => onQuickAction?.('new-product')}
+                        className="px-3 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors"
+                    >
+                        Add Product
+                    </button>
+                </div>
             </Card>
         );
     }

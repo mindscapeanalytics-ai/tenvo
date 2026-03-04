@@ -38,6 +38,7 @@ export function TabGuard({
     children,
 }) {
     const { isPlatformOwner } = useBusiness();
+    const effectiveRole = role || 'viewer';
 
     // Platform owner bypasses ALL gates — full access to everything
     if (isPlatformOwner) {
@@ -61,13 +62,13 @@ export function TabGuard({
     }
 
     // ── Gate 2: RBAC Permission ─────────────────────────────────────────────
-    if (permission && role && !hasPermission(role, permission)) {
+    if (permission && !hasPermission(effectiveRole, permission)) {
         return (
             <Card className="p-12 text-center border-none shadow-sm">
                 <ShieldAlert className="w-12 h-12 text-red-400 mx-auto mb-4" />
                 <h3 className="text-xl font-bold">Access Restricted</h3>
                 <p className="text-gray-500 mt-1">
-                    Your role ({role}) does not have permission to access this feature.
+                    Your role ({effectiveRole}) does not have permission to access this feature.
                     Contact your business administrator to request access.
                 </p>
             </Card>

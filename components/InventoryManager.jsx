@@ -283,6 +283,7 @@ export function InventoryManager({
   const [productsToBulkDelete, setProductsToBulkDelete] = useState([]);
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
   const [activeDomainFilters, setActiveDomainFilters] = useState({});
+  const [searchTerm, setSearchTerm] = useState('');
   const [showQuickAddModal, setShowQuickAddModal] = useState(false);
   const [showExcelMode, setShowExcelMode] = useState(false);
   const [showStockAdjustForm, setShowStockAdjustForm] = useState(false);
@@ -408,6 +409,23 @@ export function InventoryManager({
   // Here we apply additional domain-specific filters (Stock Level, Category, Brand, Price)
   const productsToDisplay = useMemo(() => {
     return products.filter(p => {
+      // 0. Search Term Filter (Name, SKU, Barcode, Brand, Category)
+      const normalizedTerm = String(searchTerm || '').trim().toLowerCase();
+      if (normalizedTerm) {
+        const searchable = [
+          p.name,
+          p.sku,
+          p.barcode,
+          p.brand,
+          p.category
+        ]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase();
+
+        if (!searchable.includes(normalizedTerm)) return false;
+      }
+
       // 1. Stock Category Filter
       if (activeDomainFilters.stock === 'low') {
         const minStock = p.min_stock ?? p.minStock ?? 10;
@@ -443,7 +461,7 @@ export function InventoryManager({
 
       return true;
     });
-  }, [products, activeDomainFilters]);
+  }, [products, activeDomainFilters, searchTerm]);
 
   // Derive unique options for filters
   const categoryOptions = useMemo(() => {
@@ -546,9 +564,15 @@ export function InventoryManager({
       // Heuristic: Scroll to search or just show toast for now
     };
 
-    const handleExportGlobal = () => {
-      toast.success("Preparing export...", { icon: '📊' });
-      handleExcelSave(products); // Trigger export logic
+    const handleExportGlobal = async () => {
+      try {
+        toast.loading("Preparing export...", { id: 'inventory-export' });
+        await exportProducts(productsToDisplay, 'excel');
+        toast.success(`Exported ${productsToDisplay.length} items`, { id: 'inventory-export' });
+      } catch (error) {
+        console.error('Global export failed:', error);
+        toast.error('Failed to export inventory', { id: 'inventory-export' });
+      }
     };
 
     window.addEventListener('toggle-filters', handleToggleFilters);
@@ -558,7 +582,7 @@ export function InventoryManager({
       window.removeEventListener('toggle-filters', handleToggleFilters);
       window.removeEventListener('export-data', handleExportGlobal);
     };
-  }, [products]);
+  }, [productsToDisplay]);
 
   const calculateLowStock = () => {
     return products.filter(p => p.stock <= (p.minStock || 0));
@@ -917,6 +941,34 @@ export function InventoryManager({
 
   const abcAnalysis = performABCAnalysis();
 
+  const topCategoryPerformance = useMemo(() => {
+    const byCategory = products.reduce((acc, product) => {
+      const categoryName = product.category || 'Uncategorized';
+      const stock = Number(product.stock || 0);
+      const price = Number(product.price || 0);
+      const value = stock * price;
+
+      if (!acc[categoryName]) {
+        acc[categoryName] = { category: categoryName, value: 0, units: 0 };
+      }
+
+      acc[categoryName].value += value;
+      acc[categoryName].units += stock;
+      return acc;
+    }, {});
+
+    const rows = Object.values(byCategory);
+    const totalValue = rows.reduce((sum, row) => sum + row.value, 0) || 1;
+
+    return rows
+      .map((row) => ({
+        ...row,
+        share: Math.round((row.value / totalValue) * 100)
+      }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 4);
+  }, [products]);
+
 
 
   // Shared Actions column for both views
@@ -1062,11 +1114,7 @@ export function InventoryManager({
 
       {/* Feature Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="bg-transparent">
-        <TabsList className={cn(
-          "grid w-full bg-gray-100/50 p-1 rounded-2xl border border-gray-200 shadow-inner",
-          isMultiLocationEnabled && isManufacturingEnabled ? "grid-cols-5" :
-            (isMultiLocationEnabled || isManufacturingEnabled) ? "grid-cols-4" : "grid-cols-3"
-        )}>
+        <TabsList className="flex w-full flex-wrap bg-gray-100/50 p-1 rounded-2xl border border-gray-200 shadow-inner gap-1 h-auto">
           <TabsTrigger value="products" className="rounded-xl font-bold transition-all data-[state=active]:shadow-lg data-[state=active]:bg-white">
             <Package className="w-4 h-4 mr-2" />
             Products
@@ -1090,6 +1138,16 @@ export function InventoryManager({
           <TabsTrigger value="reports" className="rounded-xl font-bold transition-all data-[state=active]:shadow-lg data-[state=active]:bg-white">
             <BarChart3 className="w-4 h-4 mr-2" />
             Reports
+          </TabsTrigger>
+          {isVariantEnabled && (
+            <TabsTrigger value="variants" className="rounded-xl font-bold transition-all data-[state=active]:shadow-lg data-[state=active]:bg-white">
+              <Layers className="w-4 h-4 mr-2" />
+              Variants
+            </TabsTrigger>
+          )}
+          <TabsTrigger value="pricing" className="rounded-xl font-bold transition-all data-[state=active]:shadow-lg data-[state=active]:bg-white">
+            <Settings className="w-4 h-4 mr-2" />
+            Pricing
           </TabsTrigger>
         </TabsList>
 
@@ -1203,11 +1261,12 @@ export function InventoryManager({
           {/* Search and Filters */}
           <AdvancedSearch
             onSearch={(term, domainFilters) => {
+              setSearchTerm(term || '');
               setActiveDomainFilters(domainFilters);
             }}
             placeholder="Search products by name or SKU..."
             category={category}
-            hideSearch={true}
+            hideSearch={false}
             filters={[
               { key: 'category', label: 'Category', type: 'select', options: categoryOptions },
               { key: 'brand', label: 'Brand', type: 'select', options: brandOptions },
@@ -1446,7 +1505,7 @@ export function InventoryManager({
                 <PriceListManager
                   priceLists={[]}
                   products={products}
-                  customers={[]}
+                  customers={customers}
                   onSave={(lists) => {
                     toast.success('Price lists updated');
                   }}
@@ -1465,7 +1524,7 @@ export function InventoryManager({
                 <DiscountSchemeManager
                   schemes={[]}
                   products={products}
-                  customers={[]}
+                  customers={customers}
                   onSave={(schemes) => {
                     toast.success('Discount schemes updated');
                   }}
@@ -1557,7 +1616,7 @@ export function InventoryManager({
             <CardContent className="p-0">
               <AutoReorderManager
                 products={products}
-                vendors={[]}
+                vendors={vendors}
                 onGeneratePO={(poData) => {
                   const product = products.find(p => p.id === poData.productId);
                   toast.success(`Purchase order generated for ${product?.name || 'product'}`);
@@ -1676,16 +1735,16 @@ export function InventoryManager({
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {Array.from(new Set(products.map(p => p.category))).slice(0, 4).map((cat, i) => (
-                    <div key={cat} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                  {topCategoryPerformance.map((entry, i) => (
+                    <div key={entry.category} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-lg bg-white shadow-sm flex items-center justify-center font-bold text-xs">
                           {i + 1}
                         </div>
-                        <span className="font-bold text-sm text-gray-700">{cat || 'Uncategorized'}</span>
+                        <span className="font-bold text-sm text-gray-700">{entry.category}</span>
                       </div>
                       <Badge variant="outline" className="bg-white border-gray-200">
-                        {Math.floor(Math.random() * 40 + 10)}% share
+                        {entry.share}% share
                       </Badge>
                     </div>
                   ))}
@@ -1697,6 +1756,7 @@ export function InventoryManager({
           {/* AI Demand Forecasting */}
           <div className="mt-8">
             <DemandForecast
+              businessId={businessId}
               products={products}
               invoices={invoices}
               category={category}

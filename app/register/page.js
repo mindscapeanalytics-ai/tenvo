@@ -389,21 +389,25 @@ export default function RegisterWizard() {
     };
 
     return (
-        <div className="min-h-screen bg-gray-50 flex flex-col p-4 md:p-8 lg:p-12 relative overflow-hidden">
+        <div className="min-h-screen bg-gray-50 flex flex-col p-4 md:p-6 lg:p-8 relative overflow-hidden">
             {/* Background Decorative Elements */}
             <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-wine/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
             <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-wine/5 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
 
-            <div className="max-w-5xl w-full mx-auto relative z-10 flex-1 flex flex-col">
+            <div className="max-w-6xl w-full mx-auto relative z-10 flex-1 flex flex-col">
                 {/* Header */}
-                <div className="flex items-center justify-between mb-12">
+                <div className="flex items-center justify-between mb-8">
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-wine rounded-xl flex items-center justify-center shadow-lg shadow-wine/20">
                             <Building2 className="w-6 h-6 text-white" />
                         </div>
                         <span className="text-xl font-black text-gray-900 tracking-tighter uppercase">TENVO</span>
                     </div>
-                    <div className="hidden md:flex items-center gap-8">
+                    <div className="hidden md:flex items-center gap-6">
+                        <div className="px-3 py-2 rounded-xl bg-white border border-gray-100 shadow-sm">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Secure Setup</p>
+                            <p className="text-xs font-bold text-gray-900">ISO-grade encrypted workspace</p>
+                        </div>
                         <div className="flex flex-col items-end">
                             <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Support</span>
                             <span className="text-sm font-bold text-gray-900">+92 300 1234567</span>
@@ -586,15 +590,9 @@ export default function RegisterWizard() {
                                                     {DOMAIN_CATEGORIES.map(cat => (
                                                         <TabsContent key={cat.id} value={cat.id} className="mt-0">
                                                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                                                                {cat.domains.map(domain => {
-                                                                    const knowledge = domainKnowledge[domain] || {};
-                                                                    const IconComponent = LucideIcons[knowledge.icon] || Rocket;
-                                                                    const domainName = translations[language]?.domains?.[domain] || domain.replace('-', ' ');
-
-                                                                    return (
-                                                                        <DomainButton key={domain} domainKey={domain} />
-                                                                    );
-                                                                })}
+                                                                {cat.domains.map(domain => (
+                                                                    <DomainButton key={domain} domainKey={domain} />
+                                                                ))}
                                                             </div>
                                                         </TabsContent>
                                                     ))}
@@ -618,123 +616,137 @@ export default function RegisterWizard() {
                                         </div>
                                     )}
 
-                                    {step === 3 && (
-                                        <div className="max-w-2xl mx-auto space-y-8 animate-in zoom-in duration-500">
-                                            <div className="bg-wine/5 border border-wine/10 rounded-3xl p-8 flex flex-col items-center text-center space-y-6">
-                                                <div className="w-20 h-20 bg-wine rounded-[28px] flex items-center justify-center text-white shadow-2xl shadow-wine/30 relative">
-                                                    <div className="absolute inset-0 animate-ping bg-wine/20 rounded-[28px]" />
-                                                    {LucideIcons[domainKnowledge[formData.category]?.icon] ?
-                                                        React.createElement(LucideIcons[domainKnowledge[formData.category].icon], { className: "w-10 h-10 relative z-10" }) :
-                                                        <Rocket className="w-10 h-10 relative z-10" />
-                                                    }
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <h3 className="text-2xl font-black text-gray-900 tracking-tight">Enterprise Infrastructure Ready</h3>
-                                                    <p className="text-gray-500 font-medium max-w-md">
-                                                        We&apos;ve calibrated the dashboard for <span className="text-wine font-black uppercase tracking-tight">{translations[language]?.domains?.[formData.category] || formData.category?.replace('-', ' ')}</span> with Pakistani tax compliance.
-                                                    </p>
-                                                </div>
+                                                                        {step === 3 && (
+                                                                            <div className="max-w-2xl mx-auto space-y-8 animate-in zoom-in duration-500">
+                                                                                <div className="bg-wine/5 border border-wine/10 rounded-3xl p-8 flex flex-col items-center text-center space-y-6">
+                                                                                    <div className="w-20 h-20 bg-wine rounded-[28px] flex items-center justify-center text-white shadow-2xl shadow-wine/30 relative">
+                                                                                        <div className="absolute inset-0 animate-ping bg-wine/20 rounded-[28px]" />
+                                                                                        {LucideIcons[domainKnowledge[formData.category]?.icon] ?
+                                                                                            React.createElement(LucideIcons[domainKnowledge[formData.category].icon], { className: "w-10 h-10 relative z-10" }) :
+                                                                                            <Rocket className="w-10 h-10 relative z-10" />
+                                                                                        }
+                                                                                    </div>
+                                                                                    <div className="space-y-2">
+                                                                                        <h3 className="text-2xl font-black text-gray-900 tracking-tight">Enterprise Infrastructure Ready</h3>
+                                                                                        <p className="text-gray-500 font-medium max-w-md">
+                                                                                            We&apos;ve calibrated the dashboard for <span className="text-wine font-black uppercase tracking-tight">{translations[language]?.domains?.[formData.category] || formData.category?.replace('-', ' ')}</span> with Pakistani tax compliance.
+                                                                                        </p>
+                                                                                    </div>
 
-                                                {domainKnowledge[formData.category]?.setupTemplate?.categories?.length > 0 && (
-                                                    <div className="w-full pt-4 border-t border-wine/10">
-                                                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Pre-built Industry Setup</p>
-                                                        <div className="flex flex-wrap justify-center gap-2">
-                                                            {domainKnowledge[formData.category].setupTemplate.categories.map(cat => (
-                                                                <span key={cat} className="px-3 py-1 bg-white border border-wine/5 rounded-full text-[10px] font-bold text-wine shadow-sm">
-                                                                    {cat}
-                                                                </span>
-                                                            ))}
-                                                        </div>
-                                                    </div>
-                                                )}
-                                            </div>
+                                                                                    {domainKnowledge[formData.category]?.setupTemplate?.categories?.length > 0 && (
+                                                                                        <div className="w-full pt-4 border-t border-wine/10">
+                                                                                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Pre-built Industry Setup</p>
+                                                                                            <div className="flex flex-wrap justify-center gap-2">
+                                                                                                {domainKnowledge[formData.category].setupTemplate.categories.map(cat => (
+                                                                                                    <span key={cat} className="px-3 py-1 bg-white border border-wine/5 rounded-full text-[10px] font-bold text-wine shadow-sm">
+                                                                                                        {cat}
+                                                                                                    </span>
+                                                                                                ))}
+                                                                                            </div>
+                                                                                        </div>
+                                                                                    )}
+                                                                                </div>
 
-                                            <div className="bg-gray-50 rounded-3xl p-6 space-y-4">
-                                                <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Identity Confirmation</h4>
-                                                <div className="grid grid-cols-2 gap-4">
-                                                    <div className="p-4 bg-white rounded-2xl shadow-sm border border-gray-100/50">
-                                                        <span className="text-[10px] font-black text-gray-400 uppercase block mb-1">Company</span>
-                                                        <span className="font-bold text-gray-900">{formData.businessName}</span>
-                                                    </div>
-                                                    <div className="p-4 bg-white rounded-2xl shadow-sm border border-gray-100/50">
-                                                        <span className="text-[10px] font-black text-gray-400 uppercase block mb-1">Vertical</span>
-                                                        <span className="font-bold text-wine capitalize">{formData.category.replace('-', ' ')}</span>
-                                                    </div>
-                                                </div>
-                                            </div>
+                                                                                <div className="bg-gray-50 rounded-3xl p-6 space-y-4">
+                                                                                    <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Identity Confirmation</h4>
+                                                                                    <div className="grid grid-cols-2 gap-4">
+                                                                                        <div className="p-4 bg-white rounded-2xl shadow-sm border border-gray-100/50">
+                                                                                            <span className="text-[10px] font-black text-gray-400 uppercase block mb-1">Company</span>
+                                                                                            <span className="font-bold text-gray-900">{formData.businessName}</span>
+                                                                                        </div>
+                                                                                        <div className="p-4 bg-white rounded-2xl shadow-sm border border-gray-100/50">
+                                                                                            <span className="text-[10px] font-black text-gray-400 uppercase block mb-1">Vertical</span>
+                                                                                            <span className="font-bold text-wine capitalize">{formData.category.replace('-', ' ')}</span>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                </div>
 
-                                            <div className="bg-gray-50 rounded-3xl p-6 space-y-4">
-                                                <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Subscription Plan</h4>
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                                    {Object.entries(PLAN_TIERS).map(([tier, config]) => {
-                                                        const isSelected = formData.planTier === tier;
-                                                        const isRecommended = recommendedPlanForDomain(formData.category) === tier;
-                                                        return (
-                                                            <button
-                                                                key={tier}
-                                                                type="button"
-                                                                onClick={() => setFormData(prev => ({ ...prev, planTier: tier }))}
-                                                                className={cn(
-                                                                    'text-left rounded-2xl border p-4 transition-all',
-                                                                    isSelected ? 'border-wine bg-wine/5 shadow-sm' : 'border-gray-200 bg-white hover:border-wine/30'
-                                                                )}
-                                                            >
-                                                                <div className="flex items-center justify-between mb-2">
-                                                                    <span className="text-sm font-black text-gray-900 capitalize">{config.name}</span>
-                                                                    {isRecommended && <span className="text-[10px] font-black uppercase text-emerald-600">Recommended</span>}
+                                                                                <div className="bg-gray-50 rounded-3xl p-6 space-y-4">
+                                                                                    <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Subscription Plan</h4>
+                                                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                                                        {Object.entries(PLAN_TIERS).map(([tier, config]) => {
+                                                                                            const isSelected = formData.planTier === tier;
+                                                                                            const isRecommended = recommendedPlanForDomain(formData.category) === tier;
+                                                                                            return (
+                                                                                                <button
+                                                                                                    key={tier}
+                                                                                                    type="button"
+                                                                                                    onClick={() => setFormData(prev => ({ ...prev, planTier: tier }))}
+                                                                                                    className={cn(
+                                                                                                        'text-left rounded-2xl border p-4 transition-all',
+                                                                                                        isSelected ? 'border-wine bg-wine/5 shadow-sm' : 'border-gray-200 bg-white hover:border-wine/30'
+                                                                                                    )}
+                                                                                                >
+                                                                                                    <div className="flex items-center justify-between mb-2">
+                                                                                                        <span className="text-sm font-black text-gray-900 capitalize">{config.name}</span>
+                                                                                                        {isRecommended && <span className="text-[10px] font-black uppercase text-emerald-600">Recommended</span>}
+                                                                                                    </div>
+                                                                                                    <p className="text-xs text-gray-500 font-medium">{config.tagline}</p>
+                                                                                                    <p className="text-xs font-black text-wine mt-2">PKR {config.price_pkr} / mo</p>
+                                                                                                    <ul className="mt-2 space-y-1">
+                                                                                                        {(PLAN_HIGHLIGHTS[tier] || []).map(item => (
+                                                                                                            <li key={item} className="text-[11px] text-gray-600">• {item}</li>
+                                                                                                        ))}
+                                                                                                    </ul>
+                                                                                                </button>
+                                                                                            );
+                                                                                        })}
+                                                                                    </div>
+                                                                                </div>
+
+                                                                                <div className="flex gap-4">
+                                                                                    <Button variant="outline" onClick={prevStep} className="flex-1 h-14 rounded-2xl font-bold border-gray-100">
+                                                                                        Review Basic
+                                                                                    </Button>
+                                                                                    <Button onClick={handleFinish} disabled={isLoading} className="flex-[2] h-14 bg-wine hover:bg-wine/90 text-white font-black rounded-2xl shadow-xl shadow-wine/20 text-lg">
+                                                                                        {isLoading ? (
+                                                                                            <div className="flex items-center gap-2">
+                                                                                                <Loader2 className="w-5 h-5 animate-spin" />
+                                                                                                <span>Launching...</span>
+                                                                                            </div>
+                                                                                        ) : "Generate Dashboard"}
+                                                                                    </Button>
+                                                                                </div>
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+
+                                                                    {/* Sidebar Info */}
+                                                                    <div className="hidden lg:flex w-80 bg-gray-50/70 border-l border-gray-100 flex-col p-8 xl:p-10 justify-between">
+                                                                        <div className="space-y-6">
+                                                                            <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Deployment Assurance</h4>
+                                                                            <div className="flex flex-col gap-2">
+                                                                                <div className="p-3 bg-white w-fit rounded-xl shadow-sm border border-gray-100">
+                                                                                    <BadgeCheck className="w-5 h-5 text-wine" />
+                                                                                </div>
+                                                                                <h5 className="font-black text-gray-900 mt-1">Certified Platform</h5>
+                                                                                <p className="text-xs text-gray-500 font-medium">FBR Tier-1 and SECP-ready architecture for consistent compliance workflows.</p>
+                                                                            </div>
+                                                                            <div className="flex flex-col gap-2">
+                                                                                <div className="p-3 bg-white w-fit rounded-xl shadow-sm border border-gray-100">
+                                                                                    <Shield className="w-5 h-5 text-wine" />
+                                                                                </div>
+                                                                                <h5 className="font-black text-gray-900 mt-1">Zero-Trust Security</h5>
+                                                                                <p className="text-xs text-gray-500 font-medium">Role-based isolation, encryption, and audit-safe records across modules.</p>
+                                                                            </div>
+                                                                            <div className="flex flex-col gap-2">
+                                                                                <div className="p-3 bg-white w-fit rounded-xl shadow-sm border border-gray-100">
+                                                                                    <CheckCircle2 className="w-5 h-5 text-wine" />
+                                                                                </div>
+                                                                                <h5 className="font-black text-gray-900 mt-1">Fast Go-Live</h5>
+                                                                                <p className="text-xs text-gray-500 font-medium">Complete setup in minutes with preconfigured chart, tax, and inventory defaults.</p>
+                                                                            </div>
+                                                                        </div>
+
+                                                                        <div className="rounded-2xl bg-white border border-gray-100 p-4">
+                                                                            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Need onboarding help?</p>
+                                                                            <p className="text-sm font-bold text-gray-900">support@financial-hub.com</p>
+                                                                            <p className="text-xs text-gray-500 font-medium mt-1">Average response time under 15 minutes.</p>
+                                                                        </div>
+                                                                    </div>
                                                                 </div>
-                                                                <p className="text-xs text-gray-500 font-medium">{config.tagline}</p>
-                                                                <p className="text-xs font-black text-wine mt-2">PKR {config.price_pkr} / mo</p>
-                                                                <ul className="mt-2 space-y-1">
-                                                                    {(PLAN_HIGHLIGHTS[tier] || []).map(item => (
-                                                                        <li key={item} className="text-[11px] text-gray-600">• {item}</li>
-                                                                    ))}
-                                                                </ul>
-                                                            </button>
-                                                        );
-                                                    })}
-                                                </div>
-                                            </div>
-
-                                            <div className="flex gap-4">
-                                                <Button variant="outline" onClick={prevStep} className="flex-1 h-14 rounded-2xl font-bold border-gray-100">
-                                                    Review Basic
-                                                </Button>
-                                                <Button onClick={handleFinish} disabled={isLoading} className="flex-[2] h-14 bg-wine hover:bg-wine/90 text-white font-black rounded-2xl shadow-xl shadow-wine/20 text-lg">
-                                                    {isLoading ? (
-                                                        <div className="flex items-center gap-2">
-                                                            <Loader2 className="w-5 h-5 animate-spin" />
-                                                            <span>Launching...</span>
-                                                        </div>
-                                                    ) : "Generate Dashboard"}
-                                                </Button>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* Sidebar Info */}
-                                <div className="hidden lg:flex w-72 bg-gray-50/50 border-l border-gray-100 flex-col p-12 justify-center">
-                                    <div className="space-y-8">
-                                        <div className="flex flex-col gap-2">
-                                            <div className="p-3 bg-white w-fit rounded-xl shadow-sm border border-gray-100">
-                                                <BadgeCheck className="w-5 h-5 text-wine" />
-                                            </div>
-                                            <h4 className="font-black text-gray-900 mt-2">Certified Platform</h4>
-                                            <p className="text-xs text-gray-500 font-medium">FBR Tier-1 & SECP compliant infrastructure for enterprise reliability.</p>
-                                        </div>
-                                        <div className="flex flex-col gap-2">
-                                            <div className="p-3 bg-white w-fit rounded-xl shadow-sm border border-gray-100">
-                                                <Shield className="w-5 h-5 text-wine" />
-                                            </div>
-                                            <h4 className="font-black text-gray-900 mt-2">Zero-Trust Security</h4>
-                                            <p className="text-xs text-gray-500 font-medium">Bank-grade encryption protecting every transaction and stock movement.</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
+                                                            </CardContent>
+                                                        </Card>
                 </div>
 
                 {/* Footer Credits */}

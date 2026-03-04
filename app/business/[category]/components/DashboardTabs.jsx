@@ -6,7 +6,7 @@ import { Tabs as BaseTabs, TabsContent, TabsList, TabsTrigger } from '@/componen
 
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Package, Search, AlertTriangle, Lock, ShoppingCart, DollarSign as DollarIcon, TrendingUp, TrendingDown, Package as PackageIcon, Layout, Clock } from 'lucide-react';
+import { Package, ShoppingCart, DollarSign as DollarIcon, TrendingUp, TrendingDown, Package as PackageIcon } from 'lucide-react';
 import { DomainDashboard } from './tabs/DomainDashboard';
 import { InventoryTab } from './tabs/InventoryTab';
 import { InvoiceTab } from './tabs/InvoiceTab';
@@ -49,14 +49,9 @@ import { PromotionEngine } from '@/components/crm/PromotionEngine';
 import { CustomerLoyaltyPortal } from '@/components/crm/CustomerLoyaltyPortal';
 import { AIInsightsPanel } from '@/components/intelligence/AIInsightsPanel';
 import { ReportBuilder } from '@/components/reports/ReportBuilder';
-import { UpgradePrompt } from '@/components/subscription/UpgradePrompt';
 import { TabGuard } from '@/components/guards/TabGuard';
 import { ResourceLimitBanner } from '@/components/ui/ResourceLimitBanner';
-import { planHasFeature } from '@/lib/config/plans';
 import { isPosRelevant, isHospitality, isCampaignRelevant } from '@/lib/config/domains';
-
-// Lazy load heavy admin panel
-const PlatformAdminPanel = React.lazy(() => import('@/components/admin/PlatformAdminPanel'));
 
 export function DashboardTabs({
     activeTab,
@@ -79,6 +74,7 @@ export function DashboardTabs({
     dashboardChartData,
     dashboardMetrics,
     expenseBreakdown = [],
+    expenses = [],
     dateRange,
     currency,
     colors,
@@ -86,20 +82,11 @@ export function DashboardTabs({
     resourceLimits,
     domainKnowledge,
     handlers,
-    isLoading = false,
-    isPlatformOwner = false
+    isLoading = false
 }) {
     const posRelevant = isPosRelevant(category, domainKnowledge);
     const hospitalityDomain = isHospitality(category);
     const campaignRelevant = isCampaignRelevant(category, domainKnowledge);
-
-    const domainNotRelevant = (title, message) => (
-        <Card className="p-12 text-center border-none shadow-sm">
-            <AlertTriangle className="w-12 h-12 text-orange-400 mx-auto mb-4" />
-            <h3 className="text-xl font-bold">{title}</h3>
-            <p className="text-gray-500">{message}</p>
-        </Card>
-    );
 
     // Memoized Filtering Logic
     const filteredProducts = React.useMemo(() => {
@@ -220,7 +207,6 @@ export function DashboardTabs({
         handleStockTransfer,
         handleGenerateAutoPO,
         handleDeleteCustomer,
-        handleSaveVendor,
         handleDeleteVendor,
         handleUpdatePOStatus,
         handleCreateBOM,
@@ -280,6 +266,7 @@ export function DashboardTabs({
                             onQuickAction={handlers.handleQuickAction}
                             dashboardMetrics={dashboardMetrics}
                             expenseBreakdown={expenseBreakdown}
+                            expenses={expenses}
                             domainKnowledge={domainKnowledge}
                             isLoading={isLoading}
                         />
@@ -293,19 +280,21 @@ export function DashboardTabs({
                         onUpgrade={handlers?.handleUpgrade}
                     />
                     {wrapTab(
-                        <InvoiceTab
-                            invoices={filteredInvoices}
-                            currency={currency}
-                            onInvoiceDelete={handleDeleteInvoice}
-                            onEdit={(invoice) => {
-                                setInvoiceInitialData(invoice);
-                                setShowInvoiceBuilder(true);
-                            }}
-                            onBulkDelete={handleBulkDelete}
-                            onExport={handleExport}
-                            category={category}
-                            colors={colors}
-                        />
+                        <TabGuard tabKey="invoices" role={role} planTier={planTier} featureName="Invoices" onUpgrade={() => handleTabChange('settings')}>
+                            <InvoiceTab
+                                invoices={filteredInvoices}
+                                currency={currency}
+                                onInvoiceDelete={handleDeleteInvoice}
+                                onEdit={(invoice) => {
+                                    setInvoiceInitialData(invoice);
+                                    setShowInvoiceBuilder(true);
+                                }}
+                                onBulkDelete={handleBulkDelete}
+                                onExport={handleExport}
+                                category={category}
+                                colors={colors}
+                            />
+                        </TabGuard>
                     )}
                 </TabsContent>
 
@@ -316,141 +305,155 @@ export function DashboardTabs({
                         onUpgrade={handlers?.handleUpgrade}
                     />
                     {wrapTab(
-                        <InventoryTab
-                            products={filteredProducts}
-                            businessId={business?.id}
-                            category={category}
-                            onProductSave={handleSaveProduct}
-                            onProductDelete={handleDeleteProduct}
-                            refreshData={refreshAllData}
-                            domainKnowledge={domainKnowledge}
-                            invoices={filteredInvoices}
-                            customers={filteredCustomers}
-                            vendors={filteredVendors}
-                            locations={locations}
-                            bomList={bomList}
-                            productionOrders={productionOrders}
-                            quotations={quotations}
-                            salesOrders={salesOrders}
-                            challans={challans}
-                            onIssueInvoice={(header) => {
-                                setInvoiceInitialData(header);
-                                setShowInvoiceBuilder(true);
-                            }}
-                            onAdd={() => {
-                                setEditingProduct(null);
-                                setShowProductForm(true);
-                            }}
-                            onQuickAdd={handleQuickAddProduct}
-                            onEdit={(product) => {
-                                setEditingProduct(product);
-                                setShowProductForm(true);
-                            }}
-                            onUpdate={async (product) => {
-                                // ✅ CRITICAL FIX: Preserve batch/serial data during inline edits
-                                // BusyGrid sends partial product data, we must fetch full data to preserve batches
-                                const fullProduct = products.find(p => p.id === product.id);
+                        <TabGuard tabKey="inventory" role={role} planTier={planTier} featureName="Inventory" onUpgrade={() => handleTabChange('settings')}>
+                            <InventoryTab
+                                products={filteredProducts}
+                                businessId={business?.id}
+                                category={category}
+                                onProductSave={handleSaveProduct}
+                                onProductDelete={handleDeleteProduct}
+                                refreshData={refreshAllData}
+                                domainKnowledge={domainKnowledge}
+                                invoices={filteredInvoices}
+                                customers={filteredCustomers}
+                                vendors={filteredVendors}
+                                locations={locations}
+                                bomList={bomList}
+                                productionOrders={productionOrders}
+                                quotations={quotations}
+                                salesOrders={salesOrders}
+                                challans={challans}
+                                onIssueInvoice={(header) => {
+                                    setInvoiceInitialData(header);
+                                    setShowInvoiceBuilder(true);
+                                }}
+                                onAdd={() => {
+                                    setEditingProduct(null);
+                                    setShowProductForm(true);
+                                }}
+                                onQuickAdd={handleQuickAddProduct}
+                                onEdit={(product) => {
+                                    setEditingProduct(product);
+                                    setShowProductForm(true);
+                                }}
+                                onUpdate={async (product) => {
+                                    // ✅ CRITICAL FIX: Preserve batch/serial data during inline edits
+                                    // BusyGrid sends partial product data, we must fetch full data to preserve batches
+                                    const fullProduct = products.find(p => p.id === product.id);
 
-                                await handleSaveProduct({
-                                    ...product,  // Include all edited fields
-                                    batches: fullProduct?.batches || product.batches || [],
-                                    serialNumbers: fullProduct?.serial_numbers || fullProduct?.serialNumbers || product.serialNumbers || product.serial_numbers || [],
-                                    business_id: business.id,
-                                    isUpdate: true,
-                                    productId: product.id
-                                });
-                            }}
-                            onLocationAdd={handleLocationAdd}
-                            onLocationUpdate={handleLocationUpdate}
-                            onLocationDelete={handleLocationDelete}
-                            onStockTransfer={handleStockTransfer}
-                            onGeneratePO={handleGenerateAutoPO}
-                        />
+                                    await handleSaveProduct({
+                                        ...product,  // Include all edited fields
+                                        batches: fullProduct?.batches || product.batches || [],
+                                        serialNumbers: fullProduct?.serial_numbers || fullProduct?.serialNumbers || product.serialNumbers || product.serial_numbers || [],
+                                        business_id: business.id,
+                                        isUpdate: true,
+                                        productId: product.id
+                                    });
+                                }}
+                                onLocationAdd={handleLocationAdd}
+                                onLocationUpdate={handleLocationUpdate}
+                                onLocationDelete={handleLocationDelete}
+                                onStockTransfer={handleStockTransfer}
+                                onGeneratePO={handleGenerateAutoPO}
+                            />
+                        </TabGuard>
                     )}
                 </TabsContent>
 
                 <TabsContent value="customers" className="space-y-6 outline-none">
                     {wrapTab(
-                        <CustomersTab
-                            customers={filteredCustomers}
-                            businessId={business?.id}
-                            onCustomerDelete={handleDeleteCustomer}
-                            onUpdate={(customer) => {
-                                setEditingCustomer(customer);
-                                setShowCustomerForm(true);
-                            }}
-                        />
+                        <TabGuard tabKey="customers" role={role} planTier={planTier} featureName="Customers" onUpgrade={() => handleTabChange('settings')}>
+                            <CustomersTab
+                                customers={filteredCustomers}
+                                businessId={business?.id}
+                                onCustomerDelete={handleDeleteCustomer}
+                                onUpdate={(customer) => {
+                                    setEditingCustomer(customer);
+                                    setShowCustomerForm(true);
+                                }}
+                            />
+                        </TabGuard>
                     )}
                 </TabsContent>
 
                 <TabsContent value="vendors" className="space-y-6 outline-none">
                     {wrapTab(
-                        <VendorManager
-                            vendors={filteredVendors}
-                            onAdd={() => {
-                                setEditingVendor(null);
-                                setShowVendorForm(true);
-                            }}
-                            onUpdate={(vendor) => {
-                                setEditingVendor(vendor);
-                                setShowVendorForm(true);
-                            }}
-                            onDelete={handleDeleteVendor}
-                            businessId={business?.id}
-                            category={category}
-                        />
+                        <TabGuard tabKey="vendors" role={role} planTier={planTier} featureName="Vendors" onUpgrade={() => handleTabChange('settings')}>
+                            <VendorManager
+                                vendors={filteredVendors}
+                                onAdd={() => {
+                                    setEditingVendor(null);
+                                    setShowVendorForm(true);
+                                }}
+                                onUpdate={(vendor) => {
+                                    setEditingVendor(vendor);
+                                    setShowVendorForm(true);
+                                }}
+                                onDelete={handleDeleteVendor}
+                                businessId={business?.id}
+                                category={category}
+                            />
+                        </TabGuard>
                     )}
                 </TabsContent>
 
                 <TabsContent value="payments" className="space-y-6 outline-none">
                     {wrapTab(
-                        <PaymentManager
-                            businessId={business?.id}
-                            customers={filteredCustomers}
-                            vendors={filteredVendors}
-                            invoices={filteredInvoices}
-                            purchases={purchaseOrders}
-                            refreshData={refreshAllData}
-                        />
+                        <TabGuard tabKey="payments" role={role} planTier={planTier} featureName="Payments" onUpgrade={() => handleTabChange('settings')}>
+                            <PaymentManager
+                                businessId={business?.id}
+                                customers={filteredCustomers}
+                                vendors={filteredVendors}
+                                invoices={filteredInvoices}
+                                purchases={purchaseOrders}
+                                refreshData={refreshAllData}
+                            />
+                        </TabGuard>
                     )}
                 </TabsContent>
 
                 <TabsContent value="purchases" className="space-y-6 outline-none">
                     {wrapTab(
-                        <PurchaseOrderManager
-                            category={category}
-                            purchaseOrders={filteredPurchaseOrders}
-                            onUpdateStatus={handleUpdatePOStatus}
-                            refreshData={refreshAllData}
-                            onCreate={() => setShowPOBuilder(true)}
-                        />
+                        <TabGuard tabKey="purchases" role={role} planTier={planTier} featureName="Purchases" onUpgrade={() => handleTabChange('settings')}>
+                            <PurchaseOrderManager
+                                category={category}
+                                purchaseOrders={filteredPurchaseOrders}
+                                onUpdateStatus={handleUpdatePOStatus}
+                                refreshData={refreshAllData}
+                                onCreate={() => setShowPOBuilder(true)}
+                            />
+                        </TabGuard>
                     )}
                 </TabsContent>
 
                 <TabsContent value="sales" className="space-y-6 outline-none">
                     {wrapTab(
-                        <SalesManager
-                            invoices={invoices}
-                            customers={customers}
-                            products={products}
-                            category={category}
-                        />
+                        <TabGuard tabKey="sales" role={role} planTier={planTier} featureName="Sales" onUpgrade={() => handleTabChange('settings')}>
+                            <SalesManager
+                                invoices={invoices}
+                                customers={customers}
+                                products={products}
+                                category={category}
+                            />
+                        </TabGuard>
                     )}
                 </TabsContent>
 
                 {domainKnowledge?.manufacturingEnabled && (
                     <TabsContent value="manufacturing" className="space-y-6 outline-none">
                         {wrapTab(
-                            <ManufacturingModule
-                                products={filteredProducts}
-                                bomList={filteredBoms}
-                                productionOrders={filteredProductionOrders}
-                                warehouses={locations}
-                                onBOMAdd={handleCreateBOM}
-                                onProductionOrderCreate={handleCreateProductionOrder}
-                                onSave={refreshAllData}
-                                businessId={business?.id}
-                            />
+                            <TabGuard tabKey="manufacturing" role={role} planTier={planTier} featureName="Manufacturing" onUpgrade={() => handleTabChange('settings')}>
+                                <ManufacturingModule
+                                    products={filteredProducts}
+                                    bomList={filteredBoms}
+                                    productionOrders={filteredProductionOrders}
+                                    warehouses={locations}
+                                    onBOMAdd={handleCreateBOM}
+                                    onProductionOrderCreate={handleCreateProductionOrder}
+                                    onSave={refreshAllData}
+                                    businessId={business?.id}
+                                />
+                            </TabGuard>
                         )}
                     </TabsContent>
                 )}
@@ -458,15 +461,17 @@ export function DashboardTabs({
                 {domainKnowledge?.multiLocationEnabled && (
                     <TabsContent value="warehouses" className="space-y-6 outline-none">
                         {wrapTab(
-                            <MultiLocationInventory
-                                businessId={business?.id}
-                                locations={locations}
-                                products={filteredProducts}
-                                onLocationAdd={handleLocationAdd}
-                                onLocationUpdate={handleLocationUpdate}
-                                onLocationDelete={handleLocationDelete}
-                                onStockTransfer={handleStockTransfer}
-                            />
+                            <TabGuard tabKey="warehouses" role={role} planTier={planTier} featureName="Warehouses" onUpgrade={() => handleTabChange('settings')}>
+                                <MultiLocationInventory
+                                    businessId={business?.id}
+                                    locations={locations}
+                                    products={filteredProducts}
+                                    onLocationAdd={handleLocationAdd}
+                                    onLocationUpdate={handleLocationUpdate}
+                                    onLocationDelete={handleLocationDelete}
+                                    onStockTransfer={handleStockTransfer}
+                                />
+                            </TabGuard>
                         )}
                     </TabsContent>
                 )}
@@ -474,19 +479,21 @@ export function DashboardTabs({
                 {domainKnowledge?.inventoryFeatures?.includes('Quotation Management') && (
                     <TabsContent value="quotations" className="space-y-6 outline-none">
                         {wrapTab(
-                            <QuotationOrderChallanManager
-                                quotations={filteredQuotations}
-                                salesOrders={filteredSalesOrders}
-                                challans={filteredChallans}
-                                customers={filteredCustomers}
-                                products={filteredProducts}
-                                refreshData={refreshAllData}
-                                category={category}
-                                onIssueInvoice={(header) => {
-                                    setInvoiceInitialData(header);
-                                    setShowInvoiceBuilder(true);
-                                }}
-                            />
+                            <TabGuard tabKey="quotations" role={role} planTier={planTier} featureName="Quotations" onUpgrade={() => handleTabChange('settings')}>
+                                <QuotationOrderChallanManager
+                                    quotations={filteredQuotations}
+                                    salesOrders={filteredSalesOrders}
+                                    challans={filteredChallans}
+                                    customers={filteredCustomers}
+                                    products={filteredProducts}
+                                    refreshData={refreshAllData}
+                                    category={category}
+                                    onIssueInvoice={(header) => {
+                                        setInvoiceInitialData(header);
+                                        setShowInvoiceBuilder(true);
+                                    }}
+                                />
+                            </TabGuard>
                         )}
                     </TabsContent>
                 )}
@@ -494,32 +501,50 @@ export function DashboardTabs({
                 {domainKnowledge?.batchTrackingEnabled && (
                     <TabsContent value="batches" className="space-y-6 outline-none">
                         {wrapTab(
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle>Global Batch Monitoring</CardTitle>
-                                    <CardDescription>Select a product from the Inventory tab to manage specific batches.</CardDescription>
-                                </CardHeader>
-                                <CardContent className="h-[400px] flex flex-col items-center justify-center text-center">
-                                    <Package className="w-12 h-12 text-gray-300 mb-4" />
-                                    <h3 className="text-lg font-medium text-gray-900">Batch details are product-specific</h3>
-                                    <p className="text-gray-500 max-w-sm mt-2">
-                                        To manage batches, go to the <strong>Inventory</strong> tab, click the actions menu on any product, and select <strong>Manage Batches</strong>.
-                                    </p>
-                                    <Button
-                                        variant="outline"
-                                        className="mt-6"
-                                        onClick={() => handleTabChange('inventory')}
-                                    >
-                                        Go to Inventory
-                                    </Button>
-                                </CardContent>
-                            </Card>
+                            <TabGuard tabKey="batches" role={role} planTier={planTier} featureName="Batches & Serials" onUpgrade={() => handleTabChange('settings')}>
+                                <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                                    <Card>
+                                        <CardHeader>
+                                            <CardTitle>Global Batch Monitoring</CardTitle>
+                                            <CardDescription>Select a product from the Inventory tab to manage specific batches.</CardDescription>
+                                        </CardHeader>
+                                        <CardContent className="h-[360px] flex flex-col items-center justify-center text-center">
+                                            <Package className="w-12 h-12 text-gray-300 mb-4" />
+                                            <h3 className="text-lg font-medium text-gray-900">Batch details are product-specific</h3>
+                                            <p className="text-gray-500 max-w-sm mt-2">
+                                                To manage batches, go to the <strong>Inventory</strong> tab, click the actions menu on any product, and select <strong>Manage Batches</strong>.
+                                            </p>
+                                            <Button
+                                                variant="outline"
+                                                className="mt-6"
+                                                onClick={() => handleTabChange('inventory')}
+                                            >
+                                                Go to Inventory
+                                            </Button>
+                                        </CardContent>
+                                    </Card>
+
+                                    <Card>
+                                        <CardHeader>
+                                            <CardTitle>Serial Verification</CardTitle>
+                                            <CardDescription>Scan or enter serial numbers to validate inventory authenticity and status.</CardDescription>
+                                        </CardHeader>
+                                        <CardContent>
+                                            <SerialScanner
+                                                businessId={business?.id}
+                                                mode="scan"
+                                            />
+                                        </CardContent>
+                                    </Card>
+                                </div>
+                            </TabGuard>
                         )}
                     </TabsContent>
                 )}
 
                 <TabsContent value="accounting" className="space-y-6 outline-none">
                     {wrapTab(
+                        <TabGuard tabKey="accounting" role={role} planTier={planTier} featureName="Accounting" onUpgrade={() => handleTabChange('settings')}>
                         <>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                                 <Card className="border-none shadow-sm bg-white overflow-hidden group hover:shadow-md transition-all">
@@ -610,11 +635,13 @@ export function DashboardTabs({
                                 onTabChange={handleTabChange}
                             />
                         </>
+                        </TabGuard>
                     )}
                 </TabsContent>
 
                 <TabsContent value="finance" className="space-y-6 outline-none">
                     {wrapTab(
+                        <TabGuard tabKey="finance" role={role} planTier={planTier} featureName="Finance" onUpgrade={() => handleTabChange('settings')}>
                         <BaseTabs defaultValue="journal" className="w-full">
                             <TabsList className="grid w-full grid-cols-3 mb-6 bg-gray-100 rounded-xl p-1">
                                 <TabsTrigger value="journal" className="data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-lg font-bold">Journal Entry</TabsTrigger>
@@ -654,6 +681,7 @@ export function DashboardTabs({
                                 </TabsContent>
                             </div>
                         </BaseTabs>
+                        </TabGuard>
                     )}
                 </TabsContent>
 
@@ -704,19 +732,13 @@ export function DashboardTabs({
 
                 <TabsContent value="gst" className="space-y-6 outline-none">
                     {wrapTab(
-                        ['owner', 'admin', 'accountant'].includes(role) ? (
+                        <TabGuard tabKey="gst" role={role} planTier={planTier} featureName="Tax & GST" onUpgrade={() => handleTabChange('settings')}>
                             <TaxComplianceManager
                                 invoices={filteredInvoices}
                                 purchaseOrders={purchaseOrders}
                                 business={business}
                             />
-                        ) : (
-                            <Card className="p-12 text-center border-none shadow-sm">
-                                <AlertTriangle className="w-12 h-12 text-orange-400 mx-auto mb-4" />
-                                <h3 className="text-xl font-bold">Access Restricted</h3>
-                                <p className="text-gray-500">Only authorized personnel can access Tax & GST data.</p>
-                            </Card>
-                        )
+                        </TabGuard>
                     )}
                 </TabsContent>
 
@@ -724,46 +746,58 @@ export function DashboardTabs({
 
                 <TabsContent value="pos" className="space-y-6 outline-none">
                     {wrapTab(
-                        !posRelevant ? (
-                            domainNotRelevant(
-                                'Point of Sale not relevant for this domain',
-                                'Switch to a retail or hospitality domain profile to enable POS workflows.'
-                            )
-                        ) : category === 'restaurant-cafe' ? (
-                            <RestaurantPOS
-                                businessId={business?.id}
-                                products={filteredProducts}
-                                onCompleteSale={refreshAllData}
-                                currency={currency}
-                            />
-                        ) : ['supermarket', 'grocery', 'wholesale'].includes(category) ? (
-                            <SuperStorePOS
-                                businessId={business?.id}
-                                products={filteredProducts}
-                                onCompleteSale={handlePosCheckout}
-                                currency={currency}
-                                session={posSession}
-                            />
-                        ) : (
-                            <PosTerminal
-                                businessId={business?.id}
-                                products={filteredProducts}
-                                onCompleteSale={handlePosCheckout}
-                                currency={currency}
-                                session={posSession}
-                            />
-                        )
+                        <TabGuard
+                            tabKey="pos"
+                            role={role}
+                            planTier={planTier}
+                            domainCheck={posRelevant}
+                            domainTitle="Point of Sale not relevant for this domain"
+                            domainMessage="Switch to a retail or hospitality domain profile to enable POS workflows."
+                            requiredPlan="starter"
+                            featureName="Point of Sale"
+                            onUpgrade={() => handleTabChange('settings')}
+                        >
+                            {category === 'restaurant-cafe' ? (
+                                <RestaurantPOS
+                                    businessId={business?.id}
+                                    products={filteredProducts}
+                                    onCompleteSale={refreshAllData}
+                                    currency={currency}
+                                />
+                            ) : ['supermarket', 'grocery', 'wholesale'].includes(category) ? (
+                                <SuperStorePOS
+                                    businessId={business?.id}
+                                    products={filteredProducts}
+                                    onCompleteSale={handlePosCheckout}
+                                    currency={currency}
+                                    session={posSession}
+                                />
+                            ) : (
+                                <PosTerminal
+                                    businessId={business?.id}
+                                    products={filteredProducts}
+                                    onCompleteSale={handlePosCheckout}
+                                    currency={currency}
+                                    session={posSession}
+                                />
+                            )}
+                        </TabGuard>
                     )}
                 </TabsContent>
 
                 <TabsContent value="restaurant" className="space-y-6 outline-none">
                     {wrapTab(
-                        !hospitalityDomain ? (
-                            domainNotRelevant(
-                                'Restaurant module is domain-specific',
-                                'This module is available for bakery, restaurant, and hotel domains only.'
-                            )
-                        ) : (
+                        <TabGuard
+                            tabKey="restaurant"
+                            role={role}
+                            planTier={planTier}
+                            domainCheck={hospitalityDomain}
+                            domainTitle="Restaurant module is domain-specific"
+                            domainMessage="This module is available for bakery, restaurant, and hotel domains only."
+                            requiredPlan="starter"
+                            featureName="Restaurant Operations"
+                            onUpgrade={() => handleTabChange('settings')}
+                        >
                             <div className="space-y-6">
                             <div className="flex items-center justify-between">
                                 <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight">Restaurant Operations</h2>
@@ -816,13 +850,37 @@ export function DashboardTabs({
                                 </>
                             )}
                             </div>
-                        )
+                        </TabGuard>
                     )}
                 </TabsContent>
 
                 <TabsContent value="expenses" className="space-y-6 outline-none">
                     {wrapTab(
-                        <FinanceHub businessId={business?.id} />
+                        <TabGuard
+                            role={role}
+                            planTier={planTier}
+                            permission="finance.manage_expenses"
+                            featureKey="expense_tracking"
+                            requiredPlan="starter"
+                            featureName="Expenses"
+                            onUpgrade={() => handleTabChange('settings')}
+                        >
+                            <div className="space-y-6">
+                                <ExpenseManager
+                                    businessId={business?.id}
+                                    expenses={expenses}
+                                    vendors={filteredVendors}
+                                    currency={currency}
+                                    onCreateExpense={async () => {
+                                        await handlers?.handleExpenseSaved?.();
+                                    }}
+                                />
+
+                                <div className="border-t border-gray-100 pt-6">
+                                    <FinanceHub businessId={business?.id} initialTab="expenses" />
+                                </div>
+                            </div>
+                        </TabGuard>
                     )}
                 </TabsContent>
 
@@ -977,20 +1035,6 @@ export function DashboardTabs({
                     )}
                 </TabsContent>
 
-                {/* ─── Platform Admin (Owner Only) ─── */}
-                {isPlatformOwner && (
-                    <TabsContent value="platform-admin" className="space-y-6 outline-none">
-                        {wrapTab(
-                            <React.Suspense fallback={
-                                <div className="flex items-center justify-center py-20">
-                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
-                                </div>
-                            }>
-                                <PlatformAdminPanel />
-                            </React.Suspense>
-                        )}
-                    </TabsContent>
-                )}
             </div>
         </AnimatePresence>
     );

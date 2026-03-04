@@ -541,7 +541,7 @@ export default function NewPurchasePage() {
                                         {items.length === 0 && (
                                             <tr>
                                                 <td colSpan={7} className="p-12 text-center text-gray-400 bg-gray-50/30 dashed-border">
-                                                    No items added. Use the "Add Line" button to start.
+                                                    No items added. Use the &quot;Add Line&quot; button to start.
                                                 </td>
                                             </tr>
                                         )}

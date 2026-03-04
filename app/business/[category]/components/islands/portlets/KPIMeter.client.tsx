@@ -16,6 +16,8 @@ interface KPIMeterProps {
     prefix?: string;
     suffix?: string;
     color?: string;
+    trendValue?: number;
+    trendLabel?: string;
 }
 
 export const KPIMeter = memo(function KPIMeter({
@@ -24,7 +26,9 @@ export const KPIMeter = memo(function KPIMeter({
     target = 100,
     prefix = "",
     suffix = "%",
-    color = "#8B1538"
+    color = "#8B1538",
+    trendValue = 0,
+    trendLabel = "vs previous period"
 }: KPIMeterProps) {
     const data = [
         { name: 'Value', value: value, fill: color },
@@ -59,8 +63,10 @@ export const KPIMeter = memo(function KPIMeter({
                             {prefix}{value}{suffix}
                         </span>
                         <div className="flex items-center gap-1 mt-1">
-                            <TrendingUp className="w-3 h-3 text-emerald-500" />
-                            <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">+12% vs LY</span>
+                            <TrendingUp className={`w-3 h-3 ${trendValue >= 0 ? 'text-emerald-500' : 'text-red-500 rotate-180'}`} />
+                            <span className={`text-[10px] font-black uppercase tracking-widest ${trendValue >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                                {trendValue >= 0 ? '+' : ''}{trendValue}% {trendLabel}
+                            </span>
                         </div>
                     </div>
                 </div>

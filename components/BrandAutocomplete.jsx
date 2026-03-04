@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useMemo } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { searchBrands, getBrandsForDomain } from '@/lib/data/pakistaniBrands';
@@ -19,13 +19,7 @@ export function BrandAutocomplete({
     required = false,
     className = ""
 }) {
-    const [suggestions, setSuggestions] = useState([]);
-
-    // Get domain-specific brands
-    useEffect(() => {
-        const brands = getBrandsForDomain(domain);
-        setSuggestions(brands);
-    }, [domain]);
+    const suggestions = useMemo(() => getBrandsForDomain(domain), [domain]);
 
     const handleChange = (e) => {
         onChange(e.target.value);
@@ -56,7 +50,7 @@ export function BrandAutocomplete({
 
             {value && !suggestions.includes(value) && (
                 <p className="text-xs text-muted-foreground">
-                    Custom brand: "{value}"
+                    Custom brand: &quot;{value}&quot;
                 </p>
             )}
         </div>

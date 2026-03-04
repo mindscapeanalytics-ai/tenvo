@@ -14,17 +14,20 @@ interface RemindersData {
 interface RemindersPortletProps {
     data?: RemindersData;
     isLoading?: boolean;
+    onItemClick?: (itemId: string) => void;
 }
 
 export const RemindersPortlet = memo(function RemindersPortlet({
     data = {},
-    isLoading = false
+    isLoading = false,
+    onItemClick
 }: RemindersPortletProps) {
     const reminders = [
         {
             id: 'low-stock',
             label: 'Items to Reorder',
             count: data.lowStock || 0,
+            actionTab: 'inventory',
             icon: Package,
             color: 'text-wine',
             bgColor: 'bg-wine/10',
@@ -34,6 +37,7 @@ export const RemindersPortlet = memo(function RemindersPortlet({
             id: 'overdue',
             label: 'Overdue Invoices',
             count: data.overdueInvoices || 0,
+            actionTab: 'invoices',
             icon: Clock,
             color: 'text-slate-700',
             bgColor: 'bg-slate-100',
@@ -43,6 +47,7 @@ export const RemindersPortlet = memo(function RemindersPortlet({
             id: 'pending-orders',
             label: 'Pending Orders',
             count: data.pendingOrders || 0,
+            actionTab: 'purchases',
             icon: ShoppingCart,
             color: 'text-emerald-700',
             bgColor: 'bg-emerald-50',
@@ -60,6 +65,7 @@ export const RemindersPortlet = memo(function RemindersPortlet({
                 {reminders.map((item) => (
                     <div
                         key={item.id}
+                        onClick={() => onItemClick?.(item.actionTab)}
                         className="flex items-center justify-between p-2 rounded-lg border border-transparent hover:border-gray-100 hover:bg-gray-50/50 transition-all cursor-pointer group"
                     >
                         <div className="flex items-center gap-2.5">
