@@ -218,6 +218,7 @@ export function DashboardTabs({
         setEditingProduct,
         setEditingCustomer,
         setInvoiceInitialData,
+        handleDateRangePreset,
         setShowVendorForm,
         setEditingVendor,
         setShowPOBuilder,
@@ -264,7 +265,9 @@ export function DashboardTabs({
                             dateRange={dateRange}
                             currency={currency}
                             onQuickAction={handlers.handleQuickAction}
+                            onDateRangePresetChange={handleDateRangePreset}
                             dashboardMetrics={dashboardMetrics}
+                            accountingSummary={accountingSummary}
                             expenseBreakdown={expenseBreakdown}
                             expenses={expenses}
                             domainKnowledge={domainKnowledge}

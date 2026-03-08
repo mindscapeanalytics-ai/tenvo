@@ -627,6 +627,33 @@ function BusinessDashboardContent() {
     setShowProductForm(true);
   };
 
+  const handleDateRangePreset = useCallback((preset) => {
+    const now = new Date();
+    const to = new Date(now);
+    to.setHours(23, 59, 59, 999);
+
+    const from = new Date(to);
+    switch (preset) {
+      case '7d':
+        from.setDate(to.getDate() - 6);
+        break;
+      case '30d':
+        from.setDate(to.getDate() - 29);
+        break;
+      case '90d':
+        from.setDate(to.getDate() - 89);
+        break;
+      case 'ytd':
+        from.setFullYear(to.getFullYear(), 0, 1);
+        break;
+      default:
+        return;
+    }
+
+    from.setHours(0, 0, 0, 0);
+    setDateRange({ from, to });
+  }, [setDateRange]);
+
   const handleBulkDelete = async (ids) => {
     if (!ids || ids.length === 0) return;
     if (!confirm(`Delete ${ids.length} items? This cannot be undone.`)) return;
@@ -1106,6 +1133,7 @@ function BusinessDashboardContent() {
             setInvoiceInitialData,
             formatCurrency,
             handleQuickAction,
+            handleDateRangePreset,
             setShowVendorForm,
             setEditingVendor,
             setShowPOBuilder,
