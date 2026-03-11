@@ -1,4 +1,5 @@
-import { format, subDays, startOfMonth, endOfMonth, startOfYesterday, endOfYesterday, subMonths, startOfDay, endOfDay } from 'date-fns';
+import { useEffect, useMemo, useState } from 'react';
+import { format } from 'date-fns';
 import { Calendar as CalendarIcon, ChevronDown, Check } from 'lucide-react';
 import { DateRange } from 'react-day-picker';
 
@@ -10,6 +11,7 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from '@/components/ui/popover';
+import { DATE_RANGE_PRESETS, getDateRangeFromPreset, isDateRangeEqual } from '@/lib/utils/datePresets';
 
 interface DateRangePickerProps {
     className?: string;
@@ -22,73 +24,74 @@ export function DateRangePicker({
     date,
     onDateChange,
 }: DateRangePickerProps) {
-    const presets = [
-        { label: 'Today', getValue: () => ({ from: startOfDay(new Date()), to: endOfDay(new Date()) }) },
-        { label: 'Yesterday', getValue: () => ({ from: startOfYesterday(), to: endOfYesterday() }) },
-        { label: 'Last 7 Days', getValue: () => ({ from: startOfDay(subDays(new Date(), 6)), to: endOfDay(new Date()) }) },
-        { label: 'Last 30 Days', getValue: () => ({ from: startOfDay(subDays(new Date(), 29)), to: endOfDay(new Date()) }) },
-        { label: 'This Month', getValue: () => ({ from: startOfMonth(new Date()), to: endOfMonth(new Date()) }) },
-        {
-            label: 'Last Month', getValue: () => {
-                const prevMonth = subMonths(new Date(), 1);
-                return { from: startOfMonth(prevMonth), to: endOfMonth(prevMonth) };
-            }
-        },
-    ];
+    const [open, setOpen] = useState(false);
+    const [months, setMonths] = useState(2);
+    const navigationBounds = useMemo(() => {
+        const now = new Date();
+        return {
+            startMonth: new Date(now.getFullYear() - 5, 0, 1),
+            endMonth: new Date(now.getFullYear() + 2, 11, 1),
+        };
+    }, []);
 
-    const isPresetSelected = (preset: any) => {
+    useEffect(() => {
+        const syncMonths = () => setMonths(window.innerWidth < 1200 ? 1 : 2);
+        syncMonths();
+        window.addEventListener('resize', syncMonths);
+        return () => window.removeEventListener('resize', syncMonths);
+    }, []);
+
+    const isPresetSelected = (presetKey: string) => {
         if (!date || !date.from || !date.to) return false;
-        const p = preset.getValue();
-        return (
-            format(date.from, 'yyyy-MM-dd') === format(p.from, 'yyyy-MM-dd') &&
-            format(date.to, 'yyyy-MM-dd') === format(p.to, 'yyyy-MM-dd')
-        );
+        const presetRange = getDateRangeFromPreset(presetKey);
+        return isDateRangeEqual(date, presetRange);
     };
 
+    const buttonLabel = useMemo(() => {
+        if (!date?.from) return 'Pick a date range';
+        if (!date?.to) return format(date.from, 'LLL dd, y');
+        return `${format(date.from, 'LLL dd, y')} - ${format(date.to, 'LLL dd, y')}`;
+    }, [date]);
+
     return (
-        <div className={cn('grid gap-2', className)}>
-            <Popover>
+        <div className={cn('grid gap-1', className)}>
+            <Popover open={open} onOpenChange={setOpen}>
                 <PopoverTrigger asChild>
                     <Button
                         id="date"
                         variant="outline"
                         className={cn(
-                            'w-[280px] justify-start text-left font-bold rounded-xl border-gray-200 h-10 shadow-sm bg-white/60 backdrop-blur-sm hover:bg-white transition-all',
+                            'w-full justify-start text-left font-bold rounded-lg border-gray-200 h-8 px-2.5 shadow-sm bg-white hover:bg-white transition-colors text-[11px]',
                             !date && 'text-muted-foreground'
                         )}
                     >
-                        <CalendarIcon className="mr-2 h-4 w-4 text-primary" />
-                        {date?.from ? (
-                            date.to ? (
-                                <>
-                                    {format(date.from, 'LLL dd, y')} -{' '}
-                                    {format(date.to, 'LLL dd, y')}
-                                </>
-                            ) : (
-                                format(date.from, 'LLL dd, y')
-                            )
-                        ) : (
-                            <span>Pick a date range</span>
-                        )}
+                        <CalendarIcon className="mr-2 h-3.5 w-3.5 text-primary" />
+                        <span className="truncate">{buttonLabel}</span>
                         <ChevronDown className="ml-auto h-3 w-3 text-gray-400" />
                     </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0 rounded-2xl shadow-2xl border-none flex bg-white" align="end">
-                    <div className="flex flex-col border-r border-gray-100 p-2 min-w-[140px]">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 px-3 py-2">Presets</p>
-                        {presets.map((preset) => (
+                <PopoverContent className="w-[min(760px,calc(100vw-24px))] p-0 rounded-xl shadow-xl border border-gray-100 flex bg-white overflow-hidden" align="end" sideOffset={8}>
+                    <div className="flex flex-col border-r border-gray-100 p-2 min-w-[170px] bg-slate-50/40">
+                        <p className="text-[10px] font-black uppercase tracking-wider text-gray-400 px-2 py-1.5">Presets</p>
+                        {DATE_RANGE_PRESETS.map((preset) => (
                             <button
-                                key={preset.label}
-                                onClick={() => onDateChange(preset.getValue())}
+                                key={preset.key}
+                                onClick={() => {
+                                    const range = getDateRangeFromPreset(preset.key);
+                                    if (range) {
+                                        onDateChange(range);
+                                    }
+                                    setOpen(false);
+                                }}
                                 className={cn(
-                                    "text-left px-3 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-between group",
-                                    isPresetSelected(preset)
+                                    'text-left px-2 py-1.5 rounded-md text-[11px] font-bold transition-colors flex items-center justify-between group',
+                                    isPresetSelected(preset.key)
                                         ? "bg-primary/10 text-primary"
                                         : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                                 )}
                             >
                                 {preset.label}
-                                {isPresetSelected(preset) && <Check className="w-3 h-3" />}
+                                {isPresetSelected(preset.key) && <Check className="w-3 h-3" />}
                             </button>
                         ))}
                     </div>
@@ -98,8 +101,38 @@ export function DateRangePicker({
                         defaultMonth={date?.from}
                         selected={date}
                         onSelect={onDateChange}
-                        numberOfMonths={2}
-                        className="rounded-r-2xl" classNames={undefined} />
+                        captionLayout="dropdown"
+                        startMonth={navigationBounds.startMonth}
+                        endMonth={navigationBounds.endMonth}
+                        numberOfMonths={months}
+                        className="rounded-r-xl p-2"
+                        classNames={{
+                            months: 'flex flex-col xl:flex-row gap-3',
+                            month: 'space-y-2.5',
+                            month_caption: 'relative flex items-center justify-center h-7',
+                            caption_label: 'hidden',
+                            dropdowns: 'flex items-center gap-1',
+                            dropdown_root: 'relative',
+                            dropdown: 'h-7 rounded-md border border-gray-200 bg-white px-1.5 text-[11px] font-semibold text-gray-700 focus:outline-none',
+                            nav: 'flex items-center gap-1',
+                            button_previous: 'h-7 w-7 p-0 bg-transparent opacity-60 hover:opacity-100 absolute left-1 rounded-md border border-gray-200',
+                            button_next: 'h-7 w-7 p-0 bg-transparent opacity-60 hover:opacity-100 absolute right-1 rounded-md border border-gray-200',
+                            month_grid: 'w-full border-collapse',
+                            weekdays: 'flex',
+                            weekday: 'w-8 text-[11px] font-semibold text-gray-500',
+                            week: 'flex w-full mt-1',
+                            day: 'h-8 w-8 text-center text-sm p-0 relative [&:has([aria-selected].day-range-end)]:rounded-r-md [&:has([aria-selected].day-outside)]:bg-accent/50 [&:has([aria-selected])]:bg-accent/60 first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md',
+                            day_button: 'h-8 w-8 p-0 rounded-md text-sm font-medium aria-selected:opacity-100 hover:bg-gray-100',
+                            range_start: 'day-range-start',
+                            range_end: 'day-range-end',
+                            selected: 'bg-primary text-white font-bold',
+                            range_middle: 'bg-primary/10 text-primary',
+                            today: 'bg-accent text-accent-foreground',
+                            outside: 'day-outside text-muted-foreground aria-selected:bg-accent/50 aria-selected:text-muted-foreground',
+                            disabled: 'text-muted-foreground opacity-50',
+                            hidden: 'invisible',
+                        }}
+                    />
                 </PopoverContent>
             </Popover>
         </div>

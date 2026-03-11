@@ -34,7 +34,7 @@ interface DomainDashboardProps {
     dateRange: { from: Date; to: Date };
     currency?: string;
     onQuickAction?: (actionId: string) => void;
-    onDateRangePresetChange?: (preset: '7d' | '30d' | '90d' | 'ytd') => void;
+    onDateRangePresetChange?: (preset: 'today' | '7d' | '30d' | '90d' | 'mtd' | 'last_month' | 'ytd') => void;
     dashboardMetrics?: DashboardMetrics | null;
     accountingSummary?: AccountingSummaryLike | null;
     expenseBreakdown?: ExpenseBreakdownItem[];
@@ -58,6 +58,7 @@ interface InvoiceLike {
 }
 
 interface ProductLike {
+    id?: string | number;
     stock?: number | string;
     cost_price?: number | string;
     purchase_price?: number | string;
@@ -174,7 +175,7 @@ export function DomainDashboard({
     const { business } = useBusiness() as { business?: { id?: string } | null };
     const activeBusinessId = businessId || business?.id;
     const colors = getDomainColors(category);
-    const campaignEnabled = isCampaignRelevant(category, domainKnowledge);
+    const campaignEnabled = isCampaignRelevant(category, (domainKnowledge ?? null) as any);
     const multiLocationEnabled = Boolean(domainKnowledge?.multiLocationEnabled);
 
     const formatCurrencyCompact = useCallback(
@@ -449,11 +450,35 @@ export function DomainDashboard({
         return 'Custom Period';
     }, [dateRange.from, dateRange.to]);
 
-    const activePreset = useMemo<'7d' | '30d' | '90d' | 'ytd' | 'custom'>(() => {
+    const activePreset = useMemo<'today' | '7d' | '30d' | '90d' | 'mtd' | 'last_month' | 'ytd' | 'custom'>(() => {
         const from = new Date(dateRange.from);
         const to = new Date(dateRange.to);
         const diffMs = Math.max(1, to.getTime() - from.getTime());
         const days = Math.round(diffMs / (1000 * 60 * 60 * 24)) + 1;
+
+        const sameDay =
+            from.getFullYear() === to.getFullYear() &&
+            from.getMonth() === to.getMonth() &&
+            from.getDate() === to.getDate();
+        if (sameDay) return 'today';
+
+        const isMtd =
+            from.getFullYear() === to.getFullYear() &&
+            from.getMonth() === to.getMonth() &&
+            from.getDate() === 1;
+        if (isMtd) return 'mtd';
+
+        const prevMonthDate = new Date(to);
+        prevMonthDate.setMonth(to.getMonth() - 1, 1);
+        const prevMonthEnd = new Date(prevMonthDate.getFullYear(), prevMonthDate.getMonth() + 1, 0);
+        const isLastMonth =
+            from.getFullYear() === prevMonthDate.getFullYear() &&
+            from.getMonth() === prevMonthDate.getMonth() &&
+            from.getDate() === 1 &&
+            to.getFullYear() === prevMonthEnd.getFullYear() &&
+            to.getMonth() === prevMonthEnd.getMonth() &&
+            to.getDate() === prevMonthEnd.getDate();
+        if (isLastMonth) return 'last_month';
 
         const isYtd = from.getFullYear() === to.getFullYear()
             && from.getMonth() === 0
@@ -628,14 +653,17 @@ export function DomainDashboard({
                                             id="domain-date-filter"
                                             value={activePreset}
                                             onChange={(e) => {
-                                                const preset = e.target.value as '7d' | '30d' | '90d' | 'ytd' | 'custom';
+                                                const preset = e.target.value as 'today' | '7d' | '30d' | '90d' | 'mtd' | 'last_month' | 'ytd' | 'custom';
                                                 if (preset !== 'custom') onDateRangePresetChange?.(preset);
                                             }}
                                             className="h-7 rounded-md border border-slate-200 bg-slate-50 px-2 text-[11px] font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-wine/20"
                                         >
+                                            <option value="today">Today</option>
                                             <option value="7d">Last 7 Days</option>
                                             <option value="30d">Last 30 Days</option>
                                             <option value="90d">Last 90 Days</option>
+                                            <option value="mtd">This Month</option>
+                                            <option value="last_month">Last Month</option>
                                             <option value="ytd">Year to Date</option>
                                             <option value="custom">Custom</option>
                                         </select>

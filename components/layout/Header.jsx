@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useMemo } from 'react';
 
 import {
     ChevronRight as ChevronIcon,
@@ -27,6 +27,8 @@ import {
     LayoutGrid,
     Eye,
     RefreshCcw
+    , AlertTriangle,
+    Clock3
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DateRangePicker } from '@/components/islands/DateRangePicker.client';
@@ -34,8 +36,7 @@ import { useFilters } from '@/lib/context/FilterContext';
 import { useBusiness } from '@/lib/context/BusinessContext';
 import { useData } from '@/lib/context/DataContext';
 import { useLanguage } from '@/lib/context/LanguageContext';
-import { useSearchParams, usePathname } from 'next/navigation';
-import { getDomainColors } from '@/lib/domainColors';
+import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -65,12 +66,12 @@ export function Header({ onMenuClick }) {
         bomList,
         productionOrders,
         purchaseOrders,
+        pendingApprovals,
         quotations,
         salesOrders,
         challans
     } = useData();
     const { t, language } = useLanguage();
-    const pathname = usePathname();
     const searchParams = useSearchParams();
     const currentTab = searchParams.get('tab') || 'dashboard';
 
@@ -214,10 +215,6 @@ export function Header({ onMenuClick }) {
     }, [searchQuery]);
 
     // Extract category from URL
-    const pathParts = pathname?.split('/') || [];
-    const category = pathParts[2] || 'retail-shop';
-    const colors = getDomainColors(category);
-
     const labels = {
         dashboard: 'Command Overview',
         inventory: 'Inventory Engine',
@@ -241,6 +238,132 @@ export function Header({ onMenuClick }) {
     const activeTitle = labels[currentTab] || currentTab;
     const dispatchHeaderEvent = (eventName, detail) => {
         window.dispatchEvent(new CustomEvent(eventName, detail ? { detail } : undefined));
+    };
+
+    const lowStockProducts = useMemo(
+        () => (products || []).filter((p) => (Number(p?.stock || 0) <= Number(p?.min_stock || p?.minStock || p?.min_stock_level || 5))),
+        [products]
+    );
+
+    const outOfStockProducts = useMemo(
+        () => (products || []).filter((p) => Number(p?.stock || 0) <= 0),
+        [products]
+    );
+
+    const expiringProducts = useMemo(() => {
+        const twoWeeks = new Date();
+        twoWeeks.setDate(twoWeeks.getDate() + 14);
+        return (products || []).filter((p) => {
+            if (!p?.expiry_date) return false;
+            const exp = new Date(p.expiry_date);
+            return !Number.isNaN(exp.getTime()) && exp >= new Date() && exp <= twoWeeks;
+        });
+    }, [products]);
+
+    const overdueInvoices = useMemo(() => {
+        const now = new Date();
+        return (invoices || []).filter((inv) => {
+            const status = String(inv?.status || '').toLowerCase();
+            const isOpen = status === 'unpaid' || status === 'pending' || status === 'overdue';
+            const hasDueDate = inv?.due_date && !Number.isNaN(new Date(inv.due_date).getTime());
+            return isOpen && hasDueDate && new Date(inv.due_date) < now;
+        });
+    }, [invoices]);
+
+    const openPurchaseOrders = useMemo(() => {
+        return (purchaseOrders || []).filter((po) => {
+            const status = String(po?.status || '').toLowerCase();
+            return status === 'pending' || status === 'open' || status === 'draft';
+        });
+    }, [purchaseOrders]);
+
+    const notifications = useMemo(() => {
+        const items = [];
+        if (lowStockProducts.length > 0) {
+            items.push({
+                id: 'low-stock',
+                severity: 'high',
+                icon: AlertTriangle,
+                title: 'Low Stock Alert',
+                description: `${lowStockProducts.length} products below minimum stock`,
+                count: lowStockProducts.length,
+            });
+        }
+        if (outOfStockProducts.length > 0) {
+            items.push({
+                id: 'out-of-stock',
+                severity: 'high',
+                icon: PackageIcon,
+                title: 'Out of Stock',
+                description: `${outOfStockProducts.length} products require immediate replenishment`,
+                count: outOfStockProducts.length,
+            });
+        }
+        if (overdueInvoices.length > 0) {
+            items.push({
+                id: 'overdue-invoices',
+                severity: 'medium',
+                icon: FileText,
+                title: 'Overdue Invoices',
+                description: `${overdueInvoices.length} invoices are overdue`,
+                count: overdueInvoices.length,
+            });
+        }
+        if (openPurchaseOrders.length > 0) {
+            items.push({
+                id: 'purchase-orders',
+                severity: 'low',
+                icon: ShoppingCart,
+                title: 'Open Purchase Orders',
+                description: `${openPurchaseOrders.length} purchase orders pending closure`,
+                count: openPurchaseOrders.length,
+            });
+        }
+        if (expiringProducts.length > 0) {
+            items.push({
+                id: 'expiring-stock',
+                severity: 'medium',
+                icon: Clock3,
+                title: 'Expiry Risk',
+                description: `${expiringProducts.length} products expiring within 14 days`,
+                count: expiringProducts.length,
+            });
+        }
+        if ((pendingApprovals || []).length > 0) {
+            items.push({
+                id: 'pending-approvals',
+                severity: 'medium',
+                icon: ClipboardList,
+                title: 'Pending Approvals',
+                description: `${pendingApprovals.length} workflow approvals are waiting`,
+                count: pendingApprovals.length,
+            });
+        }
+        return items;
+    }, [lowStockProducts.length, outOfStockProducts.length, overdueInvoices.length, openPurchaseOrders.length, expiringProducts.length, pendingApprovals]);
+
+    const notificationCount = useMemo(
+        () => notifications.reduce((sum, item) => sum + Number(item.count || 0), 0),
+        [notifications]
+    );
+
+    const handleNotificationClick = (notificationId) => {
+        if (notificationId === 'low-stock' || notificationId === 'out-of-stock' || notificationId === 'expiring-stock') {
+            dispatchHeaderEvent('switch-tab', { tab: 'inventory' });
+            dispatchHeaderEvent('inventory-focus-low-stock', { mode: notificationId });
+            return;
+        }
+        if (notificationId === 'overdue-invoices') {
+            dispatchHeaderEvent('switch-tab', { tab: 'invoices' });
+            return;
+        }
+        if (notificationId === 'purchase-orders') {
+            dispatchHeaderEvent('switch-tab', { tab: 'purchases' });
+            return;
+        }
+        if (notificationId === 'pending-approvals') {
+            dispatchHeaderEvent('switch-tab', { tab: 'dashboard' });
+        }
     };
 
     return (
@@ -363,8 +486,8 @@ export function Header({ onMenuClick }) {
                 </div>
 
                 {/* Right: Consolidated Actions */}
-                <div className="flex items-center gap-2.5 shrink-0">
-                    <div className="flex items-center gap-2 border-r border-gray-100 pr-2.5">
+                <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex items-center gap-1.5 border-r border-gray-100 pr-2">
                         <DateRangePicker
                             date={dateRange}
                             onDateChange={(newRange) => {
@@ -372,13 +495,13 @@ export function Header({ onMenuClick }) {
                                     setDateRange(newRange);
                                 }
                             }}
-                            className="w-[210px] lg:w-[220px]"
+                            className="w-[205px] lg:w-[214px]"
                         />
 
                         <Button
                             size="icon"
                             variant="ghost"
-                            className="h-9 w-9 rounded-xl text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 transition-all"
+                            className="h-8 w-8 rounded-lg text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
                             onClick={() => dispatchHeaderEvent('refresh-dashboard-data')}
                         >
                             <RefreshCcw className="w-3.5 h-3.5" />
@@ -387,7 +510,7 @@ export function Header({ onMenuClick }) {
                         <Button
                             size="sm"
                             variant="ghost"
-                            className="h-9 px-2.5 rounded-xl font-bold text-[10px] uppercase tracking-wider text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 transition-all hidden xl:flex"
+                            className="h-8 px-2 rounded-lg font-bold text-[10px] uppercase tracking-wider text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 transition-colors hidden xl:flex"
                             onClick={() => dispatchHeaderEvent('switch-tab', { tab: 'reports' })}
                         >
                             <BarChart3 className="w-3.5 h-3.5 mr-1.5 opacity-60" />
@@ -397,17 +520,17 @@ export function Header({ onMenuClick }) {
                         <Button
                             size="icon"
                             variant="ghost"
-                            className="hidden lg:flex xl:hidden h-9 w-9 rounded-xl text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 transition-all"
+                            className="hidden lg:flex xl:hidden h-8 w-8 rounded-lg text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
                             onClick={() => dispatchHeaderEvent('switch-tab', { tab: 'reports' })}
                         >
                             <BarChart3 className="w-3.5 h-3.5" />
                         </Button>
                     </div>
 
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1">
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <Button size="sm" variant="outline" className="h-9 rounded-xl px-3 font-bold text-[10px] uppercase tracking-wider border-gray-200/60 bg-white hover:bg-gray-50 text-gray-600 transition-all">
+                                <Button size="sm" variant="outline" className="h-8 rounded-lg px-2.5 font-bold text-[10px] uppercase tracking-wider border-gray-200/70 bg-white hover:bg-gray-50 text-gray-600 transition-colors">
                                     <ListFilter className="w-3.5 h-3.5 mr-1.5 text-gray-400" />
                                     Controls
                                     <ChevronDown className="w-3 h-3 ml-1.5 opacity-30" />
@@ -444,7 +567,7 @@ export function Header({ onMenuClick }) {
 
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <Button size="sm" variant="outline" className="h-9 rounded-xl px-3 font-bold text-[10px] uppercase tracking-wider border-gray-200/60 bg-white hover:bg-gray-50 text-gray-600 transition-all">
+                                <Button size="sm" variant="outline" className="h-8 rounded-lg px-2.5 font-bold text-[10px] uppercase tracking-wider border-gray-200/70 bg-white hover:bg-gray-50 text-gray-600 transition-colors">
                                     <Plus className="w-3.5 h-3.5 mr-1.5 text-gray-400" />
                                     Add
                                     <ChevronDown className="w-3 h-3 ml-1.5 opacity-30" />
@@ -479,19 +602,73 @@ export function Header({ onMenuClick }) {
                         <Button
                             size="sm"
                             onClick={() => window.dispatchEvent(new CustomEvent('open-modal', { detail: { modalId: 'invoice' } }))}
-                            className="h-9 font-bold text-xs rounded-xl px-4 shadow-sm shadow-indigo-200 transition-all active:scale-95 bg-indigo-600 hover:bg-indigo-700 text-white hidden sm:flex"
+                            className="h-8 font-bold text-[11px] rounded-lg px-3.5 shadow-sm shadow-indigo-200 transition-colors active:scale-95 bg-indigo-600 hover:bg-indigo-700 text-white hidden sm:flex"
                         >
                             <Plus className="w-4 h-4 mr-1.5" />
                             New Invoice
                         </Button>
                     </div>
 
-                    <div className="h-6 w-px bg-gray-100 mx-1"></div>
+                    <div className="h-5 w-px bg-gray-100 mx-0.5"></div>
 
-                    <Button variant="ghost" size="icon" className="relative text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all h-9 w-9">
-                        <Bell className="w-4 h-4" />
-                        <span className="absolute top-2.5 right-2.5 w-1.5 h-1.5 bg-red-500 rounded-full border border-white"></span>
-                    </Button>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="relative text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors h-8 w-8">
+                                <Bell className="w-4 h-4" />
+                                {notificationCount > 0 && (
+                                    <span className="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 rounded-full bg-red-500 text-white text-[9px] font-black leading-4 text-center border border-white">
+                                        {notificationCount > 99 ? '99+' : notificationCount}
+                                    </span>
+                                )}
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-80 rounded-2xl shadow-xl border-gray-100/80 p-2">
+                            <DropdownMenuLabel className="px-3 py-2">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-[10px] font-black uppercase tracking-[0.14em] text-gray-500">Notifications</span>
+                                    <span className="text-[10px] font-bold text-indigo-600">{notificationCount} total</span>
+                                </div>
+                            </DropdownMenuLabel>
+                            <DropdownMenuSeparator className="my-1" />
+                            {notifications.length === 0 ? (
+                                <div className="px-3 py-6 text-center">
+                                    <Bell className="w-5 h-5 text-gray-300 mx-auto mb-2" />
+                                    <p className="text-xs font-semibold text-gray-600">All clear</p>
+                                    <p className="text-[10px] text-gray-400">No active notifications right now</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-1.5 p-1">
+                                    {notifications.map((item) => {
+                                        const ItemIcon = item.icon;
+                                        const severityClasses = item.severity === 'high'
+                                            ? 'bg-red-50 border-red-100 text-red-700'
+                                            : item.severity === 'medium'
+                                                ? 'bg-amber-50 border-amber-100 text-amber-700'
+                                                : 'bg-blue-50 border-blue-100 text-blue-700';
+                                        return (
+                                            <button
+                                                key={item.id}
+                                                type="button"
+                                                onClick={() => handleNotificationClick(item.id)}
+                                                className={`w-full text-left px-3 py-2.5 rounded-xl border transition-colors hover:bg-gray-50 ${severityClasses}`}
+                                            >
+                                                <div className="flex items-start justify-between gap-2">
+                                                    <div className="flex items-start gap-2">
+                                                        <ItemIcon className="w-4 h-4 mt-0.5" />
+                                                        <div>
+                                                            <p className="text-xs font-black tracking-tight">{item.title}</p>
+                                                            <p className="text-[10px] font-semibold opacity-80">{item.description}</p>
+                                                        </div>
+                                                    </div>
+                                                    <span className="text-[10px] font-black px-1.5 py-0.5 rounded-full bg-white/70 border border-white/80">{item.count}</span>
+                                                </div>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                 </div>
             </div>
         </header >

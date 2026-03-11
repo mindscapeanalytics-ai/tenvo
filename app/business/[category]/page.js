@@ -40,6 +40,7 @@ import { InvoiceTab } from './components/tabs/InvoiceTab';
 import { CustomersTab } from './components/tabs/CustomersTab';
 import { useFilters } from '@/lib/context/FilterContext';
 import { useData } from '@/lib/context/DataContext';
+import { getDateRangeFromPreset } from '@/lib/utils/datePresets';
 import { ActionModals } from './components/ActionModals';
 import { DashboardTabs } from './components/DashboardTabs';
 import { BusinessLoadingBoundary } from '@/components/guards/BusinessLoadingBoundary';
@@ -77,7 +78,7 @@ const businessCategories = {
   // Specialized & Wholesale (12)
   'auto-parts': { name: 'Auto Parts Wholesale', icon: '🚗', color: 'blue' },
   'textile-wholesale': { name: 'Textile Wholesale', icon: '📜', color: 'amber' },
-  'distribution-wholesale': { name: 'General Distribution', icon: '📦', color: 'wine' },
+  'wholesale-distribution': { name: 'Wholesale & Distribution', icon: '📦', color: 'wine' },
   'hardware-sanitary': { name: 'Hardware & Sanitary', icon: '🔧', color: 'gray' },
   'construction-material': { name: 'Construction Material', icon: '🏗️', color: 'orange' },
   'agriculture': { name: 'Agriculture & Fertilizer', icon: '🌾', color: 'green' },
@@ -157,7 +158,19 @@ function BusinessDashboardContent() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const category = String(params?.category || 'retail-shop');
+  // Auth & Business context — must come before any hook that references `business`
+  const {
+    business,
+    role,
+    planTier: contextPlanTier,
+    updateBusiness,
+    isLoading: businessLoading,
+    switchBusinessByDomain
+  } = useBusiness();
+
+  // Use business domain for URL routing, but keep category for UI rendering logic
+  const currentDomain = business?.domain || String(params?.category || 'retail-shop');
+  const category = business?.category || 'retail-shop';
 
   const normalizedUrlTab = normalizeTabKey(searchParams.get('tab') || 'dashboard');
   const activeTab = VALID_TABS.has(normalizedUrlTab) ? normalizedUrlTab : 'dashboard';
@@ -172,8 +185,8 @@ function BusinessDashboardContent() {
     }
 
     const targetTab = VALID_TABS.has(normalizedTab) ? normalizedTab : 'dashboard';
-    router.push(`/business/${category}?tab=${targetTab}`, { scroll: false });
-  }, [category, router]);
+    router.push(`/business/${currentDomain}?tab=${targetTab}`, { scroll: false });
+  }, [currentDomain, router]);
 
   const [showQuickAction, setShowQuickAction] = useState(false);
   const [showInvoiceBuilder, setShowInvoiceBuilder] = useState(false);
@@ -306,9 +319,8 @@ function BusinessDashboardContent() {
   const colors = getDomainColors(category);
   const domainKnowledge = getDomainKnowledge(category);
 
-  // Auth & Business context — must come before any hook that references `business`
+  // Auth context
   const { user, loading: authLoading } = useAuth();
-  const { business, role, planTier: contextPlanTier, updateBusiness, isLoading: businessLoading, switchBusinessByDomain } = useBusiness();
   const [showSetupWizard, setShowSetupWizard] = useState(false);
 
   const {
@@ -428,13 +440,14 @@ function BusinessDashboardContent() {
 
   // Domain Validation & Auto-Switching
   useEffect(() => {
-    if (!businessLoading && !authLoading && business && business.domain !== category) {
-      console.log(`Domain mismatch: context ${business.domain}, URL ${category}. Attempting switch...`);
+    const urlDomain = String(params?.category);
+    if (!businessLoading && !authLoading && business && urlDomain && business.domain !== urlDomain) {
+      console.log(`Domain mismatch: context ${business.domain}, URL ${urlDomain}. Attempting switch...`);
 
       const trySwitch = async () => {
-        const result = await switchBusinessByDomain(category);
+        const result = await switchBusinessByDomain(urlDomain);
         if (!result.success) {
-          console.error("Access denied to domain:", category, result.error);
+          console.error("Access denied to domain:", urlDomain, result.error);
           toast.error("Access denied to this business");
           router.replace(`/business/${business.domain}${window.location.search}`);
         }
@@ -442,7 +455,7 @@ function BusinessDashboardContent() {
 
       trySwitch();
     }
-  }, [business, businessLoading, authLoading, category, router, switchBusinessByDomain]);
+  }, [business, businessLoading, authLoading, params?.category, router, switchBusinessByDomain]);
 
 
   // Data is now managed by DataProvider and synced via useData hook
@@ -503,6 +516,7 @@ function BusinessDashboardContent() {
         price: toNumber(productData.price, 0),
         cost_price: toNumber(productData.cost_price, 0),
         mrp: toNumber(productData.mrp, 0),
+        stock: toNumber(productData.stock, 0),
         tax_percent: toNumber(productData.tax_percent, 0),
         min_stock: toNumber(productData.min_stock, 0),
         max_stock: toNumber(productData.max_stock, 0),
@@ -628,30 +642,9 @@ function BusinessDashboardContent() {
   };
 
   const handleDateRangePreset = useCallback((preset) => {
-    const now = new Date();
-    const to = new Date(now);
-    to.setHours(23, 59, 59, 999);
-
-    const from = new Date(to);
-    switch (preset) {
-      case '7d':
-        from.setDate(to.getDate() - 6);
-        break;
-      case '30d':
-        from.setDate(to.getDate() - 29);
-        break;
-      case '90d':
-        from.setDate(to.getDate() - 89);
-        break;
-      case 'ytd':
-        from.setFullYear(to.getFullYear(), 0, 1);
-        break;
-      default:
-        return;
-    }
-
-    from.setHours(0, 0, 0, 0);
-    setDateRange({ from, to });
+    const range = getDateRangeFromPreset(preset);
+    if (!range) return;
+    setDateRange(range);
   }, [setDateRange]);
 
   const handleBulkDelete = async (ids) => {
@@ -1075,94 +1068,94 @@ function BusinessDashboardContent() {
       )}
 
       <BusinessLoadingBoundary isLoading={!isDataLoaded && !businessLoading}>
-      <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full mt-2">
-        <DashboardTabs
-          activeTab={activeTab}
-          searchTerm={searchQuery}
-          category={category}
-          business={business}
-          role={role}
-          invoices={invoices}
-          products={products}
-          customers={customers}
-          vendors={vendors}
-          quotations={quotations}
-          salesOrders={salesOrders}
-          challans={challans}
-          purchaseOrders={purchaseOrders}
-          locations={locations}
-          bomList={bomList}
-          productionOrders={productionOrders}
-          accountingSummary={accountingSummary}
-          dashboardChartData={dashboardChartData}
-          dashboardMetrics={dashboardMetrics}
-          expenseBreakdown={expenseBreakdown}
-          expenses={expenses}
-          dateRange={dateRange}
-          currency={currency}
-          colors={colors}
-          planTier={contextPlanTier || business?.plan_tier || 'free'}
-          resourceLimits={resourceLimits}
-          domainKnowledge={domainKnowledge}
-          isLoading={!isDataLoaded}
-          handlers={{
-            handleTabChange,
-            handleDeleteInvoice,
-            handleBulkDelete,
-            handleExport,
-            handleSaveProduct,
-            handleDeleteProduct,
-            handleQuickAddProduct,
-            handleLocationAdd,
-            handleLocationUpdate,
-            handleLocationDelete,
-            handleStockTransfer,
-            handleGenerateAutoPO,
-            handleDeleteCustomer,
-            handleSaveVendor,
-            handleDeleteVendor,
-            handleUpdatePOStatus,
-            handleCreateBOM,
-            handleCreateProductionOrder,
-            refreshAllData,
-            setShowInvoiceBuilder,
-            setShowProductForm,
-            setShowCustomerForm,
-            setEditingProduct,
-            setEditingCustomer,
-            setInvoiceInitialData,
-            formatCurrency,
-            handleQuickAction,
-            handleDateRangePreset,
-            setShowVendorForm,
-            setEditingVendor,
-            setShowPOBuilder,
-            handleExpenseSaved: async () => {
-              await Promise.allSettled([fetchExpenses(), refreshAllData()]);
-            },
-            // New POS & Restaurant Handlers
-            posSession,
-            restaurantTables,
-            kitchenQueue,
-            handlePosCheckout,
-            handleTableAction,
-            handleNewRestaurantOrder,
-            handleKitchenStatusUpdate,
-            // Upgrade Handler
-            handleUpgrade: () => handleTabChange('settings'),
-            // Payroll & Approval Handlers
-            payrollEmployees,
-            payrollRuns,
-            handleProcessPayroll,
-            handleViewPayslips,
-            handleAddEmployee,
-            pendingApprovals,
-            approvalHistory,
-            handleApproveRequest,
-            handleRejectRequest,
-          }}
-        />
-      </Tabs >
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full mt-2">
+          <DashboardTabs
+            activeTab={activeTab}
+            searchTerm={searchQuery}
+            category={category}
+            business={business}
+            role={role}
+            invoices={invoices}
+            products={products}
+            customers={customers}
+            vendors={vendors}
+            quotations={quotations}
+            salesOrders={salesOrders}
+            challans={challans}
+            purchaseOrders={purchaseOrders}
+            locations={locations}
+            bomList={bomList}
+            productionOrders={productionOrders}
+            accountingSummary={accountingSummary}
+            dashboardChartData={dashboardChartData}
+            dashboardMetrics={dashboardMetrics}
+            expenseBreakdown={expenseBreakdown}
+            expenses={expenses}
+            dateRange={dateRange}
+            currency={currency}
+            colors={colors}
+            planTier={contextPlanTier || business?.plan_tier || 'free'}
+            resourceLimits={resourceLimits}
+            domainKnowledge={domainKnowledge}
+            isLoading={!isDataLoaded}
+            handlers={{
+              handleTabChange,
+              handleDeleteInvoice,
+              handleBulkDelete,
+              handleExport,
+              handleSaveProduct,
+              handleDeleteProduct,
+              handleQuickAddProduct,
+              handleLocationAdd,
+              handleLocationUpdate,
+              handleLocationDelete,
+              handleStockTransfer,
+              handleGenerateAutoPO,
+              handleDeleteCustomer,
+              handleSaveVendor,
+              handleDeleteVendor,
+              handleUpdatePOStatus,
+              handleCreateBOM,
+              handleCreateProductionOrder,
+              refreshAllData,
+              setShowInvoiceBuilder,
+              setShowProductForm,
+              setShowCustomerForm,
+              setEditingProduct,
+              setEditingCustomer,
+              setInvoiceInitialData,
+              formatCurrency,
+              handleQuickAction,
+              handleDateRangePreset,
+              setShowVendorForm,
+              setEditingVendor,
+              setShowPOBuilder,
+              handleExpenseSaved: async () => {
+                await Promise.allSettled([fetchExpenses(), refreshAllData()]);
+              },
+              // New POS & Restaurant Handlers
+              posSession,
+              restaurantTables,
+              kitchenQueue,
+              handlePosCheckout,
+              handleTableAction,
+              handleNewRestaurantOrder,
+              handleKitchenStatusUpdate,
+              // Upgrade Handler
+              handleUpgrade: () => handleTabChange('settings'),
+              // Payroll & Approval Handlers
+              payrollEmployees,
+              payrollRuns,
+              handleProcessPayroll,
+              handleViewPayslips,
+              handleAddEmployee,
+              pendingApprovals,
+              approvalHistory,
+              handleApproveRequest,
+              handleRejectRequest,
+            }}
+          />
+        </Tabs >
       </BusinessLoadingBoundary>
 
       <ActionModals

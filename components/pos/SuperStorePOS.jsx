@@ -6,7 +6,8 @@ import {
     Search, Barcode, ShoppingCart, Plus, Minus, Trash2, X, CreditCard,
     Banknote, Smartphone, SplitSquareHorizontal, User, Clock, Hash,
     Receipt, CheckCircle2, Star, Gift, ChevronDown, RotateCcw,
-    Layers, Weight, Package, ScanLine, Volume2, AlertTriangle, Filter
+    Layers, Weight, Package, ScanLine, Volume2, AlertTriangle, Filter,
+    Maximize, Minimize
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -405,6 +406,31 @@ export function SuperStorePOS({ businessId, products = [], onCompleteSale, curre
     const [heldOrders, setHeldOrders] = useState([]);
     const [isScanning, setIsScanning] = useState(false);
     const [lastScannedItem, setLastScannedItem] = useState(null);
+    const [isFullscreen, setIsFullscreen] = useState(false);
+    const containerRef = useRef(null);
+
+    // ─── Fullscreen Logic ────────────────────────────────────────────────────
+
+    const toggleFullscreen = useCallback(() => {
+        if (!containerRef.current) return;
+
+        if (!document.fullscreenElement) {
+            containerRef.current.requestFullscreen().catch(err => {
+                console.error(`Error attempting to enable full-screen mode: ${err.message}`);
+            });
+        } else {
+            document.exitFullscreen();
+        }
+    }, []);
+
+    useEffect(() => {
+        const handleFullscreenChange = () => {
+            setIsFullscreen(!!document.fullscreenElement);
+        };
+
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    }, []);
 
     // ─── Derived Data ────────────────────────────────────────────────────────
 
@@ -562,7 +588,13 @@ export function SuperStorePOS({ businessId, products = [], onCompleteSale, curre
     // ─── Render ──────────────────────────────────────────────────────────────
 
     return (
-        <div className="flex h-[calc(100vh-80px)] bg-gray-50 rounded-xl overflow-hidden shadow-sm border border-gray-200">
+        <div
+            ref={containerRef}
+            className={cn(
+                "flex bg-gray-50 overflow-hidden shadow-sm border border-gray-200 transition-all",
+                isFullscreen ? "h-screen w-screen rounded-0 border-0" : "h-[calc(100vh-80px)] rounded-xl"
+            )}
+        >
             {/* Left: Scanner + Items */}
             <div className="flex-1 min-w-0 bg-white flex flex-col">
                 {/* Barcode Input Bar */}
@@ -584,6 +616,14 @@ export function SuperStorePOS({ businessId, products = [], onCompleteSale, curre
                         )}>
                             {lastScannedItem || 'Ready to scan'}
                         </Badge>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={toggleFullscreen}
+                            className="h-8 w-8 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50"
+                        >
+                            {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
+                        </Button>
                     </div>
                 </div>
 

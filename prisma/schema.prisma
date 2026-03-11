@@ -242,39 +242,42 @@ model businesses {
 }
 
 model customers {
-  id                  String              @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  business_id         String              @db.Uuid
-  name                String
-  email               String?
-  phone               String?
-  ntn                 String?
-  cnic                String?
-  srn                 String?
-  address             String?
-  city                String?
-  state               String?
-  pincode             String?
-  country             String?             @default("Pakistan")
-  credit_limit        Decimal?            @default(0) @db.Decimal(12, 2)
-  outstanding_balance Decimal?            @default(0) @db.Decimal(12, 2)
-  created_at          DateTime?           @default(now()) @db.Timestamptz(6)
-  updated_at          DateTime?           @default(now()) @db.Timestamptz(6)
-  domain_data         Json?               @default("{}")
-  opening_balance     Decimal?            @default(0) @db.Decimal(12, 2)
-  filer_status        String?             @default("none") @db.VarChar(50)
-  is_deleted          Boolean             @default(false)
-  deleted_at          DateTime?           @db.Timestamptz(6)
-  businesses          businesses          @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  delivery_challans   delivery_challans[]
-  invoices            invoices[]
-  payments            payments[]
-  product_serials     product_serials[]
-  quotations          quotations[]
-  sales_orders        sales_orders[]
-  credit_notes        credit_notes[]
-  pos_transactions    pos_transactions[]
+  id                   String                 @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  business_id          String                 @db.Uuid
+  name                 String
+  email                String?
+  phone                String?
+  ntn                  String?
+  cnic                 String?
+  srn                  String?
+  address              String?
+  city                 String?
+  state                String?
+  pincode              String?
+  country              String?                @default("Pakistan")
+  credit_limit         Decimal?               @default(0) @db.Decimal(12, 2)
+  outstanding_balance  Decimal?               @default(0) @db.Decimal(12, 2)
+  created_at           DateTime?              @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime?              @default(now()) @db.Timestamptz(6)
+  domain_data          Json?                  @default("{}")
+  opening_balance      Decimal?               @default(0) @db.Decimal(12, 2)
+  filer_status         String?                @default("none") @db.VarChar(50)
+  type                 String?                @default("individual")
+  notes                String?
+  is_active            Boolean                @default(true)
+  is_deleted           Boolean                @default(false)
+  deleted_at           DateTime?              @db.Timestamptz(6)
+  businesses           businesses             @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  delivery_challans    delivery_challans[]
+  invoices             invoices[]
+  payments             payments[]
+  product_serials      product_serials[]
+  quotations           quotations[]
+  sales_orders         sales_orders[]
+  credit_notes         credit_notes[]
+  pos_transactions     pos_transactions[]
   loyalty_transactions loyalty_transactions[]
-  restaurant_orders   restaurant_orders[]
+  restaurant_orders    restaurant_orders[]
 
   @@index([domain_data], map: "idx_customers_domain_data", type: Gin)
   @@index([business_id, email])
@@ -322,33 +325,33 @@ model gl_entries {
 }
 
 model invoices {
-  id             String          @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  business_id    String          @db.Uuid
-  invoice_number String
-  customer_id    String?         @db.Uuid
-  date           DateTime        @db.Date
-  due_date       DateTime?       @db.Date
-  subtotal       Decimal?        @default(0.00) @db.Decimal(12, 2)
-  total_tax      Decimal?        @default(0.00) @db.Decimal(12, 2)
-  total_amount   Decimal?        @default(0.00) @db.Decimal(12, 2)
-  status         String?         @default("draft")
-  notes          String?
-  created_at     DateTime?       @default(now()) @db.Timestamptz(6)
-  updated_at     DateTime?       @default(now()) @db.Timestamptz(6)
-  tax_total      Decimal?        @default(0) @db.Decimal(12, 2)
-  discount_total Decimal?        @default(0) @db.Decimal(12, 2)
-  grand_total    Decimal?        @default(0) @db.Decimal(12, 2)
-  payment_method String?
-  payment_status String?
-  terms          String?
-  tax_details    Json?           @default("{}")
-  is_deleted     Boolean         @default(false)
-  deleted_at     DateTime?       @db.Timestamptz(6)
-  invoice_items        invoice_items[]
-  payment_allocations  payment_allocations[]
-  credit_notes         credit_notes[]
-  businesses           businesses      @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  customers            customers?      @relation(fields: [customer_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  id                  String                @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  business_id         String                @db.Uuid
+  invoice_number      String
+  customer_id         String?               @db.Uuid
+  date                DateTime              @db.Date
+  due_date            DateTime?             @db.Date
+  subtotal            Decimal?              @default(0.00) @db.Decimal(12, 2)
+  total_tax           Decimal?              @default(0.00) @db.Decimal(12, 2)
+  total_amount        Decimal?              @default(0.00) @db.Decimal(12, 2)
+  status              String?               @default("draft")
+  notes               String?
+  created_at          DateTime?             @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime?             @default(now()) @db.Timestamptz(6)
+  tax_total           Decimal?              @default(0) @db.Decimal(12, 2)
+  discount_total      Decimal?              @default(0) @db.Decimal(12, 2)
+  grand_total         Decimal?              @default(0) @db.Decimal(12, 2)
+  payment_method      String?
+  payment_status      String?
+  terms               String?
+  tax_details         Json?                 @default("{}")
+  is_deleted          Boolean               @default(false)
+  deleted_at          DateTime?             @db.Timestamptz(6)
+  invoice_items       invoice_items[]
+  payment_allocations payment_allocations[]
+  credit_notes        credit_notes[]
+  businesses          businesses            @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  customers           customers?            @relation(fields: [customer_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@unique([business_id, invoice_number])
   @@index([business_id, date])
@@ -519,31 +522,31 @@ model products {
 }
 
 model purchases {
-  id              String           @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  business_id     String           @db.Uuid
-  purchase_number String
-  vendor_id       String?          @db.Uuid
-  date            DateTime         @db.Date
-  total_amount    Decimal?         @default(0.00) @db.Decimal(12, 2)
-  status          String?          @default("pending")
-  created_at      DateTime?        @default(now()) @db.Timestamptz(6)
-  updated_at      DateTime?        @default(now()) @db.Timestamptz(6)
-  warehouse_id    String?          @db.Uuid
-  subtotal        Decimal?         @default(0) @db.Decimal(12, 2)
-  tax_total       Decimal?         @default(0) @db.Decimal(12, 2)
-  discount_total  Decimal?         @default(0) @db.Decimal(12, 2)
-  payment_status  String?          @default("pending")
-  expected_delivery DateTime?        @db.Date
-  shipping_address  String?
-  approval_status   String?          @default("pending")
-  notes           String?
-  is_deleted      Boolean          @default(false)
-  deleted_at      DateTime?        @db.Timestamptz(6)
-  domain_data     Json?            @default("{}")
-  purchase_items       purchase_items[]
-  payment_allocations  payment_allocations[]
-  businesses           businesses       @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  vendors              vendors?         @relation(fields: [vendor_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  id                  String                @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  business_id         String                @db.Uuid
+  purchase_number     String
+  vendor_id           String?               @db.Uuid
+  date                DateTime              @db.Date
+  total_amount        Decimal?              @default(0.00) @db.Decimal(12, 2)
+  status              String?               @default("pending")
+  created_at          DateTime?             @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime?             @default(now()) @db.Timestamptz(6)
+  warehouse_id        String?               @db.Uuid
+  subtotal            Decimal?              @default(0) @db.Decimal(12, 2)
+  tax_total           Decimal?              @default(0) @db.Decimal(12, 2)
+  discount_total      Decimal?              @default(0) @db.Decimal(12, 2)
+  payment_status      String?               @default("pending")
+  expected_delivery   DateTime?             @db.Date
+  shipping_address    String?
+  approval_status     String?               @default("pending")
+  notes               String?
+  is_deleted          Boolean               @default(false)
+  deleted_at          DateTime?             @db.Timestamptz(6)
+  domain_data         Json?                 @default("{}")
+  purchase_items      purchase_items[]
+  payment_allocations payment_allocations[]
+  businesses          businesses            @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  vendors             vendors?              @relation(fields: [vendor_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@unique([business_id, purchase_number])
   @@index([domain_data], map: "idx_purchases_domain_data", type: Gin)
@@ -606,6 +609,13 @@ model vendors {
   domain_data         Json?       @default("{}")
   opening_balance     Decimal?    @default(0) @db.Decimal(12, 2)
   filer_status        String?     @default("none") @db.VarChar(50)
+  contact_person      String?
+  pincode             String?
+  country             String?     @default("Pakistan")
+  notes               String?
+  is_active           Boolean     @default(true)
+  is_deleted          Boolean     @default(false)
+  deleted_at          DateTime?   @db.Timestamptz(6)
   payments            payments[]
   purchases           purchases[]
   expenses            expenses[]
@@ -903,27 +913,27 @@ model challan_items {
 }
 
 model payments {
-  id             String     @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  business_id    String     @db.Uuid
-  payment_type   String     @db.VarChar(50)
-  reference_type String?    @db.VarChar(50)
-  reference_id   String?    @db.Uuid
-  customer_id    String?    @db.Uuid
-  vendor_id      String?    @db.Uuid
-  amount         Decimal    @db.Decimal(12, 2)
-  payment_mode   String?    @db.VarChar(50)
-  payment_date   DateTime   @db.Date
-  bank_name      String?    @db.VarChar(255)
-  cheque_number  String?    @db.VarChar(100)
-  transaction_id String?    @db.VarChar(255)
-  notes          String?
-  domain_data    Json?      @default("{}")
-  created_at     DateTime?  @default(now()) @db.Timestamptz(6)
-  updated_at     DateTime?  @default(now()) @db.Timestamptz(6)
+  id                  String                @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  business_id         String                @db.Uuid
+  payment_type        String                @db.VarChar(50)
+  reference_type      String?               @db.VarChar(50)
+  reference_id        String?               @db.Uuid
+  customer_id         String?               @db.Uuid
+  vendor_id           String?               @db.Uuid
+  amount              Decimal               @db.Decimal(12, 2)
+  payment_mode        String?               @db.VarChar(50)
+  payment_date        DateTime              @db.Date
+  bank_name           String?               @db.VarChar(255)
+  cheque_number       String?               @db.VarChar(100)
+  transaction_id      String?               @db.VarChar(255)
+  notes               String?
+  domain_data         Json?                 @default("{}")
+  created_at          DateTime?             @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime?             @default(now()) @db.Timestamptz(6)
   payment_allocations payment_allocations[]
-  businesses     businesses @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  customers      customers? @relation(fields: [customer_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  vendors        vendors?   @relation(fields: [vendor_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  businesses          businesses            @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  customers           customers?            @relation(fields: [customer_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  vendors             vendors?              @relation(fields: [vendor_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@index([business_id], map: "idx_payments_business_id")
   @@index([customer_id], map: "idx_payments_customer_id")
@@ -1220,18 +1230,18 @@ model price_list_items {
 // ═══════════════════════════════════════════════════════════════════════
 
 model journal_entries {
-  id               String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  business_id      String       @db.Uuid
-  journal_number   String?      @db.VarChar(50)
-  transaction_date DateTime     @db.Date
+  id               String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  business_id      String            @db.Uuid
+  journal_number   String?           @db.VarChar(50)
+  transaction_date DateTime          @db.Date
   description      String?
-  reference_type   String?      @db.VarChar(50)
-  reference_id     String?      @db.Uuid
-  is_reversed      Boolean      @default(false)
-  reversed_by      String?      @db.Uuid
-  created_by       String?      @db.VarChar(255)
-  created_at       DateTime?    @default(now()) @db.Timestamptz(6)
-  businesses       businesses   @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  reference_type   String?           @db.VarChar(50)
+  reference_id     String?           @db.Uuid
+  is_reversed      Boolean           @default(false)
+  reversed_by      String?           @db.Uuid
+  created_by       String?           @db.VarChar(255)
+  created_at       DateTime?         @default(now()) @db.Timestamptz(6)
+  businesses       businesses        @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   gl_entries       gl_entries[]
   reversal_source  journal_entries?  @relation("journal_reversal", fields: [reversed_by], references: [id], onUpdate: NoAction)
   reversed_entries journal_entries[] @relation("journal_reversal")
@@ -1277,26 +1287,26 @@ model payment_allocations {
 }
 
 model expenses {
-  id              String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  business_id     String       @db.Uuid
-  expense_number  String?      @db.VarChar(50)
-  account_id      String       @db.Uuid
-  category        String?      @db.VarChar(100)
-  amount          Decimal      @db.Decimal(12, 2)
-  tax_amount      Decimal?     @default(0) @db.Decimal(12, 2)
-  vendor_id       String?      @db.Uuid
-  payment_method  String?      @default("cash") @db.VarChar(50)
-  date            DateTime     @db.Date
-  description     String?
-  receipt_url     String?
-  status          String       @default("recorded") @db.VarChar(20)
-  is_deleted      Boolean      @default(false)
-  deleted_at      DateTime?    @db.Timestamptz(6)
-  created_at      DateTime?    @default(now()) @db.Timestamptz(6)
-  updated_at      DateTime?    @default(now()) @db.Timestamptz(6)
-  businesses      businesses   @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  gl_accounts     gl_accounts  @relation(fields: [account_id], references: [id], onUpdate: NoAction)
-  vendors         vendors?     @relation(fields: [vendor_id], references: [id], onUpdate: NoAction)
+  id             String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  business_id    String      @db.Uuid
+  expense_number String?     @db.VarChar(50)
+  account_id     String      @db.Uuid
+  category       String?     @db.VarChar(100)
+  amount         Decimal     @db.Decimal(12, 2)
+  tax_amount     Decimal?    @default(0) @db.Decimal(12, 2)
+  vendor_id      String?     @db.Uuid
+  payment_method String?     @default("cash") @db.VarChar(50)
+  date           DateTime    @db.Date
+  description    String?
+  receipt_url    String?
+  status         String      @default("recorded") @db.VarChar(20)
+  is_deleted     Boolean     @default(false)
+  deleted_at     DateTime?   @db.Timestamptz(6)
+  created_at     DateTime?   @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime?   @default(now()) @db.Timestamptz(6)
+  businesses     businesses  @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  gl_accounts    gl_accounts @relation(fields: [account_id], references: [id], onUpdate: NoAction)
+  vendors        vendors?    @relation(fields: [vendor_id], references: [id], onUpdate: NoAction)
 
   @@unique([business_id, expense_number])
   @@index([business_id])
@@ -1322,24 +1332,24 @@ model exchange_rates {
 }
 
 model credit_notes {
-  id                String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  business_id       String              @db.Uuid
-  credit_note_number String             @db.VarChar(50)
-  invoice_id        String?             @db.Uuid
-  customer_id       String?             @db.Uuid
-  date              DateTime            @db.Date
-  subtotal          Decimal?            @default(0) @db.Decimal(12, 2)
-  tax_amount        Decimal?            @default(0) @db.Decimal(12, 2)
-  total_amount      Decimal             @db.Decimal(12, 2)
-  reason            String?
-  status            String              @default("draft") @db.VarChar(20)
-  applied_to_invoice_id String?          @db.Uuid
-  created_at        DateTime?           @default(now()) @db.Timestamptz(6)
-  updated_at        DateTime?           @default(now()) @db.Timestamptz(6)
-  businesses        businesses          @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  invoices          invoices?           @relation(fields: [invoice_id], references: [id], onUpdate: NoAction)
-  customers         customers?          @relation(fields: [customer_id], references: [id], onUpdate: NoAction)
-  credit_note_items credit_note_items[]
+  id                    String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  business_id           String              @db.Uuid
+  credit_note_number    String              @db.VarChar(50)
+  invoice_id            String?             @db.Uuid
+  customer_id           String?             @db.Uuid
+  date                  DateTime            @db.Date
+  subtotal              Decimal?            @default(0) @db.Decimal(12, 2)
+  tax_amount            Decimal?            @default(0) @db.Decimal(12, 2)
+  total_amount          Decimal             @db.Decimal(12, 2)
+  reason                String?
+  status                String              @default("draft") @db.VarChar(20)
+  applied_to_invoice_id String?             @db.Uuid
+  created_at            DateTime?           @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime?           @default(now()) @db.Timestamptz(6)
+  businesses            businesses          @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  invoices              invoices?           @relation(fields: [invoice_id], references: [id], onUpdate: NoAction)
+  customers             customers?          @relation(fields: [customer_id], references: [id], onUpdate: NoAction)
+  credit_note_items     credit_note_items[]
 
   @@unique([business_id, credit_note_number])
   @@index([business_id])
@@ -1348,19 +1358,19 @@ model credit_notes {
 }
 
 model credit_note_items {
-  id              String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  business_id     String?      @db.Uuid
-  credit_note_id  String       @db.Uuid
-  product_id      String?      @db.Uuid
-  description     String?
-  quantity        Decimal      @default(1) @db.Decimal(12, 2)
-  unit_price      Decimal      @default(0) @db.Decimal(12, 2)
-  tax_amount      Decimal?     @default(0) @db.Decimal(12, 2)
-  total_amount    Decimal?     @default(0) @db.Decimal(12, 2)
-  created_at      DateTime?    @default(now()) @db.Timestamptz(6)
-  businesses      businesses?  @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  credit_notes    credit_notes @relation(fields: [credit_note_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  products        products?    @relation(fields: [product_id], references: [id], onUpdate: NoAction)
+  id             String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  business_id    String?      @db.Uuid
+  credit_note_id String       @db.Uuid
+  product_id     String?      @db.Uuid
+  description    String?
+  quantity       Decimal      @default(1) @db.Decimal(12, 2)
+  unit_price     Decimal      @default(0) @db.Decimal(12, 2)
+  tax_amount     Decimal?     @default(0) @db.Decimal(12, 2)
+  total_amount   Decimal?     @default(0) @db.Decimal(12, 2)
+  created_at     DateTime?    @default(now()) @db.Timestamptz(6)
+  businesses     businesses?  @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  credit_notes   credit_notes @relation(fields: [credit_note_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  products       products?    @relation(fields: [product_id], references: [id], onUpdate: NoAction)
 
   @@index([business_id], map: "idx_credit_note_items_business_id")
   @@index([credit_note_id])
@@ -1372,16 +1382,16 @@ model credit_note_items {
 // ═══════════════════════════════════════════════════════════════════════
 
 model pos_terminals {
-  id              String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  business_id     String         @db.Uuid
-  name            String         @db.VarChar(100)
-  code            String?        @db.VarChar(20)
-  warehouse_id    String?        @db.Uuid
-  status          String         @default("active") @db.VarChar(20)
-  hardware_config Json?          @default("{}")
-  created_at      DateTime?      @default(now()) @db.Timestamptz(6)
-  updated_at      DateTime?      @default(now()) @db.Timestamptz(6)
-  businesses      businesses     @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  id              String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  business_id     String               @db.Uuid
+  name            String               @db.VarChar(100)
+  code            String?              @db.VarChar(20)
+  warehouse_id    String?              @db.Uuid
+  status          String               @default("active") @db.VarChar(20)
+  hardware_config Json?                @default("{}")
+  created_at      DateTime?            @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime?            @default(now()) @db.Timestamptz(6)
+  businesses      businesses           @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   warehouse       warehouse_locations? @relation(fields: [warehouse_id], references: [id], onUpdate: NoAction)
   pos_sessions    pos_sessions[]
 
@@ -1413,28 +1423,28 @@ model pos_sessions {
 }
 
 model pos_transactions {
-  id                     String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  business_id            String                   @db.Uuid
-  session_id             String                   @db.Uuid
-  transaction_number     String                   @db.VarChar(50)
-  customer_id            String?                  @db.Uuid
-  subtotal               Decimal                  @db.Decimal(12, 2)
-  tax_amount             Decimal?                 @default(0) @db.Decimal(12, 2)
-  discount_amount        Decimal?                 @default(0) @db.Decimal(12, 2)
-  total_amount           Decimal                  @db.Decimal(12, 2)
-  payment_status         String                   @default("completed") @db.VarChar(20)
-  transaction_type       String                   @default("sale") @db.VarChar(20)
-  is_voided              Boolean                  @default(false)
-  voided_by              String?
-  voided_at              DateTime?                @db.Timestamptz(6)
-  void_reason            String?
-  created_at             DateTime?                @default(now()) @db.Timestamptz(6)
-  businesses             businesses               @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  pos_sessions           pos_sessions             @relation(fields: [session_id], references: [id], onUpdate: NoAction)
-  customers              customers?               @relation(fields: [customer_id], references: [id], onUpdate: NoAction)
-  pos_transaction_items  pos_transaction_items[]
-  pos_payments           pos_payments[]
-  pos_refunds            pos_refunds[]
+  id                    String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  business_id           String                  @db.Uuid
+  session_id            String                  @db.Uuid
+  transaction_number    String                  @db.VarChar(50)
+  customer_id           String?                 @db.Uuid
+  subtotal              Decimal                 @db.Decimal(12, 2)
+  tax_amount            Decimal?                @default(0) @db.Decimal(12, 2)
+  discount_amount       Decimal?                @default(0) @db.Decimal(12, 2)
+  total_amount          Decimal                 @db.Decimal(12, 2)
+  payment_status        String                  @default("completed") @db.VarChar(20)
+  transaction_type      String                  @default("sale") @db.VarChar(20)
+  is_voided             Boolean                 @default(false)
+  voided_by             String?
+  voided_at             DateTime?               @db.Timestamptz(6)
+  void_reason           String?
+  created_at            DateTime?               @default(now()) @db.Timestamptz(6)
+  businesses            businesses              @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  pos_sessions          pos_sessions            @relation(fields: [session_id], references: [id], onUpdate: NoAction)
+  customers             customers?              @relation(fields: [customer_id], references: [id], onUpdate: NoAction)
+  pos_transaction_items pos_transaction_items[]
+  pos_payments          pos_payments[]
+  pos_refunds           pos_refunds[]
 
   @@unique([business_id, transaction_number])
   @@index([business_id])
@@ -1443,23 +1453,23 @@ model pos_transactions {
 }
 
 model pos_transaction_items {
-  id               String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  business_id      String?           @db.Uuid
-  transaction_id   String            @db.Uuid
-  product_id       String            @db.Uuid
-  variant_id       String?           @db.Uuid
-  batch_id         String?           @db.Uuid
-  serial_number    String?           @db.VarChar(255)
-  quantity         Decimal           @db.Decimal(12, 2)
-  unit_price       Decimal           @db.Decimal(12, 2)
-  discount_amount  Decimal?          @default(0) @db.Decimal(12, 2)
-  tax_amount       Decimal?          @default(0) @db.Decimal(12, 2)
-  total_amount     Decimal           @db.Decimal(12, 2)
-  promotion_id     String?           @db.Uuid
-  created_at       DateTime?         @default(now()) @db.Timestamptz(6)
-  businesses       businesses?       @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  pos_transactions pos_transactions  @relation(fields: [transaction_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  products         products          @relation(fields: [product_id], references: [id], onUpdate: NoAction)
+  id               String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  business_id      String?          @db.Uuid
+  transaction_id   String           @db.Uuid
+  product_id       String           @db.Uuid
+  variant_id       String?          @db.Uuid
+  batch_id         String?          @db.Uuid
+  serial_number    String?          @db.VarChar(255)
+  quantity         Decimal          @db.Decimal(12, 2)
+  unit_price       Decimal          @db.Decimal(12, 2)
+  discount_amount  Decimal?         @default(0) @db.Decimal(12, 2)
+  tax_amount       Decimal?         @default(0) @db.Decimal(12, 2)
+  total_amount     Decimal          @db.Decimal(12, 2)
+  promotion_id     String?          @db.Uuid
+  created_at       DateTime?        @default(now()) @db.Timestamptz(6)
+  businesses       businesses?      @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  pos_transactions pos_transactions @relation(fields: [transaction_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  products         products         @relation(fields: [product_id], references: [id], onUpdate: NoAction)
 
   @@index([business_id], map: "idx_pos_tx_items_business_id")
   @@index([transaction_id])
@@ -1484,22 +1494,22 @@ model pos_payments {
 // ─── Phase 3: POS Enhancement ───────────────────────────────────────────────
 
 model pos_refunds {
-  id                String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  business_id       String             @db.Uuid
-  transaction_id    String             @db.Uuid
-  refund_number     String             @db.VarChar(50)
-  refund_type       String             @default("full") @db.VarChar(20)  // full | partial | exchange
-  reason            String?
-  subtotal          Decimal            @db.Decimal(12, 2)
-  tax_amount        Decimal?           @default(0) @db.Decimal(12, 2)
-  total_amount      Decimal            @db.Decimal(12, 2)
-  refund_method     String             @default("cash") @db.VarChar(20) // cash | card | store_credit
-  status            String             @default("completed") @db.VarChar(20)
-  processed_by      String?
-  created_at        DateTime?          @default(now()) @db.Timestamptz(6)
-  businesses        businesses         @relation(fields: [business_id], references: [id], onDelete: Cascade)
-  pos_transactions  pos_transactions   @relation(fields: [transaction_id], references: [id])
-  pos_refund_items  pos_refund_items[]
+  id               String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  business_id      String             @db.Uuid
+  transaction_id   String             @db.Uuid
+  refund_number    String             @db.VarChar(50)
+  refund_type      String             @default("full") @db.VarChar(20) // full | partial | exchange
+  reason           String?
+  subtotal         Decimal            @db.Decimal(12, 2)
+  tax_amount       Decimal?           @default(0) @db.Decimal(12, 2)
+  total_amount     Decimal            @db.Decimal(12, 2)
+  refund_method    String             @default("cash") @db.VarChar(20) // cash | card | store_credit
+  status           String             @default("completed") @db.VarChar(20)
+  processed_by     String?
+  created_at       DateTime?          @default(now()) @db.Timestamptz(6)
+  businesses       businesses         @relation(fields: [business_id], references: [id], onDelete: Cascade)
+  pos_transactions pos_transactions   @relation(fields: [transaction_id], references: [id])
+  pos_refund_items pos_refund_items[]
 
   @@unique([business_id, refund_number])
   @@index([business_id])
@@ -1507,54 +1517,54 @@ model pos_refunds {
 }
 
 model pos_refund_items {
-  id              String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  business_id     String?      @db.Uuid
-  refund_id       String       @db.Uuid
-  product_id      String?      @db.Uuid
-  product_name    String
-  quantity        Decimal      @db.Decimal(12, 2)
-  unit_price      Decimal      @db.Decimal(12, 2)
-  refund_amount   Decimal      @db.Decimal(12, 2)
-  restock         Boolean      @default(true)
-  created_at      DateTime?    @default(now()) @db.Timestamptz(6)
-  businesses      businesses?  @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  pos_refunds     pos_refunds  @relation(fields: [refund_id], references: [id], onDelete: Cascade)
+  id            String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  business_id   String?     @db.Uuid
+  refund_id     String      @db.Uuid
+  product_id    String?     @db.Uuid
+  product_name  String
+  quantity      Decimal     @db.Decimal(12, 2)
+  unit_price    Decimal     @db.Decimal(12, 2)
+  refund_amount Decimal     @db.Decimal(12, 2)
+  restock       Boolean     @default(true)
+  created_at    DateTime?   @default(now()) @db.Timestamptz(6)
+  businesses    businesses? @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  pos_refunds   pos_refunds @relation(fields: [refund_id], references: [id], onDelete: Cascade)
 
   @@index([business_id], map: "idx_pos_refund_items_business_id")
   @@index([refund_id])
 }
 
 model loyalty_programs {
-  id                  String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  business_id         String                 @db.Uuid
-  name                String                 @db.VarChar(100)
-  points_per_amount   Decimal                @default(1) @db.Decimal(8, 2)  // points earned per currency unit spent
-  currency_per_point  Decimal                @default(1) @db.Decimal(8, 2)  // currency value per point redeemed
-  min_redeem_points   Int                    @default(100)
-  is_active           Boolean                @default(true)
-  created_at          DateTime?              @default(now()) @db.Timestamptz(6)
-  updated_at          DateTime?              @default(now()) @db.Timestamptz(6)
-  businesses          businesses             @relation(fields: [business_id], references: [id], onDelete: Cascade)
+  id                   String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  business_id          String                 @db.Uuid
+  name                 String                 @db.VarChar(100)
+  points_per_amount    Decimal                @default(1) @db.Decimal(8, 2) // points earned per currency unit spent
+  currency_per_point   Decimal                @default(1) @db.Decimal(8, 2) // currency value per point redeemed
+  min_redeem_points    Int                    @default(100)
+  is_active            Boolean                @default(true)
+  created_at           DateTime?              @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime?              @default(now()) @db.Timestamptz(6)
+  businesses           businesses             @relation(fields: [business_id], references: [id], onDelete: Cascade)
   loyalty_transactions loyalty_transactions[]
 
   @@index([business_id])
 }
 
 model loyalty_transactions {
-  id              String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  business_id     String           @db.Uuid
-  program_id      String           @db.Uuid
-  customer_id     String           @db.Uuid
-  type            String           @db.VarChar(20) // earn | redeem | adjust | expire
-  points          Int
-  reference_type  String?          @db.VarChar(50) // pos_transaction | manual
-  reference_id    String?          @db.Uuid
-  balance_after   Int              @default(0)
-  description     String?
-  created_at      DateTime?        @default(now()) @db.Timestamptz(6)
-  businesses      businesses       @relation(fields: [business_id], references: [id], onDelete: Cascade)
+  id               String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  business_id      String           @db.Uuid
+  program_id       String           @db.Uuid
+  customer_id      String           @db.Uuid
+  type             String           @db.VarChar(20) // earn | redeem | adjust | expire
+  points           Int
+  reference_type   String?          @db.VarChar(50) // pos_transaction | manual
+  reference_id     String?          @db.Uuid
+  balance_after    Int              @default(0)
+  description      String?
+  created_at       DateTime?        @default(now()) @db.Timestamptz(6)
+  businesses       businesses       @relation(fields: [business_id], references: [id], onDelete: Cascade)
   loyalty_programs loyalty_programs @relation(fields: [program_id], references: [id])
-  customers       customers        @relation(fields: [customer_id], references: [id])
+  customers        customers        @relation(fields: [customer_id], references: [id])
 
   @@index([business_id])
   @@index([customer_id])
@@ -1564,17 +1574,17 @@ model loyalty_transactions {
 // ─── Phase 5: Restaurant Vertical ───────────────────────────────────────────
 
 model restaurant_tables {
-  id              String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  business_id     String              @db.Uuid
-  table_number    String              @db.VarChar(20)
-  section         String?             @db.VarChar(50)  // indoor | outdoor | terrace | vip
-  capacity        Int                 @default(4)
-  status          String              @default("available") @db.VarChar(20) // available | occupied | reserved | maintenance
-  current_order_id String?            @db.Uuid
-  is_active       Boolean             @default(true)
-  sort_order      Int                 @default(0)
-  created_at      DateTime?           @default(now()) @db.Timestamptz(6)
-  businesses      businesses          @relation(fields: [business_id], references: [id], onDelete: Cascade)
+  id                String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  business_id       String              @db.Uuid
+  table_number      String              @db.VarChar(20)
+  section           String?             @db.VarChar(50) // indoor | outdoor | terrace | vip
+  capacity          Int                 @default(4)
+  status            String              @default("available") @db.VarChar(20) // available | occupied | reserved | maintenance
+  current_order_id  String?             @db.Uuid
+  is_active         Boolean             @default(true)
+  sort_order        Int                 @default(0)
+  created_at        DateTime?           @default(now()) @db.Timestamptz(6)
+  businesses        businesses          @relation(fields: [business_id], references: [id], onDelete: Cascade)
   restaurant_orders restaurant_orders[]
 
   @@unique([business_id, table_number])
@@ -1582,26 +1592,26 @@ model restaurant_tables {
 }
 
 model restaurant_orders {
-  id                String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  business_id       String                   @db.Uuid
-  order_number      String                   @db.VarChar(50)
-  table_id          String?                  @db.Uuid
-  order_type        String                   @default("dine_in") @db.VarChar(20)  // dine_in | takeaway | delivery
-  customer_id       String?                  @db.Uuid
-  waiter_id         String?
-  status            String                   @default("pending") @db.VarChar(20)  // pending | preparing | ready | served | completed | cancelled
-  subtotal          Decimal?                 @default(0) @db.Decimal(12, 2)
-  tax_amount        Decimal?                 @default(0) @db.Decimal(12, 2)
-  discount_amount   Decimal?                 @default(0) @db.Decimal(12, 2)
-  total_amount      Decimal?                 @default(0) @db.Decimal(12, 2)
-  notes             String?
-  created_at        DateTime?                @default(now()) @db.Timestamptz(6)
-  updated_at        DateTime?                @default(now()) @db.Timestamptz(6)
-  businesses        businesses               @relation(fields: [business_id], references: [id], onDelete: Cascade)
-  restaurant_tables restaurant_tables?       @relation(fields: [table_id], references: [id])
-  customers         customers?               @relation(fields: [customer_id], references: [id])
+  id                     String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  business_id            String                   @db.Uuid
+  order_number           String                   @db.VarChar(50)
+  table_id               String?                  @db.Uuid
+  order_type             String                   @default("dine_in") @db.VarChar(20) // dine_in | takeaway | delivery
+  customer_id            String?                  @db.Uuid
+  waiter_id              String?
+  status                 String                   @default("pending") @db.VarChar(20) // pending | preparing | ready | served | completed | cancelled
+  subtotal               Decimal?                 @default(0) @db.Decimal(12, 2)
+  tax_amount             Decimal?                 @default(0) @db.Decimal(12, 2)
+  discount_amount        Decimal?                 @default(0) @db.Decimal(12, 2)
+  total_amount           Decimal?                 @default(0) @db.Decimal(12, 2)
+  notes                  String?
+  created_at             DateTime?                @default(now()) @db.Timestamptz(6)
+  updated_at             DateTime?                @default(now()) @db.Timestamptz(6)
+  businesses             businesses               @relation(fields: [business_id], references: [id], onDelete: Cascade)
+  restaurant_tables      restaurant_tables?       @relation(fields: [table_id], references: [id])
+  customers              customers?               @relation(fields: [customer_id], references: [id])
   restaurant_order_items restaurant_order_items[]
-  kitchen_orders    kitchen_orders[]
+  kitchen_orders         kitchen_orders[]
 
   @@unique([business_id, order_number])
   @@index([business_id])
@@ -1610,37 +1620,37 @@ model restaurant_orders {
 }
 
 model restaurant_order_items {
-  id              String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  business_id     String?            @db.Uuid
-  order_id        String             @db.Uuid
-  product_id      String?            @db.Uuid
-  item_name       String
-  quantity        Int                @default(1)
-  unit_price      Decimal            @db.Decimal(12, 2)
-  modifiers       Json?              @default("[]")  // [{name, price}]
+  id                   String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  business_id          String?           @db.Uuid
+  order_id             String            @db.Uuid
+  product_id           String?           @db.Uuid
+  item_name            String
+  quantity             Int               @default(1)
+  unit_price           Decimal           @db.Decimal(12, 2)
+  modifiers            Json?             @default("[]") // [{name, price}]
   special_instructions String?
-  status          String             @default("pending") @db.VarChar(20)  // pending | sent_to_kitchen | preparing | ready | served | cancelled
-  created_at      DateTime?          @default(now()) @db.Timestamptz(6)
-  businesses      businesses?        @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  restaurant_orders restaurant_orders @relation(fields: [order_id], references: [id], onDelete: Cascade)
+  status               String            @default("pending") @db.VarChar(20) // pending | sent_to_kitchen | preparing | ready | served | cancelled
+  created_at           DateTime?         @default(now()) @db.Timestamptz(6)
+  businesses           businesses?       @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  restaurant_orders    restaurant_orders @relation(fields: [order_id], references: [id], onDelete: Cascade)
 
   @@index([business_id], map: "idx_restaurant_order_items_business_id")
   @@index([order_id])
 }
 
 model kitchen_orders {
-  id              String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  business_id     String            @db.Uuid
-  order_id        String            @db.Uuid
-  station         String?           @db.VarChar(50)  // grill | fryer | salad | bar | dessert
-  priority        Int               @default(0)      // 0=normal, 1=rush
-  status          String            @default("pending") @db.VarChar(20) // pending | preparing | ready | completed
-  items           Json              @default("[]")   // [{item_name, qty, mods, special}]
-  estimated_time  Int?                               // minutes
-  started_at      DateTime?         @db.Timestamptz(6)
-  completed_at    DateTime?         @db.Timestamptz(6)
-  created_at      DateTime?         @default(now()) @db.Timestamptz(6)
-  businesses      businesses        @relation(fields: [business_id], references: [id], onDelete: Cascade)
+  id                String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  business_id       String            @db.Uuid
+  order_id          String            @db.Uuid
+  station           String?           @db.VarChar(50) // grill | fryer | salad | bar | dessert
+  priority          Int               @default(0) // 0=normal, 1=rush
+  status            String            @default("pending") @db.VarChar(20) // pending | preparing | ready | completed
+  items             Json              @default("[]") // [{item_name, qty, mods, special}]
+  estimated_time    Int? // minutes
+  started_at        DateTime?         @db.Timestamptz(6)
+  completed_at      DateTime?         @db.Timestamptz(6)
+  created_at        DateTime?         @default(now()) @db.Timestamptz(6)
+  businesses        businesses        @relation(fields: [business_id], references: [id], onDelete: Cascade)
   restaurant_orders restaurant_orders @relation(fields: [order_id], references: [id])
 
   @@index([business_id])
@@ -1651,19 +1661,19 @@ model kitchen_orders {
 // ─── Phase 6: Differentiation ───────────────────────────────────────────────
 
 model approval_requests {
-  id              String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  business_id     String     @db.Uuid
-  request_type    String     @db.VarChar(50) // expense | purchase | refund | credit_note | journal_entry
-  reference_id    String?    @db.Uuid
-  requested_by    String
-  approver_id     String?
-  status          String     @default("pending") @db.VarChar(20) // pending | approved | rejected | cancelled
-  amount          Decimal?   @db.Decimal(12, 2)
-  description     String?
+  id               String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  business_id      String     @db.Uuid
+  request_type     String     @db.VarChar(50) // expense | purchase | refund | credit_note | journal_entry
+  reference_id     String?    @db.Uuid
+  requested_by     String
+  approver_id      String?
+  status           String     @default("pending") @db.VarChar(20) // pending | approved | rejected | cancelled
+  amount           Decimal?   @db.Decimal(12, 2)
+  description      String?
   rejection_reason String?
-  requested_at    DateTime?  @default(now()) @db.Timestamptz(6)
-  resolved_at     DateTime?  @db.Timestamptz(6)
-  businesses      businesses @relation(fields: [business_id], references: [id], onDelete: Cascade)
+  requested_at     DateTime?  @default(now()) @db.Timestamptz(6)
+  resolved_at      DateTime?  @db.Timestamptz(6)
+  businesses       businesses @relation(fields: [business_id], references: [id], onDelete: Cascade)
 
   @@index([business_id])
   @@index([approver_id])
@@ -1671,47 +1681,47 @@ model approval_requests {
 }
 
 model payroll_employees {
-  id              String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  business_id     String          @db.Uuid
-  user_id         String?
-  employee_code   String          @db.VarChar(50)
-  full_name       String
-  cnic            String?         @db.VarChar(15)
-  phone           String?         @db.VarChar(20)
-  email           String?         @db.VarChar(100)
-  department      String?         @db.VarChar(100)
-  designation     String?         @db.VarChar(100)
-  join_date       DateTime?       @db.Date
-  base_salary     Decimal         @default(0) @db.Decimal(12, 2)
-  bank_name       String?         @db.VarChar(100)
-  bank_account    String?         @db.VarChar(50)
-  tax_filer       Boolean         @default(false)
-  status          String          @default("active") @db.VarChar(20) // active | inactive | terminated
-  created_at      DateTime?       @default(now()) @db.Timestamptz(6)
-  updated_at      DateTime?       @default(now()) @db.Timestamptz(6)
-  businesses      businesses      @relation(fields: [business_id], references: [id], onDelete: Cascade)
-  payroll_items   payroll_items[]
+  id            String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  business_id   String          @db.Uuid
+  user_id       String?
+  employee_code String          @db.VarChar(50)
+  full_name     String
+  cnic          String?         @db.VarChar(15)
+  phone         String?         @db.VarChar(20)
+  email         String?         @db.VarChar(100)
+  department    String?         @db.VarChar(100)
+  designation   String?         @db.VarChar(100)
+  join_date     DateTime?       @db.Date
+  base_salary   Decimal         @default(0) @db.Decimal(12, 2)
+  bank_name     String?         @db.VarChar(100)
+  bank_account  String?         @db.VarChar(50)
+  tax_filer     Boolean         @default(false)
+  status        String          @default("active") @db.VarChar(20) // active | inactive | terminated
+  created_at    DateTime?       @default(now()) @db.Timestamptz(6)
+  updated_at    DateTime?       @default(now()) @db.Timestamptz(6)
+  businesses    businesses      @relation(fields: [business_id], references: [id], onDelete: Cascade)
+  payroll_items payroll_items[]
 
   @@unique([business_id, employee_code])
   @@index([business_id])
 }
 
 model payroll_runs {
-  id              String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  business_id     String          @db.Uuid
-  run_number      String          @db.VarChar(50)
-  period_month    Int             // 1-12
-  period_year     Int
-  total_gross     Decimal         @default(0) @db.Decimal(12, 2)
-  total_deductions Decimal        @default(0) @db.Decimal(12, 2)
-  total_net       Decimal         @default(0) @db.Decimal(12, 2)
-  employee_count  Int             @default(0)
-  status          String          @default("draft") @db.VarChar(20) // draft | processing | completed | paid
-  processed_by    String?
-  processed_at    DateTime?       @db.Timestamptz(6)
-  created_at      DateTime?       @default(now()) @db.Timestamptz(6)
-  businesses      businesses      @relation(fields: [business_id], references: [id], onDelete: Cascade)
-  payroll_items   payroll_items[]
+  id               String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  business_id      String          @db.Uuid
+  run_number       String          @db.VarChar(50)
+  period_month     Int // 1-12
+  period_year      Int
+  total_gross      Decimal         @default(0) @db.Decimal(12, 2)
+  total_deductions Decimal         @default(0) @db.Decimal(12, 2)
+  total_net        Decimal         @default(0) @db.Decimal(12, 2)
+  employee_count   Int             @default(0)
+  status           String          @default("draft") @db.VarChar(20) // draft | processing | completed | paid
+  processed_by     String?
+  processed_at     DateTime?       @db.Timestamptz(6)
+  created_at       DateTime?       @default(now()) @db.Timestamptz(6)
+  businesses       businesses      @relation(fields: [business_id], references: [id], onDelete: Cascade)
+  payroll_items    payroll_items[]
 
   @@unique([business_id, run_number])
   @@unique([business_id, period_month, period_year])
@@ -1719,25 +1729,25 @@ model payroll_runs {
 }
 
 model payroll_items {
-  id               String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  business_id      String?            @db.Uuid
-  run_id           String             @db.Uuid
-  employee_id      String             @db.Uuid
-  base_salary      Decimal            @db.Decimal(12, 2)
-  allowances       Decimal            @default(0) @db.Decimal(12, 2)
-  overtime         Decimal            @default(0) @db.Decimal(12, 2)
-  gross_salary     Decimal            @db.Decimal(12, 2)
-  tax_deduction    Decimal            @default(0) @db.Decimal(12, 2)
-  eobi             Decimal            @default(0) @db.Decimal(12, 2)  // Pakistan EOBI
-  loan_deduction   Decimal            @default(0) @db.Decimal(12, 2)
-  other_deductions Decimal            @default(0) @db.Decimal(12, 2)
-  total_deductions Decimal            @default(0) @db.Decimal(12, 2)
-  net_salary       Decimal            @db.Decimal(12, 2)
-  payment_status   String             @default("pending") @db.VarChar(20) // pending | paid
-  payment_method   String?            @db.VarChar(20) // cash | bank_transfer
-  created_at       DateTime?          @default(now()) @db.Timestamptz(6)
-  businesses       businesses?        @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  payroll_runs     payroll_runs       @relation(fields: [run_id], references: [id], onDelete: Cascade)
+  id                String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  business_id       String?           @db.Uuid
+  run_id            String            @db.Uuid
+  employee_id       String            @db.Uuid
+  base_salary       Decimal           @db.Decimal(12, 2)
+  allowances        Decimal           @default(0) @db.Decimal(12, 2)
+  overtime          Decimal           @default(0) @db.Decimal(12, 2)
+  gross_salary      Decimal           @db.Decimal(12, 2)
+  tax_deduction     Decimal           @default(0) @db.Decimal(12, 2)
+  eobi              Decimal           @default(0) @db.Decimal(12, 2) // Pakistan EOBI
+  loan_deduction    Decimal           @default(0) @db.Decimal(12, 2)
+  other_deductions  Decimal           @default(0) @db.Decimal(12, 2)
+  total_deductions  Decimal           @default(0) @db.Decimal(12, 2)
+  net_salary        Decimal           @db.Decimal(12, 2)
+  payment_status    String            @default("pending") @db.VarChar(20) // pending | paid
+  payment_method    String?           @db.VarChar(20) // cash | bank_transfer
+  created_at        DateTime?         @default(now()) @db.Timestamptz(6)
+  businesses        businesses?       @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  payroll_runs      payroll_runs      @relation(fields: [run_id], references: [id], onDelete: Cascade)
   payroll_employees payroll_employees @relation(fields: [employee_id], references: [id])
 
   @@index([business_id], map: "idx_payroll_items_business_id")

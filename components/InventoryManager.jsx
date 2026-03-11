@@ -578,9 +578,19 @@ export function InventoryManager({
     window.addEventListener('toggle-filters', handleToggleFilters);
     window.addEventListener('export-data', handleExportGlobal);
 
+    const handleInventoryFocusLowStock = () => {
+      setActiveTab('products');
+      setActiveDomainFilters(prev => ({ ...prev, stock: 'low' }));
+      setSearchTerm('');
+      toast.success('Showing low stock items', { duration: 1400 });
+    };
+
+    window.addEventListener('inventory-focus-low-stock', handleInventoryFocusLowStock);
+
     return () => {
       window.removeEventListener('toggle-filters', handleToggleFilters);
       window.removeEventListener('export-data', handleExportGlobal);
+      window.removeEventListener('inventory-focus-low-stock', handleInventoryFocusLowStock);
     };
   }, [productsToDisplay]);
 
@@ -985,19 +995,19 @@ export function InventoryManager({
   return (
     <div className="space-y-4">
       {/* Refined Action Bar - Consolidated & Aligned */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-2">
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="flex items-center gap-3 pr-4 border-r border-gray-100">
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50/50 rounded-xl border border-green-100/50">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-1">
+        <div className="flex items-center gap-2 w-full lg:w-auto overflow-x-auto lg:overflow-visible whitespace-nowrap">
+          <div className="flex items-center gap-2 pr-2 border-r border-gray-100">
+            <div className="flex items-center gap-2 px-2.5 py-1 bg-green-50 rounded-lg border border-green-100">
               <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
               <span className="text-[10px] font-black text-green-700 uppercase tracking-widest">Live Sync</span>
             </div>
             {/* View Mode Switcher - Integrated & Compact */}
-            <div className="bg-gray-100/80 p-1 rounded-xl flex items-center border border-gray-200/50 shadow-sm backdrop-blur-sm ml-1 h-10">
+            <div className="bg-gray-100/90 p-1 rounded-lg flex items-center border border-gray-200 shadow-sm ml-1 h-9">
               <button
                 onClick={() => setViewMode('visual')}
                 className={cn(
-                  "px-4 h-8 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all",
+                  "px-3 h-7 text-[10px] font-black uppercase tracking-wider rounded-md transition-colors",
                   viewMode === 'visual' ? "bg-white shadow-md text-blue-600" : "text-gray-500 hover:text-gray-900"
                 )}
               >
@@ -1006,7 +1016,7 @@ export function InventoryManager({
               <button
                 onClick={() => setViewMode('busy')}
                 className={cn(
-                  "px-4 h-8 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all",
+                  "px-3 h-7 text-[10px] font-black uppercase tracking-wider rounded-md transition-colors",
                   viewMode === 'busy' ? "bg-white shadow-md text-blue-600" : "text-gray-500 hover:text-gray-900"
                 )}
               >
@@ -1016,11 +1026,11 @@ export function InventoryManager({
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2">
           {/* Secondary Actions Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="h-10 rounded-xl px-4 font-black text-[10px] uppercase tracking-widest border-gray-200 bg-white hover:bg-gray-50 text-gray-700 transition-all">
+              <Button variant="outline" size="sm" className="h-9 rounded-lg px-3.5 font-black text-[10px] uppercase tracking-wider border-gray-200 bg-white hover:bg-gray-50 text-gray-700 transition-colors">
                 <Settings className="w-3.5 h-3.5 mr-2 text-gray-400" />
                 More Actions
                 <ChevronDown className="w-3 h-3 ml-2 opacity-50" />
@@ -1068,10 +1078,10 @@ export function InventoryManager({
           <Button
             size="sm"
             onClick={() => setShowQuickAddModal(true)}
-            className="h-10 text-white rounded-xl shadow-lg px-5 font-black text-[10px] uppercase tracking-widest border-none transition-all hover:scale-105 active:scale-95 group"
+            className="h-9 text-white rounded-lg shadow-md px-4 font-black text-[10px] uppercase tracking-wider border-none transition-colors group"
             style={{
               background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
-              boxShadow: '0 8px 16px -4px rgba(15, 23, 42, 0.4)'
+              boxShadow: '0 6px 12px -4px rgba(15, 23, 42, 0.35)'
             }}
           >
             <BrainCircuit className="w-4 h-4 mr-2 text-blue-400 group-hover:rotate-12 transition-transform" />
@@ -1081,10 +1091,10 @@ export function InventoryManager({
           <Button
             size="sm"
             onClick={() => setShowExcelMode(true)}
-            className="h-10 text-white rounded-xl shadow-lg px-5 font-black text-[10px] uppercase tracking-widest border-none transition-all hover:scale-105 active:scale-95 group"
+            className="h-9 text-white rounded-lg shadow-md px-4 font-black text-[10px] uppercase tracking-wider border-none transition-colors group"
             style={{
               background: 'linear-gradient(135deg, #064e3b 0%, #065f46 100%)',
-              boxShadow: '0 8px 16px -4px rgba(6, 78, 59, 0.4)'
+              boxShadow: '0 6px 12px -4px rgba(6, 78, 59, 0.35)'
             }}
           >
             <Table2 className="w-4 h-4 mr-2 text-green-400 group-hover:rotate-6 transition-transform" />
@@ -1100,10 +1110,10 @@ export function InventoryManager({
           <Button
             size="sm"
             onClick={(e) => onAdd ? onAdd(e) : setShowProductFormInternal(true)}
-            className="h-10 text-white rounded-xl shadow-lg px-6 font-black text-[10px] uppercase tracking-widest transition-all hover:scale-105 active:scale-95"
+            className="h-9 text-white rounded-lg shadow-md px-5 font-black text-[10px] uppercase tracking-wider transition-colors"
             style={{
               background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.primary}dd 100%)`,
-              boxShadow: `0 8px 16px -4px ${colors.primary}40`
+              boxShadow: `0 6px 12px -4px ${colors.primary}40`
             }}
           >
             <Plus className="w-4 h-4 mr-2" />
@@ -1114,38 +1124,38 @@ export function InventoryManager({
 
       {/* Feature Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="bg-transparent">
-        <TabsList className="flex w-full flex-wrap bg-gray-100/50 p-1 rounded-2xl border border-gray-200 shadow-inner gap-1 h-auto">
-          <TabsTrigger value="products" className="rounded-xl font-bold transition-all data-[state=active]:shadow-lg data-[state=active]:bg-white">
+        <TabsList className="flex w-full flex-wrap bg-gray-100/60 p-0.5 rounded-xl border border-gray-200 shadow-inner gap-1 h-auto">
+          <TabsTrigger value="products" className="rounded-lg font-semibold text-xs transition-all data-[state=active]:shadow-sm data-[state=active]:bg-white">
             <Package className="w-4 h-4 mr-2" />
             Products
           </TabsTrigger>
           {isMultiLocationEnabled && (
-            <TabsTrigger value="locations" className="rounded-xl font-bold transition-all data-[state=active]:shadow-lg data-[state=active]:bg-white">
+            <TabsTrigger value="locations" className="rounded-lg font-semibold text-xs transition-all data-[state=active]:shadow-sm data-[state=active]:bg-white">
               <Warehouse className="w-4 h-4 mr-2" />
               Locations
             </TabsTrigger>
           )}
           {isManufacturingEnabled && (
-            <TabsTrigger value="manufacturing" className="rounded-xl font-bold transition-all data-[state=active]:shadow-lg data-[state=active]:bg-white">
+            <TabsTrigger value="manufacturing" className="rounded-lg font-semibold text-xs transition-all data-[state=active]:shadow-sm data-[state=active]:bg-white">
               <Factory className="w-4 h-4 mr-2" />
               Manufacturing
             </TabsTrigger>
           )}
-          <TabsTrigger value="orders" className="rounded-xl font-bold transition-all data-[state=active]:shadow-lg data-[state=active]:bg-white">
+          <TabsTrigger value="orders" className="rounded-lg font-semibold text-xs transition-all data-[state=active]:shadow-sm data-[state=active]:bg-white">
             <FileText className="w-4 h-4 mr-2" />
             Orders
           </TabsTrigger>
-          <TabsTrigger value="reports" className="rounded-xl font-bold transition-all data-[state=active]:shadow-lg data-[state=active]:bg-white">
+          <TabsTrigger value="reports" className="rounded-lg font-semibold text-xs transition-all data-[state=active]:shadow-sm data-[state=active]:bg-white">
             <BarChart3 className="w-4 h-4 mr-2" />
             Reports
           </TabsTrigger>
           {isVariantEnabled && (
-            <TabsTrigger value="variants" className="rounded-xl font-bold transition-all data-[state=active]:shadow-lg data-[state=active]:bg-white">
+            <TabsTrigger value="variants" className="rounded-lg font-semibold text-xs transition-all data-[state=active]:shadow-sm data-[state=active]:bg-white">
               <Layers className="w-4 h-4 mr-2" />
               Variants
             </TabsTrigger>
           )}
-          <TabsTrigger value="pricing" className="rounded-xl font-bold transition-all data-[state=active]:shadow-lg data-[state=active]:bg-white">
+          <TabsTrigger value="pricing" className="rounded-lg font-semibold text-xs transition-all data-[state=active]:shadow-sm data-[state=active]:bg-white">
             <Settings className="w-4 h-4 mr-2" />
             Pricing
           </TabsTrigger>
@@ -1223,40 +1233,6 @@ export function InventoryManager({
               </div>
             </div>
           </div>
-
-          {/* Low Stock Alerts - Premium Callout */}
-          {calculateLowStock().length > 0 && (
-            <div className="relative overflow-hidden bg-white rounded-[32px] border-2 border-red-100 p-6 shadow-xl shadow-red-500/5 animate-in slide-in-from-left duration-500">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/5 rounded-full -translate-y-16 translate-x-16" />
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
-                <div className="flex items-center gap-5">
-                  <div className="w-14 h-14 rounded-2xl bg-red-500 flex items-center justify-center shadow-lg shadow-red-200 animate-pulse">
-                    <AlertTriangle className="w-7 h-7 text-white" />
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-black text-gray-900 tracking-tight">Replenishment Required</h3>
-                    <p className="text-sm font-bold text-red-600/70 uppercase tracking-widest mt-0.5">
-                      {calculateLowStock().length} items are below critical thresholds
-                    </p>
-                  </div>
-                </div>
-                <div className="flex flex-wrap items-center gap-3">
-                  {calculateLowStock().slice(0, 4).map(product => (
-                    <div key={product.id} className="flex items-center gap-3 bg-red-50/50 hover:bg-red-100 border border-red-100 px-4 py-2 rounded-xl transition-all cursor-default">
-                      <span className="text-xs font-black text-gray-800 uppercase tracking-tight">{product.name}</span>
-                      <div className="h-3 w-px bg-red-200" />
-                      <span className="text-xs font-black text-red-600">{product.stock} units</span>
-                    </div>
-                  ))}
-                  {calculateLowStock().length > 4 && (
-                    <div className="px-4 py-2 bg-gray-50 text-gray-400 text-[10px] font-black uppercase tracking-widest rounded-xl border border-gray-100">
-                      +{calculateLowStock().length - 4} More
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* Search and Filters */}
           <AdvancedSearch
@@ -1403,62 +1379,62 @@ export function InventoryManager({
           </div>
 
           {/* ABC Analysis Section - Premium Analytics */}
-          <div className="bg-white rounded-[40px] border border-gray-100 p-10 shadow-sm relative overflow-hidden">
+          <div className="bg-white rounded-3xl border border-gray-100 p-6 shadow-sm relative overflow-hidden">
             <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/5 rounded-full -translate-y-32 translate-x-32" />
 
-            <div className="flex flex-col md:flex-row md:items-center justify-between mb-10 gap-4 relative z-10">
+            <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-3 relative z-10">
               <div>
-                <h3 className="text-2xl font-black text-gray-900 tracking-tighter italic">ABC Inventory Matrix</h3>
-                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-[0.3em] mt-1 opacity-80">Strategic Stock Optimization Engine</p>
+                <h3 className="text-2xl font-black text-gray-900 tracking-tight italic">ABC Inventory Matrix</h3>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mt-1 opacity-80">Strategic Stock Optimization Engine</p>
               </div>
-              <div className="flex items-center gap-2 px-6 py-2 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-lg shadow-slate-200">
-                <BarChart3 className="w-4 h-4 text-blue-400" />
+              <div className="flex items-center gap-2 px-4 py-1.5 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-[0.16em] shadow-md shadow-slate-200">
+                <BarChart3 className="w-3.5 h-3.5 text-blue-400" />
                 Live Distribution
               </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 relative z-10">
-              <div className="group bg-gradient-to-tr from-red-50/50 to-white p-8 rounded-[32px] border border-red-100/50 hover:shadow-2xl hover:shadow-red-500/5 transition-all duration-500">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="w-14 h-14 rounded-2xl bg-red-100 flex items-center justify-center font-black text-3xl text-red-600 shadow-sm group-hover:scale-110 group-hover:rotate-3 transition-transform">A</div>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 relative z-10">
+              <div className="group bg-gradient-to-tr from-red-50/50 to-white p-6 rounded-2xl border border-red-100/50 hover:shadow-lg hover:shadow-red-500/5 transition-all duration-300">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="w-12 h-12 rounded-xl bg-red-100 flex items-center justify-center font-black text-2xl text-red-600 shadow-sm group-hover:scale-110 group-hover:rotate-3 transition-transform">A</div>
                   <Badge className="bg-red-500 text-white border-none font-black text-[9px] uppercase tracking-tighter px-3 h-6">Critical Hub</Badge>
                 </div>
                 <h4 className="text-sm font-black text-gray-800 uppercase tracking-widest leading-tight">High Value Assets<br />(Top 80%)</h4>
-                <div className="h-1.5 w-full bg-red-100 rounded-full mt-6 mb-8 overflow-hidden">
+                <div className="h-1.5 w-full bg-red-100 rounded-full mt-4 mb-6 overflow-hidden">
                   <div className="h-full bg-red-500 w-[80%] rounded-full shadow-[0_0_12px_rgba(239,68,68,0.4)]" />
                 </div>
                 <div className="flex items-baseline gap-2">
-                  <p className="text-5xl font-black text-gray-900 tracking-tighter">{abcAnalysis.filter(p => p.category === 'A').length}</p>
+                  <p className="text-4xl font-black text-gray-900 tracking-tighter">{abcAnalysis.filter(p => p.category === 'A').length}</p>
                   <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest italic leading-3">Exclusive<br />SKUs</span>
                 </div>
               </div>
 
-              <div className="group bg-gradient-to-tr from-orange-50/50 to-white p-8 rounded-[32px] border border-orange-100/50 hover:shadow-2xl hover:shadow-orange-500/5 transition-all duration-500">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="w-14 h-14 rounded-2xl bg-orange-100 flex items-center justify-center font-black text-3xl text-orange-600 shadow-sm group-hover:scale-110 group-hover:rotate-3 transition-transform">B</div>
+              <div className="group bg-gradient-to-tr from-orange-50/50 to-white p-6 rounded-2xl border border-orange-100/50 hover:shadow-lg hover:shadow-orange-500/5 transition-all duration-300">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="w-12 h-12 rounded-xl bg-orange-100 flex items-center justify-center font-black text-2xl text-orange-600 shadow-sm group-hover:scale-110 group-hover:rotate-3 transition-transform">B</div>
                   <Badge className="bg-orange-500 text-white border-none font-black text-[9px] uppercase tracking-tighter px-3 h-6">Normal Flow</Badge>
                 </div>
                 <h4 className="text-sm font-black text-gray-800 uppercase tracking-widest leading-tight">Medium Value Assets<br />(Mid 15%)</h4>
-                <div className="h-1.5 w-full bg-orange-100 rounded-full mt-6 mb-8 overflow-hidden">
+                <div className="h-1.5 w-full bg-orange-100 rounded-full mt-4 mb-6 overflow-hidden">
                   <div className="h-full bg-orange-500 w-[15%] rounded-full shadow-[0_0_12px_rgba(249,115,22,0.4)]" />
                 </div>
                 <div className="flex items-baseline gap-2">
-                  <p className="text-5xl font-black text-gray-900 tracking-tighter">{abcAnalysis.filter(p => p.category === 'B').length}</p>
+                  <p className="text-4xl font-black text-gray-900 tracking-tighter">{abcAnalysis.filter(p => p.category === 'B').length}</p>
                   <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest italic leading-3">Steady<br />SKUs</span>
                 </div>
               </div>
 
-              <div className="group bg-gradient-to-tr from-green-50/50 to-white p-8 rounded-[32px] border border-green-100/50 hover:shadow-2xl hover:shadow-green-500/5 transition-all duration-500">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="w-14 h-14 rounded-2xl bg-green-100 flex items-center justify-center font-black text-3xl text-green-600 shadow-sm group-hover:scale-110 group-hover:rotate-3 transition-transform">C</div>
+              <div className="group bg-gradient-to-tr from-green-50/50 to-white p-6 rounded-2xl border border-green-100/50 hover:shadow-lg hover:shadow-green-500/5 transition-all duration-300">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="w-12 h-12 rounded-xl bg-green-100 flex items-center justify-center font-black text-2xl text-green-600 shadow-sm group-hover:scale-110 group-hover:rotate-3 transition-transform">C</div>
                   <Badge className="bg-green-500 text-white border-none font-black text-[9px] uppercase tracking-tighter px-3 h-6">Bulk Layer</Badge>
                 </div>
                 <h4 className="text-sm font-black text-gray-800 uppercase tracking-widest leading-tight">Low Value Assets<br />(Base 5%)</h4>
-                <div className="h-1.5 w-full bg-green-100 rounded-full mt-6 mb-8 overflow-hidden">
+                <div className="h-1.5 w-full bg-green-100 rounded-full mt-4 mb-6 overflow-hidden">
                   <div className="h-full bg-green-500 w-[5%] rounded-full shadow-[0_0_12px_rgba(34,197,94,0.4)]" />
                 </div>
                 <div className="flex items-baseline gap-2">
-                  <p className="text-5xl font-black text-gray-900 tracking-tighter">{abcAnalysis.filter(p => p.category === 'C').length}</p>
+                  <p className="text-4xl font-black text-gray-900 tracking-tighter">{abcAnalysis.filter(p => p.category === 'C').length}</p>
                   <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest italic leading-3">Bulk<br />SKUs</span>
                 </div>
               </div>
@@ -1494,14 +1470,14 @@ export function InventoryManager({
         )}
 
         {/* Pricing Tab */}
-        <TabsContent value="pricing" className="space-y-8 mt-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <Card className="rounded-[32px] border-gray-100 shadow-sm overflow-hidden group hover:shadow-xl transition-all duration-500">
-              <CardHeader className="bg-slate-50/50 pb-6 border-b border-gray-50">
-                <CardTitle className="text-xl font-black text-gray-900 tracking-tight italic">Global Price Lists</CardTitle>
-                <CardDescription className="text-xs font-bold uppercase tracking-widest text-gray-500 opacity-70">Multi-tier pricing architecture</CardDescription>
+        <TabsContent value="pricing" className="space-y-5 mt-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <Card className="rounded-2xl border-slate-200 shadow-sm overflow-hidden hover:shadow-md transition-all duration-300">
+              <CardHeader className="bg-slate-50/70 px-5 py-4 border-b border-slate-100">
+                <CardTitle className="text-lg font-extrabold text-slate-900 tracking-tight">Global Price Lists</CardTitle>
+                <CardDescription className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Multi-tier pricing architecture</CardDescription>
               </CardHeader>
-              <CardContent className="p-0">
+              <CardContent className="p-4 pt-3">
                 <PriceListManager
                   priceLists={[]}
                   products={products}
@@ -1515,12 +1491,12 @@ export function InventoryManager({
               </CardContent>
             </Card>
 
-            <Card className="rounded-[32px] border-gray-100 shadow-sm overflow-hidden group hover:shadow-xl transition-all duration-500">
-              <CardHeader className="bg-slate-50/50 pb-6 border-b border-gray-50">
-                <CardTitle className="text-xl font-black text-gray-900 tracking-tight italic">Discount Schemes</CardTitle>
-                <CardDescription className="text-xs font-bold uppercase tracking-widest text-gray-500 opacity-70">Promotional Logic & Campaigns</CardDescription>
+            <Card className="rounded-2xl border-slate-200 shadow-sm overflow-hidden hover:shadow-md transition-all duration-300">
+              <CardHeader className="bg-slate-50/70 px-5 py-4 border-b border-slate-100">
+                <CardTitle className="text-lg font-extrabold text-slate-900 tracking-tight">Discount Schemes</CardTitle>
+                <CardDescription className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Promotional logic and campaigns</CardDescription>
               </CardHeader>
-              <CardContent className="p-0">
+              <CardContent className="p-4 pt-3">
                 <DiscountSchemeManager
                   schemes={[]}
                   products={products}

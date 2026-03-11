@@ -23,8 +23,22 @@ import { useRouter, useParams } from 'next/navigation';
 export function CommandPalette() {
     const [open, setOpen] = useState(false);
     const router = useRouter();
-    const params = useParams();
-    const category = params?.category || 'retail-shop';
+
+    // Command palette needs the current business domain, not category, to route correctly
+    const getCurrentDomain = () => {
+        if (typeof window !== 'undefined') {
+            const storedBiz = localStorage.getItem('businessData');
+            if (storedBiz) {
+                try {
+                    const parsedBiz = JSON.parse(storedBiz);
+                    return parsedBiz.domain;
+                } catch {
+                    // ignore
+                }
+            }
+        }
+        return 'retail-shop'; // Ultimate fallback
+    };
 
     useEffect(() => {
         const down = (e) => {
@@ -44,8 +58,9 @@ export function CommandPalette() {
     }, []);
 
     const goTab = useCallback((tab) => {
-        runCommand(() => router.push(`/business/${category}?tab=${tab}`, { scroll: false }));
-    }, [category, router, runCommand]);
+        const currentDomain = getCurrentDomain();
+        runCommand(() => router.push(`/business/${currentDomain}?tab=${tab}`, { scroll: false }));
+    }, [router, runCommand]);
 
     const fireAction = useCallback((actionId) => {
         runCommand(() => window.dispatchEvent(new CustomEvent('open-quick-action', { detail: { actionId } })));

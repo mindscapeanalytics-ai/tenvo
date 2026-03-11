@@ -548,96 +548,96 @@ export function DashboardTabs({
                 <TabsContent value="accounting" className="space-y-6 outline-none">
                     {wrapTab(
                         <TabGuard tabKey="accounting" role={role} planTier={planTier} featureName="Accounting" onUpgrade={() => handleTabChange('settings')}>
-                        <>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                                <Card className="border-none shadow-sm bg-white overflow-hidden group hover:shadow-md transition-all">
-                                    <CardHeader className="pb-2">
-                                        <div className="flex items-center justify-between">
-                                            <CardTitle className="text-sm font-medium text-gray-500">Accounts Receivable</CardTitle>
-                                            <div className="p-2 bg-blue-50 rounded-lg text-blue-600">
-                                                <DollarIcon className="w-4 h-4" />
+                            <>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                                    <Card className="border-none shadow-sm bg-white overflow-hidden group hover:shadow-md transition-all">
+                                        <CardHeader className="pb-2">
+                                            <div className="flex items-center justify-between">
+                                                <CardTitle className="text-sm font-medium text-gray-500">Accounts Receivable</CardTitle>
+                                                <div className="p-2 bg-blue-50 rounded-lg text-blue-600">
+                                                    <DollarIcon className="w-4 h-4" />
+                                                </div>
                                             </div>
-                                        </div>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <div className="text-2xl font-black text-gray-900">
-                                            {formatCurrency(accountingSummary?.accountsReceivable || 0, currency)}
-                                        </div>
-                                        <div className="flex items-center mt-1 text-xs font-medium text-blue-600 bg-blue-50 w-fit px-2 py-0.5 rounded-full">
-                                            {accountingSummary?.pendingInvoiceCount || 0} invoices pending
-                                        </div>
-                                    </CardContent>
-                                </Card>
-
-                                <Card className="border-none shadow-sm bg-white overflow-hidden group hover:shadow-md transition-all">
-                                    <CardHeader className="pb-2">
-                                        <div className="flex items-center justify-between">
-                                            <CardTitle className="text-sm font-medium text-gray-500">Accounts Payable</CardTitle>
-                                            <div className="p-2 bg-red-50 rounded-lg text-red-600">
-                                                <ShoppingCart className="w-4 h-4" />
+                                        </CardHeader>
+                                        <CardContent>
+                                            <div className="text-2xl font-black text-gray-900">
+                                                {formatCurrency(accountingSummary?.accountsReceivable || 0, currency)}
                                             </div>
-                                        </div>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <div className="text-2xl font-black text-gray-900">
-                                            {formatCurrency(accountingSummary?.accountsPayable || 0, currency)}
-                                        </div>
-                                        <div className="flex items-center mt-1 text-xs font-medium text-red-600 bg-red-50 w-fit px-2 py-0.5 rounded-full">
-                                            <TrendingDown className="w-3 h-3 mr-1" />
-                                            {accountingSummary?.pendingPurchaseCount || 0} orders pending
-                                        </div>
-                                    </CardContent>
-                                </Card>
-
-                                <Card className="border-none shadow-sm bg-white overflow-hidden group hover:shadow-md transition-all">
-                                    <CardHeader className="pb-2">
-                                        <div className="flex items-center justify-between">
-                                            <CardTitle className="text-sm font-medium text-gray-500">Inventory Value</CardTitle>
-                                            <div className="p-2 bg-purple-50 rounded-lg text-purple-600">
-                                                <PackageIcon className="w-4 h-4" />
+                                            <div className="flex items-center mt-1 text-xs font-medium text-blue-600 bg-blue-50 w-fit px-2 py-0.5 rounded-full">
+                                                {accountingSummary?.pendingInvoiceCount || 0} invoices pending
                                             </div>
-                                        </div>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <div className="text-2xl font-black text-gray-900">
-                                            {formatCurrency(accountingSummary?.inventoryValue || 0, currency)}
-                                        </div>
-                                        <div className="mt-1 text-xs font-medium text-gray-500">
-                                            {products.reduce((sum, p) => sum + (Number(p.stock) || 0), 0).toLocaleString()} units in stock
-                                        </div>
-                                    </CardContent>
-                                </Card>
+                                        </CardContent>
+                                    </Card>
 
-                                <Card className="border-none shadow-sm bg-white overflow-hidden group hover:shadow-md transition-all">
-                                    <CardHeader className="pb-2">
-                                        <div className="flex items-center justify-between">
-                                            <CardTitle className="text-sm font-medium text-gray-500">Gross Profit</CardTitle>
-                                            <div className="p-2 bg-green-50 rounded-lg text-green-600">
-                                                <TrendingUp className="w-4 h-4" />
+                                    <Card className="border-none shadow-sm bg-white overflow-hidden group hover:shadow-md transition-all">
+                                        <CardHeader className="pb-2">
+                                            <div className="flex items-center justify-between">
+                                                <CardTitle className="text-sm font-medium text-gray-500">Accounts Payable</CardTitle>
+                                                <div className="p-2 bg-red-50 rounded-lg text-red-600">
+                                                    <ShoppingCart className="w-4 h-4" />
+                                                </div>
                                             </div>
-                                        </div>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <div className={`text-2xl font-black ${(accountingSummary?.grossProfit || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                            {formatCurrency(accountingSummary?.grossProfit || 0, currency)}
-                                        </div>
-                                        <div className="flex items-center mt-1 text-xs font-medium text-green-600 bg-green-50 w-fit px-2 py-0.5 rounded-full">
-                                            {Math.round(accountingSummary?.margin || 0)}% net margin
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            </div>
+                                        </CardHeader>
+                                        <CardContent>
+                                            <div className="text-2xl font-black text-gray-900">
+                                                {formatCurrency(accountingSummary?.accountsPayable || 0, currency)}
+                                            </div>
+                                            <div className="flex items-center mt-1 text-xs font-medium text-red-600 bg-red-50 w-fit px-2 py-0.5 rounded-full">
+                                                <TrendingDown className="w-3 h-3 mr-1" />
+                                                {accountingSummary?.pendingPurchaseCount || 0} orders pending
+                                            </div>
+                                        </CardContent>
+                                    </Card>
 
-                            <FinancialOverview
-                                businessId={business?.id}
-                                category={category}
-                                accountingSummary={accountingSummary}
-                                chartData={dashboardChartData}
-                                currency={currency}
-                                role={role}
-                                onTabChange={handleTabChange}
-                            />
-                        </>
+                                    <Card className="border-none shadow-sm bg-white overflow-hidden group hover:shadow-md transition-all">
+                                        <CardHeader className="pb-2">
+                                            <div className="flex items-center justify-between">
+                                                <CardTitle className="text-sm font-medium text-gray-500">Inventory Value</CardTitle>
+                                                <div className="p-2 bg-purple-50 rounded-lg text-purple-600">
+                                                    <PackageIcon className="w-4 h-4" />
+                                                </div>
+                                            </div>
+                                        </CardHeader>
+                                        <CardContent>
+                                            <div className="text-2xl font-black text-gray-900">
+                                                {formatCurrency(accountingSummary?.inventoryValue || 0, currency)}
+                                            </div>
+                                            <div className="mt-1 text-xs font-medium text-gray-500">
+                                                {products.reduce((sum, p) => sum + (Number(p.stock) || 0), 0).toLocaleString()} units in stock
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+
+                                    <Card className="border-none shadow-sm bg-white overflow-hidden group hover:shadow-md transition-all">
+                                        <CardHeader className="pb-2">
+                                            <div className="flex items-center justify-between">
+                                                <CardTitle className="text-sm font-medium text-gray-500">Gross Profit</CardTitle>
+                                                <div className="p-2 bg-green-50 rounded-lg text-green-600">
+                                                    <TrendingUp className="w-4 h-4" />
+                                                </div>
+                                            </div>
+                                        </CardHeader>
+                                        <CardContent>
+                                            <div className={`text-2xl font-black ${(accountingSummary?.grossProfit || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                                {formatCurrency(accountingSummary?.grossProfit || 0, currency)}
+                                            </div>
+                                            <div className="flex items-center mt-1 text-xs font-medium text-green-600 bg-green-50 w-fit px-2 py-0.5 rounded-full">
+                                                {Math.round(accountingSummary?.margin || 0)}% net margin
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                </div>
+
+                                <FinancialOverview
+                                    businessId={business?.id}
+                                    category={category}
+                                    accountingSummary={accountingSummary}
+                                    chartData={dashboardChartData}
+                                    currency={currency}
+                                    role={role}
+                                    onTabChange={handleTabChange}
+                                />
+                            </>
                         </TabGuard>
                     )}
                 </TabsContent>
@@ -645,45 +645,45 @@ export function DashboardTabs({
                 <TabsContent value="finance" className="space-y-6 outline-none">
                     {wrapTab(
                         <TabGuard tabKey="finance" role={role} planTier={planTier} featureName="Finance" onUpgrade={() => handleTabChange('settings')}>
-                        <BaseTabs defaultValue="journal" className="w-full">
-                            <TabsList className="grid w-full grid-cols-3 mb-6 bg-gray-100 rounded-xl p-1">
-                                <TabsTrigger value="journal" className="data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-lg font-bold">Journal Entry</TabsTrigger>
-                                <TabsTrigger value="ledger" className="data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-lg font-bold">General Ledger</TabsTrigger>
-                                <TabsTrigger value="statements" className="data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-lg font-bold">Financial Statements</TabsTrigger>
-                            </TabsList>
-                            <div className="TabsContent-Finance-Scroll-Fix">
-                                <TabsContent value="journal" className="mt-6">
-                                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                                        <div className="lg:col-span-2">
-                                            <JournalEntryManager
-                                                businessId={business?.id}
-                                                colors={colors}
-                                                onSuccess={() => {
-                                                    refreshAllData();
-                                                }}
-                                            />
+                            <BaseTabs defaultValue="journal" className="w-full">
+                                <TabsList className="grid w-full grid-cols-3 mb-6 bg-gray-100 rounded-xl p-1">
+                                    <TabsTrigger value="journal" className="data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-lg font-bold">Journal Entry</TabsTrigger>
+                                    <TabsTrigger value="ledger" className="data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-lg font-bold">General Ledger</TabsTrigger>
+                                    <TabsTrigger value="statements" className="data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-lg font-bold">Financial Statements</TabsTrigger>
+                                </TabsList>
+                                <div className="TabsContent-Finance-Scroll-Fix">
+                                    <TabsContent value="journal" className="mt-6">
+                                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                            <div className="lg:col-span-2">
+                                                <JournalEntryManager
+                                                    businessId={business?.id}
+                                                    colors={colors}
+                                                    onSuccess={() => {
+                                                        refreshAllData();
+                                                    }}
+                                                />
+                                            </div>
+                                            <div className="space-y-6">
+                                                <Card>
+                                                    <CardHeader>
+                                                        <CardTitle className="text-base text-gray-500 uppercase tracking-wide font-bold">Quick Tips</CardTitle>
+                                                    </CardHeader>
+                                                    <CardContent className="space-y-4 text-sm text-gray-600">
+                                                        <p>• Use <strong>Journal Entries</strong> for non-cash transactions.</p>
+                                                        <p>• Debits must equal Credits.</p>
+                                                    </CardContent>
+                                                </Card>
+                                            </div>
                                         </div>
-                                        <div className="space-y-6">
-                                            <Card>
-                                                <CardHeader>
-                                                    <CardTitle className="text-base text-gray-500 uppercase tracking-wide font-bold">Quick Tips</CardTitle>
-                                                </CardHeader>
-                                                <CardContent className="space-y-4 text-sm text-gray-600">
-                                                    <p>• Use <strong>Journal Entries</strong> for non-cash transactions.</p>
-                                                    <p>• Debits must equal Credits.</p>
-                                                </CardContent>
-                                            </Card>
-                                        </div>
-                                    </div>
-                                </TabsContent>
-                                <TabsContent value="ledger" className="mt-6">
-                                    <TrialBalanceView businessId={business?.id} colors={colors} />
-                                </TabsContent>
-                                <TabsContent value="statements" className="mt-6">
-                                    <FinancialReports businessId={business?.id} category={category} />
-                                </TabsContent>
-                            </div>
-                        </BaseTabs>
+                                    </TabsContent>
+                                    <TabsContent value="ledger" className="mt-6">
+                                        <TrialBalanceView businessId={business?.id} colors={colors} />
+                                    </TabsContent>
+                                    <TabsContent value="statements" className="mt-6">
+                                        <FinancialReports businessId={business?.id} category={category} />
+                                    </TabsContent>
+                                </div>
+                            </BaseTabs>
                         </TabGuard>
                     )}
                 </TabsContent>
@@ -767,7 +767,7 @@ export function DashboardTabs({
                                     onCompleteSale={refreshAllData}
                                     currency={currency}
                                 />
-                            ) : ['supermarket', 'grocery', 'wholesale'].includes(category) ? (
+                            ) : ['supermarket', 'grocery', 'wholesale-distribution', 'bakery-confectionery'].includes(category) ? (
                                 <SuperStorePOS
                                     businessId={business?.id}
                                     products={filteredProducts}
@@ -802,56 +802,56 @@ export function DashboardTabs({
                             onUpgrade={() => handleTabChange('settings')}
                         >
                             <div className="space-y-6">
-                            <div className="flex items-center justify-between">
-                                <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight">Restaurant Operations</h2>
-                                <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1">
-                                    {[
-                                        { key: 'manager', label: 'Manager' },
-                                        { key: 'floorplan', label: 'Floor Plan' },
-                                        { key: 'reservations', label: 'Reservations' },
-                                    ].map(v => (
-                                        <button
-                                            key={v.key}
-                                            onClick={() => setRestaurantView(v.key)}
-                                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${restaurantView === v.key ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'
-                                                }`}
-                                        >
-                                            {v.label}
-                                        </button>
-                                    ))}
+                                <div className="flex items-center justify-between">
+                                    <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight">Restaurant Operations</h2>
+                                    <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1">
+                                        {[
+                                            { key: 'manager', label: 'Manager' },
+                                            { key: 'floorplan', label: 'Floor Plan' },
+                                            { key: 'reservations', label: 'Reservations' },
+                                        ].map(v => (
+                                            <button
+                                                key={v.key}
+                                                onClick={() => setRestaurantView(v.key)}
+                                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${restaurantView === v.key ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'
+                                                    }`}
+                                            >
+                                                {v.label}
+                                            </button>
+                                        ))}
+                                    </div>
                                 </div>
-                            </div>
 
-                            {restaurantView === 'floorplan' && (
-                                <FloorPlanEditor
-                                    businessId={business?.id}
-                                    initialTables={restaurantTables || []}
-                                    onSave={(data) => {
-                                        handleTableAction('bulk_update', null, data);
-                                        setRestaurantView('manager');
-                                    }}
-                                />
-                            )}
-                            {restaurantView === 'reservations' && (
-                                <ReservationManager
-                                    businessId={business?.id}
-                                    tables={restaurantTables || []}
-                                />
-                            )}
-                            {restaurantView === 'manager' && (
-                                <>
-                                    <RestaurantManager
+                                {restaurantView === 'floorplan' && (
+                                    <FloorPlanEditor
+                                        businessId={business?.id}
+                                        initialTables={restaurantTables || []}
+                                        onSave={(data) => {
+                                            handleTableAction('bulk_update', null, data);
+                                            setRestaurantView('manager');
+                                        }}
+                                    />
+                                )}
+                                {restaurantView === 'reservations' && (
+                                    <ReservationManager
                                         businessId={business?.id}
                                         tables={restaurantTables || []}
-                                        kitchenQueue={kitchenQueue || []}
-                                        onTableAction={handleTableAction}
-                                        onNewOrder={handleNewRestaurantOrder}
-                                        onKitchenStatusUpdate={handleKitchenStatusUpdate}
-                                        onRefresh={refreshAllData}
                                     />
-                                    <KitchenDisplaySystem businessId={business?.id} />
-                                </>
-                            )}
+                                )}
+                                {restaurantView === 'manager' && (
+                                    <>
+                                        <RestaurantManager
+                                            businessId={business?.id}
+                                            tables={restaurantTables || []}
+                                            kitchenQueue={kitchenQueue || []}
+                                            onTableAction={handleTableAction}
+                                            onNewOrder={handleNewRestaurantOrder}
+                                            onKitchenStatusUpdate={handleKitchenStatusUpdate}
+                                            onRefresh={refreshAllData}
+                                        />
+                                        <KitchenDisplaySystem businessId={business?.id} />
+                                    </>
+                                )}
                             </div>
                         </TabGuard>
                     )}
@@ -890,45 +890,45 @@ export function DashboardTabs({
                 <TabsContent value="payroll" className="space-y-6 outline-none">
                     {wrapTab(
                         <TabGuard tabKey="payroll" role={role} planTier={planTier} requiredPlan="enterprise" featureName="HR & Payroll" onUpgrade={() => handleTabChange('settings')}>
-                        <div className="space-y-6">
-                            <div className="flex items-center justify-between">
-                                <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight">HR & Payroll</h2>
-                                <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1">
-                                    {[
-                                        { key: 'payroll', label: 'Payroll' },
-                                        { key: 'attendance', label: 'Attendance' },
-                                        { key: 'shifts', label: 'Shifts' },
-                                    ].map(v => (
-                                        <button
-                                            key={v.key}
-                                            onClick={() => setHrView(v.key)}
-                                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${hrView === v.key ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'
-                                                }`}
-                                        >
-                                            {v.label}
-                                        </button>
-                                    ))}
+                            <div className="space-y-6">
+                                <div className="flex items-center justify-between">
+                                    <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight">HR & Payroll</h2>
+                                    <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1">
+                                        {[
+                                            { key: 'payroll', label: 'Payroll' },
+                                            { key: 'attendance', label: 'Attendance' },
+                                            { key: 'shifts', label: 'Shifts' },
+                                        ].map(v => (
+                                            <button
+                                                key={v.key}
+                                                onClick={() => setHrView(v.key)}
+                                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${hrView === v.key ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'
+                                                    }`}
+                                            >
+                                                {v.label}
+                                            </button>
+                                        ))}
+                                    </div>
                                 </div>
-                            </div>
 
-                            {hrView === 'payroll' && (
-                                <PayrollDashboard
-                                    businessId={business?.id}
-                                    employees={handlers.payrollEmployees || []}
-                                    payrollRuns={handlers.payrollRuns || []}
-                                    onProcessPayroll={handlers.handleProcessPayroll}
-                                    onViewPayslips={handlers.handleViewPayslips}
-                                    onAddEmployee={handlers.handleAddEmployee}
-                                    currency={currency}
-                                />
-                            )}
-                            {hrView === 'attendance' && (
-                                <AttendanceTracker businessId={business?.id} />
-                            )}
-                            {hrView === 'shifts' && (
-                                <ShiftScheduler businessId={business?.id} />
-                            )}
-                        </div>
+                                {hrView === 'payroll' && (
+                                    <PayrollDashboard
+                                        businessId={business?.id}
+                                        employees={handlers.payrollEmployees || []}
+                                        payrollRuns={handlers.payrollRuns || []}
+                                        onProcessPayroll={handlers.handleProcessPayroll}
+                                        onViewPayslips={handlers.handleViewPayslips}
+                                        onAddEmployee={handlers.handleAddEmployee}
+                                        currency={currency}
+                                    />
+                                )}
+                                {hrView === 'attendance' && (
+                                    <AttendanceTracker businessId={business?.id} />
+                                )}
+                                {hrView === 'shifts' && (
+                                    <ShiftScheduler businessId={business?.id} />
+                                )}
+                            </div>
                         </TabGuard>
                     )}
                 </TabsContent>
@@ -936,39 +936,39 @@ export function DashboardTabs({
                 <TabsContent value="approvals" className="space-y-6 outline-none">
                     {wrapTab(
                         <TabGuard tabKey="approvals" role={role} planTier={planTier} requiredPlan="enterprise" featureName="Approval Workflows" onUpgrade={() => handleTabChange('settings')}>
-                        <div className="space-y-6">
-                            <div className="flex items-center justify-between">
-                                <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight">Approvals & Workflows</h2>
-                                <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1">
-                                    {[
-                                        { key: 'inbox', label: 'Approval Inbox' },
-                                        { key: 'builder', label: 'Workflow Builder' },
-                                    ].map(v => (
-                                        <button
-                                            key={v.key}
-                                            onClick={() => setApprovalsView(v.key)}
-                                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${approvalsView === v.key ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'
-                                                }`}
-                                        >
-                                            {v.label}
-                                        </button>
-                                    ))}
+                            <div className="space-y-6">
+                                <div className="flex items-center justify-between">
+                                    <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight">Approvals & Workflows</h2>
+                                    <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1">
+                                        {[
+                                            { key: 'inbox', label: 'Approval Inbox' },
+                                            { key: 'builder', label: 'Workflow Builder' },
+                                        ].map(v => (
+                                            <button
+                                                key={v.key}
+                                                onClick={() => setApprovalsView(v.key)}
+                                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${approvalsView === v.key ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'
+                                                    }`}
+                                            >
+                                                {v.label}
+                                            </button>
+                                        ))}
+                                    </div>
                                 </div>
-                            </div>
 
-                            {approvalsView === 'inbox' && (
-                                <ApprovalInbox
-                                    pendingRequests={handlers.pendingApprovals || []}
-                                    historyRequests={handlers.approvalHistory || []}
-                                    onApprove={handlers.handleApproveRequest}
-                                    onReject={handlers.handleRejectRequest}
-                                    currency={currency}
-                                />
-                            )}
-                            {approvalsView === 'builder' && (
-                                <WorkflowBuilder businessId={business?.id} />
-                            )}
-                        </div>
+                                {approvalsView === 'inbox' && (
+                                    <ApprovalInbox
+                                        pendingRequests={handlers.pendingApprovals || []}
+                                        historyRequests={handlers.approvalHistory || []}
+                                        onApprove={handlers.handleApproveRequest}
+                                        onReject={handlers.handleRejectRequest}
+                                        currency={currency}
+                                    />
+                                )}
+                                {approvalsView === 'builder' && (
+                                    <WorkflowBuilder businessId={business?.id} />
+                                )}
+                            </div>
                         </TabGuard>
                     )}
                 </TabsContent>

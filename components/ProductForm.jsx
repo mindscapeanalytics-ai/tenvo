@@ -47,6 +47,7 @@ import { CustomParametersManager } from './inventory/CustomParametersManager';
 import { useSafeSmartDefaults, mergeFormDefaults, getCurrentDate } from '@/lib/hooks/useSafeSmartDefaults';
 import { useAutosave, AutosaveIndicator } from '@/hooks/useAutosave';
 import { useKeyboardShortcuts, COMMON_SHORTCUTS } from '@/hooks/useKeyboardShortcuts';
+import { useBusiness } from '@/lib/context/BusinessContext';
 
 /**
  * ProductForm Component
@@ -109,6 +110,7 @@ export function ProductForm({
             price: Number(product.price) || 0,
             costPrice: Number(product.cost_price) || 0,
             mrp: Number(product.mrp) || 0,
+            stock: Number(product.stock) || 0,
             minStock: Number(product.min_stock) || 10,
             maxStock: Number(product.max_stock) || 100,
             reorderPoint: Number(product.reorder_point) || 10,
@@ -255,6 +257,7 @@ export function ProductForm({
             price: 0,
             costPrice: 0,
             mrp: 0,
+            stock: 0,
             minStock: 10,
             maxStock: 100,
             reorderPoint: 10,
@@ -283,7 +286,7 @@ export function ProductForm({
             price: Number(formData.price),
             costPrice: Number(formData.costPrice),
             mrp: Number(formData.mrp),
-            stock: Number(product?.stock) || 0, // CRITICAL: Schema requires stock
+            stock: Number(formData.stock) || 0,
             // Pass other optional fields if present to ensure full validation
             minStock: Number(formData.minStock),
             maxStock: Number(formData.maxStock),
@@ -315,10 +318,20 @@ export function ProductForm({
         // Merge errors
         // logicCheck.errors is now Record<string, string>
         // regexCheck.errors is Record<string, string>
-        const combinedErrors = {
+        let combinedErrors = {
             ...regexCheck.errors,
             ...logicCheck.errors
         };
+
+        // Editing legacy records should not be blocked by newly added domain-required fields.
+        if (product?.id) {
+            combinedErrors = Object.fromEntries(
+                Object.entries(combinedErrors).filter(([_, message]) => {
+                    const msg = String(message || '').toLowerCase();
+                    return !msg.includes('required for');
+                })
+            );
+        }
 
         if (Object.keys(combinedErrors).length > 0) {
             setErrors(prev => ({
@@ -384,7 +397,7 @@ export function ProductForm({
                     ...domainData,
                     custom_parameters: formData.customParameters || []
                 },
-                stock: Number(product?.stock) || 0 // Maintain existing stock, ensure number type
+                stock: Number(formData.stock) || 0
             };
 
             // Add batch and serial tracking if present
@@ -781,11 +794,11 @@ export function ProductForm({
                                             value={formData.stock ?? 0}
                                             onChange={(e) => updateField('stock', parseInt(e.target.value) || 0)}
                                             className="h-11 pl-10 rounded-xl font-bold text-gray-900"
-                                            disabled={!!product || hasBatchTracking || hasSerialTracking} // Lock if tracking enabled
+                                            disabled={hasBatchTracking || hasSerialTracking}
                                             placeholder={hasBatchTracking || hasSerialTracking ? "Calculated automatically" : "0"}
                                         />
                                     </div>
-                                    {product && <p className="text-[10px] text-gray-400">Use Stock Actions to adjust</p>}
+                                    {product && !(hasBatchTracking || hasSerialTracking) && <p className="text-[10px] text-gray-400">Editable in visual mode (same behavior as Excel mode)</p>}
                                 </div>
 
                                 <div className="space-y-2">

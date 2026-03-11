@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     UtensilsCrossed, Clock, Users, ChefHat, Plus, Eye, AlertTriangle,
-    CheckCircle2, Timer, Flame, ChevronDown, RotateCcw
+    CheckCircle2, Timer, Flame, ChevronDown, RotateCcw, Maximize, Minimize
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -109,15 +109,24 @@ function KitchenTicket({ order, onStatusUpdate }) {
 
                 {/* Items */}
                 <div className="space-y-1">
-                    {(JSON.parse(order.items || '[]')).map((item, i) => (
-                        <div key={i} className="flex items-center gap-2 text-xs">
-                            <span className="font-bold text-gray-700">{item.qty}×</span>
-                            <span className="text-gray-800">{item.item_name}</span>
-                            {item.mods?.length > 0 && (
-                                <span className="text-[9px] text-gray-400">+{item.mods.map(m => m.name).join(', ')}</span>
-                            )}
-                        </div>
-                    ))}
+                    {(() => {
+                        let items = [];
+                        try {
+                            items = typeof order.items === 'string' ? JSON.parse(order.items) : (order.items || []);
+                        } catch (e) {
+                            console.error("Failed to parse order items:", e);
+                            items = [];
+                        }
+                        return items.map((item, i) => (
+                            <div key={i} className="flex items-center gap-2 text-xs">
+                                <span className="font-bold text-gray-700">{item.qty}×</span>
+                                <span className="text-gray-800">{item.item_name}</span>
+                                {item.mods?.length > 0 && (
+                                    <span className="text-[9px] text-gray-400">+{item.mods.map(m => m.name).join(', ')}</span>
+                                )}
+                            </div>
+                        ));
+                    })()}
                     {order.special && (
                         <p className="text-[10px] text-amber-600 italic">⚠ {order.special}</p>
                     )}
@@ -172,6 +181,31 @@ export function RestaurantManager({
 }) {
     const [section, setSection] = useState('all');
     const [kdsStation, setKdsStation] = useState('all');
+    const [isFullscreen, setIsFullscreen] = useState(false);
+    const containerRef = React.useRef(null);
+
+    // ─── Fullscreen Logic ────────────────────────────────────────────────────
+
+    const toggleFullscreen = useCallback(() => {
+        if (!containerRef.current) return;
+
+        if (!document.fullscreenElement) {
+            containerRef.current.requestFullscreen().catch(err => {
+                console.error(`Error attempting to enable full-screen mode: ${err.message}`);
+            });
+        } else {
+            document.exitFullscreen();
+        }
+    }, []);
+
+    useEffect(() => {
+        const handleFullscreenChange = () => {
+            setIsFullscreen(!!document.fullscreenElement);
+        };
+
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    }, []);
 
     const filteredTables = section === 'all'
         ? tables
@@ -188,7 +222,13 @@ export function RestaurantManager({
     };
 
     return (
-        <div className="flex gap-4 h-[calc(100vh-120px)]">
+        <div
+            ref={containerRef}
+            className={cn(
+                "flex gap-4 bg-gray-50 transition-all",
+                isFullscreen ? "h-screen w-screen p-4 overflow-hidden" : "h-[calc(100vh-120px)]"
+            )}
+        >
             {/* Left: Floor Plan */}
             <div className="flex-1 flex flex-col bg-white rounded-xl border border-gray-200 overflow-hidden">
                 {/* Header */}
@@ -219,6 +259,14 @@ export function RestaurantManager({
                                 {s === 'all' ? 'All' : s.charAt(0).toUpperCase() + s.slice(1)}
                             </button>
                         ))}
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={toggleFullscreen}
+                            className="h-8 w-8 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 mr-2"
+                        >
+                            {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
+                        </Button>
                     </div>
                 </div>
 

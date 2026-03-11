@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useRef, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     BarChart3, PieChart, LineChart, Table2, FileText, Download,
@@ -174,14 +174,15 @@ function WidgetPreview({ widget, onRemove }) {
 export function ReportBuilder({ businessId, currency = 'Rs.' }) {
     const [widgets, setWidgets] = useState(DEMO_WIDGETS);
     const [showAddWidget, setShowAddWidget] = useState(false);
+    const idCounterRef = useRef(1);
     const [reportName, setReportName] = useState('My Custom Report');
-    const [dateRange, setDateRange] = useState('this_month');
+    const [dateRange, setDateRange] = useState('30d');
     const [savedReports, setSavedReports] = useState(PRESET_TEMPLATES);
     const [selectedSource, setSelectedSource] = useState('sales');
 
     const handleAddWidget = (type) => {
         const newWidget = {
-            id: `w-${Date.now()}`,
+            id: `w-${idCounterRef.current++}`,
             type: type.id,
             source: selectedSource,
             title: `${type.label} — ${DATA_SOURCES.find(s => s.id === selectedSource)?.label || 'Data'}`,
@@ -198,7 +199,7 @@ export function ReportBuilder({ businessId, currency = 'Rs.' }) {
 
     const handleLoadTemplate = (template) => {
         const generated = template.widgets.map((wType, idx) => ({
-            id: `tpl-${Date.now()}-${idx}`,
+            id: `tpl-${template.id}-${idx}-${idCounterRef.current++}`,
             type: wType,
             source: template.source,
             title: `${WIDGET_TYPES.find(t => t.id === wType)?.label || wType} — ${template.name}`,
@@ -225,10 +226,14 @@ export function ReportBuilder({ businessId, currency = 'Rs.' }) {
                     className="h-10 text-sm rounded-xl border-2 border-gray-200 px-3 font-medium"
                 >
                     <option value="today">Today</option>
-                    <option value="this_week">This Week</option>
-                    <option value="this_month">This Month</option>
+                    <option value="yesterday">Yesterday</option>
+                    <option value="7d">Last 7 Days</option>
+                    <option value="30d">Last 30 Days</option>
+                    <option value="90d">Last 90 Days</option>
+                    <option value="mtd">This Month</option>
                     <option value="this_quarter">This Quarter</option>
-                    <option value="this_year">This Year</option>
+                    <option value="last_month">Last Month</option>
+                    <option value="ytd">Year to Date</option>
                     <option value="custom">Custom Range</option>
                 </select>
 
@@ -274,7 +279,7 @@ export function ReportBuilder({ businessId, currency = 'Rs.' }) {
                     <div className="col-span-12 flex flex-col items-center justify-center py-20 text-center">
                         <BarChart3 className="w-12 h-12 text-gray-200 mb-4" />
                         <h3 className="text-lg font-bold text-gray-400">No Widgets Added</h3>
-                        <p className="text-sm text-gray-300 mt-1">Click "Add Widget" or select a template to get started</p>
+                        <p className="text-sm text-gray-300 mt-1">Click &quot;Add Widget&quot; or select a template to get started</p>
                     </div>
                 )}
             </div>

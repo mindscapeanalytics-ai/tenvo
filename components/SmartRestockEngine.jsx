@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, memo, useEffect } from 'react';
-import { ShoppingCart, ArrowRight, BrainCircuit, CheckCircle2, AlertTriangle, PackagePlus, Sparkles } from 'lucide-react';
+import { ArrowRight, BrainCircuit, CheckCircle2, PackagePlus, Sparkles } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -23,25 +23,32 @@ export const SmartRestockEngine = memo(function SmartRestockEngine({
     const [isGenerating, setIsGenerating] = useState(false);
     const [aiSuggestions, setAiSuggestions] = useState([]);
     const [useAI, setUseAI] = useState(true);
+    const effectiveBusinessId = businessId || products?.[0]?.business_id || null;
 
     const fetchAiSuggestions = useCallback(async () => {
-        if (!businessId) return;
+        if (!effectiveBusinessId) {
+            setAiSuggestions([]);
+            return;
+        }
         try {
-            const result = await getAiRestockSuggestionsAction(businessId);
+            const result = await getAiRestockSuggestionsAction(effectiveBusinessId);
             if (result.success) {
-                setAiSuggestions(result.suggestions);
+                setAiSuggestions(result.suggestions || []);
+            } else {
+                setAiSuggestions([]);
             }
         } catch (error) {
             console.error("Failed to fetch AI suggestions:", error);
+            setAiSuggestions([]);
         }
-    }, [businessId]);
+    }, [effectiveBusinessId]);
 
     useEffect(() => {
         if (useAI) fetchAiSuggestions();
     }, [useAI, fetchAiSuggestions]);
 
     // Helper to get monthly sales for a product (Last 6 months)
-    const getProductSalesHistory = (productId) => {
+    const getProductSalesHistory = useCallback((productId) => {
         const history = [0, 0, 0, 0, 0, 0];
         const now = new Date();
 
@@ -58,7 +65,7 @@ export const SmartRestockEngine = memo(function SmartRestockEngine({
             }
         });
         return history;
-    };
+    }, [invoices]);
 
     // Logic to calculate restock needs (Fallback/Standard)
     const standardSuggestions = useMemo(() => {
@@ -98,7 +105,7 @@ export const SmartRestockEngine = memo(function SmartRestockEngine({
                 reason: intelligence.perishability === 'critical' ? 'Just-in-Time (Perishable)' : 'Standard Restock'
             };
         }).filter(Boolean);
-    }, [products, category, domainKnowledge, invoices, useAI, aiSuggestions]);
+    }, [products, domainKnowledge, useAI, aiSuggestions, getProductSalesHistory]);
 
     const restockSuggestions = useAI && aiSuggestions.length > 0 ? aiSuggestions : standardSuggestions;
 
@@ -109,7 +116,7 @@ export const SmartRestockEngine = memo(function SmartRestockEngine({
     }, []);
 
     const handleBulkRestock = useCallback(async () => {
-        if (!businessId) {
+        if (!effectiveBusinessId) {
             toast.error("Business context missing for order generation");
             return;
         }
@@ -118,17 +125,26 @@ export const SmartRestockEngine = memo(function SmartRestockEngine({
         try {
             const ordersToCreate = selectedItems.map(id => {
                 const item = restockSuggestions.find(s => s.id === id);
+                if (!item) return null;
+                const quantity = Number(item.restockAmount || item.forecast?.forecastedQuantity || 0);
+                if (quantity <= 0) return null;
                 return {
                     product_id: item.id,
-                    quantity: item.restockAmount || (item.forecast?.forecastedQuantity),
+                    quantity,
                     unit_cost: item.cost_price || item.price || 0,
-                    total_amount: (item.restockAmount || item.forecast?.forecastedQuantity) * (item.cost_price || item.price || 0),
+                    total_amount: quantity * (item.cost_price || item.price || 0),
                     description: `Auto-restock: ${item.reason || item.forecast?.reasoning}`,
                     notes: `Generated Priority: ${item.priority}`
                 };
-            });
+            }).filter(Boolean);
 
-            const result = await createBulkPurchaseOrdersAction(businessId, ordersToCreate);
+            if (ordersToCreate.length === 0) {
+                toast.error('No valid restock items selected');
+                setIsGenerating(false);
+                return;
+            }
+
+            const result = await createBulkPurchaseOrdersAction(effectiveBusinessId, ordersToCreate);
 
             if (result.success) {
                 toast.success(result.message);
@@ -143,23 +159,26 @@ export const SmartRestockEngine = memo(function SmartRestockEngine({
         } finally {
             setIsGenerating(false);
         }
-    }, [selectedItems, restockSuggestions, businessId, refreshData]);
+    }, [selectedItems, restockSuggestions, effectiveBusinessId, refreshData]);
 
     return (
-        <Card className="border-wine/20 shadow-xl backdrop-blur-sm bg-white/80">
-            <CardHeader className="bg-gradient-to-br from-wine/10 via-wine/5 to-transparent border-b border-wine/10 rounded-t-xl">
+        <Card className="border-wine/20 shadow-md backdrop-blur-sm bg-white/90">
+            <CardHeader className="bg-gradient-to-br from-wine/10 via-wine/5 to-transparent border-b border-wine/10 rounded-t-xl py-4">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                        <div className="p-3 bg-wine text-white rounded-2xl shadow-lg rotate-3 hover:rotate-0 transition-transform">
-                            {useAI ? <Sparkles className="w-6 h-6 animate-pulse" /> : <BrainCircuit className="w-6 h-6" />}
+                        <div className="p-2.5 bg-wine text-white rounded-xl shadow-md rotate-3 hover:rotate-0 transition-transform">
+                            {useAI ? <Sparkles className="w-5 h-5 animate-pulse" /> : <BrainCircuit className="w-5 h-5" />}
                         </div>
                         <div>
-                            <CardTitle className="text-wine text-xl font-bold tracking-tight">
+                            <CardTitle className="text-wine text-2xl font-bold tracking-tight">
                                 {useAI ? 'AI Predictive Restock' : 'Intelligence Restock Engine'}
                             </CardTitle>
-                            <CardDescription className="text-wine/70 font-medium">
+                            <CardDescription className="text-wine/70 text-sm font-medium">
                                 {useAI ? '2026 AI-driven forecasting active' : 'Domain-aware automated purchase planning'}
                             </CardDescription>
+                            {!effectiveBusinessId && (
+                                <p className="text-xs text-red-600 font-semibold mt-1">Business context missing: connect a business to generate orders.</p>
+                            )}
                         </div>
                     </div>
                     <div className="flex items-center gap-4">
@@ -173,20 +192,20 @@ export const SmartRestockEngine = memo(function SmartRestockEngine({
                     </div>
                 </div>
             </CardHeader>
-            <CardContent className="pt-6">
+            <CardContent className="pt-4">
                 <div className="space-y-3">
                     {restockSuggestions.length === 0 ? (
-                        <div className="text-center py-12 bg-gray-50/50 rounded-2xl border border-dashed border-gray-200">
-                            <div className="p-4 bg-green-50 rounded-full w-fit mx-auto mb-4 border border-green-100">
+                        <div className="text-center py-8 bg-gray-50/50 rounded-xl border border-dashed border-gray-200">
+                            <div className="p-3 bg-green-50 rounded-full w-fit mx-auto mb-3 border border-green-100">
                                 <CheckCircle2 className="w-8 h-8 text-green-500" />
                             </div>
-                            <p className="font-bold text-gray-900 text-lg">Inventory is healthy!</p>
+                            <p className="font-bold text-gray-900 text-base">Inventory is healthy!</p>
                             <p className="text-sm text-gray-500 max-w-[250px] mx-auto">All stock levels are optimal based on current domain-specific demand trends.</p>
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             {restockSuggestions.map((item) => (
-                                <div key={item.id} className="group flex items-center justify-between p-4 border border-gray-100 rounded-2xl hover:border-wine/30 hover:bg-wine/5 transition-all duration-300 bg-white/50">
+                                <div key={item.id} className="group flex items-center justify-between p-3 border border-gray-100 rounded-xl hover:border-wine/30 hover:bg-wine/5 transition-all duration-300 bg-white/50">
                                     <div className="flex items-center gap-4">
                                         <div className="relative">
                                             <Checkbox
@@ -224,10 +243,10 @@ export const SmartRestockEngine = memo(function SmartRestockEngine({
                 </div>
             </CardContent>
             {restockSuggestions.length > 0 && (
-                <CardFooter className="bg-wine/[0.02] border-t border-wine/5 p-6">
+                <CardFooter className="bg-wine/[0.02] border-t border-wine/5 p-4">
                     <Button
-                        className="w-full bg-wine hover:bg-wine/90 text-white font-black text-base h-12 shadow-lg shadow-wine/20 rounded-xl group"
-                        disabled={selectedItems.length === 0 || isGenerating}
+                        className="w-full bg-wine hover:bg-wine/90 text-white font-black text-sm h-10 shadow-md shadow-wine/20 rounded-xl group"
+                        disabled={selectedItems.length === 0 || isGenerating || !effectiveBusinessId}
                         onClick={handleBulkRestock}
                     >
                         {isGenerating ? "Generating..." : `Create ${selectedItems.length} Smart Purchase Orders`}

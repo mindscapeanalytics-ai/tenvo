@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     UtensilsCrossed, Search, Plus, Minus, Trash2, ChevronRight,
     Clock, Users, Send, Printer, ArrowLeft, Receipt, CreditCard,
-    Banknote, Smartphone, Check, ShoppingBag, Bike, Home
+    Banknote, Smartphone, Check, ShoppingBag, Bike, Home, Maximize, Minimize
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useBusiness } from '@/lib/context/BusinessContext';
@@ -168,6 +168,31 @@ export function RestaurantPOS({ businessId, products = [], onCompleteSale, curre
     const [paymentMethod, setPaymentMethod] = useState('');
     const [isProcessing, setIsProcessing] = useState(false);
     const [showPayment, setShowPayment] = useState(false);
+    const [isFullscreen, setIsFullscreen] = useState(false);
+    const containerRef = React.useRef(null);
+
+    // ─── Fullscreen Logic ────────────────────────────────────────────────────
+
+    const toggleFullscreen = useCallback(() => {
+        if (!containerRef.current) return;
+
+        if (!document.fullscreenElement) {
+            containerRef.current.requestFullscreen().catch(err => {
+                console.error(`Error attempting to enable full-screen mode: ${err.message}`);
+            });
+        } else {
+            document.exitFullscreen();
+        }
+    }, []);
+
+    useEffect(() => {
+        const handleFullscreenChange = () => {
+            setIsFullscreen(!!document.fullscreenElement);
+        };
+
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    }, []);
 
     // Load tables
     useEffect(() => {
@@ -309,7 +334,13 @@ export function RestaurantPOS({ businessId, products = [], onCompleteSale, curre
     const occupiedTables = tables.filter(t => t.status === 'occupied');
 
     return (
-        <div className="flex h-[calc(100vh-120px)] bg-gray-50 rounded-2xl overflow-hidden border border-gray-200">
+        <div
+            ref={containerRef}
+            className={cn(
+                "flex bg-gray-50 overflow-hidden border border-gray-200 transition-all",
+                isFullscreen ? "h-screen w-screen rounded-0 border-0" : "h-[calc(100vh-120px)] rounded-2xl"
+            )}
+        >
             {/* ─── Left Panel: Table & Menu ─────────────────────────────── */}
             <div className="flex-1 flex flex-col overflow-hidden">
                 {/* Order Type + Table Selection */}
@@ -415,6 +446,14 @@ export function RestaurantPOS({ businessId, products = [], onCompleteSale, curre
                             </button>
                         )}
                     </div>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={toggleFullscreen}
+                        className="absolute top-2 right-2 h-8 w-8 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 z-20"
+                    >
+                        {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
+                    </Button>
                 </div>
 
                 {/* Order Items */}

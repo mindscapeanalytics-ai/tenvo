@@ -4,8 +4,7 @@
  */
 
 import { Suspense } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { AlertTriangle } from 'lucide-react';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { InventoryManager } from '@/components/InventoryManager';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import type { Product, Invoice, Customer } from '@/types';
@@ -67,24 +66,8 @@ export function InventoryTab({
     onStockTransfer,
     onGeneratePO
 }: InventoryTabProps) {
-    const lowStockProducts = products.filter(p => (p.stock || 0) <= (p.min_stock_level || 5));
-
     return (
-        <div className="space-y-6">
-            {/* Low Stock Alert Banner - Server Component */}
-            {lowStockProducts.length > 0 && (
-                <Card className="border-orange-200 bg-orange-50/50">
-                    <CardHeader>
-                        <div className="flex items-center gap-2">
-                            <AlertTriangle className="w-5 h-5 text-orange-600" />
-                            <CardTitle className="text-orange-900">Low Stock Alert</CardTitle>
-                        </div>
-                        <CardDescription className="text-orange-700">
-                            {lowStockProducts.length} products are running low on stock
-                        </CardDescription>
-                    </CardHeader>
-                </Card>
-            )}
+        <div className="space-y-5">
 
             {/* Inventory Manager - Client Component */}
             <ErrorBoundary>

@@ -63,7 +63,8 @@ import {
     BookOpen,
     BicepsFlexed,
     BrickWall,
-    Search
+    Search,
+    UtensilsCrossed
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -81,7 +82,13 @@ const DOMAIN_CATEGORY_BLUEPRINTS = [
         id: 'retail',
         name: 'Retail & Shops',
         icon: Store,
-        domains: ['retail-shop', 'textile-wholesale', 'grocery', 'fmcg', 'ecommerce', 'garments', 'mobile', 'electronics-goods', 'bakery-confectionery', 'boutique-fashion', 'bookshop-stationery', 'supermarket']
+        domains: ['retail-shop', 'textile-wholesale', 'grocery', 'fmcg', 'ecommerce', 'garments', 'mobile', 'electronics-goods', 'boutique-fashion', 'bookshop-stationery', 'supermarket']
+    },
+    {
+        id: 'hospitality',
+        name: 'POS & Hospitality',
+        icon: UtensilsCrossed,
+        domains: ['restaurant-cafe', 'bakery-confectionery', 'hotel-guesthouse']
     },
     {
         id: 'industrial',
@@ -93,7 +100,7 @@ const DOMAIN_CATEGORY_BLUEPRINTS = [
         id: 'services',
         name: 'Services',
         icon: HeartPulse,
-        domains: ['travel', 'auto-workshop', 'diagnostic-lab', 'restaurant-cafe', 'gym-fitness', 'hotel-guesthouse', 'event-management', 'rent-a-car', 'school-library', 'clinics-healthcare', 'logistics-transport', 'salon-spa', 'dental-clinic', 'veterinary-clinic']
+        domains: ['travel', 'auto-workshop', 'diagnostic-lab', 'gym-fitness', 'event-management', 'rent-a-car', 'school-library', 'clinics-healthcare', 'logistics-transport', 'salon-spa', 'dental-clinic', 'veterinary-clinic']
     },
     {
         id: 'specialized',
@@ -146,6 +153,21 @@ export default function RegisterWizard() {
         planTier: 'free',
         logo: ''
     });
+
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const params = new URLSearchParams(window.location.search);
+            const domainParam = params.get('domain');
+            if (domainParam && domainKnowledge[domainParam]) {
+                const recommendedPlan = recommendedPlanForDomain(domainParam);
+                setFormData(prev => ({
+                    ...prev,
+                    category: domainParam,
+                    planTier: PLAN_ORDER[prev.planTier] >= PLAN_ORDER[recommendedPlan] ? prev.planTier : recommendedPlan,
+                }));
+            }
+        }
+    }, []);
 
     // Slug generation helper
     const generateSlug = (name) => {
@@ -616,137 +638,137 @@ export default function RegisterWizard() {
                                         </div>
                                     )}
 
-                                                                        {step === 3 && (
-                                                                            <div className="max-w-2xl mx-auto space-y-8 animate-in zoom-in duration-500">
-                                                                                <div className="bg-wine/5 border border-wine/10 rounded-3xl p-8 flex flex-col items-center text-center space-y-6">
-                                                                                    <div className="w-20 h-20 bg-wine rounded-[28px] flex items-center justify-center text-white shadow-2xl shadow-wine/30 relative">
-                                                                                        <div className="absolute inset-0 animate-ping bg-wine/20 rounded-[28px]" />
-                                                                                        {LucideIcons[domainKnowledge[formData.category]?.icon] ?
-                                                                                            React.createElement(LucideIcons[domainKnowledge[formData.category].icon], { className: "w-10 h-10 relative z-10" }) :
-                                                                                            <Rocket className="w-10 h-10 relative z-10" />
-                                                                                        }
-                                                                                    </div>
-                                                                                    <div className="space-y-2">
-                                                                                        <h3 className="text-2xl font-black text-gray-900 tracking-tight">Enterprise Infrastructure Ready</h3>
-                                                                                        <p className="text-gray-500 font-medium max-w-md">
-                                                                                            We&apos;ve calibrated the dashboard for <span className="text-wine font-black uppercase tracking-tight">{translations[language]?.domains?.[formData.category] || formData.category?.replace('-', ' ')}</span> with Pakistani tax compliance.
-                                                                                        </p>
-                                                                                    </div>
+                                    {step === 3 && (
+                                        <div className="max-w-2xl mx-auto space-y-8 animate-in zoom-in duration-500">
+                                            <div className="bg-wine/5 border border-wine/10 rounded-3xl p-8 flex flex-col items-center text-center space-y-6">
+                                                <div className="w-20 h-20 bg-wine rounded-[28px] flex items-center justify-center text-white shadow-2xl shadow-wine/30 relative">
+                                                    <div className="absolute inset-0 animate-ping bg-wine/20 rounded-[28px]" />
+                                                    {LucideIcons[domainKnowledge[formData.category]?.icon] ?
+                                                        React.createElement(LucideIcons[domainKnowledge[formData.category].icon], { className: "w-10 h-10 relative z-10" }) :
+                                                        <Rocket className="w-10 h-10 relative z-10" />
+                                                    }
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <h3 className="text-2xl font-black text-gray-900 tracking-tight">Enterprise Infrastructure Ready</h3>
+                                                    <p className="text-gray-500 font-medium max-w-md">
+                                                        We&apos;ve calibrated the dashboard for <span className="text-wine font-black uppercase tracking-tight">{translations[language]?.domains?.[formData.category] || formData.category?.replace('-', ' ')}</span> with Pakistani tax compliance.
+                                                    </p>
+                                                </div>
 
-                                                                                    {domainKnowledge[formData.category]?.setupTemplate?.categories?.length > 0 && (
-                                                                                        <div className="w-full pt-4 border-t border-wine/10">
-                                                                                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Pre-built Industry Setup</p>
-                                                                                            <div className="flex flex-wrap justify-center gap-2">
-                                                                                                {domainKnowledge[formData.category].setupTemplate.categories.map(cat => (
-                                                                                                    <span key={cat} className="px-3 py-1 bg-white border border-wine/5 rounded-full text-[10px] font-bold text-wine shadow-sm">
-                                                                                                        {cat}
-                                                                                                    </span>
-                                                                                                ))}
-                                                                                            </div>
-                                                                                        </div>
-                                                                                    )}
-                                                                                </div>
+                                                {domainKnowledge[formData.category]?.setupTemplate?.categories?.length > 0 && (
+                                                    <div className="w-full pt-4 border-t border-wine/10">
+                                                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Pre-built Industry Setup</p>
+                                                        <div className="flex flex-wrap justify-center gap-2">
+                                                            {domainKnowledge[formData.category].setupTemplate.categories.map(cat => (
+                                                                <span key={cat} className="px-3 py-1 bg-white border border-wine/5 rounded-full text-[10px] font-bold text-wine shadow-sm">
+                                                                    {cat}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
 
-                                                                                <div className="bg-gray-50 rounded-3xl p-6 space-y-4">
-                                                                                    <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Identity Confirmation</h4>
-                                                                                    <div className="grid grid-cols-2 gap-4">
-                                                                                        <div className="p-4 bg-white rounded-2xl shadow-sm border border-gray-100/50">
-                                                                                            <span className="text-[10px] font-black text-gray-400 uppercase block mb-1">Company</span>
-                                                                                            <span className="font-bold text-gray-900">{formData.businessName}</span>
-                                                                                        </div>
-                                                                                        <div className="p-4 bg-white rounded-2xl shadow-sm border border-gray-100/50">
-                                                                                            <span className="text-[10px] font-black text-gray-400 uppercase block mb-1">Vertical</span>
-                                                                                            <span className="font-bold text-wine capitalize">{formData.category.replace('-', ' ')}</span>
-                                                                                        </div>
-                                                                                    </div>
-                                                                                </div>
+                                            <div className="bg-gray-50 rounded-3xl p-6 space-y-4">
+                                                <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Identity Confirmation</h4>
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div className="p-4 bg-white rounded-2xl shadow-sm border border-gray-100/50">
+                                                        <span className="text-[10px] font-black text-gray-400 uppercase block mb-1">Company</span>
+                                                        <span className="font-bold text-gray-900">{formData.businessName}</span>
+                                                    </div>
+                                                    <div className="p-4 bg-white rounded-2xl shadow-sm border border-gray-100/50">
+                                                        <span className="text-[10px] font-black text-gray-400 uppercase block mb-1">Vertical</span>
+                                                        <span className="font-bold text-wine capitalize">{formData.category.replace('-', ' ')}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
 
-                                                                                <div className="bg-gray-50 rounded-3xl p-6 space-y-4">
-                                                                                    <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Subscription Plan</h4>
-                                                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                                                                        {Object.entries(PLAN_TIERS).map(([tier, config]) => {
-                                                                                            const isSelected = formData.planTier === tier;
-                                                                                            const isRecommended = recommendedPlanForDomain(formData.category) === tier;
-                                                                                            return (
-                                                                                                <button
-                                                                                                    key={tier}
-                                                                                                    type="button"
-                                                                                                    onClick={() => setFormData(prev => ({ ...prev, planTier: tier }))}
-                                                                                                    className={cn(
-                                                                                                        'text-left rounded-2xl border p-4 transition-all',
-                                                                                                        isSelected ? 'border-wine bg-wine/5 shadow-sm' : 'border-gray-200 bg-white hover:border-wine/30'
-                                                                                                    )}
-                                                                                                >
-                                                                                                    <div className="flex items-center justify-between mb-2">
-                                                                                                        <span className="text-sm font-black text-gray-900 capitalize">{config.name}</span>
-                                                                                                        {isRecommended && <span className="text-[10px] font-black uppercase text-emerald-600">Recommended</span>}
-                                                                                                    </div>
-                                                                                                    <p className="text-xs text-gray-500 font-medium">{config.tagline}</p>
-                                                                                                    <p className="text-xs font-black text-wine mt-2">PKR {config.price_pkr} / mo</p>
-                                                                                                    <ul className="mt-2 space-y-1">
-                                                                                                        {(PLAN_HIGHLIGHTS[tier] || []).map(item => (
-                                                                                                            <li key={item} className="text-[11px] text-gray-600">• {item}</li>
-                                                                                                        ))}
-                                                                                                    </ul>
-                                                                                                </button>
-                                                                                            );
-                                                                                        })}
-                                                                                    </div>
-                                                                                </div>
-
-                                                                                <div className="flex gap-4">
-                                                                                    <Button variant="outline" onClick={prevStep} className="flex-1 h-14 rounded-2xl font-bold border-gray-100">
-                                                                                        Review Basic
-                                                                                    </Button>
-                                                                                    <Button onClick={handleFinish} disabled={isLoading} className="flex-[2] h-14 bg-wine hover:bg-wine/90 text-white font-black rounded-2xl shadow-xl shadow-wine/20 text-lg">
-                                                                                        {isLoading ? (
-                                                                                            <div className="flex items-center gap-2">
-                                                                                                <Loader2 className="w-5 h-5 animate-spin" />
-                                                                                                <span>Launching...</span>
-                                                                                            </div>
-                                                                                        ) : "Generate Dashboard"}
-                                                                                    </Button>
-                                                                                </div>
-                                                                            </div>
-                                                                        )}
-                                                                    </div>
-
-                                                                    {/* Sidebar Info */}
-                                                                    <div className="hidden lg:flex w-80 bg-gray-50/70 border-l border-gray-100 flex-col p-8 xl:p-10 justify-between">
-                                                                        <div className="space-y-6">
-                                                                            <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Deployment Assurance</h4>
-                                                                            <div className="flex flex-col gap-2">
-                                                                                <div className="p-3 bg-white w-fit rounded-xl shadow-sm border border-gray-100">
-                                                                                    <BadgeCheck className="w-5 h-5 text-wine" />
-                                                                                </div>
-                                                                                <h5 className="font-black text-gray-900 mt-1">Certified Platform</h5>
-                                                                                <p className="text-xs text-gray-500 font-medium">FBR Tier-1 and SECP-ready architecture for consistent compliance workflows.</p>
-                                                                            </div>
-                                                                            <div className="flex flex-col gap-2">
-                                                                                <div className="p-3 bg-white w-fit rounded-xl shadow-sm border border-gray-100">
-                                                                                    <Shield className="w-5 h-5 text-wine" />
-                                                                                </div>
-                                                                                <h5 className="font-black text-gray-900 mt-1">Zero-Trust Security</h5>
-                                                                                <p className="text-xs text-gray-500 font-medium">Role-based isolation, encryption, and audit-safe records across modules.</p>
-                                                                            </div>
-                                                                            <div className="flex flex-col gap-2">
-                                                                                <div className="p-3 bg-white w-fit rounded-xl shadow-sm border border-gray-100">
-                                                                                    <CheckCircle2 className="w-5 h-5 text-wine" />
-                                                                                </div>
-                                                                                <h5 className="font-black text-gray-900 mt-1">Fast Go-Live</h5>
-                                                                                <p className="text-xs text-gray-500 font-medium">Complete setup in minutes with preconfigured chart, tax, and inventory defaults.</p>
-                                                                            </div>
-                                                                        </div>
-
-                                                                        <div className="rounded-2xl bg-white border border-gray-100 p-4">
-                                                                            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Need onboarding help?</p>
-                                                                            <p className="text-sm font-bold text-gray-900">support@financial-hub.com</p>
-                                                                            <p className="text-xs text-gray-500 font-medium mt-1">Average response time under 15 minutes.</p>
-                                                                        </div>
-                                                                    </div>
+                                            <div className="bg-gray-50 rounded-3xl p-6 space-y-4">
+                                                <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Subscription Plan</h4>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                    {Object.entries(PLAN_TIERS).map(([tier, config]) => {
+                                                        const isSelected = formData.planTier === tier;
+                                                        const isRecommended = recommendedPlanForDomain(formData.category) === tier;
+                                                        return (
+                                                            <button
+                                                                key={tier}
+                                                                type="button"
+                                                                onClick={() => setFormData(prev => ({ ...prev, planTier: tier }))}
+                                                                className={cn(
+                                                                    'text-left rounded-2xl border p-4 transition-all',
+                                                                    isSelected ? 'border-wine bg-wine/5 shadow-sm' : 'border-gray-200 bg-white hover:border-wine/30'
+                                                                )}
+                                                            >
+                                                                <div className="flex items-center justify-between mb-2">
+                                                                    <span className="text-sm font-black text-gray-900 capitalize">{config.name}</span>
+                                                                    {isRecommended && <span className="text-[10px] font-black uppercase text-emerald-600">Recommended</span>}
                                                                 </div>
-                                                            </CardContent>
-                                                        </Card>
+                                                                <p className="text-xs text-gray-500 font-medium">{config.tagline}</p>
+                                                                <p className="text-xs font-black text-wine mt-2">PKR {config.price_pkr} / mo</p>
+                                                                <ul className="mt-2 space-y-1">
+                                                                    {(PLAN_HIGHLIGHTS[tier] || []).map(item => (
+                                                                        <li key={item} className="text-[11px] text-gray-600">• {item}</li>
+                                                                    ))}
+                                                                </ul>
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+
+                                            <div className="flex gap-4">
+                                                <Button variant="outline" onClick={prevStep} className="flex-1 h-14 rounded-2xl font-bold border-gray-100">
+                                                    Review Basic
+                                                </Button>
+                                                <Button onClick={handleFinish} disabled={isLoading} className="flex-[2] h-14 bg-wine hover:bg-wine/90 text-white font-black rounded-2xl shadow-xl shadow-wine/20 text-lg">
+                                                    {isLoading ? (
+                                                        <div className="flex items-center gap-2">
+                                                            <Loader2 className="w-5 h-5 animate-spin" />
+                                                            <span>Launching...</span>
+                                                        </div>
+                                                    ) : "Generate Dashboard"}
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Sidebar Info */}
+                                <div className="hidden lg:flex w-80 bg-gray-50/70 border-l border-gray-100 flex-col p-8 xl:p-10 justify-between">
+                                    <div className="space-y-6">
+                                        <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Deployment Assurance</h4>
+                                        <div className="flex flex-col gap-2">
+                                            <div className="p-3 bg-white w-fit rounded-xl shadow-sm border border-gray-100">
+                                                <BadgeCheck className="w-5 h-5 text-wine" />
+                                            </div>
+                                            <h5 className="font-black text-gray-900 mt-1">Certified Platform</h5>
+                                            <p className="text-xs text-gray-500 font-medium">FBR Tier-1 and SECP-ready architecture for consistent compliance workflows.</p>
+                                        </div>
+                                        <div className="flex flex-col gap-2">
+                                            <div className="p-3 bg-white w-fit rounded-xl shadow-sm border border-gray-100">
+                                                <Shield className="w-5 h-5 text-wine" />
+                                            </div>
+                                            <h5 className="font-black text-gray-900 mt-1">Zero-Trust Security</h5>
+                                            <p className="text-xs text-gray-500 font-medium">Role-based isolation, encryption, and audit-safe records across modules.</p>
+                                        </div>
+                                        <div className="flex flex-col gap-2">
+                                            <div className="p-3 bg-white w-fit rounded-xl shadow-sm border border-gray-100">
+                                                <CheckCircle2 className="w-5 h-5 text-wine" />
+                                            </div>
+                                            <h5 className="font-black text-gray-900 mt-1">Fast Go-Live</h5>
+                                            <p className="text-xs text-gray-500 font-medium">Complete setup in minutes with preconfigured chart, tax, and inventory defaults.</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="rounded-2xl bg-white border border-gray-100 p-4">
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Need onboarding help?</p>
+                                        <p className="text-sm font-bold text-gray-900">support@financial-hub.com</p>
+                                        <p className="text-xs text-gray-500 font-medium mt-1">Average response time under 15 minutes.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
                 </div>
 
                 {/* Footer Credits */}

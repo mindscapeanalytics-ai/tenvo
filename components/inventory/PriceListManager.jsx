@@ -31,7 +31,7 @@ export function PriceListManager({
   const [lists, setLists] = useState(priceLists);
   const [showForm, setShowForm] = useState(false);
   const [editingList, setEditingList] = useState(null);
-  const counterRef = useRef(Date.now());
+  const counterRef = useRef(1);
   const [formData, setFormData] = useState({
     name: '',
     type: 'standard', // standard, customer, quantity, seasonal, promotional
@@ -108,20 +108,20 @@ export function PriceListManager({
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h3 className="text-xl font-bold">Price Lists</h3>
-          <p className="text-sm text-gray-500">Manage multiple price lists for different scenarios</p>
+          <h3 className="text-base font-extrabold text-slate-900">Price Lists</h3>
+          <p className="text-xs text-slate-500">Manage multiple price lists for different scenarios</p>
         </div>
         <Dialog open={showForm} onOpenChange={setShowForm}>
           <DialogTrigger asChild>
-            <Button onClick={() => { resetForm(); setEditingList(null); }}>
+            <Button className="h-9" onClick={() => { resetForm(); setEditingList(null); }}>
               <Plus className="w-4 h-4 mr-2" />
               New Price List
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-2xl max-h-[88vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
                 {editingList ? 'Edit Price List' : 'Create New Price List'}
@@ -130,8 +130,8 @@ export function PriceListManager({
                 Configure custom pricing rules for specific customers, seasons, or quantities.
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="space-y-2">
                   <Label>Price List Name *</Label>
                   <Input
@@ -190,7 +190,7 @@ export function PriceListManager({
               {/* Price Items */}
               <div className="space-y-2">
                 <Label>Products & Prices</Label>
-                <div className="border rounded-lg p-4 space-y-2 max-h-64 overflow-y-auto">
+                <div className="border rounded-lg p-3 space-y-2 max-h-56 overflow-y-auto bg-slate-50/40">
                   {formData.items.map((item, index) => {
                     const product = products.find(p => p.id === item.productId);
                     return (
@@ -275,14 +275,14 @@ export function PriceListManager({
       </div>
 
       {/* Price Lists Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {lists.map((list) => (
-          <Card key={list.id}>
-            <CardHeader>
+          <Card key={list.id} className="border-slate-200 shadow-sm rounded-xl">
+            <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle className="text-lg">{list.name}</CardTitle>
-                  <CardDescription>
+                  <CardTitle className="text-base">{list.name}</CardTitle>
+                  <CardDescription className="text-xs">
                     {priceListTypes.find(t => t.value === list.type)?.label}
                   </CardDescription>
                 </div>
@@ -291,7 +291,7 @@ export function PriceListManager({
                 </Badge>
               </div>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-3 pt-0">
               <div className="text-sm">
                 <div className="flex items-center gap-2 text-gray-600">
                   <Package className="w-4 h-4" />
@@ -334,10 +334,10 @@ export function PriceListManager({
       </div>
 
       {lists.length === 0 && (
-        <div className="text-center py-12 text-gray-500 border-2 border-dashed rounded-lg">
-          <DollarSign className="w-12 h-12 mx-auto mb-2 text-gray-400" />
-          <p>No price lists created yet.</p>
-          <p className="text-sm">Create your first price list to get started.</p>
+        <div className="text-center py-10 text-slate-500 border border-dashed border-slate-300 rounded-xl bg-slate-50/40">
+          <DollarSign className="w-10 h-10 mx-auto mb-2 text-slate-400" />
+          <p className="font-medium">No price lists created yet.</p>
+          <p className="text-xs">Create your first price list to get started.</p>
         </div>
       )}
     </div>

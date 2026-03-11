@@ -16,7 +16,7 @@ export function DomainReports({ category }) {
     const availableReports = domainKnowledge?.reports || [];
 
     const [selectedReport, setSelectedReport] = useState(null);
-    const [dateRange, setDateRange] = useState('this_month');
+    const [dateRange, setDateRange] = useState('30d');
     const [isGenerating, setIsGenerating] = useState(false);
 
     const handleGenerate = async () => {
@@ -89,10 +89,13 @@ export function DomainReports({ category }) {
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="today">Today</SelectItem>
-                                        <SelectItem value="this_week">This Week</SelectItem>
-                                        <SelectItem value="this_month">This Month</SelectItem>
+                                        <SelectItem value="yesterday">Yesterday</SelectItem>
+                                        <SelectItem value="7d">Last 7 Days</SelectItem>
+                                        <SelectItem value="30d">Last 30 Days</SelectItem>
+                                        <SelectItem value="90d">Last 90 Days</SelectItem>
+                                        <SelectItem value="mtd">This Month</SelectItem>
                                         <SelectItem value="last_month">Last Month</SelectItem>
-                                        <SelectItem value="this_year">This Fiscal Year</SelectItem>
+                                        <SelectItem value="ytd">Year to Date</SelectItem>
                                         <SelectItem value="custom">Custom Range</SelectItem>
                                     </SelectContent>
                                 </Select>

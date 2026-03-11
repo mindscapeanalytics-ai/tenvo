@@ -172,12 +172,14 @@ export function Sidebar({ isOpen, onClose, isSidebarCollapsed, setIsSidebarColla
   const { language } = useLanguage();
   const t = translations[language];
   const pathname = usePathname();
+  const pathParts = pathname?.split('/') || [];
   const searchParams = useSearchParams();
   const currentTab = searchParams.get('tab') || 'dashboard';
 
-  const pathParts = pathname?.split('/') || [];
-  const category = pathParts[2] || 'retail-shop';
-  const baseUrl = `/business/${category}`;
+  // CRITICAL FIX: The vertical category should come from the business record, 
+  // not the URL handle (which is a unique slug like 'my-cafe-123').
+  const category = business?.category || pathParts[2] || 'retail-shop';
+  const baseUrl = `/business/${pathParts[2] || category}`;
 
   const domainColors = getDomainColors(category);
   const colors = {
@@ -190,9 +192,19 @@ export function Sidebar({ isOpen, onClose, isSidebarCollapsed, setIsSidebarColla
   const posRelevant = isPosRelevantDomain(category, domainKnowledge);
   const hospitalityDomain = isHospitalityDomain(category);
   const campaignRelevant = isCampaignRelevantDomain(category, domainKnowledge);
-  const effectiveRole = (businessLoading || !role) ? 'viewer' : role;
-  const planTier = isPlatformOwner ? 'enterprise' : resolvePlanTier(contextPlanTier || business?.plan_tier || 'free');
-  const planName = isPlatformOwner ? 'Platform Owner' : (PLAN_TIERS[planTier]?.name || 'Free');
+  const [hasHydrated, setHasHydrated] = useState(false);
+
+  useEffect(() => {
+    setHasHydrated(true);
+  }, []);
+
+  // Keep access gating deterministic between SSR and first client render.
+  const safeIsPlatformOwner = hasHydrated ? isPlatformOwner : false;
+  const effectiveRole = (!hasHydrated || businessLoading || !role) ? 'viewer' : role;
+  const planTier = hasHydrated
+    ? (safeIsPlatformOwner ? 'enterprise' : resolvePlanTier(contextPlanTier || business?.plan_tier || 'free'))
+    : 'free';
+  const planName = safeIsPlatformOwner ? 'Platform Owner' : (PLAN_TIERS[planTier]?.name || 'Free');
   const domainGapSuggestions = useMemo(() => getDomainGapSuggestions({ category, planTier, domainKnowledge }), [category, planTier, domainKnowledge]);
 
   const [collapsedSections, setCollapsedSections] = useState({});
@@ -222,7 +234,7 @@ export function Sidebar({ isOpen, onClose, isSidebarCollapsed, setIsSidebarColla
   // Check if a nav item should be visible + whether it's locked behind subscription
   const getItemState = (item) => {
     // Platform-only items: only visible to platform owner/admin
-    if (item.platformOnly && !isPlatformOwner) {
+    if (item.platformOnly && !safeIsPlatformOwner) {
       return { visible: false, locked: false, requiredPlan: null };
     }
 
@@ -382,7 +394,8 @@ export function Sidebar({ isOpen, onClose, isSidebarCollapsed, setIsSidebarColla
                           ? pathname === '/admin'
                           : currentTab === item.key;
                         const Icon = item.icon;
-                        const isLocked = item.locked;
+                        // Prevent lock-state SSR/client drift from causing hydration mismatch.
+                        const isLocked = hasHydrated ? item.locked : false;
                         const itemHref = item.key === 'platform-admin'
                           ? '/admin'
                           : (item.key === 'dashboard' ? baseUrl : `${baseUrl}?tab=${item.key}`);
@@ -390,7 +403,8 @@ export function Sidebar({ isOpen, onClose, isSidebarCollapsed, setIsSidebarColla
                         return (
                           <Link
                             key={item.key}
-                            href={isLocked ? '#' : itemHref}
+                            href={itemHref}
+                            aria-disabled={isLocked}
                             onClick={(e) => {
                               if (isLocked) {
                                 e.preventDefault();
@@ -468,7 +482,7 @@ export function Sidebar({ isOpen, onClose, isSidebarCollapsed, setIsSidebarColla
         </nav>
 
         {/* ─── Upgrade Banner (shown for free/starter plans, hidden for platform owner and compact mode) ─── */}
-        {!isSidebarCollapsed && !isPlatformOwner && (planTier === 'free' || planTier === 'starter') && (
+        {!isSidebarCollapsed && !safeIsPlatformOwner && (planTier === 'free' || planTier === 'starter') && (
           <div className="flex-none mx-3 mb-2.5">
             <div className="bg-gradient-to-r from-indigo-500 to-violet-600 rounded-xl p-3 text-white">
               <div className="flex items-center gap-2 mb-1">
@@ -492,7 +506,7 @@ export function Sidebar({ isOpen, onClose, isSidebarCollapsed, setIsSidebarColla
           </div>
         )}
 
-        {!isSidebarCollapsed && !isPlatformOwner && domainGapSuggestions.length > 0 && (
+        {!isSidebarCollapsed && !safeIsPlatformOwner && domainGapSuggestions.length > 0 && (
           <div className="flex-none mx-3 mb-2.5">
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
               <div className="flex items-center gap-2 mb-2">

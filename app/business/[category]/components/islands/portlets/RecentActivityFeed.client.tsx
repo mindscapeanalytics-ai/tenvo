@@ -23,6 +23,13 @@ interface ActivityItem {
     status?: string;
 }
 
+function formatRelativeDate(dateValue?: string | Date): string {
+    if (!dateValue) return 'just now';
+    const parsed = new Date(dateValue);
+    if (Number.isNaN(parsed.getTime())) return 'just now';
+    return formatDistanceToNow(parsed, { addSuffix: true });
+}
+
 export const RecentActivityFeed = memo(function RecentActivityFeed({ businessId, onViewAll }: RecentActivityFeedProps) {
     const [activities, setActivities] = useState<ActivityItem[]>([]);
     const [loading, setLoading] = useState(true);
@@ -126,11 +133,13 @@ export const RecentActivityFeed = memo(function RecentActivityFeed({ businessId,
                             </p>
                             <div className="flex items-center justify-between">
                                 <span className="text-[10px] text-slate-400 font-medium">
-                                    {formatDistanceToNow(new Date(item.date), { addSuffix: true })}
+                                    {formatRelativeDate(item.date)}
                                 </span>
-                                {item.amount > 0 && (
+                                {Number(item.amount || 0) > 0 && (
                                     <span className="text-[10px] font-black text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded">
-                                        {item.status === 'warning' ? item.amount : `PKR ${item.amount.toLocaleString()}`}
+                                        {item.status === 'warning'
+                                            ? Number(item.amount || 0)
+                                            : `PKR ${Number(item.amount || 0).toLocaleString()}`}
                                     </span>
                                 )}
                             </div>

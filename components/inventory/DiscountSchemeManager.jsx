@@ -31,7 +31,7 @@ export function DiscountSchemeManager({
   const [schemeList, setSchemeList] = useState(schemes);
   const [showForm, setShowForm] = useState(false);
   const [editingScheme, setEditingScheme] = useState(null);
-  const counterRef = useRef(Date.now());
+  const counterRef = useRef(1);
   const [formData, setFormData] = useState({
     name: '',
     type: 'percentage', // percentage, fixed, quantity, customer-category, product-category, bulk, loyalty
@@ -126,20 +126,20 @@ export function DiscountSchemeManager({
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h3 className="text-xl font-bold">Discount Schemes</h3>
-          <p className="text-sm text-gray-500">Manage discount rules and promotions</p>
+          <h3 className="text-base font-extrabold text-slate-900">Discount Schemes</h3>
+          <p className="text-xs text-slate-500">Manage discount rules and promotions</p>
         </div>
         <Dialog open={showForm} onOpenChange={setShowForm}>
           <DialogTrigger asChild>
-            <Button onClick={() => { resetForm(); setEditingScheme(null); }}>
+            <Button className="h-9" onClick={() => { resetForm(); setEditingScheme(null); }}>
               <Tag className="w-4 h-4 mr-2" />
               New Discount Scheme
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-2xl max-h-[88vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
                 {editingScheme ? 'Edit Discount Scheme' : 'Create New Discount Scheme'}
@@ -148,8 +148,8 @@ export function DiscountSchemeManager({
                 Set up promotional rules, percentage discounts, or bulk pricing incentives.
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="space-y-2">
                   <Label>Scheme Name *</Label>
                   <Input
@@ -254,27 +254,27 @@ export function DiscountSchemeManager({
       </div>
 
       {/* Discount Schemes Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {schemeList.map((scheme) => {
           const TypeIcon = discountTypes.find(t => t.value === scheme.type)?.icon || Tag;
           return (
-            <Card key={scheme.id}>
-              <CardHeader>
+            <Card key={scheme.id} className="border-slate-200 shadow-sm rounded-xl">
+              <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <TypeIcon className="w-5 h-5 text-blue-600" />
-                    <CardTitle className="text-lg">{scheme.name}</CardTitle>
+                    <CardTitle className="text-base">{scheme.name}</CardTitle>
                   </div>
                   <Badge variant={scheme.isActive ? 'default' : 'secondary'}>
                     {scheme.isActive ? 'Active' : 'Inactive'}
                   </Badge>
                 </div>
-                <CardDescription>
+                <CardDescription className="text-xs">
                   {discountTypes.find(t => t.value === scheme.type)?.label}
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="text-2xl font-bold text-blue-600">
+              <CardContent className="space-y-3 pt-0">
+                <div className="text-xl font-bold text-blue-600">
                   {getDiscountDisplay(scheme)}
                 </div>
                 {scheme.validFrom && (
@@ -307,10 +307,10 @@ export function DiscountSchemeManager({
       </div>
 
       {schemeList.length === 0 && (
-        <div className="text-center py-12 text-gray-500 border-2 border-dashed rounded-lg">
-          <Tag className="w-12 h-12 mx-auto mb-2 text-gray-400" />
-          <p>No discount schemes created yet.</p>
-          <p className="text-sm">Create your first discount scheme to get started.</p>
+        <div className="text-center py-10 text-slate-500 border border-dashed border-slate-300 rounded-xl bg-slate-50/40">
+          <Tag className="w-10 h-10 mx-auto mb-2 text-slate-400" />
+          <p className="font-medium">No discount schemes created yet.</p>
+          <p className="text-xs">Create your first discount scheme to get started.</p>
         </div>
       )}
     </div>
