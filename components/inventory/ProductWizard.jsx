@@ -168,8 +168,8 @@ function StepBasics({ formData, onChange, category, errors }) {
 // ─── Step 2: Pricing ─────────────────────────────────────────────────────────
 
 function StepPricing({ formData, onChange, currency, errors }) {
-    const margin = formData.selling_price && formData.cost_price
-        ? (((formData.selling_price - formData.cost_price) / formData.selling_price) * 100).toFixed(1)
+    const margin = formData.price && formData.cost_price
+        ? (((formData.price - formData.cost_price) / formData.price) * 100).toFixed(1)
         : null;
 
     return (
@@ -200,18 +200,18 @@ function StepPricing({ formData, onChange, currency, errors }) {
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">{currency}</span>
                         <Input
                             type="number"
-                            value={formData.selling_price || ''}
-                            onChange={(e) => onChange('selling_price', parseFloat(e.target.value) || '')}
+                            value={formData.price || ''}
+                            onChange={(e) => onChange('price', parseFloat(e.target.value) || '')}
                             placeholder="0.00"
                             className={cn(
                                 "h-12 rounded-xl text-sm font-bold pl-12",
-                                errors.selling_price && "border-red-300"
+                                errors.price && "border-red-300"
                             )}
                             step="0.01"
                             min="0"
                         />
                     </div>
-                    {errors.selling_price && <p className="text-[10px] text-red-500 font-bold">{errors.selling_price}</p>}
+                    {errors.price && <p className="text-[10px] text-red-500 font-bold">{errors.price}</p>}
                 </div>
             </div>
 
@@ -515,7 +515,7 @@ function StepReview({ formData, currency }) {
         {
             title: 'Pricing', items: [
                 { label: 'Cost Price', value: `${currency}${formData.cost_price?.toLocaleString() || '0'}` },
-                { label: 'Selling Price', value: `${currency}${formData.selling_price?.toLocaleString() || '0'}` },
+                { label: 'Selling Price', value: `${currency}${formData.price?.toLocaleString() || '0'}` },
                 { label: 'Tax', value: `${formData.tax_percent ?? 17}%` },
             ]
         },
@@ -581,7 +581,7 @@ export function ProductWizard({
         return {
             name: '', sku: '', barcode: '', category: '', brand: '',
             unit: 'pcs', description: '',
-            cost_price: '', selling_price: '', tax_percent: 17,
+            cost_price: '', price: '', tax_percent: 17,
             min_order_qty: 1, wholesale_price: '',
             stock: 0, reorder_point: 10, max_stock: '', warehouse_id: '',
             track_inventory: true, is_weight_item: false,
@@ -607,7 +607,7 @@ export function ProductWizard({
                 break;
             case 1: // Pricing
                 if (!formData.cost_price && formData.cost_price !== 0) newErrors.cost_price = 'Cost price is required';
-                if (!formData.selling_price && formData.selling_price !== 0) newErrors.selling_price = 'Selling price is required';
+                if (!formData.price && formData.price !== 0) newErrors.price = 'Selling price is required';
                 break;
             case 2: // Inventory
                 // Stock defaults to 0, always valid
@@ -640,8 +640,7 @@ export function ProductWizard({
             const payload = {
                 ...formData,
                 cost_price: toNumber(formData.cost_price, 0),
-                selling_price: toNumber(formData.selling_price, 0),
-                price: toNumber(formData.selling_price, 0),
+                price: toNumber(formData.price, 0),
                 tax_percent: toNumber(formData.tax_percent, 17),
                 stock: toNumber(formData.stock, 0),
                 reorder_point: toNumber(formData.reorder_point, 10),

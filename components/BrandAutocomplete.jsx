@@ -3,32 +3,42 @@
 import { useMemo } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { searchBrands, getBrandsForDomain } from '@/lib/data/pakistaniBrands';
+import { getBrandsForDomain } from '@/lib/utils/pakistaniFeatures';
+import { t } from '@/lib/translations';
 
 /**
  * Brand Autocomplete Component
  * Smart autocomplete for Pakistani brands based on domain
+ * Supports domain-aware filtering and Urdu display
  * Uses HTML5 datalist for maximum compatibility
  */
 export function BrandAutocomplete({
     value,
     onChange,
     domain,
-    label = "Brand",
-    placeholder = "Select or type brand name...",
+    label,
+    placeholder,
     required = false,
-    className = ""
+    className = "",
+    language = 'en'
 }) {
-    const suggestions = useMemo(() => getBrandsForDomain(domain), [domain]);
+    // Get domain-specific brands
+    const suggestions = useMemo(() => {
+        return getBrandsForDomain(domain) || [];
+    }, [domain]);
 
     const handleChange = (e) => {
         onChange(e.target.value);
     };
 
+    // Translate labels if not provided
+    const displayLabel = label || t('brand', language);
+    const displayPlaceholder = placeholder || t('selectBrand', language);
+
     return (
         <div className={`space-y-2 ${className}`}>
-            <Label htmlFor="brand-autocomplete">
-                {label}
+            <Label htmlFor="brand-autocomplete" className="text-xs font-black uppercase text-gray-400 tracking-wider">
+                {displayLabel}
                 {required && <span className="text-red-500 ml-1">*</span>}
             </Label>
 
@@ -37,9 +47,10 @@ export function BrandAutocomplete({
                 list="brands-list"
                 value={value || ''}
                 onChange={handleChange}
-                placeholder={placeholder}
+                placeholder={displayPlaceholder}
                 className="h-11 rounded-xl"
                 required={required}
+                dir={language === 'ur' ? 'rtl' : 'ltr'}
             />
 
             <datalist id="brands-list">
@@ -49,8 +60,8 @@ export function BrandAutocomplete({
             </datalist>
 
             {value && !suggestions.includes(value) && (
-                <p className="text-xs text-muted-foreground">
-                    Custom brand: &quot;{value}&quot;
+                <p className="text-xs text-gray-500 font-medium">
+                    {language === 'ur' ? 'حسب ضرورت برانڈ' : 'Custom brand'}: &quot;{value}&quot;
                 </p>
             )}
         </div>

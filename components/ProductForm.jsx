@@ -48,6 +48,8 @@ import { useSafeSmartDefaults, mergeFormDefaults, getCurrentDate } from '@/lib/h
 import { useAutosave, AutosaveIndicator } from '@/hooks/useAutosave';
 import { useKeyboardShortcuts, COMMON_SHORTCUTS } from '@/hooks/useKeyboardShortcuts';
 import { useBusiness } from '@/lib/context/BusinessContext';
+import { getCurrentSeason, getSeasonalDiscount, applySeasonalPricing } from '@/lib/domainData/pakistaniSeasons';
+import { hasSeasonalPricing } from '@/lib/utils/pakistaniFeatures';
 
 /**
  * ProductForm Component
@@ -136,6 +138,12 @@ export function ProductForm({
     const domainFields = getDomainProductFields(category);
     const hasBatchTracking = isBatchTrackingEnabled(category);
     const hasSerialTracking = isSerialTrackingEnabled(category);
+
+    // Pakistani Seasonal Pricing
+    const seasonalPricingEnabled = hasSeasonalPricing(category);
+    const currentSeason = seasonalPricingEnabled ? getCurrentSeason() : null;
+    const seasonalDiscount = seasonalPricingEnabled && formData.category ? getSeasonalDiscount(formData.category) : 0;
+    const seasonalPricing = seasonalDiscount > 0 && formData.price > 0 ? applySeasonalPricing(formData.price, seasonalDiscount) : null;
 
     // Update handlers
     const updateField = (field, value) => {
@@ -664,6 +672,47 @@ export function ProductForm({
                                     <Label htmlFor="description" className="text-xs font-black uppercase text-gray-400 tracking-wider">Product Description</Label>
                                     <textarea id="description" value={formData.description ?? ''} onChange={(e) => updateField('description', e.target.value)} rows={2} className="w-full rounded-xl border border-gray-200 bg-white p-3 text-sm focus:ring-2 focus:ring-wine/20 shadow-inner" placeholder="Technical specifications or notes..." />
                                 </div>
+
+                                {/* Seasonal Pricing Preview */}
+                                {seasonalPricing && currentSeason && (
+                                    <div className="md:col-span-2 p-4 rounded-2xl bg-gradient-to-r from-orange-50 to-pink-50 border-2 border-orange-200 animate-in slide-in-from-bottom-2 duration-500">
+                                        <div className="flex items-start justify-between gap-4">
+                                            <div className="flex-1">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <Badge className="bg-gradient-to-r from-orange-500 to-pink-500 text-white text-[10px] font-black uppercase">
+                                                        🎉 {currentSeason.name.en}
+                                                    </Badge>
+                                                    <span className="text-xs font-bold text-orange-600">
+                                                        {seasonalDiscount}% Seasonal Discount Active
+                                                    </span>
+                                                </div>
+                                                <p className="text-xs text-gray-600 mb-3">
+                                                    {currentSeason.description.en}
+                                                </p>
+                                                <div className="grid grid-cols-3 gap-4">
+                                                    <div>
+                                                        <p className="text-[10px] font-black uppercase text-gray-400 tracking-wider mb-1">Original Price</p>
+                                                        <p className="text-lg font-bold text-gray-500 line-through">
+                                                            {formatCurrency(seasonalPricing.original, standards.currency)}
+                                                        </p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-[10px] font-black uppercase text-orange-600 tracking-wider mb-1">Seasonal Price</p>
+                                                        <p className="text-2xl font-black text-orange-600">
+                                                            {formatCurrency(seasonalPricing.discounted, standards.currency)}
+                                                        </p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-[10px] font-black uppercase text-green-600 tracking-wider mb-1">Customer Saves</p>
+                                                        <p className="text-lg font-bold text-green-600">
+                                                            {formatCurrency(seasonalPricing.savings, standards.currency)}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Section: Live Financial Dashboard */}

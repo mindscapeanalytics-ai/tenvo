@@ -9,6 +9,7 @@ import { Building2, Phone, Mail, MapPin, Loader2, Sparkles, ShieldCheck, Wallet,
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FormError } from '@/components/ui/form-error';
 import { CityAutocomplete } from '@/components/CityAutocomplete';
+import { MarketLocationSelector } from '@/components/MarketLocationSelector';
 import { FileUpload } from './FileUpload';
 import { DomainFieldRenderer } from './domain/DomainFieldRenderer';
 import { formatPakistaniPhone, vendorSchema, validateForm } from '@/lib/validation';
@@ -28,6 +29,7 @@ export function VendorForm({ initialData = null, onSave, onClose, category = 're
         ntn: '',
         address: '',
         city: business?.city || '',
+        market_location: '',
         contactPerson: '',
         srn: '',
         payment_terms: '',
@@ -219,6 +221,15 @@ export function VendorForm({ initialData = null, onSave, onClose, category = 're
                                     value={formData.city}
                                     onChange={(val) => setFormData({ ...formData, city: val })}
                                     required={false}
+                                />
+                            </div>
+                            <div className="col-span-1 md:col-span-2">
+                                <MarketLocationSelector
+                                    value={formData.market_location}
+                                    onChange={(val) => setFormData({ ...formData, market_location: val })}
+                                    city={formData.city}
+                                    required={false}
+                                    language="en"
                                 />
                             </div>
                         </div>

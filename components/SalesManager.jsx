@@ -25,17 +25,53 @@ export function SalesManager({
     const colors = getDomainColors(category);
     const [timeframe, setTimeframe] = useState('monthly');
 
-    // Intelligence: Aggregate real-time sales metrics
+    // Intelligence: Aggregate real-time sales metrics with growth calculation
     const metrics = useMemo(() => {
-        const total = invoices.reduce((sum, inv) => sum + (Number(inv.grand_total) || 0), 0);
-        const count = invoices.length;
+        const now = new Date();
+        const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+
+        // Current month metrics
+        const currentInvoices = invoices.filter(inv => new Date(inv.date) >= currentMonthStart);
+        const total = currentInvoices.reduce((sum, inv) => sum + (Number(inv.grand_total) || 0), 0);
+        const count = currentInvoices.length;
         const avg = count > 0 ? Number(total) / count : 0;
+        const currentCustomers = new Set(currentInvoices.filter(inv => inv.customer_id).map(inv => inv.customer_id)).size;
+
+        // Last month metrics
+        const lastMonthInvoices = invoices.filter(inv => {
+            const invDate = new Date(inv.date);
+            return invDate >= lastMonthStart && invDate <= lastMonthEnd;
+        });
+        const lastTotal = lastMonthInvoices.reduce((sum, inv) => sum + (Number(inv.grand_total) || 0), 0);
+        const lastCount = lastMonthInvoices.length;
+        const lastAvg = lastCount > 0 ? Number(lastTotal) / lastCount : 0;
+        const lastCustomers = new Set(lastMonthInvoices.filter(inv => inv.customer_id).map(inv => inv.customer_id)).size;
+
+        // Growth calculation helper
+        const calcGrowth = (current, last) => {
+            if (last > 0) return ((current - last) / last) * 100;
+            if (current > 0) return 100;
+            return 0;
+        };
+
+        const revenueGrowth = calcGrowth(total, lastTotal);
+        const countGrowth = calcGrowth(count, lastCount);
+        const avgGrowth = calcGrowth(avg, lastAvg);
+        const customerGrowth = calcGrowth(currentCustomers, lastCustomers);
 
         return {
             total: formatCurrency(total, 'PKR'),
             count: count.toString(),
             avg: formatCurrency(avg, 'PKR'),
-            customers: customers.length.toString()
+            customers: customers.length.toString(),
+            growth: {
+                revenue: revenueGrowth,
+                count: countGrowth,
+                avg: avgGrowth,
+                customers: customerGrowth
+            }
         };
     }, [invoices, customers]);
 
@@ -82,10 +118,38 @@ export function SalesManager({
             {/* KPI Section */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {[
-                    { label: 'Gross Revenue', value: metrics.total, icon: DollarSign, trend: '+12.5%', sub: 'Total Invoiced' },
-                    { label: 'Order Volume', value: metrics.count, icon: ShoppingCart, trend: '+8.2%', sub: 'Completed Deals' },
-                    { label: 'Avg Order Value', value: metrics.avg, icon: Target, trend: '+4.1%', sub: 'Basket Size' },
-                    { label: 'Client Base', value: metrics.customers, icon: Users, trend: '+15%', sub: 'Active Accounts' }
+                    { 
+                        label: 'Gross Revenue', 
+                        value: metrics.total, 
+                        icon: DollarSign, 
+                        trend: `${metrics.growth.revenue >= 0 ? '+' : ''}${metrics.growth.revenue.toFixed(1)}%`, 
+                        trendDirection: metrics.growth.revenue >= 0 ? 'up' : 'down',
+                        sub: 'Total Invoiced' 
+                    },
+                    { 
+                        label: 'Order Volume', 
+                        value: metrics.count, 
+                        icon: ShoppingCart, 
+                        trend: `${metrics.growth.count >= 0 ? '+' : ''}${metrics.growth.count.toFixed(1)}%`, 
+                        trendDirection: metrics.growth.count >= 0 ? 'up' : 'down',
+                        sub: 'Completed Deals' 
+                    },
+                    { 
+                        label: 'Avg Order Value', 
+                        value: metrics.avg, 
+                        icon: Target, 
+                        trend: `${metrics.growth.avg >= 0 ? '+' : ''}${metrics.growth.avg.toFixed(1)}%`, 
+                        trendDirection: metrics.growth.avg >= 0 ? 'up' : 'down',
+                        sub: 'Basket Size' 
+                    },
+                    { 
+                        label: 'Client Base', 
+                        value: metrics.customers, 
+                        icon: Users, 
+                        trend: `${metrics.growth.customers >= 0 ? '+' : ''}${metrics.growth.customers.toFixed(1)}%`, 
+                        trendDirection: metrics.growth.customers >= 0 ? 'up' : 'down',
+                        sub: 'Active Accounts' 
+                    }
                 ].map((kpi, i) => (
                     <Card key={i} className="border-none shadow-xl bg-white/70 backdrop-blur-sm group hover:scale-[1.02] transition-all">
                         <CardContent className="p-6">
@@ -93,8 +157,11 @@ export function SalesManager({
                                 <div className="p-3 rounded-2xl bg-gray-50 group-hover:bg-wine/5 transition-colors">
                                     <kpi.icon className="w-6 h-6" style={{ color: colors.primary }} />
                                 </div>
-                                <Badge variant="secondary" className="bg-green-50 text-green-600 border-none font-black text-[10px]">
-                                    <ArrowUpRight className="w-3 h-3 mr-1" />
+                                <Badge 
+                                    variant="secondary" 
+                                    className={`${kpi.trendDirection === 'up' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'} border-none font-black text-[10px]`}
+                                >
+                                    {kpi.trendDirection === 'up' ? <ArrowUpRight className="w-3 h-3 mr-1" /> : <ArrowDownRight className="w-3 h-3 mr-1" />}
                                     {kpi.trend}
                                 </Badge>
                             </div>

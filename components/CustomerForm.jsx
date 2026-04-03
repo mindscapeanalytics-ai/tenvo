@@ -11,6 +11,7 @@ import { getDomainCustomerFields, normalizeKey } from '@/lib/utils/domainHelpers
 import { DomainFieldRenderer } from './domain/DomainFieldRenderer';
 import { useBusiness } from '@/lib/context/BusinessContext';
 import { CityAutocomplete } from '@/components/CityAutocomplete';
+import { MarketLocationSelector } from '@/components/MarketLocationSelector';
 import { validateNTN, formatNTN } from '@/lib/tax/pakistaniTax';
 import { formatPakistaniPhone, isValidCNIC, isValidPakistaniPhone, customerSchema, validateForm } from '@/lib/validation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -46,6 +47,7 @@ export function CustomerForm({
         srn: '',
         address: '',
         city: business?.city || '',
+        market_location: '',
         credit_limit: 0,
         opening_balance: 0,
         filer_status: 'none', // none, active, inactive
@@ -323,6 +325,15 @@ export function CustomerForm({
                                         required={true}
                                     />
                                     {errors?.city && <FormError message={errors.city} />}
+                                </div>
+                                <div className="space-y-2">
+                                    <MarketLocationSelector
+                                        value={formData.market_location}
+                                        onChange={(val) => handleInputChange('market_location', val)}
+                                        city={formData.city}
+                                        required={false}
+                                        language="en"
+                                    />
                                 </div>
                                 <div className="col-span-1 md:col-span-2 space-y-2">
                                     <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Billing Address</Label>

@@ -565,7 +565,7 @@ function BusinessDashboardContent() {
       toast.success('Product deleted successfully');
     } catch (error) {
       console.error('Error deleting product:', error);
-      toast.error('Failed to delete product');
+      toast.error('Failed to delete product: ' + (error.message || 'Unknown error'));
     }
   };
 
@@ -586,7 +586,7 @@ function BusinessDashboardContent() {
       setEditingCustomer(null);
     } catch (error) {
       console.error('Error saving customer:', error);
-      toast.error('Failed to save customer');
+      toast.error('Failed to save customer: ' + (error.message || 'Unknown error'));
     }
   };
 
@@ -607,7 +607,7 @@ function BusinessDashboardContent() {
       setEditingVendor(null);
     } catch (error) {
       console.error('Error saving vendor:', error);
-      toast.error('Failed to save vendor');
+      toast.error('Failed to save vendor: ' + (error.message || 'Unknown error'));
     }
   };
 
@@ -666,7 +666,7 @@ function BusinessDashboardContent() {
       }
     } catch (error) {
       console.error('Bulk delete failed:', error);
-      toast.error('Deletion failed');
+      toast.error('Deletion failed: ' + (error.message || 'Unknown error'));
     }
   };
 
@@ -678,7 +678,7 @@ function BusinessDashboardContent() {
         toast.success('Vendor removed');
       } catch (error) {
         console.error('Error deleting vendor:', error);
-        toast.error('Failed to remove vendor');
+        toast.error('Failed to remove vendor: ' + (error.message || 'Unknown error'));
       }
     }
   };
@@ -691,7 +691,7 @@ function BusinessDashboardContent() {
         toast.success('Customer deleted successfully');
       } catch (error) {
         console.error('Error deleting customer:', error);
-        toast.error('Failed to delete customer');
+        toast.error('Failed to delete customer: ' + (error.message || 'Unknown error'));
       }
     }
   };
@@ -711,7 +711,7 @@ function BusinessDashboardContent() {
       }
     } catch (error) {
       console.error("Error generating auto PO:", error);
-      toast.error("Failed to generate purchase order");
+      toast.error("Failed to generate purchase order: " + (error.message || 'Unknown error'));
     }
   };
 
@@ -790,7 +790,7 @@ function BusinessDashboardContent() {
         refreshAllData();
       } catch (error) {
         console.error('Error deleting invoice:', error);
-        toast.error('Failed to delete invoice');
+        toast.error('Failed to delete invoice: ' + (error.message || 'Unknown error'));
         throw error;
       }
     }

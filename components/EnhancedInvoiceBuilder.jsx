@@ -22,6 +22,8 @@ import { Badge } from '@/components/ui/badge';
 import toast from 'react-hot-toast';
 import { useStockAvailability, useCreditLimitCheck, useDueDateCalculator } from '@/lib/hooks/useInvoiceHelpers';
 import { invoiceSchema, validateWithSchema } from '@/lib/validation/schemas';
+import { getCurrentSeason, getSeasonalDiscount } from '@/lib/domainData/pakistaniSeasons';
+import { hasSeasonalPricing } from '@/lib/utils/pakistaniFeatures';
 
 /**
  * Enhanced Invoice Builder Component
@@ -217,6 +219,10 @@ export function EnhancedInvoiceBuilder({
   const [barcodeInput, setBarcodeInput] = useState('');
   const [showKeyboardHints, setShowKeyboardHints] = useState(false);
 
+  // Pakistani Seasonal Pricing
+  const seasonalPricingEnabled = hasSeasonalPricing(category);
+  const currentSeason = seasonalPricingEnabled ? getCurrentSeason() : null;
+
   // Update item field (Hoisted for use in barcode scan)
   const updateItem = (id, field, value) => {
     const clampNumber = (num, min, max) => Math.min(max, Math.max(min, num));
@@ -307,9 +313,35 @@ export function EnhancedInvoiceBuilder({
       ? (subtotal * (invoice.discount || 0)) / 100
       : (invoice.discount || 0);
 
-    const finalSubtotal = subtotal - discountAmount;
+    // Calculate seasonal discount if applicable
+    let seasonalDiscountAmount = 0;
+    let seasonalDiscountDetails = [];
+    
+    if (seasonalPricingEnabled && currentSeason) {
+      invoice.items.forEach(item => {
+        const product = products.find(p => p.id === item.productId);
+        if (product && product.category) {
+          const seasonalDiscount = getSeasonalDiscount(product.category);
+          if (seasonalDiscount > 0) {
+            const itemBase = Number(item.quantity || 0) * Number(item.rate || 0);
+            const itemDiscount = (itemBase * Number(item.discount || 0)) / 100;
+            const itemAfterDiscount = itemBase - itemDiscount;
+            const seasonalAmount = (itemAfterDiscount * seasonalDiscount) / 100;
+            seasonalDiscountAmount += seasonalAmount;
+            seasonalDiscountDetails.push({
+              itemName: item.name,
+              category: product.category,
+              discountPercent: seasonalDiscount,
+              amount: seasonalAmount
+            });
+          }
+        }
+      });
+    }
 
-    const globalDiscountFactor = subtotal > 0 ? (subtotal - discountAmount) / subtotal : 1;
+    const finalSubtotal = subtotal - discountAmount - seasonalDiscountAmount;
+
+    const globalDiscountFactor = subtotal > 0 ? (subtotal - discountAmount - seasonalDiscountAmount) / subtotal : 1;
 
     const itemsForTax = invoice.items.map(item => {
       const itemBase = Number(item.quantity || 0) * Number(item.rate || 0);
@@ -341,8 +373,10 @@ export function EnhancedInvoiceBuilder({
       roundOff: manualRoundOff,
       discount: discountAmount,
       discount_total: discountAmount,
+      seasonalDiscount: seasonalDiscountAmount,
+      seasonalDiscountDetails,
     };
-  }, [invoice.items, invoice.discount, invoice.discountType, invoice.roundOff, standards, category]);
+  }, [invoice.items, invoice.discount, invoice.discountType, invoice.roundOff, standards, category, seasonalPricingEnabled, currentSeason, products]);
 
   // Credit limit warning
   const creditWarning = useCreditLimitCheck(selectedCustomerData, calculateTotals.total);
@@ -763,6 +797,11 @@ export function EnhancedInvoiceBuilder({
               <Badge variant="outline" className="text-[10px] font-black uppercase tracking-widest" style={{ backgroundColor: `${colors.primary}10`, color: colors.primary, borderColor: `${colors.primary}20` }}>
                 {category.replace('-', ' ')}
               </Badge>
+              {currentSeason && (
+                <Badge className="bg-gradient-to-r from-orange-500 to-pink-500 text-white border-0 text-[10px] font-black uppercase animate-pulse">
+                  🎉 {currentSeason.name.en} - {currentSeason.discountPercent}% OFF
+                </Badge>
+              )}
             </div>
           </div>
           <div className="flex items-center gap-4">
@@ -1257,6 +1296,18 @@ export function EnhancedInvoiceBuilder({
                     <span className="font-semibold text-red-600">-{formatCurrency(totals.discount, currency)}</span>
                   </div>
                 </div>
+                {/* Seasonal Discount Display */}
+                {totals.seasonalDiscount > 0 && currentSeason && (
+                  <div className="flex justify-between items-center bg-gradient-to-r from-orange-50 to-pink-50 p-3 rounded-2xl border border-orange-200">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-black uppercase text-orange-600">🎉 {currentSeason.name.en} Discount:</span>
+                      <Badge className="bg-orange-500 text-white text-[9px] font-black">
+                        {currentSeason.discountPercent}% OFF
+                      </Badge>
+                    </div>
+                    <span className="font-semibold text-orange-600">-{formatCurrency(totals.seasonalDiscount, currency)}</span>
+                  </div>
+                )}
                 {/* Render dynamic tax breakdown from strategy */}
                 {Object.entries(totals.taxDetails || {}).map(([label, detail]) => {
                   const taxVal = (detail.amount * detail.rate) / 100;

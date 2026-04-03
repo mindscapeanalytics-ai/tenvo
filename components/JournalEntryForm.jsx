@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Combobox } from '@/components/ui/combobox';
 import { useBusiness } from '@/lib/context/BusinessContext';
 import { formatCurrency } from '@/lib/currency';
-import { createGLEntryAction, getGLAccountsAction } from '@/lib/actions/basic/accounting';
+import { createJournalAction, getGLAccountsAction } from '@/lib/actions/basic/accounting';
 import toast from 'react-hot-toast';
 import { journalEntrySchema, validateWithSchema } from '@/lib/validation/schemas';
 
@@ -185,25 +185,20 @@ export function JournalEntryForm({ onClose, onSave }) {
 
         setIsSaving(true);
         try {
-            const journalGroupId = `JV-${Date.now()}`;
+            // [HARDENED] Call atomic action instead of looping in the UI
+            const result = await createJournalAction({
+                businessId: business?.id,
+                date: formData.date,
+                description: formData.description,
+                referenceId: formData.reference,
+                entries: formData.entries.map(e => ({
+                    accountId: e.account_id,
+                    debit: e.type === 'debit' ? parseFloat(e.amount) || 0 : 0,
+                    credit: e.type === 'credit' ? parseFloat(e.amount) || 0 : 0,
+                }))
+            });
 
-            // Create each GL entry in the journal group
-            for (const entry of formData.entries) {
-                const result = await createGLEntryAction({
-                    businessId: business?.id,
-                    accountId: entry.account_id,
-                    type: entry.type,
-                    amount: parseFloat(entry.amount),
-                    description: formData.description,
-                    reference: formData.reference || journalGroupId,
-                    date: formData.date,
-                    journalGroupId
-                });
-
-                if (!result.success) {
-                    throw new Error(result.error || 'Failed to create GL entry');
-                }
-            }
+            if (!result.success) throw new Error(result.error);
 
             toast.success('Journal entry posted successfully');
             onSave?.();

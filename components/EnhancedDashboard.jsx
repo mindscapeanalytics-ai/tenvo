@@ -117,13 +117,15 @@ export function EnhancedDashboard({ businessId, category, onQuickAction }) {
     } else {
       baseStats.push({
         label: t.products_stat || 'Products',
-        value: metrics.products?.toString() || '0',
-        change: '+8.2%',
-        trend: 'up',
+        value: metrics.products?.count?.toString() || metrics.products?.toString() || '0',
+        change: metrics.products?.growth 
+          ? `${metrics.products.growth >= 0 ? '+' : ''}${metrics.products.growth.toFixed(1)}%`
+          : '+0%',
+        trend: (metrics.products?.growth || 0) >= 0 ? 'up' : 'down',
         icon: Package,
         ...(colors?.stats?.products || { bg: 'bg-purple-50', iconColor: 'text-purple-600' }),
         target: 500,
-        current: metrics.products || 0,
+        current: metrics.products?.count || metrics.products || 0,
       });
     }
 

@@ -239,6 +239,9 @@ model businesses {
   payroll_items           payroll_items[]
   purchase_items          purchase_items[]
   challan_items           challan_items[]
+  purchase_returns        purchase_returns[]       // C16
+  purchase_return_items   purchase_return_items[]  // C16
+  document_sequences      document_sequences[]     // C17
 }
 
 model customers {
@@ -350,6 +353,7 @@ model invoices {
   invoice_items       invoice_items[]
   payment_allocations payment_allocations[]
   credit_notes        credit_notes[]
+  pos_transactions    pos_transactions[]    // C18: Reverse relation for POS-to-invoice linking
   businesses          businesses            @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   customers           customers?            @relation(fields: [customer_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
@@ -438,7 +442,8 @@ model production_orders {
   created_at          DateTime?            @default(now()) @db.Timestamptz(6)
   updated_at          DateTime?            @default(now()) @db.Timestamptz(6)
   product_id          String?              @db.Uuid
-  warehouse_id        String?              @db.Uuid
+  warehouse_id        String?              @db.Uuid // Input warehouse for raw materials
+  output_warehouse_id String?              @db.Uuid // C19: Output warehouse for finished goods
   quantity_to_produce Decimal?             @db.Decimal(12, 2)
   notes               String?
   scheduled_date      DateTime?            @db.Date
@@ -447,11 +452,14 @@ model production_orders {
   boms                boms?                @relation(fields: [bom_id], references: [id], onUpdate: NoAction)
   businesses          businesses           @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   products            products?            @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  warehouse_locations warehouse_locations? @relation(fields: [warehouse_id], references: [id], onUpdate: NoAction)
+  warehouse_locations warehouse_locations? @relation("production_input_warehouse", fields: [warehouse_id], references: [id], onUpdate: NoAction)
+  output_warehouse    warehouse_locations? @relation("production_output_warehouse", fields: [output_warehouse_id], references: [id], onUpdate: NoAction)
 
   @@index([domain_data], map: "idx_production_orders_domain_data", type: Gin)
   @@index([product_id], map: "idx_production_orders_product")
   @@index([status], map: "idx_production_orders_status")
+  @@index([warehouse_id])
+  @@index([output_warehouse_id])
   @@index([business_id, scheduled_date(sort: Desc)])
 }
 
@@ -514,6 +522,7 @@ model products {
   price_list_items        price_list_items[]
   credit_note_items       credit_note_items[]
   pos_transaction_items   pos_transaction_items[]
+  purchase_return_items   purchase_return_items[]  // C16
 
   @@index([business_id, sku])
   @@index([business_id, category])
@@ -619,6 +628,7 @@ model vendors {
   payments            payments[]
   purchases           purchases[]
   expenses            expenses[]
+  purchase_returns    purchase_returns[]  // C16
   businesses          businesses  @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([domain_data], map: "idx_vendors_domain_data", type: Gin)
@@ -1428,6 +1438,7 @@ model pos_transactions {
   session_id            String                  @db.Uuid
   transaction_number    String                  @db.VarChar(50)
   customer_id           String?                 @db.Uuid
+  invoice_id            String?                 @db.Uuid // C18: Link to formal invoice if converted
   subtotal              Decimal                 @db.Decimal(12, 2)
   tax_amount            Decimal?                @default(0) @db.Decimal(12, 2)
   discount_amount       Decimal?                @default(0) @db.Decimal(12, 2)
@@ -1442,6 +1453,7 @@ model pos_transactions {
   businesses            businesses              @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   pos_sessions          pos_sessions            @relation(fields: [session_id], references: [id], onUpdate: NoAction)
   customers             customers?              @relation(fields: [customer_id], references: [id], onUpdate: NoAction)
+  invoices              invoices?               @relation(fields: [invoice_id], references: [id], onUpdate: NoAction)
   pos_transaction_items pos_transaction_items[]
   pos_payments          pos_payments[]
   pos_refunds           pos_refunds[]
@@ -1449,6 +1461,7 @@ model pos_transactions {
   @@unique([business_id, transaction_number])
   @@index([business_id])
   @@index([session_id])
+  @@index([invoice_id])
   @@index([business_id, created_at(sort: Desc)])
 }
 
@@ -1753,4 +1766,80 @@ model payroll_items {
   @@index([business_id], map: "idx_payroll_items_business_id")
   @@index([run_id])
   @@index([employee_id])
+}
+
+// ============================================================================
+// PURCHASE RETURNS MODULE (C16)
+// ============================================================================
+
+model purchase_returns {
+  id                  String                   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  business_id         String                   @db.Uuid
+  vendor_id           String                   @db.Uuid
+  return_number       String                   @db.VarChar(50)
+  return_date         DateTime                 @default(now()) @db.Date
+  original_purchase_id String?                 @db.Uuid
+  subtotal            Decimal                  @db.Decimal(12, 2)
+  tax_amount          Decimal                  @default(0) @db.Decimal(12, 2)
+  total_amount        Decimal                  @db.Decimal(12, 2)
+  status              String                   @default("pending") @db.VarChar(20) // pending | approved | completed
+  reason              String?
+  notes               String?
+  created_at          DateTime                 @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime                 @default(now()) @db.Timestamptz(6)
+  created_by          String?                  @db.Uuid
+  
+  businesses          businesses               @relation(fields: [business_id], references: [id], onDelete: Cascade)
+  vendors             vendors                  @relation(fields: [vendor_id], references: [id])
+  purchase_return_items purchase_return_items[]
+  
+  @@unique([business_id, return_number])
+  @@index([business_id])
+  @@index([vendor_id])
+  @@index([business_id, return_date(sort: Desc)])
+}
+
+model purchase_return_items {
+  id                String           @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  business_id       String           @db.Uuid
+  return_id         String           @db.Uuid
+  product_id        String           @db.Uuid
+  quantity          Decimal          @db.Decimal(12, 2)
+  unit_price        Decimal          @db.Decimal(12, 2)
+  tax_amount        Decimal          @default(0) @db.Decimal(12, 2)
+  total             Decimal          @db.Decimal(12, 2)
+  batch_number      String?
+  notes             String?
+  created_at        DateTime         @default(now()) @db.Timestamptz(6)
+  
+  businesses        businesses       @relation(fields: [business_id], references: [id], onDelete: Cascade)
+  purchase_returns  purchase_returns @relation(fields: [return_id], references: [id], onDelete: Cascade)
+  products          products         @relation(fields: [product_id], references: [id])
+  
+  @@index([business_id])
+  @@index([return_id])
+  @@index([product_id])
+}
+
+// ============================================================================
+// DOCUMENT SEQUENCES MODULE (C17)
+// ============================================================================
+
+model document_sequences {
+  id              String     @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  business_id     String     @db.Uuid
+  document_type   String     @db.VarChar(50) // invoice | purchase | pos_transaction | etc.
+  prefix          String     @default("") @db.VarChar(20)
+  current_number  Int        @default(1)
+  padding_length  Int        @default(6) // e.g., 6 = 000001
+  suffix          String?    @db.VarChar(20)
+  reset_frequency String?    @db.VarChar(20) // null | yearly | monthly
+  last_reset_date DateTime?  @db.Date
+  created_at      DateTime   @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime   @default(now()) @db.Timestamptz(6)
+  
+  businesses      businesses @relation(fields: [business_id], references: [id], onDelete: Cascade)
+  
+  @@unique([business_id, document_type])
+  @@index([business_id])
 }
