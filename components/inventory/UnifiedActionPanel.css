@@ -1,0 +1,120 @@
+/* UnifiedActionPanel Animations */
+
+@keyframes slide-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-left {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.3s ease-out;
+}
+
+.animate-slide-left {
+  animation: slide-left 0.3s ease-out;
+}
+
+/* Smooth transitions */
+.unified-action-panel-tab {
+  transition: all 0.2s ease-in-out;
+}
+
+/* Keyboard shortcut styling */
+kbd {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.875em;
+  font-weight: 600;
+}
+
+/* Mobile swipe handle */
+.swipe-handle {
+  touch-action: pan-y;
+}
+
+/* Backdrop blur effect (optional, for modern browsers) */
+@supports (backdrop-filter: blur(4px)) {
+  .unified-action-backdrop {
+    backdrop-filter: blur(4px);
+  }
+}
+
+/* FAB pulse animation */
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.95);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.3);
+    opacity: 0;
+  }
+}
+
+.fab-pulse::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: currentColor;
+  animation: pulse-ring 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Responsive breakpoints */
+@media (max-width: 768px) {
+  .unified-action-panel-content {
+    max-height: calc(90vh - 140px);
+  }
+}
+
+@media (min-width: 769px) {
+  .unified-action-panel-content {
+    height: calc(100vh - 140px);
+  }
+}
+
+/* Loading spinner */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+/* Tab indicator animation */
+.tab-indicator {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Smooth scroll */
+.smooth-scroll {
+  scroll-behavior: smooth;
+}
+
+/* Focus styles for accessibility */
+.unified-action-panel button:focus-visible {
+  outline: 2px solid #722F37;
+  outline-offset: 2px;
+}
+
+/* Touch target size for mobile */
+@media (max-width: 768px) {
+  .unified-action-panel button {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
