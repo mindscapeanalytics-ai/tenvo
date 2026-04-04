@@ -1075,6 +1075,7 @@ function BusinessDashboardContent() {
             category={category}
             business={business}
             role={role}
+            user={user}
             invoices={invoices}
             products={products}
             customers={customers}

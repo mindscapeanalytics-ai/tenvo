@@ -82,7 +82,8 @@ export function DashboardTabs({
     resourceLimits,
     domainKnowledge,
     handlers,
-    isLoading = false
+    isLoading = false,
+    user // Add user prop for role-based dashboards
 }) {
     const posRelevant = isPosRelevant(category, domainKnowledge);
     const hospitalityDomain = isHospitality(category);
@@ -272,6 +273,7 @@ export function DashboardTabs({
                             expenses={expenses}
                             domainKnowledge={domainKnowledge}
                             isLoading={isLoading}
+                            user={user}
                         />
                     )}
                 </TabsContent>

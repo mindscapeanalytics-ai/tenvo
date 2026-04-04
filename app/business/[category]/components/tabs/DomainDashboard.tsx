@@ -21,6 +21,10 @@ import { AnalyticsDashboard } from '../islands/AnalyticsDashboard.client';
 import { PredictivePlanningPortlet } from '../islands/portlets/PredictivePlanningPortlet.client';
 import NetsuiteDashboard from '../islands/NetsuiteDashboard.client';
 
+// Feature Flags & Role-Based Dashboard
+import { isFeatureEnabledForUser, FEATURE_FLAGS } from '@/lib/config/featureFlags';
+import { RoleBasedDashboardController } from '@/components/dashboard/RoleBasedDashboardController';
+
 // ═══════════════════════════════════════════════════════════════
 // TYPES & INTERFACES
 // ═══════════════════════════════════════════════════════════════
@@ -41,6 +45,11 @@ interface DomainDashboardProps {
     expenses?: ExpenseLike[];
     domainKnowledge?: DomainKnowledgeLike;
     isLoading?: boolean;
+    user?: {
+        id: string;
+        role: 'owner' | 'manager' | 'sales_staff' | 'inventory_staff' | 'accountant';
+        permissions?: string[];
+    };
 }
 
 interface InvoiceItemLike {
@@ -170,13 +179,47 @@ export function DomainDashboard({
     expenseBreakdown = [],
     expenses = [],
     domainKnowledge,
-    isLoading = false
+    isLoading = false,
+    user
 }: DomainDashboardProps) {
     const { business } = useBusiness() as { business?: { id?: string } | null };
     const activeBusinessId = businessId || business?.id;
     const colors = getDomainColors(category);
     const campaignEnabled = isCampaignRelevant(category, (domainKnowledge ?? null) as any);
     const multiLocationEnabled = Boolean(domainKnowledge?.multiLocationEnabled);
+
+    // ═══════════════════════════════════════════════════════════════
+    // FEATURE FLAG: Unified Dashboard with Role-Based Templates
+    // ═══════════════════════════════════════════════════════════════
+    
+    const unifiedDashboardEnabled = useMemo(() => {
+        // Check if unified dashboard feature is enabled for this user/business
+        return isFeatureEnabledForUser(
+            FEATURE_FLAGS.UNIFIED_DASHBOARD,
+            {
+                userId: user?.id || '',
+                userRole: user?.role || '',
+                businessId: activeBusinessId || ''
+            }
+        );
+    }, [user?.id, user?.role, activeBusinessId]);
+
+    // If unified dashboard is enabled, use RoleBasedDashboardController
+    if (unifiedDashboardEnabled && user) {
+        return (
+            <RoleBasedDashboardController
+                businessId={activeBusinessId || ''}
+                category={category}
+                user={user}
+                onQuickAction={onQuickAction}
+            />
+        );
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // LEGACY DASHBOARD (Current Implementation)
+    // This will be used when feature flag is disabled
+    // ═══════════════════════════════════════════════════════════════
 
     const formatCurrencyCompact = useCallback(
         (amount: number) => `${currency} ${Math.round(amount || 0).toLocaleString()}`,

@@ -4,7 +4,8 @@ import { useState, useMemo, useEffect } from 'react';
 import {
   TrendingUp, TrendingDown, DollarSign, ShoppingCart, Package, Users,
   AlertTriangle, CheckCircle2, Clock, ArrowUpRight, ArrowDownRight,
-  Calendar, Filter, Download, RefreshCw, Bell, Settings, Search, Receipt, FileText
+  Calendar, Filter, Download, RefreshCw, Bell, Settings, Search, Receipt, FileText,
+  Warehouse
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -40,6 +41,10 @@ const IconRenderer = ({ name, ...props }) => {
 
 import { useBusiness } from '@/lib/context/BusinessContext';
 import { getDashboardMetricsAction } from '@/lib/actions/premium/ai/analytics';
+import { InventoryValuationWidget } from '@/components/dashboard/widgets/InventoryValuationWidget';
+import { BatchExpiryWidget } from '@/components/dashboard/widgets/BatchExpiryWidget';
+import { SerialWarrantyWidget } from '@/components/dashboard/widgets/SerialWarrantyWidget';
+import { WarehouseDistributionWidget } from '@/components/dashboard/widgets/WarehouseDistributionWidget';
 
 export function EnhancedDashboard({ businessId, category, onQuickAction }) {
   const { business, currency: currencyFromContext } = useBusiness();
@@ -74,6 +79,12 @@ export function EnhancedDashboard({ businessId, category, onQuickAction }) {
   const isManufacturing = knowledge?.manufacturingEnabled || knowledge?.inventoryFeatures?.includes('Manufacturing/BOM');
   const isService = !knowledge?.batchTrackingEnabled && !knowledge?.manufacturingEnabled && !knowledge?.inventoryFeatures?.includes('Stock Valuation');
   const hasQuotations = knowledge?.inventoryFeatures?.includes('Quotation Management');
+
+  // Intelligent widget visibility based on domain knowledge
+  const showBatchTracking = knowledge?.batchTrackingEnabled || knowledge?.expiryTrackingEnabled;
+  const showSerialTracking = knowledge?.serialTrackingEnabled;
+  const showMultiLocation = knowledge?.multiLocationEnabled;
+  const showInventoryWidgets = !isService && (showBatchTracking || showSerialTracking || showMultiLocation);
 
   // Build stats from server data
   const stats = useMemo(() => {
@@ -358,20 +369,101 @@ export function EnhancedDashboard({ businessId, category, onQuickAction }) {
         </CardContent>
       </Card>
 
-      {/* Quick Actions */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {quickActions.map((action, idx) => (
-          <Button
-            key={idx}
-            variant="outline"
-            className="h-auto py-4 flex flex-col items-center gap-2 hover:bg-gray-50 transition-all border-border hover:border-primary/50"
-            onClick={() => onQuickAction?.(action.id)}
-          >
-            <action.icon className="w-5 h-5" style={{ color: colors.primary }} />
-            <span className="text-sm font-medium">{action.label}</span>
-          </Button>
-        ))}
-      </div>
+      {/* Inventory Widgets Grid - 2x2 (Intelligent Conditional Rendering) */}
+      {showInventoryWidgets && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Always show inventory valuation for non-service businesses */}
+          <InventoryValuationWidget
+            businessId={businessId}
+            costingMethod={knowledge?.stockValuationMethod || "FIFO"}
+            currency={currency}
+            onViewDetails={(type) => onQuickAction?.(`view-${type}`)}
+          />
+          
+          {/* Show batch expiry only for batch-tracked categories */}
+          {showBatchTracking ? (
+            <BatchExpiryWidget
+              businessId={businessId}
+              currency={currency}
+              onViewDetails={(type) => onQuickAction?.(`view-${type}`)}
+            />
+          ) : (
+            <Card className="glass-card border-none">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-bold text-gray-500">
+                  {t.batch_tracking || 'Batch Tracking'}
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  {t.not_enabled || 'Not enabled for this category'}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="flex items-center justify-center py-8">
+                <div className="text-center">
+                  <Package className="w-12 h-12 text-gray-300 mx-auto mb-2" />
+                  <p className="text-xs text-gray-500">
+                    {t.enable_in_settings || 'Enable in settings if needed'}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+          
+          {/* Show serial warranty only for serial-tracked categories */}
+          {showSerialTracking ? (
+            <SerialWarrantyWidget
+              businessId={businessId}
+              onViewDetails={(type) => onQuickAction?.(`view-${type}`)}
+            />
+          ) : (
+            <Card className="glass-card border-none">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-bold text-gray-500">
+                  {t.serial_tracking || 'Serial Tracking'}
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  {t.not_enabled || 'Not enabled for this category'}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="flex items-center justify-center py-8">
+                <div className="text-center">
+                  <Package className="w-12 h-12 text-gray-300 mx-auto mb-2" />
+                  <p className="text-xs text-gray-500">
+                    {t.enable_in_settings || 'Enable in settings if needed'}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+          
+          {/* Show warehouse distribution only for multi-location businesses */}
+          {showMultiLocation ? (
+            <WarehouseDistributionWidget
+              businessId={businessId}
+              currency={currency}
+              onViewDetails={(type) => onQuickAction?.(`view-${type}`)}
+            />
+          ) : (
+            <Card className="glass-card border-none">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-bold text-gray-500">
+                  {t.multi_location || 'Multi-Location'}
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  {t.single_location || 'Single location business'}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="flex items-center justify-center py-8">
+                <div className="text-center">
+                  <Warehouse className="w-12 h-12 text-gray-300 mx-auto mb-2" />
+                  <p className="text-xs text-gray-500">
+                    {t.upgrade_for_multi_location || 'Upgrade to enable multi-location'}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
 
       {/* Alerts and Recent Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
