@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
@@ -15,7 +15,7 @@ const TIERS = [
     { id: 'bronze', name: 'Bronze', minPoints: 0, icon: Shield, color: 'from-orange-700 to-amber-600', textColor: 'text-orange-700', bgColor: 'bg-orange-50', borderColor: 'border-orange-200' },
     { id: 'silver', name: 'Silver', minPoints: 500, icon: Star, color: 'from-gray-500 to-slate-400', textColor: 'text-gray-600', bgColor: 'bg-gray-50', borderColor: 'border-gray-200' },
     { id: 'gold', name: 'Gold', minPoints: 2000, icon: Crown, color: 'from-yellow-500 to-amber-400', textColor: 'text-amber-600', bgColor: 'bg-amber-50', borderColor: 'border-amber-200' },
-    { id: 'platinum', name: 'Platinum', minPoints: 5000, icon: Sparkles, color: 'from-violet-600 to-purple-500', textColor: 'text-violet-600', bgColor: 'bg-violet-50', borderColor: 'border-violet-200' },
+    { id: 'platinum', name: 'Platinum', minPoints: 5000, icon: Sparkles, color: 'from-violet-600 to-wine-500', textColor: 'text-violet-600', bgColor: 'bg-violet-50', borderColor: 'border-violet-200' },
 ];
 
 const DEMO_REWARDS = [
@@ -28,13 +28,13 @@ const DEMO_REWARDS = [
 ];
 
 const DEMO_TRANSACTIONS = [
-    { id: 't1', type: 'earn', points: 120, description: 'Purchase — Invoice #4521', date: '2026-02-20', total: 6000 },
-    { id: 't2', type: 'earn', points: 85, description: 'Purchase — Invoice #4518', date: '2026-02-18', total: 4250 },
-    { id: 't3', type: 'redeem', points: -200, description: 'Redeemed — 10% Off Coupon', date: '2026-02-15' },
-    { id: 't4', type: 'earn', points: 250, description: 'Purchase — Invoice #4501', date: '2026-02-10', total: 12500 },
-    { id: 't5', type: 'earn', points: 60, description: 'Referral Bonus — Ahmed K.', date: '2026-02-08' },
-    { id: 't6', type: 'redeem', points: -150, description: 'Redeemed — Free Delivery', date: '2026-02-05' },
-    { id: 't7', type: 'earn', points: 180, description: 'Purchase — Invoice #4490', date: '2026-02-01', total: 9000 },
+    { id: 't1', type: 'earn', points: 120, description: 'Purchase â€” Invoice #4521', date: '2026-02-20', total: 6000 },
+    { id: 't2', type: 'earn', points: 85, description: 'Purchase â€” Invoice #4518', date: '2026-02-18', total: 4250 },
+    { id: 't3', type: 'redeem', points: -200, description: 'Redeemed â€” 10% Off Coupon', date: '2026-02-15' },
+    { id: 't4', type: 'earn', points: 250, description: 'Purchase â€” Invoice #4501', date: '2026-02-10', total: 12500 },
+    { id: 't5', type: 'earn', points: 60, description: 'Referral Bonus â€” Ahmed K.', date: '2026-02-08' },
+    { id: 't6', type: 'redeem', points: -150, description: 'Redeemed â€” Free Delivery', date: '2026-02-05' },
+    { id: 't7', type: 'earn', points: 180, description: 'Purchase â€” Invoice #4490', date: '2026-02-01', total: 9000 },
 ];
 
 export function CustomerLoyaltyPortal({ businessId, currency = 'Rs.' }) {
@@ -63,7 +63,7 @@ export function CustomerLoyaltyPortal({ businessId, currency = 'Rs.' }) {
 
     return (
         <div className="space-y-6">
-            {/* Hero Card — Points Balance */}
+            {/* Hero Card â€” Points Balance */}
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -95,7 +95,7 @@ export function CustomerLoyaltyPortal({ businessId, currency = 'Rs.' }) {
                         <div className="mt-6">
                             <div className="flex items-center justify-between text-xs text-white/60 mb-2">
                                 <span>{currentTier.name}</span>
-                                <span>{nextTier.name} — {nextTier.minPoints - lifetimePoints} pts to go</span>
+                                <span>{nextTier.name} â€” {nextTier.minPoints - lifetimePoints} pts to go</span>
                             </div>
                             <div className="h-2 bg-white/20 rounded-full overflow-hidden">
                                 <motion.div
@@ -326,3 +326,4 @@ export function CustomerLoyaltyPortal({ businessId, currency = 'Rs.' }) {
         </div>
     );
 }
+

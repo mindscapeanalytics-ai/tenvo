@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useMemo } from 'react';
 import { FileText, AlertCircle, CheckCircle2, Clock, TrendingUp } from 'lucide-react';
@@ -244,11 +244,11 @@ export function FBRComplianceWidget({ businessId, currency = 'PKR', onViewDetail
                                 {formatCurrency(complianceData.pst, currency)}
                             </div>
                         </div>
-                        <div className="p-2 rounded-lg bg-purple-50">
-                            <div className="text-xs text-purple-700 font-medium mb-1">
+                        <div className="p-2 rounded-lg bg-wine-50">
+                            <div className="text-xs text-wine-700 font-medium mb-1">
                                 {t.fst || 'FST'} (1%)
                             </div>
-                            <div className="text-lg font-black text-purple-900">
+                            <div className="text-lg font-black text-wine-900">
                                 {formatCurrency(complianceData.fst, currency)}
                             </div>
                         </div>
@@ -308,10 +308,12 @@ export function FBRComplianceWidget({ businessId, currency = 'PKR', onViewDetail
                 {/* Quick Action */}
                 <div className="pt-2 border-t border-gray-100">
                     <button className="text-xs font-bold text-green-600 hover:text-green-700 transition-colors w-full text-center">
-                        {t.view_tax_reports || 'View Tax Reports'} →
+                        {t.view_tax_reports || 'View Tax Reports'} â†’
                     </button>
                 </div>
             </CardContent>
         </Card>
     );
 }
+
+

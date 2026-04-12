@@ -20,6 +20,8 @@ import {
     Settings,
     Warehouse,
     BarChart3,
+    Truck,
+    ShoppingCart,
 } from 'lucide-react';
 import { VendorForm } from '@/components/VendorForm';
 import EnhancedPOBuilder from '@/components/EnhancedPOBuilder';
@@ -175,6 +177,8 @@ export function ActionModals({
                             { label: 'New Invoice', icon: FileText, action: () => { setShowInvoiceBuilder(true); setShowQuickAction(false); } },
                             { label: 'Add Product', icon: Package, action: () => { setEditingProduct(null); setShowProductForm(true); setShowQuickAction(false); } },
                             { label: 'New Customer', icon: Users, action: () => { setShowCustomerForm(true); setShowQuickAction(false); } },
+                            { label: 'New Vendor', icon: Truck, action: () => { setEditingVendor(null); setShowVendorForm(true); setShowQuickAction(false); } },
+                            { label: 'New Purchase', icon: ShoppingCart, action: () => { setPoInitialData(null); setShowPOBuilder(true); setShowQuickAction(false); } },
                             { label: 'Record Stock', icon: Warehouse, action: () => safeTabChange('inventory') },
                             { label: 'View Reports', icon: BarChart3, action: () => safeTabChange('reports') },
                             { label: 'Manage Settings', icon: Settings, action: () => safeTabChange('settings') },
@@ -207,6 +211,11 @@ export function ActionModals({
                         initialData={editingCustomer}
                         category={category}
                         onSave={onSaveCustomer}
+                        onEntitlementError={() => {
+                            setShowCustomerForm(false);
+                            setEditingCustomer(null);
+                            onTabChange('settings');
+                        }}
                         onClose={() => {
                             setShowCustomerForm(false);
                             setEditingCustomer(null);
@@ -242,6 +251,11 @@ export function ActionModals({
                         initialData={editingVendor}
                         category={category}
                         onSave={onSaveVendor}
+                        onEntitlementError={() => {
+                            setShowVendorForm(false);
+                            setEditingVendor(null);
+                            onTabChange('settings');
+                        }}
                         onClose={() => {
                             setShowVendorForm(false);
                             setEditingVendor(null);

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useMemo } from 'react';
 import { Warehouse, MapPin, TrendingUp, Package } from 'lucide-react';
@@ -155,27 +155,27 @@ export function WarehouseDistributionWidget({ businessId, currency = 'PKR', onVi
                             {t.multi_location_tracking || 'Multi-location tracking'}
                         </CardDescription>
                     </div>
-                    <div className="p-2.5 rounded-2xl bg-purple-50 border border-purple-200 shadow-inner">
-                        <Warehouse className="w-5 h-5 text-purple-600" />
+                    <div className="p-2.5 rounded-2xl bg-wine-50 border border-wine-200 shadow-inner">
+                        <Warehouse className="w-5 h-5 text-wine-600" />
                     </div>
                 </div>
             </CardHeader>
             <CardContent className="space-y-4">
                 {/* Total Value */}
-                <div className="p-3 rounded-lg bg-gradient-to-br from-purple-50 to-blue-50 border border-purple-200">
+                <div className="p-3 rounded-lg bg-gradient-to-br from-wine-50 to-blue-50 border border-wine-200">
                     <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs font-bold text-purple-900">
+                        <span className="text-xs font-bold text-wine-900">
                             {t.total_inventory_value || 'Total Inventory Value'}
                         </span>
-                        <Badge className="bg-purple-600 text-white text-xs">
+                        <Badge className="bg-wine-600 text-white text-xs">
                             {stats.warehouseCount} {t.locations || 'Locations'}
                         </Badge>
                     </div>
-                    <div className="text-2xl font-black text-purple-900">
+                    <div className="text-2xl font-black text-wine-900">
                         {formatCurrency(stats.totalValue, currency)}
                     </div>
-                    <div className="text-[10px] text-purple-700 font-medium mt-1">
-                        {stats.totalQuantity.toLocaleString()} {t.units || 'units'} • {stats.totalProducts} {t.products || 'products'}
+                    <div className="text-[10px] text-wine-700 font-medium mt-1">
+                        {stats.totalQuantity.toLocaleString()} {t.units || 'units'} â€¢ {stats.totalProducts} {t.products || 'products'}
                     </div>
                 </div>
 
@@ -194,7 +194,7 @@ export function WarehouseDistributionWidget({ businessId, currency = 'PKR', onVi
                                 <div key={warehouse.id} className="space-y-1.5">
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-2 flex-1 min-w-0">
-                                            <MapPin className="w-3 h-3 text-purple-600 shrink-0" />
+                                            <MapPin className="w-3 h-3 text-wine-600 shrink-0" />
                                             <div className="flex-1 min-w-0">
                                                 <div className="text-xs font-bold text-gray-900 truncate">
                                                     {warehouse.name}
@@ -205,17 +205,17 @@ export function WarehouseDistributionWidget({ businessId, currency = 'PKR', onVi
                                                     )}
                                                 </div>
                                                 <div className="text-[10px] text-gray-500">
-                                                    {warehouse.productCount} {t.products || 'products'} • {warehouse.totalQuantity.toLocaleString()} {t.units || 'units'}
+                                                    {warehouse.productCount} {t.products || 'products'} â€¢ {warehouse.totalQuantity.toLocaleString()} {t.units || 'units'}
                                                 </div>
                                             </div>
                                         </div>
-                                        <div className="text-xs font-bold text-purple-600 ml-2">
+                                        <div className="text-xs font-bold text-wine-600 ml-2">
                                             {percentage}%
                                         </div>
                                     </div>
                                     <Progress 
                                         value={percentage} 
-                                        className="h-1.5 bg-purple-100"
+                                        className="h-1.5 bg-wine-100"
                                     />
                                     <div className="text-[10px] font-medium text-gray-600">
                                         {formatCurrency(warehouse.totalValue, currency)}
@@ -239,7 +239,7 @@ export function WarehouseDistributionWidget({ businessId, currency = 'PKR', onVi
                 {/* View All Link */}
                 {stats.warehouseCount > 3 && (
                     <div className="text-center pt-2 border-t border-gray-100">
-                        <button className="text-xs font-bold text-purple-600 hover:text-purple-700 transition-colors">
+                        <button className="text-xs font-bold text-wine-600 hover:text-wine-700 transition-colors">
                             {t.view_all || 'View All'} ({stats.warehouseCount} {t.locations || 'locations'})
                         </button>
                     </div>
@@ -248,3 +248,5 @@ export function WarehouseDistributionWidget({ businessId, currency = 'PKR', onVi
         </Card>
     );
 }
+
+

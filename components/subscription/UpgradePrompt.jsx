@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React from 'react';
 import { Crown, Sparkles, ArrowRight, Lock } from 'lucide-react';
@@ -11,7 +11,7 @@ const PLAN_COLORS = {
     starter: 'from-blue-500 to-blue-600',
     professional: 'from-violet-500 to-violet-600',
     business: 'from-amber-500 to-amber-600',
-    enterprise: 'from-purple-500 to-purple-600',
+    enterprise: 'from-wine-500 to-wine-600',
     // Legacy aliases
     basic: 'from-gray-400 to-gray-500',
     standard: 'from-blue-500 to-blue-600',
@@ -71,3 +71,4 @@ export function UpgradePrompt({ currentPlan = 'free', featureName = '', required
         </div>
     );
 }
+

@@ -11,7 +11,7 @@ import { PakistaniPaymentSelector } from '@/components/payment/PakistaniPaymentS
 import { PakistaniTaxCalculator } from '@/components/tax/PakistaniTaxCalculator';
 import { calculatePakistaniTax, generateFBRInvoice, formatNTN, getTaxCategoryForDomain } from '@/lib/tax/pakistaniTax';
 import { getDomainKnowledge } from '@/lib/domainKnowledge';
-import { getDomainTheme, getDomainDefaults, getDomainUnits, getDomainUnits as getUnits, getDomainProductFields, getDomainInvoiceColumns } from '@/lib/utils/domainHelpers';
+import { getDomainDefaults, getDomainUnits, getDomainUnits as getUnits, getDomainProductFields, getDomainInvoiceColumns } from '@/lib/utils/domainHelpers';
 import { getDomainColors } from '@/lib/domainColors';
 import { formatCurrency } from '@/lib/utils/formatting';
 import { getTaxStrategy } from '@/lib/utils/taxStrategies';
@@ -50,7 +50,6 @@ export function EnhancedInvoiceBuilder({
   const { business, currency, regionalStandards } = useBusiness();
   const standards = regionalStandards || { taxLabel: 'Tax', taxIdLabel: 'Tax ID', currency: 'PKR', countryCode: 'PK' };
   const strategy = getTaxStrategy(standards);
-  const theme = getDomainTheme(category);
   const colors = getDomainColors(category);
   const domainKnowledge = getDomainKnowledge(category);
   const isPakistaniDomain = standards.countryCode === 'PK';
@@ -1434,7 +1433,7 @@ export function EnhancedInvoiceBuilder({
               <Button
                 disabled={isSaving}
                 onClick={handleSave}
-                className={`flex-1 md:flex-none bg-${theme.primary} hover:opacity-90 text-white font-black px-12 h-12 rounded-xl shadow-xl shadow-${theme.primary}/20 transition-all active:scale-95`}
+                className="flex-1 md:flex-none bg-wine-600 hover:opacity-90 text-white font-black px-12 h-12 rounded-xl shadow-xl shadow-wine-600/20 transition-all active:scale-95"
               >
                 {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5 mr-2" />}
                 Finalize & Post

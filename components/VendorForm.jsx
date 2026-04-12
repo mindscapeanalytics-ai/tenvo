@@ -16,8 +16,9 @@ import { formatPakistaniPhone, vendorSchema, validateForm } from '@/lib/validati
 import { getDomainVendorFields, normalizeKey } from '@/lib/utils/domainHelpers';
 import { getDomainColors } from '@/lib/domainColors';
 import toast from 'react-hot-toast';
+import { isEntitlementError, getEntitlementErrorMessage, isEntitlementErrorHandled } from '@/lib/utils/subscriptionErrors';
 
-export function VendorForm({ initialData = null, onSave, onClose, category = 'retail-shop', business = null }) {
+export function VendorForm({ initialData = null, onSave, onClose, onEntitlementError, category = 'retail-shop', business = null }) {
     const colors = getDomainColors(category);
     const [activeTab, setActiveTab] = useState('identity');
     const [isLoading, setIsLoading] = useState(false);
@@ -84,7 +85,14 @@ export function VendorForm({ initialData = null, onSave, onClose, category = 're
             onClose?.();
         } catch (error) {
             console.error('Error saving vendor:', error);
-            toast.error('Failed to save vendor');
+            if (isEntitlementError(error)) {
+                if (!isEntitlementErrorHandled(error)) {
+                    toast.error(getEntitlementErrorMessage(error, { action: 'save vendor' }));
+                }
+                onEntitlementError?.(error);
+            } else {
+                toast.error('Failed to save vendor');
+            }
         } finally {
             setIsLoading(false);
         }

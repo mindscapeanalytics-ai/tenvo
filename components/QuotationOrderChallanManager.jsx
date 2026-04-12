@@ -6,7 +6,6 @@ import { Button } from './ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { SalesDocumentForm } from './SalesDocumentForm';
 import { quotationAPI } from '@/lib/api/quotations';
-import { getDomainTheme } from '@/lib/utils/domainHelpers';
 import toast from 'react-hot-toast';
 import { QuotationsTable } from './sales/QuotationsTable';
 import { SalesOrdersTable } from './sales/SalesOrdersTable';
@@ -35,7 +34,6 @@ export function QuotationOrderChallanManager({
   const [isProcessing, setIsProcessing] = useState(false);
   const [previewData, setPreviewData] = useState(null);
   const [previewType, setPreviewType] = useState(null);
-  const theme = getDomainTheme(category);
 
   const handleConvertQuotationToOrder = async (quotationId) => {
     setIsProcessing(true);
@@ -138,19 +136,19 @@ export function QuotationOrderChallanManager({
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white/50 p-6 rounded-2xl border border-gray-100 backdrop-blur-sm shadow-sm">
         <div className="space-y-1">
-          <h2 className={`text-3xl font-black text-${theme.primary} tracking-tight italic uppercase`}>Order Lifecycle</h2>
+          <h2 className="text-3xl font-black text-wine-600 tracking-tight italic uppercase">Order Lifecycle</h2>
           <p className="text-gray-500 font-medium">Manage quotations, sales orders, and delivery challans</p>
         </div>
         <div className="flex flex-wrap gap-3">
-          <Button variant="outline" className={`border-${theme.border} text-${theme.primary} hover:bg-${theme.bg} rounded-xl font-bold transition-all active:scale-95`} onClick={() => { setActiveTab('quotations'); setShowForm('quotation'); }}>
+          <Button variant="outline" className="border-wine-100 text-wine-600 hover:bg-wine-50 rounded-xl font-bold transition-all active:scale-95" onClick={() => { setActiveTab('quotations'); setShowForm('quotation'); }}>
             <Plus className="w-4 h-4 mr-2" />
             New Quotation
           </Button>
-          <Button variant="outline" className={`border-${theme.border} text-${theme.primary} hover:bg-${theme.bg} rounded-xl font-bold transition-all active:scale-95`} onClick={() => { setActiveTab('orders'); setShowForm('sales_order'); }}>
+          <Button variant="outline" className="border-wine-100 text-wine-600 hover:bg-wine-50 rounded-xl font-bold transition-all active:scale-95" onClick={() => { setActiveTab('orders'); setShowForm('sales_order'); }}>
             <Plus className="w-4 h-4 mr-2" />
             New Order
           </Button>
-          <Button onClick={() => { setActiveTab('challans'); setShowForm('delivery_challan'); }} className={`bg-${theme.primary} hover:opacity-90 text-white rounded-xl font-black shadow-lg transition-all active:scale-95 px-6`}>
+          <Button onClick={() => { setActiveTab('challans'); setShowForm('delivery_challan'); }} className="bg-wine-600 hover:opacity-90 text-white rounded-xl font-black shadow-lg transition-all active:scale-95 px-6">
             <Plus className="w-4 h-4 mr-2" />
             New Challan
           </Button>
@@ -174,15 +172,15 @@ export function QuotationOrderChallanManager({
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="bg-gray-100/50 p-1 rounded-xl w-full md:w-auto overflow-x-auto">
-          <TabsTrigger value="quotations" className={`rounded-lg px-6 data-[state=active]:bg-white data-[state=active]:text-${theme.primary} data-[state=active]:shadow-sm font-bold uppercase text-[10px] tracking-widest`}>
+          <TabsTrigger value="quotations" className="rounded-lg px-6 data-[state=active]:bg-white data-[state=active]:text-wine-600 data-[state=active]:shadow-sm font-bold uppercase text-[10px] tracking-widest">
             <FileText className="w-3.5 h-3.5 mr-2" />
             Quotations ({quotations.length})
           </TabsTrigger>
-          <TabsTrigger value="orders" className={`rounded-lg px-6 data-[state=active]:bg-white data-[state=active]:text-${theme.primary} data-[state=active]:shadow-sm font-bold uppercase text-[10px] tracking-widest`}>
+          <TabsTrigger value="orders" className="rounded-lg px-6 data-[state=active]:bg-white data-[state=active]:text-wine-600 data-[state=active]:shadow-sm font-bold uppercase text-[10px] tracking-widest">
             <ShoppingCart className="w-3.5 h-3.5 mr-2" />
             Sales Orders ({salesOrders.length})
           </TabsTrigger>
-          <TabsTrigger value="challans" className={`rounded-lg px-6 data-[state=active]:bg-white data-[state=active]:text-${theme.primary} data-[state=active]:shadow-sm font-bold uppercase text-[10px] tracking-widest`}>
+          <TabsTrigger value="challans" className="rounded-lg px-6 data-[state=active]:bg-white data-[state=active]:text-wine-600 data-[state=active]:shadow-sm font-bold uppercase text-[10px] tracking-widest">
             <Package className="w-3.5 h-3.5 mr-2" />
             Delivery Challans ({challans.length})
           </TabsTrigger>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,7 +14,7 @@ import { productAPI, businessAPI } from '@/lib/api';
 import { getDomainKnowledge } from '@/lib/utils/domainHelpers';
 import { useBusiness } from '@/lib/context/BusinessContext';
 import { PLAN_TIERS } from '@/lib/config/plans';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { CityAutocomplete } from './CityAutocomplete';
 import {
   Database, PlusCircle, LayoutGrid, ArrowLeftRight, Loader2, Sparkles, Trash2,
@@ -27,7 +27,7 @@ import toast from 'react-hot-toast';
  * Manages Business Profile, Compliance, and System Preferences
  */
 export function SettingsManager({ category }) {
-  const { business, updateBusiness } = useBusiness();
+  const { business, updateBusiness, role, isPlatformOwner, planTier } = useBusiness();
   const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({
     businessName: business?.business_name || '',
@@ -43,7 +43,43 @@ export function SettingsManager({ category }) {
   const [teamBusy, setTeamBusy] = useState(false);
   const [planBusy, setPlanBusy] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [loadingTools, setLoadingTools] = useState(false);
+  const normalizedRole = role || 'viewer';
+  const canManageUsers = isPlatformOwner || ['owner', 'admin'].includes(normalizedRole);
+  const canManageBilling = isPlatformOwner || normalizedRole === 'owner';
+  const canManageAdvancedTools = canManageUsers;
+  const roleLabel = normalizedRole.replace(/_/g, ' ');
+  const activeTeamCount = team.filter(member => member.status === 'active').length;
+
+  const visibleSections = useMemo(() => {
+    return [
+      { value: 'profile', label: 'Business Profile', visible: true },
+      { value: 'compliance', label: 'Compliance', visible: true },
+      { value: 'financials', label: 'Financials', visible: true },
+      { value: 'billing', label: 'Billing', visible: canManageBilling },
+      { value: 'team', label: 'Team', visible: canManageUsers },
+      { value: 'notifications', label: 'Automation', visible: true },
+      { value: 'security', label: 'Security', visible: true },
+      { value: 'tools', label: 'Tools', visible: canManageAdvancedTools },
+    ].filter(section => section.visible);
+  }, [canManageBilling, canManageUsers, canManageAdvancedTools]);
+
+  const [activeTab, setActiveTab] = useState('profile');
+
+  useEffect(() => {
+    const requestedSection = searchParams.get('section');
+    const availableSections = visibleSections.map(section => section.value);
+
+    if (requestedSection && availableSections.includes(requestedSection)) {
+      setActiveTab(requestedSection);
+      return;
+    }
+
+    if (!availableSections.includes(activeTab)) {
+      setActiveTab(availableSections[0] || 'profile');
+    }
+  }, [activeTab, searchParams, visibleSections]);
 
   const fetchTeam = useCallback(async () => {
     if (!business?.id) return;
@@ -199,14 +235,16 @@ export function SettingsManager({ category }) {
             Switch Business
           </Button>
 
-          <Button
-            variant="outline"
-            onClick={() => router.push('/register')}
-            className="h-11 rounded-xl font-bold border-gray-200 hover:bg-gray-50 text-gray-700"
-          >
-            <PlusCircle className="w-4 h-4 mr-2 text-wine" />
-            Launch New Entity
-          </Button>
+          {canManageBilling && (
+            <Button
+              variant="outline"
+              onClick={() => router.push('/register')}
+              className="h-11 rounded-xl font-bold border-gray-200 hover:bg-gray-50 text-gray-700"
+            >
+              <PlusCircle className="w-4 h-4 mr-2 text-wine" />
+              Launch New Entity
+            </Button>
+          )}
 
           <Button
             onClick={handleProfileSave}
@@ -219,16 +257,45 @@ export function SettingsManager({ category }) {
         </div>
       </div>
 
-      <Tabs defaultValue="profile" className="w-full">
-        <TabsList className="grid w-full grid-cols-8 bg-gray-100/50 p-1 rounded-xl">
-          <TabsTrigger value="profile" className="rounded-lg font-bold">Business Profile</TabsTrigger>
-          <TabsTrigger value="compliance" className="rounded-lg font-bold">Compliance</TabsTrigger>
-          <TabsTrigger value="financials" className="rounded-lg font-bold">Financials</TabsTrigger>
-          <TabsTrigger value="billing" className="rounded-lg font-bold">Billing</TabsTrigger>
-          <TabsTrigger value="team" className="rounded-lg font-bold">Team</TabsTrigger>
-          <TabsTrigger value="notifications" className="rounded-lg font-bold">Automation</TabsTrigger>
-          <TabsTrigger value="security" className="rounded-lg font-bold">Security</TabsTrigger>
-          <TabsTrigger value="tools" className="rounded-lg font-bold">Tools</TabsTrigger>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card className="border-none shadow-sm bg-white">
+          <CardContent className="pt-6">
+            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Access Level</p>
+            <p className="mt-2 text-lg font-black text-gray-900 capitalize">{roleLabel}</p>
+            <p className="mt-1 text-xs text-gray-500 font-medium">
+              {canManageBilling ? 'Full ownership controls including subscription, seats, and business expansion.' : 'Administrative controls for users, access, and operational settings.'}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-none shadow-sm bg-white">
+          <CardContent className="pt-6">
+            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Current Plan</p>
+            <p className="mt-2 text-lg font-black text-gray-900">{PLAN_TIERS[planTier]?.name || 'Free'}</p>
+            <p className="mt-1 text-xs text-gray-500 font-medium">
+              {canManageBilling ? 'You can upgrade seats and modules directly from Billing.' : 'Billing changes are restricted to the business owner.'}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-none shadow-sm bg-white">
+          <CardContent className="pt-6">
+            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Active Team</p>
+            <p className="mt-2 text-lg font-black text-gray-900">{activeTeamCount}</p>
+            <p className="mt-1 text-xs text-gray-500 font-medium">
+              {canManageUsers ? 'Review team roles, seat usage, and access control from the Team section.' : 'Team membership is visible only to business admins and owners.'}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="flex h-auto w-full flex-wrap justify-start gap-2 bg-gray-100/50 p-2 rounded-2xl">
+          {visibleSections.map(section => (
+            <TabsTrigger key={section.value} value={section.value} className="rounded-xl font-bold">
+              {section.label}
+            </TabsTrigger>
+          ))}
         </TabsList>
 
         <TabsContent value="profile" className="space-y-4 pt-4">
@@ -511,6 +578,15 @@ export function SettingsManager({ category }) {
             </CardHeader>
             <CardContent className="pt-6">
               <div className="space-y-6">
+                <div className="rounded-2xl border border-wine/10 bg-wine/5 px-4 py-3">
+                  <p className="text-xs font-black uppercase tracking-widest text-wine/70">Access Control</p>
+                  <p className="mt-1 text-sm font-medium text-gray-700">
+                    {canManageBilling
+                      ? 'Owners can assign operational roles, manage active seats, and control who administers this business.'
+                      : 'Admins can invite users, change operational roles, and remove members. Owner membership and billing remain protected.'}
+                  </p>
+                </div>
+
                 <div className="space-y-3">
                   <h4 className="text-sm font-black text-gray-900 uppercase tracking-widest">Active Members</h4>
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
@@ -641,34 +717,37 @@ export function SettingsManager({ category }) {
                   );
                 })}
               </div>
+              <div className="rounded-2xl border border-indigo-100 bg-indigo-50/60 px-4 py-3 text-sm font-medium text-indigo-900">
+                Owner control: subscription changes immediately update seats, product caps, and feature access for the whole business.
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
 
         <TabsContent value="tools" className="space-y-4 pt-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card className="border-none shadow-xl border-t-4 border-t-purple-500 overflow-hidden">
-              <CardHeader className="bg-purple-50/50">
-                <CardTitle className="text-purple-900 flex items-center gap-2">
-                  <Database className="w-5 h-5 text-purple-600" />
+            <Card className="border-none shadow-xl border-t-4 border-t-wine-500 overflow-hidden">
+              <CardHeader className="bg-wine-50/60">
+                <CardTitle className="text-slate-900 flex items-center gap-2">
+                  <Database className="w-5 h-5 text-wine-600" />
                   Business Maintenance
                 </CardTitle>
                 <CardDescription>Advanced tools for quick data setup and maintenance</CardDescription>
               </CardHeader>
               <CardContent className="pt-6 space-y-6">
-                <div className="p-4 bg-purple-50/30 rounded-2xl border border-purple-100 flex items-start gap-4">
-                  <div className="p-3 bg-purple-100 rounded-xl text-purple-600">
+                <div className="p-4 bg-wine-50/40 rounded-2xl border border-wine-100 flex items-start gap-4">
+                  <div className="p-3 bg-wine-100 rounded-xl text-wine-600">
                     <Sparkles className="w-6 h-6" />
                   </div>
                   <div>
-                    <h4 className="text-sm font-black text-purple-900 uppercase tracking-tighter">Load Template Data</h4>
-                    <p className="text-xs text-purple-700 font-medium mt-1 mb-4">
+                    <h4 className="text-sm font-black text-slate-900 uppercase tracking-tighter">Load Template Data</h4>
+                    <p className="text-xs text-slate-600 font-medium mt-1 mb-4">
                       Instantly populate your inventory with domain-specific suggested products, categories, and tax settings for {category.replace(/-/g, ' ')}.
                     </p>
                     <Button
                       onClick={handleLoadTemplateData}
                       disabled={loadingTools}
-                      className="bg-purple-600 hover:bg-purple-700 text-white font-bold h-11 px-6 rounded-xl shadow-lg shadow-purple-200"
+                      className="bg-wine-600 hover:bg-wine-700 text-white font-bold h-11 px-6 rounded-xl shadow-lg shadow-wine-200"
                     >
                       {loadingTools ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <HardDriveDownload className="w-4 h-4 mr-2" />}
                       Load Demo Data

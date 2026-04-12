@@ -13,7 +13,7 @@ import { useBusiness } from '@/lib/context/BusinessContext';
 import { usePermissions, FeatureGate } from '@/lib/hooks/usePermissions';
 import { getGLAccountsAction, getTrialBalanceAction } from '@/lib/actions/basic/accounting';
 import { getExpensesAction, getExpenseSummaryAction } from '@/lib/actions/basic/expense';
-import { getCreditNotesAction } from '@/lib/actions/basic/creditNote';
+import { getCreditNotesAction, createCreditNoteAction } from '@/lib/actions/basic/creditNote';
 import { getFiscalPeriodsAction } from '@/lib/actions/basic/fiscal';
 import { getExchangeRatesAction } from '@/lib/actions/basic/exchangeRate';
 import { ExpenseManager } from '@/components/finance/ExpenseManager';
@@ -21,6 +21,7 @@ import { PaymentReceiptForm } from '@/components/PaymentReceiptForm';
 import { JournalEntryForm } from '@/components/JournalEntryForm';
 import { getCustomersAction } from '@/lib/actions/basic/customer';
 import { getVendorsAction } from '@/lib/actions/basic/vendor';
+import { getInvoicesAction } from '@/lib/actions/basic/invoice';
 
 // ─── Sub-Tab Definitions ─────────────────────────────────────────────────────
 
@@ -140,7 +141,15 @@ function ChartOfAccountsPanel({ businessId, accounts, currency }) {
 
 // ─── Credit Notes Panel ──────────────────────────────────────────────────────
 
-function CreditNotesPanel({ businessId, creditNotes, currency }) {
+function CreditNotesPanel({ businessId, creditNotes, currency, onRefresh }) {
+    const [showForm, setShowForm] = useState(false);
+    const [invoices, setInvoices] = useState([]);
+    const [selectedInvoice, setSelectedInvoice] = useState(null);
+    const [reason, setReason] = useState('');
+    const [items, setItems] = useState([]);
+    const [submitting, setSubmitting] = useState(false);
+    const [loadingInvoices, setLoadingInvoices] = useState(false);
+
     const STATUS_STYLES = {
         draft: 'bg-gray-100 text-gray-600',
         issued: 'bg-blue-100 text-blue-700',
@@ -148,12 +157,190 @@ function CreditNotesPanel({ businessId, creditNotes, currency }) {
         cancelled: 'bg-red-100 text-red-600',
     };
 
+    const loadInvoices = useCallback(async () => {
+        if (!businessId) return;
+        setLoadingInvoices(true);
+        try {
+            const res = await getInvoicesAction(businessId);
+            if (res.success) {
+                // Only show paid/partially_paid invoices eligible for credit notes
+                setInvoices((res.invoices || []).filter(inv =>
+                    ['paid', 'partially_paid', 'sent', 'overdue'].includes(inv.status)
+                ));
+            }
+        } catch { /* silent */ } finally { setLoadingInvoices(false); }
+    }, [businessId]);
+
+    const handleSelectInvoice = (invoice) => {
+        setSelectedInvoice(invoice);
+        // Pre-fill items from invoice
+        const invItems = invoice.items || [];
+        setItems(invItems.map(it => ({
+            productId: it.product_id || null,
+            description: it.description || it.product_name || 'Item',
+            quantity: Number(it.quantity || 1),
+            unitPrice: Number(it.unit_price || it.price || 0),
+            amount: Number(it.amount || it.total || 0),
+            taxAmount: Number(it.tax_amount || 0),
+            include: true,
+        })));
+    };
+
+    const handleSubmit = async () => {
+        if (!selectedInvoice || items.filter(i => i.include).length === 0) return;
+        setSubmitting(true);
+        try {
+            const includedItems = items.filter(i => i.include);
+            const res = await createCreditNoteAction({
+                businessId,
+                invoiceId: selectedInvoice.id,
+                reason,
+                date: new Date().toISOString(),
+                items: includedItems.map(i => ({
+                    productId: i.productId,
+                    description: i.description,
+                    quantity: i.quantity,
+                    unitPrice: i.unitPrice,
+                    amount: i.amount,
+                    taxAmount: i.taxAmount,
+                })),
+            });
+            if (res.success) {
+                setShowForm(false);
+                setSelectedInvoice(null);
+                setReason('');
+                setItems([]);
+                onRefresh?.();
+            } else {
+                alert(res.error || 'Failed to create credit note');
+            }
+        } catch (err) {
+            alert(err.message || 'Error creating credit note');
+        } finally { setSubmitting(false); }
+    };
+
+    const totalCredit = items.filter(i => i.include).reduce((s, i) => s + i.amount + i.taxAmount, 0);
+
     return (
         <div className="space-y-3">
             <div className="flex items-center justify-between">
                 <h3 className="text-sm font-bold text-gray-800">Credit Notes</h3>
-                <span className="text-xs text-gray-400 font-semibold">{creditNotes.length} records</span>
+                <div className="flex items-center gap-2">
+                    <span className="text-xs text-gray-400 font-semibold">{creditNotes.length} records</span>
+                    <Button
+                        onClick={() => { setShowForm(true); loadInvoices(); }}
+                        className="bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-xs px-4 h-8 shadow-lg shadow-red-500/20"
+                    >
+                        <RefreshCcw className="w-3 h-3 mr-1.5" /> New Credit Note
+                    </Button>
+                </div>
             </div>
+
+            {/* Creation Form */}
+            {showForm && (
+                <div className="bg-white rounded-xl border border-red-100 p-4 space-y-4">
+                    <div className="flex items-center justify-between">
+                        <h4 className="text-sm font-black text-gray-900">Create Credit Note</h4>
+                        <button onClick={() => setShowForm(false)} className="text-xs text-gray-400 hover:text-gray-600">Cancel</button>
+                    </div>
+
+                    {/* Invoice Selection */}
+                    {!selectedInvoice ? (
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold text-gray-600">Select Invoice to Credit</label>
+                            {loadingInvoices ? (
+                                <div className="flex items-center gap-2 py-4 text-gray-400">
+                                    <Loader2 className="w-4 h-4 animate-spin" /> Loading invoices...
+                                </div>
+                            ) : invoices.length === 0 ? (
+                                <p className="text-xs text-gray-400 py-4">No eligible invoices found</p>
+                            ) : (
+                                <div className="max-h-48 overflow-y-auto divide-y divide-gray-50 border border-gray-100 rounded-lg">
+                                    {invoices.map(inv => (
+                                        <button
+                                            key={inv.id}
+                                            onClick={() => handleSelectInvoice(inv)}
+                                            className="w-full flex items-center gap-3 px-3 py-2 hover:bg-gray-50 text-left"
+                                        >
+                                            <div className="flex-1 min-w-0">
+                                                <span className="text-xs font-bold text-gray-800">{inv.invoice_number || inv.number}</span>
+                                                <span className="text-xs text-gray-400 ml-2">{inv.customer_name || 'Walk-in'}</span>
+                                            </div>
+                                            <span className="text-xs font-bold text-gray-600">{currency} {Number(inv.grand_total || inv.total_amount || 0).toLocaleString()}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        <div className="space-y-3">
+                            {/* Selected invoice info */}
+                            <div className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2">
+                                <FileCheck className="w-4 h-4 text-gray-400" />
+                                <span className="text-xs font-bold text-gray-700">{selectedInvoice.invoice_number || selectedInvoice.number}</span>
+                                <span className="text-xs text-gray-400">{selectedInvoice.customer_name}</span>
+                                <span className="flex-1" />
+                                <span className="text-xs font-bold">{currency} {Number(selectedInvoice.grand_total || selectedInvoice.total_amount || 0).toLocaleString()}</span>
+                                <button onClick={() => { setSelectedInvoice(null); setItems([]); }} className="text-xs text-blue-600 hover:underline ml-2">Change</button>
+                            </div>
+
+                            {/* Reason */}
+                            <div>
+                                <label className="text-xs font-bold text-gray-600">Reason</label>
+                                <input
+                                    type="text"
+                                    value={reason}
+                                    onChange={e => setReason(e.target.value)}
+                                    placeholder="e.g., Goods returned, pricing error, defective items"
+                                    className="w-full mt-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-500/20 focus:border-red-400"
+                                />
+                            </div>
+
+                            {/* Items to credit */}
+                            <div>
+                                <label className="text-xs font-bold text-gray-600 mb-1 block">Items to Credit</label>
+                                <div className="divide-y divide-gray-50 border border-gray-100 rounded-lg">
+                                    {items.map((item, idx) => (
+                                        <div key={idx} className="flex items-center gap-3 px-3 py-2">
+                                            <input
+                                                type="checkbox"
+                                                checked={item.include}
+                                                onChange={e => {
+                                                    const newItems = [...items];
+                                                    newItems[idx] = { ...newItems[idx], include: e.target.checked };
+                                                    setItems(newItems);
+                                                }}
+                                                className="rounded border-gray-300"
+                                            />
+                                            <div className="flex-1 min-w-0">
+                                                <span className="text-xs font-semibold text-gray-700">{item.description}</span>
+                                                <span className="text-xs text-gray-400 ml-2">x{item.quantity}</span>
+                                            </div>
+                                            <span className="text-xs font-bold text-gray-600">{currency} {item.amount.toLocaleString()}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                                <div className="flex justify-end mt-2">
+                                    <span className="text-sm font-black text-red-600">Total: {currency} {totalCredit.toLocaleString()}</span>
+                                </div>
+                            </div>
+
+                            {/* Submit */}
+                            <div className="flex justify-end gap-2">
+                                <Button onClick={() => setShowForm(false)} variant="outline" className="rounded-xl text-xs h-9">Cancel</Button>
+                                <Button
+                                    onClick={handleSubmit}
+                                    disabled={submitting || totalCredit === 0}
+                                    className="bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-xs h-9 px-6 shadow-lg shadow-red-500/20"
+                                >
+                                    {submitting ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <RefreshCcw className="w-3 h-3 mr-1.5" />}
+                                    Issue Credit Note ({currency} {totalCredit.toLocaleString()})
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
 
             {creditNotes.length === 0 ? (
                 <div className="text-center py-12 text-gray-400">
@@ -466,7 +653,7 @@ export default function FinanceHub({ businessId, initialTab }) {
                     </div>
                 );
             case 'credit-notes':
-                return <CreditNotesPanel businessId={effectiveBusinessId} creditNotes={creditNotes} currency={effectiveCurrency} />;
+                return <CreditNotesPanel businessId={effectiveBusinessId} creditNotes={creditNotes} currency={effectiveCurrency} onRefresh={loadData} />;
             case 'fiscal':
                 return <FiscalPeriodsPanel businessId={effectiveBusinessId} periods={periods} currency={effectiveCurrency} />;
             case 'exchange':

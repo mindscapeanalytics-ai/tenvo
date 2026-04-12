@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useMemo, useEffect } from 'react';
 import {
@@ -29,7 +29,9 @@ import {
   Table2,
   ChevronDown,
   AlertCircle,
-  Repeat
+  Repeat,
+  Tag,
+  DollarSign,
 } from 'lucide-react';
 import { DataTable } from './DataTable';
 import { getDomainColors } from '@/lib/domainColors';
@@ -70,9 +72,8 @@ import { SerialScanner } from './inventory/SerialScanner';
 import { PriceListManager } from './inventory/PriceListManager';
 import { DiscountSchemeManager } from './inventory/DiscountSchemeManager';
 import { StockReservation } from './inventory/StockReservation';
-import { StockAdjustment } from './inventory/StockAdjustment';
+import { StockAdjustmentManager } from './inventory/StockAdjustmentManager';
 import { AutoReorderManager } from './inventory/AutoReorderManager';
-import { StockAdjustmentForm } from './StockAdjustmentForm';
 import { StockTransferForm } from './StockTransferForm';
 import { exportProducts } from '@/lib/utils/export';
 
@@ -159,7 +160,7 @@ export function InventoryManager({
 }) {
   const { regionalStandards, currency } = useBusiness();
   const standards = regionalStandards || {
-    currencySymbol: '₨',
+    currencySymbol: 'â‚¨',
     currency: 'PKR',
     taxLabel: 'Sales Tax',
     taxIdLabel: 'NTN',
@@ -286,7 +287,7 @@ export function InventoryManager({
   const [searchTerm, setSearchTerm] = useState('');
   const [showQuickAddModal, setShowQuickAddModal] = useState(false);
   const [showExcelMode, setShowExcelMode] = useState(false);
-  const [showStockAdjustForm, setShowStockAdjustForm] = useState(false);
+  const [showStockAdjustment, setShowStockAdjustment] = useState(false);
   const [showStockTransferForm, setShowStockTransferForm] = useState(false);
 
   // Bulk Save Handler for Excel Mode
@@ -316,18 +317,24 @@ export function InventoryManager({
 
       toast.loading(`Saving ${changedItems.length} changes...`, { id: 'excel-save' });
 
-      // Process sequentially to avoid race conditions or use Promise.all if actions are atomic
+      // Batch process with Promise.allSettled for parallel, non-blocking saves
+      const savePromises = changedItems.map(item => {
+        const isNew = item._tempId && !item.id;
+        const action = isNew
+          ? createProductAction({ ...item, business_id: businessId })
+          : updateProductAction(item.id, businessId, item);
+        return action.then(res => ({ res, item, isNew }));
+      });
+
+      const settled = await Promise.allSettled(savePromises);
+
       const successfulTempIds = new Set();
       const activeUpdates = [];
       const newRealItems = [];
 
-      for (const item of changedItems) {
-        try {
-          const isNew = item._tempId && !item.id;
-          const res = isNew
-            ? await createProductAction({ ...item, business_id: businessId })
-            : await updateProductAction(item.id, businessId, item);
-
+      for (const result of settled) {
+        if (result.status === 'fulfilled') {
+          const { res, item, isNew } = result.value;
           if (res.success) {
             if (isNew) {
               results.created++;
@@ -342,7 +349,7 @@ export function InventoryManager({
             if (res.warnings && res.warnings.length > 0) {
               res.warnings.forEach(warning => {
                 toast(warning, {
-                  icon: '💡',
+                  icon: '\u{1F4A1}',
                   duration: 4000,
                   style: {
                     background: '#FEF3C7',
@@ -356,9 +363,9 @@ export function InventoryManager({
             results.failed++;
             console.error(`Failed to save item ${item.name}:`, res.error);
           }
-        } catch (err) {
+        } else {
           results.failed++;
-          console.error(`Error saving item ${item.name}:`, err);
+          console.error(`Error saving item:`, result.reason);
         }
       }
 
@@ -526,17 +533,21 @@ export function InventoryManager({
 
   // Keyboard Shortcuts for Tab Switching
   useEffect(() => {
+    const tabSequence = [
+      'products',
+      isMultiLocationEnabled ? 'locations' : null,
+      isManufacturingEnabled ? 'manufacturing' : null,
+      'orders',
+      'reports',
+      isVariantEnabled ? 'variants' : null,
+      'pricing',
+    ].filter(Boolean);
+
     const handleGlobalShortcuts = (e) => {
-      // ALT + 1 through 5 for Main Tabs
-      if (e.altKey && e.key >= '1' && e.key <= '5') {
-        const tabMap = {
-          '1': 'products',
-          '2': 'locations',
-          '3': 'manufacturing',
-          '4': 'orders',
-          '5': 'reports'
-        };
-        const target = tabMap[e.key];
+      // ALT + 1..7 maps to visible tabs in current business domain
+      if (e.altKey && e.key >= '1' && e.key <= '7') {
+        const index = Number(e.key) - 1;
+        const target = tabSequence[index];
         if (target) {
           e.preventDefault();
           setActiveTab(target);
@@ -554,13 +565,13 @@ export function InventoryManager({
 
     window.addEventListener('keydown', handleGlobalShortcuts);
     return () => window.removeEventListener('keydown', handleGlobalShortcuts);
-  }, []);
+  }, [isMultiLocationEnabled, isManufacturingEnabled, isVariantEnabled]);
 
   // Handle global events from Header Page Controls
   useEffect(() => {
     const handleToggleFilters = () => {
       // Focus the advanced search or toggle its visibility if we add a toggle state later
-      toast.success("Filters focused", { icon: '🔍' });
+      toast.success("Filters focused", { icon: 'ðŸ”' });
       // Heuristic: Scroll to search or just show toast for now
     };
 
@@ -594,28 +605,6 @@ export function InventoryManager({
     };
   }, [productsToDisplay]);
 
-  const calculateLowStock = () => {
-    return products.filter(p => p.stock <= (p.minStock || 0));
-  };
-
-  // ABC Analysis
-  const performABCAnalysis = () => {
-    const sorted = [...products].sort((a, b) => (b.price * b.stock) - (a.price * a.stock));
-    const totalValue = sorted.reduce((sum, p) => sum + (p.price * p.stock), 0);
-    let cumulative = 0;
-
-    return sorted.map(p => {
-      const value = p.price * p.stock;
-      cumulative += value;
-      const percentage = (cumulative / totalValue) * 100;
-      let category = 'C';
-      if (percentage <= 80) category = 'A';
-      else if (percentage <= 95) category = 'B';
-
-      return { ...p, category, value, percentage };
-    });
-  };
-
   // Demand forecasting (simple moving average)
   const forecastDemand = (product) => {
     // Mock: In real app, this would use historical sales data
@@ -625,46 +614,61 @@ export function InventoryManager({
     return Math.ceil(safetyStock);
   };
 
-  // Intelligence: Real-time Stock Turnover Calculation
-  const calculateStockTurnover = () => {
-    if (!products.length || !invoices.length) return 0;
+  const lowStockItems = useMemo(() => {
+    return products.filter((p) => {
+      const stock = Number(p.stock || 0);
+      const minStock = Number(p.min_stock ?? p.minStock ?? 0);
+      return stock <= minStock;
+    });
+  }, [products]);
 
-    // 1. Calculate Total COGS (Cost of Goods Sold) from Invoices (approximate via sales)
-    // Or simplified: Total Qty Sold / Total Current Stock
-    const totalStock = products.reduce((sum, p) => sum + (p.stock || 0), 0);
-    if (totalStock === 0) return 0;
+  const abcAnalysis = useMemo(() => {
+    const sorted = [...products].sort((a, b) => ((Number(b.price || 0) * Number(b.stock || 0)) - (Number(a.price || 0) * Number(a.stock || 0))));
+    const totalValue = sorted.reduce((sum, p) => sum + (Number(p.price || 0) * Number(p.stock || 0)), 0);
+    let cumulative = 0;
+
+    return sorted.map((p) => {
+      const value = Number(p.price || 0) * Number(p.stock || 0);
+      cumulative += value;
+      const percentage = totalValue > 0 ? (cumulative / totalValue) * 100 : 0;
+      let category = 'C';
+      if (percentage <= 80) category = 'A';
+      else if (percentage <= 95) category = 'B';
+
+      return { ...p, category, value, percentage };
+    });
+  }, [products]);
+
+  const turnoverRate = useMemo(() => {
+    if (!products.length || !invoices.length) return '0.0';
+
+    const totalStock = products.reduce((sum, p) => sum + Number(p.stock || 0), 0);
+    if (totalStock === 0) return '0.0';
 
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
     const recentQtySold = invoices
-      .filter(inv => new Date(inv.date) >= thirtyDaysAgo)
+      .filter((inv) => new Date(inv.date) >= thirtyDaysAgo)
       .reduce((sum, inv) => {
         return sum + (inv.items?.reduce((isum, item) => isum + (Number(item.quantity) || 0), 0) || 0);
       }, 0);
 
-    // Turnover Ratio = Sold / Stock
     return (recentQtySold / totalStock).toFixed(1);
-  };
+  }, [products, invoices]);
 
-  // Intelligence: Expiring Batches Calculation
-  const calculateExpiringRisk = () => {
+  const expiringCount = useMemo(() => {
     if (!isExpiryEnabled) return 0;
+
     const thirtyDaysFromNow = new Date();
     thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
 
-    // Check product expiry fields or batch expiry
-    return products.filter(p => {
-      // Direct product expiry
+    return products.filter((p) => {
       if (p.expiry_date && new Date(p.expiry_date) <= thirtyDaysFromNow) return true;
-      // Batch expiry
-      if (p.batches?.some(b => new Date(b.expiry_date) <= thirtyDaysFromNow)) return true;
+      if (p.batches?.some((b) => new Date(b.expiry_date) <= thirtyDaysFromNow)) return true;
       return false;
     }).length;
-  };
-
-  const turnoverRate = calculateStockTurnover();
-  const expiringCount = calculateExpiringRisk();
+  }, [products, isExpiryEnabled]);
 
   const getDomainBatchLabel = (cat) => {
     switch (cat) {
@@ -949,8 +953,6 @@ export function InventoryManager({
 
 
 
-  const abcAnalysis = performABCAnalysis();
-
   const topCategoryPerformance = useMemo(() => {
     const byCategory = products.reduce((acc, product) => {
       const categoryName = product.category || 'Uncategorized';
@@ -1027,6 +1029,17 @@ export function InventoryManager({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {/* Barcode Scanner - Prominent Access */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowBarcodeScanner(true)}
+            className="h-9 rounded-lg px-3 font-black text-[10px] uppercase tracking-wider border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-700 transition-colors"
+          >
+            <ScanBarcode className="w-4 h-4 mr-2 text-blue-500" />
+            Scan
+          </Button>
+
           {/* Secondary Actions Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -1037,18 +1050,14 @@ export function InventoryManager({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-[200px] p-2 rounded-xl shadow-2xl border-gray-100">
-              <DropdownMenuLabel className="text-[9px] font-black text-gray-400 uppercase tracking-widest p-2">Data & Utility</DropdownMenuLabel>
-              <DropdownMenuItem onClick={() => setShowBarcodeScanner(true)} className="rounded-lg py-2.5">
-                <ScanBarcode className="w-4 h-4 mr-3 text-blue-500" />
-                <span className="font-bold text-[10px] uppercase tracking-tight">Scanner Engine</span>
-              </DropdownMenuItem>
+              <DropdownMenuLabel className="text-[9px] font-black text-gray-400 uppercase tracking-widest p-2">Utility</DropdownMenuLabel>
               <DropdownMenuItem onClick={() => setShowShortcutsHelp(true)} className="rounded-lg py-2.5">
-                <Keyboard className="w-4 h-4 mr-3 text-purple-500" />
+                <Keyboard className="w-4 h-4 mr-3 text-wine-500" />
                 <span className="font-bold text-[10px] uppercase tracking-tight">Key Command Help</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator className="my-1" />
               <DropdownMenuLabel className="text-[9px] font-black text-gray-400 uppercase tracking-widest p-2">Stock Operations</DropdownMenuLabel>
-              <DropdownMenuItem onClick={() => setShowStockAdjustForm(true)} className="rounded-lg py-2.5">
+              <DropdownMenuItem onClick={() => setShowStockAdjustment(true)} className="rounded-lg py-2.5">
                 <AlertTriangle className="w-4 h-4 mr-3 text-amber-500" />
                 <span className="font-bold text-[10px] uppercase tracking-tight">Adjust Stock</span>
               </DropdownMenuItem>
@@ -1156,7 +1165,7 @@ export function InventoryManager({
             </TabsTrigger>
           )}
           <TabsTrigger value="pricing" className="rounded-lg font-semibold text-xs transition-all data-[state=active]:shadow-sm data-[state=active]:bg-white">
-            <Settings className="w-4 h-4 mr-2" />
+            <Tag className="w-4 h-4 mr-2" />
             Pricing
           </TabsTrigger>
         </TabsList>
@@ -1192,7 +1201,7 @@ export function InventoryManager({
                 </div>
                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Stock Alerts</p>
                 <div className="flex items-baseline gap-2 mt-1">
-                  <p className="text-3xl font-black text-red-600 tracking-tighter">{calculateLowStock().length}</p>
+                  <p className="text-3xl font-black text-red-600 tracking-tighter">{lowStockItems.length}</p>
                   <span className="text-[10px] font-bold text-red-500 bg-red-50 px-2 py-0.5 rounded-full italic">Replenish Now</span>
                 </div>
               </div>
@@ -1220,15 +1229,15 @@ export function InventoryManager({
                 <BarChart3 className="w-24 h-24" />
               </div>
               <div className="flex flex-col relative z-10">
-                <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                  <BarChart3 className="w-5 h-5 text-purple-600" />
+                <div className="w-10 h-10 rounded-xl bg-wine-50 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                  <BarChart3 className="w-5 h-5 text-wine-600" />
                 </div>
                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Efficiency Class</p>
                 <div className="flex items-baseline gap-2 mt-1">
                   <p className="text-3xl font-black text-gray-900 tracking-tighter uppercase italic">
                     Class {abcAnalysis.length > 0 ? "A+" : "-"}
                   </p>
-                  <span className="text-[10px] font-bold text-purple-500 bg-purple-50 px-2 py-0.5 rounded-full italic">Optimized</span>
+                  <span className="text-[10px] font-bold text-wine-500 bg-wine-50 px-2 py-0.5 rounded-full italic">Optimized</span>
                 </div>
               </div>
             </div>
@@ -1282,7 +1291,7 @@ export function InventoryManager({
                   onDeleteRow={(product) => setProductToDelete(product)}
                   onAdvancedSettings={(product) => { setSelectedProduct(product); setShowAdvancedFeatures(true); }}
                   onCellEdit={async (product, field, value) => {
-                    // ✅ ENHANCED: Preserve batches, add error handling, optimistic updates
+                    // âœ… ENHANCED: Preserve batches, add error handling, optimistic updates
                     let processedValue = value;
                     const numericFields = [
                       'stock', 'price', 'cost_price', 'costPrice',
@@ -1319,7 +1328,7 @@ export function InventoryManager({
                       }
                     }
 
-                    // ✅ CRITICAL: Ensure batches/serials are preserved
+                    // âœ… CRITICAL: Ensure batches/serials are preserved
                     const originalProduct = products.find(p => p.id === product.id);
                     if (!updatedProduct.batches && originalProduct?.batches) {
                       updatedProduct.batches = originalProduct.batches;
@@ -1328,7 +1337,7 @@ export function InventoryManager({
                       updatedProduct.serial_numbers = originalProduct?.serial_numbers || originalProduct?.serialNumbers || [];
                     }
 
-                    // ✅ Optimistic Update with Rollback
+                    // âœ… Optimistic Update with Rollback
                     const oldProducts = [...products];
                     setProducts(prev => prev.map(p => p.id === product.id ? updatedProduct : p));
 
@@ -1343,7 +1352,7 @@ export function InventoryManager({
                       }
                       toast.success(`Updated ${field}`, { id: `save-${field}`, position: 'bottom-right', duration: 2000 });
                     } catch (error) {
-                      // ❌ ROLLBACK on failure
+                      // âŒ ROLLBACK on failure
                       setProducts(oldProducts);
                       toast.error(`Failed to update ${field}: ${error.message || 'Unknown error'}`, {
                         id: `error-${field}`,
@@ -1449,22 +1458,79 @@ export function InventoryManager({
         {isVariantEnabled && (
           <TabsContent value="variants" className="space-y-6">
             {selectedProduct ? (
-              <VariantManager
-                value={selectedProduct.variants || []}
-                onChange={(variants) => {
-                  onUpdate?.({ ...selectedProduct, variants });
-                  setSelectedProduct({ ...selectedProduct, variants });
-                }}
-                product={selectedProduct}
-                category={category}
-              />
+              <div className="space-y-4">
+                {/* Active product breadcrumb + switcher */}
+                <div className="flex items-center justify-between gap-3 bg-blue-50 border border-blue-100 rounded-xl px-4 py-3">
+                  <div className="flex items-center gap-3">
+                    <Package className="w-4 h-4 text-blue-500 shrink-0" />
+                    <div>
+                      <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Managing Variants For</p>
+                      <p className="text-sm font-bold text-blue-900">{selectedProduct.name}</p>
+                    </div>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSelectedProduct(null)}
+                    className="text-xs border-blue-200 text-blue-700 hover:bg-blue-100"
+                  >
+                    Switch Product
+                  </Button>
+                </div>
+                <VariantManager
+                  value={selectedProduct.variants || []}
+                  onChange={(variants) => {
+                    onUpdate?.({ ...selectedProduct, variants });
+                    setSelectedProduct({ ...selectedProduct, variants });
+                  }}
+                  product={selectedProduct}
+                  category={category}
+                />
+              </div>
             ) : (
-              <Card>
-                <CardContent className="py-12 text-center">
-                  <Layers className="w-12 h-12 mx-auto mb-2 text-gray-400" />
-                  <p className="text-gray-600">Select a product from the Products tab to manage variants</p>
-                </CardContent>
-              </Card>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-black text-gray-900">Select a Product</h3>
+                    <p className="text-xs text-gray-500 mt-0.5">Choose a product below to manage its size/color variants</p>
+                  </div>
+                  <Badge variant="outline" className="bg-gray-50 text-gray-500 font-mono text-xs">
+                    {products.length} products
+                  </Badge>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {products.map((p) => (
+                    <button
+                      key={p.id}
+                      onClick={() => setSelectedProduct(p)}
+                      className="text-left p-4 rounded-xl border border-gray-200 hover:border-blue-300 hover:bg-blue-50/50 transition-all group"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="font-bold text-sm text-gray-900 truncate group-hover:text-blue-700">{p.name}</p>
+                          <p className="text-[11px] text-gray-400 font-mono mt-0.5">{p.sku || '—'}</p>
+                        </div>
+                        <Badge variant="outline" className="text-[10px] shrink-0 bg-white">
+                          {(p.variants || []).length} vars
+                        </Badge>
+                      </div>
+                      {p.category && (
+                        <span className="mt-2 inline-block text-[10px] font-semibold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+                          {p.category}
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+                {products.length === 0 && (
+                  <Card>
+                    <CardContent className="py-12 text-center">
+                      <Layers className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+                      <p className="text-gray-400 text-sm">No products found. Add products first.</p>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
             )}
           </TabsContent>
         )}
@@ -1486,7 +1552,7 @@ export function InventoryManager({
                     toast.success('Price lists updated');
                   }}
                   category={category}
-                  currency="PKR"
+                  currency={standards.currency}
                 />
               </CardContent>
             </Card>
@@ -1505,7 +1571,7 @@ export function InventoryManager({
                     toast.success('Discount schemes updated');
                   }}
                   category={category}
-                  currency="PKR"
+                  currency={standards.currency}
                 />
               </CardContent>
             </Card>
@@ -1548,7 +1614,7 @@ export function InventoryManager({
           </TabsContent>
         )}
 
-        {/* Orders Tab */}
+        {/* Orders Tab — Quotations / Sales Orders / Challans + Stock Reservations */}
         <TabsContent value="orders" className="space-y-6">
           <QuotationOrderChallanManager
             quotations={quotations}
@@ -1562,45 +1628,14 @@ export function InventoryManager({
             onIssueInvoice={onIssueInvoice}
           />
 
-          {/* Additional Order Management Features */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
-            <StockReservation
-              reservations={[]}
-              products={products}
-              customers={customers}
-              businessId={businessId}
-              currency="PKR"
-            />
-            <StockAdjustment
-              adjustments={[]}
-              products={products}
-              warehouses={locations}
-              businessId={businessId}
-              onAdjust={(data) => {
-                refreshData?.();
-                toast.success('Stock adjusted successfully');
-              }}
-              currency="PKR"
-            />
-          </div>
-
-          <Card className="rounded-[32px] border-gray-100 shadow-sm overflow-hidden group hover:shadow-xl transition-all duration-500 mt-8">
-            <CardHeader className="bg-slate-50/50 pb-6 border-b border-gray-50">
-              <CardTitle className="text-xl font-black text-gray-900 tracking-tight italic">Auto-Reorder Engine</CardTitle>
-              <CardDescription className="text-xs font-bold uppercase tracking-widest text-gray-500 opacity-70">Algorithmic replenishment manager</CardDescription>
-            </CardHeader>
-            <CardContent className="p-0">
-              <AutoReorderManager
-                products={products}
-                vendors={vendors}
-                onGeneratePO={(poData) => {
-                  const product = products.find(p => p.id === poData.productId);
-                  toast.success(`Purchase order generated for ${product?.name || 'product'}`);
-                }}
-                currency="PKR"
-              />
-            </CardContent>
-          </Card>
+          {/* Stock Reservations */}
+          <StockReservation
+            reservations={[]}
+            products={products}
+            customers={customers}
+            businessId={businessId}
+            currency={standards.currency}
+          />
         </TabsContent>
 
         {/* Reports Tab */}
@@ -1650,7 +1685,7 @@ export function InventoryManager({
                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Safety & Risk</p>
                 <div className="flex items-baseline gap-2 mt-1">
                   <p className="text-4xl font-black text-amber-600 tracking-tighter">
-                    {isExpiryEnabled ? expiringCount : calculateLowStock().length}
+                    {isExpiryEnabled ? expiringCount : lowStockItems.length}
                   </p>
                   <span className="text-[10px] font-bold text-amber-500 bg-amber-50 px-2.5 py-1 rounded-full italic">
                     {isExpiryEnabled ? 'Expiring' : 'Low Stock'}
@@ -1664,13 +1699,13 @@ export function InventoryManager({
                 <Repeat className="w-24 h-24" />
               </div>
               <div className="flex flex-col relative z-10">
-                <div className="w-12 h-12 rounded-2xl bg-purple-50 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-sm shadow-purple-100">
-                  <Repeat className="w-6 h-6 text-purple-600" />
+                <div className="w-12 h-12 rounded-2xl bg-wine-50 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-sm shadow-wine-100">
+                  <Repeat className="w-6 h-6 text-wine-600" />
                 </div>
                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Efficiency Velocity</p>
                 <div className="flex items-baseline gap-2 mt-1">
                   <p className="text-4xl font-black text-gray-900 tracking-tighter italic">{turnoverRate}x</p>
-                  <span className="text-[10px] font-bold text-purple-500 bg-purple-50 px-2.5 py-1 rounded-full italic">MoM Yield</span>
+                  <span className="text-[10px] font-bold text-wine-500 bg-wine-50 px-2.5 py-1 rounded-full italic">MoM Yield</span>
                 </div>
               </div>
             </div>
@@ -1684,22 +1719,36 @@ export function InventoryManager({
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {[
-                    { label: '0-30 Days', val: 65, color: 'bg-green-500' },
-                    { label: '31-60 Days', val: 20, color: 'bg-blue-500' },
-                    { label: '61-90 Days', val: 10, color: 'bg-amber-500' },
-                    { label: '90+ Days', val: 5, color: 'bg-red-500' },
-                  ].map(age => (
-                    <div key={age.label} className="space-y-1">
-                      <div className="flex justify-between text-xs font-bold">
-                        <span className="text-gray-500">{age.label}</span>
-                        <span>{age.val}%</span>
-                      </div>
-                      <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
-                        <div className={`h-full ${age.color}`} style={{ width: `${age.val}%` }} />
-                      </div>
-                    </div>
-                  ))}
+                  {(() => {
+                    const now = new Date();
+                    const total = products.length || 1;
+                    const buckets = [
+                      { label: '0-30 Days', max: 30, color: 'bg-green-500', count: 0 },
+                      { label: '31-60 Days', max: 60, color: 'bg-blue-500', count: 0 },
+                      { label: '61-90 Days', max: 90, color: 'bg-amber-500', count: 0 },
+                      { label: '90+ Days', max: Infinity, color: 'bg-red-500', count: 0 },
+                    ];
+                    products.forEach(p => {
+                      const created = p.created_at || p.createdAt;
+                      const days = created ? Math.floor((now - new Date(created)) / (1000 * 60 * 60 * 24)) : 999;
+                      const bucket = buckets.find(b => days <= b.max) || buckets[buckets.length - 1];
+                      bucket.count++;
+                    });
+                    return buckets.map(b => {
+                      const pct = Math.round((b.count / total) * 100);
+                      return (
+                        <div key={b.label} className="space-y-1">
+                          <div className="flex justify-between text-xs font-bold">
+                            <span className="text-gray-500">{b.label}</span>
+                            <span>{pct}% ({b.count})</span>
+                          </div>
+                          <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                            <div className={`h-full ${b.color}`} style={{ width: `${pct}%` }} />
+                          </div>
+                        </div>
+                      );
+                    });
+                  })()}
                 </div>
               </CardContent>
             </Card>
@@ -1770,20 +1819,36 @@ export function InventoryManager({
               </CardContent>
             </Card>
           )}
+
+          {/* AI Demand / Restock Engine — inside Reports */}
+          <Card className="rounded-[32px] border-gray-100 shadow-sm overflow-hidden group hover:shadow-xl transition-all duration-500">
+            <CardHeader className="bg-slate-50/50 pb-6 border-b border-gray-50">
+              <CardTitle className="text-xl font-black text-gray-900 tracking-tight italic">Auto-Reorder Engine</CardTitle>
+              <CardDescription className="text-xs font-bold uppercase tracking-widest text-gray-500 opacity-70">Algorithmic replenishment manager</CardDescription>
+            </CardHeader>
+            <CardContent className="p-0">
+              <AutoReorderManager
+                products={products}
+                vendors={vendors}
+                onGeneratePO={(poData) => {
+                  const product = products.find(p => p.id === poData.productId);
+                  toast.success(`Purchase order generated for ${product?.name || 'product'}`);
+                }}
+                currency={standards.currency}
+              />
+            </CardContent>
+          </Card>
+
+          <SmartRestockEngine
+            products={products}
+            invoices={invoices}
+            category={category}
+            domainKnowledge={domainKnowledge}
+            businessId={businessId}
+            refreshData={refreshData}
+          />
         </TabsContent>
       </Tabs>
-
-      {/* Smart Restock Engine */}
-      <div className="mt-8">
-        <SmartRestockEngine
-          products={products}
-          invoices={invoices}
-          category={category}
-          domainKnowledge={domainKnowledge}
-          businessId={businessId}
-          refreshData={refreshData}
-        />
-      </div>
 
       {/* Advanced Features Modal */}
       {showAdvancedFeatures && selectedProduct && (
@@ -1885,28 +1950,32 @@ export function InventoryManager({
         </DialogContent>
       </Dialog>
 
-      {/* Edit Product Modal */}
-      <Dialog open={showProductFormInternal} onOpenChange={setShowProductFormInternal}>
+      {/* Product Form Modal - Add or Edit */}
+      <Dialog open={showProductFormInternal} onOpenChange={(open) => {
+        setShowProductFormInternal(open);
+        if (!open) setEditingProduct(null);
+      }}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Edit Product</DialogTitle>
+            <DialogTitle>{editingProduct ? 'Edit Product' : 'Add New Product'}</DialogTitle>
           </DialogHeader>
-          {editingProduct && (
-            <ProductForm
-              product={editingProduct}
-              onSave={async (data) => {
-                await onUpdate?.({ ...editingProduct, ...data });
-                setShowProductFormInternal(false);
-                setEditingProduct(null);
-                toast.success('Product updated successfully');
-              }}
-              onCancel={() => {
-                setShowProductFormInternal(false);
-                setEditingProduct(null);
-              }}
-              category={category}
-            />
-          )}
+          <ProductForm
+            product={editingProduct}
+            onSave={async (data) => {
+              if (editingProduct) {
+                await handleUpdateProduct({ ...editingProduct, ...data });
+              } else {
+                await handleAddProduct(data);
+              }
+              setShowProductFormInternal(false);
+              setEditingProduct(null);
+            }}
+            onCancel={() => {
+              setShowProductFormInternal(false);
+              setEditingProduct(null);
+            }}
+            category={category}
+          />
         </DialogContent>
       </Dialog>
 
@@ -1933,10 +2002,10 @@ export function InventoryManager({
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               className="bg-red-600 hover:bg-red-700"
-              onClick={() => {
-                onDelete?.(productToDelete.id);
+              onClick={async () => {
+                const id = productToDelete.id;
                 setProductToDelete(null);
-                toast.success('Product deleted');
+                await handleDeleteProduct(id);
               }}
             >
               Delete
@@ -2000,15 +2069,28 @@ export function InventoryManager({
         title={`${category.replace(/-/g, ' ').toUpperCase()} - BULK ENTRY`}
       />
 
-      {/* Stock Adjustment Form Overlay */}
-      {showStockAdjustForm && (
-        <StockAdjustmentForm
-          onClose={() => setShowStockAdjustForm(false)}
-          onSave={() => { fetchProducts(); setShowStockAdjustForm(false); }}
-          products={products}
-          warehouses={locations}
-        />
-      )}
+      {/* Stock Adjustment Dialog */}
+      <Dialog open={showStockAdjustment} onOpenChange={setShowStockAdjustment}>
+        <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Stock Adjustment</DialogTitle>
+            <DialogDescription>
+              Adjust stock levels with reason codes and approval workflow.
+            </DialogDescription>
+          </DialogHeader>
+          <StockAdjustmentManager
+            businessId={businessId}
+            products={products}
+            warehouses={locations}
+            onAdjustmentComplete={() => {
+              fetchProducts();
+              setShowStockAdjustment(false);
+              refreshData?.();
+            }}
+            currency={standards.currency}
+          />
+        </DialogContent>
+      </Dialog>
 
       {/* Stock Transfer Form Overlay */}
       {showStockTransferForm && (
@@ -2024,3 +2106,4 @@ export function InventoryManager({
 }
 
 export default InventoryManager;
+

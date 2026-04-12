@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -15,25 +15,25 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Constants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const DEPARTMENTS = [
-    { key: 'all', label: 'All', icon: '🏪', color: 'bg-indigo-600' },
-    { key: 'beverages', label: 'Beverages', icon: '🥤', color: 'bg-blue-500' },
-    { key: 'snacks', label: 'Snacks', icon: '🍿', color: 'bg-orange-500' },
-    { key: 'dairy', label: 'Dairy', icon: '🥛', color: 'bg-cyan-500' },
-    { key: 'frozen', label: 'Frozen', icon: '🧊', color: 'bg-sky-500' },
-    { key: 'fresh', label: 'Fresh Produce', icon: '🥬', color: 'bg-emerald-500' },
-    { key: 'bakery', label: 'Bakery', icon: '🍞', color: 'bg-amber-500' },
-    { key: 'household', label: 'Household', icon: '🏠', color: 'bg-violet-500' },
-    { key: 'personal', label: 'Personal Care', icon: '🧴', color: 'bg-pink-500' },
-    { key: 'meat', label: 'Meat & Poultry', icon: '🥩', color: 'bg-red-500' },
-    { key: 'grocery', label: 'Grocery', icon: '🛒', color: 'bg-lime-600' },
+    { key: 'all', label: 'All', icon: 'ðŸª', color: 'bg-indigo-600' },
+    { key: 'beverages', label: 'Beverages', icon: 'ðŸ¥¤', color: 'bg-blue-500' },
+    { key: 'snacks', label: 'Snacks', icon: 'ðŸ¿', color: 'bg-orange-500' },
+    { key: 'dairy', label: 'Dairy', icon: 'ðŸ¥›', color: 'bg-cyan-500' },
+    { key: 'frozen', label: 'Frozen', icon: 'ðŸ§Š', color: 'bg-sky-500' },
+    { key: 'fresh', label: 'Fresh Produce', icon: 'ðŸ¥¬', color: 'bg-emerald-500' },
+    { key: 'bakery', label: 'Bakery', icon: 'ðŸž', color: 'bg-amber-500' },
+    { key: 'household', label: 'Household', icon: 'ðŸ ', color: 'bg-violet-500' },
+    { key: 'personal', label: 'Personal Care', icon: 'ðŸ§´', color: 'bg-pink-500' },
+    { key: 'meat', label: 'Meat & Poultry', icon: 'ðŸ¥©', color: 'bg-red-500' },
+    { key: 'grocery', label: 'Grocery', icon: 'ðŸ›’', color: 'bg-lime-600' },
 ];
 
 const SCAN_SOUND_ENABLED = true;
 
-// ─── Barcode Scanner Input ───────────────────────────────────────────────────
+// â”€â”€â”€ Barcode Scanner Input â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function BarcodeScannerInput({ onScan, onSearchChange, searchTerm, isScanning }) {
     const inputRef = useRef(null);
@@ -95,7 +95,7 @@ function BarcodeScannerInput({ onScan, onSearchChange, searchTerm, isScanning })
     );
 }
 
-// ─── Department Filter Bar ───────────────────────────────────────────────────
+// â”€â”€â”€ Department Filter Bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function DepartmentBar({ activeDepartment, onDepartmentChange, productCounts }) {
     return (
@@ -134,7 +134,7 @@ function DepartmentBar({ activeDepartment, onDepartmentChange, productCounts }) 
     );
 }
 
-// ─── Scanned Items List ──────────────────────────────────────────────────────
+// â”€â”€â”€ Scanned Items List â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function ScannedItemsList({
     items, onQuantityChange, onRemoveItem, onWeightChange,
@@ -162,7 +162,7 @@ function ScannedItemsList({
                             <div className="flex-1 min-w-0">
                                 <p className="text-xs font-bold text-gray-900 truncate">{item.name}</p>
                                 <div className="flex items-center gap-2 mt-0.5">
-                                    <span className="text-[10px] text-gray-400 font-mono">{item.sku || item.barcode || '—'}</span>
+                                    <span className="text-[10px] text-gray-400 font-mono">{item.sku || item.barcode || 'â€”'}</span>
                                     {item.isWeightItem && (
                                         <Badge variant="outline" className="text-[9px] h-4 px-1 border-amber-300 text-amber-600">
                                             <Weight className="w-2.5 h-2.5 mr-0.5" /> Weight
@@ -239,7 +239,7 @@ function ScannedItemsList({
     );
 }
 
-// ─── Cart Summary (Right Panel) ──────────────────────────────────────────────
+// â”€â”€â”€ Cart Summary (Right Panel) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function CartSummary({
     items, customer, onCustomerSelect, taxPercent = 17,
@@ -261,7 +261,7 @@ function CartSummary({
                     <ShoppingCart className="w-4 h-4 text-emerald-400" />
                     <span className="text-sm font-black tracking-tight">CART</span>
                     <Badge variant="secondary" className="bg-emerald-500/20 text-emerald-300 text-[10px] font-bold">
-                        {items.length} items • {itemCount} qty
+                        {items.length} items â€¢ {itemCount} qty
                     </Badge>
                 </div>
                 {heldOrders.length > 0 && (
@@ -318,7 +318,7 @@ function CartSummary({
                             {[
                                 { key: 'cash', icon: Banknote, label: 'Cash', color: 'hover:bg-emerald-500/20 hover:border-emerald-500/40' },
                                 { key: 'card', icon: CreditCard, label: 'Card', color: 'hover:bg-blue-500/20 hover:border-blue-500/40' },
-                                { key: 'wallet', icon: Smartphone, label: 'Mobile', color: 'hover:bg-purple-500/20 hover:border-purple-500/40' },
+                                { key: 'wallet', icon: Smartphone, label: 'Mobile', color: 'hover:bg-wine-500/20 hover:border-wine-500/40' },
                                 { key: 'split', icon: SplitSquareHorizontal, label: 'Split', color: 'hover:bg-amber-500/20 hover:border-amber-500/40' },
                             ].map(({ key, icon: Icon, label, color }) => (
                                 <button
@@ -370,7 +370,7 @@ function CartSummary({
                             ) : (
                                 <>
                                     <CheckCircle2 className="w-5 h-5 mr-2" />
-                                    CHECKOUT — {currency}{total.toLocaleString()}
+                                    CHECKOUT â€” {currency}{total.toLocaleString()}
                                 </>
                             )}
                         </Button>
@@ -391,7 +391,7 @@ function CartSummary({
     );
 }
 
-// ─── Main Super Store POS ────────────────────────────────────────────────────
+// â”€â”€â”€ Main Super Store POS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export function SuperStorePOS({ businessId, products = [], onCompleteSale, currency = 'Rs.', session }) {
     const [cart, setCart] = useState([]);
@@ -409,7 +409,7 @@ export function SuperStorePOS({ businessId, products = [], onCompleteSale, curre
     const [isFullscreen, setIsFullscreen] = useState(false);
     const containerRef = useRef(null);
 
-    // ─── Fullscreen Logic ────────────────────────────────────────────────────
+    // â”€â”€â”€ Fullscreen Logic â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     const toggleFullscreen = useCallback(() => {
         if (!containerRef.current) return;
@@ -432,7 +432,7 @@ export function SuperStorePOS({ businessId, products = [], onCompleteSale, curre
         return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
     }, []);
 
-    // ─── Derived Data ────────────────────────────────────────────────────────
+    // â”€â”€â”€ Derived Data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     const productCounts = useMemo(() => {
         const counts = { all: products.length };
@@ -459,7 +459,7 @@ export function SuperStorePOS({ businessId, products = [], onCompleteSale, curre
         return items;
     }, [products, activeDepartment, searchTerm]);
 
-    // ─── Cart Operations ─────────────────────────────────────────────────────
+    // â”€â”€â”€ Cart Operations â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     const addToCart = useCallback((product) => {
         if (parseInt(product.stock) <= 0 && !product.allow_negative_stock) return;
@@ -502,7 +502,7 @@ export function SuperStorePOS({ businessId, products = [], onCompleteSale, curre
             setSearchTerm('');
         } else {
             // Flash error state
-            setLastScannedItem(`⚠ "${barcode}" not found`);
+            setLastScannedItem(`âš  "${barcode}" not found`);
             setTimeout(() => setLastScannedItem(null), 2000);
         }
         setTimeout(() => setIsScanning(false), 300);
@@ -573,7 +573,7 @@ export function SuperStorePOS({ businessId, products = [], onCompleteSale, curre
         }
     }, [cart, businessId, session, customer, discount, paymentMethod, isProcessing, onCompleteSale]);
 
-    // ─── Keyboard Shortcuts ──────────────────────────────────────────────────
+    // â”€â”€â”€ Keyboard Shortcuts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     useEffect(() => {
         const handleKeyDown = (e) => {
@@ -585,7 +585,7 @@ export function SuperStorePOS({ businessId, products = [], onCompleteSale, curre
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [handleCompleteSale, handleHoldSale, handleVoidSale]);
 
-    // ─── Render ──────────────────────────────────────────────────────────────
+    // â”€â”€â”€ Render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     return (
         <div
@@ -608,7 +608,7 @@ export function SuperStorePOS({ businessId, products = [], onCompleteSale, curre
                     <div className="flex items-center gap-1.5">
                         <Badge variant="outline" className={cn(
                             "text-[10px] h-7 px-2 font-bold transition-all",
-                            lastScannedItem?.startsWith('⚠')
+                            lastScannedItem?.startsWith('âš ')
                                 ? "border-red-300 text-red-500 bg-red-50"
                                 : lastScannedItem
                                     ? "border-emerald-300 text-emerald-600 bg-emerald-50"
@@ -672,7 +672,7 @@ export function SuperStorePOS({ businessId, products = [], onCompleteSale, curre
                                     <Package className="w-4 h-4 text-gray-300 shrink-0" />
                                     <div className="flex-1 min-w-0">
                                         <p className="text-xs font-bold text-gray-900 truncate">{product.name}</p>
-                                        <p className="text-[10px] text-gray-400 font-mono">{product.sku || product.barcode || '—'}</p>
+                                        <p className="text-[10px] text-gray-400 font-mono">{product.sku || product.barcode || 'â€”'}</p>
                                     </div>
                                     <span className="text-xs font-black text-emerald-600">
                                         {currency}{parseFloat(product.selling_price || product.price || 0).toLocaleString()}
@@ -736,7 +736,7 @@ export function SuperStorePOS({ businessId, products = [], onCompleteSale, curre
                         <div>
                             <p className="font-bold text-sm">Sale Complete!</p>
                             <p className="text-xs text-emerald-100">
-                                {lastSale?.transaction_number} — {currency}{lastSale?.total?.toLocaleString()}
+                                {lastSale?.transaction_number} â€” {currency}{lastSale?.total?.toLocaleString()}
                             </p>
                         </div>
                         <Button
@@ -751,3 +751,4 @@ export function SuperStorePOS({ businessId, products = [], onCompleteSale, curre
         </div>
     );
 }
+

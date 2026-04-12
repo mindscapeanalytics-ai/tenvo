@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { Package, Download, RefreshCw, TrendingUp, DollarSign, Layers } from 'lucide-react';
@@ -139,7 +139,7 @@ export function InventoryValuation({ businessId, costingMethod = 'FIFO', currenc
                     <h2 className="text-2xl font-bold text-gray-900">Inventory Valuation Report</h2>
                     <p className="text-sm text-gray-600">
                         Using {costingMethod} costing method
-                        {valuation && ` • Generated ${new Date(valuation.calculated_at).toLocaleString()}`}
+                        {valuation && ` â€¢ Generated ${new Date(valuation.calculated_at).toLocaleString()}`}
                     </p>
                 </div>
                 <div className="flex gap-2">
@@ -198,8 +198,8 @@ export function InventoryValuation({ businessId, costingMethod = 'FIFO', currenc
                     <Card>
                         <CardContent className="pt-6">
                             <div className="flex items-center gap-3">
-                                <div className="p-3 rounded-lg bg-purple-100">
-                                    <TrendingUp className="w-6 h-6 text-purple-600" />
+                                <div className="p-3 rounded-lg bg-wine-100">
+                                    <TrendingUp className="w-6 h-6 text-wine-600" />
                                 </div>
                                 <div>
                                     <p className="text-sm text-gray-600">Avg Unit Cost</p>
@@ -312,7 +312,7 @@ export function InventoryValuation({ businessId, costingMethod = 'FIFO', currenc
                                             </td>
                                             <td className="px-4 py-3">
                                                 <span className="text-sm text-gray-600 font-mono">
-                                                    {product.product_sku || '—'}
+                                                    {product.product_sku || 'â€”'}
                                                 </span>
                                             </td>
                                             <td className="px-4 py-3">
@@ -321,7 +321,7 @@ export function InventoryValuation({ businessId, costingMethod = 'FIFO', currenc
                                                         {product.category}
                                                     </Badge>
                                                 ) : (
-                                                    <span className="text-sm text-gray-400">—</span>
+                                                    <span className="text-sm text-gray-400">â€”</span>
                                                 )}
                                             </td>
                                             <td className="px-4 py-3 text-right">
@@ -379,3 +379,4 @@ export function InventoryValuation({ businessId, costingMethod = 'FIFO', currenc
         </div>
     );
 }
+

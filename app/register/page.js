@@ -82,7 +82,7 @@ const DOMAIN_CATEGORY_BLUEPRINTS = [
         id: 'retail',
         name: 'Retail & Shops',
         icon: Store,
-        domains: ['retail-shop', 'textile-wholesale', 'grocery', 'fmcg', 'ecommerce', 'garments', 'mobile', 'electronics-goods', 'boutique-fashion', 'bookshop-stationery', 'supermarket']
+        domains: ['retail-shop', 'textile-wholesale', 'grocery', 'fmcg', 'ecommerce', 'garments', 'mobile', 'electronics-goods', 'boutique-fashion', 'leather-footwear', 'bookshop-stationery', 'supermarket']
     },
     {
         id: 'hospitality',
@@ -411,10 +411,10 @@ export default function RegisterWizard() {
     };
 
     return (
-        <div className="min-h-screen bg-gray-50 flex flex-col p-4 md:p-6 lg:p-8 relative overflow-hidden">
+        <div className="min-h-screen bg-[linear-gradient(180deg,#f6f8fc_0%,#eef4ff_100%)] flex flex-col p-4 md:p-6 lg:p-8 relative overflow-hidden">
             {/* Background Decorative Elements */}
-            <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-wine/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-            <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-wine/5 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
+            <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-wine/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+            <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-amber-300/15 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
 
             <div className="max-w-6xl w-full mx-auto relative z-10 flex-1 flex flex-col">
                 {/* Header */}
@@ -464,7 +464,7 @@ export default function RegisterWizard() {
                         </p>
                     </div>
 
-                    <Card className="mt-12 border-none shadow-2xl shadow-gray-200/50 rounded-[32px] overflow-hidden bg-white">
+                    <Card className="mt-12 border border-white/80 shadow-[0_30px_90px_-44px_rgba(15,23,42,0.36)] rounded-[32px] overflow-hidden bg-white/92 backdrop-blur-xl">
                         <CardContent className="p-0">
                             <div className="flex flex-col md:flex-row">
                                 {/* Form Section */}
@@ -734,7 +734,7 @@ export default function RegisterWizard() {
                                 </div>
 
                                 {/* Sidebar Info */}
-                                <div className="hidden lg:flex w-80 bg-gray-50/70 border-l border-gray-100 flex-col p-8 xl:p-10 justify-between">
+                                <div className="hidden lg:flex w-80 bg-[linear-gradient(180deg,rgba(248,251,255,0.95),rgba(238,244,255,0.82))] border-l border-slate-200 flex-col p-8 xl:p-10 justify-between">
                                     <div className="space-y-6">
                                         <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Deployment Assurance</h4>
                                         <div className="flex flex-col gap-2">

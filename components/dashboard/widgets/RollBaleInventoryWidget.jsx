@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useMemo } from 'react';
 import { Package, Ruler, Weight, Grid3x3 } from 'lucide-react';
@@ -178,7 +178,7 @@ export function RollBaleInventoryWidget({ businessId, onViewDetails }) {
             </CardHeader>
             <CardContent className="space-y-4">
                 {/* Total Rolls */}
-                <div className="p-3 rounded-lg bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-200">
+                <div className="p-3 rounded-lg bg-gradient-to-br from-indigo-50 to-wine-50 border border-indigo-200">
                     <div className="flex items-center justify-between mb-1">
                         <span className="text-xs font-bold text-indigo-900">
                             {t.total_rolls_bales || 'Total Rolls/Bales'}
@@ -212,12 +212,12 @@ export function RollBaleInventoryWidget({ businessId, onViewDetails }) {
                             {t.kg || 'KG'}
                         </div>
                     </div>
-                    <div className="text-center p-2 rounded-lg bg-purple-50">
-                        <Grid3x3 className="w-4 h-4 text-purple-600 mx-auto mb-1" />
-                        <div className="text-lg font-black text-purple-600">
+                    <div className="text-center p-2 rounded-lg bg-wine-50">
+                        <Grid3x3 className="w-4 h-4 text-wine-600 mx-auto mb-1" />
+                        <div className="text-lg font-black text-wine-600">
                             {rollData.totalArea.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                         </div>
-                        <div className="text-[10px] font-bold text-purple-700 uppercase tracking-wide">
+                        <div className="text-[10px] font-bold text-wine-700 uppercase tracking-wide">
                             {t.sq_yards || 'Sq Yd'}
                         </div>
                     </div>
@@ -242,7 +242,7 @@ export function RollBaleInventoryWidget({ businessId, onViewDetails }) {
                                                 {fabric.name}
                                             </div>
                                             <div className="text-[10px] text-gray-500">
-                                                {fabric.rolls.toLocaleString()} {t.rolls || 'rolls'} • {fabric.length.toLocaleString(undefined, { maximumFractionDigits: 0 })} {t.yards || 'yards'}
+                                                {fabric.rolls.toLocaleString()} {t.rolls || 'rolls'} â€¢ {fabric.length.toLocaleString(undefined, { maximumFractionDigits: 0 })} {t.yards || 'yards'}
                                             </div>
                                         </div>
                                         <div className="text-xs font-bold text-indigo-600 ml-2">
@@ -262,10 +262,11 @@ export function RollBaleInventoryWidget({ businessId, onViewDetails }) {
                 {/* Quick Action */}
                 <div className="pt-2 border-t border-gray-100">
                     <button className="text-xs font-bold text-indigo-600 hover:text-indigo-700 transition-colors w-full text-center">
-                        {t.view_roll_details || 'View Roll Details'} →
+                        {t.view_roll_details || 'View Roll Details'} â†’
                     </button>
                 </div>
             </CardContent>
         </Card>
     );
 }
+

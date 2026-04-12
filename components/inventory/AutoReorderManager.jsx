@@ -28,49 +28,60 @@ export function AutoReorderManager({
 
   // Calculate reorder suggestions
   useEffect(() => {
-    const suggestions = products
-      .filter(product => {
-        const stock = product.stock || 0;
-        const reorderPoint = product.reorderPoint || 0;
-        const minStock = product.minStock || 0;
-        return stock <= reorderPoint || stock <= minStock;
-      })
-      .map(product => {
-        const stock = product.stock || 0;
-        const reorderPoint = product.reorder_point || product.reorderPoint || 0;
-        const reorderQuantity = product.reorder_quantity || product.reorderQuantity || 0;
-        const minStock = product.min_stock || product.minStock || 0;
-        const maxStock = product.max_stock || product.maxStock || 0;
+    const toNumber = (value) => {
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : 0;
+    };
 
-        // Calculate suggested quantity
-        let suggestedQty = reorderQuantity;
-        if (maxStock > 0) {
-          suggestedQty = Math.max(reorderQuantity, maxStock - stock);
+    const suggestions = products
+      .map((product) => {
+        const stock = toNumber(product.stock);
+        const reorderPoint = toNumber(product.reorder_point ?? product.reorderPoint);
+        const minStock = toNumber(product.min_stock ?? product.minStock);
+        const maxStock = toNumber(product.max_stock ?? product.maxStock);
+        const reorderQuantity = toNumber(product.reorder_quantity ?? product.reorderQuantity);
+
+        // Only suggest items that have at least one configured stock threshold.
+        const effectiveReorderPoint = reorderPoint > 0 ? reorderPoint : (minStock > 0 ? minStock : null);
+        if (effectiveReorderPoint === null) {
+          return null;
         }
 
-        // Calculate urgency
-        const stockPercentage = (stock / (reorderPoint || 1)) * 100;
+        // Not low stock yet.
+        if (stock > effectiveReorderPoint) {
+          return null;
+        }
+
+        // Target stock: prefer maxStock if configured and above the reorder point.
+        const targetStock = maxStock > effectiveReorderPoint ? maxStock : effectiveReorderPoint;
+        const computedQty = Math.max(1, targetStock - stock);
+        const suggestedQty = reorderQuantity > 0 ? Math.max(reorderQuantity, computedQty) : computedQty;
+
+        const stockPercentage = (stock / effectiveReorderPoint) * 100;
         let urgency = 'low';
-        if (stockPercentage <= 25) urgency = 'critical';
+        if (stock <= 0 || stockPercentage <= 25) urgency = 'critical';
         else if (stockPercentage <= 50) urgency = 'high';
         else if (stockPercentage <= 75) urgency = 'medium';
+
+        const costPrice = toNumber(product.cost_price ?? product.costPrice);
 
         return {
           productId: product.id,
           productName: product.name,
           sku: product.sku,
           currentStock: stock,
-          reorderPoint,
+          reorderPoint: effectiveReorderPoint,
           minStock,
           maxStock,
           suggestedQuantity: suggestedQty,
           urgency,
-          leadTime: product.lead_time || product.leadTime || 7, // days
+          leadTime: toNumber(product.lead_time ?? product.leadTime) || 7,
           vendorId: product.vendor_id || product.vendorId || null,
-          costPrice: product.cost_price || product.costPrice || 0,
-          estimatedCost: (product.cost_price || product.costPrice || 0) * suggestedQty,
+          costPrice,
+          estimatedCost: costPrice * suggestedQty,
         };
       })
+      .filter(Boolean)
       .sort((a, b) => {
         // Sort by urgency
         const urgencyOrder = { critical: 0, high: 1, medium: 2, low: 3 };
@@ -132,7 +143,7 @@ export function AutoReorderManager({
       case 'high':
         return 'bg-orange-100 text-orange-700 border-orange-200';
       case 'medium':
-        return 'bg-red-50 text-red-700 border-red-200';
+        return 'bg-amber-100 text-amber-700 border-amber-200';
       default:
         return 'bg-blue-100 text-blue-700 border-blue-200';
     }
@@ -204,7 +215,7 @@ export function AutoReorderManager({
           <CardHeader>
             <CardTitle>Reorder Suggestions</CardTitle>
             <CardDescription>
-              Products below reorder point that need restocking
+              Products at or below configured restock thresholds
             </CardDescription>
           </CardHeader>
           <CardContent>

@@ -27,10 +27,12 @@ import {
   POS_RELEVANT_DOMAINS, HOSPITALITY_DOMAINS, CAMPAIGN_RELEVANT_DOMAINS,
   isPosRelevant, isHospitality, isCampaignRelevant
 } from '@/lib/config/domains';
+import { normalizeDashboardTab } from '@/lib/config/tabs';
+import { useAppMode } from '@/lib/context/BusyModeContext';
 import { UserManager } from '../auth/UserManager';
 import { LanguageToggle } from '../LanguageToggle';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BusinessSwitcher } from './BusinessSwitcher';
+import { BusinessSwitcherEnhanced } from './BusinessSwitcherEnhanced';
 
 function isPosRelevantDomain(category, domainKnowledge) {
   return isPosRelevant(category, domainKnowledge);
@@ -98,7 +100,10 @@ function getDomainGapSuggestions({ category, planTier, domainKnowledge }) {
 //   - domainOnly: array of domain categories where this item appears
 //   - badge: text badge like 'NEW' or 'BETA'
 
-const NAV_SECTIONS = [
+// ─── ADVANCED MODE Navigation (full power, consolidated — no duplicates) ─────
+// Finance section: Accounting/Expenses/Credit-Notes/Fiscal/Exchange-Rates are all
+// sub-tabs inside Finance Hub, so they're removed as standalone sidebar items.
+const ADVANCED_NAV_SECTIONS = [
   {
     label: 'ESSENTIALS',
     items: [
@@ -115,12 +120,7 @@ const NAV_SECTIONS = [
     items: [
       { key: 'pos', label: 'Point of Sale', icon: ShoppingCart, domainRule: 'posRelevant' },
       { key: 'refunds', label: 'Refunds & Returns', icon: RefreshCcw, domainRule: 'posRelevant' },
-      {
-        key: 'restaurant',
-        label: 'Restaurant',
-        icon: UtensilsCrossed,
-        domainRule: 'hospitality',
-      },
+      { key: 'restaurant', label: 'Restaurant', icon: UtensilsCrossed, domainRule: 'hospitality' },
       { key: 'loyalty', label: 'Loyalty & CRM', icon: Heart, domainRule: 'posRelevant' },
       { key: 'quotations', label: 'Quotations', icon: ClipboardList, conditionKey: 'quotations' },
       { key: 'sales', label: 'Sales Manager', icon: TrendingUp, alwaysShow: true },
@@ -129,13 +129,8 @@ const NAV_SECTIONS = [
   {
     label: 'FINANCE',
     items: [
-      { key: 'accounting', label: 'Accounting', icon: Landmark, alwaysShow: true },
+      { key: 'finance', label: 'Finance Hub', icon: Landmark, alwaysShow: true },
       { key: 'payments', label: 'Payments', icon: CreditCard, alwaysShow: true },
-      { key: 'expenses', label: 'Expenses', icon: Receipt, alwaysShow: true, badge: 'NEW' },
-      { key: 'credit-notes', label: 'Credit Notes', icon: RotateCcw, alwaysShow: true, badge: 'NEW' },
-      { key: 'finance', label: 'Finance Hub', icon: BarChart3, alwaysShow: true },
-      { key: 'fiscal', label: 'Fiscal Periods', icon: Calendar },
-      { key: 'exchange-rates', label: 'Exchange Rates', icon: ArrowLeftRight },
       { key: 'gst', label: 'Tax / GST', icon: BadgeDollarSign, alwaysShow: true },
     ]
   },
@@ -166,20 +161,45 @@ const NAV_SECTIONS = [
   },
 ];
 
+// ─── EASY MODE Navigation (simple, flat — for beginners & POS operators) ─────
+const EASY_NAV_SECTIONS = [
+  {
+    label: 'MAIN',
+    items: [
+      { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, alwaysShow: true },
+      { key: 'inventory', label: 'Products', icon: Package, alwaysShow: true },
+      { key: 'invoices', label: 'Sales', icon: FileText, alwaysShow: true },
+      { key: 'customers', label: 'Customers', icon: Users, alwaysShow: true },
+      { key: 'purchases', label: 'Purchases', icon: Truck, alwaysShow: true },
+      { key: 'pos', label: 'Point of Sale', icon: ShoppingCart, domainRule: 'posRelevant' },
+    ]
+  },
+  {
+    label: 'MORE',
+    items: [
+      { key: 'payments', label: 'Payments', icon: CreditCard, alwaysShow: true },
+      { key: 'reports', label: 'Reports', icon: Brain, alwaysShow: true },
+      { key: 'settings', label: 'Settings', icon: Settings },
+    ]
+  },
+];
+
+// Legacy reference kept for backward compat (some code may reference it)
+const NAV_SECTIONS = ADVANCED_NAV_SECTIONS;
+
 export function Sidebar({ isOpen, onClose, isSidebarCollapsed, setIsSidebarCollapsed }) {
   const { user } = useAuth();
   const { business, role, planTier: contextPlanTier, isLoading: businessLoading, isPlatformOwner } = useBusiness();
   const { language } = useLanguage();
+  const { appMode, setAppMode, isEasyMode } = useAppMode();
   const t = translations[language];
   const pathname = usePathname();
-  const pathParts = pathname?.split('/') || [];
   const searchParams = useSearchParams();
-  const currentTab = searchParams.get('tab') || 'dashboard';
+  const currentTab = normalizeDashboardTab(searchParams.get('tab') || 'dashboard');
 
-  // CRITICAL FIX: The vertical category should come from the business record, 
-  // not the URL handle (which is a unique slug like 'my-cafe-123').
-  const category = business?.category || pathParts[2] || 'retail-shop';
-  const baseUrl = `/business/${pathParts[2] || category}`;
+  const pathParts = pathname?.split('/') || [];
+  const category = pathParts[2] || 'retail-shop';
+  const baseUrl = `/business/${category}`;
 
   const domainColors = getDomainColors(category);
   const colors = {
@@ -206,6 +226,7 @@ export function Sidebar({ isOpen, onClose, isSidebarCollapsed, setIsSidebarColla
     : 'free';
   const planName = safeIsPlatformOwner ? 'Platform Owner' : (PLAN_TIERS[planTier]?.name || 'Free');
   const domainGapSuggestions = useMemo(() => getDomainGapSuggestions({ category, planTier, domainKnowledge }), [category, planTier, domainKnowledge]);
+  const navAccessReady = hasHydrated && !businessLoading && (safeIsPlatformOwner || role !== null);
 
   const [collapsedSections, setCollapsedSections] = useState({});
 
@@ -236,11 +257,6 @@ export function Sidebar({ isOpen, onClose, isSidebarCollapsed, setIsSidebarColla
     // Platform-only items: only visible to platform owner/admin
     if (item.platformOnly && !safeIsPlatformOwner) {
       return { visible: false, locked: false, requiredPlan: null };
-    }
-
-    // Always-show items bypass all checks
-    if (item.alwaysShow) {
-      return { visible: true, locked: false, requiredPlan: null };
     }
 
     // Domain-only items: only show for specific business domains
@@ -340,14 +356,26 @@ export function Sidebar({ isOpen, onClose, isSidebarCollapsed, setIsSidebarColla
               "mt-3",
               isSidebarCollapsed ? "mx-1.5" : "mx-0"
             )}>
-              <BusinessSwitcher isCollapsed={isSidebarCollapsed} />
+              <BusinessSwitcherEnhanced isCollapsed={isSidebarCollapsed} />
             </div>
           )}
         </div>
 
         {/* ─── Grouped Navigation ────────────────────────────────── */}
         <nav className="flex-1 overflow-y-auto overflow-x-hidden py-3 px-2.5 space-y-0.5 scrollbar-thin">
-          {NAV_SECTIONS.map((section) => {
+          {!navAccessReady ? (
+            <div className="space-y-2 px-1 py-2">
+              {Array.from({ length: isSidebarCollapsed ? 6 : 8 }).map((_, index) => (
+                <div
+                  key={`sidebar-skeleton-${index}`}
+                  className={cn(
+                    'animate-pulse rounded-xl bg-gray-100/90',
+                    isSidebarCollapsed ? 'mx-auto h-10 w-10' : 'h-10 w-full'
+                  )}
+                />
+              ))}
+            </div>
+          ) : (isEasyMode ? EASY_NAV_SECTIONS : ADVANCED_NAV_SECTIONS).map((section) => {
             // Filter items for this section based on RBAC + subscription + domain
             const processedItems = section.items.map(item => ({
               ...item,
@@ -536,6 +564,52 @@ export function Sidebar({ isOpen, onClose, isSidebarCollapsed, setIsSidebarColla
           "flex-none p-2 border-t border-gray-100 bg-white space-y-2",
           isSidebarCollapsed && "p-2 items-center flex flex-col"
         )}>
+          {/* Easy / Advanced Mode Toggle */}
+          {!isSidebarCollapsed ? (
+            <div className="flex items-center justify-between px-1 py-1">
+              <div className="flex items-center gap-1.5">
+                <Sparkles className="w-3 h-3 text-indigo-400" />
+                <span className="text-[9px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Mode</span>
+              </div>
+              <div className="flex bg-gray-100 dark:bg-gray-700 rounded-lg p-0.5">
+                <button
+                  onClick={() => setAppMode('easy')}
+                  className={cn(
+                    "px-2.5 py-1 text-[10px] font-bold rounded-md transition-all",
+                    isEasyMode
+                      ? "bg-white dark:bg-gray-600 text-indigo-600 dark:text-indigo-400 shadow-sm"
+                      : "text-gray-500 dark:text-gray-400 hover:text-gray-700"
+                  )}
+                >
+                  Easy
+                </button>
+                <button
+                  onClick={() => setAppMode('advanced')}
+                  className={cn(
+                    "px-2.5 py-1 text-[10px] font-bold rounded-md transition-all",
+                    !isEasyMode
+                      ? "bg-white dark:bg-gray-600 text-indigo-600 dark:text-indigo-400 shadow-sm"
+                      : "text-gray-500 dark:text-gray-400 hover:text-gray-700"
+                  )}
+                >
+                  Advanced
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={() => setAppMode(isEasyMode ? 'advanced' : 'easy')}
+              className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors group relative"
+              title={isEasyMode ? 'Switch to Advanced' : 'Switch to Easy'}
+            >
+              <Sparkles className={cn("w-4 h-4", isEasyMode ? "text-indigo-500" : "text-gray-400")} />
+              <span className="absolute left-14 px-2.5 py-1.5 text-xs font-bold bg-gray-900 text-white rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-200 z-[60] shadow-xl whitespace-nowrap">
+                {isEasyMode ? 'Easy Mode' : 'Advanced Mode'}
+                <div className="absolute top-1/2 -left-1 -translate-y-1/2 border-y-[6px] border-y-transparent border-r-[6px] border-r-gray-900" />
+              </span>
+            </button>
+          )}
+
           <div className="flex items-center justify-between px-1">
             {!isSidebarCollapsed && (
               <div className="flex items-center gap-1.5">

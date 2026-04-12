@@ -60,7 +60,7 @@ export default function MultiBusinessPage() {
 
   if (loading || authLoading) {
     return (
-      <div className="flex h-screen w-full items-center justify-center bg-[#FAFAFA]">
+      <div className="flex h-screen w-full items-center justify-center bg-[linear-gradient(180deg,#f6f8fc_0%,#edf3ff_100%)]">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="w-12 h-12 animate-spin text-wine" />
           <p className="text-sm font-bold text-gray-400 uppercase tracking-widest animate-pulse">Syncing Cloud Entities...</p>
@@ -70,7 +70,7 @@ export default function MultiBusinessPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA] pb-20">
+    <div className="min-h-screen bg-[linear-gradient(180deg,#f6f8fc_0%,#eef4ff_100%)] pb-20">
       {/* Premium Header */}
       <div className="bg-white border-b border-gray-100 sticky top-0 z-50 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
@@ -78,7 +78,7 @@ export default function MultiBusinessPage() {
             <div className="flex items-center gap-4">
               <div
                 className="w-10 h-10 text-white rounded-2xl flex items-center justify-center font-black text-2xl shadow-lg transform -rotate-3"
-                style={{ background: 'linear-gradient(135deg, #8B1538 0%, #A41941 100%)' }}
+                style={{ background: 'linear-gradient(135deg, #1738A5 0%, #2F5BFF 100%)' }}
               >
                 T
               </div>
@@ -115,7 +115,7 @@ export default function MultiBusinessPage() {
       {/* Hero Section */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-8">
         <div className="space-y-2 text-center sm:text-left">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-wine/5 border border-wine/10 text-wine text-[10px] font-black uppercase tracking-widest mb-4">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-wine/5 border border-wine/10 text-wine text-[10px] font-black uppercase tracking-widest mb-4 shadow-sm">
             <ShieldCheck className="w-3 h-3" />
             Global Executive Controls
           </div>
@@ -149,7 +149,7 @@ export default function MultiBusinessPage() {
               {businesses.map((biz, idx) => (
                 <div
                   key={biz.id}
-                  className="group bg-white rounded-[2rem] border border-gray-100 shadow-sm hover:shadow-2xl hover:border-wine/20 transition-all duration-500 overflow-hidden relative animate-in fade-in slide-in-from-bottom-4"
+                  className="group bg-white rounded-[2rem] border border-slate-200 shadow-sm hover:shadow-[0_34px_90px_-44px_rgba(15,23,42,0.45)] hover:border-wine/20 transition-all duration-500 overflow-hidden relative animate-in fade-in slide-in-from-bottom-4"
                   style={{ animationDelay: `${idx * 100}ms` }}
                 >
                   {/* Decorative Gradient Background */}
@@ -211,7 +211,7 @@ export default function MultiBusinessPage() {
         </div>
 
         {/* Global Overview Banner */}
-        <div className="mt-20 relative overflow-hidden bg-white rounded-[2.5rem] border border-gray-100 p-8 sm:p-12 shadow-xl shadow-gray-200/50">
+        <div className="mt-20 relative overflow-hidden bg-white rounded-[2.5rem] border border-slate-200 p-8 sm:p-12 shadow-[0_34px_90px_-46px_rgba(15,23,42,0.42)]">
           <div className="absolute top-0 right-0 w-96 h-96 bg-wine/5 rounded-full -mr-48 -mt-48 blur-3xl opacity-50" />
           <div className="relative z-10 grid lg:grid-cols-2 gap-12 items-center">
             <div className="space-y-6">

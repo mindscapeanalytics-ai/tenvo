@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -21,7 +21,7 @@ const NODE_TYPES = {
     trigger: { label: 'Trigger', icon: Play, color: 'bg-emerald-500', description: 'Starts the workflow' },
     approval: { label: 'Approval', icon: CheckCircle2, color: 'bg-indigo-500', description: 'Requires approval from a role' },
     condition: { label: 'Condition', icon: GitBranch, color: 'bg-amber-500', description: 'Branch based on a rule' },
-    action: { label: 'Action', icon: Zap, color: 'bg-purple-500', description: 'Execute an operation' },
+    action: { label: 'Action', icon: Zap, color: 'bg-wine-500', description: 'Execute an operation' },
     notification: { label: 'Notification', icon: Bell, color: 'bg-blue-500', description: 'Send alert or email' },
     reject: { label: 'Reject', icon: XCircle, color: 'bg-red-500', description: 'End with rejection' },
 };
@@ -53,7 +53,7 @@ const PRESET_WORKFLOWS = [
             { id: 'n2', type: 'condition', config: { condition: 'amount_gt_10000' }, x: 0, y: 1 },
             { id: 'n3', type: 'action', config: { action: 'Auto-approve PO' }, x: -1, y: 2 },
             { id: 'n4', type: 'approval', config: { role: 'admin' }, x: 1, y: 2 },
-            { id: 'n5', type: 'notification', config: { message: 'PO approved — notify vendor' }, x: 0, y: 3 },
+            { id: 'n5', type: 'notification', config: { message: 'PO approved â€” notify vendor' }, x: 0, y: 3 },
         ]
     },
     {
@@ -74,7 +74,7 @@ const PRESET_WORKFLOWS = [
             { id: 'n1', type: 'trigger', config: { trigger: 'refund_initiated' }, x: 0, y: 0 },
             { id: 'n2', type: 'approval', config: { role: 'manager' }, x: 0, y: 1 },
             { id: 'n3', type: 'action', config: { action: 'Process refund' }, x: 0, y: 2 },
-            { id: 'n4', type: 'notification', config: { message: 'Refund completed — notify customer' }, x: 0, y: 3 },
+            { id: 'n4', type: 'notification', config: { message: 'Refund completed â€” notify customer' }, x: 0, y: 3 },
         ]
     },
     {
@@ -264,7 +264,7 @@ export function WorkflowBuilder({ businessId }) {
             {/* Toolbar */}
             <div className="flex items-center gap-3">
                 <Button variant="ghost" className="h-8 text-xs font-bold rounded-lg" onClick={() => setActiveWorkflow(null)}>
-                    ← Back to List
+                    â† Back to List
                 </Button>
                 <Input
                     value={workflowName}
@@ -467,3 +467,4 @@ export function WorkflowBuilder({ businessId }) {
         </div>
     );
 }
+

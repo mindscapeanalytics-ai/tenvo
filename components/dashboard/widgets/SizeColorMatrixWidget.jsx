@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Loader2, Package, AlertCircle } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { pakistaniSizes, pakistaniColors } from '@/lib/domainData/pakistaniRetailData';
 
 /**
  * SizeColorMatrixWidget Component
@@ -28,8 +29,9 @@ export function SizeColorMatrixWidget({ businessId, category, onViewDetails }) {
   const [error, setError] = useState(null);
   const [matrixData, setMatrixData] = useState(null);
 
-  const sizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'];
-  const colors = ['Black', 'White', 'Red', 'Blue', 'Green', 'Grey', 'Brown', 'Pink'];
+  const isFootwear = category === 'leather-footwear';
+  const sizes = isFootwear ? pakistaniSizes.footwear.men.slice(0, 10) : pakistaniSizes.clothing.men;
+  const colors = pakistaniColors.slice(0, 8).map(c => c.en);
 
   useEffect(() => {
     fetchMatrixData();

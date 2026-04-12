@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { getDomainKnowledge } from '@/lib/domainKnowledge';
-import { getDomainTheme } from '@/lib/utils/domainHelpers';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { FileText, Download, BarChart3, Calendar, Filter } from 'lucide-react';
@@ -12,7 +11,6 @@ import toast from 'react-hot-toast';
 
 export function DomainReports({ category }) {
     const domainKnowledge = getDomainKnowledge(category);
-    const theme = getDomainTheme(category);
     const availableReports = domainKnowledge?.reports || [];
 
     const [selectedReport, setSelectedReport] = useState(null);
@@ -50,16 +48,16 @@ export function DomainReports({ category }) {
                 {availableReports.map((report) => (
                     <Card
                         key={report.id}
-                        className={`cursor-pointer transition-all hover:shadow-md ${selectedReport?.id === report.id ? `border-${theme.primary} ring-1 ring-${theme.primary}` : ''}`}
+                        className={`cursor-pointer transition-all hover:shadow-md ${selectedReport?.id === report.id ? 'border-wine-600 ring-1 ring-wine-600' : ''}`}
                         onClick={() => setSelectedReport(report)}
                     >
                         <CardHeader className="p-4">
                             <div className="flex items-start justify-between">
-                                <div className={`p-2 rounded-lg bg-${theme.bg} text-${theme.primary}`}>
+                                <div className="p-2 rounded-lg bg-wine-50 text-wine-600">
                                     <BarChart3 className="w-5 h-5" />
                                 </div>
                                 {selectedReport?.id === report.id && (
-                                    <Badge className={`bg-${theme.primary}`}>Selected</Badge>
+                                    <Badge className="bg-wine-600 text-white">Selected</Badge>
                                 )}
                             </div>
                             <CardTitle className="mt-3 text-base">{report.name}</CardTitle>
@@ -75,7 +73,7 @@ export function DomainReports({ category }) {
                 <Card className="animate-in fade-in slide-in-from-bottom-4">
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
-                            <FileText className={`text-${theme.primary}`} />
+                            <FileText className="text-wine-600" />
                             Generate: {selectedReport.name}
                         </CardTitle>
                     </CardHeader>
@@ -104,7 +102,7 @@ export function DomainReports({ category }) {
                             <Button
                                 onClick={handleGenerate}
                                 disabled={isGenerating}
-                                className={`bg-${theme.primary} text-white min-w-[140px]`}
+                                className="bg-wine-600 text-white min-w-[140px]"
                             >
                                 {isGenerating ? 'Generating...' : (
                                     <>

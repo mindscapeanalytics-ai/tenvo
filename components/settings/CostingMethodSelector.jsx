@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
 import { DollarSign, TrendingUp, Calculator, Info } from 'lucide-react';
@@ -77,7 +77,7 @@ export function CostingMethodSelector({ businessId, currentMethod = 'FIFO', onUp
                 'May not reflect actual costs',
                 'Less precise than FIFO/LIFO'
             ],
-            color: 'bg-purple-500',
+            color: 'bg-wine-500',
             recommended: false
         }
     ];
@@ -174,7 +174,7 @@ export function CostingMethodSelector({ businessId, currentMethod = 'FIFO', onUp
                                         <ul className="text-xs text-gray-600 space-y-1">
                                             {method.pros.map((pro, idx) => (
                                                 <li key={idx} className="flex items-start gap-1">
-                                                    <span className="text-green-500 mt-0.5">✓</span>
+                                                    <span className="text-green-500 mt-0.5">âœ“</span>
                                                     <span>{pro}</span>
                                                 </li>
                                             ))}
@@ -204,10 +204,10 @@ export function CostingMethodSelector({ businessId, currentMethod = 'FIFO', onUp
                         <div className="text-sm text-blue-900">
                             <p className="font-semibold mb-1">Important:</p>
                             <ul className="space-y-1 text-blue-800">
-                                <li>• Changing costing method affects future transactions only</li>
-                                <li>• Consult with your accountant before changing methods</li>
-                                <li>• FIFO is recommended for most Pakistani businesses</li>
-                                <li>• Method change may require FBR notification</li>
+                                <li>â€¢ Changing costing method affects future transactions only</li>
+                                <li>â€¢ Consult with your accountant before changing methods</li>
+                                <li>â€¢ FIFO is recommended for most Pakistani businesses</li>
+                                <li>â€¢ Method change may require FBR notification</li>
                             </ul>
                         </div>
                     </div>
@@ -236,3 +236,4 @@ export function CostingMethodSelector({ businessId, currentMethod = 'FIFO', onUp
         </Card>
     );
 }
+

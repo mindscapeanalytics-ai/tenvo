@@ -17,6 +17,7 @@ import { formatPakistaniPhone, isValidCNIC, isValidPakistaniPhone, customerSchem
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FormError } from '@/components/ui/form-error';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { isEntitlementError, getEntitlementErrorMessage, isEntitlementErrorHandled } from '@/lib/utils/subscriptionErrors';
 
 const COUNTRY_CODES = [
     { code: '+92', label: 'PK (+92)' },
@@ -31,6 +32,7 @@ const COUNTRY_CODES = [
 export function CustomerForm({
     onSave,
     onClose,
+    onEntitlementError,
     initialData = null,
     category = 'retail-shop'
 }) {
@@ -183,7 +185,14 @@ export function CustomerForm({
             toast.success(`Customer ${initialData ? 'updated' : 'created'} successfully`);
         } catch (error) {
             console.error('Customer save error:', error);
-            toast.error(error.message || 'Failed to save customer');
+            if (isEntitlementError(error)) {
+                if (!isEntitlementErrorHandled(error)) {
+                    toast.error(getEntitlementErrorMessage(error, { action: 'save customer' }));
+                }
+                onEntitlementError?.(error);
+            } else {
+                toast.error(error.message || 'Failed to save customer');
+            }
         } finally {
             setIsLoading(false);
         }

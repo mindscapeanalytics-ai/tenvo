@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useMemo } from 'react';
 import { EnhancedDashboard } from '@/components/EnhancedDashboard';
@@ -265,7 +265,7 @@ export function InventoryDashboard({
             {t.stock_management_operations || 'Stock management and operations'}
           </p>
         </div>
-        <Badge className="bg-purple-600 text-white font-bold">
+        <Badge className="bg-wine-600 text-white font-bold">
           {t.inventory_staff || 'Inventory Staff'}
         </Badge>
       </div>
@@ -282,8 +282,8 @@ export function InventoryDashboard({
                 {t.all_locations_overview || 'All locations overview'}
               </CardDescription>
             </div>
-            <div className="p-2.5 rounded-2xl bg-purple-50 border border-purple-200 shadow-inner">
-              <Warehouse className="w-5 h-5 text-purple-600" />
+            <div className="p-2.5 rounded-2xl bg-wine-50 border border-wine-200 shadow-inner">
+              <Warehouse className="w-5 h-5 text-wine-600" />
             </div>
           </div>
         </CardHeader>
@@ -291,14 +291,14 @@ export function InventoryDashboard({
         <CardContent className="space-y-4">
           {/* Summary Stats */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <div className="p-3 rounded-lg bg-gradient-to-br from-purple-50 to-purple-100/50 border border-purple-200">
+            <div className="p-3 rounded-lg bg-gradient-to-br from-wine-50 to-wine-100/50 border border-wine-200">
               <div className="flex items-center gap-2 mb-1">
-                <BarChart3 className="w-4 h-4 text-purple-600" />
-                <span className="text-xs font-bold text-purple-700 uppercase tracking-wider">
+                <BarChart3 className="w-4 h-4 text-wine-600" />
+                <span className="text-xs font-bold text-wine-700 uppercase tracking-wider">
                   {t.total_value || 'Total Value'}
                 </span>
               </div>
-              <div className="text-xl font-black text-purple-900">
+              <div className="text-xl font-black text-wine-900">
                 {formatCurrency(stockLevels.totalValue, currency)}
               </div>
             </div>
@@ -505,7 +505,7 @@ export function InventoryDashboard({
               onClick={() => onQuickAction?.('view-all-reorder-alerts')}
               className="w-full text-xs font-bold text-red-600 hover:text-red-700 transition-colors py-2"
             >
-              {t.view_all_alerts || 'View All Alerts'} ({reorderAlerts.criticalCount + reorderAlerts.urgentCount + reorderAlerts.warningCount}) →
+              {t.view_all_alerts || 'View All Alerts'} ({reorderAlerts.criticalCount + reorderAlerts.urgentCount + reorderAlerts.warningCount}) â†’
             </button>
           </CardContent>
         </Card>
@@ -609,7 +609,7 @@ export function InventoryDashboard({
               onClick={() => onQuickAction?.('view-all-cycle-counts')}
               className="w-full text-xs font-bold text-indigo-600 hover:text-indigo-700 transition-colors py-2"
             >
-              {t.view_all_tasks || 'View All Tasks'} →
+              {t.view_all_tasks || 'View All Tasks'} â†’
             </button>
           </CardContent>
         </Card>
@@ -723,7 +723,7 @@ export function InventoryDashboard({
               onClick={() => onQuickAction?.('view-all-receipts')}
               className="flex-1 text-xs font-bold text-green-600 hover:text-green-700 transition-colors py-2"
             >
-              {t.view_all_receipts || 'View All Receipts'} →
+              {t.view_all_receipts || 'View All Receipts'} â†’
             </button>
             <Button
               onClick={() => onQuickAction?.('quick-receive')}
@@ -746,4 +746,6 @@ export function InventoryDashboard({
     </div>
   );
 }
+
+
 

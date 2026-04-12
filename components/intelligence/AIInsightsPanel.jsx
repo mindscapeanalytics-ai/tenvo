@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
@@ -20,16 +20,16 @@ import {
 } from '@/lib/actions/premium/ai/analytics';
 import { getAiRestockSuggestionsAction } from '@/lib/actions/premium/ai/ai';
 
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // METRIC CARD
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 function MetricCard({ label, value, trend, trendValue, icon: Icon, color }) {
     const colors = {
         indigo: 'from-indigo-500 to-indigo-600',
         emerald: 'from-emerald-500 to-emerald-600',
         amber: 'from-amber-500 to-amber-600',
-        purple: 'from-purple-500 to-purple-600',
+        purple: 'from-wine-500 to-wine-600',
         rose: 'from-rose-500 to-rose-600',
         blue: 'from-blue-500 to-blue-600',
     };
@@ -56,9 +56,9 @@ function MetricCard({ label, value, trend, trendValue, icon: Icon, color }) {
     );
 }
 
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // FORECAST ITEM ROW
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 function ForecastRow({ item, currency }) {
     return (
@@ -70,12 +70,12 @@ function ForecastRow({ item, currency }) {
                 'w-8 h-8 rounded-lg flex items-center justify-center text-xs font-black',
                 item.priority === 'high' ? 'bg-red-200 text-red-700' : 'bg-gray-200 text-gray-600'
             )}>
-                {item.priority === 'high' ? '🔴' : '🟡'}
+                {item.priority === 'high' ? 'ðŸ”´' : 'ðŸŸ¡'}
             </div>
             <div className="flex-1 min-w-0">
                 <p className="text-sm font-bold text-gray-800 truncate">{item.name}</p>
                 <p className="text-[10px] text-gray-400">
-                    Stock: {item.current} • Forecast: {item.forecast}/mo • Recommended: {item.recommended}
+                    Stock: {item.current} â€¢ Forecast: {item.forecast}/mo â€¢ Recommended: {item.recommended}
                 </p>
             </div>
             <div className="text-right shrink-0">
@@ -83,19 +83,19 @@ function ForecastRow({ item, currency }) {
                     'text-xs font-black',
                     item.trend === 'up' ? 'text-emerald-600' : 'text-red-600'
                 )}>
-                    {item.trend === 'up' ? '↑' : '↓'} {item.variance} units
+                    {item.trend === 'up' ? 'â†‘' : 'â†“'} {item.variance} units
                 </p>
                 {item.isAi && (
-                    <span className="text-[8px] px-1 py-0.5 rounded bg-purple-100 text-purple-600 font-bold">AI</span>
+                    <span className="text-[8px] px-1 py-0.5 rounded bg-wine-100 text-wine-600 font-bold">AI</span>
                 )}
             </div>
         </div>
     );
 }
 
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // PROMOTION RECOMMENDATION CARD
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 function PromoCard({ promo, currency }) {
     const strategyColors = {
@@ -118,9 +118,9 @@ function PromoCard({ promo, currency }) {
     );
 }
 
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // MINI BAR CHART (CSS-only)
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 function MiniBarChart({ data, valueKey = 'revenue', labelKey = 'date' }) {
     if (!data || data.length === 0) return null;
@@ -146,9 +146,9 @@ function MiniBarChart({ data, valueKey = 'revenue', labelKey = 'date' }) {
     );
 }
 
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // MAIN AI INSIGHTS PANEL
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 export function AIInsightsPanel({ businessId }) {
     const { business, currencySymbol } = useBusiness();
@@ -220,12 +220,12 @@ export function AIInsightsPanel({ businessId }) {
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-wine-500 to-indigo-600 flex items-center justify-center">
                         <Brain className="w-5 h-5 text-white" />
                     </div>
                     <div>
                         <h2 className="text-lg font-black text-gray-900">AI Analytics & Insights</h2>
-                        <p className="text-xs text-gray-400">Predictive analytics · Anomaly detection · Smart recommendations</p>
+                        <p className="text-xs text-gray-400">Predictive analytics Â· Anomaly detection Â· Smart recommendations</p>
                     </div>
                 </div>
                 <button onClick={loadAll} className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors">
@@ -297,9 +297,9 @@ export function AIInsightsPanel({ businessId }) {
             {forecastData.length > 0 && (
                 <div className="bg-white rounded-xl border border-gray-100 p-4">
                     <div className="flex items-center gap-2 mb-3">
-                        <Activity className="w-4 h-4 text-purple-500" />
+                        <Activity className="w-4 h-4 text-wine-500" />
                         <h3 className="text-sm font-black text-gray-800">Demand Forecast & Restock Alerts</h3>
-                        <span className="text-[8px] px-1.5 py-0.5 bg-purple-100 text-purple-600 rounded-full font-bold">AI POWERED</span>
+                        <span className="text-[8px] px-1.5 py-0.5 bg-wine-100 text-wine-600 rounded-full font-bold">AI POWERED</span>
                     </div>
                     <div className="space-y-2">
                         {forecastData.slice(0, 5).map(item => (
@@ -319,7 +319,7 @@ export function AIInsightsPanel({ businessId }) {
                     </div>
                     <div className="space-y-2">
                         {expenseBreakdown.map((exp, idx) => {
-                            const colors = ['bg-rose-500', 'bg-amber-500', 'bg-blue-500', 'bg-emerald-500', 'bg-purple-500'];
+                            const colors = ['bg-rose-500', 'bg-amber-500', 'bg-blue-500', 'bg-emerald-500', 'bg-wine-500'];
                             return (
                                 <div key={idx} className="flex items-center gap-2">
                                     <div className={cn('w-2 h-2 rounded-full shrink-0', colors[idx % colors.length])} />
@@ -355,3 +355,4 @@ export function AIInsightsPanel({ businessId }) {
         </div>
     );
 }
+

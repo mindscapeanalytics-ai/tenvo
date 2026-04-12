@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useMemo, useEffect } from 'react';
 import {
@@ -121,7 +121,7 @@ export function EnhancedDashboard({ businessId, category, onQuickAction }) {
         change: t.on_track || 'On Track',
         trend: 'up',
         icon: Wrench,
-        ...(colors?.stats?.products || { bg: 'bg-purple-50', iconColor: 'text-purple-600' }),
+        ...(colors?.stats?.products || { bg: 'bg-wine-50', iconColor: 'text-wine-600' }),
         target: 10,
         current: 0,
       });
@@ -134,7 +134,7 @@ export function EnhancedDashboard({ businessId, category, onQuickAction }) {
           : '+0%',
         trend: (metrics.products?.growth || 0) >= 0 ? 'up' : 'down',
         icon: Package,
-        ...(colors?.stats?.products || { bg: 'bg-purple-50', iconColor: 'text-purple-600' }),
+        ...(colors?.stats?.products || { bg: 'bg-wine-50', iconColor: 'text-wine-600' }),
         target: 500,
         current: metrics.products?.count || metrics.products || 0,
       });
@@ -308,16 +308,16 @@ export function EnhancedDashboard({ businessId, category, onQuickAction }) {
               onClick={() => onQuickAction?.(stat.label.toLowerCase().replace(/ /g, '-'))}
             >
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-xs font-black uppercase tracking-widest text-muted-foreground/70">{stat.label}</CardTitle>
-                <div className={`p-2.5 rounded-2xl ${stat.bg} border ${stat.bg.replace('bg-', 'border-').replace('-50', '-200')} shadow-inner`}>
+                <CardTitle className="text-xs font-semibold uppercase tracking-wider text-neutral-500">{stat.label}</CardTitle>
+                <div className={`p-2.5 rounded-xl ${stat.bg} border ${stat.bg.replace('bg-', 'border-').replace('-50', '-200')} shadow-sm`}>
                   <stat.icon className={`w-5 h-5 ${stat.iconColor}`} />
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <div className="text-3xl font-black text-premium-gradient mb-1">{stat.value}</div>
-                  <div className="flex items-center gap-1.5 text-xs font-bold">
-                    <div className={`flex items-center px-1.5 py-0.5 rounded-full ${stat.trend === 'up' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
+                  <div className="text-3xl font-bold text-neutral-900 mb-1">{stat.value}</div>
+                  <div className="flex items-center gap-1.5 text-xs font-medium">
+                    <div className={`flex items-center px-2 py-1 rounded-full ${stat.trend === 'up' ? 'bg-success-light text-success-dark' : 'bg-error-light text-error-dark'}`}>
                       {stat.trend === 'up' ? (
                         <ArrowUpRight className="w-3 h-3 mr-0.5" />
                       ) : (
@@ -325,21 +325,21 @@ export function EnhancedDashboard({ businessId, category, onQuickAction }) {
                       )}
                       {stat.change}
                     </div>
-                    <span className="text-muted-foreground/60">{t.vs_last_month}</span>
+                    <span className="text-neutral-500">{t.vs_last_month}</span>
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <div className="flex items-center justify-between text-[10px] uppercase font-black tracking-widest text-muted-foreground/50">
+                  <div className="flex items-center justify-between text-[10px] uppercase font-semibold tracking-wider text-neutral-400">
                     <span>{t.performance}</span>
                     <span>{Math.round(progress)}%</span>
                   </div>
-                  <div className="w-full bg-gray-100/50 rounded-full h-1.5 overflow-hidden">
+                  <div className="w-full bg-neutral-100 rounded-full h-1.5 overflow-hidden">
                     <div
                       className="h-full rounded-full transition-all duration-1000 ease-out"
                       style={{
                         width: `${progress}%`,
                         backgroundColor: colors.primary,
-                        boxShadow: `0 0 10px ${colors.primary}40`
+                        boxShadow: `0 0 8px ${colors.primary}40`
                       }}
                     />
                   </div>
@@ -351,10 +351,10 @@ export function EnhancedDashboard({ businessId, category, onQuickAction }) {
       </div>
 
       {/* Main Chart Section */}
-      <Card className="border-none shadow-sm overflow-hidden">
+      <Card className="border-neutral-200 shadow-md overflow-hidden">
         <CardHeader className="flex flex-row items-center justify-between pb-2">
           <div>
-            <CardTitle className="text-lg font-bold text-gray-800">Revenue Performance</CardTitle>
+            <CardTitle className="text-lg font-semibold text-neutral-900">Revenue Performance</CardTitle>
             <CardDescription>Monthly revenue vs expenses overview</CardDescription>
           </div>
           <div className="flex gap-2">
@@ -467,11 +467,11 @@ export function EnhancedDashboard({ businessId, category, onQuickAction }) {
 
       {/* Alerts and Recent Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Card className="bg-card border-border shadow-sm">
+        <Card className="bg-white border-neutral-200 shadow-md">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle className="text-lg font-bold">{t.recent_activity}</CardTitle>
+                <CardTitle className="text-lg font-semibold">{t.recent_activity}</CardTitle>
                 <CardDescription>{t.latest_activities}</CardDescription>
               </div>
               <Button variant="ghost" size="sm">
@@ -482,18 +482,18 @@ export function EnhancedDashboard({ businessId, category, onQuickAction }) {
           <CardContent>
             <div className="space-y-3">
               {recentActivity.map((activity, idx) => (
-                <div key={idx} className="flex items-start gap-3 p-3 rounded-lg border border-border hover:bg-secondary/50 transition-colors">
-                  <div className={`p-1.5 rounded-full ${activity.status === 'success' ? 'bg-green-100' : 'bg-orange-100'
+                <div key={idx} className="flex items-start gap-3 p-3 rounded-lg border border-neutral-200 hover:bg-neutral-50 transition-colors">
+                  <div className={`p-1.5 rounded-full ${activity.status === 'success' ? 'bg-success-light' : 'bg-warning-light'
                     }`}>
                     {activity.status === 'success' ? (
-                      <CheckCircle2 className="w-4 h-4 text-green-600" />
+                      <CheckCircle2 className="w-4 h-4 text-success" />
                     ) : (
-                      <AlertTriangle className="w-4 h-4 text-orange-600" />
+                      <AlertTriangle className="w-4 h-4 text-warning" />
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground">{activity.message}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{activity.time}</p>
+                    <p className="text-sm font-medium text-neutral-900">{activity.message}</p>
+                    <p className="text-xs text-neutral-500 mt-0.5">{activity.time}</p>
                   </div>
                 </div>
               ))}
@@ -501,11 +501,11 @@ export function EnhancedDashboard({ businessId, category, onQuickAction }) {
           </CardContent>
         </Card>
 
-        <Card className="bg-card border-border shadow-sm">
+        <Card className="bg-white border-neutral-200 shadow-md">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle className="text-lg font-bold">{t.system_alerts || 'System Alerts'}</CardTitle>
+                <CardTitle className="text-lg font-semibold">{t.system_alerts || 'System Alerts'}</CardTitle>
                 <CardDescription>{t.important_notifications || 'Important Notifications'}</CardDescription>
               </div>
               <Badge variant="secondary">{`${alerts.length} ${t.new_alerts || 'New Alerts'}`}</Badge>
@@ -514,37 +514,37 @@ export function EnhancedDashboard({ businessId, category, onQuickAction }) {
           <CardContent>
             <div className="space-y-3">
               {metrics?.alerts?.lowStock > 0 && (
-                <Alert variant="destructive" className="bg-red-50 text-red-900 border-red-200">
-                  <AlertTriangle className="h-4 w-4 text-red-600" />
+                <Alert variant="destructive">
+                  <AlertTriangle className="h-4 w-4" />
                   <AlertTitle>{t.low_stock || 'Low Stock'}</AlertTitle>
-                  <AlertDescription className="text-red-800">
+                  <AlertDescription>
                     {`${metrics.alerts.lowStock} ${t.low_stock_desc || 'items are below minimum stock level'}`}
                   </AlertDescription>
                 </Alert>
               )}
               {metrics?.orders?.pending > 0 && (
-                <Alert variant="default" className="bg-blue-50 text-blue-900 border-blue-200">
-                  <Bell className="h-4 w-4 text-blue-600" />
+                <Alert variant="info">
+                  <Bell className="h-4 w-4" />
                   <AlertTitle>{t.payment_pending || 'Payment Pending'}</AlertTitle>
-                  <AlertDescription className="text-blue-800">
+                  <AlertDescription>
                     {`${metrics.orders.pending} pending invoices`}
                   </AlertDescription>
                 </Alert>
               )}
               {metrics?.alerts?.overdueInvoices > 0 && (
-                <Alert variant="destructive" className="bg-orange-50 text-orange-900 border-orange-200">
-                  <Clock className="h-4 w-4 text-orange-600" />
+                <Alert variant="warning">
+                  <Clock className="h-4 w-4" />
                   <AlertTitle>Overdue Invoices</AlertTitle>
-                  <AlertDescription className="text-orange-800">
+                  <AlertDescription>
                     {`${metrics.alerts.overdueInvoices} invoices are overdue`}
                   </AlertDescription>
                 </Alert>
               )}
               {alerts.length === 0 && (
-                <Alert variant="default" className="bg-green-50 text-green-900 border-green-200">
-                  <CheckCircle2 className="h-4 w-4 text-green-600" />
+                <Alert variant="success">
+                  <CheckCircle2 className="h-4 w-4" />
                   <AlertTitle>{t.system_update || 'System Update'}</AlertTitle>
-                  <AlertDescription className="text-green-800">
+                  <AlertDescription>
                     {t.smooth_running || 'All systems running smoothly.'} {format(new Date(), 'MMM dd, yyyy')}
                   </AlertDescription>
                 </Alert>
@@ -556,3 +556,5 @@ export function EnhancedDashboard({ businessId, category, onQuickAction }) {
     </div>
   );
 }
+
+

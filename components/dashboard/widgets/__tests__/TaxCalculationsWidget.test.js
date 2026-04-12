@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+﻿import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { TaxCalculationsWidget } from '../TaxCalculationsWidget';
 
 // Mock the language context
@@ -123,7 +123,7 @@ describe('TaxCalculationsWidget', () => {
     );
     
     // Click the view details button
-    const viewDetailsButton = screen.getByText('View Detailed Calculations →');
+    const viewDetailsButton = screen.getByText('View Detailed Calculations â†’');
     fireEvent.click(viewDetailsButton);
     
     // Check if callback was called with correct action
@@ -193,7 +193,8 @@ describe('TaxCalculationsWidget', () => {
     );
     
     // Check for icon container with purple styling
-    const iconContainer = container.querySelector('.bg-purple-50');
+    const iconContainer = container.querySelector('.bg-wine-50');
     expect(iconContainer).toBeInTheDocument();
   });
 });
+

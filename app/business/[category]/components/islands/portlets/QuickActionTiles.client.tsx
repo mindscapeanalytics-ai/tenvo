@@ -28,14 +28,14 @@ export const QuickActionTiles = memo(function QuickActionTiles({
 
     const actions = [
         { id: 'new-invoice', label: 'New Invoice', icon: FilePlus, color: 'bg-[#334155]', hover: 'hover:bg-[#1e293b]', desc: 'Direct Sale' },
-        { id: transferAction, label: 'Stock Transfer', icon: ArrowLeftRight, color: 'bg-[#8B1538]', hover: 'hover:bg-[#72112e]', desc: multiLocationEnabled ? 'Inter-branch' : 'Procurement' },
+        { id: transferAction, label: 'Stock Transfer', icon: ArrowLeftRight, color: 'bg-[#2F5BFF]', hover: 'hover:bg-[#1738A5]', desc: multiLocationEnabled ? 'Inter-branch' : 'Procurement' },
         { id: 'inventory', label: 'Inventory Adj', icon: Truck, color: 'bg-[#15803d]', hover: 'hover:bg-[#166534]', desc: 'Stock Corrections' },
         { id: 'new-customer', label: 'Customers', icon: Users, color: 'bg-[#0369a1]', hover: 'hover:bg-[#075985]', desc: 'CRM Manage' },
         { id: 'new-product', label: 'New Product', icon: PlusCircle, color: 'bg-[#6d28d9]', hover: 'hover:bg-[#5b21b6]', desc: 'Entry & Catalog' },
         campaignEnabled
             ? { id: 'campaigns', label: 'Campaigns', icon: Megaphone, color: 'bg-[#475569]', hover: 'hover:bg-[#334155]', desc: 'Marketing Ops' }
             : { id: 'reports', label: 'Analytics', icon: Settings2, color: 'bg-[#475569]', hover: 'hover:bg-[#334155]', desc: 'System Insights' },
-    ];
+    ].filter((action, index, arr) => arr.findIndex((candidate) => candidate.id === action.id) === index);
 
     return (
         <Portlet title="Quick Shortcuts" compact>

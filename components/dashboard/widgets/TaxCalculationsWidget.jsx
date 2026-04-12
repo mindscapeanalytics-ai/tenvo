@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -133,8 +133,8 @@ export function TaxCalculationsWidget({
               {t.pst_fst_calculations || 'PST/FST calculations'}
             </CardDescription>
           </div>
-          <div className="p-2.5 rounded-2xl bg-purple-50 border border-purple-200 shadow-inner">
-            <Calculator className="w-5 h-5 text-purple-600" />
+          <div className="p-2.5 rounded-2xl bg-wine-50 border border-wine-200 shadow-inner">
+            <Calculator className="w-5 h-5 text-wine-600" />
           </div>
         </div>
       </CardHeader>
@@ -162,11 +162,11 @@ export function TaxCalculationsWidget({
             </div>
           </div>
           
-          <div className="p-3 rounded-lg bg-gradient-to-br from-purple-50 to-purple-100/50 border border-purple-200">
-            <div className="text-xs text-purple-700 font-medium mb-1">
+          <div className="p-3 rounded-lg bg-gradient-to-br from-wine-50 to-wine-100/50 border border-wine-200">
+            <div className="text-xs text-wine-700 font-medium mb-1">
               {t.fst || 'FST'} ({taxData.fst.rate}%)
             </div>
-            <div className="text-xl font-black text-purple-900">
+            <div className="text-xl font-black text-wine-900">
               {formatCurrency(taxData.fst.amount, currency)}
             </div>
           </div>
@@ -200,9 +200,9 @@ export function TaxCalculationsWidget({
         {/* Quick Action */}
         <button
           onClick={() => onViewDetails?.('view-tax-details')}
-          className="w-full text-xs font-bold text-purple-600 hover:text-purple-700 transition-colors py-2"
+          className="w-full text-xs font-bold text-wine-600 hover:text-wine-700 transition-colors py-2"
         >
-          {t.view_detailed_calculations || 'View Detailed Calculations'} →
+          {t.view_detailed_calculations || 'View Detailed Calculations'} â†’
         </button>
 
         {/* Last Updated */}
@@ -213,3 +213,5 @@ export function TaxCalculationsWidget({
     </Card>
   );
 }
+
+

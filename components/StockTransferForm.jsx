@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useMemo } from 'react';
 import { X, Plus, Trash2, Save, Loader2, ArrowRight, Warehouse, Package, Search, Truck } from 'lucide-react';
@@ -127,7 +127,7 @@ export function StockTransferForm({ onClose, onSave, products = [], warehouses =
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
             <Card className="w-full max-w-4xl max-h-[95vh] overflow-hidden flex flex-col shadow-2xl border-none rounded-3xl">
                 {/* Header */}
-                <CardHeader className="flex flex-row items-center justify-between border-b p-6 bg-gradient-to-r from-violet-900 via-purple-800 to-indigo-900 text-white flex-shrink-0">
+                <CardHeader className="flex flex-row items-center justify-between border-b p-6 bg-gradient-to-r from-violet-900 via-wine-800 to-indigo-900 text-white flex-shrink-0">
                     <div className="flex items-center gap-4">
                         <div className="p-3 rounded-2xl bg-violet-500/20 text-violet-300 ring-1 ring-violet-500/50">
                             <Truck className="w-6 h-6" />
@@ -135,13 +135,13 @@ export function StockTransferForm({ onClose, onSave, products = [], warehouses =
                         <div>
                             <CardTitle className="text-2xl font-black uppercase tracking-tighter">Stock Transfer</CardTitle>
                             <p className="text-xs font-bold text-violet-300/70 uppercase tracking-widest mt-1">
-                                {business?.name} • Inter-Warehouse Movement
+                                {business?.name} â€¢ Inter-Warehouse Movement
                             </p>
                         </div>
                     </div>
                     <div className="flex items-center gap-3">
                         <Badge className="bg-violet-500/20 text-violet-300 border-violet-400/40 font-black text-xs">
-                            {formData.items.length} items • {totalItems} units
+                            {formData.items.length} items â€¢ {totalItems} units
                         </Badge>
                         <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full hover:bg-white/10 text-white/50 hover:text-white">
                             <X className="w-5 h-5" />
@@ -193,7 +193,7 @@ export function StockTransferForm({ onClose, onSave, products = [], warehouses =
 
                     {formData.source_warehouse_id === formData.destination_warehouse_id && formData.source_warehouse_id && (
                         <div className="p-3 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2 text-red-700 text-sm font-bold">
-                            ⚠️ Source and destination cannot be the same
+                            âš ï¸ Source and destination cannot be the same
                         </div>
                     )}
 
@@ -259,7 +259,7 @@ export function StockTransferForm({ onClose, onSave, products = [], warehouses =
                                         <div key={item.id} className={`grid grid-cols-12 gap-2 px-4 py-3 items-center border-b last:border-0 ${overStock ? 'bg-red-50' : 'hover:bg-gray-50'} transition-colors`}>
                                             <div className="col-span-5">
                                                 <p className="font-bold text-gray-900 text-sm">{item.name}</p>
-                                                <p className="text-[10px] text-gray-400">{item.sku || '—'}</p>
+                                                <p className="text-[10px] text-gray-400">{item.sku || 'â€”'}</p>
                                             </div>
                                             <div className="col-span-2 text-center">
                                                 <Badge variant="outline" className="rounded-full font-bold text-[10px]">
@@ -348,3 +348,4 @@ export function StockTransferForm({ onClose, onSave, products = [], warehouses =
         </div>
     );
 }
+

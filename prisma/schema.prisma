@@ -685,7 +685,8 @@ model warehouse_locations {
   product_batches         product_batches[]
   product_serials         product_serials[]
   product_stock_locations product_stock_locations[]
-  production_orders       production_orders[]
+  production_orders_input  production_orders[]       @relation("production_input_warehouse")
+  production_orders_output production_orders[]       @relation("production_output_warehouse")
   stock_movements         stock_movements[]
   stock_transfers_from    stock_transfers[]         @relation("stock_transfers_from_location")
   stock_transfers_to      stock_transfers[]         @relation("stock_transfers_to_location")

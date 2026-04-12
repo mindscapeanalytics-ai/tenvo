@@ -33,7 +33,6 @@ import {
     getDomainUnits,
     getDomainDefaultTax,
     getDomainKnowledge,
-    getDomainTheme,
 } from '@/lib/utils/domainHelpers';
 import { validateDomainProduct as validateDomainRegex } from '@/lib/utils/domainValidation';
 import { TaxCategorySelector } from '@/components/domain/TaxCategorySelector';
@@ -50,6 +49,7 @@ import { useKeyboardShortcuts, COMMON_SHORTCUTS } from '@/hooks/useKeyboardShort
 import { useBusiness } from '@/lib/context/BusinessContext';
 import { getCurrentSeason, getSeasonalDiscount, applySeasonalPricing } from '@/lib/domainData/pakistaniSeasons';
 import { hasSeasonalPricing } from '@/lib/utils/pakistaniFeatures';
+import { pakistaniSizes, pakistaniColors } from '@/lib/domainData/pakistaniRetailData';
 
 /**
  * ProductForm Component
@@ -129,8 +129,6 @@ export function ProductForm({
         // Merge with priority: existingData > domainDefaults > smartDefaults
         return mergeFormDefaults(smartDefaults, domainDefaults, existingData);
     });
-
-    const theme = getDomainTheme(category);
 
     const [errors, setErrors] = useState({});
     const [isLoading, setIsLoading] = useState(false);
@@ -383,7 +381,13 @@ export function ProductForm({
             // Map camelCase form fields to snake_case schema fields
             const payload = {
                 name: formData.name,
-                sku: formData.sku || null,
+                sku: formData.sku || (() => {
+                    // Auto-generate SKU for new products
+                    const prefix = (category || 'GEN').substring(0, 3).toUpperCase();
+                    const ts = Date.now().toString(36).slice(-4).toUpperCase();
+                    const rand = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+                    return `${prefix}-${ts}-${rand}`;
+                })(),
                 barcode: formData.barcode || null,
                 brand: formData.brand || null,
                 description: formData.description || null,
@@ -403,7 +407,10 @@ export function ProductForm({
                 manufacturing_date: formData.manufacturing_date || null,
                 domain_data: {
                     ...domainData,
-                    custom_parameters: formData.customParameters || []
+                    custom_parameters: formData.customParameters || [],
+                    ...(formData.sizeColorMatrix && Object.keys(formData.sizeColorMatrix).length > 0
+                        ? { size_color_matrix: formData.sizeColorMatrix }
+                        : {}),
                 },
                 stock: Number(formData.stock) || 0
             };
@@ -451,7 +458,7 @@ export function ProductForm({
             <Card className="border-none shadow-2xl shadow-gray-200/50 rounded-3xl overflow-hidden bg-white/80 backdrop-blur-xl">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-6 pt-8 px-8 border-b border-gray-50">
                     <div className="space-y-1">
-                        <CardTitle className={`text-3xl font-black text-${theme.primary} tracking-tight`}>{product ? 'Update Inventory' : 'New Stock Entry'}</CardTitle>
+                        <CardTitle className="text-3xl font-black text-wine-600 tracking-tight">{product ? 'Update Inventory' : 'New Stock Entry'}</CardTitle>
                         <CardDescription className="font-medium text-gray-500">
                             {product ? `Editing: ${product.name}` : `Initializing ${category.replace('-', ' ')} inventory record`}
                         </CardDescription>
@@ -471,24 +478,24 @@ export function ProductForm({
                                 )}
                             </div>
                         </div>
-                        <Badge variant="outline" className={`bg-${theme.bg} text-${theme.primary} border-${theme.border} px-4 py-1.5 rounded-full font-black uppercase tracking-widest text-[10px] flex items-center gap-2 shadow-sm`}>
-                            <div className={`w-2 h-2 rounded-full bg-${theme.primary} animate-pulse`} />
+                        <Badge variant="outline" className="bg-wine-50 text-wine-600 border-wine-100 px-4 py-1.5 rounded-full font-black uppercase tracking-widest text-[10px] flex items-center gap-2 shadow-sm">
+                            <div className="w-2 h-2 rounded-full bg-wine-600 animate-pulse" />
                             {category.replace('-', ' ')} Mode
                         </Badge>
                     </div>
                 </CardHeader>
                 <CardContent className="pt-8 px-8 pb-10">
                     {/* Domain Intelligence Banner */}
-                    <div className={`mb-8 p-6 rounded-3xl bg-gradient-to-br from-white to-${theme.bg}/20 border border-${theme.border}/50 shadow-sm relative overflow-hidden group hover:shadow-md transition-all duration-500 cursor-default`}>
+                    <div className="mb-8 p-6 rounded-3xl bg-gradient-to-br from-white to-wine-50/20 border border-wine-100/50 shadow-sm relative overflow-hidden group hover:shadow-md transition-all duration-500 cursor-default">
                         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
                             <div className="flex items-start gap-4">
-                                <div className={`p-4 rounded-2xl bg-${theme.primary} text-white shadow-xl shadow-${theme.primary}/20 group-hover:scale-105 transition-transform duration-500`}>
+                                <div className="p-4 rounded-2xl bg-wine-600 text-white shadow-xl shadow-wine-600/20 group-hover:scale-105 transition-transform duration-500">
                                     <BrainCircuit className="w-6 h-6" />
                                 </div>
                                 <div className="space-y-1">
                                     <h4 className="text-xl font-black text-gray-900 leading-tight">Domain Intelligence Active</h4>
                                     <p className="text-sm text-gray-500 max-w-sm">
-                                        System is optimizing inventory for <span className={`font-bold text-${theme.primary}`}>{category.replace(/-/g, ' ')}</span> standards including reorder automation and specialized property tracking.
+                                        System is optimizing inventory for <span className="font-bold text-wine-600">{category.replace(/-/g, ' ')}</span> standards including reorder automation and specialized property tracking.
                                     </p>
                                 </div>
                             </div>
@@ -499,7 +506,7 @@ export function ProductForm({
                             </div>
                         </div>
                         {/* Decorative background element */}
-                        <div className={`absolute -right-8 -bottom-8 w-32 h-32 rounded-full bg-${theme.primary}/5 blur-3xl group-hover:bg-${theme.primary}/10 transition-all duration-700`} />
+                        <div className="absolute -right-8 -bottom-8 w-32 h-32 rounded-full bg-wine-600/5 blur-3xl group-hover:bg-wine-600/10 transition-all duration-700" />
                     </div>
                     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                         <TabsList className="grid w-full grid-cols-5 mb-8 bg-gray-100/50 p-1 rounded-xl">
@@ -756,7 +763,7 @@ export function ProductForm({
                             <div className="grid grid-cols-1 gap-6">
                                 <div className="space-y-4">
                                     <div className="flex items-center gap-3">
-                                        <div className={`p-2.5 rounded-xl bg-${theme.primary}/10 text-${theme.primary}`}>
+                                        <div className="p-2.5 rounded-xl bg-wine-600/10 text-wine-600">
                                             <ImagePlus className="w-5 h-5" />
                                         </div>
                                         <div>
@@ -790,9 +797,9 @@ export function ProductForm({
                         </TabsContent>
 
                         <TabsContent value="domain" className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                            <div className={`bg-${theme.bg}/30 p-6 rounded-2xl border border-${theme.border} shadow-inner`}>
+                            <div className="bg-wine-50/30 p-6 rounded-2xl border border-wine-100 shadow-inner">
                                 <div className="flex items-center gap-3 mb-6">
-                                    <div className={`p-2.5 rounded-xl bg-${theme.primary}/10 text-${theme.primary}`}>
+                                    <div className="p-2.5 rounded-xl bg-wine-600/10 text-wine-600">
                                         <BrainCircuit className="w-5 h-5" />
                                     </div>
                                     <div>
@@ -802,6 +809,73 @@ export function ProductForm({
                                         <p className="text-sm text-gray-500">Expert domain-specific attributes for precision tracking</p>
                                     </div>
                                 </div>
+
+                                {/* Size-Color Matrix — for garments, boutique-fashion, leather-footwear */}
+                                {isSizeColorMatrixEnabled(category) && (
+                                    <div className="mb-6 p-5 bg-white/70 rounded-2xl border border-dashed border-gray-300">
+                                        <div className="flex items-center gap-2 mb-4">
+                                            <Layers className="w-4 h-4 text-wine" />
+                                            <span className="text-xs font-black uppercase text-wine tracking-widest">Size / Color Matrix</span>
+                                            <Badge variant="outline" className="text-[10px] ml-auto">Variant Stock Entry</Badge>
+                                        </div>
+                                        <p className="text-xs text-gray-500 mb-4">
+                                            Enter quantity per size and color. Each cell represents stock for that variant.
+                                        </p>
+                                        {(() => {
+                                            // Determine size set based on domain
+                                            const isFootwear = category === 'leather-footwear';
+                                            const sizes = isFootwear
+                                                ? pakistaniSizes.footwear.men.slice(0, 10)
+                                                : pakistaniSizes.clothing.men;
+                                            const colors = pakistaniColors.slice(0, 8).map(c => c.en);
+                                            // matrix stored as domain_data.size_color_matrix
+                                            const matrix = formData.sizeColorMatrix || {};
+                                            const updateMatrix = (size, color, qty) => {
+                                                const updated = {
+                                                    ...matrix,
+                                                    [`${size}-${color}`]: Number(qty) || 0,
+                                                };
+                                                updateField('sizeColorMatrix', updated);
+                                            };
+                                            return (
+                                                <div className="overflow-x-auto">
+                                                    <table className="w-full text-xs border-collapse">
+                                                        <thead>
+                                                            <tr>
+                                                                <th className="border border-gray-200 bg-gray-50 p-2 text-left font-semibold w-14">Size</th>
+                                                                {colors.map(color => (
+                                                                    <th key={color} className="border border-gray-200 bg-gray-50 p-2 text-center font-semibold min-w-[60px]">{color}</th>
+                                                                ))}
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {sizes.map(size => (
+                                                                <tr key={size}>
+                                                                    <td className="border border-gray-200 bg-gray-50 p-2 font-bold text-center">{size}</td>
+                                                                    {colors.map(color => {
+                                                                        const val = matrix[`${size}-${color}`] ?? '';
+                                                                        return (
+                                                                            <td key={color} className="border border-gray-200 p-0">
+                                                                                <input
+                                                                                    type="number"
+                                                                                    min="0"
+                                                                                    value={val}
+                                                                                    onChange={e => updateMatrix(size, color, e.target.value)}
+                                                                                    className="w-full h-8 text-center text-xs border-0 bg-transparent focus:bg-wine/5 focus:outline-none focus:ring-1 focus:ring-wine/30 rounded transition-colors"
+                                                                                    placeholder="0"
+                                                                                />
+                                                                            </td>
+                                                                        );
+                                                                    })}
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            );
+                                        })()}
+                                    </div>
+                                )}
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5 bg-white/50 p-6 rounded-2xl border border-dashed border-gray-200">
                                     {domainFields.slice(['textile-wholesale', 'auto-parts', 'pharmacy', 'chemical'].includes(category) ? 2 : 0).map((field) => {
@@ -1030,7 +1104,7 @@ export function ProductForm({
                                 </Button>
                             )}
 
-                            <Button type="submit" disabled={isLoading} className={`bg-${theme.primary} hover:opacity-90 text-white font-black px-10 h-11 rounded-xl shadow-lg transition-all active:scale-95`}>
+                            <Button type="submit" disabled={isLoading} className="bg-wine-600 hover:opacity-90 text-white font-black px-10 h-11 rounded-xl shadow-lg transition-all active:scale-95">
                                 {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : (product ? 'Update Inventory' : 'Add to Stock')}
                             </Button>
                         </div>

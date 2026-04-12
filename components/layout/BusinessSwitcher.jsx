@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
@@ -27,7 +27,7 @@ const DOMAIN_COLORS = {
     'restaurant-cafe': 'bg-orange-500',
     'supermarket': 'bg-emerald-500',
     'grocery': 'bg-green-500',
-    'wholesale': 'bg-purple-500',
+    'wholesale': 'bg-wine-500',
     'manufacturing': 'bg-slate-600',
     'default': 'bg-indigo-500',
 };
@@ -199,7 +199,7 @@ export function BusinessSwitcher({ isCollapsed = false }) {
                                                         {biz.name}
                                                     </p>
                                                     <p className="text-[11px] text-gray-400 truncate capitalize">
-                                                        {biz.domain?.replace(/-/g, ' ')} · {biz.user_role}
+                                                        {biz.domain?.replace(/-/g, ' ')} Â· {biz.user_role}
                                                     </p>
                                                 </div>
                                                 {isSwitching ? (
@@ -234,3 +234,5 @@ export function BusinessSwitcher({ isCollapsed = false }) {
         </div>
     );
 }
+
+

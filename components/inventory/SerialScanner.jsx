@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import { Scan, Check, X, AlertCircle, Package, Shield, Calendar } from 'lucide-react';
@@ -100,7 +100,7 @@ export function SerialScanner({
                 onSerialScanned?.(serial);
                 toast.success('Serial number verified');
             } else {
-                // 🛡️ DEFENSIVE CHECK
+                // ðŸ›¡ï¸ DEFENSIVE CHECK
                 if (!product || !product.id) {
                     toast.error('Product context missing. Please close and try again.');
                     return;
@@ -166,7 +166,7 @@ export function SerialScanner({
         try {
             setLoading(true);
 
-            // 🛡️ DEFENSIVE CHECK
+            // ðŸ›¡ï¸ DEFENSIVE CHECK
             if (!product || !product.id) {
                 toast.error('Product context missing');
                 return;
@@ -206,7 +206,7 @@ export function SerialScanner({
             sold: { label: 'Sold', variant: 'secondary', color: 'bg-blue-500' },
             returned: { label: 'Returned', variant: 'warning', color: 'bg-orange-500' },
             defective: { label: 'Defective', variant: 'destructive', color: 'bg-red-500' },
-            under_repair: { label: 'Under Repair', variant: 'secondary', color: 'bg-purple-500' }
+            under_repair: { label: 'Under Repair', variant: 'secondary', color: 'bg-wine-500' }
         };
 
         const config = statusConfig[status] || statusConfig.in_stock;
@@ -557,3 +557,4 @@ export function SerialScanner({
         </div>
     );
 }
+

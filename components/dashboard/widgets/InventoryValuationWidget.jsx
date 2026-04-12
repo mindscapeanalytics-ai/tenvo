@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -135,8 +135,8 @@ export function InventoryValuationWidget({
               {t.using_method || 'Using'} {costingMethod} {t.method || 'method'}
             </CardDescription>
           </div>
-          <div className="p-2.5 rounded-2xl bg-purple-50 border border-purple-200 shadow-inner">
-            <Package className="w-5 h-5 text-purple-600" />
+          <div className="p-2.5 rounded-2xl bg-wine-50 border border-wine-200 shadow-inner">
+            <Package className="w-5 h-5 text-wine-600" />
           </div>
         </div>
       </CardHeader>
@@ -194,7 +194,7 @@ export function InventoryValuationWidget({
                 </div>
                 <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
                   <div
-                    className="h-full rounded-full bg-gradient-to-r from-purple-500 to-purple-600 transition-all duration-500"
+                    className="h-full rounded-full bg-gradient-to-r from-wine-500 to-wine-600 transition-all duration-500"
                     style={{ width: `${cat.percentage}%` }}
                   />
                 </div>
@@ -217,3 +217,5 @@ export function InventoryValuationWidget({
     </Card>
   );
 }
+
+

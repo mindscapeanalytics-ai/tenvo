@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Multi-Location Inventory Component - TypeScript Migration
  * Manages warehouse locations and stock transfers
  */
@@ -351,7 +351,7 @@ export function MultiLocationInventory({
             case 'showroom':
                 return 'bg-blue-100 text-blue-800';
             case 'hub':
-                return 'bg-purple-100 text-purple-800';
+                return 'bg-wine-100 text-wine-800';
             case 'cutting':
                 return 'bg-orange-100 text-orange-800';
             default:
@@ -800,3 +800,4 @@ export function MultiLocationInventory({
         </div>
     );
 }
+

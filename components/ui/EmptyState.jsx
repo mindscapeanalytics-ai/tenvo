@@ -69,7 +69,7 @@ const MODULE_CONFIG = {
         actionLabel: null,
     },
     reports: {
-        icon: BarChart3, color: 'purple',
+        icon: BarChart3, color: 'blue',
         title: 'No data to analyze',
         description: 'Start creating invoices and tracking inventory to unlock powerful analytics and AI insights.',
         actionLabel: null,
@@ -110,7 +110,7 @@ const COLOR_CLASSES = {
     rose: { bg: 'bg-rose-50', icon: 'text-rose-500', ring: 'ring-rose-100' },
     sky: { bg: 'bg-sky-50', icon: 'text-sky-500', ring: 'ring-sky-100' },
     indigo: { bg: 'bg-indigo-50', icon: 'text-indigo-500', ring: 'ring-indigo-100' },
-    purple: { bg: 'bg-purple-50', icon: 'text-purple-500', ring: 'ring-purple-100' },
+    purple: { bg: 'bg-wine-50', icon: 'text-wine-500', ring: 'ring-wine-100' },
     gray: { bg: 'bg-gray-50', icon: 'text-gray-400', ring: 'ring-gray-100' },
     pink: { bg: 'bg-pink-50', icon: 'text-pink-500', ring: 'ring-pink-100' },
     cyan: { bg: 'bg-cyan-50', icon: 'text-cyan-500', ring: 'ring-cyan-100' },

@@ -5,12 +5,14 @@ import {
     TrendingUp, Users, ShoppingCart,
     CreditCard, Clock,
     Zap, ArrowUpRight, ArrowDownRight,
-    Boxes, Warehouse, RotateCcw, BadgeDollarSign
+    Boxes, Warehouse, RotateCcw, BadgeDollarSign,
+    Package, FileText, BarChart3, Plus
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useBusiness } from '@/lib/context/BusinessContext';
+import { useAppMode } from '@/lib/context/BusyModeContext';
 import { getDomainColors } from '@/lib/domainColors';
 import { isCampaignRelevant } from '@/lib/config/domains';
 import { KPIMeter } from '../islands/portlets/KPIMeter.client';
@@ -20,10 +22,6 @@ import { RecentActivityFeed } from '../islands/portlets/RecentActivityFeed.clien
 import { AnalyticsDashboard } from '../islands/AnalyticsDashboard.client';
 import { PredictivePlanningPortlet } from '../islands/portlets/PredictivePlanningPortlet.client';
 import NetsuiteDashboard from '../islands/NetsuiteDashboard.client';
-
-// Feature Flags & Role-Based Dashboard
-import { isFeatureEnabledForUser, FEATURE_FLAGS } from '@/lib/config/featureFlags';
-import { RoleBasedDashboardController } from '@/components/dashboard/RoleBasedDashboardController';
 
 // ═══════════════════════════════════════════════════════════════
 // TYPES & INTERFACES
@@ -45,11 +43,7 @@ interface DomainDashboardProps {
     expenses?: ExpenseLike[];
     domainKnowledge?: DomainKnowledgeLike;
     isLoading?: boolean;
-    user?: {
-        id: string;
-        role: 'owner' | 'manager' | 'sales_staff' | 'inventory_staff' | 'accountant';
-        permissions?: string[];
-    };
+    user?: { email?: string; user_metadata?: { full_name?: string } } | null;
 }
 
 interface InvoiceItemLike {
@@ -69,6 +63,9 @@ interface InvoiceLike {
 interface ProductLike {
     id?: string | number;
     stock?: number | string;
+    min_stock?: number | string;
+    minStock?: number | string;
+    reorder_point?: number | string;
     cost_price?: number | string;
     purchase_price?: number | string;
     price?: number | string;
@@ -183,43 +180,11 @@ export function DomainDashboard({
     user
 }: DomainDashboardProps) {
     const { business } = useBusiness() as { business?: { id?: string } | null };
+    const { isEasyMode } = useAppMode();
     const activeBusinessId = businessId || business?.id;
-    const colors = getDomainColors(category);
+    const colors = getDomainColors(category) as Record<string, unknown>;
     const campaignEnabled = isCampaignRelevant(category, (domainKnowledge ?? null) as any);
     const multiLocationEnabled = Boolean(domainKnowledge?.multiLocationEnabled);
-
-    // ═══════════════════════════════════════════════════════════════
-    // FEATURE FLAG: Unified Dashboard with Role-Based Templates
-    // ═══════════════════════════════════════════════════════════════
-    
-    const unifiedDashboardEnabled = useMemo(() => {
-        // Check if unified dashboard feature is enabled for this user/business
-        return isFeatureEnabledForUser(
-            FEATURE_FLAGS.UNIFIED_DASHBOARD,
-            {
-                userId: user?.id || '',
-                userRole: user?.role || '',
-                businessId: activeBusinessId || ''
-            }
-        );
-    }, [user?.id, user?.role, activeBusinessId]);
-
-    // If unified dashboard is enabled, use RoleBasedDashboardController
-    if (unifiedDashboardEnabled && user) {
-        return (
-            <RoleBasedDashboardController
-                businessId={activeBusinessId || ''}
-                category={category}
-                user={user}
-                onQuickAction={onQuickAction}
-            />
-        );
-    }
-
-    // ═══════════════════════════════════════════════════════════════
-    // LEGACY DASHBOARD (Current Implementation)
-    // This will be used when feature flag is disabled
-    // ═══════════════════════════════════════════════════════════════
 
     const formatCurrencyCompact = useCallback(
         (amount: number) => `${currency} ${Math.round(amount || 0).toLocaleString()}`,
@@ -327,30 +292,12 @@ export function DomainDashboard({
 
     // ─── Robust KPI Logic ─────────────────────────────────────────
     const domainKpis = useMemo(() => {
-        const revenueValue = dashboardMetrics?.revenue ?? periodMetrics.currentRevenue;
-        const ordersValue = dashboardMetrics?.orders?.total ?? periodMetrics.currentOrders;
         const expenseValue = periodMetrics.currentExpenses > 0 ? periodMetrics.currentExpenses : totalExpenses;
         const activeCustomers = dashboardMetrics?.customers?.active ?? periodMetrics.currentCustomers;
+        const avgOrderValueKpi = periodMetrics.currentRevenue / Math.max(periodMetrics.currentOrders, 1);
+        const returnRateKpi = (periodMetrics.returnInvoices / Math.max(periodMetrics.currentOrders, 1)) * 100;
 
         return [
-            {
-                id: 'rev',
-                label: 'Revenue',
-                value: formatCurrencyCompact(revenueValue),
-                subValue: 'Gross income',
-                trend: Number(revenueTrendSigned.toFixed(1)),
-                icon: TrendingUp,
-                color: 'bg-indigo-500'
-            },
-            {
-                id: 'orders',
-                label: 'Orders',
-                value: ordersValue || 0,
-                subValue: 'Total transactions',
-                trend: Number(ordersTrend.toFixed(1)),
-                icon: ShoppingCart,
-                color: 'bg-emerald-500'
-            },
             {
                 id: 'expenses',
                 label: 'Period Expenses',
@@ -368,15 +315,59 @@ export function DomainDashboard({
                 trend: Number(customerTrend.toFixed(1)),
                 icon: Users,
                 color: 'bg-blue-500'
+            },
+            {
+                id: 'avg_order',
+                label: 'Avg Order Value',
+                value: formatCurrencyCompact(avgOrderValueKpi),
+                subValue: 'Revenue per order',
+                trend: Number(revenueTrendSigned.toFixed(1)),
+                icon: TrendingUp,
+                color: 'bg-indigo-600'
+            },
+            {
+                id: 'return_rate',
+                label: 'Return Rate',
+                value: `${returnRateKpi.toFixed(1)}%`,
+                subValue: `${periodMetrics.returnInvoices} return docs`,
+                trend: Number((-returnRateKpi).toFixed(1)),
+                icon: RotateCcw,
+                color: 'bg-rose-700'
             }
-        ];
-    }, [dashboardMetrics, periodMetrics, totalExpenses, revenueTrendSigned, ordersTrend, expenseTrend, customerTrend, formatCurrencyCompact]);
+        ].filter((item, index, arr) => arr.findIndex((candidate) => candidate.label === item.label) === index);
+    }, [dashboardMetrics, periodMetrics, totalExpenses, revenueTrendSigned, expenseTrend, customerTrend, formatCurrencyCompact]);
+
+    const lowStockFallback = useMemo(() => {
+        return products.filter((product: ProductLike) => {
+            const stock = Number(product?.stock) || 0;
+            const safetyStock =
+                Number(product?.reorder_point) ||
+                Number(product?.min_stock) ||
+                Number(product?.minStock) ||
+                10;
+            return stock <= safetyStock;
+        }).length;
+    }, [products]);
+
+    const overdueInvoicesFallback = useMemo(() => {
+        return invoices.filter((invoice: InvoiceLike) => {
+            const status = String(invoice?.status || '').toLowerCase();
+            return status.includes('overdue') || status.includes('unpaid');
+        }).length;
+    }, [invoices]);
+
+    const pendingOrdersFallback = useMemo(() => {
+        return invoices.filter((invoice: InvoiceLike) => {
+            const status = String(invoice?.status || '').toLowerCase();
+            return status.includes('pending') || status.includes('processing');
+        }).length;
+    }, [invoices]);
 
     const remindersData = useMemo(() => ({
-        lowStock: dashboardMetrics?.alerts?.lowStock || 0,
-        overdueInvoices: dashboardMetrics?.alerts?.overdueInvoices || 0,
-        pendingOrders: dashboardMetrics?.orders?.pending || 0
-    }), [dashboardMetrics]);
+        lowStock: dashboardMetrics?.alerts?.lowStock ?? lowStockFallback,
+        overdueInvoices: dashboardMetrics?.alerts?.overdueInvoices ?? overdueInvoicesFallback,
+        pendingOrders: dashboardMetrics?.orders?.pending ?? pendingOrdersFallback
+    }), [dashboardMetrics, lowStockFallback, overdueInvoicesFallback, pendingOrdersFallback]);
 
     const domainEfficiency = useMemo(() => {
         const productBase = Math.max(products.length, 1);
@@ -442,12 +433,31 @@ export function DomainDashboard({
         return Math.max(0, days);
     }, [products, dateRange.to]);
 
+    const outstandingAmount = useMemo(() => {
+        return invoices.reduce((sum: number, invoice: InvoiceLike) => {
+            const status = String(invoice?.status || '').toLowerCase();
+            if (['paid', 'cancelled', 'draft'].includes(status)) return sum;
+            return sum + (Number(invoice?.grand_total) || Number(invoice?.amount) || 0);
+        }, 0);
+    }, [invoices]);
+
     const paidOrderRate = useMemo(() => {
-        const total = Number(dashboardMetrics?.orders?.total) || 0;
-        const paid = Number(dashboardMetrics?.orders?.paid) || 0;
-        if (total <= 0) return null;
-        return clamp((paid / total) * 100, 0, 100);
-    }, [dashboardMetrics?.orders?.total, dashboardMetrics?.orders?.paid]);
+        const totalFromMetrics = Number(dashboardMetrics?.orders?.total) || 0;
+        const paidFromMetrics = Number(dashboardMetrics?.orders?.paid) || 0;
+        if (totalFromMetrics > 0) {
+            return clamp((paidFromMetrics / totalFromMetrics) * 100, 0, 100);
+        }
+
+        const eligibleInvoices = invoices.filter((invoice: InvoiceLike) => {
+            const status = String(invoice?.status || '').toLowerCase();
+            return !['draft', 'cancelled'].includes(status);
+        });
+
+        if (eligibleInvoices.length === 0) return null;
+
+        const paidInvoices = eligibleInvoices.filter((invoice: InvoiceLike) => String(invoice?.status || '').toLowerCase() === 'paid').length;
+        return clamp((paidInvoices / eligibleInvoices.length) * 100, 0, 100);
+    }, [dashboardMetrics?.orders?.total, dashboardMetrics?.orders?.paid, invoices]);
 
     const warehouseUtilization = useMemo(() => {
         const capacityFromConfiguredProducts = products.reduce((sum: number, product: ProductLike) => {
@@ -458,6 +468,20 @@ export function DomainDashboard({
         if (capacityFromConfiguredProducts <= 0) return null;
         return clamp((inStockUnits / capacityFromConfiguredProducts) * 100, 0, 100);
     }, [products, inStockUnits]);
+
+    const paidOrderRateValue = paidOrderRate ?? 0;
+    const paidOrderRateDisplay = `${paidOrderRateValue.toFixed(1)}%`;
+    const paidOrderRateDetail = paidOrderRate === null ? 'Awaiting paid order history' : 'From paid vs total orders';
+
+    const warehouseUtilizationValue = warehouseUtilization ?? 0;
+    const warehouseUtilizationDisplay = `${warehouseUtilizationValue.toFixed(1)}%`;
+    const warehouseUtilizationDetail = warehouseUtilization === null
+        ? 'Using baseline capacity model'
+        : 'Configured capacity usage';
+
+    const stockCheckRecencyValue = stockCheckRecency ?? 0;
+    const stockCheckRecencyDisplay = `${stockCheckRecencyValue}d`;
+    const stockCheckRecencyDetail = stockCheckRecency === null ? 'No stock touch timestamps yet' : 'Since last stock touch';
 
     const dashboardHeaderHighlights = useMemo(() => ([
         {
@@ -562,7 +586,7 @@ export function DomainDashboard({
             icon: Clock,
             colorClass: 'bg-rose-500'
         }
-    ]), [periodMetrics.currentOrders, periodMetrics.currentRevenue, ordersTrend, revenueTrendSigned, inventoryValue, remindersData.overdueInvoices, formatCurrencyCompact]);
+    ].filter((item, index, arr) => arr.findIndex((candidate) => candidate.label === item.label) === index)), [periodMetrics.currentOrders, periodMetrics.currentRevenue, ordersTrend, revenueTrendSigned, inventoryValue, remindersData.overdueInvoices, formatCurrencyCompact]);
 
     const intelligentInsights = useMemo(() => {
         const insights = [] as Array<{ title: string; text: string; tone: string; actionTab: string }>;
@@ -639,6 +663,406 @@ export function DomainDashboard({
         );
     }
 
+    // ═══════════════════════════════════════════════════════════════
+    // EASY MODE DASHBOARD — Clean, beginner-friendly view
+    // ═══════════════════════════════════════════════════════════════
+    if (isEasyMode) {
+        const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'there';
+        const greeting = new Date().getHours() < 12 ? 'Good morning' : new Date().getHours() < 17 ? 'Good afternoon' : 'Good evening';
+        const easyPresetOptions: Array<{ id: 'today' | '7d' | '30d' | 'mtd'; label: string }> = [
+            { id: 'today', label: 'Today' },
+            { id: '7d', label: '7 Days' },
+            { id: '30d', label: '30 Days' },
+            { id: 'mtd', label: 'MTD' }
+        ];
+
+        const easyKpis = [
+            {
+                label: 'Revenue',
+                value: formatCurrencyCompact(dashboardMetrics?.revenue ?? periodMetrics.currentRevenue),
+                subValue: periodLabel,
+                icon: TrendingUp,
+                color: 'bg-emerald-500',
+                trend: Number(revenueTrendSigned.toFixed(1)),
+            },
+            {
+                label: 'Orders',
+                value: dashboardMetrics?.orders?.total ?? periodMetrics.currentOrders,
+                subValue: `${periodMetrics.soldUnits} units sold`,
+                icon: ShoppingCart,
+                color: 'bg-blue-500',
+                trend: Number(ordersTrend.toFixed(1)),
+            },
+            {
+                label: 'Inventory Value',
+                value: formatCurrencyCompact(inventoryValue),
+                subValue: `${inStockUnits.toLocaleString()} units on hand`,
+                icon: Boxes,
+                color: 'bg-indigo-600',
+                trend: undefined,
+            },
+            {
+                label: 'Receivables Due',
+                value: formatCurrencyCompact(outstandingAmount),
+                subValue: `${remindersData.overdueInvoices} overdue invoices`,
+                icon: CreditCard,
+                color: outstandingAmount > 0 ? 'bg-rose-500' : 'bg-slate-500',
+                trend: undefined,
+            },
+            {
+                label: 'Active Customers',
+                value: dashboardMetrics?.customers?.active ?? periodMetrics.currentCustomers,
+                subValue: 'Buying in current period',
+                icon: Users,
+                color: 'bg-cyan-500',
+                trend: Number(customerTrend.toFixed(1)),
+            },
+            {
+                label: 'Low Stock',
+                value: remindersData.lowStock,
+                subValue: coverageDays > 365 ? 'Coverage stable' : `${coverageDays} days coverage`,
+                icon: Package,
+                color: remindersData.lowStock > 0 ? 'bg-amber-500' : 'bg-emerald-600',
+                trend: undefined,
+            },
+        ];
+
+        const easyActions = [
+            { id: 'new-invoice', label: 'New Invoice', desc: 'Create a sale', icon: Plus, color: 'bg-slate-900 hover:bg-slate-800 text-white border border-slate-900' },
+            { id: 'add-product', label: 'Add Product', desc: 'Record inventory', icon: Package, color: 'bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200' },
+            { id: 'add-customer', label: 'Add Customer', desc: 'Grow customer base', icon: Users, color: 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200' },
+            { id: 'inventory', label: 'Review Inventory', desc: 'Fix stock issues', icon: Warehouse, color: 'bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200' },
+            { id: 'reports', label: 'View Reports', desc: 'Open analytics', icon: BarChart3, color: 'bg-orange-50 hover:bg-orange-100 text-orange-700 border border-orange-200' },
+        ];
+
+        const easyHealthPanels = [
+            {
+                label: 'Efficiency Score',
+                value: `${domainEfficiency}%`,
+                detail: domainEfficiency >= 85 ? 'Operations in control' : 'Needs attention',
+                tone: domainEfficiency >= 85 ? 'text-emerald-600' : 'text-amber-600'
+            },
+            {
+                label: 'Avg Order Value',
+                value: formatCurrencyCompact(avgOrderValue),
+                detail: 'Revenue per closed order',
+                tone: 'text-slate-900'
+            },
+            {
+                label: 'Paid Order Ratio',
+                value: paidOrderRateDisplay,
+                detail: 'Collections quality',
+                tone: paidOrderRate !== null && paidOrderRate < 60 ? 'text-rose-600' : 'text-slate-900'
+            },
+            {
+                label: multiLocationEnabled ? 'Warehouse Utilization' : 'Stock Check Recency',
+                value: multiLocationEnabled
+                    ? warehouseUtilizationDisplay
+                    : stockCheckRecencyDisplay,
+                detail: multiLocationEnabled ? 'Configured capacity usage' : 'Since last stock touch',
+                tone: 'text-slate-900'
+            }
+        ];
+
+        const quickSetupSteps = [
+            { id: 'add-product', label: 'Add your first product' },
+            { id: 'add-customer', label: 'Create a customer record' },
+            { id: 'new-invoice', label: 'Issue your first invoice' }
+        ];
+
+        // Recent invoices for quick view
+        const recentInvoices = [...invoices]
+            .sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime())
+            .slice(0, 5);
+
+        return (
+            <div className="space-y-5 w-full">
+                <div className="grid grid-cols-1 xl:grid-cols-12 gap-4">
+                    <Card className="xl:col-span-8 border-none overflow-hidden bg-[linear-gradient(135deg,#0f172a_0%,#1e293b_54%,#0f766e_100%)] text-white shadow-lg">
+                        <CardContent className="p-6 md:p-7">
+                            <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+                                <div className="max-w-2xl">
+                                    <p className="text-[10px] font-black uppercase tracking-[0.24em] text-cyan-200/80">Easy Mode Command Board</p>
+                                    <h1 className="mt-2 text-2xl md:text-3xl font-black tracking-tight">{greeting}, {userName}.</h1>
+                                    <p className="mt-2 text-sm text-slate-200">A cleaner summary of sales, stock, customers, and collections for {periodLabel.toLowerCase()}.</p>
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                    {easyPresetOptions.map((preset) => (
+                                        <button
+                                            key={preset.id}
+                                            onClick={() => onDateRangePresetChange?.(preset.id)}
+                                            className={cn(
+                                                'rounded-full border px-3 py-1.5 text-[11px] font-black uppercase tracking-wider transition-colors',
+                                                activePreset === preset.id
+                                                    ? 'border-white bg-white text-slate-900'
+                                                    : 'border-white/20 bg-white/10 text-white hover:bg-white/15'
+                                            )}
+                                        >
+                                            {preset.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="mt-5 grid grid-cols-2 md:grid-cols-4 gap-3">
+                                {dashboardHeaderHighlights.map((item) => (
+                                    <div key={item.label} className="rounded-2xl border border-white/10 bg-white/8 px-3 py-3 backdrop-blur-sm">
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-300">{item.label}</p>
+                                        <p className={cn('mt-1 text-lg font-black', item.tone.replace('text-', 'text-'))}>{item.value}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <Card className="xl:col-span-4 border border-slate-200 bg-white shadow-sm">
+                        <CardContent className="p-5">
+                            <div className="flex items-center gap-2">
+                                <Zap className="w-4 h-4 text-amber-500" />
+                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Operational Pulse</p>
+                            </div>
+                            <div className="mt-4 space-y-3">
+                                {easyHealthPanels.map((panel) => (
+                                    <div key={panel.label} className="rounded-2xl border border-slate-100 bg-slate-50/70 px-4 py-3">
+                                        <div className="flex items-center justify-between gap-3">
+                                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">{panel.label}</p>
+                                            <p className={cn('text-lg font-black', panel.tone)}>{panel.value}</p>
+                                        </div>
+                                        <p className="mt-1 text-[11px] font-semibold text-slate-500">{panel.detail}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+
+                {!hasCoreData && (
+                    <Card className="border border-cyan-100 bg-cyan-50/70 shadow-sm">
+                        <CardContent className="p-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                            <div>
+                                <p className="text-[10px] font-black uppercase tracking-widest text-cyan-700">Quick Setup</p>
+                                <p className="mt-1 text-sm font-bold text-slate-800">Complete the three core steps below to unlock richer KPI coverage and better easy-mode insights.</p>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                                {quickSetupSteps.map((step) => (
+                                    <Button key={step.id} size="sm" variant="outline" className="h-8 text-[11px] font-bold" onClick={() => onQuickAction?.(step.id)}>
+                                        {step.label}
+                                    </Button>
+                                ))}
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
+
+                <div className="grid grid-cols-2 xl:grid-cols-6 gap-4">
+                    {easyKpis.map(kpi => (
+                        <Card key={kpi.label} className="border border-slate-200 shadow-sm hover:shadow-md transition-shadow bg-white">
+                            <CardContent className="p-4">
+                                <div className="flex items-center justify-between mb-3">
+                                    <div className={cn("p-2 rounded-xl", kpi.color)}>
+                                        <kpi.icon className="w-4 h-4 text-white" />
+                                    </div>
+                                    {kpi.trend !== undefined && kpi.trend !== 0 && (
+                                        <span className={cn("text-[11px] font-bold flex items-center gap-0.5",
+                                            kpi.trend > 0 ? "text-emerald-600" : "text-rose-600"
+                                        )}>
+                                            {kpi.trend > 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
+                                            {Math.abs(kpi.trend)}%
+                                        </span>
+                                    )}
+                                </div>
+                                <p className="text-xl font-black text-slate-900">{kpi.value}</p>
+                                <p className="text-xs text-slate-500 font-medium mt-0.5">{kpi.label}</p>
+                                <p className="text-[11px] text-slate-400 mt-1">{kpi.subValue}</p>
+                            </CardContent>
+                        </Card>
+                    ))}
+                </div>
+
+                <div className="grid grid-cols-1 xl:grid-cols-12 gap-4">
+                    <Card className="xl:col-span-7 border border-slate-200 shadow-sm bg-white">
+                        <CardContent className="p-5">
+                            <div className="flex items-center justify-between mb-4">
+                                <div>
+                                    <h2 className="text-sm font-black text-slate-500 uppercase tracking-widest">Quick Actions</h2>
+                                    <p className="text-[11px] text-slate-400 mt-1">Shortcuts for the tasks operators do most.</p>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+                                {easyActions.map(action => (
+                                    <button
+                                        key={action.id}
+                                        onClick={() => onQuickAction?.(action.id)}
+                                        className={cn(
+                                            'rounded-2xl p-4 text-left transition-all active:scale-[0.98] shadow-sm hover:shadow-md',
+                                            action.color
+                                        )}
+                                    >
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div>
+                                                <p className="text-sm font-black">{action.label}</p>
+                                                <p className="mt-1 text-[11px] opacity-80">{action.desc}</p>
+                                            </div>
+                                            <action.icon className="w-5 h-5 shrink-0" />
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <div className="xl:col-span-5 space-y-4">
+                        <Card className="border border-slate-200 shadow-sm bg-white">
+                            <CardContent className="p-5">
+                                <div className="flex items-center gap-2 mb-4">
+                                    <Zap className="w-4 h-4 text-amber-500" />
+                                    <h2 className="text-sm font-black text-slate-500 uppercase tracking-widest">Smart Insights</h2>
+                                </div>
+                                <div className="space-y-3">
+                                    {intelligentInsights.map((insight, idx) => (
+                                        <button
+                                            key={`${insight.title}-${idx}`}
+                                            onClick={() => onQuickAction?.(insight.actionTab)}
+                                            className={cn(
+                                                'w-full rounded-2xl border p-3 text-left transition-colors',
+                                                insight.tone === 'indigo' && 'bg-indigo-50 border-indigo-100 hover:bg-indigo-100/70',
+                                                insight.tone === 'emerald' && 'bg-emerald-50 border-emerald-100 hover:bg-emerald-100/70',
+                                                insight.tone === 'amber' && 'bg-amber-50 border-amber-100 hover:bg-amber-100/70',
+                                                insight.tone === 'rose' && 'bg-rose-50 border-rose-100 hover:bg-rose-100/70',
+                                                insight.tone === 'slate' && 'bg-slate-50 border-slate-100 hover:bg-slate-100/70'
+                                            )}
+                                        >
+                                            <p className="text-[11px] font-black text-slate-700">{insight.title}</p>
+                                            <p className="mt-1 text-[11px] text-slate-600">{insight.text}</p>
+                                        </button>
+                                    ))}
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <button
+                                onClick={() => onQuickAction?.('inventory')}
+                                className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-left hover:bg-amber-100 transition-colors"
+                            >
+                                <p className="text-[10px] font-black uppercase tracking-widest text-amber-700">Inventory Alert</p>
+                                <p className="mt-2 text-lg font-black text-amber-900">{remindersData.lowStock} low stock items</p>
+                                <p className="mt-1 text-[11px] text-amber-700">Review replenishment before stock-outs.</p>
+                            </button>
+                            <button
+                                onClick={() => onQuickAction?.('invoices')}
+                                className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-left hover:bg-rose-100 transition-colors"
+                            >
+                                <p className="text-[10px] font-black uppercase tracking-widest text-rose-700">Collections Alert</p>
+                                <p className="mt-2 text-lg font-black text-rose-900">{remindersData.overdueInvoices} overdue invoices</p>
+                                <p className="mt-1 text-[11px] text-rose-700">Follow up to protect cash flow.</p>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 xl:grid-cols-12 gap-4">
+                    <div className="xl:col-span-8">
+                        <div className="flex items-center justify-between mb-3">
+                            <h2 className="text-sm font-black text-slate-500 uppercase tracking-widest">Recent Transactions</h2>
+                            <button
+                                onClick={() => onQuickAction?.('invoices')}
+                                className="text-xs font-bold text-indigo-600 hover:text-indigo-700"
+                            >
+                                View All →
+                            </button>
+                        </div>
+                        {recentInvoices.length === 0 ? (
+                        <Card className="border-dashed border-2 border-gray-200 bg-gray-50/50">
+                            <CardContent className="p-8 text-center">
+                                <FileText className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+                                <p className="text-sm font-bold text-gray-600">No transactions yet</p>
+                                <p className="text-xs text-gray-400 mt-1">Create your first invoice to get started</p>
+                                <Button
+                                    size="sm"
+                                    className="mt-4 bg-indigo-600 hover:bg-indigo-700"
+                                    onClick={() => onQuickAction?.('new-invoice')}
+                                >
+                                    <Plus className="w-4 h-4 mr-1.5" />
+                                    Create Invoice
+                                </Button>
+                            </CardContent>
+                        </Card>
+                    ) : (
+                        <Card className="border border-slate-200 shadow-sm bg-white overflow-hidden">
+                            <div className="divide-y divide-slate-100">
+                                {recentInvoices.map((inv, idx) => {
+                                    const status = String(inv.status || 'draft').toLowerCase();
+                                    const statusColors: Record<string, string> = {
+                                        paid: 'bg-emerald-100 text-emerald-700',
+                                        unpaid: 'bg-amber-100 text-amber-700',
+                                        pending: 'bg-amber-100 text-amber-700',
+                                        overdue: 'bg-rose-100 text-rose-700',
+                                        draft: 'bg-gray-100 text-gray-600',
+                                    };
+                                    return (
+                                        <div key={idx} className="flex items-center justify-between px-4 py-3 hover:bg-slate-50 transition-colors">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-8 h-8 bg-indigo-50 rounded-lg flex items-center justify-center">
+                                                    <FileText className="w-4 h-4 text-indigo-500" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm font-bold text-gray-900">{inv.customer_name || 'Walk-in Customer'}</p>
+                                                    <p className="text-[11px] text-gray-400">{inv.date ? new Date(inv.date).toLocaleDateString('en-PK') : ''}</p>
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="text-sm font-bold text-gray-900">{formatCurrencyCompact(Number(inv.grand_total) || Number(inv.amount) || 0)}</p>
+                                                <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full", statusColors[status] || statusColors.draft)}>
+                                                    {status.charAt(0).toUpperCase() + status.slice(1)}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </Card>
+                        )}
+                    </div>
+
+                    <div className="xl:col-span-4 space-y-4">
+                        <Card className="border border-slate-200 shadow-sm bg-white">
+                            <CardContent className="p-5">
+                                <div className="flex items-center gap-2 mb-4">
+                                    <BarChart3 className="w-4 h-4 text-blue-600" />
+                                    <h2 className="text-sm font-black text-slate-500 uppercase tracking-widest">Business Snapshot</h2>
+                                </div>
+                                <div className="space-y-3">
+                                    <div className="rounded-2xl border border-slate-100 bg-slate-50/70 px-4 py-3">
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Products In Catalog</p>
+                                        <p className="mt-1 text-xl font-black text-slate-900">{products.length}</p>
+                                    </div>
+                                    <div className="rounded-2xl border border-slate-100 bg-slate-50/70 px-4 py-3">
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Pending Orders</p>
+                                        <p className="mt-1 text-xl font-black text-slate-900">{remindersData.pendingOrders}</p>
+                                    </div>
+                                    <div className="rounded-2xl border border-slate-100 bg-slate-50/70 px-4 py-3">
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Returns</p>
+                                        <p className="mt-1 text-xl font-black text-slate-900">{periodMetrics.returnInvoices}</p>
+                                        <p className="mt-1 text-[11px] text-slate-500">{returnRate.toFixed(1)}% return rate</p>
+                                    </div>
+                                    <div className="rounded-2xl border border-slate-100 bg-slate-50/70 px-4 py-3">
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Stock Check Recency</p>
+                                        <p className="mt-1 text-xl font-black text-slate-900">{stockCheckRecencyDisplay}</p>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // ADVANCED MODE DASHBOARD — Full power view
+    // ═══════════════════════════════════════════════════════════════
+
     return (
         <NetsuiteDashboard>
             {/* Main Area (9/12) */}
@@ -680,7 +1104,7 @@ export function DomainDashboard({
                             <div className="flex items-start justify-between gap-4">
                                 <div>
                                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Dashboard Overview</p>
-                                    <h2 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight mt-1">Operations Intelligence Hub</h2>
+                                    <h2 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight mt-1">Business Overview</h2>
                                     <p className="text-[11px] text-slate-500 font-semibold mt-1">
                                         {new Date(dateRange.from).toLocaleDateString()} - {new Date(dateRange.to).toLocaleDateString()}
                                     </p>
@@ -728,9 +1152,9 @@ export function DomainDashboard({
                     <div className="xl:col-span-4 grid grid-cols-2 gap-3 auto-rows-fr">
                         <Card className="border border-slate-200 shadow-sm bg-white">
                             <CardContent className="p-3.5">
-                                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Inventory Value</p>
-                                <p className="text-lg font-black text-slate-900 mt-1">{formatCurrencyCompact(inventoryValue)}</p>
-                                <p className="text-[10px] text-slate-500 mt-1">GL-backed when available</p>
+                                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Coverage Days</p>
+                                <p className="text-lg font-black text-slate-900 mt-1">{coverageDays > 365 ? '365+' : coverageDays}</p>
+                                <p className="text-[10px] text-slate-500 mt-1">Estimated stock coverage</p>
                             </CardContent>
                         </Card>
                         <Card className="border border-slate-200 shadow-sm bg-white">
@@ -743,15 +1167,15 @@ export function DomainDashboard({
                         <Card className="border border-slate-200 shadow-sm bg-white">
                             <CardContent className="p-3.5">
                                 <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Warehouse Utilization</p>
-                                <p className="text-lg font-black text-slate-900 mt-1">{warehouseUtilization === null ? 'N/A' : `${warehouseUtilization.toFixed(1)}%`}</p>
-                                <p className="text-[10px] text-slate-500 mt-1">Requires configured max stock</p>
+                                <p className="text-lg font-black text-slate-900 mt-1">{warehouseUtilizationDisplay}</p>
+                                <p className="text-[10px] text-slate-500 mt-1">{warehouseUtilizationDetail}</p>
                             </CardContent>
                         </Card>
                         <Card className="border border-slate-200 shadow-sm bg-white">
                             <CardContent className="p-3.5">
                                 <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Paid Order Ratio</p>
-                                <p className="text-lg font-black text-slate-900 mt-1">{paidOrderRate === null ? 'N/A' : `${paidOrderRate.toFixed(1)}%`}</p>
-                                <p className="text-[10px] text-slate-500 mt-1">From paid vs total orders</p>
+                                <p className="text-lg font-black text-slate-900 mt-1">{paidOrderRateDisplay}</p>
+                                <p className="text-[10px] text-slate-500 mt-1">{paidOrderRateDetail}</p>
                             </CardContent>
                         </Card>
                     </div>
@@ -779,25 +1203,7 @@ export function DomainDashboard({
                     ))}
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3 lg:auto-rows-fr">
-                    <DomainMetricCard
-                        label="Avg Order Value"
-                        value={formatCurrencyCompact(avgOrderValue)}
-                        subValue="Revenue per order"
-                        trend={Number(revenueTrendSigned.toFixed(1))}
-                        icon={TrendingUp}
-                        colorClass="bg-indigo-600"
-                        className="h-full"
-                    />
-                    <DomainMetricCard
-                        label="Return Rate"
-                        value={`${returnRate.toFixed(1)}%`}
-                        subValue={`${periodMetrics.returnInvoices} return docs`}
-                        trend={Number((-returnRate).toFixed(1))}
-                        icon={RotateCcw}
-                        colorClass="bg-rose-600"
-                        className="h-full"
-                    />
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 lg:auto-rows-fr">
                     <DomainMetricCard
                         label="Pending Returns"
                         value={periodMetrics.pendingReturns}
@@ -818,9 +1224,9 @@ export function DomainDashboard({
                     />
                     <DomainMetricCard
                         label="Stock Check Recency"
-                        value={stockCheckRecency === null ? 'N/A' : `${stockCheckRecency}d`}
-                        subValue="Since last stock touch"
-                        trend={stockCheckRecency === null ? undefined : (stockCheckRecency > 30 ? -Math.min(stockCheckRecency / 2, 25) : 4)}
+                        value={stockCheckRecencyDisplay}
+                        subValue={stockCheckRecencyDetail}
+                        trend={stockCheckRecency > 30 ? -Math.min(stockCheckRecency / 2, 25) : 4}
                         icon={Warehouse}
                         colorClass="bg-slate-600"
                         className="h-full"
@@ -880,16 +1286,16 @@ export function DomainDashboard({
                                 </div>
                                 <div className="space-y-2.5">
                                     <div className="rounded-xl bg-slate-50 border border-slate-100 p-3">
-                                        <p className="text-[10px] font-black text-slate-600">Coverage vs Velocity</p>
-                                        <p className="text-sm font-extrabold text-slate-900 mt-1">{coverageDays > 365 ? '365+' : coverageDays} days projected</p>
+                                        <p className="text-[10px] font-black text-slate-600">Collection Posture</p>
+                                        <p className="text-sm font-extrabold text-slate-900 mt-1">{paidOrderRateDisplay} paid order ratio</p>
                                     </div>
                                     <div className="rounded-xl bg-slate-50 border border-slate-100 p-3">
-                                        <p className="text-[10px] font-black text-slate-600">Average Order Value</p>
-                                        <p className="text-sm font-extrabold text-slate-900 mt-1">{formatCurrencyCompact(avgOrderValue)}</p>
+                                        <p className="text-[10px] font-black text-slate-600">At-Risk SKUs</p>
+                                        <p className="text-sm font-extrabold text-slate-900 mt-1">{remindersData.lowStock} need restock planning</p>
                                     </div>
                                     <div className="rounded-xl bg-slate-50 border border-slate-100 p-3">
-                                        <p className="text-[10px] font-black text-slate-600">Stock Check Recency</p>
-                                        <p className="text-sm font-extrabold text-slate-900 mt-1">{stockCheckRecency === null ? 'N/A' : `${stockCheckRecency} days ago`}</p>
+                                        <p className="text-[10px] font-black text-slate-600">Outstanding Receivables</p>
+                                        <p className="text-sm font-extrabold text-slate-900 mt-1">{formatCurrencyCompact(outstandingAmount)}</p>
                                     </div>
                                 </div>
                             </CardContent>

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
 import {
@@ -367,12 +367,12 @@ export function AdvancedInventoryFeatures({
           {/* Stock Valuation Tab */}
           {activeTab === 'valuation' && (
             <div className="space-y-6">
-              <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+              <div className="bg-wine-50 border border-wine-200 rounded-lg p-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <TrendingUp className="w-5 h-5 text-purple-600" />
-                  <h3 className="font-semibold text-purple-900">Stock Valuation Method</h3>
+                  <TrendingUp className="w-5 h-5 text-wine-600" />
+                  <h3 className="font-semibold text-wine-900">Stock Valuation Method</h3>
                 </div>
-                <p className="text-sm text-purple-700">
+                <p className="text-sm text-wine-700">
                   Choose how inventory costs are calculated. This affects profit margins and tax calculations.
                 </p>
               </div>
@@ -477,6 +477,7 @@ export function AdvancedInventoryFeatures({
     </div>
   );
 }
+
 
 
 

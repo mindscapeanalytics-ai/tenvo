@@ -1,184 +1,139 @@
 'use client';
 
 import { useMemo } from 'react';
+import { getDomainKnowledge } from '@/lib/domainKnowledge';
+
+// Role-based dashboard templates
+import { OwnerDashboard } from './templates/OwnerDashboard';
+import { ManagerDashboard } from './templates/ManagerDashboard';
+import { SalesDashboard } from './templates/SalesDashboard';
+import { InventoryDashboard } from './templates/InventoryDashboard';
+import { AccountantDashboard } from './templates/AccountantDashboard';
+
+// Domain-specific dashboard templates (for specialized categories)
 import { DashboardTemplateSelector } from './DashboardTemplateSelector';
 
 /**
- * RoleBasedDashboardController Component
- * 
- * Intelligently selects and loads the appropriate dashboard based on:
- * 1. User role (owner, manager, sales_staff, inventory_staff, accountant)
- * 2. Business category (pharmacy, textile, electronics, etc.)
- * 3. Merges role-specific features with domain-specific features
- * 
- * Features:
- * - Automatic role detection from user context
- * - Permission-based widget filtering
- * - Role template merging with domain template
- * - Fallback to domain template if role template not available
- * 
- * @param {Object} props
- * @param {string} props.businessId - Business ID
- * @param {string} props.category - Business category slug
- * @param {Object} props.user - User object with role information
- * @param {Function} [props.onQuickAction] - Quick action callback
+ * RoleBasedDashboardController
+ *
+ * Selects the correct dashboard based on user role first, then domain.
+ * - owner / admin → OwnerDashboard (full access + domain widgets)
+ * - manager       → ManagerDashboard (approvals + team + domain widgets)
+ * - sales_staff   → SalesDashboard (quick invoice + customers)
+ * - inventory_staff → InventoryDashboard (stock ops + cycle counts)
+ * - accountant    → AccountantDashboard (financials + FBR compliance)
+ * - fallback      → DashboardTemplateSelector (domain-specific or EnhancedDashboard)
  */
-export function RoleBasedDashboardController({ 
-  businessId, 
-  category, 
+export function RoleBasedDashboardController({
+  businessId,
+  category,
   user,
-  onQuickAction 
+  onQuickAction,
 }) {
-  // Detect user role (with fallback to 'owner')
-  const userRole = useMemo(() => {
-    return user?.role || 'owner';
-  }, [user]);
+  const userRole = user?.role || 'owner';
+  const userId = user?.id;
+  const currency = 'PKR';
 
-  // Determine if role-specific template should be used
-  const useRoleTemplate = useMemo(() => {
-    // Role-specific templates are now ready and tested
-    // Enable role-based dashboard selection
-    // This can be controlled via feature flag in the parent component
-    return true; // Enabled for Phase 0 rollout
+  // Map role → dashboard component
+  const DashboardComponent = useMemo(() => {
+    switch (userRole) {
+      case 'owner':
+      case 'admin':
+        return OwnerDashboard;
+      case 'manager':
+        return ManagerDashboard;
+      case 'sales_staff':
+        return SalesDashboard;
+      case 'inventory_staff':
+        return InventoryDashboard;
+      case 'accountant':
+        return AccountantDashboard;
+      default:
+        // Unknown role → fall back to domain template
+        return null;
+    }
   }, [userRole]);
 
-  // Get role-specific widget permissions
-  const widgetPermissions = useMemo(() => {
-    const permissions = {
-      owner: ['all'], // Owner can see everything
-      manager: [
-        'revenue', 'inventory', 'batch_expiry', 'serial_warranty', 
-        'warehouse_distribution', 'approvals', 'team_performance',
-        'inventory_alerts', 'sales_targets', 'fbr_compliance'
-      ],
-      sales_staff: [
-        'revenue', 'todays_sales', 'customers', 'quick_invoice',
-        'commission', 'top_products'
-      ],
-      inventory_staff: [
-        'inventory', 'batch_expiry', 'serial_warranty', 'warehouse_distribution',
-        'stock_levels', 'reorder_alerts', 'cycle_count_tasks', 'receiving_queue'
-      ],
-      accountant: [
-        'revenue', 'financial_summary', 'tax_calculations', 'expense_tracking',
-        'bank_reconciliation', 'fbr_compliance', 'inventory'
-      ]
-    };
+  // If no role-specific template, use domain template selector
+  if (!DashboardComponent) {
+    return (
+      <DashboardTemplateSelector
+        businessId={businessId}
+        category={category}
+        onQuickAction={onQuickAction}
+        userRole={userRole}
+      />
+    );
+  }
 
-    return permissions[userRole] || permissions.owner;
-  }, [userRole]);
-
-  // Check if user has permission to view a widget
-  const hasPermission = (widgetType) => {
-    const perms = widgetPermissions;
-    return perms.includes('all') || perms.includes(widgetType);
-  };
-
-  // For Phase 3 initial implementation, we'll use domain templates
-  // and pass role information for future role-specific customization
   return (
-    <DashboardTemplateSelector
+    <DashboardComponent
       businessId={businessId}
+      userId={userId}
       category={category}
+      currency={currency}
       onQuickAction={onQuickAction}
-      userRole={userRole}
-      hasPermission={hasPermission}
     />
   );
 }
 
-/**
- * Get role display name
- * 
- * @param {string} role - User role
- * @returns {string} Display name
- */
+// ─── Utility helpers (kept for external use) ────────────────────────────────
+
 export function getRoleDisplayName(role) {
   const roleNames = {
     owner: 'Owner',
+    admin: 'Admin',
     manager: 'Manager',
     sales_staff: 'Sales Staff',
     inventory_staff: 'Inventory Staff',
-    accountant: 'Accountant'
+    accountant: 'Accountant',
   };
-
   return roleNames[role] || 'User';
 }
 
-/**
- * Get role-specific dashboard features
- * 
- * @param {string} role - User role
- * @returns {Object} Role features
- */
 export function getRoleFeatures(role) {
   const features = {
     owner: {
       name: 'Owner Dashboard',
       description: 'Complete business overview with all features',
       primaryWidgets: ['revenue', 'inventory', 'team_performance', 'system_health'],
-      canApprove: true,
-      canManageUsers: true,
-      canViewFinancials: true,
-      canManageSettings: true
+      canApprove: true, canManageUsers: true, canViewFinancials: true, canManageSettings: true,
     },
     manager: {
       name: 'Manager Dashboard',
       description: 'Approval queue and team management',
       primaryWidgets: ['approvals', 'team_productivity', 'inventory_alerts', 'sales_targets'],
-      canApprove: true,
-      canManageUsers: false,
-      canViewFinancials: true,
-      canManageSettings: false
+      canApprove: true, canManageUsers: false, canViewFinancials: true, canManageSettings: false,
     },
     sales_staff: {
       name: 'Sales Dashboard',
       description: 'Quick sales and customer management',
       primaryWidgets: ['todays_sales', 'quick_invoice', 'customers', 'commission'],
-      canApprove: false,
-      canManageUsers: false,
-      canViewFinancials: false,
-      canManageSettings: false
+      canApprove: false, canManageUsers: false, canViewFinancials: false, canManageSettings: false,
     },
     inventory_staff: {
       name: 'Inventory Dashboard',
       description: 'Stock management and cycle counting',
       primaryWidgets: ['stock_levels', 'reorder_alerts', 'cycle_count_tasks', 'receiving_queue'],
-      canApprove: false,
-      canManageUsers: false,
-      canViewFinancials: false,
-      canManageSettings: false
+      canApprove: false, canManageUsers: false, canViewFinancials: false, canManageSettings: false,
     },
     accountant: {
       name: 'Accountant Dashboard',
       description: 'Financial management and tax compliance',
       primaryWidgets: ['financial_summary', 'tax_calculations', 'expense_tracking', 'fbr_compliance'],
-      canApprove: false,
-      canManageUsers: false,
-      canViewFinancials: true,
-      canManageSettings: false
-    }
+      canApprove: false, canManageUsers: false, canViewFinancials: true, canManageSettings: false,
+    },
   };
-
   return features[role] || features.owner;
 }
 
-/**
- * Check if user role has specific permission
- * 
- * @param {string} role - User role
- * @param {string} permission - Permission to check
- * @returns {boolean} Has permission
- */
 export function hasRolePermission(role, permission) {
   const features = getRoleFeatures(role);
-  
   const permissionMap = {
     approve: features.canApprove,
     manage_users: features.canManageUsers,
     view_financials: features.canViewFinancials,
-    manage_settings: features.canManageSettings
+    manage_settings: features.canManageSettings,
   };
-
   return permissionMap[permission] || false;
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context/AuthContext';
 import { useBusiness } from '@/lib/context/BusinessContext';
 import {
@@ -43,9 +44,14 @@ import { toast } from 'react-hot-toast';
  */
 export function UserManager({ trigger }) {
     const { user, signOut, updateProfile } = useAuth();
-    const { business } = useBusiness();
+    const router = useRouter();
+    const { business, role, isPlatformOwner } = useBusiness();
     const [showProfileDialog, setShowProfileDialog] = useState(false);
     const [isUpdating, setIsUpdating] = useState(false);
+    const canManageBilling = isPlatformOwner || role === 'owner';
+    const accessRoute = business?.domain
+        ? `/business/${business.domain}?tab=settings&section=${canManageBilling ? 'billing' : 'team'}`
+        : '/multi-business';
 
     const [profileForm, setProfileForm] = useState({
         fullName: user?.user_metadata?.full_name || '',
@@ -133,7 +139,7 @@ export function UserManager({ trigger }) {
 
                         <DropdownMenuItem
                             className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-colors focus:bg-wine/5 focus:text-wine group"
-                            onClick={() => window.location.href = `/business/${business?.domain}?tab=settings`}
+                            onClick={() => router.push(business?.domain ? `/business/${business.domain}?tab=settings&section=profile` : '/multi-business')}
                         >
                             <div className="w-8 h-8 rounded-lg bg-orange-50 flex items-center justify-center text-orange-600 group-focus:bg-wine group-focus:text-white transition-colors">
                                 <Settings className="w-4 h-4" />
@@ -146,14 +152,15 @@ export function UserManager({ trigger }) {
                         </DropdownMenuItem>
 
                         <DropdownMenuItem
+                            onClick={() => router.push(accessRoute)}
                             className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-colors focus:bg-wine/5 focus:text-wine group"
                         >
                             <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600 group-focus:bg-wine group-focus:text-white transition-colors">
                                 <Shield className="w-4 h-4" />
                             </div>
                             <div className="flex flex-col">
-                                <span className="text-sm font-bold">Subscription</span>
-                                <span className="text-[10px] font-medium text-gray-400">Pro Plan • Manage billing</span>
+                                <span className="text-sm font-bold">{canManageBilling ? 'Subscription & Billing' : 'Users & Access Control'}</span>
+                                <span className="text-[10px] font-medium text-gray-400">{canManageBilling ? 'Plan seats, upgrades, and feature access' : 'Team roles, permissions, and membership controls'}</span>
                             </div>
                             <ChevronRight className="ml-auto w-4 h-4 text-gray-300 group-focus:text-wine/40" />
                         </DropdownMenuItem>

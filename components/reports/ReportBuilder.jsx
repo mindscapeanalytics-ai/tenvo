@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useRef, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -18,7 +18,7 @@ import { cn } from '@/lib/utils';
 const DATA_SOURCES = [
     { id: 'sales', label: 'Sales & Revenue', icon: DollarSign, color: 'bg-emerald-500' },
     { id: 'inventory', label: 'Inventory & Stock', icon: Package, color: 'bg-blue-500' },
-    { id: 'customers', label: 'Customers', icon: Users, color: 'bg-purple-500' },
+    { id: 'customers', label: 'Customers', icon: Users, color: 'bg-wine-500' },
     { id: 'expenses', label: 'Expenses', icon: TrendingUp, color: 'bg-orange-500' },
     { id: 'purchases', label: 'Purchases', icon: ShoppingCart, color: 'bg-indigo-500' },
 ];
@@ -96,7 +96,7 @@ function WidgetPreview({ widget, onRemove }) {
 
             {widget.type === 'kpi' && (
                 <div className="text-center py-4">
-                    <p className="text-3xl font-black text-gray-900">{widget.value || '—'}</p>
+                    <p className="text-3xl font-black text-gray-900">{widget.value || 'â€”'}</p>
                     {widget.trend && (
                         <span className={cn(
                             'text-sm font-bold mt-1 inline-block',
@@ -185,9 +185,9 @@ export function ReportBuilder({ businessId, currency = 'Rs.' }) {
             id: `w-${idCounterRef.current++}`,
             type: type.id,
             source: selectedSource,
-            title: `${type.label} — ${DATA_SOURCES.find(s => s.id === selectedSource)?.label || 'Data'}`,
+            title: `${type.label} â€” ${DATA_SOURCES.find(s => s.id === selectedSource)?.label || 'Data'}`,
             col: type.id === 'kpi' ? 4 : type.id === 'table' || type.id === 'summary' ? 12 : 6,
-            value: type.id === 'kpi' ? '—' : undefined,
+            value: type.id === 'kpi' ? 'â€”' : undefined,
         };
         setWidgets(prev => [...prev, newWidget]);
         setShowAddWidget(false);
@@ -202,9 +202,9 @@ export function ReportBuilder({ businessId, currency = 'Rs.' }) {
             id: `tpl-${template.id}-${idx}-${idCounterRef.current++}`,
             type: wType,
             source: template.source,
-            title: `${WIDGET_TYPES.find(t => t.id === wType)?.label || wType} — ${template.name}`,
+            title: `${WIDGET_TYPES.find(t => t.id === wType)?.label || wType} â€” ${template.name}`,
             col: wType === 'kpi' ? 4 : wType === 'table' || wType === 'summary' ? 12 : 6,
-            value: wType === 'kpi' ? '—' : undefined,
+            value: wType === 'kpi' ? 'â€”' : undefined,
         }));
         setWidgets(generated);
         setReportName(template.name);
@@ -340,3 +340,4 @@ export function ReportBuilder({ businessId, currency = 'Rs.' }) {
         </div>
     );
 }
+

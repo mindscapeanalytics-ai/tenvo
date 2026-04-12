@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
@@ -16,7 +16,7 @@ const SHIFT_TEMPLATES = [
     { id: 'morning', label: 'Morning', time: '06:00 - 14:00', icon: Sun, color: 'bg-amber-100 text-amber-700 border-amber-200' },
     { id: 'afternoon', label: 'Afternoon', time: '14:00 - 22:00', icon: Sunset, color: 'bg-orange-100 text-orange-700 border-orange-200' },
     { id: 'night', label: 'Night', time: '22:00 - 06:00', icon: Moon, color: 'bg-indigo-100 text-indigo-700 border-indigo-200' },
-    { id: 'split', label: 'Split', time: '08:00-12:00, 16:00-20:00', icon: Clock, color: 'bg-purple-100 text-purple-700 border-purple-200' },
+    { id: 'split', label: 'Split', time: '08:00-12:00, 16:00-20:00', icon: Clock, color: 'bg-wine-100 text-wine-700 border-wine-200' },
     { id: 'off', label: 'Day Off', time: 'Rest Day', icon: Calendar, color: 'bg-gray-100 text-gray-500 border-gray-200' },
 ];
 
@@ -37,7 +37,7 @@ function getWeekRange(baseDate) {
     const end = new Date(start);
     end.setDate(end.getDate() + 6);
     const fmt = (d) => new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric' }).format(d);
-    return { start, end, label: `${fmt(start)} — ${fmt(end)}, ${start.getFullYear()}` };
+    return { start, end, label: `${fmt(start)} â€” ${fmt(end)}, ${start.getFullYear()}` };
 }
 
 function generateDemoSchedule(employees) {
@@ -103,7 +103,7 @@ export function ShiftScheduler({ businessId, employees: propEmployees = [] }) {
                     const prevShift = empSchedule[DAYS[idx - 1]];
                     const currShift = empSchedule[day];
                     if (prevShift === 'night' && currShift === 'morning') {
-                        conflicts.push({ empId: emp.id, day, msg: `${emp.name}: Night → Morning on ${SHORT_DAYS[idx]}` });
+                        conflicts.push({ empId: emp.id, day, msg: `${emp.name}: Night â†’ Morning on ${SHORT_DAYS[idx]}` });
                     }
                 }
             });
@@ -298,3 +298,4 @@ export function ShiftScheduler({ businessId, employees: propEmployees = [] }) {
         </div>
     );
 }
+

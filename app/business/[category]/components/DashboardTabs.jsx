@@ -595,7 +595,7 @@ export function DashboardTabs({
                                         <CardHeader className="pb-2">
                                             <div className="flex items-center justify-between">
                                                 <CardTitle className="text-sm font-medium text-gray-500">Inventory Value</CardTitle>
-                                                <div className="p-2 bg-purple-50 rounded-lg text-purple-600">
+                                                <div className="p-2 bg-wine-50 rounded-lg text-wine-600">
                                                     <PackageIcon className="w-4 h-4" />
                                                 </div>
                                             </div>
@@ -647,45 +647,7 @@ export function DashboardTabs({
                 <TabsContent value="finance" className="space-y-6 outline-none">
                     {wrapTab(
                         <TabGuard tabKey="finance" role={role} planTier={planTier} featureName="Finance" onUpgrade={() => handleTabChange('settings')}>
-                            <BaseTabs defaultValue="journal" className="w-full">
-                                <TabsList className="grid w-full grid-cols-3 mb-6 bg-gray-100 rounded-xl p-1">
-                                    <TabsTrigger value="journal" className="data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-lg font-bold">Journal Entry</TabsTrigger>
-                                    <TabsTrigger value="ledger" className="data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-lg font-bold">General Ledger</TabsTrigger>
-                                    <TabsTrigger value="statements" className="data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-lg font-bold">Financial Statements</TabsTrigger>
-                                </TabsList>
-                                <div className="TabsContent-Finance-Scroll-Fix">
-                                    <TabsContent value="journal" className="mt-6">
-                                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                                            <div className="lg:col-span-2">
-                                                <JournalEntryManager
-                                                    businessId={business?.id}
-                                                    colors={colors}
-                                                    onSuccess={() => {
-                                                        refreshAllData();
-                                                    }}
-                                                />
-                                            </div>
-                                            <div className="space-y-6">
-                                                <Card>
-                                                    <CardHeader>
-                                                        <CardTitle className="text-base text-gray-500 uppercase tracking-wide font-bold">Quick Tips</CardTitle>
-                                                    </CardHeader>
-                                                    <CardContent className="space-y-4 text-sm text-gray-600">
-                                                        <p>• Use <strong>Journal Entries</strong> for non-cash transactions.</p>
-                                                        <p>• Debits must equal Credits.</p>
-                                                    </CardContent>
-                                                </Card>
-                                            </div>
-                                        </div>
-                                    </TabsContent>
-                                    <TabsContent value="ledger" className="mt-6">
-                                        <TrialBalanceView businessId={business?.id} colors={colors} />
-                                    </TabsContent>
-                                    <TabsContent value="statements" className="mt-6">
-                                        <FinancialReports businessId={business?.id} category={category} />
-                                    </TabsContent>
-                                </div>
-                            </BaseTabs>
+                            <FinanceHub businessId={business?.id} />
                         </TabGuard>
                     )}
                 </TabsContent>

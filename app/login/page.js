@@ -104,9 +104,9 @@ export default function LoginPage() {
     };
 
     return (
-        <div className="min-h-screen bg-white flex flex-col md:flex-row overflow-hidden">
+        <div className="min-h-screen bg-[linear-gradient(180deg,#f6f8fc_0%,#eef4ff_100%)] flex flex-col md:flex-row overflow-hidden">
             {/* Left Side: Branding & Visuals */}
-            <div className="hidden md:flex md:w-1/2 bg-wine relative items-center justify-center p-12 overflow-hidden">
+            <div className="hidden md:flex md:w-1/2 bg-[linear-gradient(160deg,#091225_0%,#1738A5_58%,#2F5BFF_100%)] relative items-center justify-center p-12 overflow-hidden">
                 <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
                     <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.2),transparent_70%)]" />
                     <div className="grid grid-cols-10 gap-2 opacity-50 translate-x-[-10%] translate-y-[-10%] rotate-[-12deg]">
@@ -149,8 +149,8 @@ export default function LoginPage() {
             </div>
 
             {/* Right Side: Login Form */}
-            <div className="flex-1 flex items-center justify-center p-6 md:p-12 lg:p-24 bg-gray-50/30">
-                <div className="w-full max-w-md space-y-8 animate-in fade-in slide-in-from-right-8 duration-700">
+            <div className="flex-1 flex items-center justify-center p-6 md:p-12 lg:p-24 bg-transparent">
+                <div className="w-full max-w-md space-y-8 rounded-[2rem] border border-white/80 bg-white/88 p-8 shadow-[0_28px_80px_-46px_rgba(15,23,42,0.4)] backdrop-blur-xl animate-in fade-in slide-in-from-right-8 duration-700">
                     <div className="space-y-2">
                         <h2 className="text-3xl font-black text-gray-900 tracking-tight">Welcome Back</h2>
                         <p className="text-gray-500 font-medium">Please enter your credentials to access your dashboard.</p>

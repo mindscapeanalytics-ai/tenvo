@@ -3,20 +3,20 @@ import { cva } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const badgeVariants = cva(
-  "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+  "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-brand-primary focus:ring-offset-2",
   {
     variants: {
       variant: {
         default:
-          "border-transparent bg-primary text-primary-foreground hover:bg-primary/80",
+          "border-transparent bg-brand-primary text-white hover:bg-brand-primary-dark",
         secondary:
-          "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
+          "border-transparent bg-neutral-100 text-neutral-900 hover:bg-neutral-200",
         destructive:
-          "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80",
-        outline: "border-gray-300 text-gray-700 bg-white hover:bg-gray-50",
-        success: "border-transparent bg-green-100 text-green-700 hover:bg-green-200",
-        warning: "border-transparent bg-orange-100 text-orange-700 hover:bg-orange-200",
-        info: "border-transparent bg-blue-100 text-blue-700 hover:bg-blue-200",
+          "border-transparent bg-error text-white hover:bg-error-dark",
+        outline: "border-neutral-300 text-neutral-700 bg-white hover:bg-neutral-50",
+        success: "border-transparent bg-success-light text-success-dark hover:bg-success-light/80",
+        warning: "border-transparent bg-warning-light text-warning-dark hover:bg-warning-light/80",
+        info: "border-transparent bg-info-light text-info-dark hover:bg-info-light/80",
       },
     },
     defaultVariants: {

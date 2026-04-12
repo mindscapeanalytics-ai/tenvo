@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
@@ -81,7 +81,7 @@ export function PayrollDashboard({
                             <div>
                                 <p className="text-xs text-gray-500 font-medium">Last Run Net</p>
                                 <p className="text-2xl font-black text-indigo-600 mt-1">
-                                    {lastRun ? `${currency}${parseFloat(lastRun.total_net || 0).toLocaleString()}` : '—'}
+                                    {lastRun ? `${currency}${parseFloat(lastRun.total_net || 0).toLocaleString()}` : 'â€”'}
                                 </p>
                             </div>
                             <div className="p-2.5 bg-indigo-50 rounded-lg">
@@ -97,8 +97,8 @@ export function PayrollDashboard({
                                 <p className="text-xs text-gray-500 font-medium">Total Runs</p>
                                 <p className="text-2xl font-black text-gray-900 mt-1">{payrollRuns.length}</p>
                             </div>
-                            <div className="p-2.5 bg-purple-50 rounded-lg">
-                                <Calendar className="w-5 h-5 text-purple-600" />
+                            <div className="p-2.5 bg-wine-50 rounded-lg">
+                                <Calendar className="w-5 h-5 text-wine-600" />
                             </div>
                         </div>
                     </CardContent>
@@ -133,7 +133,7 @@ export function PayrollDashboard({
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <p className="text-sm font-semibold text-gray-900 truncate">{emp.full_name}</p>
-                                        <p className="text-[10px] text-gray-400">{emp.department || '—'} • {emp.designation || '—'}</p>
+                                        <p className="text-[10px] text-gray-400">{emp.department || 'â€”'} â€¢ {emp.designation || 'â€”'}</p>
                                     </div>
                                     <div className="text-right">
                                         <p className="text-sm font-bold text-gray-900">{currency}{parseFloat(emp.base_salary).toLocaleString()}</p>
@@ -172,7 +172,7 @@ export function PayrollDashboard({
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <p className="text-xs font-bold text-gray-900">{run.run_number}</p>
-                                        <p className="text-[10px] text-gray-400">{run.period_month}/{run.period_year} • {run.employee_count} staff</p>
+                                        <p className="text-[10px] text-gray-400">{run.period_month}/{run.period_year} â€¢ {run.employee_count} staff</p>
                                     </div>
                                     <div className="text-right">
                                         <p className="text-xs font-black text-gray-900">{currency}{parseFloat(run.total_net || 0).toLocaleString()}</p>
@@ -240,3 +240,4 @@ export function PayrollDashboard({
         </div>
     );
 }
+

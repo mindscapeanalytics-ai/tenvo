@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion } from 'framer-motion';
@@ -10,20 +10,20 @@ import { cn } from '@/lib/utils';
 import { useBusiness } from '@/lib/context/BusinessContext';
 import { getUnifiedActivityFeedAction } from '@/lib/actions/basic/audit';
 
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // TYPE CONFIG
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 const ACTIVITY_TYPES = {
     invoice: { icon: FileText, color: 'bg-blue-50 text-blue-600 border-blue-100', label: 'Invoice' },
     payment: { icon: CreditCard, color: 'bg-emerald-50 text-emerald-600 border-emerald-100', label: 'Payment' },
-    customer: { icon: UserPlus, color: 'bg-purple-50 text-purple-600 border-purple-100', label: 'Customer' },
+    customer: { icon: UserPlus, color: 'bg-wine-50 text-wine-600 border-wine-100', label: 'Customer' },
     alert: { icon: AlertTriangle, color: 'bg-amber-50 text-amber-600 border-amber-100', label: 'Alert' },
 };
 
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // ACTIVITY ITEM
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 function ActivityItem({ activity, currency }) {
     const config = ACTIVITY_TYPES[activity.type] || ACTIVITY_TYPES.invoice;
@@ -97,9 +97,9 @@ function getTimeAgo(date) {
     return d.toLocaleDateString();
 }
 
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // MAIN AUDIT TRAIL VIEWER
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 export function AuditTrailViewer({ businessId }) {
     const { business, currencySymbol } = useBusiness();
@@ -155,7 +155,7 @@ export function AuditTrailViewer({ businessId }) {
                     </div>
                     <div>
                         <h2 className="text-lg font-black text-gray-900">Audit Trail</h2>
-                        <p className="text-xs text-gray-400">{activities.length} activities • Unified timeline</p>
+                        <p className="text-xs text-gray-400">{activities.length} activities â€¢ Unified timeline</p>
                     </div>
                 </div>
                 <button onClick={loadActivities} className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors">
@@ -229,3 +229,4 @@ export function AuditTrailViewer({ businessId }) {
         </div>
     );
 }
+

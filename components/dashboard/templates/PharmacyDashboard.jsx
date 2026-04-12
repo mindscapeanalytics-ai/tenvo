@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useMemo, useEffect } from 'react';
 import {
@@ -119,8 +119,8 @@ export function PharmacyDashboard({ businessId, category, onQuickAction }) {
         change: t.compliant || 'Compliant',
         trend: 'up',
         icon: Shield,
-        bg: 'bg-purple-50',
-        iconColor: 'text-purple-600',
+        bg: 'bg-wine-50',
+        iconColor: 'text-wine-600',
         target: 50,
         current: metrics.controlledSubstances?.count || 0,
       },
@@ -226,10 +226,10 @@ export function PharmacyDashboard({ businessId, category, onQuickAction }) {
     <div className="space-y-6">
       {/* Pharmacy-Specific Alert Banner */}
       {metrics.alerts?.expiringBatches > 5 && (
-        <Alert variant="destructive" className="bg-orange-50 text-orange-900 border-orange-200">
-          <AlertTriangle className="h-4 w-4 text-orange-600" />
-          <AlertTitle className="font-bold">{t.drug_expiry_alert || 'Drug Expiry Alert'}</AlertTitle>
-          <AlertDescription className="text-orange-800">
+        <Alert variant="warning">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle className="font-semibold">{t.drug_expiry_alert || 'Drug Expiry Alert'}</AlertTitle>
+          <AlertDescription>
             {metrics.alerts.expiringBatches} {t.drugs_expiring_90_days || 'drugs are expiring within 90 days. Review FEFO compliance immediately.'}
           </AlertDescription>
         </Alert>
@@ -246,16 +246,16 @@ export function PharmacyDashboard({ businessId, category, onQuickAction }) {
               onClick={() => onQuickAction?.(stat.label.toLowerCase().replace(/ /g, '-'))}
             >
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-xs font-black uppercase tracking-widest text-muted-foreground/70">{stat.label}</CardTitle>
-                <div className={`p-2.5 rounded-2xl ${stat.bg} border ${stat.bg.replace('bg-', 'border-').replace('-50', '-200')} shadow-inner`}>
+                <CardTitle className="text-xs font-semibold uppercase tracking-wider text-neutral-500">{stat.label}</CardTitle>
+                <div className={`p-2.5 rounded-xl ${stat.bg} border ${stat.bg.replace('bg-', 'border-').replace('-50', '-200')} shadow-sm`}>
                   <stat.icon className={`w-5 h-5 ${stat.iconColor}`} />
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <div className="text-3xl font-black text-premium-gradient mb-1">{stat.value}</div>
-                  <div className="flex items-center gap-1.5 text-xs font-bold">
-                    <div className={`flex items-center px-1.5 py-0.5 rounded-full ${stat.trend === 'up' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
+                  <div className="text-3xl font-bold text-neutral-900 mb-1">{stat.value}</div>
+                  <div className="flex items-center gap-1.5 text-xs font-medium">
+                    <div className={`flex items-center px-2 py-1 rounded-full ${stat.trend === 'up' ? 'bg-success-light text-success-dark' : 'bg-error-light text-error-dark'}`}>
                       {stat.trend === 'up' ? (
                         <ArrowUpRight className="w-3 h-3 mr-0.5" />
                       ) : (
@@ -263,21 +263,21 @@ export function PharmacyDashboard({ businessId, category, onQuickAction }) {
                       )}
                       {stat.change}
                     </div>
-                    <span className="text-muted-foreground/60">{t.vs_last_month}</span>
+                    <span className="text-neutral-500">{t.vs_last_month}</span>
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <div className="flex items-center justify-between text-[10px] uppercase font-black tracking-widest text-muted-foreground/50">
+                  <div className="flex items-center justify-between text-[10px] uppercase font-semibold tracking-wider text-neutral-400">
                     <span>{t.performance}</span>
                     <span>{Math.round(progress)}%</span>
                   </div>
-                  <div className="w-full bg-gray-100/50 rounded-full h-1.5 overflow-hidden">
+                  <div className="w-full bg-neutral-100 rounded-full h-1.5 overflow-hidden">
                     <div
                       className="h-full rounded-full transition-all duration-1000 ease-out"
                       style={{
                         width: `${progress}%`,
-                        backgroundColor: colors.primary || '#8B5CF6',
-                        boxShadow: `0 0 10px ${colors.primary || '#8B5CF6'}40`
+                        backgroundColor: colors.primary || '#2F5BFF',
+                        boxShadow: `0 0 8px ${colors.primary || '#2F5BFF'}40`
                       }}
                     />
                   </div>
@@ -289,10 +289,10 @@ export function PharmacyDashboard({ businessId, category, onQuickAction }) {
       </div>
 
       {/* Main Chart Section */}
-      <Card className="border-none shadow-sm overflow-hidden">
+      <Card className="border-neutral-200 shadow-md overflow-hidden">
         <CardHeader className="flex flex-row items-center justify-between pb-2">
           <div>
-            <CardTitle className="text-lg font-bold text-gray-800">
+            <CardTitle className="text-lg font-semibold text-neutral-900">
               {t.revenue_performance || 'Revenue Performance'}
             </CardTitle>
             <CardDescription>{t.monthly_revenue_expenses || 'Monthly revenue vs expenses overview'}</CardDescription>
@@ -347,15 +347,15 @@ export function PharmacyDashboard({ businessId, category, onQuickAction }) {
                   {t.schedule_h_tracking || 'Schedule H/X tracking'}
                 </CardDescription>
               </div>
-              <div className="p-2.5 rounded-2xl bg-purple-50 border border-purple-200 shadow-inner">
-                <Shield className="w-5 h-5 text-purple-600" />
+              <div className="p-2.5 rounded-2xl bg-wine-50 border border-wine-200 shadow-inner">
+                <Shield className="w-5 h-5 text-wine-600" />
               </div>
             </div>
           </CardHeader>
           <CardContent className="flex items-center justify-center py-8">
             <div className="text-center">
-              <Shield className="w-12 h-12 text-purple-300 mx-auto mb-2" />
-              <p className="text-xs font-bold text-purple-700">
+              <Shield className="w-12 h-12 text-wine-300 mx-auto mb-2" />
+              <p className="text-xs font-bold text-wine-700">
                 {t.coming_soon || 'Coming Soon'}
               </p>
               <p className="text-xs text-gray-500 mt-1">
@@ -368,11 +368,11 @@ export function PharmacyDashboard({ businessId, category, onQuickAction }) {
 
       {/* Alerts and Recent Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Card className="bg-card border-border shadow-sm">
+        <Card className="bg-white border-neutral-200 shadow-md">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle className="text-lg font-bold">{t.recent_activity}</CardTitle>
+                <CardTitle className="text-lg font-semibold">{t.recent_activity}</CardTitle>
                 <CardDescription>{t.latest_activities}</CardDescription>
               </div>
             </div>
@@ -380,18 +380,18 @@ export function PharmacyDashboard({ businessId, category, onQuickAction }) {
           <CardContent>
             <div className="space-y-3">
               {recentActivity.map((activity, idx) => (
-                <div key={idx} className="flex items-start gap-3 p-3 rounded-lg border border-border hover:bg-secondary/50 transition-colors">
-                  <div className={`p-1.5 rounded-full ${activity.status === 'success' ? 'bg-green-100' : 'bg-orange-100'
+                <div key={idx} className="flex items-start gap-3 p-3 rounded-lg border border-neutral-200 hover:bg-neutral-50 transition-colors">
+                  <div className={`p-1.5 rounded-full ${activity.status === 'success' ? 'bg-success-light' : 'bg-warning-light'
                     }`}>
                     {activity.status === 'success' ? (
-                      <CheckCircle2 className="w-4 h-4 text-green-600" />
+                      <CheckCircle2 className="w-4 h-4 text-success" />
                     ) : (
-                      <AlertTriangle className="w-4 h-4 text-orange-600" />
+                      <AlertTriangle className="w-4 h-4 text-warning" />
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground">{activity.message}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{activity.time}</p>
+                    <p className="text-sm font-medium text-neutral-900">{activity.message}</p>
+                    <p className="text-xs text-neutral-500 mt-0.5">{activity.time}</p>
                   </div>
                 </div>
               ))}
@@ -399,11 +399,11 @@ export function PharmacyDashboard({ businessId, category, onQuickAction }) {
           </CardContent>
         </Card>
 
-        <Card className="bg-card border-border shadow-sm">
+        <Card className="bg-white border-neutral-200 shadow-md">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle className="text-lg font-bold">{t.system_alerts || 'System Alerts'}</CardTitle>
+                <CardTitle className="text-lg font-semibold">{t.system_alerts || 'System Alerts'}</CardTitle>
                 <CardDescription>{t.important_notifications || 'Important Notifications'}</CardDescription>
               </div>
               <Badge variant="secondary">{`${alerts.length} ${t.new_alerts || 'New Alerts'}`}</Badge>
@@ -412,28 +412,28 @@ export function PharmacyDashboard({ businessId, category, onQuickAction }) {
           <CardContent>
             <div className="space-y-3">
               {metrics?.alerts?.expiringBatches > 0 && (
-                <Alert variant="destructive" className="bg-orange-50 text-orange-900 border-orange-200">
-                  <AlertTriangle className="h-4 w-4 text-orange-600" />
+                <Alert variant="warning">
+                  <AlertTriangle className="h-4 w-4" />
                   <AlertTitle>{t.drug_expiry || 'Drug Expiry'}</AlertTitle>
-                  <AlertDescription className="text-orange-800">
+                  <AlertDescription>
                     {`${metrics.alerts.expiringBatches} ${t.drugs_expiring_soon || 'drugs are expiring soon'}`}
                   </AlertDescription>
                 </Alert>
               )}
               {metrics?.orders?.pending > 0 && (
-                <Alert variant="default" className="bg-blue-50 text-blue-900 border-blue-200">
-                  <FileText className="h-4 w-4 text-blue-600" />
+                <Alert variant="info">
+                  <FileText className="h-4 w-4" />
                   <AlertTitle>{t.pending_prescriptions || 'Pending Prescriptions'}</AlertTitle>
-                  <AlertDescription className="text-blue-800">
+                  <AlertDescription>
                     {`${metrics.orders.pending} prescriptions awaiting fulfillment`}
                   </AlertDescription>
                 </Alert>
               )}
               {alerts.length === 0 && (
-                <Alert variant="default" className="bg-green-50 text-green-900 border-green-200">
-                  <CheckCircle2 className="h-4 w-4 text-green-600" />
+                <Alert variant="success">
+                  <CheckCircle2 className="h-4 w-4" />
                   <AlertTitle>{t.system_update || 'System Update'}</AlertTitle>
-                  <AlertDescription className="text-green-800">
+                  <AlertDescription>
                     {t.smooth_running || 'All systems running smoothly.'} {format(new Date(), 'MMM dd, yyyy')}
                   </AlertDescription>
                 </Alert>
@@ -445,3 +445,5 @@ export function PharmacyDashboard({ businessId, category, onQuickAction }) {
     </div>
   );
 }
+
+

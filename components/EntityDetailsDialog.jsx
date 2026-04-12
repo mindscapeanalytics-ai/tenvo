@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState } from 'react';
 import {
@@ -73,7 +73,7 @@ export function EntityDetailsDialog({ item: initialItem, type, open, onClose, ca
             case 'quotation': icon = <ClipboardList className="w-5 h-5 text-orange-500" />; break;
             case 'sales_order': icon = <TrendingUp className="w-5 h-5 text-emerald-500" />; subtitle = "Sales Order"; break;
             case 'challan': icon = <Layers className="w-5 h-5 text-gray-500" />; subtitle = "Delivery Challan"; break;
-            case 'bom': icon = <Factory className="w-5 h-5 text-purple-500" />; subtitle = "Bill of Materials"; break;
+            case 'bom': icon = <Factory className="w-5 h-5 text-wine-500" />; subtitle = "Bill of Materials"; break;
             case 'production_order': icon = <Settings className="w-5 h-5 text-slate-500" />; subtitle = "Production Order"; break;
         }
 
@@ -176,16 +176,16 @@ export function EntityDetailsDialog({ item: initialItem, type, open, onClose, ca
 
     const renderManufacturingDetails = () => (
         <div className="space-y-6">
-            <div className="p-5 bg-purple-50 rounded-3xl border border-purple-100">
+            <div className="p-5 bg-wine-50 rounded-3xl border border-wine-100">
                 <div className="flex items-center justify-between mb-4">
-                    <div><label className="text-[10px] font-black text-purple-400 uppercase tracking-widest block">Product</label><p className="font-bold text-purple-900">{item.product_name || item.name || 'N/A'}</p></div>
-                    <div className="text-right"><label className="text-[10px] font-black text-purple-400 uppercase tracking-widest block">Qty</label><p className="font-black text-purple-900">{item.quantity || 1} {item.unit || 'pcs'}</p></div>
+                    <div><label className="text-[10px] font-black text-wine-400 uppercase tracking-widest block">Product</label><p className="font-bold text-wine-900">{item.product_name || item.name || 'N/A'}</p></div>
+                    <div className="text-right"><label className="text-[10px] font-black text-wine-400 uppercase tracking-widest block">Qty</label><p className="font-black text-wine-900">{item.quantity || 1} {item.unit || 'pcs'}</p></div>
                 </div>
                 {item.materials && item.materials.length > 0 && (
-                    <div className="bg-white rounded-2xl border border-purple-100 overflow-hidden">
+                    <div className="bg-white rounded-2xl border border-wine-100 overflow-hidden">
                         <table className="w-full text-xs">
-                            <thead className="bg-purple-100/50 text-purple-400 border-b border-purple-100"><tr><th className="px-3 py-2 text-left text-[8px] uppercase tracking-widest">Material</th><th className="px-3 py-2 text-right text-[8px] uppercase tracking-widest">Needed</th></tr></thead>
-                            <tbody className="divide-y divide-purple-50">{item.materials.map((m, i) => (<tr key={i}><td className="px-3 py-2 text-purple-900">{m.product_name || m.name}</td><td className="px-3 py-2 text-right font-bold text-purple-700">{m.quantity} {m.unit || 'unit'}</td></tr>))}</tbody>
+                            <thead className="bg-wine-100/50 text-wine-400 border-b border-wine-100"><tr><th className="px-3 py-2 text-left text-[8px] uppercase tracking-widest">Material</th><th className="px-3 py-2 text-right text-[8px] uppercase tracking-widest">Needed</th></tr></thead>
+                            <tbody className="divide-y divide-wine-50">{item.materials.map((m, i) => (<tr key={i}><td className="px-3 py-2 text-wine-900">{m.product_name || m.name}</td><td className="px-3 py-2 text-right font-bold text-wine-700">{m.quantity} {m.unit || 'unit'}</td></tr>))}</tbody>
                         </table>
                     </div>
                 )}
@@ -223,8 +223,8 @@ export function EntityDetailsDialog({ item: initialItem, type, open, onClose, ca
                         {isEditing ? (
                             <div className="px-1">
                                 {type === 'invoice' && <EnhancedInvoiceBuilder initialData={item} category={category} onSave={handleUpdateSuccess} onClose={() => setIsEditing(false)} />}
-                                {type === 'customer' && <CustomerForm initialData={item} category={category} onSave={handleUpdateSuccess} onClose={() => setIsEditing(false)} />}
-                                {type === 'vendor' && <VendorForm initialData={item} category={category} onSave={handleUpdateSuccess} onClose={() => setIsEditing(false)} />}
+                                {type === 'customer' && <CustomerForm initialData={item} category={category} onSave={handleUpdateSuccess} onEntitlementError={() => setIsEditing(false)} onClose={() => setIsEditing(false)} />}
+                                {type === 'vendor' && <VendorForm initialData={item} category={category} onSave={handleUpdateSuccess} onEntitlementError={() => setIsEditing(false)} onClose={() => setIsEditing(false)} />}
                                 {(type !== 'invoice' && type !== 'customer' && type !== 'vendor') && (
                                     <div className="p-8 text-center bg-gray-50 rounded-3xl border-2 border-dashed border-gray-100">
                                         <AlertTriangle className="w-8 h-8 text-amber-500 mx-auto mb-2" />
@@ -260,3 +260,4 @@ export function EntityDetailsDialog({ item: initialItem, type, open, onClose, ca
         </Dialog>
     );
 }
+

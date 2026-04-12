@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -15,7 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Constants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const PROMO_TYPES = [
     {
@@ -31,7 +31,7 @@ const PROMO_TYPES = [
     {
         key: 'bogo', label: 'Buy X Get Y', icon: Gift,
         description: 'Buy X items, get Y items free or discounted',
-        color: 'from-purple-500 to-violet-600', badgeColor: 'bg-purple-100 text-purple-700'
+        color: 'from-wine-500 to-violet-600', badgeColor: 'bg-wine-100 text-wine-700'
     },
     {
         key: 'bundle', label: 'Bundle Deal', icon: Package,
@@ -52,7 +52,7 @@ const STATUS_COLORS = {
     paused: 'bg-amber-100 text-amber-700 border-amber-200',
 };
 
-// ─── Promo Form Dialog ───────────────────────────────────────────────────────
+// â”€â”€â”€ Promo Form Dialog â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function PromoFormDialog({ open, onClose, onSave, promotion = null, currency = 'Rs.' }) {
     const isEditing = !!promotion;
@@ -212,10 +212,10 @@ function PromoFormDialog({ open, onClose, onSave, promotion = null, currency = '
                         )}
 
                         {formData.type === 'bogo' && (
-                            <div className="p-4 rounded-xl bg-purple-50/50 border border-purple-200 space-y-3">
+                            <div className="p-4 rounded-xl bg-wine-50/50 border border-wine-200 space-y-3">
                                 <div className="flex items-center gap-2">
-                                    <Gift className="w-4 h-4 text-purple-500" />
-                                    <span className="text-xs font-black text-purple-700 uppercase">Buy X Get Y Configuration</span>
+                                    <Gift className="w-4 h-4 text-wine-500" />
+                                    <span className="text-xs font-black text-wine-700 uppercase">Buy X Get Y Configuration</span>
                                 </div>
                                 <div className="grid grid-cols-3 gap-3">
                                     <div className="space-y-1">
@@ -252,7 +252,7 @@ function PromoFormDialog({ open, onClose, onSave, promotion = null, currency = '
                                         />
                                     </div>
                                 </div>
-                                <p className="text-[10px] text-purple-500">
+                                <p className="text-[10px] text-wine-500">
                                     Customer buys {formData.buy_qty || 'X'} items, gets {formData.get_qty || 'Y'} at {formData.get_discount || 100}% off
                                 </p>
                             </div>
@@ -394,7 +394,7 @@ function PromoFormDialog({ open, onClose, onSave, promotion = null, currency = '
                 {/* Footer */}
                 <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100 bg-gray-50/50">
                     <Button variant="outline" onClick={step === 0 ? onClose : () => setStep(0)} className="h-10 rounded-xl text-xs font-bold">
-                        {step === 0 ? 'Cancel' : '← Back'}
+                        {step === 0 ? 'Cancel' : 'â† Back'}
                     </Button>
                     {step === 1 && (
                         <Button
@@ -412,7 +412,7 @@ function PromoFormDialog({ open, onClose, onSave, promotion = null, currency = '
     );
 }
 
-// ─── Promotion Card ──────────────────────────────────────────────────────────
+// â”€â”€â”€ Promotion Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function PromoCard({ promotion, onEdit, onToggle, onDuplicate, onDelete, currency }) {
     const typeInfo = PROMO_TYPES.find(t => t.key === promotion.type) || PROMO_TYPES[0];
@@ -478,7 +478,7 @@ function PromoCard({ promotion, onEdit, onToggle, onDuplicate, onDelete, currenc
                     {promotion.start_date && (
                         <span className="flex items-center gap-0.5">
                             <Calendar className="w-3 h-3" />
-                            {new Date(promotion.start_date).toLocaleDateString()} — {promotion.end_date ? new Date(promotion.end_date).toLocaleDateString() : 'Ongoing'}
+                            {new Date(promotion.start_date).toLocaleDateString()} â€” {promotion.end_date ? new Date(promotion.end_date).toLocaleDateString() : 'Ongoing'}
                         </span>
                     )}
                     {promotion.min_order > 0 && (
@@ -536,7 +536,7 @@ function PromoCard({ promotion, onEdit, onToggle, onDuplicate, onDelete, currenc
     );
 }
 
-// ─── Main Promotion Engine ───────────────────────────────────────────────────
+// â”€â”€â”€ Main Promotion Engine â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export function PromotionEngine({ businessId, currency = 'Rs.' }) {
     const [promotions, setPromotions] = useState([
@@ -706,3 +706,4 @@ export function PromotionEngine({ businessId, currency = 'Rs.' }) {
         </div>
     );
 }
+

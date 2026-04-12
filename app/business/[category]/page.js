@@ -7,13 +7,11 @@ import { useBusiness } from '@/lib/context/BusinessContext';
 import {
   productAPI,
   customerAPI,
-  businessAPI,
   invoiceAPI,
   vendorAPI,
   purchaseOrderAPI,
   manufacturingAPI,
   warehouseAPI,
-  quotationAPI,
 } from '@/lib/api';
 import { payrollAPI } from '@/lib/api/payroll';
 import { workflowAPI } from '@/lib/api/workflow';
@@ -24,135 +22,22 @@ import { ProductForm } from '@/components/ProductForm';
 import { EnhancedInvoiceBuilder } from '@/components/EnhancedInvoiceBuilder';
 import { CustomerForm } from '@/components/CustomerForm';
 import { SetupWizard } from '@/components/onboarding/SetupWizard';
-import { getInvoicesAction, deleteInvoiceAction, createInvoiceAction, updateInvoiceAction } from '@/lib/actions/basic/invoice';
-import { getWarehouseLocationsAction } from '@/lib/actions/standard/inventory/warehouse';
-import { getBOMsAction, getProductionOrdersAction } from '@/lib/actions/premium/manufacturing';
 import { getDomainColors } from '@/lib/domainColors';
 import { getDomainKnowledge } from '@/lib/domainKnowledge';
 import { formatCurrency } from '@/lib/currency';
-// import { aggregateMonthlyData } from '@/lib/utils/analytics'; // DEPRECATED: Using Server Action now
-import { getMonthlyFinancialsAction, getAccountingSummaryAction } from '@/lib/actions/standard/report';
 import toast from 'react-hot-toast';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
-import { DashboardTab } from './components/tabs/DashboardTab';
-import { InventoryTab } from './components/tabs/InventoryTab';
-import { InvoiceTab } from './components/tabs/InvoiceTab';
-import { CustomersTab } from './components/tabs/CustomersTab';
 import { useFilters } from '@/lib/context/FilterContext';
 import { useData } from '@/lib/context/DataContext';
 import { getDateRangeFromPreset } from '@/lib/utils/datePresets';
+import { isEntitlementError, getEntitlementErrorMessage, markEntitlementErrorHandled } from '@/lib/utils/subscriptionErrors';
 import { ActionModals } from './components/ActionModals';
 import { DashboardTabs } from './components/DashboardTabs';
 import { BusinessLoadingBoundary } from '@/components/guards/BusinessLoadingBoundary';
 import { useResourceLimits } from '@/lib/hooks/useResourceLimits';
-
-const businessCategories = {
-  // Retail & FMCG (12)
-  'retail-shop': { name: 'Retail Shop', icon: '🏪', color: 'green' },
-  'grocery': { name: 'Grocery Store', icon: '🛒', color: 'green' },
-  'fmcg': { name: 'FMCG Distribution', icon: '📦', color: 'wine' },
-  'ecommerce': { name: 'E-commerce', icon: '🌐', color: 'indigo' },
-  'supermarket': { name: 'Supermarket', icon: '🛒', color: 'green' },
-  'bakery-confectionery': { name: 'Bakery & Confectionery', icon: '🍰', color: 'orange' },
-  'boutique-fashion': { name: 'Boutique & Fashion', icon: '👗', color: 'pink' },
-  'bookshop-stationery': { name: 'Bookshop & Stationery', icon: '📔', color: 'blue' },
-  'garments': { name: 'Garments Store', icon: '👕', color: 'purple' },
-  'mobile': { name: 'Mobile & Accessories', icon: '📱', color: 'blue' },
-  'electronics-goods': { name: 'Electronics Goods', icon: '📺', color: 'blue' },
-  'pharmacy': { name: 'Pharmacy (Medical Store)', icon: '💊', color: 'red' },
-
-  // Industrial & Manufacturing (12)
-  'chemical': { name: 'Chemical Industry', icon: '🧪', color: 'purple' },
-  'paper-mill': { name: 'Paper Mill', icon: '📄', color: 'gray' },
-  'paint': { name: 'Paint Industry', icon: '🎨', color: 'pink' },
-  'plastic-manufacturing': { name: 'Plastic Manufacturing', icon: '♻️', color: 'green' },
-  'textile-mill': { name: 'Textile Mill', icon: '🧵', color: 'amber' },
-  'printing-packaging': { name: 'Printing & Packaging', icon: '🖨️', color: 'blue' },
-  'furniture': { name: 'Furniture Manufacturing', icon: '🪑', color: 'brown' },
-  'ceramics-tiles': { name: 'Ceramics & Tiles', icon: '🧱', color: 'gray' },
-  'flour-mill': { name: 'Flour Mill (Chakki)', icon: '🌾', color: 'orange' },
-  'rice-mill': { name: 'Rice Mill', icon: '🍚', color: 'gray' },
-  'sugar-mill': { name: 'Sugar Mill', icon: '🍭', color: 'wine' },
-  'steel-iron': { name: 'Steel & Iron Mill', icon: '🏗️', color: 'gray' },
-
-  // Specialized & Wholesale (12)
-  'auto-parts': { name: 'Auto Parts Wholesale', icon: '🚗', color: 'blue' },
-  'textile-wholesale': { name: 'Textile Wholesale', icon: '📜', color: 'amber' },
-  'wholesale-distribution': { name: 'Wholesale & Distribution', icon: '📦', color: 'wine' },
-  'hardware-sanitary': { name: 'Hardware & Sanitary', icon: '🔧', color: 'gray' },
-  'construction-material': { name: 'Construction Material', icon: '🏗️', color: 'orange' },
-  'agriculture': { name: 'Agriculture & Fertilizer', icon: '🌾', color: 'green' },
-  'poultry-farm': { name: 'Poultry Farm', icon: '🐔', color: 'orange' },
-  'dairy-farm': { name: 'Dairy Farm', icon: '🐄', color: 'blue' },
-  'solar-energy': { name: 'Solar Energy Solutions', icon: '☀️', color: 'yellow' },
-  'petrol-pump': { name: 'Petrol Pump (Fuel Station)', icon: '⛽', color: 'red' },
-  'cold-storage': { name: 'Cold Storage (Warehouse)', icon: '❄️', color: 'cyan' },
-  'gems-jewellery': { name: 'Gems & Jewellery', icon: '💎', color: 'teal' },
-
-  // Services & Healthcare (12)
-  'travel': { name: 'Travel & Tourism', icon: '✈️', color: 'cyan' },
-  'auto-workshop': { name: 'Auto Workshop / Service', icon: '🛠️', color: 'blue' },
-  'diagnostic-lab': { name: 'Diagnostic Lab', icon: '🔬', color: 'purple' },
-  'clinics-healthcare': { name: 'Clinics & Healthcare', icon: '👨‍⚕️', color: 'red' },
-  'restaurant-cafe': { name: 'Restaurant & Cafe', icon: '🍲', color: 'orange' },
-  'gym-fitness': { name: 'Gym & Fitness Center', icon: '🏋️', color: 'blue' },
-  'hotel-guesthouse': { name: 'Hotel & Guesthouse', icon: '🏨', color: 'indigo' },
-  'event-management': { name: 'Event Management', icon: '🎉', color: 'pink' },
-  'rent-a-car': { name: 'Rent-a-Car Service', icon: '🚘', color: 'blue' },
-  'school-library': { name: 'School & Library', icon: '🎓', color: 'indigo' },
-  'courier-logistics': { name: 'Courier & Logistics', icon: '🚚', color: 'wine' },
-  'logistics-transport': { name: 'Logistics & Transport', icon: '🚛', color: 'wine' },
-
-  // Others & Real Estate (3+)
-  'real-estate': { name: 'Real Estate & Property', icon: '🏠', color: 'brown' },
-  'computer-hardware': { name: 'Computer Hardware', icon: '💻', color: 'blue' },
-  'book-publishing': { name: 'Book Publishing', icon: '📚', color: 'teal' },
-};
-
-const VALID_TABS = new Set([
-  'dashboard',
-  'inventory',
-  'invoices',
-  'customers',
-  'vendors',
-  'payments',
-  'purchases',
-  'sales',
-  'manufacturing',
-  'warehouses',
-  'quotations',
-  'batches',
-  'accounting',
-  'finance',
-  'reports',
-  'campaigns',
-  'gst',
-  'pos',
-  'restaurant',
-  'expenses',
-  'payroll',
-  'approvals',
-  'loyalty',
-  'refunds',
-  'audit',
-  'settings',
-  'credit-notes',
-  'fiscal',
-  'exchange-rates',
-]);
-
-function normalizeTabKey(tab) {
-  if (!tab) return 'dashboard';
-  const key = String(tab).trim().toLowerCase();
-
-  const aliases = {
-    analytics: 'reports',
-    report: 'reports',
-    'multi-location': 'warehouses',
-  };
-
-  return aliases[key] || key;
-}
+import { BUSINESS_DOMAINS } from '@/lib/config/domains';
+import { QUICK_ACTION_IDS } from '@/lib/config/quickActions';
+import { VALID_DASHBOARD_TABS, normalizeDashboardTab, resolveDashboardTab } from '@/lib/config/tabs';
 
 function BusinessDashboardContent() {
   const params = useParams();
@@ -172,19 +57,19 @@ function BusinessDashboardContent() {
   const currentDomain = business?.domain || String(params?.category || 'retail-shop');
   const category = business?.category || 'retail-shop';
 
-  const normalizedUrlTab = normalizeTabKey(searchParams.get('tab') || 'dashboard');
-  const activeTab = VALID_TABS.has(normalizedUrlTab) ? normalizedUrlTab : 'dashboard';
+  const normalizedUrlTab = normalizeDashboardTab(searchParams.get('tab') || 'dashboard');
+  const activeTab = resolveDashboardTab(normalizedUrlTab);
 
   // Sync URL when state changes (e.g. valid tab click)
   const handleTabChange = useCallback((val) => {
-    const normalizedTab = normalizeTabKey(val);
+    const normalizedTab = normalizeDashboardTab(val);
 
     if (normalizedTab === 'platform-admin') {
       router.push('/admin', { scroll: false });
       return;
     }
 
-    const targetTab = VALID_TABS.has(normalizedTab) ? normalizedTab : 'dashboard';
+    const targetTab = VALID_DASHBOARD_TABS.has(normalizedTab) ? normalizedTab : 'dashboard';
     router.push(`/business/${currentDomain}?tab=${targetTab}`, { scroll: false });
   }, [currentDomain, router]);
 
@@ -203,6 +88,9 @@ function BusinessDashboardContent() {
 
   const handleQuickAction = useCallback((actionId) => {
     switch (actionId) {
+      case QUICK_ACTION_IDS.OPEN_QUICK_ACTION:
+        setShowQuickAction(true);
+        break;
       case 'sales':
       case 'invoices':
         handleTabChange('invoices');
@@ -225,30 +113,37 @@ function BusinessDashboardContent() {
         break;
       case 'new-invoice':
       case 'add-invoice':
+      case QUICK_ACTION_IDS.ADD_INVOICE:
         setShowInvoiceBuilder(true);
         break;
       case 'new-product':
       case 'add-product':
+      case QUICK_ACTION_IDS.ADD_PRODUCT:
         setShowProductForm(true);
         break;
       case 'new-customer':
       case 'add-customer':
+      case QUICK_ACTION_IDS.ADD_CUSTOMER:
         setShowCustomerForm(true);
         break;
       case 'new-vendor':
       case 'add-vendor':
+      case QUICK_ACTION_IDS.ADD_VENDOR:
         setEditingVendor(null);
         setShowVendorForm(true);
         break;
       case 'new-purchase':
       case 'add-purchase':
+      case QUICK_ACTION_IDS.ADD_PURCHASE:
         setPoInitialData(null);
         setShowPOBuilder(true);
         break;
       case 'new-quotation':
+      case QUICK_ACTION_IDS.NEW_QUOTATION:
         handleTabChange('quotations');
         break;
       case 'generate-report':
+      case QUICK_ACTION_IDS.GENERATE_REPORT:
         handleTabChange('reports');
         break;
       case 'excel-mode':
@@ -257,8 +152,8 @@ function BusinessDashboardContent() {
         toast.success("Excel Mode active in Inventory", { icon: '📊' });
         break;
       default:
-        if (VALID_TABS.has(normalizeTabKey(actionId))) {
-          handleTabChange(normalizeTabKey(actionId));
+        if (VALID_DASHBOARD_TABS.has(normalizeDashboardTab(actionId))) {
+          handleTabChange(normalizeDashboardTab(actionId));
         }
         break;
     }
@@ -304,15 +199,15 @@ function BusinessDashboardContent() {
 
   // Fallback logic for domains not in the static businessCategories map
   const businessInfo = useMemo(() => {
-    const staticInfo = businessCategories[category];
-    if (staticInfo) return staticInfo;
+    const domainConfig = BUSINESS_DOMAINS[category];
+    if (domainConfig) return { name: domainConfig.name, icon: domainConfig.icon, color: domainConfig.color };
 
     // Dynamically derive from domainKnowledge
     const knowledge = getDomainKnowledge(category);
     return {
       name: category.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
       icon: knowledge.icon || '🚀',
-      color: 'wine' // Default theme color
+      color: 'wine'
     };
   }, [category]);
 
@@ -586,7 +481,14 @@ function BusinessDashboardContent() {
       setEditingCustomer(null);
     } catch (error) {
       console.error('Error saving customer:', error);
-      toast.error('Failed to save customer: ' + (error.message || 'Unknown error'));
+      if (isEntitlementError(error)) {
+        toast.error(getEntitlementErrorMessage(error, { action: 'save customer' }));
+        markEntitlementErrorHandled(error);
+        handleTabChange('settings');
+      } else {
+        toast.error('Failed to save customer: ' + (error.message || 'Unknown error'));
+      }
+      throw error;
     }
   };
 
@@ -607,7 +509,14 @@ function BusinessDashboardContent() {
       setEditingVendor(null);
     } catch (error) {
       console.error('Error saving vendor:', error);
-      toast.error('Failed to save vendor: ' + (error.message || 'Unknown error'));
+      if (isEntitlementError(error)) {
+        toast.error(getEntitlementErrorMessage(error, { action: 'save vendor' }));
+        markEntitlementErrorHandled(error);
+        handleTabChange('settings');
+      } else {
+        toast.error('Failed to save vendor: ' + (error.message || 'Unknown error'));
+      }
+      throw error;
     }
   };
 
@@ -777,7 +686,13 @@ function BusinessDashboardContent() {
       refreshAllData();
     } catch (error) {
       console.error('Error saving invoice:', error);
-      toast.error(error.message || 'Failed to save invoice');
+      if (isEntitlementError(error)) {
+        toast.error(getEntitlementErrorMessage(error, { action: 'save invoice' }));
+        markEntitlementErrorHandled(error);
+        handleTabChange('settings');
+      } else {
+        toast.error(error.message || 'Failed to save invoice');
+      }
       throw error; // Propagate error so child component knows it failed
     }
   };
@@ -845,7 +760,13 @@ function BusinessDashboardContent() {
       toast.success('Warehouse location added');
     } catch (error) {
       console.error('Add Location Error:', error);
-      toast.error('Failed to add location');
+      if (isEntitlementError(error)) {
+        toast.error(getEntitlementErrorMessage(error, { action: 'add warehouse location' }));
+        markEntitlementErrorHandled(error);
+        handleTabChange('settings');
+      } else {
+        toast.error('Failed to add location');
+      }
       throw error;
     }
   };
@@ -914,8 +835,21 @@ function BusinessDashboardContent() {
       return { success: true };
     } catch (error) {
       console.error('POS Checkout Error:', error);
-      toast.error('Sale failed: ' + error.message, { id: 'pos' });
-      return { success: false, error };
+      if (isEntitlementError(error)) {
+        toast.error(getEntitlementErrorMessage(error, { action: 'complete sale' }), { id: 'pos' });
+        markEntitlementErrorHandled(error);
+        handleTabChange('settings');
+      } else {
+        toast.error('Sale failed: ' + error.message, { id: 'pos' });
+      }
+      return {
+        success: false,
+        error,
+        errorCode: error?.code || null,
+        requiredPlan: error?.requiredPlan || null,
+        limitKey: error?.limitKey || null,
+        limit: Number.isFinite(Number(error?.limit)) ? Number(error?.limit) : null,
+      };
     }
   };
 

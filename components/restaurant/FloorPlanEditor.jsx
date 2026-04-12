@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from '@/lib/utils';
 
-// ─── Constants & Types ───────────────────────────────────────────────────────
+// â”€â”€â”€ Constants & Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const TABLE_SHAPES = [
     { key: 'square', label: 'Square', icon: Grid3X3, w: 60, h: 60 },
@@ -30,7 +30,7 @@ const TABLE_SHAPES = [
 
 const GRID_SIZE = 20;
 
-// Static class map for Tailwind JIT — zone colors
+// Static class map for Tailwind JIT â€” zone colors
 const ZONE_COLOR_CLASSES = {
     indigo: 'bg-indigo-600 text-white shadow-lg shadow-indigo-200',
     emerald: 'bg-emerald-600 text-white shadow-lg shadow-emerald-200',
@@ -38,10 +38,10 @@ const ZONE_COLOR_CLASSES = {
     blue: 'bg-blue-600 text-white shadow-lg shadow-blue-200',
     red: 'bg-red-600 text-white shadow-lg shadow-red-200',
     green: 'bg-green-600 text-white shadow-lg shadow-green-200',
-    purple: 'bg-purple-600 text-white shadow-lg shadow-purple-200',
+    purple: 'bg-wine-600 text-white shadow-lg shadow-wine-200',
 };
 
-// ─── FloorPlanEditor Component ───────────────────────────────────────────────
+// â”€â”€â”€ FloorPlanEditor Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export function FloorPlanEditor({
     businessId,
@@ -64,7 +64,7 @@ export function FloorPlanEditor({
     const activeZone = useMemo(() => zones.find(z => z.id === activeZoneId), [zones, activeZoneId]);
     const zoneTables = useMemo(() => tables.filter(t => t.zone_id === activeZoneId), [tables, activeZoneId]);
 
-    // ─── Handlers ────────────────────────────────────────────────────────────
+    // â”€â”€â”€ Handlers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     const handleAddTable = useCallback((shapeKey) => {
         const shape = TABLE_SHAPES.find(s => s.key === shapeKey);
@@ -104,7 +104,7 @@ export function FloorPlanEditor({
         }
     }, [zones, tables, onSave]);
 
-    // ─── Renderers ───────────────────────────────────────────────────────────
+    // â”€â”€â”€ Renderers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     const selectedTable = useMemo(() => tables.find(t => t.id === selectedTableId), [tables, selectedTableId]);
 
@@ -347,3 +347,4 @@ export function FloorPlanEditor({
         </div>
     );
 }
+

@@ -1,6 +1,6 @@
-'use client';
+﻿'use client';
 
-import { useState, useRef } from 'react';
+import { useMemo, useState, useRef } from 'react';
 import { Scan, Check, X, AlertCircle, Package, Shield, Calendar, Plus, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -34,13 +34,20 @@ export function SerialTrackingManager({ businessId, productId, warehouseId, prod
     const {
         serials,
         loading,
-        stats,
         registerSerial,
-        registerBulkSerials,
+        bulkRegisterSerials,
         updateSerialStatus,
         searchSerials,
-        refreshSerials
-    } = useSerialTracking(businessId, productId);
+        getStatistics,
+        refetch
+    } = useSerialTracking(productId, businessId, warehouseId);
+
+    const stats = useMemo(() => getStatistics?.() || ({
+        total: 0,
+        inWarranty: 0,
+        available: 0,
+        sold: 0,
+    }), [getStatistics]);
 
     const [showAddDialog, setShowAddDialog] = useState(false);
     const [showBulkDialog, setShowBulkDialog] = useState(false);
@@ -110,7 +117,11 @@ export function SerialTrackingManager({ businessId, productId, warehouseId, prod
         }
 
         try {
-            await registerBulkSerials(serialNumbers, bulkWarrantyMonths);
+            await bulkRegisterSerials(serialNumbers.map(serial => ({
+                serial_number: serial,
+                warranty_period_months: bulkWarrantyMonths,
+                warehouse_id: warehouseId || null,
+            }));
             toast.success(`${serialNumbers.length} serial numbers registered`);
             setBulkSerials('');
             setShowBulkDialog(false);
@@ -130,7 +141,7 @@ export function SerialTrackingManager({ businessId, productId, warehouseId, prod
 
     const handleSearch = async () => {
         if (!searchQuery.trim()) {
-            refreshSerials();
+            refetch?.();
             return;
         }
 
@@ -147,7 +158,7 @@ export function SerialTrackingManager({ businessId, productId, warehouseId, prod
             sold: { label: 'Sold', className: 'bg-blue-500 text-white' },
             returned: { label: 'Returned', className: 'bg-orange-500 text-white' },
             defective: { label: 'Defective', className: 'bg-red-500 text-white' },
-            under_repair: { label: 'Under Repair', className: 'bg-purple-500 text-white' }
+            under_repair: { label: 'Under Repair', className: 'bg-wine-500 text-white' }
         };
 
         const config = statusConfig[status] || statusConfig.available;
@@ -507,3 +518,4 @@ export function SerialTrackingManager({ businessId, productId, warehouseId, prod
         </div>
     );
 }
+

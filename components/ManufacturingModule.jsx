@@ -206,7 +206,7 @@ export function ManufacturingModule({
     if (!bomToDelete) return;
     setIsLoading(true);
     try {
-      await manufacturingAPI.deleteBOM(bomToDelete);
+      await manufacturingAPI.deleteBOM(bomToDelete, businessId);
       toast.success('BOM deleted successfully');
       setShowDeleteBOMDialog(false);
       setBomToDelete(null);

@@ -15,7 +15,6 @@ import {
 } from '@/lib/actions/standard/quotation';
 import {
     getDomainDefaultTax,
-    getDomainTheme,
     isBatchTrackingEnabled,
     isSerialTrackingEnabled
 } from '@/lib/utils/domainHelpers';
@@ -73,7 +72,6 @@ export function SalesDocumentForm({
     // However, if we need to check features, we should ensure we have the right context.
     const domainCategory = category || business?.category || 'retail-shop';
 
-    const theme = getDomainTheme(domainCategory);
     const config = TYPE_CONFIGS[type];
 
     // Check features
@@ -237,14 +235,14 @@ export function SalesDocumentForm({
     return (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <Card className="w-full max-w-5xl max-h-[90vh] overflow-y-auto">
-                <CardHeader className={`flex flex-row items-center justify-between border-b bg-${theme.bg}/30`}>
+                <CardHeader className="flex flex-row items-center justify-between border-b bg-wine-50/30">
                     <div className="space-y-1">
-                        <CardTitle className={`text-2xl font-black text-${theme.primary} tracking-tight`}>Generate {config.title}</CardTitle>
+                        <CardTitle className="text-2xl font-black text-wine-600 tracking-tight">Generate {config.title}</CardTitle>
                         {initialData && (
                             <div className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest animate-in slide-in-from-left-2 duration-300">
-                                <Link className={`w-3.5 h-3.5 text-${theme.primary}`} />
+                                <Link className="w-3.5 h-3.5 text-wine-600" />
                                 <span>Derived from {initialData.quotation_number || initialData.order_number || initialData.challan_number || 'Source Document'}</span>
-                                <Badge className={`bg-${theme.primary}/10 text-${theme.primary} hover:bg-${theme.primary}/20 border-none text-[9px] font-black h-4 px-1.5 uppercase`}>Linked</Badge>
+                                <Badge className="bg-wine-600/10 text-wine-600 hover:bg-wine-600/20 border-none text-[9px] font-black h-4 px-1.5 uppercase">Linked</Badge>
                             </div>
                         )}
                     </div>
@@ -495,7 +493,7 @@ export function SalesDocumentForm({
                         <Button
                             disabled={isSaving}
                             onClick={handleSave}
-                            className={`bg-${theme.primary} hover:opacity-90 text-white font-black px-8 h-12 rounded-xl transition-all active:scale-95 flex items-center gap-2`}
+                            className="bg-wine-600 hover:opacity-90 text-white font-black px-8 h-12 rounded-xl transition-all active:scale-95 flex items-center gap-2"
                         >
                             {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                             Save {config.title}

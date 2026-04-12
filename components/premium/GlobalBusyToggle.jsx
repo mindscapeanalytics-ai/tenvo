@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React from 'react';
 import { motion } from 'framer-motion';
@@ -33,7 +33,7 @@ export function GlobalBusyToggle() {
                             <motion.div
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
-                                className="absolute inset-0 bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-500 opacity-20"
+                                className="absolute inset-0 bg-gradient-to-r from-indigo-500 via-wine-500 to-indigo-500 opacity-20"
                                 style={{ backgroundSize: '200% 100%' }}
                                 transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
                             />
@@ -81,3 +81,4 @@ export function GlobalBusyToggle() {
         </TooltipProvider>
     );
 }
+

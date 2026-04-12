@@ -18,7 +18,7 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 
-const COLORS = ['#8B1538', '#A01A42', '#C41E3A', '#DC143C', '#FF6B6B', '#FF8787'];
+const COLORS = ['#2F5BFF', '#1738A5', '#0F172A', '#10B981', '#C69214', '#38BDF8'];
 
 /**
  * @param {Object} props
@@ -26,8 +26,8 @@ const COLORS = ['#8B1538', '#A01A42', '#C41E3A', '#DC143C', '#FF6B6B', '#FF8787'
  * @param {any} [props.colors]
  */
 export function SalesChart({ data, colors }) {
-  const primary = colors?.primary || '#8B1538';
-  const secondary = colors?.primaryLight || '#A01A42';
+  const primary = colors?.primary || '#2F5BFF';
+  const secondary = colors?.primaryLight || '#1738A5';
 
   return (
     <ResponsiveContainer width="100%" height={300}>
@@ -50,8 +50,8 @@ export function SalesChart({ data, colors }) {
  * @param {any} [props.colors]
  */
 export function RevenueBarChart({ data, colors }) {
-  const primary = colors?.primary || '#8B1538';
-  const secondary = colors?.primaryLight || '#A01A42';
+  const primary = colors?.primary || '#2F5BFF';
+  const secondary = colors?.primaryLight || '#1738A5';
 
   return (
     <ResponsiveContainer width="100%" height={300}>
@@ -102,8 +102,8 @@ export function CategoryPieChart({ data }) {
  * @param {any} [props.colors]
  */
 export function RevenueAreaChart({ data, colors }) {
-  const primary = colors?.primary || '#8B1538';
-  const secondary = colors?.primaryLight || '#A01A42';
+  const primary = colors?.primary || '#2F5BFF';
+  const secondary = colors?.primaryLight || '#1738A5';
 
   return (
     <ResponsiveContainer width="100%" height={300}>
@@ -136,7 +136,7 @@ export function RevenueAreaChart({ data, colors }) {
  * @param {any} [props.colors]
  */
 export function TopProductsChart({ data, colors }) {
-  const primary = colors?.primary || '#8B1538';
+  const primary = colors?.primary || '#2F5BFF';
 
   return (
     <ResponsiveContainer width="100%" height={300}>

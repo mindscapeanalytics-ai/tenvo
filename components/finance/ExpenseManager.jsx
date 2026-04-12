@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -17,7 +17,7 @@ import { ExpenseEntryForm } from '@/components/ExpenseEntryForm';
 
 const EXPENSE_CATEGORIES = [
     { value: 'rent', label: 'Rent & Utilities', color: 'bg-blue-100 text-blue-700' },
-    { value: 'salary', label: 'Salaries & Wages', color: 'bg-purple-100 text-purple-700' },
+    { value: 'salary', label: 'Salaries & Wages', color: 'bg-wine-100 text-wine-700' },
     { value: 'supplies', label: 'Office Supplies', color: 'bg-amber-100 text-amber-700' },
     { value: 'transport', label: 'Transport', color: 'bg-emerald-100 text-emerald-700' },
     { value: 'marketing', label: 'Marketing', color: 'bg-pink-100 text-pink-700' },
@@ -64,7 +64,7 @@ export function ExpenseManager({ businessId, expenses = [], onCreateExpense, onD
                 <Card className="border-none shadow-sm">
                     <CardContent className="p-4">
                         <p className="text-xs text-gray-500 font-medium">Top Category</p>
-                        <p className="text-lg font-bold text-gray-900 mt-1">{breakdown[0]?.label || '—'}</p>
+                        <p className="text-lg font-bold text-gray-900 mt-1">{breakdown[0]?.label || 'â€”'}</p>
                         <p className="text-xs text-gray-400">{currency}{(breakdown[0]?.total || 0).toLocaleString()}</p>
                     </CardContent>
                 </Card>
@@ -130,7 +130,7 @@ export function ExpenseManager({ businessId, expenses = [], onCreateExpense, onD
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <p className="text-sm font-semibold text-gray-900 truncate">{expense.description}</p>
-                                        <p className="text-[10px] text-gray-400">{expense.date} • {cat?.label || expense.category}</p>
+                                        <p className="text-[10px] text-gray-400">{expense.date} â€¢ {cat?.label || expense.category}</p>
                                     </div>
                                     <span className="text-sm font-black text-red-600">{currency}{parseFloat(expense.amount).toLocaleString()}</span>
                                 </motion.div>
@@ -156,3 +156,4 @@ export function ExpenseManager({ businessId, expenses = [], onCreateExpense, onD
         </div>
     );
 }
+

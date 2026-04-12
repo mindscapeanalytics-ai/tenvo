@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { Label } from '@/components/ui/label';
@@ -72,7 +72,7 @@ export function TaxCategorySelector({
     const TAX_COLOR_CLASSES = {
         blue: 'bg-blue-50 text-blue-700 border-blue-200',
         green: 'bg-green-50 text-green-700 border-green-200',
-        purple: 'bg-purple-50 text-purple-700 border-purple-200',
+        purple: 'bg-wine-50 text-wine-700 border-wine-200',
         orange: 'bg-orange-50 text-orange-700 border-orange-200',
         red: 'bg-red-50 text-red-700 border-red-200',
         indigo: 'bg-indigo-50 text-indigo-700 border-indigo-200',
@@ -150,6 +150,11 @@ export function TaxCategorySelector({
                     Most grocery items are exempt or zero-rated
                 </p>
             )}
+            {['garments', 'boutique-fashion'].includes(category) && (
+                <p className="text-xs text-gray-500 italic">
+                    Unregistered buyers attract 3% Further Tax (Section 3(1A) Sales Tax Act 1990).
+                </p>
+            )}
         </div>
     );
 }
@@ -163,3 +168,4 @@ export function getTaxPercentFromCategory(taxCategory) {
     const match = taxCategory.match(/(\d+(?:\.\d+)?)\s*%/);
     return match ? parseFloat(match[1]) : 0;
 }
+

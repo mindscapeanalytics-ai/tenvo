@@ -17,7 +17,7 @@ interface TopSellingItemsProps {
     isLoading?: boolean;
 }
 
-const COLORS = ['#8B1538', '#334155', '#475569', '#64748b', '#94a3b8', '#cbd5e1'];
+const COLORS = ['#2F5BFF', '#1738A5', '#334155', '#64748b', '#10b981', '#c69214'];
 
 export const TopSellingItems = memo(function TopSellingItems({
     data = [],

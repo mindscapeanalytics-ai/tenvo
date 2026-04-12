@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -15,7 +15,7 @@ const TYPE_CONFIG = {
     expense: { icon: DollarSign, color: 'bg-red-100 text-red-600', label: 'Expense' },
     purchase: { icon: ShoppingCart, color: 'bg-blue-100 text-blue-600', label: 'Purchase' },
     refund: { icon: RotateCcw, color: 'bg-amber-100 text-amber-600', label: 'Refund' },
-    credit_note: { icon: FileText, color: 'bg-purple-100 text-purple-600', label: 'Credit Note' },
+    credit_note: { icon: FileText, color: 'bg-wine-100 text-wine-600', label: 'Credit Note' },
     journal_entry: { icon: FileText, color: 'bg-emerald-100 text-emerald-600', label: 'Journal Entry' },
 };
 
@@ -63,7 +63,7 @@ export function ApprovalInbox({
                                     <div className="flex-1 min-w-0">
                                         <p className="text-sm font-semibold text-gray-900">{typeConfig.label}</p>
                                         <p className="text-[10px] text-gray-400 truncate">
-                                            {req.description || 'No description'} • by {req.requester_name || 'Unknown'}
+                                            {req.description || 'No description'} â€¢ by {req.requester_name || 'Unknown'}
                                         </p>
                                     </div>
                                     {req.amount && (
@@ -93,7 +93,7 @@ export function ApprovalInbox({
                     {pendingRequests.length === 0 && (
                         <div className="py-12 text-center text-gray-400">
                             <CheckCircle2 className="w-10 h-10 mx-auto mb-3 opacity-30" />
-                            <p className="text-sm font-medium">All caught up! 🎉</p>
+                            <p className="text-sm font-medium">All caught up! ðŸŽ‰</p>
                             <p className="text-xs text-gray-300 mt-1">No pending approvals</p>
                         </div>
                     )}
@@ -117,7 +117,7 @@ export function ApprovalInbox({
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <p className="text-xs font-medium text-gray-700 truncate">{req.description || typeConfig.label}</p>
-                                        <p className="text-[10px] text-gray-400">{req.requester_name} • {new Date(req.requested_at).toLocaleDateString()}</p>
+                                        <p className="text-[10px] text-gray-400">{req.requester_name} â€¢ {new Date(req.requested_at).toLocaleDateString()}</p>
                                     </div>
                                     {req.amount && (
                                         <span className="text-xs font-bold text-gray-600">{currency}{parseFloat(req.amount).toLocaleString()}</span>
@@ -139,3 +139,4 @@ export function ApprovalInbox({
         </div>
     );
 }
+

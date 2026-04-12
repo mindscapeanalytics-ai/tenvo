@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useMemo } from 'react';
 import { EnhancedDashboard } from '@/components/EnhancedDashboard';
@@ -107,7 +107,7 @@ export function OwnerDashboard({
       </div>
 
       {/* Financial Summary Section - Prominent */}
-      <Card className="glass-card border-none bg-gradient-to-br from-wine/5 to-purple-50">
+      <Card className="glass-card border-none bg-gradient-to-br from-wine/5 to-wine-50">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <div>
@@ -268,7 +268,7 @@ export function OwnerDashboard({
               onClick={() => onQuickAction?.('view-team-details')}
               className="w-full text-xs font-bold text-wine hover:text-wine/80 transition-colors py-2"
             >
-              {t.view_detailed_report || 'View Detailed Report'} →
+              {t.view_detailed_report || 'View Detailed Report'} â†’
             </button>
           </CardContent>
         </Card>
@@ -302,3 +302,5 @@ export function OwnerDashboard({
     </div>
   );
 }
+
+

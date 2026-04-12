@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Building2, Sparkles, Loader2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { vendorAPI } from '@/lib/api/vendors';
+import { isEntitlementError, getEntitlementErrorMessage, isEntitlementErrorHandled } from '@/lib/utils/subscriptionErrors';
 import { useBusiness } from '@/lib/context/BusinessContext';
 import { CityAutocomplete } from '@/components/CityAutocomplete';
 import { vendorSchema, validateWithSchema } from '@/lib/validation/schemas';
@@ -88,7 +89,13 @@ export function QuickVendorForm({ onSave, onCancel }) {
             toast.success('Vendor created successfully');
         } catch (error) {
             console.error(error);
-            toast.error(error.message || 'Failed to create vendor');
+            if (isEntitlementError(error)) {
+                if (!isEntitlementErrorHandled(error)) {
+                    toast.error(getEntitlementErrorMessage(error, { action: 'create vendor' }));
+                }
+            } else {
+                toast.error(error.message || 'Failed to create vendor');
+            }
         } finally {
             setIsLoading(false);
         }

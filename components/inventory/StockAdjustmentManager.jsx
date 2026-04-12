@@ -177,6 +177,16 @@ export function StockAdjustmentManager({
         return <Badge className={config.className}>{config.label}</Badge>;
     };
 
+    const safeStats = stats || {
+        total: 0,
+        pending: 0,
+        approved: 0,
+        rejected: 0,
+        totalValueAdjusted: 0,
+        byReasonCode: {},
+        approvalRate: 0,
+    };
+
     const selectedProduct = products.find(p => p.id === formData.product_id);
     const adjustmentValue = selectedProduct && formData.quantity_change
         ? Math.abs(parseFloat(formData.quantity_change)) * (selectedProduct.cost_price || 0)
@@ -217,23 +227,23 @@ export function StockAdjustmentManager({
                         <CardTitle className="text-sm font-medium">Total Adjustments</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{stats.total}</div>
+                        <div className="text-2xl font-bold">{safeStats.total}</div>
                     </CardContent>
                 </Card>
                 <Card>
                     <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium">Increases</CardTitle>
+                        <CardTitle className="text-sm font-medium">Approved</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-green-600">{stats.increases}</div>
+                        <div className="text-2xl font-bold text-green-600">{safeStats.approved}</div>
                     </CardContent>
                 </Card>
                 <Card>
                     <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium">Decreases</CardTitle>
+                        <CardTitle className="text-sm font-medium">Rejected</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-red-600">{stats.decreases}</div>
+                        <div className="text-2xl font-bold text-red-600">{safeStats.rejected}</div>
                     </CardContent>
                 </Card>
                 <Card>
@@ -241,7 +251,7 @@ export function StockAdjustmentManager({
                         <CardTitle className="text-sm font-medium">Pending Approval</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-yellow-600">{stats.pending}</div>
+                        <div className="text-2xl font-bold text-yellow-600">{safeStats.pending}</div>
                     </CardContent>
                 </Card>
             </div>

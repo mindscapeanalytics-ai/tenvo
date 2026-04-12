@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useMemo } from 'react';
 import { EnhancedDashboard } from '@/components/EnhancedDashboard';
@@ -121,7 +121,7 @@ export function SalesDashboard({
 
   const getCustomerStatusColor = (status) => {
     const colors = {
-      vip: 'bg-purple-100 text-purple-700 border-purple-200',
+      vip: 'bg-wine-100 text-wine-700 border-wine-200',
       regular: 'bg-blue-100 text-blue-700 border-blue-200',
       new: 'bg-green-100 text-green-700 border-green-200'
     };
@@ -163,7 +163,7 @@ export function SalesDashboard({
       </div>
 
       {/* Primary Action - Quick Invoice Creation */}
-      <Card className="glass-card border-none bg-gradient-to-br from-wine/5 to-purple-50">
+      <Card className="glass-card border-none bg-gradient-to-br from-wine/5 to-wine-50">
         <CardContent className="p-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
@@ -301,7 +301,7 @@ export function SalesDashboard({
               onClick={() => onQuickAction?.('view-commission-history')}
               className="w-full text-xs font-bold text-amber-600 hover:text-amber-700 transition-colors py-2"
             >
-              {t.view_commission_history || 'View Commission History'} →
+              {t.view_commission_history || 'View Commission History'} â†’
             </button>
           </CardContent>
         </Card>
@@ -359,9 +359,9 @@ export function SalesDashboard({
                     </div>
                     <div className="flex items-center gap-3 text-xs text-gray-500">
                       <span>{customer.phone}</span>
-                      <span>•</span>
+                      <span>â€¢</span>
                       <span>{customer.orderCount} {t.orders || 'orders'}</span>
-                      <span>•</span>
+                      <span>â€¢</span>
                       <span>{formatTimeAgo(customer.lastPurchase)}</span>
                     </div>
                   </div>
@@ -385,13 +385,13 @@ export function SalesDashboard({
               onClick={() => onQuickAction?.('view-all-customers')}
               className="flex-1 text-xs font-bold text-indigo-600 hover:text-indigo-700 transition-colors py-2"
             >
-              {t.view_all_customers || 'View All Customers'} →
+              {t.view_all_customers || 'View All Customers'} â†’
             </button>
             <button
               onClick={() => onQuickAction?.('search-customer')}
               className="flex-1 text-xs font-bold text-indigo-600 hover:text-indigo-700 transition-colors py-2"
             >
-              {t.search_customers || 'Search Customers'} →
+              {t.search_customers || 'Search Customers'} â†’
             </button>
           </div>
         </CardContent>
@@ -406,3 +406,5 @@ export function SalesDashboard({
     </div>
   );
 }
+
+

@@ -64,7 +64,7 @@ export const IntegratedPerformanceChart = memo(function IntegratedPerformanceCha
     colors
 }: IntegratedPerformanceChartProps) {
 
-    const primaryColor = colors?.primary || '#8B1538';
+    const primaryColor = colors?.primary || '#2F5BFF';
 
     const chartData = useMemo(() => {
         // Deterministic Fallback Logic:
@@ -214,7 +214,7 @@ export const IntegratedPerformanceChart = memo(function IntegratedPerformanceCha
                         strokeWidth={2}
                         strokeDasharray="6 4"
                         dot={{ r: 4, fill: '#fff', strokeWidth: 2, stroke: '#94a3b8' }}
-                        activeDot={{ r: 6, strokeWidth: 0, fill: '#8B1538' }}
+                        activeDot={{ r: 6, strokeWidth: 0, fill: '#2F5BFF' }}
                         animationDuration={2000}
                     />
                 </ComposedChart>

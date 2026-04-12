@@ -28,7 +28,9 @@ import {
     Eye,
     RefreshCcw
     , AlertTriangle,
-    Clock3
+    Clock3,
+    Moon,
+    Sun
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DateRangePicker } from '@/components/islands/DateRangePicker.client';
@@ -36,6 +38,7 @@ import { useFilters } from '@/lib/context/FilterContext';
 import { useBusiness } from '@/lib/context/BusinessContext';
 import { useData } from '@/lib/context/DataContext';
 import { useLanguage } from '@/lib/context/LanguageContext';
+import { useAppMode } from '@/lib/context/BusyModeContext';
 import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -58,6 +61,7 @@ import {
 export function Header({ onMenuClick }) {
     const { dateRange, setDateRange, searchQuery, setSearchQuery } = useFilters();
     const { business } = useBusiness();
+    const { isEasyMode } = useAppMode();
     const {
         products,
         invoices,
@@ -487,84 +491,45 @@ export function Header({ onMenuClick }) {
 
                 {/* Right: Consolidated Actions */}
                 <div className="flex items-center gap-2 shrink-0">
-                    <div className="flex items-center gap-1.5 border-r border-gray-100 pr-2">
-                        <DateRangePicker
-                            date={dateRange}
-                            onDateChange={(newRange) => {
-                                if (newRange?.from && newRange?.to) {
-                                    setDateRange(newRange);
-                                }
-                            }}
-                            className="w-[205px] lg:w-[214px]"
-                        />
+                    {/* Date Range — hidden in Easy mode for cleanliness */}
+                    {!isEasyMode && (
+                        <div className="hidden md:flex items-center gap-1.5 border-r border-gray-100 pr-2">
+                            <DateRangePicker
+                                date={dateRange}
+                                onDateChange={(newRange) => {
+                                    if (newRange?.from && newRange?.to) {
+                                        setDateRange(newRange);
+                                    }
+                                }}
+                                className="w-[205px] lg:w-[214px]"
+                            />
+                            <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-8 w-8 rounded-lg text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+                                onClick={() => dispatchHeaderEvent('refresh-dashboard-data')}
+                                title="Refresh data"
+                            >
+                                <RefreshCcw className="w-3.5 h-3.5" />
+                            </Button>
+                        </div>
+                    )}
 
+                    {/* Easy mode: simple refresh */}
+                    {isEasyMode && (
                         <Button
                             size="icon"
                             variant="ghost"
                             className="h-8 w-8 rounded-lg text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
                             onClick={() => dispatchHeaderEvent('refresh-dashboard-data')}
+                            title="Refresh data"
                         >
                             <RefreshCcw className="w-3.5 h-3.5" />
                         </Button>
-
-                        <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-8 px-2 rounded-lg font-bold text-[10px] uppercase tracking-wider text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 transition-colors hidden xl:flex"
-                            onClick={() => dispatchHeaderEvent('switch-tab', { tab: 'reports' })}
-                        >
-                            <BarChart3 className="w-3.5 h-3.5 mr-1.5 opacity-60" />
-                            INTEL
-                        </Button>
-
-                        <Button
-                            size="icon"
-                            variant="ghost"
-                            className="hidden lg:flex xl:hidden h-8 w-8 rounded-lg text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
-                            onClick={() => dispatchHeaderEvent('switch-tab', { tab: 'reports' })}
-                        >
-                            <BarChart3 className="w-3.5 h-3.5" />
-                        </Button>
-                    </div>
+                    )}
 
                     <div className="flex items-center gap-1">
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button size="sm" variant="outline" className="h-8 rounded-lg px-2.5 font-bold text-[10px] uppercase tracking-wider border-gray-200/70 bg-white hover:bg-gray-50 text-gray-600 transition-colors">
-                                    <ListFilter className="w-3.5 h-3.5 mr-1.5 text-gray-400" />
-                                    Controls
-                                    <ChevronDown className="w-3 h-3 ml-1.5 opacity-30" />
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-56 rounded-2xl shadow-xl p-2 border-gray-100/80 backdrop-blur-xl">
-                                <DropdownMenuLabel className="text-[9px] uppercase font-black tracking-[0.2em] text-gray-400 px-3 py-2">Page Controls</DropdownMenuLabel>
-                                <DropdownMenuItem onClick={() => dispatchHeaderEvent('refresh-dashboard-data')} className="rounded-xl py-2.5 cursor-pointer">
-                                    <RefreshCcw className="w-4 h-4 mr-3 text-cyan-600" />
-                                    <span className="font-bold text-xs">Refresh Data</span>
-                                    <DropdownMenuShortcut>R</DropdownMenuShortcut>
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => dispatchHeaderEvent('toggle-filters')} className="rounded-xl py-2.5 cursor-pointer">
-                                    <ListFilter className="w-4 h-4 mr-3 text-indigo-500" />
-                                    <span className="font-bold text-xs">Toggle Filters</span>
-                                    <DropdownMenuShortcut>⌘F</DropdownMenuShortcut>
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => dispatchHeaderEvent('export-data')} className="rounded-xl py-2.5 cursor-pointer">
-                                    <Download className="w-4 h-4 mr-3 text-emerald-500" />
-                                    <span className="font-bold text-xs">Export Data</span>
-                                    <DropdownMenuShortcut>S</DropdownMenuShortcut>
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator className="bg-gray-50 my-1" />
-                                <DropdownMenuItem onClick={() => dispatchHeaderEvent('change-layout')} className="rounded-xl py-2.5 cursor-pointer">
-                                    <LayoutGrid className="w-4 h-4 mr-3 text-orange-500" />
-                                    <span className="font-bold text-xs">Change Layout</span>
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => dispatchHeaderEvent('switch-tab', { tab: 'reports' })} className="rounded-xl py-2.5 cursor-pointer">
-                                    <Eye className="w-4 h-4 mr-3 text-blue-500" />
-                                    <span className="font-bold text-xs">Open Analytics</span>
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-
+                        {/* Quick Add Dropdown */}
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <Button size="sm" variant="outline" className="h-8 rounded-lg px-2.5 font-bold text-[10px] uppercase tracking-wider border-gray-200/70 bg-white hover:bg-gray-50 text-gray-600 transition-colors">
@@ -575,6 +540,10 @@ export function Header({ onMenuClick }) {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-52 rounded-2xl shadow-xl p-2 border-gray-100/80 backdrop-blur-xl">
                                 <DropdownMenuLabel className="text-[9px] uppercase font-black tracking-[0.2em] text-gray-400 px-3 py-2">Quick Actions</DropdownMenuLabel>
+                                <DropdownMenuItem onClick={() => window.dispatchEvent(new CustomEvent('open-modal', { detail: { modalId: 'invoice' } }))} className="rounded-xl py-2.5 cursor-pointer text-indigo-600 bg-indigo-50/50">
+                                    <Plus className="w-4 h-4 mr-3" />
+                                    <span className="font-bold text-xs">New Invoice</span>
+                                </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => window.dispatchEvent(new CustomEvent('open-modal', { detail: { modalId: 'product' } }))} className="rounded-xl py-2.5 cursor-pointer">
                                     <PackageIcon className="w-4 h-4 mr-3 text-blue-500" />
                                     <span className="font-bold text-xs">New Product</span>
@@ -591,25 +560,23 @@ export function Header({ onMenuClick }) {
                                     <ShoppingCart className="w-4 h-4 mr-3 text-violet-500" />
                                     <span className="font-bold text-xs">New Purchase Order</span>
                                 </DropdownMenuItem>
-                                <DropdownMenuSeparator className="bg-gray-50 my-1" />
-                                <DropdownMenuItem onClick={() => window.dispatchEvent(new CustomEvent('open-modal', { detail: { modalId: 'invoice' } }))} className="rounded-xl py-2.5 cursor-pointer text-indigo-600 bg-indigo-50/50">
-                                    <Plus className="w-4 h-4 mr-3" />
-                                    <span className="font-bold text-xs">Create Invoice</span>
-                                </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
-
-                        <Button
-                            size="sm"
-                            onClick={() => window.dispatchEvent(new CustomEvent('open-modal', { detail: { modalId: 'invoice' } }))}
-                            className="h-8 font-bold text-[11px] rounded-lg px-3.5 shadow-sm shadow-indigo-200 transition-colors active:scale-95 bg-indigo-600 hover:bg-indigo-700 text-white hidden sm:flex"
-                        >
-                            <Plus className="w-4 h-4 mr-1.5" />
-                            New Invoice
-                        </Button>
                     </div>
 
                     <div className="h-5 w-px bg-gray-100 mx-0.5"></div>
+
+                    {/* Dark Mode Toggle */}
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors h-8 w-8"
+                        onClick={() => document.documentElement.classList.toggle('dark')}
+                        title="Toggle dark mode"
+                    >
+                        <Sun className="w-4 h-4 block dark:hidden" />
+                        <Moon className="w-4 h-4 hidden dark:block" />
+                    </Button>
 
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>

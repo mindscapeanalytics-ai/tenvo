@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -14,7 +14,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 
-// ─── Product Grid ────────────────────────────────────────────────────────────
+// â”€â”€â”€ Product Grid â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function PosProductGrid({ products, categories, activeCategory, onCategoryChange, onAddToCart, searchTerm, onSearchChange }) {
     const filtered = useMemo(() => {
@@ -100,10 +100,10 @@ function PosProductGrid({ products, categories, activeCategory, onCategoryChange
                             disabled={parseInt(product.stock) <= 0}
                         >
                             <div className="w-full aspect-square rounded-lg bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center mb-2 text-2xl">
-                                📦
+                                ðŸ“¦
                             </div>
                             <p className="text-xs font-semibold text-gray-900 truncate w-full">{product.name}</p>
-                            <p className="text-[10px] text-gray-400 truncate w-full">{product.sku || '—'}</p>
+                            <p className="text-[10px] text-gray-400 truncate w-full">{product.sku || 'â€”'}</p>
                             <div className="flex items-center justify-between w-full mt-1.5">
                                 <span className="text-sm font-black text-indigo-600">
                                     Rs.{parseFloat(product.selling_price || product.price || 0).toLocaleString()}
@@ -131,7 +131,7 @@ function PosProductGrid({ products, categories, activeCategory, onCategoryChange
     );
 }
 
-// ─── Cart Panel ──────────────────────────────────────────────────────────────
+// â”€â”€â”€ Cart Panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function PosCart({
     items, onQuantityChange, onRemoveItem, onClearCart,
@@ -275,7 +275,7 @@ function PosCart({
                         {[
                             { key: 'cash', icon: Banknote, label: 'Cash', color: 'hover:bg-emerald-500/20 hover:border-emerald-500/40' },
                             { key: 'card', icon: CreditCard, label: 'Card', color: 'hover:bg-blue-500/20 hover:border-blue-500/40' },
-                            { key: 'wallet', icon: Smartphone, label: 'Wallet', color: 'hover:bg-purple-500/20 hover:border-purple-500/40' },
+                            { key: 'wallet', icon: Smartphone, label: 'Wallet', color: 'hover:bg-wine-500/20 hover:border-wine-500/40' },
                             { key: 'split', icon: SplitSquareHorizontal, label: 'Split', color: 'hover:bg-amber-500/20 hover:border-amber-500/40' },
                         ].map(({ key, icon: Icon, label, color }) => (
                             <button
@@ -306,7 +306,7 @@ function PosCart({
                         ) : (
                             <>
                                 <CheckCircle2 className="w-5 h-5 mr-2" />
-                                COMPLETE SALE — {currency}{total.toLocaleString()}
+                                COMPLETE SALE â€” {currency}{total.toLocaleString()}
                             </>
                         )}
                     </Button>
@@ -316,7 +316,7 @@ function PosCart({
     );
 }
 
-// ─── Main POS Terminal ───────────────────────────────────────────────────────
+// â”€â”€â”€ Main POS Terminal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export function PosTerminal({ businessId, products = [], onCompleteSale, currency = 'Rs.', session }) {
     const [cart, setCart] = useState([]);
@@ -445,7 +445,7 @@ export function PosTerminal({ businessId, products = [], onCompleteSale, currenc
                         <div>
                             <p className="font-bold text-sm">Sale Completed!</p>
                             <p className="text-xs text-emerald-100">
-                                {lastSale?.transaction_number} — {currency}{lastSale?.total?.toLocaleString()}
+                                {lastSale?.transaction_number} â€” {currency}{lastSale?.total?.toLocaleString()}
                             </p>
                         </div>
                         <Button
@@ -461,3 +461,4 @@ export function PosTerminal({ businessId, products = [], onCompleteSale, currenc
         </div>
     );
 }
+
