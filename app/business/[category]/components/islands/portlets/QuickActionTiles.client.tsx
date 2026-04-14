@@ -31,7 +31,7 @@ export const QuickActionTiles = memo(function QuickActionTiles({
         { id: transferAction, label: 'Stock Transfer', icon: ArrowLeftRight, color: 'bg-[#2F5BFF]', hover: 'hover:bg-[#1738A5]', desc: multiLocationEnabled ? 'Inter-branch' : 'Procurement' },
         { id: 'inventory', label: 'Inventory Adj', icon: Truck, color: 'bg-[#15803d]', hover: 'hover:bg-[#166534]', desc: 'Stock Corrections' },
         { id: 'new-customer', label: 'Customers', icon: Users, color: 'bg-[#0369a1]', hover: 'hover:bg-[#075985]', desc: 'CRM Manage' },
-        { id: 'new-product', label: 'New Product', icon: PlusCircle, color: 'bg-[#6d28d9]', hover: 'hover:bg-[#5b21b6]', desc: 'Entry & Catalog' },
+        { id: 'new-product', label: 'New Product', icon: PlusCircle, color: 'bg-[#2F5BFF]', hover: 'hover:bg-[#1738A5]', desc: 'Entry & Catalog' },
         campaignEnabled
             ? { id: 'campaigns', label: 'Campaigns', icon: Megaphone, color: 'bg-[#475569]', hover: 'hover:bg-[#334155]', desc: 'Marketing Ops' }
             : { id: 'reports', label: 'Analytics', icon: Settings2, color: 'bg-[#475569]', hover: 'hover:bg-[#334155]', desc: 'System Insights' },

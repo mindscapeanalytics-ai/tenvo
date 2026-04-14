@@ -62,7 +62,7 @@ export function CustomersTab({
                         <CardDescription>With Email</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-blue-600">
+                        <div className="text-2xl font-bold text-brand-primary">
                             {customers.filter(c => c.email).length}
                         </div>
                     </CardContent>
@@ -136,7 +136,7 @@ export function CustomersTab({
                                             variant="ghost"
                                             size="icon"
                                             onClick={() => onUpdate?.(row.original)}
-                                            className="h-8 w-8 text-blue-600 hover:text-blue-700"
+                                            className="h-8 w-8 text-brand-primary hover:text-brand-primary-dark"
                                         >
                                             <Pencil className="w-4 h-4" />
                                         </Button>

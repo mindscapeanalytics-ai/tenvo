@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useBusiness } from '@/lib/context/BusinessContext';
-import { refundPosTransactionAction, getPosRefundsAction } from '@/lib/actions/standard/posRefund';
+import { refundPosTransactionAction, getPosRefundsAction, getPosTransactionLookupAction } from '@/lib/actions/standard/posRefund';
 import toast from 'react-hot-toast';
 
 // ═══════════════════════════════════════════════════════════════
@@ -96,22 +96,32 @@ export function PosRefundPanel({ businessId }) {
 
     useEffect(() => { loadRefunds(); }, [loadRefunds]);
 
-    // Mock transaction lookup (simulates finding a transaction)
-    const handleLookup = () => {
-        if (!transactionId.trim()) { toast.error('Enter transaction ID or receipt number'); return; }
-        // In production, this would call a getPosTransaction action
-        setSelectedTx({
-            id: transactionId,
-            transaction_number: transactionId,
-            total_amount: 5200,
-            items: [
-                { productId: '1', productName: 'Chicken Tikka', quantity: 2, unitPrice: 1200 },
-                { productId: '2', productName: 'Seekh Kebab', quantity: 3, unitPrice: 800 },
-                { productId: '3', productName: 'Naan Basket', quantity: 1, unitPrice: 400 },
-            ]
-        });
-        setRefundItems([]);
-        setView('process');
+    const handleLookup = async () => {
+        if (!transactionId.trim()) {
+            toast.error('Enter transaction ID or receipt number');
+            return;
+        }
+        if (!effectiveBusinessId) {
+            toast.error('Business context is not ready');
+            return;
+        }
+
+        setIsProcessing(true);
+        try {
+            const result = await getPosTransactionLookupAction(effectiveBusinessId, transactionId.trim());
+            if (!result.success || !result.transaction) {
+                toast.error(result.error || 'Transaction not found');
+                return;
+            }
+
+            setSelectedTx(result.transaction);
+            setRefundItems([]);
+            setView('process');
+        } catch (error) {
+            toast.error('Failed to lookup transaction');
+        } finally {
+            setIsProcessing(false);
+        }
     };
 
     // Toggle item for refund
@@ -262,9 +272,14 @@ export function PosRefundPanel({ businessId }) {
                             </div>
                             <button
                                 onClick={handleLookup}
+                                disabled={isProcessing}
                                 className="px-5 py-3 bg-red-500 hover:bg-red-600 text-white text-xs font-black rounded-xl transition-all"
                             >
-                                <Search className="w-4 h-4" />
+                                {isProcessing ? (
+                                    <span className="inline-block w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                                ) : (
+                                    <Search className="w-4 h-4" />
+                                )}
                             </button>
                         </div>
                     </motion.div>
@@ -282,7 +297,7 @@ export function PosRefundPanel({ businessId }) {
                                     <p className="text-sm font-black text-gray-900">Transaction {selectedTx.transaction_number}</p>
                                     <p className="text-[10px] text-gray-400">Original total: {currency} {Number(selectedTx.total_amount).toLocaleString()}</p>
                                 </div>
-                                <span className="text-[9px] px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full font-bold">ORIGINAL</span>
+                                <span className="text-[9px] px-2 py-0.5 bg-brand-50 text-brand-primary rounded-full font-bold">ORIGINAL</span>
                             </div>
 
                             {/* Item Selection */}

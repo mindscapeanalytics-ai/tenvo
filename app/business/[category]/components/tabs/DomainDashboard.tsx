@@ -314,7 +314,7 @@ export function DomainDashboard({
                 subValue: 'Retention focus',
                 trend: Number(customerTrend.toFixed(1)),
                 icon: Users,
-                color: 'bg-blue-500'
+                color: 'bg-brand-primary'
             },
             {
                 id: 'avg_order',
@@ -323,7 +323,7 @@ export function DomainDashboard({
                 subValue: 'Revenue per order',
                 trend: Number(revenueTrendSigned.toFixed(1)),
                 icon: TrendingUp,
-                color: 'bg-indigo-600'
+                color: 'bg-brand-primary-dark'
             },
             {
                 id: 'return_rate',
@@ -577,7 +577,7 @@ export function DomainDashboard({
             value: formatCurrencyCompact(inventoryValue),
             trend: undefined,
             icon: Boxes,
-            colorClass: 'bg-indigo-600'
+            colorClass: 'bg-brand-primary-dark'
         },
         {
             label: 'Overdue',
@@ -690,7 +690,7 @@ export function DomainDashboard({
                 value: dashboardMetrics?.orders?.total ?? periodMetrics.currentOrders,
                 subValue: `${periodMetrics.soldUnits} units sold`,
                 icon: ShoppingCart,
-                color: 'bg-blue-500',
+                color: 'bg-brand-primary',
                 trend: Number(ordersTrend.toFixed(1)),
             },
             {
@@ -698,7 +698,7 @@ export function DomainDashboard({
                 value: formatCurrencyCompact(inventoryValue),
                 subValue: `${inStockUnits.toLocaleString()} units on hand`,
                 icon: Boxes,
-                color: 'bg-indigo-600',
+                color: 'bg-brand-primary-dark',
                 trend: undefined,
             },
             {
@@ -729,7 +729,7 @@ export function DomainDashboard({
 
         const easyActions = [
             { id: 'new-invoice', label: 'New Invoice', desc: 'Create a sale', icon: Plus, color: 'bg-slate-900 hover:bg-slate-800 text-white border border-slate-900' },
-            { id: 'add-product', label: 'Add Product', desc: 'Record inventory', icon: Package, color: 'bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200' },
+            { id: 'add-product', label: 'Add Product', desc: 'Record inventory', icon: Package, color: 'bg-brand-50 hover:bg-brand-100 text-brand-primary-dark border border-brand-100' },
             { id: 'add-customer', label: 'Add Customer', desc: 'Grow customer base', icon: Users, color: 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200' },
             { id: 'inventory', label: 'Review Inventory', desc: 'Fix stock issues', icon: Warehouse, color: 'bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200' },
             { id: 'reports', label: 'View Reports', desc: 'Open analytics', icon: BarChart3, color: 'bg-orange-50 hover:bg-orange-100 text-orange-700 border border-orange-200' },
@@ -925,7 +925,7 @@ export function DomainDashboard({
                                             onClick={() => onQuickAction?.(insight.actionTab)}
                                             className={cn(
                                                 'w-full rounded-2xl border p-3 text-left transition-colors',
-                                                insight.tone === 'indigo' && 'bg-indigo-50 border-indigo-100 hover:bg-indigo-100/70',
+                                                insight.tone === 'indigo' && 'bg-brand-50 border-brand-100 hover:bg-brand-100/70',
                                                 insight.tone === 'emerald' && 'bg-emerald-50 border-emerald-100 hover:bg-emerald-100/70',
                                                 insight.tone === 'amber' && 'bg-amber-50 border-amber-100 hover:bg-amber-100/70',
                                                 insight.tone === 'rose' && 'bg-rose-50 border-rose-100 hover:bg-rose-100/70',
@@ -967,7 +967,7 @@ export function DomainDashboard({
                             <h2 className="text-sm font-black text-slate-500 uppercase tracking-widest">Recent Transactions</h2>
                             <button
                                 onClick={() => onQuickAction?.('invoices')}
-                                className="text-xs font-bold text-indigo-600 hover:text-indigo-700"
+                                className="text-xs font-bold text-brand-primary hover:text-brand-primary-dark"
                             >
                                 View All →
                             </button>
@@ -980,7 +980,7 @@ export function DomainDashboard({
                                 <p className="text-xs text-gray-400 mt-1">Create your first invoice to get started</p>
                                 <Button
                                     size="sm"
-                                    className="mt-4 bg-indigo-600 hover:bg-indigo-700"
+                                    className="mt-4 bg-brand-primary hover:bg-brand-primary-dark"
                                     onClick={() => onQuickAction?.('new-invoice')}
                                 >
                                     <Plus className="w-4 h-4 mr-1.5" />
@@ -1003,8 +1003,8 @@ export function DomainDashboard({
                                     return (
                                         <div key={idx} className="flex items-center justify-between px-4 py-3 hover:bg-slate-50 transition-colors">
                                             <div className="flex items-center gap-3">
-                                                <div className="w-8 h-8 bg-indigo-50 rounded-lg flex items-center justify-center">
-                                                    <FileText className="w-4 h-4 text-indigo-500" />
+                                                <div className="w-8 h-8 bg-brand-50 rounded-lg flex items-center justify-center">
+                                                    <FileText className="w-4 h-4 text-brand-primary" />
                                                 </div>
                                                 <div>
                                                     <p className="text-sm font-bold text-gray-900">{inv.customer_name || 'Walk-in Customer'}</p>
@@ -1029,7 +1029,7 @@ export function DomainDashboard({
                         <Card className="border border-slate-200 shadow-sm bg-white">
                             <CardContent className="p-5">
                                 <div className="flex items-center gap-2 mb-4">
-                                    <BarChart3 className="w-4 h-4 text-blue-600" />
+                                    <BarChart3 className="w-4 h-4 text-brand-primary" />
                                     <h2 className="text-sm font-black text-slate-500 uppercase tracking-widest">Business Snapshot</h2>
                                 </div>
                                 <div className="space-y-3">
@@ -1068,10 +1068,10 @@ export function DomainDashboard({
             {/* Main Area (9/12) */}
             <div className="space-y-4 order-1 lg:order-1 lg:col-span-9">
                 {!hasCoreData && (
-                    <Card className="border border-indigo-100 bg-indigo-50/40 shadow-sm">
+                    <Card className="border border-brand-100 bg-brand-50/40 shadow-sm">
                         <CardContent className="p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                             <div>
-                                <p className="text-[10px] font-black uppercase tracking-widest text-indigo-500">Quick Setup</p>
+                                <p className="text-[10px] font-black uppercase tracking-widest text-brand-primary">Quick Setup</p>
                                 <p className="text-sm font-bold text-slate-800 mt-1">Start by adding products, customers, or your first invoice to unlock richer KPI insights.</p>
                             </div>
                             <div className="flex items-center gap-2">
@@ -1219,14 +1219,14 @@ export function DomainDashboard({
                         subValue="Estimated stock coverage"
                         trend={Number((coverageDays / 10).toFixed(1))}
                         icon={Boxes}
-                        colorClass="bg-blue-600"
+                        colorClass="bg-brand-primary"
                         className="h-full"
                     />
                     <DomainMetricCard
                         label="Stock Check Recency"
                         value={stockCheckRecencyDisplay}
                         subValue={stockCheckRecencyDetail}
-                        trend={stockCheckRecency > 30 ? -Math.min(stockCheckRecency / 2, 25) : 4}
+                        trend={stockCheckRecencyValue > 30 ? -Math.min(stockCheckRecencyValue / 2, 25) : 4}
                         icon={Warehouse}
                         colorClass="bg-slate-600"
                         className="h-full"
@@ -1321,7 +1321,7 @@ export function DomainDashboard({
                                 aria-label={`${insight.title}. ${insight.text}`}
                                 className={cn(
                                     'w-full text-left p-2.5 rounded-xl border transition-all hover:shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-wine/30',
-                                    insight.tone === 'indigo' && 'bg-indigo-50 border-indigo-100 hover:bg-indigo-100/50',
+                                    insight.tone === 'indigo' && 'bg-brand-50 border-brand-100 hover:bg-brand-100/50',
                                     insight.tone === 'emerald' && 'bg-emerald-50 border-emerald-100 hover:bg-emerald-100/50',
                                     insight.tone === 'amber' && 'bg-amber-50 border-amber-100 hover:bg-amber-100/50',
                                     insight.tone === 'rose' && 'bg-rose-50 border-rose-100 hover:bg-rose-100/50',

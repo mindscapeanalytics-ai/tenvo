@@ -11,6 +11,7 @@ import { Building2, Key, Mail, Loader2, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { TenvoTextLogo } from '@/components/branding/TenvoTextLogo';
 
 export default function LoginPage() {
     const router = useRouter();
@@ -117,8 +118,12 @@ export default function LoginPage() {
                 </div>
 
                 <div className="relative z-10 max-w-lg space-y-8">
-                    <div className="w-20 h-20 bg-white/10 backdrop-blur-xl rounded-3xl flex items-center justify-center border border-white/20 shadow-2xl animate-in zoom-in duration-700">
-                        <Building2 className="w-10 h-10 text-white" />
+                    <div className="animate-in zoom-in duration-700">
+                        <TenvoTextLogo
+                            textClassName="text-white"
+                            taglineClassName="text-white/65"
+                            iconClassName="border border-white/20 shadow-2xl"
+                        />
                     </div>
                     <div className="space-y-4">
                         <h1 className="text-5xl font-black text-white tracking-tighter leading-none">

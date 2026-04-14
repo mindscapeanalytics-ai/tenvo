@@ -32,7 +32,7 @@ export function DashboardHeader({
                 <div className="flex items-center gap-2">
                     {/* Filters & Actions */}
                     <div className="flex items-center gap-1.5 mr-2 pr-2 border-r border-gray-100">
-                        <Button variant="ghost" className="h-8 px-2.5 rounded-lg gap-2 text-gray-500 hover:text-indigo-600 hover:bg-white transition-all">
+                        <Button variant="ghost" className="h-8 px-2.5 rounded-lg gap-2 text-gray-500 hover:text-brand-primary hover:bg-white transition-all">
                             <ListFilter className="w-3.5 h-3.5" />
                             <span className="text-[10px] font-bold uppercase tracking-wider">{t?.filters || 'Filters'}</span>
                         </Button>
@@ -40,7 +40,7 @@ export function DashboardHeader({
                         <Button
                             variant="ghost"
                             size="sm"
-                            className="h-8 px-2.5 rounded-lg gap-2 text-gray-500 hover:text-indigo-600 hover:bg-white transition-all"
+                            className="h-8 px-2.5 rounded-lg gap-2 text-gray-500 hover:text-brand-primary hover:bg-white transition-all"
                             onClick={onExport}
                         >
                             <Download className="w-3.5 h-3.5" />
@@ -51,7 +51,7 @@ export function DashboardHeader({
                     <Button
                         size="sm"
                         variant="ghost"
-                        className="h-8 rounded-lg gap-1.5 px-3 font-bold text-[10px] uppercase tracking-wider text-gray-600 hover:bg-white hover:text-indigo-600 border border-transparent hover:border-gray-200 transition-all"
+                        className="h-8 rounded-lg gap-1.5 px-3 font-bold text-[10px] uppercase tracking-wider text-gray-600 hover:bg-white hover:text-brand-primary border border-transparent hover:border-gray-200 transition-all"
                         onClick={() => onQuickAction?.(QUICK_ACTION_IDS.OPEN_QUICK_ACTION)}
                     >
                         <LayoutGrid className="w-3.5 h-3.5" />
@@ -60,10 +60,10 @@ export function DashboardHeader({
 
                     <Button
                         size="sm"
-                        className="h-8 rounded-lg gap-1.5 px-3 font-bold text-[10px] uppercase tracking-wider bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-indigo-200 transition-all shadow-sm"
+                        className="h-8 rounded-lg gap-1.5 px-3 font-bold text-[10px] uppercase tracking-wider bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-brand-100 transition-all shadow-sm"
                         onClick={() => onQuickAction?.(primaryAction.id)}
                     >
-                        <Plus className="w-3.5 h-3.5 text-indigo-500" />
+                        <Plus className="w-3.5 h-3.5 text-brand-primary" />
                         <span>{primaryAction.label}</span>
                     </Button>
                 </div>

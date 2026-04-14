@@ -13,6 +13,9 @@ import { Product } from '../types/domainTypes';
  * @param category - Business category (e.g., 'auto-parts', 'pharmacy')
  * @returns Array of required product field names
  */
+export const CORE_PRODUCT_KEYS = ['name', 'sku', 'barcode', 'price', 'cost_price', 'stock', 'category', 'brand', 'unit', 'description'];
+export const KEY_BLOCKLIST = ['id', 'created_at', 'updated_at', 'tenant_id'];
+
 export function getDomainProductFields(category: string): string[] {
   const knowledge: any = getDomainKnowledge(category);
   return knowledge?.productFields || [];
@@ -131,6 +134,18 @@ export function isExpiryTrackingEnabled(category: string): boolean {
 export function isManufacturingEnabled(category: string): boolean {
   const knowledge: any = getDomainKnowledge(category);
   return knowledge?.manufacturingEnabled || false;
+}
+
+/**
+ * Get manufacturing process configuration for a domain
+ */
+export function getManufacturingConfig(category: string) {
+  const knowledge: any = getDomainKnowledge(category);
+  return knowledge?.manufacturingConfig || {
+    defaultLossPercent: 0,
+    allowWastageTracking: false,
+    processSteps: []
+  };
 }
 
 /**
@@ -590,6 +605,50 @@ export function getDomainDisplayName(category: string): string {
 }
 
 /**
+ * Get domain-specific form labels for standard fields
+ * Reduces "dissonance" by using terminology the business owner understands.
+ */
+export function getDomainFormLabels(category: string) {
+  const labels: Record<string, Record<string, string>> = {
+    'livestock-farm': { name: 'Animal ID / Name', category: 'Herd / Breed Category', stock: 'Initial Count' },
+    'school-education': { name: 'Fee / Service Title', category: 'Admission / Level', stock: 'Planned Admissions' },
+    'auto-parts': { name: 'Part Name', category: 'Assembly Group', stock: 'Opening Units' },
+    'pharmacy': { name: 'Medicine / Brand Name', category: 'Therapeutic Class', stock: 'Opening Units' },
+    'restaurant-fast-food': { name: 'Dish / Item Name', category: 'Menu Section', stock: 'Kitchen Stock' },
+  };
+
+  return labels[category] || { name: 'Product Name', category: 'Category', stock: 'Opening Stock' };
+}
+
+/**
+ * High-Precision domains are those where specialized metadata (Serial #, Batch, OEM)
+ * is as important as the name itself.
+ */
+export function isHighPrecisionDomain(category: string): boolean {
+  const precisionDomains = [
+    'auto-parts', 'pharmacy', 'livestock-farm', 'poultry-farm', 
+    'electronics-appliances', 'hospital-healthcare', 'diagnostic-lab',
+    'heavy-machinery'
+  ];
+  return precisionDomains.includes(category);
+}
+
+/**
+ * Sanitize domain data to ensure no overlap with core keys or blocklisted keys
+ */
+export function sanitizeDomainData(data: Record<string, any>, category?: string): Record<string, any> {
+  const sanitized = { ...data };
+  
+  // 1. Remove core product keys (they belong at the top level)
+  CORE_PRODUCT_KEYS.forEach(key => delete sanitized[key]);
+  
+  // 2. Remove internal/system keys
+  KEY_BLOCKLIST.forEach(key => delete sanitized[key]);
+  
+  return sanitized;
+}
+
+/**
  * Get intelligent default value for a specific field based on domain intelligence
  * Uses the intelligence config to suggest smart defaults
  * 
@@ -813,7 +872,8 @@ export function getDomainInvoiceColumns(category: string): any[] {
     const l = f.toLowerCase();
     return l.includes('article') || l.includes('design') || l.includes('part') ||
       l.includes('model') || l.includes('oem') || l.includes('isbn') ||
-      l.includes('fabric');
+      l.includes('fabric') || l.includes('registration') || l.includes('roll') ||
+      l.includes('batch') || l.includes('chasis') || l.includes('engine');
   }).slice(0, 3); // Take first 3 key identifiers
 
   identifiers.forEach((field: string) => {

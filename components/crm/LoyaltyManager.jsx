@@ -20,7 +20,7 @@ function LoyaltyKPI({ label, value, icon: Icon, color }) {
         gold: 'bg-amber-50 text-amber-600 border-amber-100',
         emerald: 'bg-emerald-50 text-emerald-600 border-emerald-100',
         purple: 'bg-wine-50 text-wine-600 border-wine-100',
-        blue: 'bg-blue-50 text-blue-600 border-blue-100',
+        blue: 'bg-brand-50 text-brand-primary border-brand-100',
     };
     return (
         <div className={cn('rounded-xl border p-4', colors[color])}>
@@ -47,7 +47,7 @@ function ProgramCard({ program, currency, onSelect }) {
         <motion.div
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-xl border border-gray-100 p-4 hover:shadow-md hover:border-indigo-200 transition-all cursor-pointer group"
+            className="bg-white rounded-xl border border-gray-100 p-4 hover:shadow-md hover:border-brand-100 transition-all cursor-pointer group"
             onClick={() => onSelect?.(program)}
         >
             <div className="flex items-start justify-between mb-3">

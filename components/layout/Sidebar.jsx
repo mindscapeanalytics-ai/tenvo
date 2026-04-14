@@ -19,7 +19,6 @@ import { useAuth } from '@/lib/context/AuthContext';
 import { useBusiness } from '@/lib/context/BusinessContext';
 import { useLanguage } from '@/lib/context/LanguageContext';
 import { translations } from '@/lib/translations';
-import { getDomainColors } from '@/lib/domainColors';
 import { getDomainKnowledge } from '@/lib/domainKnowledge';
 import { getNavItemAccess } from '@/lib/rbac/permissions';
 import { PLAN_TIERS, FEATURE_LABELS, FEATURE_MIN_PLAN, resolvePlanTier } from '@/lib/config/plans';
@@ -31,6 +30,7 @@ import { normalizeDashboardTab } from '@/lib/config/tabs';
 import { useAppMode } from '@/lib/context/BusyModeContext';
 import { UserManager } from '../auth/UserManager';
 import { LanguageToggle } from '../LanguageToggle';
+import { TenvoTextLogo } from '@/components/branding/TenvoTextLogo';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BusinessSwitcherEnhanced } from './BusinessSwitcherEnhanced';
 
@@ -198,15 +198,10 @@ export function Sidebar({ isOpen, onClose, isSidebarCollapsed, setIsSidebarColla
   const currentTab = normalizeDashboardTab(searchParams.get('tab') || 'dashboard');
 
   const pathParts = pathname?.split('/') || [];
-  const category = pathParts[2] || 'retail-shop';
-  const baseUrl = `/business/${category}`;
-
-  const domainColors = getDomainColors(category);
-  const colors = {
-    primary: domainColors?.primary || '#4F46E5',
-    primaryLight: domainColors?.primaryLight || '#6366F1',
-    secondary: domainColors?.secondary || '#EEF2FF'
-  };
+  const handleFromUrl = pathParts[2] || 'retail-shop';
+  // Use actual business category for logic, but handle for base URLs
+  const category = business?.category || handleFromUrl;
+  const baseUrl = `/business/${handleFromUrl}`;
 
   const domainKnowledge = getDomainKnowledge(category);
   const posRelevant = isPosRelevantDomain(category, domainKnowledge);
@@ -320,18 +315,7 @@ export function Sidebar({ isOpen, onClose, isSidebarCollapsed, setIsSidebarColla
             "flex items-center gap-3 hover:opacity-90 transition-opacity",
             isSidebarCollapsed && "flex-col gap-1"
           )}>
-            <div
-              className="w-9 h-9 text-white rounded-xl flex items-center justify-center font-black text-lg shadow-lg shrink-0"
-              style={{ background: `linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%)` }}
-            >
-              T
-            </div>
-            {!isSidebarCollapsed && (
-              <div className="flex flex-col -space-y-0.5">
-                <span className="font-black text-gray-900 text-xl tracking-tight uppercase">TENVO</span>
-                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-[0.15em]">Enterprise Hub</span>
-              </div>
-            )}
+            <TenvoTextLogo compact={isSidebarCollapsed} />
           </Link>
 
           {/* Collapse Toggle Button (Hover visible) */}
@@ -339,7 +323,7 @@ export function Sidebar({ isOpen, onClose, isSidebarCollapsed, setIsSidebarColla
             onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
             className={cn(
               "absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-white border border-gray-200 rounded-full flex items-center justify-center shadow-sm z-50",
-              "hover:bg-gray-50 hover:border-indigo-200 transition-all",
+              "hover:bg-gray-50 hover:border-brand-100 transition-all",
               "opacity-0 group-hover/header:opacity-100 lg:opacity-100" // Always show on desktop for discoverability
             )}
           >
@@ -447,7 +431,7 @@ export function Sidebar({ isOpen, onClose, isSidebarCollapsed, setIsSidebarColla
                               isLocked
                                 ? "text-gray-400 cursor-not-allowed opacity-60 hover:bg-gray-50"
                                 : isActive
-                                  ? "bg-indigo-50 text-indigo-700 font-semibold"
+                                  ? "bg-brand-50 text-brand-primary-dark font-semibold"
                                   : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                             )}
                           >
@@ -456,8 +440,8 @@ export function Sidebar({ isOpen, onClose, isSidebarCollapsed, setIsSidebarColla
                               <motion.div
                                 layoutId="nav-active-indicator"
                                 className={cn(
-                                  "absolute top-1/2 -translate-y-1/2 bg-indigo-600",
-                                  isSidebarCollapsed ? "inset-0 bg-indigo-50/50 rounded-lg -z-10 h-full w-full" : "left-0 w-[3px] h-5 rounded-r-full"
+                                  "absolute top-1/2 -translate-y-1/2 bg-brand-primary",
+                                  isSidebarCollapsed ? "inset-0 bg-brand-50/60 rounded-lg -z-10 h-full w-full" : "left-0 w-[3px] h-5 rounded-r-full"
                                 )}
                                 transition={{ type: 'spring', stiffness: 300, damping: 30 }}
                               />
@@ -467,7 +451,7 @@ export function Sidebar({ isOpen, onClose, isSidebarCollapsed, setIsSidebarColla
                               "w-[18px] h-[18px] flex-shrink-0",
                               isLocked
                                 ? "text-gray-300"
-                                : isActive ? "text-indigo-600" : "text-gray-400 group-hover:text-gray-600"
+                                : isActive ? "text-brand-primary" : "text-gray-400 group-hover:text-gray-600"
                             )} />
 
                             {!isSidebarCollapsed && <span className="flex-1 truncate">{item.label}</span>}
@@ -512,12 +496,12 @@ export function Sidebar({ isOpen, onClose, isSidebarCollapsed, setIsSidebarColla
         {/* ─── Upgrade Banner (shown for free/starter plans, hidden for platform owner and compact mode) ─── */}
         {!isSidebarCollapsed && !safeIsPlatformOwner && (planTier === 'free' || planTier === 'starter') && (
           <div className="flex-none mx-3 mb-2.5">
-            <div className="bg-gradient-to-r from-indigo-500 to-violet-600 rounded-xl p-3 text-white">
+            <div className="bg-gradient-to-r from-brand-primary to-brand-primary-dark rounded-xl p-3 text-white">
               <div className="flex items-center gap-2 mb-1">
                 <Crown className="w-4 h-4 text-amber-300" />
                 <span className="text-[11px] font-bold">Unlock more features</span>
               </div>
-              <p className="text-[9px] text-indigo-100 leading-relaxed mb-2">
+              <p className="text-[9px] text-brand-100 leading-relaxed mb-2">
                 {hospitalityDomain
                   ? 'Hospitality Growth: move to Business plan for restaurant + marketing automations.'
                   : planTier === 'free'
@@ -568,7 +552,7 @@ export function Sidebar({ isOpen, onClose, isSidebarCollapsed, setIsSidebarColla
           {!isSidebarCollapsed ? (
             <div className="flex items-center justify-between px-1 py-1">
               <div className="flex items-center gap-1.5">
-                <Sparkles className="w-3 h-3 text-indigo-400" />
+                <Sparkles className="w-3 h-3 text-brand-primary" />
                 <span className="text-[9px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Mode</span>
               </div>
               <div className="flex bg-gray-100 dark:bg-gray-700 rounded-lg p-0.5">
@@ -577,7 +561,7 @@ export function Sidebar({ isOpen, onClose, isSidebarCollapsed, setIsSidebarColla
                   className={cn(
                     "px-2.5 py-1 text-[10px] font-bold rounded-md transition-all",
                     isEasyMode
-                      ? "bg-white dark:bg-gray-600 text-indigo-600 dark:text-indigo-400 shadow-sm"
+                      ? "bg-white dark:bg-gray-600 text-brand-primary shadow-sm"
                       : "text-gray-500 dark:text-gray-400 hover:text-gray-700"
                   )}
                 >
@@ -588,7 +572,7 @@ export function Sidebar({ isOpen, onClose, isSidebarCollapsed, setIsSidebarColla
                   className={cn(
                     "px-2.5 py-1 text-[10px] font-bold rounded-md transition-all",
                     !isEasyMode
-                      ? "bg-white dark:bg-gray-600 text-indigo-600 dark:text-indigo-400 shadow-sm"
+                      ? "bg-white dark:bg-gray-600 text-brand-primary shadow-sm"
                       : "text-gray-500 dark:text-gray-400 hover:text-gray-700"
                   )}
                 >
@@ -602,7 +586,7 @@ export function Sidebar({ isOpen, onClose, isSidebarCollapsed, setIsSidebarColla
               className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors group relative"
               title={isEasyMode ? 'Switch to Advanced' : 'Switch to Easy'}
             >
-              <Sparkles className={cn("w-4 h-4", isEasyMode ? "text-indigo-500" : "text-gray-400")} />
+              <Sparkles className={cn("w-4 h-4", isEasyMode ? "text-brand-primary" : "text-gray-400")} />
               <span className="absolute left-14 px-2.5 py-1.5 text-xs font-bold bg-gray-900 text-white rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-200 z-[60] shadow-xl whitespace-nowrap">
                 {isEasyMode ? 'Easy Mode' : 'Advanced Mode'}
                 <div className="absolute top-1/2 -left-1 -translate-y-1/2 border-y-[6px] border-y-transparent border-r-[6px] border-r-gray-900" />
@@ -627,7 +611,7 @@ export function Sidebar({ isOpen, onClose, isSidebarCollapsed, setIsSidebarColla
             )}>
               <div
                 className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs text-white shrink-0"
-                style={{ background: `linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%)` }}
+                style={{ background: 'linear-gradient(135deg, #1738A5 0%, #2F5BFF 100%)' }}
               >
                 {user?.email?.substring(0, 2).toUpperCase() || 'ME'}
               </div>

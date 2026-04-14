@@ -10,9 +10,9 @@ interface QuickReportsProps {
 
 export function QuickReports({ onNavigate }: QuickReportsProps) {
     const reports = [
-        { id: 'balance', label: 'Trial Balance', icon: Landmark, color: 'text-blue-500', bg: 'bg-blue-50' },
+        { id: 'balance', label: 'Trial Balance', icon: Landmark, color: 'text-brand-primary', bg: 'bg-brand-50' },
         { id: 'pl', label: 'P&L Statement', icon: PieChart, color: 'text-emerald-500', bg: 'bg-emerald-50' },
-        { id: 'ledger', label: 'General Ledger', icon: FileSpreadsheet, color: 'text-indigo-500', bg: 'bg-indigo-50' },
+        { id: 'ledger', label: 'General Ledger', icon: FileSpreadsheet, color: 'text-brand-primary-dark', bg: 'bg-brand-50' },
     ];
 
     return (

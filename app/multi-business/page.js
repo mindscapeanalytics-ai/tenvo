@@ -24,6 +24,7 @@ import {
   LayoutGrid
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { TenvoTextLogo } from '@/components/branding/TenvoTextLogo';
 import { toast } from 'react-hot-toast';
 import { cn } from '@/lib/utils';
 
@@ -76,12 +77,7 @@ export default function MultiBusinessPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-4">
-              <div
-                className="w-10 h-10 text-white rounded-2xl flex items-center justify-center font-black text-2xl shadow-lg transform -rotate-3"
-                style={{ background: 'linear-gradient(135deg, #1738A5 0%, #2F5BFF 100%)' }}
-              >
-                T
-              </div>
+              <TenvoTextLogo />
               <div>
                 <h1 className="text-xl font-black text-gray-900 tracking-tight flex items-center gap-2 uppercase">
                   Enterprise Hub

@@ -59,7 +59,7 @@ function PosProductGrid({ products, categories, activeCategory, onCategoryChange
                     className={cn(
                         'px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all',
                         activeCategory === 'all'
-                            ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200'
+                            ? 'bg-brand-primary text-white shadow-md shadow-brand-primary/20'
                             : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
                     )}
                 >
@@ -72,7 +72,7 @@ function PosProductGrid({ products, categories, activeCategory, onCategoryChange
                         className={cn(
                             'px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all',
                             activeCategory === cat
-                                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200'
+                                ? 'bg-brand-primary text-white shadow-md shadow-brand-primary/20'
                                 : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
                         )}
                     >
@@ -92,7 +92,7 @@ function PosProductGrid({ products, categories, activeCategory, onCategoryChange
                             onClick={() => onAddToCart(product)}
                             className={cn(
                                 'flex flex-col items-center p-3 rounded-xl border transition-all text-left',
-                                'bg-white hover:shadow-md hover:border-indigo-200',
+                                'bg-white hover:shadow-md hover:border-brand-100',
                                 parseInt(product.stock) <= 0
                                     ? 'opacity-50 cursor-not-allowed border-red-200 bg-red-50/30'
                                     : 'border-gray-200 cursor-pointer'
@@ -105,7 +105,7 @@ function PosProductGrid({ products, categories, activeCategory, onCategoryChange
                             <p className="text-xs font-semibold text-gray-900 truncate w-full">{product.name}</p>
                             <p className="text-[10px] text-gray-400 truncate w-full">{product.sku || 'â€”'}</p>
                             <div className="flex items-center justify-between w-full mt-1.5">
-                                <span className="text-sm font-black text-indigo-600">
+                                <span className="text-sm font-black text-brand-primary">
                                     Rs.{parseFloat(product.selling_price || product.price || 0).toLocaleString()}
                                 </span>
                                 <span className={cn(
@@ -149,9 +149,9 @@ function PosCart({
             {/* Cart Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700">
                 <div className="flex items-center gap-2">
-                    <ShoppingCart className="w-4 h-4 text-indigo-400" />
+                    <ShoppingCart className="w-4 h-4 text-brand-primary" />
                     <span className="text-sm font-bold">Cart</span>
-                    <Badge variant="secondary" className="bg-indigo-500/20 text-indigo-300 text-[10px]">
+                    <Badge variant="secondary" className="bg-brand-primary/20 text-brand-primary text-[10px]">
                         {items.length} items
                     </Badge>
                 </div>
@@ -198,7 +198,7 @@ function PosCart({
                                     <Plus className="w-3 h-3" />
                                 </button>
                             </div>
-                            <span className="text-xs font-bold text-indigo-300 w-16 text-right">
+                            <span className="text-xs font-bold text-brand-primary-dark w-16 text-right">
                                 {currency}{(item.unitPrice * item.quantity).toLocaleString()}
                             </span>
                             <button
@@ -266,7 +266,7 @@ function PosCart({
                         </div>
                         <div className="flex justify-between text-lg font-black text-white pt-2 border-t border-slate-700">
                             <span>TOTAL</span>
-                            <span className="text-indigo-400">{currency}{total.toLocaleString()}</span>
+                            <span className="text-brand-primary">{currency}{total.toLocaleString()}</span>
                         </div>
                     </div>
 
@@ -274,7 +274,7 @@ function PosCart({
                     <div className="grid grid-cols-4 gap-1.5">
                         {[
                             { key: 'cash', icon: Banknote, label: 'Cash', color: 'hover:bg-emerald-500/20 hover:border-emerald-500/40' },
-                            { key: 'card', icon: CreditCard, label: 'Card', color: 'hover:bg-blue-500/20 hover:border-blue-500/40' },
+                            { key: 'card', icon: CreditCard, label: 'Card', color: 'hover:bg-brand-primary/20 hover:border-brand-primary/40' },
                             { key: 'wallet', icon: Smartphone, label: 'Wallet', color: 'hover:bg-wine-500/20 hover:border-wine-500/40' },
                             { key: 'split', icon: SplitSquareHorizontal, label: 'Split', color: 'hover:bg-amber-500/20 hover:border-amber-500/40' },
                         ].map(({ key, icon: Icon, label, color }) => (
@@ -318,21 +318,83 @@ function PosCart({
 
 // â”€â”€â”€ Main POS Terminal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-export function PosTerminal({ businessId, products = [], onCompleteSale, currency = 'Rs.', session }) {
+export function PosTerminal({ businessId, products = [], customers = [], onStartSession, onCompleteSale, currency = 'Rs.', session }) {
     const [cart, setCart] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [activeCategory, setActiveCategory] = useState('all');
     const [customer, setCustomer] = useState(null);
+    const [customerQuery, setCustomerQuery] = useState('');
+    const [showCustomerDialog, setShowCustomerDialog] = useState(false);
     const [discount, setDiscount] = useState(0);
     const [paymentMethod, setPaymentMethod] = useState('cash');
     const [isProcessing, setIsProcessing] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
     const [lastSale, setLastSale] = useState(null);
+    const [isStartingSession, setIsStartingSession] = useState(false);
+
+    const hasSession = Boolean(
+        session?.id
+        && session?.id !== 'sess-initial'
+        && (session?.status === 'open' || session?.opened_at || session?.startTime)
+    );
+    const sessionStartedAt = session?.opened_at || session?.startTime;
+    const sessionStartedLabel = sessionStartedAt
+        ? new Date(sessionStartedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        : null;
+    const terminalLabel = session?.terminalName || session?.terminal_name || 'Counter';
 
     const categories = useMemo(() => {
         const cats = [...new Set((products || []).map(p => p.category).filter(Boolean))];
         return cats.sort();
     }, [products]);
+
+    const filteredCustomers = useMemo(() => {
+        if (!customerQuery.trim()) return (customers || []).slice(0, 40);
+        const lower = customerQuery.toLowerCase();
+        return (customers || []).filter(c =>
+            c.name?.toLowerCase().includes(lower)
+            || c.phone?.toLowerCase().includes(lower)
+            || c.email?.toLowerCase().includes(lower)
+        ).slice(0, 40);
+    }, [customers, customerQuery]);
+
+    const handlePrintReceipt = useCallback(() => {
+        if (!lastSale) return;
+        const receiptLines = [
+            'TENVO POS RECEIPT',
+            '------------------------------',
+            `Sale: ${lastSale.transaction_number || lastSale.saleNumber || 'N/A'}`,
+            `Date: ${new Date().toLocaleString()}`,
+            `Customer: ${lastSale.customerName || 'Walk-in Customer'}`,
+            `Items: ${lastSale.items || 0}`,
+            `Payment: ${(lastSale.paymentMethod || paymentMethod || 'cash').toUpperCase()}`,
+            '------------------------------',
+            `TOTAL: ${currency}${Number(lastSale.total || 0).toLocaleString()}`,
+            '------------------------------',
+            'Thank you for your purchase!',
+        ];
+
+        const win = window.open('', '_blank', 'width=420,height=640');
+        if (!win) return;
+
+        win.document.write(`<!doctype html><html><head><title>Receipt</title><style>
+            body { font-family: monospace; padding: 16px; }
+            pre { white-space: pre-wrap; font-size: 14px; line-height: 1.5; }
+        </style></head><body><pre>${receiptLines.join('\n')}</pre></body></html>`);
+        win.document.close();
+        win.focus();
+        win.print();
+    }, [currency, lastSale, paymentMethod]);
+
+    const handleStartSession = useCallback(async () => {
+        if (!onStartSession || isStartingSession) return;
+        setIsStartingSession(true);
+        try {
+            await onStartSession();
+        } finally {
+            setIsStartingSession(false);
+        }
+    }, [onStartSession, isStartingSession]);
 
     const addToCart = useCallback((product) => {
         if (parseInt(product.stock) <= 0) return;
@@ -384,7 +446,15 @@ export function PosTerminal({ businessId, products = [], onCompleteSale, currenc
             });
 
             if (result?.success) {
-                setLastSale({ ...result.transaction, total, items: cart.length });
+                setLastSale({
+                    ...result.transaction,
+                    saleNumber: result.transaction?.transaction_number || `SALE-${Date.now()}`,
+                    total,
+                    items: cart.length,
+                    customerName: customer?.name || null,
+                    paymentMethod,
+                    mode: result?.mode || (hasSession ? 'pos' : 'invoice-fallback'),
+                });
                 setShowSuccess(true);
                 setCart([]);
                 setCustomer(null);
@@ -396,12 +466,35 @@ export function PosTerminal({ businessId, products = [], onCompleteSale, currenc
         } finally {
             setIsProcessing(false);
         }
-    }, [cart, businessId, session, customer, discount, paymentMethod, isProcessing, onCompleteSale]);
+    }, [cart, businessId, session, customer, discount, paymentMethod, isProcessing, onCompleteSale, hasSession]);
 
     return (
         <div className="flex h-[calc(100vh-60px)] bg-gray-50 rounded-xl overflow-hidden shadow-sm border border-gray-200">
             {/* Left: Product Grid */}
             <div className="flex-1 min-w-0 bg-white">
+                <div className={cn(
+                    'mx-4 mt-3 mb-0 px-3 py-2 rounded-xl border text-xs font-semibold flex items-center justify-between gap-3',
+                    hasSession
+                        ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                        : 'bg-amber-50 border-amber-200 text-amber-700'
+                )}>
+                    <span>
+                        {hasSession
+                            ? `POS Session Active • ${terminalLabel}${sessionStartedLabel ? ` • Opened ${sessionStartedLabel}` : ''}`
+                            : 'Session not active: checkout will use invoice fallback mode'}
+                    </span>
+                    {!hasSession && (
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 text-[11px]"
+                            onClick={handleStartSession}
+                            disabled={isStartingSession}
+                        >
+                            {isStartingSession ? 'Starting...' : 'Start Session'}
+                        </Button>
+                    )}
+                </div>
                 <PosProductGrid
                     products={products}
                     categories={categories}
@@ -421,7 +514,7 @@ export function PosTerminal({ businessId, products = [], onCompleteSale, currenc
                     onRemoveItem={handleRemoveItem}
                     onClearCart={() => setCart([])}
                     customer={customer}
-                    onCustomerSelect={() => {/* TODO: customer picker dialog */ }}
+                    onCustomerSelect={() => setShowCustomerDialog(true)}
                     discount={discount}
                     onDiscountChange={setDiscount}
                     onPaymentMethodSelect={setPaymentMethod}
@@ -445,19 +538,61 @@ export function PosTerminal({ businessId, products = [], onCompleteSale, currenc
                         <div>
                             <p className="font-bold text-sm">Sale Completed!</p>
                             <p className="text-xs text-emerald-100">
-                                {lastSale?.transaction_number} â€” {currency}{lastSale?.total?.toLocaleString()}
+                                {lastSale?.transaction_number} â€” {currency}{lastSale?.total?.toLocaleString()} ({lastSale?.mode === 'invoice-fallback' ? 'Invoice Mode' : 'POS Mode'})
                             </p>
                         </div>
                         <Button
                             variant="ghost" size="sm"
                             className="text-emerald-100 hover:text-white hover:bg-emerald-500 ml-2"
-                            onClick={() => {/* TODO: print receipt */ }}
+                            onClick={handlePrintReceipt}
                         >
                             <Receipt className="w-4 h-4 mr-1" /> Receipt
                         </Button>
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            <Dialog open={showCustomerDialog} onOpenChange={setShowCustomerDialog}>
+                <DialogContent className="sm:max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle>Select Customer</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-3">
+                        <Input
+                            value={customerQuery}
+                            onChange={(e) => setCustomerQuery(e.target.value)}
+                            placeholder="Search by name, phone or email"
+                        />
+                        <button
+                            onClick={() => {
+                                setCustomer(null);
+                                setShowCustomerDialog(false);
+                            }}
+                            className="w-full text-left px-3 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 text-sm"
+                        >
+                            Walk-in Customer
+                        </button>
+                        <div className="max-h-72 overflow-y-auto space-y-1">
+                            {filteredCustomers.map((c) => (
+                                <button
+                                    key={c.id}
+                                    onClick={() => {
+                                        setCustomer(c);
+                                        setShowCustomerDialog(false);
+                                    }}
+                                    className="w-full text-left px-3 py-2 rounded-lg border border-gray-200 hover:bg-brand-50"
+                                >
+                                    <p className="text-sm font-semibold text-gray-900">{c.name || 'Unnamed customer'}</p>
+                                    <p className="text-xs text-gray-500">{c.phone || c.email || 'No contact details'}</p>
+                                </button>
+                            ))}
+                            {filteredCustomers.length === 0 && (
+                                <p className="text-xs text-gray-500 px-1 py-2">No customers found</p>
+                            )}
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

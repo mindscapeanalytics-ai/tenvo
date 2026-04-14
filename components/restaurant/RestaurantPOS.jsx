@@ -152,7 +152,7 @@ function OrderItemRow({ item, onQty, onRemove, currency }) {
 // MAIN RESTAURANT POS
 // ═══════════════════════════════════════════════════════════════
 
-export function RestaurantPOS({ businessId, products = [], onCompleteSale, currency = 'Rs.' }) {
+export function RestaurantPOS({ businessId, products = [], onCompleteSale, currency = 'Rs.', taxConfig }) {
     const { business } = useBusiness();
     const effectiveBusinessId = businessId || business?.id;
 
@@ -228,8 +228,9 @@ export function RestaurantPOS({ businessId, products = [], onCompleteSale, curre
     const subtotal = useMemo(() =>
         orderItems.reduce((sum, item) => sum + (item.quantity * Number(item.price || item.selling_price || 0)), 0),
         [orderItems]);
-    const taxRate = 0.16; // Service tax for restaurants
-    const tax = Math.round(subtotal * taxRate);
+    // Priority: taxConfig.sales_tax_rate -> 16.0 (fallback for restaurant service tax)
+    const effectiveTaxRate = (taxConfig?.sales_tax_rate ?? 16.0) / 100;
+    const tax = Math.round(subtotal * effectiveTaxRate);
     const total = subtotal + tax;
 
     // Handlers
@@ -309,6 +310,11 @@ export function RestaurantPOS({ businessId, products = [], onCompleteSale, curre
                 total,
                 orderType,
                 tableId: selectedTable?.id,
+                metadata: {
+                    domain: 'restaurant',
+                    covers: covers,
+                    taxRate: effectiveTaxRate * 100
+                }
             });
 
             if (result.success) {

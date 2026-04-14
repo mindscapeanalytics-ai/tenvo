@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Menu, X, ChevronDown, Building2, Package, Receipt, Briefcase, Store, Factory, Globe } from 'lucide-react';
+import { Menu, X, ChevronDown, Package, Receipt, Briefcase, Store, Factory, Globe } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { trackNavMenuOpen, trackCTAClick } from '@/lib/analytics/tracking';
 import { useAuth } from '@/lib/context/AuthContext';
+import { TenvoTextLogo } from '@/components/branding/TenvoTextLogo';
 
 /**
  * MarketingNav Component
@@ -68,10 +69,7 @@ export default function MarketingNav({
             onClick={() => router.push('/')}
             className="flex items-center gap-3 cursor-pointer group"
           >
-            <div className="p-2.5 rounded-2xl bg-blue-600 text-white shadow-[0_16px_38px_-16px_rgba(47,91,255,0.6)] group-hover:scale-105 group-hover:-rotate-3 transition-all duration-300">
-              <Building2 className="w-6 h-6" />
-            </div>
-            <span className="text-xl font-black tracking-tighter uppercase text-gray-900">TENVO</span>
+            <TenvoTextLogo className="group-hover:opacity-95 transition-all duration-300" />
           </div>
 
           {/* Desktop Menu */}
@@ -130,19 +128,19 @@ export default function MarketingNav({
               </NavDropdown>
 
               <button 
-                className="text-sm font-bold text-gray-600 hover:text-blue-700 transition-colors" 
+                className="text-sm font-bold text-gray-600 hover:text-brand-primary-dark transition-colors" 
                 onClick={() => router.push('/features')}
               >
                 Features
               </button>
               <button 
-                className="text-sm font-bold text-gray-600 hover:text-blue-700 transition-colors" 
+                className="text-sm font-bold text-gray-600 hover:text-brand-primary-dark transition-colors" 
                 onClick={() => router.push('/pricing')}
               >
                 Pricing
               </button>
               <button 
-                className="text-sm font-bold text-gray-600 hover:text-blue-700 transition-colors" 
+                className="text-sm font-bold text-gray-600 hover:text-brand-primary-dark transition-colors" 
                 onClick={() => router.push('/industries')}
               >
                 Industries
@@ -157,7 +155,7 @@ export default function MarketingNav({
                 {user ? (
                   <Button 
                     onClick={() => handleCTAClick('nav', 'Enter Dashboard', '/multi-business')} 
-                    className="bg-blue-600 hover:bg-blue-700 text-white font-black rounded-2xl px-8 shadow-[0_18px_44px_-20px_rgba(47,91,255,0.65)] transition-all active:scale-[0.98]"
+                    className="bg-brand-primary hover:bg-brand-primary-dark text-white font-black rounded-2xl px-8 shadow-[0_18px_44px_-20px_rgba(47,91,255,0.65)] transition-all active:scale-[0.98]"
                   >
                     Enter Dashboard
                   </Button>
@@ -172,7 +170,7 @@ export default function MarketingNav({
                     </Button>
                     <Button 
                       onClick={() => handleCTAClick('nav', 'Start Your Journey', '/register')} 
-                      className="bg-blue-600 hover:bg-blue-700 text-white font-black rounded-2xl px-8 shadow-[0_18px_44px_-20px_rgba(47,91,255,0.65)] transition-all active:scale-[0.98]"
+                      className="bg-brand-primary hover:bg-brand-primary-dark text-white font-black rounded-2xl px-8 shadow-[0_18px_44px_-20px_rgba(47,91,255,0.65)] transition-all active:scale-[0.98]"
                     >
                       Start Your Journey
                     </Button>
@@ -199,19 +197,19 @@ export default function MarketingNav({
         <div className="lg:hidden border-t border-gray-100 bg-white p-6 space-y-6 animate-in slide-in-from-top-4 duration-300">
           <div className="space-y-4">
             <button 
-              className="w-full text-left font-bold text-gray-700 px-2 py-2 hover:text-blue-700 transition-colors"
+              className="w-full text-left font-bold text-gray-700 px-2 py-2 hover:text-brand-primary-dark transition-colors"
               onClick={() => router.push('/features')}
             >
               Features
             </button>
             <button 
-              className="w-full text-left font-bold text-gray-700 px-2 py-2 hover:text-blue-700 transition-colors"
+              className="w-full text-left font-bold text-gray-700 px-2 py-2 hover:text-brand-primary-dark transition-colors"
               onClick={() => router.push('/pricing')}
             >
               Pricing
             </button>
             <button 
-              className="w-full text-left font-bold text-gray-700 px-2 py-2 hover:text-blue-700 transition-colors"
+              className="w-full text-left font-bold text-gray-700 px-2 py-2 hover:text-brand-primary-dark transition-colors"
               onClick={() => router.push('/industries')}
             >
               Industries
@@ -222,7 +220,7 @@ export default function MarketingNav({
             <div className="flex flex-col gap-3 pt-4 border-t border-gray-100">
               {user ? (
                 <Button 
-                  className="w-full h-12 bg-blue-600 font-black text-white rounded-2xl shadow-[0_18px_44px_-20px_rgba(47,91,255,0.65)]" 
+                  className="w-full h-12 bg-brand-primary font-black text-white rounded-2xl shadow-[0_18px_44px_-20px_rgba(47,91,255,0.65)]" 
                   onClick={() => handleCTAClick('mobile-nav', 'Enter Dashboard', '/multi-business')}
                 >
                   Enter Dashboard
@@ -237,7 +235,7 @@ export default function MarketingNav({
                     Log In
                   </Button>
                   <Button 
-                    className="w-full h-12 bg-blue-600 font-black text-white rounded-2xl shadow-[0_18px_44px_-20px_rgba(47,91,255,0.65)]" 
+                    className="w-full h-12 bg-brand-primary font-black text-white rounded-2xl shadow-[0_18px_44px_-20px_rgba(47,91,255,0.65)]" 
                     onClick={() => handleCTAClick('mobile-nav', 'Join Enterprise', '/register')}
                   >
                     Join Enterprise
@@ -257,8 +255,8 @@ function NavDropdown({ label, isOpen, onToggle, children }) {
   return (
     <div className="relative">
       <button
-        className={`flex items-center gap-1.5 text-sm font-bold transition-all hover:text-blue-700 ${
-          isOpen ? 'text-blue-700' : 'text-gray-600'
+        className={`flex items-center gap-1.5 text-sm font-bold transition-all hover:text-brand-primary-dark ${
+          isOpen ? 'text-brand-primary-dark' : 'text-gray-600'
         }`}
         onClick={onToggle}
         aria-expanded={isOpen}
@@ -284,11 +282,11 @@ function DropdownLink({ icon, title, desc, href = "#" }) {
       onClick={() => router.push(href)}
       className="flex items-start gap-4 p-4 rounded-2xl hover:bg-gray-50 transition-all group w-full text-left"
     >
-      <div className="mt-1 p-2 bg-slate-100 rounded-2xl group-hover:bg-blue-600 group-hover:text-white transition-all">
+      <div className="mt-1 p-2 bg-slate-100 rounded-2xl group-hover:bg-brand-primary group-hover:text-white transition-all">
         {icon}
       </div>
       <div>
-        <div className="font-bold text-gray-900 group-hover:text-blue-700 transition-colors text-sm">{title}</div>
+        <div className="font-bold text-gray-900 group-hover:text-brand-primary-dark transition-colors text-sm">{title}</div>
         <div className="text-xs text-gray-400 font-medium mt-0.5">{desc}</div>
       </div>
     </button>

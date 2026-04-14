@@ -23,13 +23,13 @@ const DOMAIN_ICONS = {
 };
 
 const DOMAIN_COLORS = {
-    'retail-shop': 'bg-blue-500',
+    'retail-shop': 'bg-brand-primary',
     'restaurant-cafe': 'bg-orange-500',
     'supermarket': 'bg-emerald-500',
     'grocery': 'bg-green-500',
     'wholesale': 'bg-wine-500',
     'manufacturing': 'bg-slate-600',
-    'default': 'bg-indigo-500',
+    'default': 'bg-brand-primary-dark',
 };
 
 export function BusinessSwitcher({ isCollapsed = false }) {
@@ -181,7 +181,7 @@ export function BusinessSwitcher({ isCollapsed = false }) {
                                                 className={cn(
                                                     'w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-left',
                                                     isActive
-                                                        ? 'bg-indigo-50 border border-indigo-100'
+                                                        ? 'bg-brand-50 border border-brand-100'
                                                         : 'hover:bg-gray-50'
                                                 )}
                                             >
@@ -194,18 +194,18 @@ export function BusinessSwitcher({ isCollapsed = false }) {
                                                 <div className="flex-1 min-w-0">
                                                     <p className={cn(
                                                         'text-sm font-semibold truncate',
-                                                        isActive ? 'text-indigo-700' : 'text-gray-800'
+                                                        isActive ? 'text-brand-primary-dark' : 'text-gray-800'
                                                     )}>
                                                         {biz.name}
                                                     </p>
                                                     <p className="text-[11px] text-gray-400 truncate capitalize">
-                                                        {biz.domain?.replace(/-/g, ' ')} Â· {biz.user_role}
+                                                        {biz.domain?.replace(/-/g, ' ')} - {biz.user_role}
                                                     </p>
                                                 </div>
                                                 {isSwitching ? (
-                                                    <Loader2 className="w-4 h-4 animate-spin text-indigo-500 flex-shrink-0" />
+                                                    <Loader2 className="w-4 h-4 animate-spin text-brand-primary flex-shrink-0" />
                                                 ) : isActive ? (
-                                                    <Check className="w-4 h-4 text-indigo-500 flex-shrink-0" />
+                                                    <Check className="w-4 h-4 text-brand-primary flex-shrink-0" />
                                                 ) : null}
                                             </button>
                                         );

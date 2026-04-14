@@ -16,7 +16,7 @@ import { cn } from '@/lib/utils';
 import { ExpenseEntryForm } from '@/components/ExpenseEntryForm';
 
 const EXPENSE_CATEGORIES = [
-    { value: 'rent', label: 'Rent & Utilities', color: 'bg-blue-100 text-blue-700' },
+    { value: 'rent', label: 'Rent & Utilities', color: 'bg-brand-50 text-brand-primary' },
     { value: 'salary', label: 'Salaries & Wages', color: 'bg-wine-100 text-wine-700' },
     { value: 'supplies', label: 'Office Supplies', color: 'bg-amber-100 text-amber-700' },
     { value: 'transport', label: 'Transport', color: 'bg-emerald-100 text-emerald-700' },
@@ -86,7 +86,7 @@ export function ExpenseManager({ businessId, expenses = [], onCreateExpense, onD
                         </SelectContent>
                     </Select>
                 </div>
-                <Button onClick={() => setShowForm(true)} className="rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-200">
+                <Button onClick={() => setShowForm(true)} className="rounded-xl text-xs font-bold bg-brand-primary hover:bg-brand-primary-dark shadow-lg shadow-brand-primary/20">
                     <Plus className="w-4 h-4 mr-1" /> Record Expense
                 </Button>
             </div>
@@ -101,7 +101,7 @@ export function ExpenseManager({ businessId, expenses = [], onCreateExpense, onD
                                 <Badge className={cn('text-[10px] px-2', cat.color)}>{cat.label}</Badge>
                                 <div className="flex-1 bg-gray-100 rounded-full h-2">
                                     <div
-                                        className="bg-indigo-500 h-2 rounded-full transition-all"
+                                        className="bg-brand-primary h-2 rounded-full transition-all"
                                         style={{ width: `${Math.min((cat.total / totalExpenses) * 100, 100)}%` }}
                                     />
                                 </div>

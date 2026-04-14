@@ -15,6 +15,7 @@ import { Badge } from './ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
 import { Progress } from './ui/progress';
 import { manufacturingAPI } from '@/lib/api/manufacturing';
+import { getManufacturingConfig } from '@/lib/utils/domainHelpers';
 
 /**
  * @typedef {Object} ManufacturingModuleProps
@@ -49,6 +50,7 @@ export function ManufacturingModule({
     finishedProduct: '',
     name: '',
     components: [],
+    wastagePercent: 0,
     newComponent: { product: '', quantity: '', unit: 'pcs' },
   });
 
@@ -128,6 +130,9 @@ export function ManufacturingModule({
         business_id: businessId,
         product_id: bomData.finishedProduct,
         name: bomData.name || `${product?.name || 'Product'} Bill of Materials`,
+        domain_data: {
+          wastage_percent: Number(bomData.wastagePercent) || 0
+        },
         materials: bomData.components.map(c => ({
           material_id: c.product,
           quantity: Number(c.quantity),
@@ -142,6 +147,7 @@ export function ManufacturingModule({
         finishedProduct: '',
         name: '',
         components: [],
+        wastagePercent: 0,
         newComponent: { product: '', quantity: '', unit: 'pcs' },
       });
       setShowBOMForm(false);
@@ -535,15 +541,23 @@ export function ManufacturingModule({
                   onChange={(val) => {
                     // Check for circular dependency
                     const existsInComponents = bomData.components.some(c => c.product === val);
+                    const product = products.find(p => p.id === val);
+                    const config = getManufacturingConfig(product?.category);
+                    
                     if (existsInComponents) {
                       toast.error("Circular dependency prevented! Removing this product from raw materials.");
                       setBomData({
                         ...bomData,
                         finishedProduct: val,
+                        wastagePercent: config.defaultLoss,
                         components: bomData.components.filter(c => c.product !== val)
                       });
                     } else {
-                      setBomData({ ...bomData, finishedProduct: val });
+                      setBomData({ 
+                        ...bomData, 
+                        finishedProduct: val,
+                        wastagePercent: config.defaultLoss 
+                      });
                     }
                   }}
                   placeholder="Select Finished Product"
@@ -558,6 +572,47 @@ export function ManufacturingModule({
                   value={bomData.name}
                   onChange={e => setBomData({ ...bomData, name: e.target.value })}
                 />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <Label htmlFor="wastage" className="text-xs font-bold text-gray-500 uppercase">Process Wastage (%)</Label>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <AlertCircle className="w-3 h-3 text-gray-400 cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p className="w-60 text-xs">Factor for material loss during production (e.g. scrap, evaporation). Final consumption = BOM Qty × (1 + Wastage%).</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
+                  <div className="relative">
+                    <TrendingUp className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-wine/40" />
+                    <Input
+                      id="wastage"
+                      type="number"
+                      step="0.01"
+                      placeholder="0.00"
+                      className="pl-10 font-bold"
+                      value={bomData.wastagePercent}
+                      onChange={e => setBomData({ ...bomData, wastagePercent: e.target.value })}
+                    />
+                  </div>
+                </div>
+                <div className="bg-wine-50/50 p-3 rounded-xl border border-wine-100/50 flex flex-col justify-center">
+                  <span className="text-[10px] font-black text-wine/60 uppercase tracking-widest mb-1">Domain Logic</span>
+                  <p className="text-xs text-wine/80 font-medium leading-tight">
+                    {(() => {
+                        const product = products.find(p => p.id === bomData.finishedProduct);
+                        if (!product) return "Select a product to see domain recommendations.";
+                        const config = getManufacturingConfig(product.category);
+                        return `Recommended loss for ${product.category}: ${config.defaultLoss}%. Wastage tracking is ${config.trackWastage ? "REQUIRED" : "OPTIONAL"}.`;
+                    })()}
+                  </p>
+                </div>
               </div>
 
               <div className="border-t pt-4">

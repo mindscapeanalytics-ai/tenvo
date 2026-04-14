@@ -89,7 +89,7 @@ export function Header({ onMenuClick }) {
         const parts = text.split(new RegExp(`(${term})`, 'gi'));
         return parts.map((part, i) =>
             part.toLowerCase() === term.toLowerCase()
-                ? <span key={i} className="text-indigo-600 bg-indigo-50 font-black">{part}</span>
+                ? <span key={i} className="text-brand-primary bg-brand-50 font-black">{part}</span>
                 : part
         );
     };
@@ -397,10 +397,10 @@ export function Header({ onMenuClick }) {
                 {/* Center: Global Search Bar */}
                 <div className="hidden md:flex flex-1 justify-center max-w-md lg:max-w-lg px-2 lg:px-4" ref={searchRef}>
                     <div className="relative w-full group">
-                        <Search className={`absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 group-focus-within:text-indigo-600 transition-colors ${language === 'ur' ? 'right-3' : 'left-3'}`} />
+                        <Search className={`absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 group-focus-within:text-brand-primary transition-colors ${language === 'ur' ? 'right-3' : 'left-3'}`} />
                         <Input
                             placeholder={t.search_placeholder + '...'}
-                            className={`h-9 text-xs bg-gray-50 border-gray-200/50 focus:bg-white focus:border-indigo-400/50 focus:ring-4 focus:ring-indigo-500/5 transition-all rounded-xl ${language === 'ur' ? 'pr-9' : 'pl-9'}`}
+                            className={`h-9 text-xs bg-gray-50 border-gray-200/50 focus:bg-white focus:border-brand-100 focus:ring-4 focus:ring-brand-50 transition-all rounded-xl ${language === 'ur' ? 'pr-9' : 'pl-9'}`}
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             onFocus={() => setIsSearchFocused(true)}
@@ -441,11 +441,11 @@ export function Header({ onMenuClick }) {
                                                     return (
                                                         <div key={category} className="p-2 border-b border-gray-50 last:border-0">
                                                             <div className="flex items-center gap-2 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-gray-400 bg-gray-50/50 rounded-lg mb-1">
-                                                                {category === 'inventory' && <PackageIcon className="w-3 h-3 text-blue-500" />}
+                                                                {category === 'inventory' && <PackageIcon className="w-3 h-3 text-brand-primary" />}
                                                                 {category === 'sales' && <FileText className="w-3 h-3 text-wine" />}
                                                                 {category === 'crm' && <UsersIcon className="w-3 h-3 text-green-500" />}
                                                                 {category === 'manufacturing' && <Factory className="w-3 h-3 text-orange-500" />}
-                                                                {category === 'management' && <ClipboardList className="w-3 h-3 text-indigo-500" />}
+                                                                {category === 'management' && <ClipboardList className="w-3 h-3 text-brand-primary" />}
                                                                 {category}
                                                             </div>
                                                             <div className="space-y-0.5">
@@ -457,17 +457,17 @@ export function Header({ onMenuClick }) {
                                                                             key={idx}
                                                                             onClick={() => handleResultClick(category, item)}
                                                                             onMouseEnter={() => setActiveIndex(currentGlobalIdx)}
-                                                                            className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-colors group text-left border border-transparent ${isSelected ? 'bg-indigo-50 border-indigo-200' : 'hover:bg-gray-50'}`}
+                                                                            className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-colors group text-left border border-transparent ${isSelected ? 'bg-brand-50 border-brand-100' : 'hover:bg-gray-50'}`}
                                                                         >
                                                                             <div className="flex flex-col">
-                                                                                <span className={`text-xs font-bold tracking-tight ${isSelected ? 'text-indigo-700' : 'text-gray-900'}`}>
+                                                                                <span className={`text-xs font-bold tracking-tight ${isSelected ? 'text-brand-primary-dark' : 'text-gray-900'}`}>
                                                                                     {highlightMatch(item.name || item.number || item.product_name || 'Unnamed Item', searchQuery)}
                                                                                 </span>
                                                                                 <span className="text-[10px] text-gray-500 line-clamp-1">
                                                                                     {highlightMatch(item.sku || item.customer_name || item.company_name || item.category || item.status || '', searchQuery)}
                                                                                 </span>
                                                                             </div>
-                                                                            <ChevronIcon className={`w-3 h-3 transition-all ${isSelected ? 'text-indigo-600 translate-x-0.5' : 'text-gray-300'}`} />
+                                                                            <ChevronIcon className={`w-3 h-3 transition-all ${isSelected ? 'text-brand-primary translate-x-0.5' : 'text-gray-300'}`} />
                                                                         </button>
                                                                     );
                                                                 })}
@@ -506,7 +506,7 @@ export function Header({ onMenuClick }) {
                             <Button
                                 size="icon"
                                 variant="ghost"
-                                className="h-8 w-8 rounded-lg text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+                                className="h-8 w-8 rounded-lg text-gray-500 hover:text-brand-primary hover:bg-brand-50 transition-colors"
                                 onClick={() => dispatchHeaderEvent('refresh-dashboard-data')}
                                 title="Refresh data"
                             >
@@ -520,7 +520,7 @@ export function Header({ onMenuClick }) {
                         <Button
                             size="icon"
                             variant="ghost"
-                            className="h-8 w-8 rounded-lg text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+                            className="h-8 w-8 rounded-lg text-gray-500 hover:text-brand-primary hover:bg-brand-50 transition-colors"
                             onClick={() => dispatchHeaderEvent('refresh-dashboard-data')}
                             title="Refresh data"
                         >
@@ -540,12 +540,12 @@ export function Header({ onMenuClick }) {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-52 rounded-2xl shadow-xl p-2 border-gray-100/80 backdrop-blur-xl">
                                 <DropdownMenuLabel className="text-[9px] uppercase font-black tracking-[0.2em] text-gray-400 px-3 py-2">Quick Actions</DropdownMenuLabel>
-                                <DropdownMenuItem onClick={() => window.dispatchEvent(new CustomEvent('open-modal', { detail: { modalId: 'invoice' } }))} className="rounded-xl py-2.5 cursor-pointer text-indigo-600 bg-indigo-50/50">
+                                <DropdownMenuItem onClick={() => window.dispatchEvent(new CustomEvent('open-modal', { detail: { modalId: 'invoice' } }))} className="rounded-xl py-2.5 cursor-pointer text-brand-primary bg-brand-50/70">
                                     <Plus className="w-4 h-4 mr-3" />
                                     <span className="font-bold text-xs">New Invoice</span>
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => window.dispatchEvent(new CustomEvent('open-modal', { detail: { modalId: 'product' } }))} className="rounded-xl py-2.5 cursor-pointer">
-                                    <PackageIcon className="w-4 h-4 mr-3 text-blue-500" />
+                                    <PackageIcon className="w-4 h-4 mr-3 text-brand-primary" />
                                     <span className="font-bold text-xs">New Product</span>
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => window.dispatchEvent(new CustomEvent('open-modal', { detail: { modalId: 'customer' } }))} className="rounded-xl py-2.5 cursor-pointer">
@@ -557,7 +557,7 @@ export function Header({ onMenuClick }) {
                                     <span className="font-bold text-xs">New Vendor</span>
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => window.dispatchEvent(new CustomEvent('open-modal', { detail: { modalId: 'purchase' } }))} className="rounded-xl py-2.5 cursor-pointer">
-                                    <ShoppingCart className="w-4 h-4 mr-3 text-violet-500" />
+                                    <ShoppingCart className="w-4 h-4 mr-3 text-brand-primary" />
                                     <span className="font-bold text-xs">New Purchase Order</span>
                                 </DropdownMenuItem>
                             </DropdownMenuContent>
@@ -570,7 +570,7 @@ export function Header({ onMenuClick }) {
                     <Button
                         variant="ghost"
                         size="icon"
-                        className="text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors h-8 w-8"
+                        className="text-gray-400 hover:text-brand-primary hover:bg-brand-50 rounded-lg transition-colors h-8 w-8"
                         onClick={() => document.documentElement.classList.toggle('dark')}
                         title="Toggle dark mode"
                     >
@@ -580,7 +580,7 @@ export function Header({ onMenuClick }) {
 
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="relative text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors h-8 w-8">
+                            <Button variant="ghost" size="icon" className="relative text-gray-400 hover:text-brand-primary hover:bg-brand-50 rounded-lg transition-colors h-8 w-8">
                                 <Bell className="w-4 h-4" />
                                 {notificationCount > 0 && (
                                     <span className="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 rounded-full bg-red-500 text-white text-[9px] font-black leading-4 text-center border border-white">
@@ -593,7 +593,7 @@ export function Header({ onMenuClick }) {
                             <DropdownMenuLabel className="px-3 py-2">
                                 <div className="flex items-center justify-between">
                                     <span className="text-[10px] font-black uppercase tracking-[0.14em] text-gray-500">Notifications</span>
-                                    <span className="text-[10px] font-bold text-indigo-600">{notificationCount} total</span>
+                                    <span className="text-[10px] font-bold text-brand-primary">{notificationCount} total</span>
                                 </div>
                             </DropdownMenuLabel>
                             <DropdownMenuSeparator className="my-1" />
@@ -611,7 +611,7 @@ export function Header({ onMenuClick }) {
                                             ? 'bg-red-50 border-red-100 text-red-700'
                                             : item.severity === 'medium'
                                                 ? 'bg-amber-50 border-amber-100 text-amber-700'
-                                                : 'bg-blue-50 border-blue-100 text-blue-700';
+                                                : 'bg-brand-50 border-brand-100 text-brand-primary-dark';
                                         return (
                                             <button
                                                 key={item.id}

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { X, Save, BrainCircuit, Hash, Package, TrendingUp, Info } from 'lucide-react';
+import { X, Save, BrainCircuit, Hash, Package, TrendingUp, Info, Zap, RefreshCw, AlertCircle, Sparkles, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -51,8 +51,14 @@ export function SmartQuickAddModal({
         stock: 0,
         unit: defaults.defaultUnit || 'pcs',
         taxPercent: defaults.defaultTax || 17,
-        category: knowledge.name || 'General'
+        category: knowledge.name || 'General',
+        domain_field: ''
     });
+
+    // Identify primary domain identifier
+    const domainFields = getDomainProductFields(category);
+    const primaryDomainField = domainFields[0] || null;
+    const labels = getDomainFormLabels(category);
 
     const [isGeneratingSku, setIsGeneratingSku] = useState(false);
 
@@ -108,6 +114,10 @@ export function SmartQuickAddModal({
             return;
         }
 
+        const domainData = primaryDomainField ? {
+            [primaryDomainField.toLowerCase().replace(/[^a-z0-9]/g, '')]: formData.domain_field
+        } : {};
+
         const payload = {
             ...formData,
             business_id: businessId,
@@ -116,6 +126,7 @@ export function SmartQuickAddModal({
             mrp: formData.price, // Default MRP to Price for quick add
             is_active: true,
             domain_data: {
+                ...domainData,
                 is_quick_add: true,
                 source: 'smart-quick-add'
             }
@@ -132,8 +143,10 @@ export function SmartQuickAddModal({
                 stock: 0,
                 unit: defaults.defaultUnit || 'pcs',
                 taxPercent: defaults.defaultTax || 17,
-                category: knowledge.name || 'General'
+                category: knowledge.name || 'General',
+                domain_field: ''
             });
+            toast.success("Product deployed successfully");
         } catch (error) {
             console.error(error);
         }
@@ -141,20 +154,25 @@ export function SmartQuickAddModal({
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden border-none shadow-2xl bg-white/95 backdrop-blur-xl rounded-3xl">
-                <DialogHeader className="p-8 pb-4 bg-slate-900 text-white">
-                    <div className="flex items-center gap-3 mb-2">
-                        <div className="p-2 rounded-xl bg-primary/20 backdrop-blur-md text-primary-foreground">
-                            <BrainCircuit className="w-5 h-5 text-blue-400" />
+            <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden border-none shadow-2xl bg-white/95 backdrop-blur-xl rounded-3xl animate-in zoom-in-95 duration-300">
+                <DialogHeader className="p-8 pb-10 bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 text-white relative">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 blur-3xl rounded-full" />
+                    <div className="relative z-10">
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="p-3 rounded-2xl bg-white/10 backdrop-blur-md text-white border border-white/10 shadow-xl">
+                                <Zap className="w-5 h-5 text-yellow-400 fill-yellow-400" />
+                            </div>
+                            <div className="space-y-0.5">
+                                <Badge variant="outline" className="text-[10px] border-blue-400/30 text-blue-400 font-black uppercase tracking-widest px-2 leading-none">
+                                    Ultra-Speed Entry
+                                </Badge>
+                                <DialogTitle className="text-2xl font-black tracking-tight">Smart Quick-Add</DialogTitle>
+                            </div>
                         </div>
-                        <Badge variant="outline" className="text-[10px] border-blue-500/30 text-blue-400 font-black uppercase tracking-widest">
-                            Intelligent Entry
-                        </Badge>
+                        <DialogDescription className="text-slate-400 font-medium">
+                            Auto-optimizing for <span className="text-blue-300 font-bold">{category.replace('-', ' ')}</span> precision standards.
+                        </DialogDescription>
                     </div>
-                    <DialogTitle className="text-2xl font-black tracking-tight">Smart Quick-Add</DialogTitle>
-                    <DialogDescription className="text-slate-400 font-medium">
-                        Optimized for <span className="text-blue-400 font-bold">{category.replace('-', ' ')}</span> standards.
-                    </DialogDescription>
                 </DialogHeader>
 
                 <form onSubmit={handleSubmit} className="p-8 pt-6 space-y-6">
@@ -162,14 +180,30 @@ export function SmartQuickAddModal({
                         {/* Identity Section */}
                         <div className="grid grid-cols-1 gap-4">
                             <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Product Name</Label>
+                                <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">{labels.name}</Label>
                                 <Input
-                                    placeholder="e.g. Premium Cotton Roll"
+                                    autoFocus
+                                    placeholder={`e.g. ${labels.name.toLowerCase()}...`}
                                     value={formData.name}
                                     onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                                    className="h-12 rounded-xl border-gray-100 bg-gray-50/50 focus:bg-white transition-all font-bold"
+                                    className="h-12 rounded-xl border-gray-100 bg-gray-50/50 focus:bg-white transition-all font-bold focus:ring-4 focus:ring-blue-500/10"
                                 />
                             </div>
+
+                            {/* [PRECISION] Domain-Specific Identifier */}
+                            {primaryDomainField && (
+                                <div className="space-y-2 animate-in slide-in-from-top-1">
+                                    <Label className="text-[10px] font-black uppercase text-blue-600 tracking-widest flex items-center gap-1">
+                                        <Sparkles className="w-3 h-3" /> {primaryDomainField} (Precision)
+                                    </Label>
+                                    <Input
+                                        placeholder={`Enter ${primaryDomainField.toLowerCase()}...`}
+                                        value={formData.domain_field}
+                                        onChange={e => setFormData(prev => ({ ...prev, domain_field: e.target.value }))}
+                                        className="h-11 rounded-xl border-blue-100 bg-blue-50/20 focus:bg-white focus:ring-4 focus:ring-blue-500/10 font-bold text-blue-900"
+                                    />
+                                </div>
+                            )}
 
                             <div className="space-y-2">
                                 <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest flex items-center justify-between">
@@ -293,35 +327,13 @@ export function SmartQuickAddModal({
                         </Button>
                         <Button
                             type="submit"
-                            className="rounded-xl bg-slate-900 text-white hover:bg-slate-800 px-8 font-bold shadow-lg shadow-slate-200"
+                            className="rounded-xl bg-blue-600 text-white hover:bg-blue-700 px-8 font-black shadow-lg shadow-blue-200 transition-all active:scale-95 group"
                         >
-                            Deploy Product
+                            Quick Deploy <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
                         </Button>
                     </DialogFooter>
                 </form>
             </DialogContent>
         </Dialog>
-    );
-}
-
-// Helper: Refresh icon for Auto-Gen (missing in main lucide imports)
-function RefreshCw({ className }) {
-    return (
-        <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="24" height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className={className}
-        >
-            <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
-            <path d="M21 3v5h-5" />
-            <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
-            <path d="M3 21v-5h5" />
-        </svg>
     );
 }

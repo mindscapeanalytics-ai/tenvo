@@ -14,7 +14,7 @@ const STATUS_TYPES = {
     present: { label: 'Present', icon: 'âœ…', color: 'bg-emerald-100 text-emerald-700 border-emerald-200', dot: 'bg-emerald-500' },
     absent: { label: 'Absent', icon: 'âŒ', color: 'bg-red-100 text-red-700 border-red-200', dot: 'bg-red-500' },
     halfday: { label: 'Half Day', icon: 'ðŸ”¶', color: 'bg-amber-100 text-amber-700 border-amber-200', dot: 'bg-amber-500' },
-    leave: { label: 'On Leave', icon: 'ðŸ–ï¸', color: 'bg-blue-100 text-blue-700 border-blue-200', dot: 'bg-blue-500' },
+    leave: { label: 'On Leave', icon: 'ðŸ–ï¸', color: 'bg-brand-50 text-brand-primary border-brand-100', dot: 'bg-brand-primary' },
     holiday: { label: 'Holiday', icon: 'ðŸŽ‰', color: 'bg-wine-100 text-wine-700 border-wine-200', dot: 'bg-wine-500' },
 };
 
@@ -139,7 +139,7 @@ export function AttendanceTracker({ businessId, employees: propEmployees = [] })
                 {[
                     { label: 'Total Days', value: daysInMonth, icon: Calendar, c: 'text-gray-600 bg-gray-50' },
                     { label: 'Avg. Attendance', value: `${Math.round(employees.reduce((s, emp) => s + (monthSummary[emp.id]?.present || 0), 0) / employees.length)}d`, icon: UserCheck, c: 'text-emerald-600 bg-emerald-50' },
-                    { label: 'Leave Days', value: employees.reduce((s, emp) => s + (monthSummary[emp.id]?.leave || 0), 0), icon: Palmtree, c: 'text-blue-600 bg-blue-50' },
+                    { label: 'Leave Days', value: employees.reduce((s, emp) => s + (monthSummary[emp.id]?.leave || 0), 0), icon: Palmtree, c: 'text-brand-primary bg-brand-50' },
                     { label: 'Absences', value: employees.reduce((s, emp) => s + (monthSummary[emp.id]?.absent || 0), 0), icon: AlertTriangle, c: 'text-red-600 bg-red-50' },
                 ].map(stat => (
                     <div key={stat.label} className="flex items-center gap-3 p-3 bg-white rounded-xl border border-gray-100">
@@ -169,10 +169,10 @@ export function AttendanceTracker({ businessId, employees: propEmployees = [] })
                                         <th key={i} className={cn(
                                             'p-1.5 text-center font-bold min-w-[32px]',
                                             day === 0 ? 'text-red-400 bg-red-50/30' : 'text-gray-500',
-                                            isToday && 'bg-indigo-50'
+                                            isToday && 'bg-brand-50'
                                         )}>
                                             <div className="text-[10px]">{['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'][day]}</div>
-                                            <div className={cn(isToday && 'bg-indigo-500 text-white rounded-full w-5 h-5 flex items-center justify-center mx-auto')}>
+                                            <div className={cn(isToday && 'bg-brand-primary text-white rounded-full w-5 h-5 flex items-center justify-center mx-auto')}>
                                                 {i + 1}
                                             </div>
                                         </th>
@@ -187,7 +187,7 @@ export function AttendanceTracker({ businessId, employees: propEmployees = [] })
                                 <tr key={emp.id} className="border-b border-gray-50 hover:bg-gray-50/50">
                                     <td className="p-2.5 sticky left-0 bg-white z-10">
                                         <div className="flex items-center gap-2">
-                                            <div className="w-7 h-7 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center text-[10px] font-black">
+                                            <div className="w-7 h-7 rounded-lg bg-brand-50 text-brand-primary flex items-center justify-center text-[10px] font-black">
                                                 {emp.name.split(' ').map(n => n[0]).join('')}
                                             </div>
                                             <div>
@@ -205,7 +205,7 @@ export function AttendanceTracker({ businessId, employees: propEmployees = [] })
                                                 <button
                                                     onClick={() => cycleStatus(emp.id, day)}
                                                     className={cn(
-                                                        'w-7 h-7 rounded-md flex items-center justify-center text-[10px] transition-all hover:ring-2 hover:ring-indigo-300',
+                                                        'w-7 h-7 rounded-md flex items-center justify-center text-[10px] transition-all hover:ring-2 hover:ring-brand-100',
                                                         cfg.color, 'border'
                                                     )}
                                                     title={`${cfg.label} â€” Click to change`}

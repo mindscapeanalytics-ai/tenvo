@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -13,19 +13,20 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 
 // â”€â”€â”€ Constants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const DEPARTMENTS = [
-    { key: 'all', label: 'All', icon: 'ðŸª', color: 'bg-indigo-600' },
-    { key: 'beverages', label: 'Beverages', icon: 'ðŸ¥¤', color: 'bg-blue-500' },
+    { key: 'all', label: 'All', icon: 'ðŸª', color: 'bg-brand-primary' },
+    { key: 'beverages', label: 'Beverages', icon: 'ðŸ¥¤', color: 'bg-brand-primary-dark' },
     { key: 'snacks', label: 'Snacks', icon: 'ðŸ¿', color: 'bg-orange-500' },
     { key: 'dairy', label: 'Dairy', icon: 'ðŸ¥›', color: 'bg-cyan-500' },
     { key: 'frozen', label: 'Frozen', icon: 'ðŸ§Š', color: 'bg-sky-500' },
     { key: 'fresh', label: 'Fresh Produce', icon: 'ðŸ¥¬', color: 'bg-emerald-500' },
     { key: 'bakery', label: 'Bakery', icon: 'ðŸž', color: 'bg-amber-500' },
-    { key: 'household', label: 'Household', icon: 'ðŸ ', color: 'bg-violet-500' },
+    { key: 'household', label: 'Household', icon: 'ðŸ ', color: 'bg-brand-primary-dark' },
     { key: 'personal', label: 'Personal Care', icon: 'ðŸ§´', color: 'bg-pink-500' },
     { key: 'meat', label: 'Meat & Poultry', icon: 'ðŸ¥©', color: 'bg-red-500' },
     { key: 'grocery', label: 'Grocery', icon: 'ðŸ›’', color: 'bg-lime-600' },
@@ -189,7 +190,14 @@ function ScannedItemsList({
                                         min="0.01"
                                     />
                                 ) : (
-                                    <span className="w-8 text-center text-xs font-black">{item.quantity}</span>
+                                    <div className="flex items-center">
+                                        <span className="w-8 text-center text-xs font-black">{item.quantity}</span>
+                                        {/* Quick Add Presets for Retail Crate/Bulk */}
+                                        <div className="flex flex-col ml-1 border-l border-gray-200 pl-1">
+                                            <button onClick={() => onQuantityChange(idx, item.quantity + 5)} className="text-[7px] font-black text-emerald-600 hover:bg-emerald-50 px-1 rounded">+5</button>
+                                            <button onClick={() => onQuantityChange(idx, item.quantity + 12)} className="text-[7px] font-black text-brand-primary hover:bg-brand-50 px-1 rounded">+12</button>
+                                        </div>
+                                    </div>
                                 )}
                                 <button
                                     onClick={() => onQuantityChange(idx, item.quantity + (item.isWeightItem ? 0.1 : 1))}
@@ -242,14 +250,16 @@ function ScannedItemsList({
 // â”€â”€â”€ Cart Summary (Right Panel) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function CartSummary({
-    items, customer, onCustomerSelect, taxPercent = 17,
+    items, customer, onCustomerSelect, taxPercent, taxConfig,
     discount = 0, onDiscountChange, onPaymentMethodSelect,
     onCompleteSale, onHoldSale, onVoidSale, isProcessing,
-    currency = 'Rs.', heldOrders = []
+    currency = 'Rs.', heldOrders = [], onResumeHeldSale
 }) {
-    const itemCount = items.reduce((sum, i) => sum + (i.isWeightItem ? 1 : i.quantity), 0);
+    // Priority: taxConfig.sales_tax_rate -> taxPercent prop -> 17.0 (fallback)
+    const effectiveTaxRate = taxConfig?.sales_tax_rate ?? taxPercent ?? 17;
+    const itemCount = items.reduce((sum, i) => sum + (i.isWeightItem ? 1 * i.quantity : i.quantity), 0);
     const subtotal = items.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0);
-    const taxAmount = Math.round(subtotal * (taxPercent / 100) * 100) / 100;
+    const taxAmount = Math.round(subtotal * (effectiveTaxRate / 100) * 100) / 100;
     const discountAmount = parseFloat(discount || 0);
     const total = Math.round((subtotal + taxAmount - discountAmount) * 100) / 100;
 
@@ -317,7 +327,7 @@ function CartSummary({
                         <div className="grid grid-cols-4 gap-1.5 pt-2">
                             {[
                                 { key: 'cash', icon: Banknote, label: 'Cash', color: 'hover:bg-emerald-500/20 hover:border-emerald-500/40' },
-                                { key: 'card', icon: CreditCard, label: 'Card', color: 'hover:bg-blue-500/20 hover:border-blue-500/40' },
+                                { key: 'card', icon: CreditCard, label: 'Card', color: 'hover:bg-brand-primary/20 hover:border-brand-primary/40' },
                                 { key: 'wallet', icon: Smartphone, label: 'Mobile', color: 'hover:bg-wine-500/20 hover:border-wine-500/40' },
                                 { key: 'split', icon: SplitSquareHorizontal, label: 'Split', color: 'hover:bg-amber-500/20 hover:border-amber-500/40' },
                             ].map(({ key, icon: Icon, label, color }) => (
@@ -354,6 +364,17 @@ function CartSummary({
                                 <X className="w-3.5 h-3.5 mr-1.5" /> VOID
                             </Button>
                         </div>
+
+                        {heldOrders.length > 0 && (
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={onResumeHeldSale}
+                                className="w-full h-9 rounded-lg text-[10px] font-bold border-amber-600/30 text-amber-300 bg-amber-500/10 hover:bg-amber-500/20"
+                            >
+                                <RotateCcw className="w-3.5 h-3.5 mr-1.5" /> RESUME LAST HELD SALE ({heldOrders.length})
+                            </Button>
+                        )}
 
                         {/* Complete Sale */}
                         <Button
@@ -393,21 +414,88 @@ function CartSummary({
 
 // â”€â”€â”€ Main Super Store POS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-export function SuperStorePOS({ businessId, products = [], onCompleteSale, currency = 'Rs.', session }) {
+export function SuperStorePOS({ 
+    businessId, products = [], customers = [], onStartSession, 
+    onCompleteSale, currency = 'Rs.', session, taxConfig 
+}) {
     const [cart, setCart] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [activeDepartment, setActiveDepartment] = useState('all');
     const [customer, setCustomer] = useState(null);
+    const [customerQuery, setCustomerQuery] = useState('');
+    const [showCustomerDialog, setShowCustomerDialog] = useState(false);
     const [discount, setDiscount] = useState(0);
     const [paymentMethod, setPaymentMethod] = useState('cash');
     const [isProcessing, setIsProcessing] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
     const [lastSale, setLastSale] = useState(null);
     const [heldOrders, setHeldOrders] = useState([]);
+    const [isStartingSession, setIsStartingSession] = useState(false);
     const [isScanning, setIsScanning] = useState(false);
     const [lastScannedItem, setLastScannedItem] = useState(null);
     const [isFullscreen, setIsFullscreen] = useState(false);
     const containerRef = useRef(null);
+    const hasSession = Boolean(
+        session?.id
+        && session?.id !== 'sess-initial'
+        && (session?.status === 'open' || session?.opened_at || session?.startTime)
+    );
+    const sessionStartedAt = session?.opened_at || session?.startTime;
+    const sessionStartedLabel = sessionStartedAt
+        ? new Date(sessionStartedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        : null;
+    const terminalLabel = session?.terminalName || session?.terminal_name || 'Counter';
+
+    const heldOrdersStorageKey = useMemo(() => `fh:pos:held:${businessId || 'default'}`, [businessId]);
+
+    const filteredCustomers = useMemo(() => {
+        if (!customerQuery.trim()) return (customers || []).slice(0, 40);
+        const lower = customerQuery.toLowerCase();
+        return (customers || []).filter(c =>
+            c.name?.toLowerCase().includes(lower)
+            || c.phone?.toLowerCase().includes(lower)
+            || c.email?.toLowerCase().includes(lower)
+        ).slice(0, 40);
+    }, [customers, customerQuery]);
+
+    const handlePrintReceipt = useCallback(() => {
+        if (!lastSale) return;
+
+        const receiptLines = [
+            'TENVO SUPERSTORE RECEIPT',
+            '------------------------------',
+            `Sale: ${lastSale.transaction_number || lastSale.saleNumber || 'N/A'}`,
+            `Date: ${new Date().toLocaleString()}`,
+            `Customer: ${lastSale.customerName || 'Walk-in Customer'}`,
+            `Items: ${lastSale.items || 0}`,
+            `Payment: ${(lastSale.paymentMethod || paymentMethod || 'cash').toUpperCase()}`,
+            '------------------------------',
+            `TOTAL: ${currency}${Number(lastSale.total || 0).toLocaleString()}`,
+            '------------------------------',
+            'Thank you for shopping!',
+        ];
+
+        const win = window.open('', '_blank', 'width=420,height=640');
+        if (!win) return;
+
+        win.document.write(`<!doctype html><html><head><title>Receipt</title><style>
+            body { font-family: monospace; padding: 16px; }
+            pre { white-space: pre-wrap; font-size: 14px; line-height: 1.5; }
+        </style></head><body><pre>${receiptLines.join('\n')}</pre></body></html>`);
+        win.document.close();
+        win.focus();
+        win.print();
+    }, [currency, lastSale, paymentMethod]);
+
+    const handleStartSession = useCallback(async () => {
+        if (!onStartSession || isStartingSession) return;
+        setIsStartingSession(true);
+        try {
+            await onStartSession();
+        } finally {
+            setIsStartingSession(false);
+        }
+    }, [onStartSession, isStartingSession]);
 
     // â”€â”€â”€ Fullscreen Logic â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -431,6 +519,28 @@ export function SuperStorePOS({ businessId, products = [], onCompleteSale, curre
         document.addEventListener('fullscreenchange', handleFullscreenChange);
         return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
     }, []);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        try {
+            const raw = window.localStorage.getItem(heldOrdersStorageKey);
+            if (raw) {
+                const parsed = JSON.parse(raw);
+                if (Array.isArray(parsed)) setHeldOrders(parsed);
+            }
+        } catch (error) {
+            console.warn('Failed to load held POS orders:', error);
+        }
+    }, [heldOrdersStorageKey]);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        try {
+            window.localStorage.setItem(heldOrdersStorageKey, JSON.stringify(heldOrders));
+        } catch (error) {
+            console.warn('Failed to persist held POS orders:', error);
+        }
+    }, [heldOrders, heldOrdersStorageKey]);
 
     // â”€â”€â”€ Derived Data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -534,12 +644,23 @@ export function SuperStorePOS({ businessId, products = [], onCompleteSale, curre
         setDiscount(0);
     }, []);
 
+    const handleResumeLastHeldSale = useCallback(() => {
+        if (heldOrders.length === 0 || cart.length > 0) return;
+        const updated = [...heldOrders];
+        const restored = updated.pop();
+        setHeldOrders(updated);
+        setCart(restored?.items || []);
+        setCustomer(restored?.customer || null);
+        setDiscount(restored?.discount || 0);
+    }, [heldOrders, cart.length]);
+
     const handleCompleteSale = useCallback(async () => {
         if (cart.length === 0 || isProcessing) return;
         setIsProcessing(true);
         try {
             const subtotal = cart.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0);
-            const taxAmount = Math.round(subtotal * 0.17 * 100) / 100;
+            const effectiveTaxRate = taxConfig?.sales_tax_rate ?? 17;
+            const taxAmount = Math.round(subtotal * (effectiveTaxRate / 100) * 100) / 100;
             const total = subtotal + taxAmount - parseFloat(discount || 0);
 
             const result = await onCompleteSale?.({
@@ -551,15 +672,27 @@ export function SuperStorePOS({ businessId, products = [], onCompleteSale, curre
                     productName: i.name,
                     quantity: i.quantity,
                     unitPrice: i.unitPrice,
-                    taxAmount: Math.round(i.unitPrice * i.quantity * 0.17 * 100) / 100,
+                    taxAmount: Math.round(i.unitPrice * i.quantity * (effectiveTaxRate / 100) * 100) / 100,
                     isWeightItem: i.isWeightItem || false,
                     unit: i.unit,
                 })),
                 payments: [{ method: paymentMethod, amount: total }],
+                metadata: {
+                    domain: 'supermarket',
+                    taxRate: effectiveTaxRate
+                }
             });
 
             if (result?.success) {
-                setLastSale({ ...result.transaction, total, items: cart.length });
+                setLastSale({
+                    ...result.transaction,
+                    saleNumber: result.transaction?.transaction_number || `SALE-${Date.now()}`,
+                    total,
+                    items: cart.length,
+                    customerName: customer?.name || null,
+                    paymentMethod,
+                    mode: result?.mode || (hasSession ? 'pos' : 'invoice-fallback'),
+                });
                 setShowSuccess(true);
                 setCart([]);
                 setCustomer(null);
@@ -571,7 +704,7 @@ export function SuperStorePOS({ businessId, products = [], onCompleteSale, curre
         } finally {
             setIsProcessing(false);
         }
-    }, [cart, businessId, session, customer, discount, paymentMethod, isProcessing, onCompleteSale]);
+    }, [cart, businessId, session, customer, discount, paymentMethod, isProcessing, onCompleteSale, hasSession]);
 
     // â”€â”€â”€ Keyboard Shortcuts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -597,6 +730,29 @@ export function SuperStorePOS({ businessId, products = [], onCompleteSale, curre
         >
             {/* Left: Scanner + Items */}
             <div className="flex-1 min-w-0 bg-white flex flex-col">
+                <div className={cn(
+                    'mx-4 mt-3 mb-0 px-3 py-2 rounded-xl border text-xs font-semibold flex items-center justify-between gap-3',
+                    hasSession
+                        ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                        : 'bg-amber-50 border-amber-200 text-amber-700'
+                )}>
+                    <span>
+                        {hasSession
+                            ? `POS Session Active • ${terminalLabel}${sessionStartedLabel ? ` • Opened ${sessionStartedLabel}` : ''}`
+                            : 'Session not active: checkout will use invoice fallback mode'}
+                    </span>
+                    {!hasSession && (
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 text-[11px]"
+                            onClick={handleStartSession}
+                            disabled={isStartingSession}
+                        >
+                            {isStartingSession ? 'Starting...' : 'Start Session'}
+                        </Button>
+                    )}
+                </div>
                 {/* Barcode Input Bar */}
                 <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 bg-white">
                     <BarcodeScannerInput
@@ -620,7 +776,7 @@ export function SuperStorePOS({ businessId, products = [], onCompleteSale, curre
                             variant="ghost"
                             size="icon"
                             onClick={toggleFullscreen}
-                            className="h-8 w-8 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50"
+                            className="h-8 w-8 text-gray-400 hover:text-brand-primary hover:bg-brand-50"
                         >
                             {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
                         </Button>
@@ -710,16 +866,18 @@ export function SuperStorePOS({ businessId, products = [], onCompleteSale, curre
                 <CartSummary
                     items={cart}
                     customer={customer}
-                    onCustomerSelect={() => { /* TODO: customer picker */ }}
+                    onCustomerSelect={() => setShowCustomerDialog(true)}
                     discount={discount}
                     onDiscountChange={setDiscount}
                     onPaymentMethodSelect={setPaymentMethod}
                     onCompleteSale={handleCompleteSale}
                     onHoldSale={handleHoldSale}
                     onVoidSale={handleVoidSale}
+                    onResumeHeldSale={handleResumeLastHeldSale}
                     isProcessing={isProcessing}
                     currency={currency}
                     heldOrders={heldOrders}
+                    taxConfig={taxConfig}
                 />
             </div>
 
@@ -736,18 +894,61 @@ export function SuperStorePOS({ businessId, products = [], onCompleteSale, curre
                         <div>
                             <p className="font-bold text-sm">Sale Complete!</p>
                             <p className="text-xs text-emerald-100">
-                                {lastSale?.transaction_number} â€” {currency}{lastSale?.total?.toLocaleString()}
+                                {lastSale?.transaction_number} â€” {currency}{lastSale?.total?.toLocaleString()} ({lastSale?.mode === 'invoice-fallback' ? 'Invoice Mode' : 'POS Mode'})
                             </p>
                         </div>
                         <Button
                             variant="ghost" size="sm"
                             className="text-emerald-100 hover:text-white hover:bg-emerald-500 ml-2"
+                            onClick={handlePrintReceipt}
                         >
                             <Receipt className="w-4 h-4 mr-1" /> Receipt
                         </Button>
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            <Dialog open={showCustomerDialog} onOpenChange={setShowCustomerDialog}>
+                <DialogContent className="sm:max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle>Select Customer</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-3">
+                        <Input
+                            value={customerQuery}
+                            onChange={(e) => setCustomerQuery(e.target.value)}
+                            placeholder="Search by name, phone or email"
+                        />
+                        <button
+                            onClick={() => {
+                                setCustomer(null);
+                                setShowCustomerDialog(false);
+                            }}
+                            className="w-full text-left px-3 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 text-sm"
+                        >
+                            Walk-in Customer
+                        </button>
+                        <div className="max-h-72 overflow-y-auto space-y-1">
+                            {filteredCustomers.map((c) => (
+                                <button
+                                    key={c.id}
+                                    onClick={() => {
+                                        setCustomer(c);
+                                        setShowCustomerDialog(false);
+                                    }}
+                                    className="w-full text-left px-3 py-2 rounded-lg border border-gray-200 hover:bg-brand-50"
+                                >
+                                    <p className="text-sm font-semibold text-gray-900">{c.name || 'Unnamed customer'}</p>
+                                    <p className="text-xs text-gray-500">{c.phone || c.email || 'No contact details'}</p>
+                                </button>
+                            ))}
+                            {filteredCustomers.length === 0 && (
+                                <p className="text-xs text-gray-500 px-1 py-2">No customers found</p>
+                            )}
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

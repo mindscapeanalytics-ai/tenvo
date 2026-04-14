@@ -156,7 +156,7 @@ export function InvoiceTab({
                                             variant="ghost"
                                             size="icon"
                                             onClick={() => onEdit?.(row.original)}
-                                            className="h-8 w-8 text-blue-600 hover:text-blue-700"
+                                            className="h-8 w-8 text-brand-primary hover:text-brand-primary-dark"
                                         >
                                             <Pencil className="w-4 h-4" />
                                         </Button>

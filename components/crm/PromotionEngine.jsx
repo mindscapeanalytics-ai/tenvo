@@ -21,7 +21,7 @@ const PROMO_TYPES = [
     {
         key: 'percentage', label: 'Percentage Off', icon: Percent,
         description: 'Discount a percentage from the total',
-        color: 'from-blue-500 to-indigo-600', badgeColor: 'bg-blue-100 text-blue-700'
+        color: 'from-brand-primary to-brand-primary-dark', badgeColor: 'bg-brand-50 text-brand-primary'
     },
     {
         key: 'fixed', label: 'Fixed Amount', icon: Tag,
@@ -47,7 +47,7 @@ const PROMO_TYPES = [
 
 const STATUS_COLORS = {
     active: 'bg-emerald-100 text-emerald-700 border-emerald-200',
-    scheduled: 'bg-blue-100 text-blue-700 border-blue-200',
+    scheduled: 'bg-brand-50 text-brand-primary border-brand-100',
     expired: 'bg-gray-100 text-gray-500 border-gray-200',
     paused: 'bg-amber-100 text-amber-700 border-amber-200',
 };
@@ -104,7 +104,7 @@ function PromoFormDialog({ open, onClose, onSave, promotion = null, currency = '
                     <div className="flex items-center gap-3">
                         <div className={cn(
                             "w-10 h-10 rounded-xl flex items-center justify-center shadow-lg bg-gradient-to-br",
-                            selectedType?.color || 'from-indigo-500 to-violet-600'
+                            selectedType?.color || 'from-brand-primary to-brand-primary-dark'
                         )}>
                             <Gift className="w-5 h-5 text-white" />
                         </div>
@@ -134,7 +134,7 @@ function PromoFormDialog({ open, onClose, onSave, promotion = null, currency = '
                                     className={cn(
                                         "flex items-center gap-4 w-full p-4 rounded-xl border-2 text-left transition-all hover:shadow-md",
                                         formData.type === type.key
-                                            ? "border-indigo-500 bg-indigo-50/50"
+                                            ? "border-brand-primary bg-brand-50/50"
                                             : "border-gray-200 hover:border-gray-300 bg-white"
                                     )}
                                 >
@@ -371,7 +371,7 @@ function PromoFormDialog({ open, onClose, onSave, promotion = null, currency = '
                                         className={cn(
                                             "px-3 py-2 rounded-xl text-[11px] font-bold transition-all",
                                             formData.applicable_products === opt.key
-                                                ? "bg-indigo-600 text-white shadow-md"
+                                                ? "bg-brand-primary text-white shadow-md"
                                                 : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                                         )}
                                     >
@@ -512,10 +512,10 @@ function PromoCard({ promotion, onEdit, onToggle, onDuplicate, onDelete, currenc
             <div className="flex items-center justify-between px-4 py-2 border-t border-gray-100 bg-gray-50/50
                             opacity-0 group-hover:opacity-100 transition-opacity">
                 <div className="flex items-center gap-1">
-                    <Button variant="ghost" size="sm" onClick={() => onEdit(promotion)} className="h-7 text-[10px] text-gray-500 hover:text-indigo-600">
+                    <Button variant="ghost" size="sm" onClick={() => onEdit(promotion)} className="h-7 text-[10px] text-gray-500 hover:text-brand-primary">
                         <Edit3 className="w-3 h-3 mr-1" /> Edit
                     </Button>
-                    <Button variant="ghost" size="sm" onClick={() => onDuplicate(promotion)} className="h-7 text-[10px] text-gray-500 hover:text-indigo-600">
+                    <Button variant="ghost" size="sm" onClick={() => onDuplicate(promotion)} className="h-7 text-[10px] text-gray-500 hover:text-brand-primary">
                         <Copy className="w-3 h-3 mr-1" /> Duplicate
                     </Button>
                     <Button variant="ghost" size="sm" onClick={() => onDelete(promotion)} className="h-7 text-[10px] text-gray-500 hover:text-red-600">
@@ -616,7 +616,7 @@ export function PromotionEngine({ businessId, currency = 'Rs.' }) {
             {/* Header Stats */}
             <div className="grid grid-cols-3 gap-4">
                 {[
-                    { label: 'Total Promotions', value: stats.total, icon: Gift, color: 'from-indigo-500 to-violet-600' },
+                    { label: 'Total Promotions', value: stats.total, icon: Gift, color: 'from-brand-primary to-brand-primary-dark' },
                     { label: 'Active Now', value: stats.active, icon: Zap, color: 'from-emerald-500 to-teal-600' },
                     { label: 'Total Redemptions', value: stats.totalUsage, icon: Users, color: 'from-amber-500 to-orange-600' },
                 ].map(stat => (
@@ -654,7 +654,7 @@ export function PromotionEngine({ businessId, currency = 'Rs.' }) {
                                 className={cn(
                                     "px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all",
                                     filterStatus === status
-                                        ? "bg-indigo-600 text-white shadow-md"
+                                        ? "bg-brand-primary text-white shadow-md"
                                         : "bg-gray-100 text-gray-500 hover:bg-gray-200"
                                 )}
                             >
@@ -665,7 +665,7 @@ export function PromotionEngine({ businessId, currency = 'Rs.' }) {
                 </div>
                 <Button
                     onClick={() => { setEditingPromo(null); setShowForm(true); }}
-                    className="h-10 rounded-xl text-xs font-bold bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 shadow-md shadow-indigo-200"
+                    className="h-10 rounded-xl text-xs font-bold bg-gradient-to-r from-brand-primary to-brand-primary-dark hover:from-brand-primary-dark hover:to-brand-primary shadow-md shadow-brand-primary/20"
                 >
                     <Plus className="w-4 h-4 mr-1.5" /> New Promotion
                 </Button>

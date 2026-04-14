@@ -59,7 +59,11 @@ export function DomainFieldRenderer({
               value={value || ''}
               onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
               required={required}
-              className={`font-bold border-gray-100 bg-gray-50/30 focus:bg-white transition-all pl-3 ${error ? 'border-red-500 bg-red-50' : ''}`}
+              className={cn(
+                "font-bold border-gray-100 bg-gray-50/30 focus:bg-white transition-all pl-3",
+                error ? "border-red-400 bg-red-50/50 focus:ring-red-200" : "hover:border-indigo-100 focus:border-indigo-400",
+                required && !value && !error && "border-amber-100 bg-amber-50/20"
+              )}
             />
             {unitPreview && (
               <TooltipProvider>
@@ -106,7 +110,11 @@ export function DomainFieldRenderer({
               onChange={(e) => onChange(e.target.value)}
               required={required}
               placeholder={`Enter ${label.toLowerCase()}`}
-              className={`border-gray-100 bg-gray-50/30 focus:bg-white transition-all pl-3 ${error ? 'border-red-500 bg-red-50' : ''}`}
+              className={cn(
+                "border-gray-100 bg-gray-50/30 focus:bg-white transition-all pl-3",
+                error ? "border-red-400 bg-red-50/50 focus:ring-red-200" : "hover:border-indigo-100 focus:border-indigo-400",
+                required && !value && !error && "border-amber-100 bg-amber-50/20"
+              )}
             />
             {unitPreview && (
               <TooltipProvider>
@@ -136,7 +144,12 @@ export function DomainFieldRenderer({
         {label} {required && <span className="text-red-500">*</span>}
       </Label>
       {renderField()}
-      {error && <p className="text-[10px] font-bold text-red-500 animate-in fade-in slide-in-from-top-1">{error}</p>}
+      {error && (
+        <p className="text-[10px] font-black text-red-500 uppercase tracking-tight flex items-center gap-1 mt-1 animate-in fade-in slide-in-from-top-1">
+          <AlertCircle className="w-3 h-3" />
+          {error}
+        </p>
+      )}
     </div>
   );
 }

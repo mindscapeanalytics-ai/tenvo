@@ -56,8 +56,8 @@ export function PayrollDashboard({
                                 <p className="text-xs text-gray-500 font-medium">Active Employees</p>
                                 <p className="text-2xl font-black text-gray-900 mt-1">{activeEmployees.length}</p>
                             </div>
-                            <div className="p-2.5 bg-blue-50 rounded-lg">
-                                <Users className="w-5 h-5 text-blue-600" />
+                            <div className="p-2.5 bg-brand-50 rounded-lg">
+                                <Users className="w-5 h-5 text-brand-primary" />
                             </div>
                         </div>
                     </CardContent>
@@ -80,12 +80,12 @@ export function PayrollDashboard({
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-xs text-gray-500 font-medium">Last Run Net</p>
-                                <p className="text-2xl font-black text-indigo-600 mt-1">
+                                <p className="text-2xl font-black text-brand-primary mt-1">
                                     {lastRun ? `${currency}${parseFloat(lastRun.total_net || 0).toLocaleString()}` : 'â€”'}
                                 </p>
                             </div>
-                            <div className="p-2.5 bg-indigo-50 rounded-lg">
-                                <CreditCard className="w-5 h-5 text-indigo-600" />
+                            <div className="p-2.5 bg-brand-50 rounded-lg">
+                                <CreditCard className="w-5 h-5 text-brand-primary" />
                             </div>
                         </div>
                     </CardContent>
@@ -109,7 +109,7 @@ export function PayrollDashboard({
             <div className="flex items-center gap-3">
                 <Button
                     onClick={() => setShowRunDialog(true)}
-                    className="bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 rounded-xl text-xs font-bold shadow-lg shadow-indigo-200"
+                    className="bg-gradient-to-r from-brand-primary to-brand-primary hover:from-brand-primary-dark hover:to-brand-primary-dark rounded-xl text-xs font-bold shadow-lg shadow-brand-primary/20"
                 >
                     <Play className="w-4 h-4 mr-1" /> Run Payroll
                 </Button>
@@ -128,7 +128,7 @@ export function PayrollDashboard({
                         <div className="divide-y divide-gray-100">
                             {activeEmployees.map(emp => (
                                 <div key={emp.id} className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors">
-                                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-400 to-blue-500 flex items-center justify-center text-white font-bold text-xs">
+                                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-brand-primary to-brand-primary-dark flex items-center justify-center text-white font-bold text-xs">
                                         {emp.full_name?.split(' ').map(n => n[0]).join('').slice(0, 2)}
                                     </div>
                                     <div className="flex-1 min-w-0">
@@ -196,7 +196,7 @@ export function PayrollDashboard({
                 <DialogContent className="sm:max-w-[400px]">
                     <DialogHeader>
                         <DialogTitle className="text-lg font-bold flex items-center gap-2">
-                            <Play className="w-5 h-5 text-indigo-600" /> Run Payroll
+                            <Play className="w-5 h-5 text-brand-primary" /> Run Payroll
                         </DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4 pt-2">
@@ -221,8 +221,8 @@ export function PayrollDashboard({
                                 />
                             </div>
                         </div>
-                        <div className="p-3 rounded-lg bg-blue-50 border border-blue-200">
-                            <p className="text-xs text-blue-700">
+                        <div className="p-3 rounded-lg bg-brand-50 border border-brand-100">
+                            <p className="text-xs text-brand-primary-dark">
                                 <strong>{activeEmployees.length}</strong> employees will be processed.
                                 Estimated gross: <strong>{currency}{totalBaseSalary.toLocaleString()}</strong>
                             </p>
@@ -230,7 +230,7 @@ export function PayrollDashboard({
                         <Button
                             onClick={handleRunPayroll}
                             disabled={isProcessing}
-                            className="w-full bg-indigo-600 hover:bg-indigo-700 font-bold"
+                            className="w-full bg-brand-primary hover:bg-brand-primary-dark font-bold"
                         >
                             {isProcessing ? 'Processing...' : 'Process Payroll'}
                         </Button>

@@ -15,7 +15,7 @@ import { cn } from '@/lib/utils';
 const SHIFT_TEMPLATES = [
     { id: 'morning', label: 'Morning', time: '06:00 - 14:00', icon: Sun, color: 'bg-amber-100 text-amber-700 border-amber-200' },
     { id: 'afternoon', label: 'Afternoon', time: '14:00 - 22:00', icon: Sunset, color: 'bg-orange-100 text-orange-700 border-orange-200' },
-    { id: 'night', label: 'Night', time: '22:00 - 06:00', icon: Moon, color: 'bg-indigo-100 text-indigo-700 border-indigo-200' },
+    { id: 'night', label: 'Night', time: '22:00 - 06:00', icon: Moon, color: 'bg-brand-50 text-brand-primary-dark border-brand-100' },
     { id: 'split', label: 'Split', time: '08:00-12:00, 16:00-20:00', icon: Clock, color: 'bg-wine-100 text-wine-700 border-wine-200' },
     { id: 'off', label: 'Day Off', time: 'Rest Day', icon: Calendar, color: 'bg-gray-100 text-gray-500 border-gray-200' },
 ];
@@ -205,7 +205,7 @@ export function ShiftScheduler({ businessId, employees: propEmployees = [] }) {
                                     <tr key={emp.id} className="border-b border-gray-50 hover:bg-gray-50/50">
                                         <td className="p-2.5 sticky left-0 bg-white z-10">
                                             <div className="flex items-center gap-2">
-                                                <div className="w-7 h-7 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center text-[10px] font-black">
+                                                <div className="w-7 h-7 rounded-lg bg-brand-50 text-brand-primary flex items-center justify-center text-[10px] font-black">
                                                     {emp.name.split(' ').map(n => n[0]).join('')}
                                                 </div>
                                                 <div>
@@ -224,7 +224,7 @@ export function ShiftScheduler({ businessId, employees: propEmployees = [] }) {
                                                     <button
                                                         onClick={() => openAssign(emp.id, day)}
                                                         className={cn(
-                                                            'w-full p-2 rounded-lg border text-xs font-bold transition-all hover:ring-2 hover:ring-indigo-300',
+                                                            'w-full p-2 rounded-lg border text-xs font-bold transition-all hover:ring-2 hover:ring-brand-100',
                                                             shift?.color || 'bg-gray-50 text-gray-400 border-gray-100',
                                                             hasConflict && 'ring-2 ring-amber-400'
                                                         )}
@@ -276,7 +276,7 @@ export function ShiftScheduler({ businessId, employees: propEmployees = [] }) {
                                 className={cn(
                                     'w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-all hover:shadow-md text-left',
                                     schedule[assignTarget.empId]?.[assignTarget.day] === shift.id
-                                        ? 'border-indigo-300 bg-indigo-50'
+                                        ? 'border-brand-100 bg-brand-50'
                                         : 'border-gray-100 hover:border-gray-200'
                                 )}
                             >

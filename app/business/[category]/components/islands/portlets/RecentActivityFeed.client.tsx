@@ -95,7 +95,7 @@ export const RecentActivityFeed = memo(function RecentActivityFeed({ businessId,
 
     const getIcon = (type?: ActivityType) => {
         switch (type) {
-            case 'invoice': return <FileText className="w-3.5 h-3.5 text-blue-500" />;
+            case 'invoice': return <FileText className="w-3.5 h-3.5 text-brand-primary" />;
             case 'payment': return <CreditCard className="w-3.5 h-3.5 text-emerald-500" />;
             case 'customer': return <UserPlus className="w-3.5 h-3.5 text-wine-500" />;
             case 'alert': return <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />;
@@ -105,7 +105,7 @@ export const RecentActivityFeed = memo(function RecentActivityFeed({ businessId,
 
     const getBg = (type?: ActivityType) => {
         switch (type) {
-            case 'invoice': return 'bg-blue-50';
+            case 'invoice': return 'bg-brand-50';
             case 'payment': return 'bg-emerald-50';
             case 'customer': return 'bg-wine-50';
             case 'alert': return 'bg-amber-50';

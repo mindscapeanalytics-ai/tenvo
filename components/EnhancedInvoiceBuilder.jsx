@@ -24,6 +24,8 @@ import { useStockAvailability, useCreditLimitCheck, useDueDateCalculator } from 
 import { invoiceSchema, validateWithSchema } from '@/lib/validation/schemas';
 import { getCurrentSeason, getSeasonalDiscount } from '@/lib/domainData/pakistaniSeasons';
 import { hasSeasonalPricing } from '@/lib/utils/pakistaniFeatures';
+import { ExpertActionPanel } from '@/components/domain/ExpertActionPanel';
+import { AIInsightOverlay } from '@/components/domain/AIInsightOverlay';
 
 /**
  * Enhanced Invoice Builder Component
@@ -1144,6 +1146,7 @@ export function EnhancedInvoiceBuilder({
                         <th className="px-3 py-2 text-right text-[10px] font-black uppercase text-gray-400 tracking-wider w-20">Disc%</th>
                         <th className="px-3 py-2 text-right text-[10px] font-black uppercase text-gray-400 tracking-wider w-20">Tax%</th>
                         <th className="px-3 py-2 text-right text-[10px] font-black uppercase text-gray-400 tracking-wider w-28">Amount</th>
+                        <th className="px-3 py-2 text-right text-[10px] font-black uppercase text-gray-400 tracking-wider w-16">Expert</th>
                         <th className="px-3 py-2 w-10"></th>
                       </tr>
                     </thead>
@@ -1245,6 +1248,13 @@ export function EnhancedInvoiceBuilder({
                                                 return `${formatCurrency(taxable, currency)} + ${formatCurrency(taxValue, currency)} tax`;
                                               })()}
                                             </div>
+                          </td>
+                          <td className="px-3 py-2 text-center">
+                            <ExpertActionPanel 
+                              category={category} 
+                              item={item} 
+                              onUpdate={(field, val) => updateItem(item.id, field, val)} 
+                            />
                           </td>
                           <td className="px-3 py-2 text-center">
                             <Button
@@ -1442,6 +1452,13 @@ export function EnhancedInvoiceBuilder({
           </div>
         </CardContent>
       </Card>
+      
+      {/* AI Business Co-Pilot Overlay */}
+      <AIInsightOverlay 
+        domain={category} 
+        items={invoice.items} 
+        businessId={business?.id} 
+      />
     </div >
   );
 }

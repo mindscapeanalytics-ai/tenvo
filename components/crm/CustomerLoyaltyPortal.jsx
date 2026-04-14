@@ -15,7 +15,7 @@ const TIERS = [
     { id: 'bronze', name: 'Bronze', minPoints: 0, icon: Shield, color: 'from-orange-700 to-amber-600', textColor: 'text-orange-700', bgColor: 'bg-orange-50', borderColor: 'border-orange-200' },
     { id: 'silver', name: 'Silver', minPoints: 500, icon: Star, color: 'from-gray-500 to-slate-400', textColor: 'text-gray-600', bgColor: 'bg-gray-50', borderColor: 'border-gray-200' },
     { id: 'gold', name: 'Gold', minPoints: 2000, icon: Crown, color: 'from-yellow-500 to-amber-400', textColor: 'text-amber-600', bgColor: 'bg-amber-50', borderColor: 'border-amber-200' },
-    { id: 'platinum', name: 'Platinum', minPoints: 5000, icon: Sparkles, color: 'from-violet-600 to-wine-500', textColor: 'text-violet-600', bgColor: 'bg-violet-50', borderColor: 'border-violet-200' },
+    { id: 'platinum', name: 'Platinum', minPoints: 5000, icon: Sparkles, color: 'from-brand-primary to-brand-primary-dark', textColor: 'text-brand-primary', bgColor: 'bg-brand-50', borderColor: 'border-brand-100' },
 ];
 
 const DEMO_REWARDS = [
@@ -68,7 +68,7 @@ export function CustomerLoyaltyPortal({ businessId, currency = 'Rs.' }) {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="relative overflow-hidden rounded-2xl p-6 text-white"
-                style={{ background: `linear-gradient(135deg, #4F46E5 0%, #7C3AED 50%, #9333EA 100%)` }}
+                style={{ background: 'linear-gradient(135deg, #1738A5 0%, #2F5BFF 50%, #5F82FF 100%)' }}
             >
                 <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/3" />
                 <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full translate-y-1/3 -translate-x-1/4" />
@@ -182,7 +182,7 @@ export function CustomerLoyaltyPortal({ businessId, currency = 'Rs.' }) {
                                                         {tier.name}
                                                     </span>
                                                     {isActive && (
-                                                        <span className="text-[10px] font-bold px-2 py-0.5 bg-white rounded-full text-indigo-600">
+                                                        <span className="text-[10px] font-bold px-2 py-0.5 bg-white rounded-full text-brand-primary">
                                                             CURRENT
                                                         </span>
                                                     )}
@@ -251,20 +251,20 @@ export function CustomerLoyaltyPortal({ businessId, currency = 'Rs.' }) {
                                 className={cn(
                                     'group p-4 rounded-2xl border-2 transition-all',
                                     canRedeem
-                                        ? 'bg-white border-gray-100 hover:border-indigo-200 hover:shadow-lg'
+                                        ? 'bg-white border-gray-100 hover:border-brand-100 hover:shadow-lg'
                                         : 'bg-gray-50 border-gray-100 opacity-60'
                                 )}
                             >
                                 <div className="flex items-start justify-between">
                                     <div className={cn(
                                         'w-12 h-12 rounded-xl flex items-center justify-center',
-                                        canRedeem ? 'bg-indigo-50 text-indigo-600' : 'bg-gray-100 text-gray-400'
+                                        canRedeem ? 'bg-brand-50 text-brand-primary' : 'bg-gray-100 text-gray-400'
                                     )}>
                                         <reward.icon className="w-6 h-6" />
                                     </div>
                                     <span className={cn(
                                         'text-xs font-black px-2.5 py-1 rounded-full',
-                                        canRedeem ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-200 text-gray-500'
+                                        canRedeem ? 'bg-brand-100 text-brand-primary-dark' : 'bg-gray-200 text-gray-500'
                                     )}>
                                         {reward.points} pts
                                     </span>
@@ -276,7 +276,7 @@ export function CustomerLoyaltyPortal({ businessId, currency = 'Rs.' }) {
                                     className={cn(
                                         'w-full mt-4 h-9 text-xs font-bold rounded-xl',
                                         canRedeem
-                                            ? 'bg-indigo-600 hover:bg-indigo-700'
+                                            ? 'bg-brand-primary hover:bg-brand-primary-dark'
                                             : 'bg-gray-200 text-gray-500 cursor-not-allowed'
                                     )}
                                 >

@@ -8,6 +8,7 @@ import {
   productAPI,
   customerAPI,
   invoiceAPI,
+  posAPI,
   vendorAPI,
   purchaseOrderAPI,
   manufacturingAPI,
@@ -313,7 +314,7 @@ function BusinessDashboardContent() {
   const { dateRange, setDateRange, searchQuery, setSearchQuery } = useFilters();
 
   // POS & Restaurant States
-  const [posSession, setPosSession] = useState({ id: 'sess-initial', startTime: null });
+  const [posSession, setPosSession] = useState(null);
   const [restaurantTables, setRestaurantTables] = useState([
     { id: '1', name: 'Table 1', status: 'available', capacity: 4, zone_id: '1' },
     { id: '2', name: 'Table 2', status: 'available', capacity: 2, zone_id: '1' },
@@ -325,6 +326,28 @@ function BusinessDashboardContent() {
     { id: 'k-1', orderId: 'ord-123', items: [{ name: 'Biryani', qty: 2 }, { name: 'Coke', qty: 2 }], status: 'preparing', time: '12:45' },
     { id: 'k-2', orderId: 'ord-124', items: [{ name: 'Karahi', qty: 1 }], status: 'pending', time: '13:02' },
   ]);
+
+  useEffect(() => {
+    const hydrateActivePosSession = async () => {
+      if (!business?.id) {
+        setPosSession(null);
+        return;
+      }
+
+      const activeRes = await posAPI.getActiveSession(business.id);
+      if (activeRes?.success && activeRes.session) {
+        setPosSession({
+          ...activeRes.session,
+          startTime: activeRes.session.opened_at || activeRes.session.startTime || null,
+          terminalName: activeRes.session.terminal_name || null,
+        });
+      } else {
+        setPosSession(null);
+      }
+    };
+
+    hydrateActivePosSession();
+  }, [business?.id]);
 
   // Load business if not in context but id exists in localStorage or searchParams
   useEffect(() => {
@@ -808,31 +831,146 @@ function BusinessDashboardContent() {
 
   // ─── POS Handlers ──────────────────────────────────────────────────────────
 
+  const handleStartPosSession = async () => {
+    if (!business?.id) {
+      toast.error('Business context is not ready yet');
+      return { success: false, error: 'Business context is not ready' };
+    }
+
+    try {
+      toast.loading('Starting POS session...', { id: 'pos-session' });
+
+      const activeRes = await posAPI.getActiveSession(business.id);
+      if (activeRes?.success && activeRes.session) {
+        setPosSession({
+          ...activeRes.session,
+          startTime: activeRes.session.opened_at || activeRes.session.startTime || null,
+          terminalName: activeRes.session.terminal_name || null,
+        });
+        toast.success('Active POS session restored', { id: 'pos-session' });
+        return { success: true, session: activeRes.session };
+      }
+
+      const terminalsRes = await posAPI.getTerminals(business.id);
+      if (!terminalsRes?.success) {
+        throw new Error(terminalsRes?.error || 'Failed to load POS terminals');
+      }
+
+      let terminal = (terminalsRes.terminals || []).find(t => t?.status === 'active') || terminalsRes.terminals?.[0];
+
+      if (!terminal) {
+        const codeSuffix = String(Date.now()).slice(-6);
+        const createRes = await posAPI.createTerminal({
+          businessId: business.id,
+          name: 'Main Counter',
+          code: `TERM-${codeSuffix}`,
+        });
+
+        if (!createRes?.success) {
+          throw new Error(createRes?.error || 'Failed to create POS terminal');
+        }
+        terminal = createRes.terminal;
+      }
+
+      const openRes = await posAPI.openSession({
+        businessId: business.id,
+        terminalId: terminal.id,
+        openingCash: 0,
+      });
+
+      if (!openRes?.success) {
+        throw new Error(openRes?.error || 'Failed to open POS session');
+      }
+
+      const openSession = openRes.session;
+      setPosSession({
+        ...openSession,
+        startTime: openSession?.opened_at || new Date().toISOString(),
+        terminalName: terminal?.name || null,
+      });
+
+      toast.success('POS session started', { id: 'pos-session' });
+      return { success: true, session: openSession };
+    } catch (error) {
+      toast.error(error?.message || 'Could not start POS session', { id: 'pos-session' });
+      return { success: false, error: error?.message || 'Could not start POS session' };
+    }
+  };
+
   const handlePosCheckout = async (checkoutData) => {
     try {
       toast.loading('Processing POS Checkout...', { id: 'pos' });
-      const items = checkoutData.items.map(item => ({
-        product_id: item.id,
-        quantity: item.quantity,
-        unit_price: item.price,
-        name: item.name
+      const normalizedItems = (checkoutData.items || []).map(item => ({
+        productId: item.productId || item.id,
+        productName: item.productName || item.name,
+        quantity: Number(item.quantity) || 1,
+        unitPrice: Number(item.unitPrice || item.price) || 0,
+        taxPercent: Number(item.taxPercent) || 0,
+        taxAmount: Number(item.taxAmount) || 0,
       }));
-      const subtotal = items.reduce((sum, i) => sum + (i.quantity * i.unit_price), 0);
+      const subtotal = normalizedItems.reduce((sum, i) => sum + (i.quantity * i.unitPrice), 0);
+      const taxAmount = normalizedItems.reduce((sum, i) => sum + (i.taxAmount || 0), 0);
+      const total = Number(checkoutData.total) || (subtotal + taxAmount);
+
+      // Prefer POS transaction flow when a session is open so refunds and session reporting stay consistent.
+      if (checkoutData.sessionId) {
+        const posResult = await posAPI.checkout({
+          businessId: business.id,
+          sessionId: checkoutData.sessionId,
+          customerId: checkoutData.customerId || null,
+          items: normalizedItems,
+          payments: checkoutData.payments?.length
+            ? checkoutData.payments
+            : [{ method: checkoutData.paymentMethod || 'cash', amount: total }],
+        });
+
+        if (!posResult?.success) {
+          throw new Error(posResult?.error || 'POS transaction failed');
+        }
+
+        toast.success('Sale completed successfully', { id: 'pos' });
+        refreshAllData();
+        return {
+          success: true,
+          transaction: posResult.transaction,
+          mode: 'pos',
+        };
+      }
+
+      // Compatibility fallback for environments with no active POS session.
+      const invoiceItems = normalizedItems.map(item => ({
+        product_id: item.productId,
+        quantity: item.quantity,
+        unit_price: item.unitPrice,
+        name: item.productName,
+        tax_amount: item.taxAmount,
+      }));
+
       const invoiceData = {
         business_id: business.id,
         customer_id: checkoutData.customerId || null,
         payment_method: checkoutData.paymentMethod || 'cash',
-        grand_total: checkoutData.total || subtotal,
-        subtotal: subtotal,
-        tax_total: (checkoutData.total || subtotal) - subtotal,
+        grand_total: total,
+        subtotal,
+        tax_total: taxAmount,
         status: 'paid',
         date: new Date().toISOString(),
         payment_status: 'paid',
       };
-      await invoiceAPI.create(invoiceData, items);
+
+      const createdInvoice = await invoiceAPI.create(invoiceData, invoiceItems);
       toast.success('Sale completed successfully', { id: 'pos' });
       refreshAllData();
-      return { success: true };
+      return {
+        success: true,
+        transaction: {
+          id: createdInvoice?.id,
+          transaction_number: createdInvoice?.invoice_number || createdInvoice?.number || `INV-${Date.now()}`,
+          total_amount: createdInvoice?.grand_total || total,
+          customer_id: createdInvoice?.customer_id || checkoutData.customerId || null,
+        },
+        mode: 'invoice-fallback',
+      };
     } catch (error) {
       console.error('POS Checkout Error:', error);
       if (isEntitlementError(error)) {
@@ -1072,6 +1210,7 @@ function BusinessDashboardContent() {
               posSession,
               restaurantTables,
               kitchenQueue,
+              handleStartPosSession,
               handlePosCheckout,
               handleTableAction,
               handleNewRestaurantOrder,

@@ -13,10 +13,21 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { getDomainDefaults } from '@/lib/domainKnowledge';
+import { DomainFieldRenderer } from '@/components/domain/DomainFieldRenderer';
+import { getDomainProductFields, getDomainFormLabels, isHighPrecisionDomain, sanitizeDomainData } from '@/lib/utils/domainHelpers';
+import { validateDomainData } from '@/lib/validation/domainSchemas';
 
 // ─── Step Definitions ────────────────────────────────────────────────────────
 
-const WIZARD_STEPS = [
+const PRECISION_STEPS = [
+    { key: 'basics', label: 'Product Info', icon: Package, description: 'Name, SKU, and category' },
+    { key: 'attributes', label: 'Attributes', icon: Layers, description: 'Domain-specific details' },
+    { key: 'pricing', label: 'Pricing', icon: DollarSign, description: 'Cost, selling price, and tax' },
+    { key: 'inventory', label: 'Inventory', icon: Warehouse, description: 'Stock levels and tracking' },
+    { key: 'review', label: 'Review', icon: CheckCircle2, description: 'Confirm and save' },
+];
+
+const STANDARD_STEPS = [
     { key: 'basics', label: 'Product Info', icon: Package, description: 'Name, SKU, and category' },
     { key: 'pricing', label: 'Pricing', icon: DollarSign, description: 'Cost, selling price, and tax' },
     { key: 'inventory', label: 'Inventory', icon: Warehouse, description: 'Stock levels and tracking' },
@@ -50,15 +61,16 @@ const TAX_PRESETS = [
 
 function StepBasics({ formData, onChange, category, errors }) {
     const categorySuggestions = DOMAIN_CATEGORY_SUGGESTIONS[category] || DOMAIN_CATEGORY_SUGGESTIONS['retail'];
+    const labels = getDomainFormLabels(category);
 
     return (
         <div className="space-y-5">
             <div className="space-y-1.5">
-                <label className="text-xs font-black text-gray-700 uppercase tracking-wider">Product Name *</label>
+                <label className="text-xs font-black text-gray-700 uppercase tracking-wider">{labels.name} *</label>
                 <Input
                     value={formData.name || ''}
                     onChange={(e) => onChange('name', e.target.value)}
-                    placeholder="e.g., Coca-Cola 1.5L, Chicken Biryani, Samsung Galaxy A15"
+                    placeholder={`Enter ${labels.name.toLowerCase()}`}
                     className={cn(
                         "h-12 rounded-xl text-sm font-medium",
                         errors.name && "border-red-300 focus:ring-red-200"
@@ -94,7 +106,7 @@ function StepBasics({ formData, onChange, category, errors }) {
             </div>
 
             <div className="space-y-1.5">
-                <label className="text-xs font-black text-gray-700 uppercase tracking-wider">Category *</label>
+                <label className="text-xs font-black text-gray-700 uppercase tracking-wider">{labels.category} *</label>
                 <div className="flex flex-wrap gap-1.5 mb-2">
                     {categorySuggestions.map(cat => (
                         <button
@@ -114,7 +126,7 @@ function StepBasics({ formData, onChange, category, errors }) {
                 <Input
                     value={formData.category || ''}
                     onChange={(e) => onChange('category', e.target.value)}
-                    placeholder="Or type a custom category"
+                    placeholder={`Or type a custom ${labels.category.toLowerCase()}`}
                     className="h-10 rounded-xl text-sm"
                 />
                 {errors.category && <p className="text-[10px] text-red-500 font-bold">{errors.category}</p>}
@@ -294,12 +306,13 @@ function StepPricing({ formData, onChange, currency, errors }) {
 
 // ─── Step 3: Inventory ───────────────────────────────────────────────────────
 
-function StepInventory({ formData, onChange, errors }) {
+function StepInventory({ formData, onChange, errors, category }) {
+    const labels = getDomainFormLabels(category);
     return (
         <div className="space-y-5">
             <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-1.5">
-                    <label className="text-xs font-black text-gray-700 uppercase tracking-wider">Opening Stock *</label>
+                    <label className="text-xs font-black text-gray-700 uppercase tracking-wider">{labels.stock} *</label>
                     <Input
                         type="number"
                         value={formData.stock ?? ''}
@@ -389,44 +402,9 @@ function StepInventory({ formData, onChange, errors }) {
 
 // ─── Step 4: Domain Attributes ───────────────────────────────────────────────
 
-function StepAttributes({ formData, onChange, category }) {
+function StepAttributes({ formData, onChange, category, errors }) {
     const domainFields = useMemo(() => {
-        // Inline domain-specific field definitions
-        const DOMAIN_FIELDS = {
-            'restaurant-cafe': [
-                { key: 'prep_time', label: 'Prep Time (min)', type: 'number', placeholder: '15' },
-                { key: 'allergens', label: 'Allergens', type: 'text', placeholder: 'Nuts, Dairy, Gluten...' },
-                { key: 'spice_level', label: 'Spice Level', type: 'select', options: ['Mild', 'Medium', 'Hot', 'Extra Hot'] },
-                { key: 'is_vegan', label: 'Vegan', type: 'boolean' },
-                { key: 'is_halal', label: 'Halal Certified', type: 'boolean' },
-            ],
-            'pharmacy': [
-                { key: 'generic_name', label: 'Generic Name', type: 'text', placeholder: 'Paracetamol' },
-                { key: 'dosage', label: 'Dosage', type: 'text', placeholder: '500mg' },
-                { key: 'requires_prescription', label: 'Prescription Required', type: 'boolean' },
-                { key: 'manufacturer', label: 'Manufacturer', type: 'text', placeholder: 'Manufacturer name' },
-            ],
-            'electronics': [
-                { key: 'warranty_months', label: 'Warranty (months)', type: 'number', placeholder: '12' },
-                { key: 'model_number', label: 'Model Number', type: 'text', placeholder: 'Model #' },
-                { key: 'voltage', label: 'Voltage', type: 'text', placeholder: '220V' },
-            ],
-            'textile': [
-                { key: 'fabric_type', label: 'Fabric Type', type: 'text', placeholder: 'Cotton, Silk...' },
-                { key: 'color', label: 'Color', type: 'text', placeholder: 'Blue, Red...' },
-                { key: 'size', label: 'Size', type: 'select', options: ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'Free Size'] },
-            ],
-            'construction': [
-                { key: 'grade', label: 'Grade/Quality', type: 'text', placeholder: 'A-Grade' },
-                { key: 'load_capacity', label: 'Load Capacity', type: 'text', placeholder: '500kg' },
-            ],
-            'auto_parts': [
-                { key: 'vehicle_make', label: 'Vehicle Make', type: 'text', placeholder: 'Toyota, Honda...' },
-                { key: 'part_number', label: 'OEM Part Number', type: 'text', placeholder: 'Part #' },
-                { key: 'is_genuine', label: 'Genuine Part', type: 'boolean' },
-            ],
-        };
-        return DOMAIN_FIELDS[category] || [];
+        return getDomainProductFields(category);
     }, [category]);
 
     return (
@@ -439,52 +417,28 @@ function StepAttributes({ formData, onChange, category }) {
                             Domain-specific fields for {category.replace('-', ' ')}
                         </span>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        {domainFields.map(field => (
-                            <div key={field.key} className="space-y-1.5">
-                                <label className="text-xs font-black text-gray-700 uppercase tracking-wider">
-                                    {field.label} {field.required && '*'}
-                                </label>
-                                {field.type === 'select' ? (
-                                    <select
-                                        value={formData.domain_data?.[field.key] || ''}
-                                        onChange={(e) => onChange('domain_data', {
-                                            ...formData.domain_data, [field.key]: e.target.value
-                                        })}
-                                        className="w-full h-10 rounded-xl text-sm border border-gray-200 px-3 bg-white"
-                                    >
-                                        <option value="">Select...</option>
-                                        {(field.options || []).map(opt => (
-                                            <option key={opt} value={opt}>{opt}</option>
-                                        ))}
-                                    </select>
-                                ) : field.type === 'boolean' ? (
-                                    <button
-                                        onClick={() => onChange('domain_data', {
-                                            ...formData.domain_data, [field.key]: !formData.domain_data?.[field.key]
-                                        })}
-                                        className={cn(
-                                            "w-full h-10 rounded-xl text-sm font-bold border-2 transition-all",
-                                            formData.domain_data?.[field.key]
-                                                ? "border-indigo-500 bg-indigo-50 text-indigo-700"
-                                                : "border-gray-200 bg-white text-gray-500"
-                                        )}
-                                    >
-                                        {formData.domain_data?.[field.key] ? '✓ Yes' : 'No'}
-                                    </button>
-                                ) : (
-                                    <Input
-                                        type={field.type || 'text'}
-                                        value={formData.domain_data?.[field.key] || ''}
-                                        onChange={(e) => onChange('domain_data', {
-                                            ...formData.domain_data, [field.key]: e.target.value
-                                        })}
-                                        placeholder={field.placeholder || ''}
-                                        className="h-10 rounded-xl text-sm"
-                                    />
-                                )}
-                            </div>
-                        ))}
+                    {errors.domain_data && (
+                        <div className="p-3 bg-red-50 border border-red-100 rounded-xl flex items-center gap-2 text-[10px] text-red-600 font-bold uppercase animate-in fade-in slide-in-from-top-1">
+                            <AlertTriangle className="w-3.5 h-3.5" />
+                            {errors.domain_data}
+                        </div>
+                    )}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {domainFields.map(field => {
+                            const key = field.toLowerCase().replace(/[^a-z0-9]/g, '');
+                            return (
+                                <DomainFieldRenderer
+                                    key={field}
+                                    field={field}
+                                    category={category}
+                                    value={formData.domain_data?.[key] || ''}
+                                    error={errors[`domain_data.${key}`]}
+                                    onChange={(val) => onChange('domain_data', {
+                                        ...formData.domain_data, [key]: val
+                                    })}
+                                />
+                            );
+                        })}
                     </div>
                 </>
             ) : (
@@ -566,6 +520,9 @@ export function ProductWizard({
     currency = 'Rs.',
 }) {
     const isEditing = !!product;
+    const isPrecision = useMemo(() => isHighPrecisionDomain(category), [category]);
+    const wizardSteps = isPrecision ? PRECISION_STEPS : STANDARD_STEPS;
+
     const [currentStep, setCurrentStep] = useState(0);
     const [isSaving, setIsSaving] = useState(false);
     const [errors, setErrors] = useState({});
@@ -600,28 +557,40 @@ export function ProductWizard({
 
     const validateStep = useCallback((step) => {
         const newErrors = {};
-        switch (step) {
-            case 0: // Basics
+        const stepKey = wizardSteps[step].key;
+
+        switch (stepKey) {
+            case 'basics':
                 if (!formData.name?.trim()) newErrors.name = 'Product name is required';
                 if (!formData.category?.trim()) newErrors.category = 'Category is required';
                 break;
-            case 1: // Pricing
+            case 'attributes':
+                // [HARDENED] Sync with domain-specific Zod schema
+                const validation = validateDomainData(category, formData.domain_data || {});
+                if (!validation.success) {
+                    newErrors.domain_data = 'Please complete mandatory domain fields';
+                    validation.error.errors.forEach(err => {
+                        const fieldKey = err.path.join('.');
+                        newErrors[`domain_data.${fieldKey}`] = err.message;
+                    });
+                }
+                break;
+            case 'pricing':
                 if (!formData.cost_price && formData.cost_price !== 0) newErrors.cost_price = 'Cost price is required';
                 if (!formData.price && formData.price !== 0) newErrors.price = 'Selling price is required';
                 break;
-            case 2: // Inventory
-                // Stock defaults to 0, always valid
+            case 'inventory':
                 break;
         }
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
-    }, [formData]);
+    }, [formData, category, wizardSteps]);
 
     const handleNext = useCallback(() => {
         if (validateStep(currentStep)) {
-            setCurrentStep(prev => Math.min(prev + 1, WIZARD_STEPS.length - 1));
+            setCurrentStep(prev => Math.min(prev + 1, wizardSteps.length - 1));
         }
-    }, [currentStep, validateStep]);
+    }, [currentStep, validateStep, wizardSteps.length]);
 
     const handleBack = useCallback(() => {
         setCurrentStep(prev => Math.max(prev - 1, 0));
@@ -647,6 +616,7 @@ export function ProductWizard({
                 max_stock: toNumber(formData.max_stock, 0),
                 min_order_qty: toNumber(formData.min_order_qty, 1),
                 wholesale_price: toNumber(formData.wholesale_price, 0),
+                domain_data: sanitizeDomainData(formData.domain_data || {}, category)
             };
             await onSave?.(payload);
         } catch (err) {
@@ -686,7 +656,7 @@ export function ProductWizard({
                             {isEditing ? 'Edit Product' : 'Add New Product'}
                         </h2>
                         <p className="text-[10px] text-gray-400 font-bold">
-                            Step {currentStep + 1} of {WIZARD_STEPS.length} — {WIZARD_STEPS[currentStep].description}
+                            Step {currentStep + 1} of {wizardSteps.length} — {wizardSteps[currentStep].description}
                         </p>
                     </div>
                 </div>
@@ -694,14 +664,14 @@ export function ProductWizard({
                     <X className="w-4 h-4" />
                 </Button>
             </div>
-
+ 
             {/* Step Progress */}
             <div className="flex items-center px-6 py-3 bg-gray-50/50 border-b border-gray-100">
-                {WIZARD_STEPS.map((step, idx) => {
+                {wizardSteps.map((step, idx) => {
                     const Icon = step.icon;
                     const isActive = idx === currentStep;
                     const isCompleted = idx < currentStep;
-
+ 
                     return (
                         <React.Fragment key={step.key}>
                             <button
@@ -724,7 +694,7 @@ export function ProductWizard({
                                 </div>
                                 <span className="hidden sm:inline">{step.label}</span>
                             </button>
-                            {idx < WIZARD_STEPS.length - 1 && (
+                            {idx < wizardSteps.length - 1 && (
                                 <ChevronRight className={cn(
                                     "w-3 h-3 mx-1 shrink-0",
                                     isCompleted ? "text-emerald-400" : "text-gray-300"
@@ -771,7 +741,7 @@ export function ProductWizard({
                 </Button>
 
                 <div className="flex items-center gap-2">
-                    {currentStep < WIZARD_STEPS.length - 1 ? (
+                    {currentStep < wizardSteps.length - 1 ? (
                         <Button
                             onClick={handleNext}
                             className="h-10 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 shadow-md shadow-indigo-200"

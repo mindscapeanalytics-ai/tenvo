@@ -43,11 +43,11 @@ export function IndustryInsights({ category }: IndustryInsightsProps) {
                 {/* Seasonality Insight */}
                 {intelligence.seasonality && (
                     <div className="flex items-start gap-3 p-3 rounded-xl bg-white/40 border border-white/60 hover:bg-white/60 transition-colors group">
-                        <div className="p-2 rounded-lg bg-blue-50 group-hover:bg-blue-100 transition-colors">
-                            <Calendar className="w-4 h-4 text-blue-600" />
+                        <div className="p-2 rounded-lg bg-brand-50 group-hover:bg-brand-100 transition-colors">
+                            <Calendar className="w-4 h-4 text-brand-primary" />
                         </div>
                         <div>
-                            <p className="font-bold text-xs uppercase tracking-wide text-blue-900">Seasonality: {intelligence.seasonality}</p>
+                            <p className="font-bold text-xs uppercase tracking-wide text-brand-primary-dark">Seasonality: {intelligence.seasonality}</p>
                             <p className="text-[11px] leading-relaxed text-muted-foreground mt-0.5">
                                 {isPeakMonth
                                     ? `⚠️ Peak period (${currentMonth}). Recommended: 20% safety stock buffer.`
@@ -76,11 +76,11 @@ export function IndustryInsights({ category }: IndustryInsightsProps) {
                 {/* Demand Volatility Insight */}
                 {intelligence.demandVolatility > 0.6 && (
                     <div className="flex items-start gap-3 p-3 rounded-xl bg-white/40 border border-white/60 hover:bg-white/60 transition-colors group">
-                        <div className="p-2 rounded-lg bg-violet-50 group-hover:bg-violet-100 transition-colors">
-                            <TrendingUp className="w-4 h-4 text-violet-600" />
+                        <div className="p-2 rounded-lg bg-brand-50 group-hover:bg-brand-100 transition-colors">
+                            <TrendingUp className="w-4 h-4 text-brand-primary" />
                         </div>
                         <div>
-                            <p className="font-bold text-xs uppercase tracking-wide text-violet-900">Market Volatility</p>
+                            <p className="font-bold text-xs uppercase tracking-wide text-brand-primary-dark">Market Volatility</p>
                             <p className="text-[11px] leading-relaxed text-muted-foreground mt-0.5">
                                 Dynamic demand patterns detected. We recommend a 2.5x lead-time safety multiplier.
                             </p>

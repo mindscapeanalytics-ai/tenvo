@@ -24,13 +24,13 @@ const DOMAIN_ICONS = {
 };
 
 const DOMAIN_COLORS = {
-    'retail-shop': 'bg-blue-500',
+    'retail-shop': 'bg-brand-primary',
     'restaurant-cafe': 'bg-orange-500',
     'supermarket': 'bg-emerald-500',
     'grocery': 'bg-green-500',
     'wholesale': 'bg-wine-500',
     'manufacturing': 'bg-slate-600',
-    'default': 'bg-wine-600',
+    'default': 'bg-brand-primary-dark',
 };
 
 export function BusinessSwitcherEnhanced({ isCollapsed = false }) {

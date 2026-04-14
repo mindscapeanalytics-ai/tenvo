@@ -40,11 +40,11 @@ const FINANCE_TABS = [
 
 function KPICard({ label, value, icon: Icon, trend, color = 'indigo', loading }) {
     const colors = {
-        indigo: 'bg-indigo-50 text-indigo-600 border-indigo-100',
+        indigo: 'bg-brand-50 text-brand-primary border-brand-100',
         emerald: 'bg-emerald-50 text-emerald-600 border-emerald-100',
         amber: 'bg-amber-50 text-amber-600 border-amber-100',
         red: 'bg-red-50 text-red-600 border-red-100',
-        blue: 'bg-blue-50 text-blue-600 border-blue-100',
+        blue: 'bg-brand-50 text-brand-primary border-brand-100',
     };
     return (
         <div className={cn('rounded-xl border p-4', colors[color])}>
@@ -124,7 +124,7 @@ function ChartOfAccountsPanel({ businessId, accounts, currency }) {
                                                     {acc.sub_type?.replace(/_/g, ' ')}
                                                 </span>
                                                 {acc.is_system && (
-                                                    <span className="text-[8px] px-1.5 py-0.5 bg-indigo-50 text-indigo-500 font-black rounded-full">SYS</span>
+                                                    <span className="text-[8px] px-1.5 py-0.5 bg-brand-50 text-brand-primary font-black rounded-full">SYS</span>
                                                 )}
                                             </div>
                                         ))}
@@ -152,7 +152,7 @@ function CreditNotesPanel({ businessId, creditNotes, currency, onRefresh }) {
 
     const STATUS_STYLES = {
         draft: 'bg-gray-100 text-gray-600',
-        issued: 'bg-blue-100 text-blue-700',
+        issued: 'bg-brand-50 text-brand-primary',
         applied: 'bg-emerald-100 text-emerald-700',
         cancelled: 'bg-red-100 text-red-600',
     };
@@ -281,7 +281,7 @@ function CreditNotesPanel({ businessId, creditNotes, currency, onRefresh }) {
                                 <span className="text-xs text-gray-400">{selectedInvoice.customer_name}</span>
                                 <span className="flex-1" />
                                 <span className="text-xs font-bold">{currency} {Number(selectedInvoice.grand_total || selectedInvoice.total_amount || 0).toLocaleString()}</span>
-                                <button onClick={() => { setSelectedInvoice(null); setItems([]); }} className="text-xs text-blue-600 hover:underline ml-2">Change</button>
+                                <button onClick={() => { setSelectedInvoice(null); setItems([]); }} className="text-xs text-brand-primary hover:underline ml-2">Change</button>
                             </div>
 
                             {/* Reason */}
@@ -440,7 +440,7 @@ function ExchangeRatesPanel({ businessId, rates, currency }) {
                 <div className="bg-white rounded-xl border border-gray-100 divide-y divide-gray-50">
                     {rates.map(r => (
                         <div key={r.id} className="flex items-center gap-3 px-4 py-3">
-                            <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-xs font-black text-blue-600">
+                            <div className="w-8 h-8 rounded-lg bg-brand-50 flex items-center justify-center text-xs font-black text-brand-primary">
                                 {r.from_currency}
                             </div>
                             <ChevronRight className="w-3 h-3 text-gray-300" />
@@ -454,7 +454,7 @@ function ExchangeRatesPanel({ businessId, rates, currency }) {
                             </div>
                             <div className="text-right shrink-0">
                                 <span className={cn('text-[9px] px-1.5 py-0.5 rounded-full font-black',
-                                    r.source === 'api' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'
+                                    r.source === 'api' ? 'bg-brand-50 text-brand-primary' : 'bg-gray-100 text-gray-600'
                                 )}>
                                     {r.source?.toUpperCase()}
                                 </span>
@@ -626,7 +626,7 @@ export default function FinanceHub({ businessId, initialTab }) {
                             </Button>
                             <Button
                                 onClick={() => { setVoucherType('payment'); setShowVoucherForm(true); }}
-                                className="flex-1 h-24 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl flex flex-col gap-2 shadow-xl shadow-blue-500/10"
+                                className="flex-1 h-24 bg-brand-primary hover:bg-brand-primary-dark text-white rounded-2xl flex flex-col gap-2 shadow-xl shadow-brand-primary/20"
                             >
                                 <CreditCard className="w-6 h-6" />
                                 <span className="font-black text-xs uppercase tracking-widest">Vendor Payment</span>
@@ -667,7 +667,7 @@ export default function FinanceHub({ businessId, initialTab }) {
         <div className="space-y-4">
             {/* Finance Header */}
             <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-primary to-brand-primary-dark flex items-center justify-center">
                     <Landmark className="w-5 h-5 text-white" />
                 </div>
                 <div>
@@ -688,7 +688,7 @@ export default function FinanceHub({ businessId, initialTab }) {
                             className={cn(
                                 'flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-all shrink-0',
                                 isActive
-                                    ? 'bg-indigo-50 text-indigo-700 shadow-sm'
+                                    ? 'bg-brand-50 text-brand-primary-dark shadow-sm'
                                     : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'
                             )}
                         >

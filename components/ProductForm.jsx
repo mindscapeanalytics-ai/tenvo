@@ -16,6 +16,7 @@ import { SerialNumberInput } from '@/components/domain/SerialTracking';
 import { BrandAutocomplete } from '@/components/BrandAutocomplete';
 import { QuickAddTemplates } from '@/components/QuickAddTemplates';
 import { FileUpload } from '@/components/FileUpload';
+import { PropheticInsightCard } from '@/components/domain/PropheticInsightCard';
 import {
     Tooltip,
     TooltipContent,
@@ -73,9 +74,10 @@ export function ProductForm({
 
     const [activeTab, setActiveTab] = useState('basic');
 
-    // Keyboard shortcuts for tabs
+    // Keyboard shortcuts for tabs & Focus Flow
     useEffect(() => {
         const handleKeys = (e) => {
+            // ALT+NUMBER for Tab Switching
             if (e.altKey && e.key >= '1' && e.key <= '4') {
                 const tabs = ['basic', 'inventory', 'intelligence', 'media'];
                 const target = tabs[parseInt(e.key) - 1];
@@ -84,10 +86,51 @@ export function ProductForm({
                     setActiveTab(target);
                 }
             }
+
+            // Command + Enter to Save
+            if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                e.preventDefault();
+                handleSubmit(e);
+            }
         };
         window.addEventListener('keydown', handleKeys);
         return () => window.removeEventListener('keydown', handleKeys);
-    }, []);
+    }, [formData, activeTab]);
+
+    /**
+     * Ultra-Speed Navigation: Enter key moves focus to next logical element
+     */
+    const handleKeyDown = (e) => {
+        if (e.key === 'Enter' && e.target.tagName === 'INPUT' && !e.shiftKey) {
+            e.preventDefault();
+            const form = e.target.form;
+            if (!form) return;
+            
+            const index = Array.from(form.elements).indexOf(e.target);
+            const nextElement = form.elements[index + 1];
+            
+            if (nextElement) {
+                // If the next element is the save button or hidden, check if we should auto-switch tabs
+                if (nextElement.type === 'submit' || nextElement.tagName === 'BUTTON') {
+                    // Boundary reached: Auto-Advance Tab
+                    const tabs = ['basic', 'inventory', 'domain', 'history'];
+                    const currentIdx = tabs.indexOf(activeTab);
+                    if (currentIdx < tabs.length - 1) {
+                        const nextTab = tabs[currentIdx + 1];
+                        setActiveTab(nextTab);
+                        toast.success(`Advancing to ${nextTab.toUpperCase()}`, { icon: '⚡', duration: 1000 });
+                        setTimeout(() => {
+                           const firstInput = document.querySelector(`[data-tab="${nextTab}"] input`);
+                           firstInput?.focus();
+                        }, 100);
+                        return;
+                    }
+                }
+                nextElement.focus();
+                if (nextElement.select) nextElement.select();
+            }
+        }
+    };
 
     // Smart Defaults Integration
     const { defaults: smartDefaults, error: smartDefaultsError } = useSafeSmartDefaults('product', {
@@ -509,42 +552,40 @@ export function ProductForm({
                         <div className="absolute -right-8 -bottom-8 w-32 h-32 rounded-full bg-wine-600/5 blur-3xl group-hover:bg-wine-600/10 transition-all duration-700" />
                     </div>
                     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                        <TabsList className="grid w-full grid-cols-5 mb-8 bg-gray-100/50 p-1 rounded-xl">
-                            <TabsTrigger value="basic" className="relative rounded-lg data-[state=active]:bg-white data-[state=active]:text-wine data-[state=active]:shadow-sm">
-                                Basic Info
-                                {['name', 'price', 'mrp', 'sku', 'barcode', 'costPrice'].some(k => errors[k]) && (
-                                    <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                                )}
-                            </TabsTrigger>
-                            <TabsTrigger value="inventory" className="relative rounded-lg data-[state=active]:bg-white data-[state=active]:text-wine data-[state=active]:shadow-sm">
-                                Inventory
-                                {['stock', 'minStock', 'maxStock'].some(k => errors[k]) && (
-                                    <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                                )}
-                            </TabsTrigger>
-                            <TabsTrigger value="domain" className="relative rounded-lg data-[state=active]:bg-white data-[state=active]:text-wine data-[state=active]:shadow-sm">
-                                Intelligence
-                                {domainFields.some(f => errors[f.toLowerCase().replace(/[^a-z0-9]/g, '')]) && (
-                                    <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                                )}
-                            </TabsTrigger>
-                            <TabsTrigger value="media" className="relative rounded-lg data-[state=active]:bg-white data-[state=active]:text-wine data-[state=active]:shadow-sm">
-                                Media
-                            </TabsTrigger>
-                            {product && <TabsTrigger value="history" className="rounded-lg data-[state=active]:bg-white data-[state=active]:text-wine data-[state=active]:shadow-sm">History</TabsTrigger>}
-                        </TabsList>
+                        <div className="sticky top-0 z-20 bg-white/80 backdrop-blur-md py-4 mb-6 border-b border-gray-100 flex items-center justify-between">
+                            <TabsList className="bg-gray-100/50 p-1 rounded-2xl border border-gray-100">
+                                <TabsTrigger value="basic" className="rounded-xl px-6 font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-white data-[state=active]:shadow-sm">Identity</TabsTrigger>
+                                <TabsTrigger value="inventory" className="rounded-xl px-6 font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-white data-[state=active]:shadow-sm">Stock & Flow</TabsTrigger>
+                                <TabsTrigger value="domain" className="rounded-xl px-6 font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-white data-[state=active]:shadow-sm">Expert Detail</TabsTrigger>
+                                <TabsTrigger value="media" className="rounded-xl px-6 font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-white data-[state=active]:shadow-sm">Media</TabsTrigger>
+                                {product && <TabsTrigger value="history" className="rounded-xl px-6 font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-white data-[state=active]:shadow-sm">Audit trail</TabsTrigger>}
+                            </TabsList>
+                            <div className="flex items-center gap-2">
+                                <AutosaveIndicator isSaving={isSaving} lastSaved={lastSaved} />
+                                <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <div className="p-2 rounded-full bg-blue-50 text-blue-600">
+                                                <Zap className="w-4 h-4" />
+                                            </div>
+                                        </TooltipTrigger>
+                                        <TooltipContent>Speed Entry Enabled: Use Enter to move fields</TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
+                            </div>
+                        </div>
 
-                        <TabsContent value="basic" className="space-y-6 animate-in fade-in duration-300">
+                        <TabsContent value="basic" className="space-y-8 animate-in fade-in slide-in-from-left-4 duration-500" data-tab="basic">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="space-y-2">
                                     <Label htmlFor="name" className="text-xs font-black uppercase text-gray-400 tracking-wider">Product Name *</Label>
-                                    <Input id="name" value={formData.name ?? ''} onChange={(e) => updateField('name', e.target.value)} onBlur={() => handleBlur('name')} placeholder="e.g. Premium Filter" className="h-11 rounded-xl focus:ring-wine/20 font-bold" />
+                                    <Input id="name" value={formData.name ?? ''} onChange={(e) => updateField('name', e.target.value)} onBlur={() => handleBlur('name')} placeholder="e.g. Premium Filter" className="h-11 rounded-xl focus:ring-wine/20 font-bold" selectOnFocus />
                                     {renderError('name')}
                                 </div>
 
                                 <div className="space-y-2">
                                     <Label htmlFor="sku" className="text-xs font-black uppercase text-gray-400 tracking-wider">SKU / Item Code</Label>
-                                    <Input id="sku" value={formData.sku ?? ''} onChange={(e) => updateField('sku', e.target.value.toUpperCase())} placeholder="ITEM-001" className="h-11 rounded-xl font-mono" />
+                                    <Input id="sku" value={formData.sku ?? ''} onChange={(e) => updateField('sku', e.target.value.toUpperCase())} placeholder="ITEM-001" className="h-11 rounded-xl font-mono" selectOnFocus />
                                     {renderError('sku')}
                                 </div>
                             </div>
@@ -567,6 +608,7 @@ export function ProductForm({
                                                         value={formData[key]}
                                                         onChange={(val) => updateField(key, val)}
                                                         error={errors[key]}
+                                                        selectOnFocus
                                                     />
                                                 </div>
                                             );
@@ -578,7 +620,7 @@ export function ProductForm({
                             <div className="space-y-2">
                                 <Label htmlFor="barcode" className="text-xs font-black uppercase text-gray-400 tracking-wider">Barcode (EAN/UPC)</Label>
                                 <div className="relative">
-                                    <Input id="barcode" value={formData.barcode ?? ''} onChange={(e) => updateField('barcode', e.target.value)} placeholder="Scanning ready..." className="h-11 rounded-xl pr-10" />
+                                    <Input id="barcode" value={formData.barcode ?? ''} onChange={(e) => updateField('barcode', e.target.value)} placeholder="Scanning ready..." className="h-11 rounded-xl pr-10" selectOnFocus />
                                     <div className="absolute right-3 top-1/2 -translate-y-1/2">
                                         <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                                     </div>
@@ -621,7 +663,7 @@ export function ProductForm({
                                     <Label htmlFor="price" className="text-xs font-black uppercase text-gray-400 tracking-wider">Selling Price *</Label>
                                     <div className="relative">
                                         <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">{standards.currencySymbol}</span>
-                                        <Input id="price" type="number" value={formData.price ?? ''} onChange={(e) => updateField('price', parseFloat(e.target.value) || 0)} onBlur={() => handleBlur('price')} className="h-11 pl-12 rounded-xl" />
+                                        <Input id="price" type="number" value={formData.price ?? ''} onChange={(e) => updateField('price', parseFloat(e.target.value) || 0)} onBlur={() => handleBlur('price')} className="h-11 pl-12 rounded-xl" selectOnFocus />
                                     </div>
                                     {renderError('price')}
                                 </div>
@@ -642,7 +684,7 @@ export function ProductForm({
                                     </div>
                                     <div className="relative">
                                         <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">{standards.currencySymbol}</span>
-                                        <Input id="mrp" type="number" value={formData.mrp ?? ''} onChange={(e) => updateField('mrp', parseFloat(e.target.value) || 0)} className="h-11 pl-12 rounded-xl" />
+                                        <Input id="mrp" type="number" value={formData.mrp ?? ''} onChange={(e) => updateField('mrp', parseFloat(e.target.value) || 0)} className="h-11 pl-12 rounded-xl" selectOnFocus />
                                     </div>
                                     {renderError('mrp')}
                                 </div>
@@ -651,7 +693,7 @@ export function ProductForm({
                                     <Label htmlFor="costPrice" className="text-xs font-black uppercase text-gray-400 tracking-wider">Landing Cost</Label>
                                     <div className="relative">
                                         <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">{standards.currencySymbol}</span>
-                                        <Input id="costPrice" type="number" value={formData.costPrice ?? ''} onChange={(e) => updateField('costPrice', parseFloat(e.target.value) || 0)} className="h-11 pl-12 rounded-xl" />
+                                        <Input id="costPrice" type="number" value={formData.costPrice ?? ''} onChange={(e) => updateField('costPrice', parseFloat(e.target.value) || 0)} className="h-11 pl-12 rounded-xl" selectOnFocus />
                                     </div>
                                     {formData.price > 0 && formData.costPrice > formData.price && (
                                         <FormWarning message="Selling Price is less than Cost Price! You will incur a loss." />
@@ -671,7 +713,7 @@ export function ProductForm({
 
                                 <div className="space-y-2">
                                     <Label htmlFor="productCategory" className="text-xs font-black uppercase text-gray-400 tracking-wider">Category</Label>
-                                    <Input id="productCategory" value={formData.category ?? ''} onChange={(e) => updateField('category', e.target.value)} placeholder="e.g. Electronics, Spares" className="h-11 rounded-xl" />
+                                    <Input id="productCategory" value={formData.category ?? ''} onChange={(e) => updateField('category', e.target.value)} placeholder="e.g. Electronics, Spares" className="h-11 rounded-xl" selectOnFocus />
                                     {renderError('category')}
                                 </div>
 
@@ -724,6 +766,9 @@ export function ProductForm({
 
                             {/* Section: Live Financial Dashboard */}
                             <div className="mt-8 p-6 rounded-3xl bg-slate-900 text-white shadow-2xl relative overflow-hidden group">
+                                <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                                    <TrendingUp className="w-16 h-16" />
+                                </div>
                                 <div className="relative z-10 grid grid-cols-2 md:grid-cols-4 gap-6">
                                     <div>
                                         <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Gross Margin</p>
@@ -753,13 +798,10 @@ export function ProductForm({
                                         </p>
                                     </div>
                                 </div>
-                                <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                                    <TrendingUp className="w-16 h-16" />
-                                </div>
                             </div>
                         </TabsContent>
 
-                        <TabsContent value="media" className="space-y-6 animate-in fade-in duration-300">
+                        <TabsContent value="media" className="space-y-6 animate-in fade-in duration-300" data-tab="media">
                             <div className="grid grid-cols-1 gap-6">
                                 <div className="space-y-4">
                                     <div className="flex items-center gap-3">
@@ -777,7 +819,6 @@ export function ProductForm({
                                             accept="image/*"
                                             maxSize={2}
                                             onFileSelect={(file) => {
-                                                // Simplified: In a real app, you'd upload here and get a URL
                                                 toast.success('Image selected: ' + (file?.name || 'File'));
                                                 if (file) updateField('image_url', file.name);
                                             }}
@@ -796,7 +837,7 @@ export function ProductForm({
                             </div>
                         </TabsContent>
 
-                        <TabsContent value="domain" className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                        <TabsContent value="domain" className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500" data-tab="domain">
                             <div className="bg-wine-50/30 p-6 rounded-2xl border border-wine-100 shadow-inner">
                                 <div className="flex items-center gap-3 mb-6">
                                     <div className="p-2.5 rounded-xl bg-wine-600/10 text-wine-600">
@@ -808,6 +849,14 @@ export function ProductForm({
                                         </h3>
                                         <p className="text-sm text-gray-500">Expert domain-specific attributes for precision tracking</p>
                                     </div>
+                                </div>
+
+                                {/* AI Prophetic Insight */}
+                                <div className="mb-8">
+                                    <PropheticInsightCard 
+                                        businessId={product?.business_id || smartDefaults?.businessId} 
+                                        category={category} 
+                                    />
                                 </div>
 
                                 {/* Size-Color Matrix — for garments, boutique-fashion, leather-footwear */}
@@ -878,8 +927,7 @@ export function ProductForm({
                                 )}
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5 bg-white/50 p-6 rounded-2xl border border-dashed border-gray-200">
-                                    {domainFields.slice(['textile-wholesale', 'auto-parts', 'pharmacy', 'chemical'].includes(category) ? 2 : 0).map((field) => {
-                                        // Normalize key: lowercase and alphanumeric only (no spaces, no parens)
+                                    {domainFields.map((field) => {
                                         const key = field.toLowerCase().replace(/[^a-z0-9]/g, '');
                                         return (
                                             <div key={field} className="space-y-2">
@@ -888,7 +936,8 @@ export function ProductForm({
                                                     category={category}
                                                     value={formData[key]}
                                                     onChange={(val) => updateField(key, val)}
-                                                    error={errors[key]} // Pass specific error message
+                                                    error={errors[key]}
+                                                    selectOnFocus
                                                 />
                                             </div>
                                         );
@@ -903,9 +952,8 @@ export function ProductForm({
                             </div>
                         </TabsContent>
 
-                        <TabsContent value="inventory" className="space-y-6 animate-in fade-in duration-300">
+                        <TabsContent value="inventory" className="space-y-6 animate-in fade-in duration-300" data-tab="inventory">
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                {/* Initial Stock (Only for new products or adjustments) */}
                                 <div className="space-y-2">
                                     <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">
                                         {product ? 'Current Stock' : 'Opening Stock'}
@@ -919,26 +967,26 @@ export function ProductForm({
                                             className="h-11 pl-10 rounded-xl font-bold text-gray-900"
                                             disabled={hasBatchTracking || hasSerialTracking}
                                             placeholder={hasBatchTracking || hasSerialTracking ? "Calculated automatically" : "0"}
+                                            selectOnFocus
                                         />
                                     </div>
-                                    {product && !(hasBatchTracking || hasSerialTracking) && <p className="text-[10px] text-gray-400">Editable in visual mode (same behavior as Excel mode)</p>}
                                 </div>
 
                                 <div className="space-y-2">
                                     <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Min Stock Level</Label>
-                                    <Input type="number" value={formData.minStock ?? ''} onChange={(e) => updateField('minStock', parseInt(e.target.value) || 0)} className="h-11 rounded-xl" />
+                                    <Input type="number" value={formData.minStock ?? ''} onChange={(e) => updateField('minStock', parseInt(e.target.value) || 0)} className="h-11 rounded-xl" selectOnFocus />
                                 </div>
                                 <div className="space-y-2">
                                     <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Max Stock Level</Label>
-                                    <Input type="number" value={formData.maxStock ?? ''} onChange={(e) => updateField('maxStock', parseInt(e.target.value) || 0)} className="h-11 rounded-xl" />
+                                    <Input type="number" value={formData.maxStock ?? ''} onChange={(e) => updateField('maxStock', parseInt(e.target.value) || 0)} className="h-11 rounded-xl" selectOnFocus />
                                 </div>
                                 <div className="space-y-2">
                                     <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Reorder Point</Label>
-                                    <Input type="number" value={formData.reorderPoint ?? ''} onChange={(e) => updateField('reorderPoint', parseInt(e.target.value) || 0)} className="h-11 rounded-xl" />
+                                    <Input type="number" value={formData.reorderPoint ?? ''} onChange={(e) => updateField('reorderPoint', parseInt(e.target.value) || 0)} className="h-11 rounded-xl" selectOnFocus />
                                 </div>
                                 <div className="space-y-2">
                                     <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Reorder Qty</Label>
-                                    <Input type="number" value={formData.reorderQuantity ?? ''} onChange={(e) => updateField('reorderQuantity', parseInt(e.target.value) || 0)} className="h-11 rounded-xl" />
+                                    <Input type="number" value={formData.reorderQuantity ?? ''} onChange={(e) => updateField('reorderQuantity', parseInt(e.target.value) || 0)} className="h-11 rounded-xl" selectOnFocus />
                                 </div>
                                 <div className="space-y-2">
                                     <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Mfg. Date</Label>
@@ -970,6 +1018,7 @@ export function ProductForm({
                                                             onChange={(e) => updateField(key, e.target.value)}
                                                             className="h-11 pr-16 rounded-xl font-bold"
                                                             placeholder="Standard"
+                                                            selectOnFocus
                                                         />
                                                         <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-bold text-gray-400">METERS</span>
                                                     </div>
@@ -1035,11 +1084,11 @@ export function ProductForm({
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-6 border-t border-gray-100">
                                 <div className="space-y-2">
                                     <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">{standards.countryCode === 'PK' ? 'HSN Code' : 'Tax/HSN Code'}</Label>
-                                    <Input value={formData.hsnCode ?? ''} onChange={(e) => updateField('hsnCode', e.target.value)} placeholder="Code" className="h-11 rounded-xl" />
+                                    <Input value={formData.hsnCode ?? ''} onChange={(e) => updateField('hsnCode', e.target.value)} placeholder="Code" className="h-11 rounded-xl" selectOnFocus />
                                 </div>
                                 <div className="space-y-2">
                                     <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">SAC Code</Label>
-                                    <Input value={formData.sacCode ?? ''} onChange={(e) => updateField('sacCode', e.target.value)} className="h-11 rounded-xl" />
+                                    <Input value={formData.sacCode ?? ''} onChange={(e) => updateField('sacCode', e.target.value)} className="h-11 rounded-xl" selectOnFocus />
                                 </div>
                                 <div className="space-y-2 col-span-2 md:col-span-1">
                                     <TaxCategorySelector
@@ -1059,7 +1108,7 @@ export function ProductForm({
                         </TabsContent>
 
                         {product && (
-                            <TabsContent value="history" className="space-y-6 animate-in fade-in duration-300">
+                            <TabsContent value="history" className="space-y-6 animate-in fade-in duration-300" data-tab="history">
                                 <StockHistory productId={product.id} businessId={product.business_id} />
                             </TabsContent>
                         )}
@@ -1080,33 +1129,39 @@ export function ProductForm({
                         </div>
                     )}
 
-                    <div className="flex justify-between mt-12 pt-6 border-t border-gray-100">
-                        <Button type="button" variant="ghost" onClick={fillDemoData} className="text-xs text-gray-400 hover:text-wine uppercase font-black tracking-widest">
-                            <CheckCircle2 className="w-3 h-3 mr-1" />
-                            Fill Demo Data
-                        </Button>
-                        <div className="flex gap-3">
-                            {onCancel && (
-                                <Button type="button" variant="ghost" onClick={onCancel} className="font-bold text-gray-500 hover:text-wine h-11 px-6">
-                                    Dismiss
-                                </Button>
-                            )}
-
-                            {!product && (
-                                <Button
-                                    type="button"
-                                    onClick={(e) => handleSubmit(e, true)}
-                                    disabled={isLoading}
-                                    variant="outline"
-                                    className="font-black px-6 h-11 rounded-xl border-2 border-wine/10 text-wine hover:bg-wine/5"
-                                >
-                                    {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Save & Add New'}
-                                </Button>
-                            )}
-
-                            <Button type="submit" disabled={isLoading} className="bg-wine-600 hover:opacity-90 text-white font-black px-10 h-11 rounded-xl shadow-lg transition-all active:scale-95">
-                                {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : (product ? 'Update Inventory' : 'Add to Stock')}
+                    {/* Sticky Action Footer */}
+                    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-full max-w-2xl px-6">
+                        <div className="bg-slate-900/95 backdrop-blur-xl p-4 rounded-3xl border border-white/10 shadow-2xl shadow-indigo-500/20 flex items-center justify-between">
+                            <Button type="button" variant="ghost" onClick={fillDemoData} className="text-[10px] text-slate-400 hover:text-white uppercase font-black tracking-widest px-4">
+                                <Sparkles className="w-3 h-3 mr-2 text-yellow-500" />
+                                Smart Fill
                             </Button>
+                            
+                            <div className="flex gap-3">
+                                {onCancel && (
+                                    <Button type="button" variant="ghost" onClick={onCancel} className="font-bold text-slate-400 hover:text-white h-11 px-6 rounded-2xl">
+                                        Dismiss
+                                    </Button>
+                                )}
+
+                                {!product && (
+                                    <Button
+                                        type="button"
+                                        onClick={(e) => handleSubmit(e, true)}
+                                        disabled={isLoading}
+                                        className="font-black px-6 h-11 rounded-2xl bg-white/5 border border-white/10 text-white hover:bg-white/10 transition-all"
+                                    >
+                                        {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Save & Next'}
+                                    </Button>
+                                )}
+
+                                <Button type="submit" disabled={isLoading} className="bg-indigo-600 hover:bg-indigo-500 text-white font-black px-10 h-11 rounded-2xl shadow-lg transition-all active:scale-95 flex items-center gap-2">
+                                    {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : (product ? <><Save className="w-4 h-4" /> Finalize Update</> : <><CheckCircle2 className="w-4 h-4" /> Deploy to Stock</>)}
+                                </Button>
+                            </div>
+                        </div>
+                        <div className="mt-2 text-center">
+                           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Tip: Press <kbd className="bg-gray-100 px-1 rounded">Enter</kbd> to move fields or <kbd className="bg-gray-100 px-1 rounded">Cmd+Enter</kbd> to save</p>
                         </div>
                     </div>
                 </CardContent>

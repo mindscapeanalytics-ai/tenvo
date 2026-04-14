@@ -226,6 +226,7 @@ export function DashboardTabs({
         formatCurrency,
         // POS & Restaurant
         posSession,
+        handleStartPosSession,
         restaurantTables,
         kitchenQueue,
         handlePosCheckout,
@@ -556,7 +557,7 @@ export function DashboardTabs({
                                         <CardHeader className="pb-2">
                                             <div className="flex items-center justify-between">
                                                 <CardTitle className="text-sm font-medium text-gray-500">Accounts Receivable</CardTitle>
-                                                <div className="p-2 bg-blue-50 rounded-lg text-blue-600">
+                                                <div className="p-2 bg-brand-50 rounded-lg text-brand-primary">
                                                     <DollarIcon className="w-4 h-4" />
                                                 </div>
                                             </div>
@@ -565,7 +566,7 @@ export function DashboardTabs({
                                             <div className="text-2xl font-black text-gray-900">
                                                 {formatCurrency(accountingSummary?.accountsReceivable || 0, currency)}
                                             </div>
-                                            <div className="flex items-center mt-1 text-xs font-medium text-blue-600 bg-blue-50 w-fit px-2 py-0.5 rounded-full">
+                                            <div className="flex items-center mt-1 text-xs font-medium text-brand-primary bg-brand-50 w-fit px-2 py-0.5 rounded-full">
                                                 {accountingSummary?.pendingInvoiceCount || 0} invoices pending
                                             </div>
                                         </CardContent>
@@ -735,6 +736,8 @@ export function DashboardTabs({
                                 <SuperStorePOS
                                     businessId={business?.id}
                                     products={filteredProducts}
+                                    customers={filteredCustomers}
+                                    onStartSession={handleStartPosSession}
                                     onCompleteSale={handlePosCheckout}
                                     currency={currency}
                                     session={posSession}
@@ -743,6 +746,8 @@ export function DashboardTabs({
                                 <PosTerminal
                                     businessId={business?.id}
                                     products={filteredProducts}
+                                    customers={filteredCustomers}
+                                    onStartSession={handleStartPosSession}
                                     onCompleteSale={handlePosCheckout}
                                     currency={currency}
                                     session={posSession}

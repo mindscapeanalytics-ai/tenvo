@@ -38,8 +38,8 @@ export function StatsCards({ stats, currency = 'PKR', onQuickAction }: StatsCard
             title: 'Gross Revenue',
             value: formatCurrency(stats.grossRevenue, currency),
             icon: TrendingUp,
-            color: 'text-blue-600',
-            bgColor: 'bg-blue-500/10',
+            color: 'text-brand-primary',
+            bgColor: 'bg-brand-50',
             action: 'analytics',
             trend: '+8.2%'
         },
@@ -47,8 +47,8 @@ export function StatsCards({ stats, currency = 'PKR', onQuickAction }: StatsCard
             title: 'Total Orders',
             value: stats.totalOrders.toString(),
             icon: ShoppingCart,
-            color: 'text-violet-600',
-            bgColor: 'bg-violet-500/10',
+            color: 'text-brand-primary',
+            bgColor: 'bg-brand-50',
             action: 'invoices',
             trend: '+4.1%'
         },
@@ -64,8 +64,8 @@ export function StatsCards({ stats, currency = 'PKR', onQuickAction }: StatsCard
             title: 'Total Customers',
             value: stats.totalCustomers.toString(),
             icon: Users,
-            color: 'text-indigo-600',
-            bgColor: 'bg-indigo-500/10',
+            color: 'text-brand-primary-dark',
+            bgColor: 'bg-brand-50',
             action: 'customers'
         },
         {
