@@ -91,6 +91,7 @@ import { VariantManager } from './domain/VariantManager';
 import { ProductDetailsDialog } from './ProductDetailsDialog';
 import { CustomParametersManager } from './inventory/CustomParametersManager';
 import { ExcelModeModal } from './ExcelModeModal';
+import { ExcelImportModal } from './ExcelImportModal';
 import { SmartQuickAddModal } from './QuickAddProductModal';
 import { QuickAddTemplates } from './QuickAddTemplates';
 
@@ -265,6 +266,75 @@ export function InventoryManager({
     }
   };
 
+  // Excel Import Handler
+  const handleExcelImport = async (importedRows) => {
+    setLoading(true);
+    let successCount = 0;
+    let failureCount = 0;
+    const errors = [];
+
+    try {
+      for (const row of importedRows) {
+        try {
+          // Check if product with same SKU exists (update or create)
+          const existingProduct = products.find(p => p.sku === row.cleaned.sku);
+
+          if (existingProduct && row.cleaned.id) {
+            // Update existing product
+            const res = await updateProductAction(existingProduct.id, businessId, {
+              ...existingProduct,
+              ...row.cleaned,
+              business_id: businessId
+            });
+
+            if (res.success) {
+              setProducts(prev => prev.map(p => p.id === existingProduct.id ? res.product : p));
+              successCount++;
+            } else {
+              failureCount++;
+              errors.push(`Row ${row.rowNumber}: ${res.error || 'Failed to update'}`);
+            }
+          } else {
+            // Create new product
+            const res = await createProductAction({
+              ...row.cleaned,
+              business_id: businessId,
+              import_batch: new Date().toISOString()
+            });
+
+            if (res.success) {
+              setProducts(prev => [res.product, ...prev]);
+              successCount++;
+            } else {
+              failureCount++;
+              errors.push(`Row ${row.rowNumber}: ${res.error || 'Failed to create'}`);
+            }
+          }
+        } catch (err) {
+          failureCount++;
+          errors.push(`Row ${row.rowNumber}: ${err.message}`);
+        }
+      }
+
+      // Show summary
+      if (failureCount === 0) {
+        toast.success(`✅ Imported ${successCount} products successfully!`);
+      } else {
+        toast.error(`⚠️ Imported ${successCount} products, ${failureCount} failed`);
+        if (errors.length > 0) {
+          console.error('Import errors:', errors);
+        }
+      }
+
+      setShowExcelImport(false);
+    } catch (error) {
+      console.error('Excel import error:', error);
+      toast.error(`Import failed: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // State Management
   const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
   const [activeTab, setActiveTab] = useState('products');
@@ -287,6 +357,7 @@ export function InventoryManager({
   const [searchTerm, setSearchTerm] = useState('');
   const [showQuickAddModal, setShowQuickAddModal] = useState(false);
   const [showExcelMode, setShowExcelMode] = useState(false);
+  const [showExcelImport, setShowExcelImport] = useState(false);
   const [showStockAdjustment, setShowStockAdjustment] = useState(false);
   const [showStockTransferForm, setShowStockTransferForm] = useState(false);
 
@@ -1109,6 +1180,11 @@ export function InventoryManager({
             <Table2 className="w-4 h-4 mr-2 text-green-400 group-hover:rotate-6 transition-transform" />
             Excel Mode
           </Button>
+
+          <ExcelImportModal
+            onImport={handleExcelImport}
+            existingProducts={products}
+          />
 
           <QuickAddTemplates
             domain={category}

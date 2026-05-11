@@ -715,9 +715,41 @@ export function EnhancedInvoiceBuilder({
     setIsSaving(true);
 
     try {
+      const normalizedItems = invoice.items.map(item => {
+        const serialNumbers = Array.isArray(item.serial_numbers)
+          ? item.serial_numbers
+          : item.serialNumber
+          ? [item.serialNumber]
+          : [];
+
+        return {
+          ...item,
+          quantity: Number(item.quantity || 0),
+          rate: Number(item.rate || item.unit_price || 0),
+          unit_price: Number(item.rate || item.unit_price || 0),
+          discount: Number(item.discount || 0),
+          taxPercent: Number(item.taxPercent || 0),
+          tax_percent: Number(item.taxPercent || 0),
+          amount: Number(item.amount || 0),
+          batch_number: item.batch_number || item.batchNumber || '',
+          batch_id: item.batch_id || item.batchId || null,
+          serial_numbers: serialNumbers,
+          metadata: {
+            ...(item.metadata || {}),
+            article_no: item.article_no || item.metadata?.article_no || '',
+            design_no: item.design_no || item.metadata?.design_no || '',
+            fabric_type: item.fabric_type || item.metadata?.fabric_type || '',
+            batch_number: item.batch_number || item.batchNumber || item.metadata?.batch_number || null,
+            batch_id: item.batch_id || item.batchId || item.metadata?.batch_id || null,
+            serial_numbers: serialNumbers,
+          },
+        };
+      });
+
       // Generate FBR-compliant invoice for Pakistani domains
       let finalInvoice = {
         ...invoice,
+        items: normalizedItems,
         totals,
         business_id: business?.id // Ensure business_id is present
       };
@@ -725,17 +757,9 @@ export function EnhancedInvoiceBuilder({
       if (isPakistaniDomain) {
         finalInvoice = generateFBRInvoice({
           ...invoice,
-          items: invoice.items.map(item => ({
+          items: normalizedItems.map(item => ({
             ...item,
-            quantity: Number(item.quantity || 0),
-            rate: Number(item.rate || 0),
-            discount: Number(item.discount || 0),
-            taxPercent: Number(item.taxPercent || 0),
-            amount: Number(item.amount || 0),
             domain: category,
-            article_no: item.article_no,
-            design_no: item.design_no,
-            fabric_type: item.fabric_type
           })),
         }, invoice.customer.province || 'punjab');
       }
