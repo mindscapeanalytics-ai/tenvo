@@ -7,28 +7,31 @@ datasource db {
 }
 
 model User {
-  id               String           @id
-  name             String
-  email            String           @unique
-  emailVerified    Boolean          @default(false)
-  image            String?
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime         @updatedAt
-  banExpires       DateTime?
-  banReason        String?
-  banned           Boolean?         @default(false)
-  displayUsername  String?
-  lastLoginMethod  String?
-  role             String?
-  stripeCustomerId String?
-  twoFactorEnabled Boolean?         @default(false)
-  username         String?          @unique
-  accounts         Account[]
-  business_users   business_users[]
-  businesses       businesses[]
-  sessions         Session[]
-  twofactors       TwoFactor[]
-  pos_sessions     pos_sessions[]
+  id                      String                  @id
+  name                    String
+  email                   String                  @unique
+  emailVerified           Boolean                 @default(false)
+  image                   String?
+  createdAt               DateTime                @default(now())
+  updatedAt               DateTime                @updatedAt
+  banExpires              DateTime?
+  banReason               String?
+  banned                  Boolean?                @default(false)
+  displayUsername         String?
+  lastLoginMethod         String?
+  role                    String?
+  stripeCustomerId        String?
+  twoFactorEnabled        Boolean?                @default(false)
+  username                String?                 @unique
+  accounts                Account[]
+  business_users          business_users[]
+  businesses              businesses[]
+  sessions                Session[]
+  twofactors              TwoFactor[]
+  pos_sessions            pos_sessions[]
+  invoice_approvals       invoice_approvals[]     @relation("invoice_approvals")
+  invoice_templates       invoice_templates[]     @relation("invoice_templates")
+  invoices_created        invoices[]              @relation("invoices_created_by")
 
   @@map("user")
 }
@@ -242,6 +245,9 @@ model businesses {
   purchase_returns        purchase_returns[]       // C16
   purchase_return_items   purchase_return_items[]  // C16
   document_sequences      document_sequences[]     // C17
+  invoice_approvals       invoice_approvals[]
+  invoice_templates       invoice_templates[]
+  invoice_reminders       invoice_payment_reminders[]
 }
 
 model customers {
@@ -331,34 +337,61 @@ model gl_entries {
 }
 
 model invoices {
-  id                  String                @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  business_id         String                @db.Uuid
-  invoice_number      String
-  customer_id         String?               @db.Uuid
-  date                DateTime              @db.Date
-  due_date            DateTime?             @db.Date
-  subtotal            Decimal?              @default(0.00) @db.Decimal(12, 2)
-  total_tax           Decimal?              @default(0.00) @db.Decimal(12, 2)
-  total_amount        Decimal?              @default(0.00) @db.Decimal(12, 2)
-  status              String?               @default("draft")
-  notes               String?
-  created_at          DateTime?             @default(now()) @db.Timestamptz(6)
-  updated_at          DateTime?             @default(now()) @db.Timestamptz(6)
-  tax_total           Decimal?              @default(0) @db.Decimal(12, 2)
-  discount_total      Decimal?              @default(0) @db.Decimal(12, 2)
-  grand_total         Decimal?              @default(0) @db.Decimal(12, 2)
-  payment_method      String?
-  payment_status      String?
-  terms               String?
-  tax_details         Json?                 @default("{}")
-  is_deleted          Boolean               @default(false)
-  deleted_at          DateTime?             @db.Timestamptz(6)
-  invoice_items       invoice_items[]
-  payment_allocations payment_allocations[]
-  credit_notes        credit_notes[]
-  pos_transactions    pos_transactions[]    // C18: Reverse relation for POS-to-invoice linking
-  businesses          businesses            @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  customers           customers?            @relation(fields: [customer_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  id                      String                  @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  business_id             String                  @db.Uuid
+  invoice_number          String
+  customer_id             String?                 @db.Uuid
+  created_by              String?
+  date                    DateTime                @db.Date
+  due_date                DateTime?               @db.Date
+  subtotal                Decimal?                @default(0.00) @db.Decimal(12, 2)
+  total_tax               Decimal?                @default(0.00) @db.Decimal(12, 2)
+  total_amount            Decimal?                @default(0.00) @db.Decimal(12, 2)
+  status                  String?                 @default("draft") // draft, sent, viewed, approved, payment_pending, partially_paid, paid, overdue, voided, amended
+  notes                   String?
+  created_at              DateTime?               @default(now()) @db.Timestamptz(6)
+  updated_at              DateTime?               @default(now()) @db.Timestamptz(6)
+  tax_total               Decimal?                @default(0) @db.Decimal(12, 2)
+  discount_total          Decimal?                @default(0) @db.Decimal(12, 2)
+  grand_total             Decimal?                @default(0) @db.Decimal(12, 2)
+  payment_method          String?
+  payment_status          String?
+  terms                   String?
+  tax_details             Json?                   @default("{}")
+  is_deleted              Boolean                 @default(false)
+  deleted_at              DateTime?               @db.Timestamptz(6)
+  
+  // Workflow & Approval Fields
+  approval_status         String?                 @default("none") // none, pending, approved, rejected
+  approval_by             String?
+  approval_date           DateTime?               @db.Timestamptz(6)
+  approval_notes          String?
+  sent_by                 String?
+  sent_date               DateTime?               @db.Timestamptz(6)
+  viewed_date             DateTime?               @db.Timestamptz(6)
+  print_count             Int?                    @default(0)
+  email_sent_count        Int?                    @default(0)
+  fbr_status              String?                 @default("pending") // pending, valid, invalid, sync_error
+  fbr_response            Json?                   @default("{}")
+  template_id             String?                 @db.Uuid
+  is_recurring            Boolean?                @default(false)
+  recurring_parent_id     String?                 @db.Uuid
+  recurring_frequency     String? // daily, weekly, monthly, quarterly, yearly
+  next_invoice_date       DateTime?               @db.Date
+  
+  // Relations
+  invoice_items           invoice_items[]
+  payment_allocations     payment_allocations[]
+  credit_notes            credit_notes[]
+  pos_transactions        pos_transactions[]
+  invoice_approvals       invoice_approvals[]
+  invoice_reminders       invoice_payment_reminders[]
+  recurring_invoices      invoices[]              @relation("RecurringInvoices")
+  parent_invoice          invoices?               @relation("RecurringInvoices", fields: [recurring_parent_id], references: [id], onDelete: SetNull)
+  
+  businesses              businesses              @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  customers               customers?              @relation(fields: [customer_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  creator                 User?                   @relation("invoices_created_by", fields: [created_by], references: [id], onDelete: SetNull)
 
   @@unique([business_id, invoice_number])
   @@index([business_id, date])
@@ -367,6 +400,74 @@ model invoices {
   @@index([business_id, status, date(sort: Desc)], name: "idx_invoices_business_status_date")
   @@index([business_id, customer_id, payment_status], name: "idx_invoices_business_customer_payment")
   @@index([business_id, is_deleted, date(sort: Desc)], name: "idx_invoices_business_deleted_date")
+  @@index([business_id, approval_status])
+  @@index([business_id, fbr_status])
+  @@index([is_recurring])
+}
+
+model invoice_approvals {
+  id                String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  business_id       String      @db.Uuid
+  invoice_id        String      @db.Uuid
+  approved_by       String
+  approval_status   String      // approved, rejected
+  notes             String?
+  metadata          Json?       @default("{}")
+  created_at        DateTime    @default(now()) @db.Timestamptz(6)
+  
+  businesses        businesses  @relation(fields: [business_id], references: [id], onDelete: Cascade)
+  invoices          invoices    @relation(fields: [invoice_id], references: [id], onDelete: Cascade)
+  approver          User        @relation("invoice_approvals", fields: [approved_by], references: [id], onDelete: SetNull)
+
+  @@unique([invoice_id])
+  @@index([business_id])
+  @@index([approved_by])
+  @@index([created_at(sort: Desc)])
+}
+
+model invoice_templates {
+  id                String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  business_id       String      @db.Uuid
+  name              String
+  description       String?
+  template_type     String      // standard, recurring, credit_note
+  items             Json        @default("[]") // Template items
+  notes             String?
+  terms             String?
+  tax_category      String?
+  is_active         Boolean     @default(true)
+  metadata          Json?       @default("{}")
+  created_at        DateTime    @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime    @default(now()) @db.Timestamptz(6)
+  created_by        String?
+  
+  businesses        businesses  @relation(fields: [business_id], references: [id], onDelete: Cascade)
+  creator           User?       @relation("invoice_templates", fields: [created_by], references: [id], onDelete: SetNull)
+
+  @@unique([business_id, name])
+  @@index([business_id])
+  @@index([is_active])
+  @@index([template_type])
+}
+
+model invoice_payment_reminders {
+  id                String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  business_id       String      @db.Uuid
+  invoice_id        String      @db.Uuid
+  reminder_type     String      // first_due, overdue_3days, overdue_7days, overdue_14days, overdue_30days
+  scheduled_date    DateTime    @db.Date
+  sent_date         DateTime?   @db.Timestamptz(6)
+  is_sent           Boolean     @default(false)
+  metadata          Json?       @default("{}")
+  created_at        DateTime    @default(now()) @db.Timestamptz(6)
+  
+  businesses        businesses  @relation(fields: [business_id], references: [id], onDelete: Cascade)
+  invoices          invoices    @relation(fields: [invoice_id], references: [id], onDelete: Cascade)
+
+  @@unique([invoice_id, reminder_type])
+  @@index([business_id])
+  @@index([scheduled_date])
+  @@index([is_sent])
 }
 
 model product_serials {

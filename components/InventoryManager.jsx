@@ -74,8 +74,9 @@ import { DiscountSchemeManager } from './inventory/DiscountSchemeManager';
 import { StockReservation } from './inventory/StockReservation';
 import { StockAdjustmentManager } from './inventory/StockAdjustmentManager';
 import { AutoReorderManager } from './inventory/AutoReorderManager';
-import { StockTransferForm } from './StockTransferForm';
+import { StockTransferForm } from './inventory/StockTransferForm';
 import { exportProducts } from '@/lib/utils/export';
+import { productAPI } from '@/lib/api/product';
 
 import {
   DropdownMenu,
@@ -161,7 +162,7 @@ export function InventoryManager({
 }) {
   const { regionalStandards, currency } = useBusiness();
   const standards = regionalStandards || {
-    currencySymbol: 'â‚¨',
+    currencySymbol: 'Rs',
     currency: 'PKR',
     taxLabel: 'Sales Tax',
     taxIdLabel: 'NTN',
@@ -267,13 +268,39 @@ export function InventoryManager({
   };
 
   // Excel Import Handler
-  const handleExcelImport = async (importedRows) => {
+  const handleExcelImport = async (importPayload) => {
+    const importedRows = Array.isArray(importPayload) ? importPayload : (importPayload?.rows || []);
+    const importFile = Array.isArray(importPayload) ? null : importPayload?.file;
+    const selectedSheet = Array.isArray(importPayload) ? 'Products' : (importPayload?.selectedSheet || 'Products');
+
     setLoading(true);
     let successCount = 0;
     let failureCount = 0;
     const errors = [];
 
     try {
+      // Preferred path: use canonical bulk import API for consistency and centralized validation.
+      if (importFile) {
+        const apiResult = await productAPI.bulkImport(businessId, importFile, {
+          strictMode: false,
+          allowDuplicates: false,
+          skipExisting: false,
+          category,
+          sheetName: selectedSheet,
+        });
+
+        if (apiResult?.success) {
+          const refreshResult = await getProductsAction(businessId);
+          if (refreshResult?.success && Array.isArray(refreshResult.products)) {
+            setProducts(deduplicateProducts(refreshResult.products));
+          }
+
+          toast.success(`Imported ${apiResult.total || apiResult.imported || 0} products successfully`);
+          return;
+        }
+      }
+
+      // Fallback path keeps legacy row-level import functional.
       for (const row of importedRows) {
         try {
           // Check if product with same SKU exists (update or create)
@@ -326,7 +353,6 @@ export function InventoryManager({
         }
       }
 
-      setShowExcelImport(false);
     } catch (error) {
       console.error('Excel import error:', error);
       toast.error(`Import failed: ${error.message}`);
@@ -357,7 +383,6 @@ export function InventoryManager({
   const [searchTerm, setSearchTerm] = useState('');
   const [showQuickAddModal, setShowQuickAddModal] = useState(false);
   const [showExcelMode, setShowExcelMode] = useState(false);
-  const [showExcelImport, setShowExcelImport] = useState(false);
   const [showStockAdjustment, setShowStockAdjustment] = useState(false);
   const [showStockTransferForm, setShowStockTransferForm] = useState(false);
 
@@ -1452,10 +1477,37 @@ export function InventoryManager({
                   onExport={async (items) => {
                     const dataToExport = items || productsToDisplay;
                     try {
-                      await exportProducts(dataToExport, 'excel');
-                      toast.success(`Exported ${dataToExport.length} items successfully`);
+                      const result = await productAPI.bulkExport(businessId, {
+                        includeBatches: true,
+                        includeSerials: true,
+                      });
+
+                      const bytes = new Uint8Array(result.buffer || []);
+                      const blob = new Blob([bytes], {
+                        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                      });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = result.fileName || `inventory-export-${new Date().toISOString().split('T')[0]}.xlsx`;
+                      document.body.appendChild(a);
+                      a.click();
+                      document.body.removeChild(a);
+                      URL.revokeObjectURL(url);
+
+                      if (result.roundTripValid === false) {
+                        toast.success(`Exported ${result.recordCount || dataToExport.length} items (with warnings)`);
+                      } else {
+                        toast.success(`Exported ${result.recordCount || dataToExport.length} items successfully`);
+                      }
                     } catch (error) {
-                      toast.error('Failed to export inventory');
+                      // Fallback keeps export available if server-side export fails.
+                      try {
+                        await exportProducts(dataToExport, 'excel');
+                        toast.success(`Exported ${dataToExport.length} items (fallback mode)`);
+                      } catch {
+                        toast.error('Failed to export inventory');
+                      }
                     }
                   }}
                 />
@@ -2168,15 +2220,28 @@ export function InventoryManager({
         </DialogContent>
       </Dialog>
 
-      {/* Stock Transfer Form Overlay */}
-      {showStockTransferForm && (
-        <StockTransferForm
-          onClose={() => setShowStockTransferForm(false)}
-          onSave={() => { fetchProducts(); setShowStockTransferForm(false); }}
-          products={products}
-          warehouses={locations}
-        />
-      )}
+      {/* Stock Transfer Dialog */}
+      <Dialog open={showStockTransferForm} onOpenChange={setShowStockTransferForm}>
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Stock Transfer</DialogTitle>
+            <DialogDescription>
+              Move stock between warehouses with availability validation and reservation safety.
+            </DialogDescription>
+          </DialogHeader>
+          <StockTransferForm
+            businessId={businessId}
+            onClose={() => setShowStockTransferForm(false)}
+            onTransferComplete={() => {
+              fetchProducts();
+              setShowStockTransferForm(false);
+              refreshData?.();
+            }}
+            products={products}
+            warehouses={locations}
+          />
+        </DialogContent>
+      </Dialog>
     </div >
   );
 }

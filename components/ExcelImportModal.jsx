@@ -37,6 +37,7 @@ export function ExcelImportModal({ onImport, onCancel, existingProducts = {} }) 
   const fileInputRef = useRef(null);
   const [step, setStep] = useState(1); // 1: Upload, 2: Preview, 3: Validate, 4: Confirm
   const [loading, setLoading] = useState(false);
+  const [importFile, setImportFile] = useState(null);
   const [parseResult, setParseResult] = useState(null);
   const [validationResults, setValidationResults] = useState([]);
   const [importSummary, setImportSummary] = useState(null);
@@ -59,8 +60,9 @@ export function ExcelImportModal({ onImport, onCancel, existingProducts = {} }) 
         return;
       }
 
+      setImportFile(file);
       setParseResult(result);
-      setSelectedSheet(result.sheetNames[0]);
+      setSelectedSheet(result.sheetNames.includes('Products') ? 'Products' : result.sheetNames[0]);
       setStep(2);
       toast.success(`File parsed successfully: ${result.sheetCount} sheet(s)`);
     } catch (error) {
@@ -156,7 +158,11 @@ export function ExcelImportModal({ onImport, onCancel, existingProducts = {} }) 
 
     setLoading(true);
     try {
-      await onImport(importingRows);
+      await onImport({
+        rows: importingRows,
+        file: importFile,
+        selectedSheet,
+      });
       toast.success(`Imported ${importingRows.length} products successfully`);
       resetModal();
     } catch (error) {
@@ -169,6 +175,7 @@ export function ExcelImportModal({ onImport, onCancel, existingProducts = {} }) 
 
   const resetModal = () => {
     setStep(1);
+    setImportFile(null);
     setParseResult(null);
     setValidationResults([]);
     setImportSummary(null);
