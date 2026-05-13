@@ -28,6 +28,7 @@ import EnhancedPOBuilder from '@/components/EnhancedPOBuilder';
 import { ProductForm } from '@/components/ProductForm';
 import { ProductWizard } from '@/components/inventory/ProductWizard';
 import { EnhancedInvoiceBuilder } from '@/components/EnhancedInvoiceBuilder';
+import { QuickInvoiceModal } from '@/components/invoice/QuickInvoiceModal';
 import { CustomerForm } from '@/components/CustomerForm';
 import toast from 'react-hot-toast';
 import { EntityDetailsDialog } from '@/components/EntityDetailsDialog';
@@ -40,6 +41,8 @@ export function ActionModals({
     setShowProductForm,
     showQuickAction,
     setShowQuickAction,
+    showQuickInvoice,
+    setShowQuickInvoice,
     showCustomerForm,
     setShowCustomerForm,
     showInvoiceBuilder,
@@ -56,6 +59,7 @@ export function ActionModals({
     setCustomerFormData,
     products,
     customers,
+    invoices,
     category,
     colors,
     currency,
@@ -174,6 +178,7 @@ export function ActionModals({
                     </DialogHeader>
                     <div className="grid grid-cols-2 gap-4 mt-6">
                         {[
+                            { label: 'Quick Checkout', icon: FileText, action: () => { setShowQuickInvoice(true); setShowQuickAction(false); } },
                             { label: 'New Invoice', icon: FileText, action: () => { setShowInvoiceBuilder(true); setShowQuickAction(false); } },
                             { label: 'Add Product', icon: Package, action: () => { setEditingProduct(null); setShowProductForm(true); setShowQuickAction(false); } },
                             { label: 'New Customer', icon: Users, action: () => { setShowCustomerForm(true); setShowQuickAction(false); } },
@@ -238,6 +243,18 @@ export function ActionModals({
                     initialData={invoiceInitialData}
                 />
             )}
+
+            <QuickInvoiceModal
+                isOpen={showQuickInvoice}
+                onClose={() => setShowQuickInvoice(false)}
+                onSave={onSaveInvoice}
+                businessId={business?.id}
+                category={category}
+                products={products}
+                customers={customers}
+                recentTransactions={invoices}
+                currency={currency}
+            />
 
             <Dialog open={showVendorForm} onOpenChange={(open) => {
                 setShowVendorForm(open);

@@ -1,14 +1,13 @@
 'use client';
 
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { X, Plus, Trash2, Check, Zap, Search, BarChart3 } from 'lucide-react';
+import { X, Plus, Trash2, Check, Zap, BarChart3, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import toast from 'react-hot-toast';
 import { formatCurrency } from '@/lib/currency';
-import { getTaxCategoryForDomain } from '@/lib/tax/pakistaniTax';
 import { getDomainKnowledge } from '@/lib/domainKnowledge';
 
 /**
@@ -19,6 +18,7 @@ import { getDomainKnowledge } from '@/lib/domainKnowledge';
  * - Minimal input fields (customer, items, payment)
  * - Smart autocomplete for products and customers
  * - Recent items quick-add
+ * - One-click repeat last order for repeat customers
  * - Mobile-optimized layout
  * - Keyboard shortcuts (Tab to next field, Enter to add item)
  * - One-click payment methods
@@ -29,8 +29,8 @@ import { getDomainKnowledge } from '@/lib/domainKnowledge';
  * - Enter: Add item / Complete sale
  * - +: Add quantity
  * - -: Reduce quantity
- * - C: Clear cart
- * - P: Toggle payment methods
+ * - Ctrl/Cmd + C: Clear cart
+ * - Ctrl/Cmd + L: Load last customer order
  */
 export function QuickInvoiceModal({
     isOpen,
@@ -49,7 +49,6 @@ export function QuickInvoiceModal({
     // Focus refs for keyboard navigation
     const customerInputRef = useRef(null);
     const productSearchRef = useRef(null);
-    const quantityInputRef = useRef(null);
 
     // Form State
     const [cartItems, setCartItems] = useState([]);
@@ -59,7 +58,7 @@ export function QuickInvoiceModal({
     const [quantity, setQuantity] = useState(1);
     const [discount, setDiscount] = useState(0);
     const [paymentMethod, setPaymentMethod] = useState('cash');
-    const [showPaymentOptions, setShowPaymentOptions] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Filtered autocomplete suggestions
     const productSuggestions = useMemo(() => {
@@ -80,6 +79,54 @@ export function QuickInvoiceModal({
             .slice(0, 5);
     }, [customerName, customers]);
 
+    const recentCustomerQuickPicks = useMemo(() => {
+        const list = [];
+        const seen = new Set();
+
+        (recentTransactions || []).forEach((tx) => {
+            const name = String(tx.customer_name || tx.customer?.name || '').trim();
+            if (!name) return;
+
+            const key = name.toLowerCase();
+            if (seen.has(key)) return;
+            seen.add(key);
+
+            list.push({
+                name,
+                phone: tx.customer_phone || tx.customer?.phone || '',
+            });
+        });
+
+        return list.slice(0, 6);
+    }, [recentTransactions]);
+
+    // Find last invoice for current customer to enable repeat-order
+    const lastCustomerInvoice = useMemo(() => {
+        if (!customerName.trim()) return null;
+        const customerLower = customerName.toLowerCase();
+        
+        // Find most recent transaction for this customer
+        const lastTx = (recentTransactions || []).find(tx => {
+            const name = String(tx.customer_name || tx.customer?.name || '').trim().toLowerCase();
+            return name === customerLower;
+        });
+        
+        return lastTx && lastTx.items ? lastTx : null;
+    }, [customerName, recentTransactions]);
+
+    const resolveProductFromSearch = () => {
+        const search = productSearch.trim().toLowerCase();
+        if (!search) return null;
+
+        const exactMatch = products.find((p) => {
+            const name = String(p.name || '').trim().toLowerCase();
+            const sku = String(p.sku || '').trim().toLowerCase();
+            return name === search || sku === search;
+        });
+
+        return exactMatch || productSuggestions[0] || null;
+    };
+
     // Calculations
     const totals = useMemo(() => {
         const subtotal = cartItems.reduce((sum, item) => sum + (item.quantity * item.price), 0);
@@ -99,6 +146,13 @@ export function QuickInvoiceModal({
 
     // Add item to cart
     const handleAddItem = (product) => {
+        if (!product) return;
+        const unitPrice = Number(product.selling_price || product.markup_price || 0);
+        if (unitPrice <= 0) {
+            toast.error('Selected product has no valid selling price');
+            return;
+        }
+
         const existingItem = cartItems.find(item => item.productId === product.id);
         
         if (existingItem) {
@@ -111,7 +165,7 @@ export function QuickInvoiceModal({
             setCartItems([...cartItems, {
                 productId: product.id,
                 name: product.name,
-                price: product.selling_price || product.markup_price || 0,
+                price: unitPrice,
                 quantity,
                 sku: product.sku,
             }]);
@@ -126,6 +180,64 @@ export function QuickInvoiceModal({
     // Remove item from cart
     const handleRemoveItem = (productId) => {
         setCartItems(cartItems.filter(item => item.productId !== productId));
+    };
+
+    const getLinePrice = (item, matchedProduct) => {
+        const direct = Number(item.unit_price || item.price || 0);
+        if (direct > 0) return direct;
+
+        const qty = Number(item.quantity || 1);
+        const total = Number(item.total_amount || item.line_total || 0);
+        if (qty > 0 && total > 0) return total / qty;
+
+        return Number(matchedProduct?.selling_price || matchedProduct?.markup_price || 0);
+    };
+
+    // Load items from last invoice for quick repeat
+    const handleLoadLastInvoice = () => {
+        if (!lastCustomerInvoice?.items || lastCustomerInvoice.items.length === 0) {
+            toast.error('No previous items found');
+            return;
+        }
+
+        const loadedItems = lastCustomerInvoice.items
+            .map((item) => {
+                const matchedProduct = products.find((p) => {
+                    if (item.product_id && p.id === item.product_id) return true;
+
+                    const itemName = String(item.name || '').trim().toLowerCase();
+                    const itemSku = String(item.sku || item.description || '').trim().toLowerCase();
+                    const productName = String(p.name || '').trim().toLowerCase();
+                    const productSku = String(p.sku || '').trim().toLowerCase();
+
+                    return (itemName && productName === itemName) || (itemSku && productSku === itemSku);
+                });
+
+                const price = getLinePrice(item, matchedProduct);
+                const qty = Math.max(1, Number(item.quantity || 1));
+                const productId = item.product_id || matchedProduct?.id;
+                const name = item.name || matchedProduct?.name;
+
+                if (!productId || !name || price <= 0) return null;
+
+                return {
+                    productId,
+                    name,
+                    price,
+                    quantity: qty,
+                    sku: item.sku || matchedProduct?.sku || item.description || '',
+                };
+            })
+            .filter(Boolean);
+
+        if (loadedItems.length === 0) {
+            toast.error('No valid items found to load from last order');
+            return;
+        }
+
+        setCartItems(loadedItems);
+        toast.success(`Loaded ${loadedItems.length} items from last order`);
+        productSearchRef.current?.focus();
     };
 
     // Update item quantity
@@ -143,6 +255,8 @@ export function QuickInvoiceModal({
 
     // Complete sale
     const handleCompleteSale = async () => {
+        if (isSubmitting) return;
+
         if (cartItems.length === 0) {
             toast.error('Add items to cart first');
             return;
@@ -153,6 +267,14 @@ export function QuickInvoiceModal({
             customerInputRef.current?.focus();
             return;
         }
+
+        if (!businessId) {
+            toast.error('Business context is missing');
+            return;
+        }
+
+        const paymentStatus = paymentMethod === 'cash' || paymentMethod === 'card' ? 'paid' : 'pending';
+        const invoiceStatus = paymentStatus === 'paid' ? 'paid' : 'payment_pending';
 
         const invoiceData = {
             business_id: businessId,
@@ -166,25 +288,32 @@ export function QuickInvoiceModal({
                 quantity: item.quantity,
                 unit_price: item.price,
                 tax_percent: defaultTax,
+                tax_amount: Number(((item.quantity * item.price) * (defaultTax / 100)).toFixed(2)),
                 description: item.sku,
+                total_amount: Number((item.quantity * item.price).toFixed(2)),
             })),
             subtotal: totals.subtotal,
             discount_total: totals.discount,
             tax_total: totals.tax,
             grand_total: totals.total,
             payment_method: paymentMethod,
-            payment_status: paymentMethod === 'cash' ? 'paid' : 'pending',
-            status: 'paid',
+            payment_status: paymentStatus,
+            status: invoiceStatus,
             date: new Date().toISOString(),
+            due_date: paymentStatus === 'pending' ? new Date(Date.now() + (7 * 24 * 60 * 60 * 1000)).toISOString() : null,
+            notes: 'Created via quick checkout',
         };
 
         try {
+            setIsSubmitting(true);
             await onSave?.(invoiceData);
             toast.success(`Sale completed! Total: ${formatCurrency(totals.total, currency)}`);
             resetForm();
             onClose?.();
         } catch (error) {
             toast.error('Sale failed: ' + error.message);
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -218,6 +347,17 @@ export function QuickInvoiceModal({
                 return;
             }
 
+            // L: Load last order for selected customer
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'l') {
+                e.preventDefault();
+                if (cartItems.length > 0) {
+                    toast.error('Clear cart before loading last order');
+                    return;
+                }
+                handleLoadLastInvoice();
+                return;
+            }
+
             // Enter: Add item if product search focused
             if (e.key === 'Enter' && productSearchRef.current === document.activeElement) {
                 e.preventDefault();
@@ -239,13 +379,6 @@ export function QuickInvoiceModal({
                 return;
             }
 
-            // P: Toggle payment options
-            if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
-                e.preventDefault();
-                setShowPaymentOptions(!showPaymentOptions);
-                return;
-            }
-
             // Shift+Enter: Complete sale
             if (e.shiftKey && e.key === 'Enter') {
                 e.preventDefault();
@@ -256,7 +389,7 @@ export function QuickInvoiceModal({
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [isOpen, productSuggestions, showPaymentOptions]);
+    }, [isOpen, productSuggestions, isSubmitting, cartItems.length, lastCustomerInvoice]);
 
     // Focus on customer input when modal opens
     useEffect(() => {
@@ -278,7 +411,7 @@ export function QuickInvoiceModal({
                         </div>
                         <div>
                             <CardTitle className="text-xl font-black">Quick Checkout</CardTitle>
-                            <p className="text-xs text-gray-500 mt-1">Hotkey: Ctrl+I | Close: Esc | Sale: Shift+Enter</p>
+                            <p className="text-xs text-gray-500 mt-1">Hotkey: Ctrl+I | Load Last: Ctrl+L | Close: Esc | Sale: Shift+Enter</p>
                         </div>
                     </div>
                     <button
@@ -303,11 +436,39 @@ export function QuickInvoiceModal({
                             list="customer-suggestions"
                         />
                         {customerSuggestions.length > 0 && (
-                            <datalist id="customer-suggestions">
-                                {customerSuggestions.map(c => (
-                                    <option key={c.id} value={c.name} />
+                            <div className="mt-1 space-y-1 max-h-28 overflow-y-auto rounded-lg border border-gray-200 bg-white p-1">
+                                {customerSuggestions.map((c) => (
+                                    <button
+                                        key={c.id}
+                                        type="button"
+                                        onClick={() => {
+                                            setCustomerName(c.name || '');
+                                            setCustomerPhone(c.phone || '');
+                                        }}
+                                        className="w-full rounded-md px-2 py-1.5 text-left text-sm hover:bg-gray-50"
+                                    >
+                                        <div className="font-medium text-gray-800">{c.name}</div>
+                                        <div className="text-xs text-gray-500">{c.phone || c.email || 'No contact'}</div>
+                                    </button>
                                 ))}
-                            </datalist>
+                            </div>
+                        )}
+                        {recentCustomerQuickPicks.length > 0 && !customerName.trim() && (
+                            <div className="flex flex-wrap gap-1.5 mt-1">
+                                {recentCustomerQuickPicks.map((customer, idx) => (
+                                    <button
+                                        key={`${customer.name}-${idx}`}
+                                        type="button"
+                                        onClick={() => {
+                                            setCustomerName(customer.name);
+                                            setCustomerPhone(customer.phone || '');
+                                        }}
+                                        className="rounded-full border border-gray-200 bg-white px-2.5 py-1 text-xs font-medium text-gray-700 hover:border-wine hover:text-wine"
+                                    >
+                                        {customer.name}
+                                    </button>
+                                ))}
+                            </div>
                         )}
                         {customerName && (
                             <Input
@@ -317,6 +478,25 @@ export function QuickInvoiceModal({
                                 onChange={(e) => setCustomerPhone(e.target.value)}
                                 className="h-10 text-sm"
                             />
+                        )}
+
+                        {/* Quick Load Last Order */}
+                        {lastCustomerInvoice && (
+                            <div className="mt-2 p-2 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center justify-between">
+                                <div className="text-xs text-emerald-700 font-medium">
+                                    <span className="font-bold">{lastCustomerInvoice.items?.length || 0}</span> items from last order
+                                </div>
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    onClick={handleLoadLastInvoice}
+                                    disabled={cartItems.length > 0}
+                                    className="bg-emerald-600 hover:bg-emerald-700 h-7 text-xs"
+                                >
+                                    <RefreshCw className="w-3.5 h-3.5 mr-1" />
+                                    Load
+                                </Button>
+                            </div>
                         )}
                     </div>
 
@@ -351,8 +531,9 @@ export function QuickInvoiceModal({
                                 placeholder="Qty"
                             />
                             <Button
+                                type="button"
                                 size="icon"
-                                onClick={() => productSuggestions.length > 0 && handleAddItem(productSuggestions[0])}
+                                onClick={() => handleAddItem(resolveProductFromSearch())}
                                 className="bg-blue-600 hover:bg-blue-700 h-10"
                             >
                                 <Plus className="w-4 h-4" />
@@ -479,6 +660,7 @@ export function QuickInvoiceModal({
                 {/* Footer Actions */}
                 <div className="border-t bg-gray-50 p-4 flex gap-2 sm:flex-row flex-col-reverse">
                     <Button
+                        type="button"
                         variant="outline"
                         onClick={() => {
                             resetForm();
@@ -489,12 +671,13 @@ export function QuickInvoiceModal({
                         Close
                     </Button>
                     <Button
+                        type="button"
                         onClick={handleCompleteSale}
-                        disabled={cartItems.length === 0}
+                        disabled={cartItems.length === 0 || isSubmitting}
                         className="flex-1 bg-wine hover:bg-wine/90 text-white font-bold h-11 text-lg"
                     >
                         <Check className="w-4 h-4 mr-2" />
-                        Complete Sale (Shift+Enter)
+                        {isSubmitting ? 'Processing...' : 'Complete Sale (Shift+Enter)'}
                     </Button>
                 </div>
             </Card>

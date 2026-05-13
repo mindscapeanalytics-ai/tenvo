@@ -1,7 +1,7 @@
 // This file usually uses formatCurrency, but checking for hardcoded symbols
 
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { X, Plus, Trash2, Download, Printer, Save, Calculator, FileText, Loader2, Scan, Keyboard, AlertCircle, ShoppingCart, WandSparkles } from 'lucide-react';
+import { X, Plus, Trash2, Download, Printer, Save, Calculator, FileText, Loader2, Scan, Keyboard, AlertCircle, ShoppingCart, WandSparkles, Send, Clock3, CheckCircle2, XCircle, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -26,6 +26,7 @@ import { getCurrentSeason, getSeasonalDiscount } from '@/lib/domainData/pakistan
 import { hasSeasonalPricing } from '@/lib/utils/pakistaniFeatures';
 import { ExpertActionPanel } from '@/components/domain/ExpertActionPanel';
 import { AIInsightOverlay } from '@/components/domain/AIInsightOverlay';
+import { submitInvoiceForApprovalAction, getApprovalHistoryAction, schedulePaymentRemindersAction } from '@/lib/actions/standard/invoice-approval';
 
 /**
  * Enhanced Invoice Builder Component
@@ -215,10 +216,52 @@ export function EnhancedInvoiceBuilder({
   const [smartDraftMeta, setSmartDraftMeta] = useState(null);
   const [showTaxCalculator, setShowTaxCalculator] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSubmittingApproval, setIsSubmittingApproval] = useState(false);
   const isSubmittingRef = useRef(false); // Submission lock
   const [isExporting, setIsExporting] = useState(false);
   const [barcodeInput, setBarcodeInput] = useState('');
   const [showKeyboardHints, setShowKeyboardHints] = useState(false);
+  const [approvalHistory, setApprovalHistory] = useState([]);
+
+  const approvalStatus = String(invoice.approval_status || 'none').toLowerCase();
+  const canSubmitForApproval = Boolean(
+    business?.id &&
+    !isSaving &&
+    !isSubmittingApproval &&
+    invoice.items.length > 0 &&
+    invoice.customer?.name &&
+    approvalStatus !== 'approved' &&
+    approvalStatus !== 'pending'
+  );
+
+  const approvalStatusConfig = {
+    none: {
+      label: 'Draft',
+      icon: FileText,
+      className: 'bg-slate-100 text-slate-700 border-slate-200',
+      helper: 'Save draft to continue editing.',
+    },
+    pending: {
+      label: 'Pending Approval',
+      icon: Clock3,
+      className: 'bg-amber-100 text-amber-800 border-amber-200',
+      helper: 'Awaiting reviewer decision.',
+    },
+    approved: {
+      label: 'Approved',
+      icon: CheckCircle2,
+      className: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+      helper: 'Ready for dispatch and payment follow-up.',
+    },
+    rejected: {
+      label: 'Rejected',
+      icon: XCircle,
+      className: 'bg-rose-100 text-rose-800 border-rose-200',
+      helper: 'Update invoice details and resubmit.',
+    },
+  };
+
+  const activeApprovalStatus = approvalStatusConfig[approvalStatus] || approvalStatusConfig.none;
 
   // Pakistani Seasonal Pricing
   const seasonalPricingEnabled = hasSeasonalPricing(category);
@@ -472,6 +515,29 @@ export function EnhancedInvoiceBuilder({
     }
   }, [invoice.date, selectedCustomer, isDueDateManuallyEdited]);
 
+  useEffect(() => {
+    const invoiceId = invoice?.id || initialData?.id;
+    if (!business?.id || !invoiceId) {
+      setApprovalHistory([]);
+      return;
+    }
+
+    let ignore = false;
+    const loadApprovalHistory = async () => {
+      try {
+        const result = await getApprovalHistoryAction(business.id, invoiceId);
+        if (!ignore) {
+          setApprovalHistory(result?.success ? (result.history || []) : []);
+        }
+      } catch (error) {
+        if (!ignore) setApprovalHistory([]);
+      }
+    };
+
+    loadApprovalHistory();
+    return () => { ignore = true; };
+  }, [business?.id, invoice?.id, initialData?.id]);
+
   // Add item to invoice
   const addItem = () => {
     const lastItem = invoice.items[invoice.items.length - 1];
@@ -621,6 +687,24 @@ export function EnhancedInvoiceBuilder({
     };
   }, [totals]);
 
+  const duplicateItemSignals = useMemo(() => {
+    const grouped = new Map();
+
+    invoice.items.forEach((item, index) => {
+      const key = String(item.productId || item.name || '').trim().toLowerCase();
+      if (!key) return;
+
+      if (!grouped.has(key)) {
+        grouped.set(key, { key, indexes: [], label: item.name || `Item ${index + 1}` });
+      }
+
+      const bucket = grouped.get(key);
+      bucket.indexes.push(index + 1);
+    });
+
+    return Array.from(grouped.values()).filter((entry) => entry.indexes.length > 1);
+  }, [invoice.items]);
+
   // Keyboard Shortcuts (Re-inserted here to access totals)
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -644,10 +728,10 @@ export function EnhancedInvoiceBuilder({
   }, [invoice, totals]);
 
   // Handle save with validation
-  const handleSave = async () => {
+  const persistInvoice = async () => {
     if (!invoice.items.length) {
       toast.error('Add at least one item before finalizing invoice');
-      return;
+      return null;
     }
 
     const invalidRowIndex = invoice.items.findIndex(item => {
@@ -658,7 +742,25 @@ export function EnhancedInvoiceBuilder({
 
     if (invalidRowIndex !== -1) {
       toast.error(`Please complete row ${invalidRowIndex + 1} (item, quantity, rate)`);
-      return;
+      return null;
+    }
+
+    if (invoice.dueDate && invoice.date && invoice.dueDate < invoice.date) {
+      toast.error('Due date cannot be earlier than invoice date');
+      return null;
+    }
+
+    if (duplicateItemSignals.length > 0) {
+      const duplicateSummary = duplicateItemSignals
+        .slice(0, 3)
+        .map((entry) => `${entry.label} (rows ${entry.indexes.join(', ')})`)
+        .join('\n');
+
+      const continueWithDuplicates = confirm(
+        `Duplicate line items detected:\n${duplicateSummary}\n\nContinue anyway?`
+      );
+
+      if (!continueWithDuplicates) return null;
     }
 
     // Zod schema validation
@@ -688,29 +790,29 @@ export function EnhancedInvoiceBuilder({
     if (!validation.success) {
       const firstError = Object.values(validation.errors)[0];
       toast.error(firstError || 'Please fix validation errors');
-      return;
+      return null;
     }
 
     // Additional UI checks
     if (!invoice.customer.name) {
       toast.error('Please enter customer name');
-      return;
+      return null;
     }
 
     if (!postingHealth.balanced) {
       toast.error(`Posting check failed: debit ${postingHealth.debit.toFixed(2)} vs credit ${postingHealth.credit.toFixed(2)}`);
-      return;
+      return null;
     }
 
     if (isPakistaniDomain) {
       // NTN is optional but recommended
       if (!invoice.customer.taxId && invoice.invoiceType === 'fbr') {
         const proceed = confirm('NTN not provided. Continue anyway?');
-        if (!proceed) return;
+        if (!proceed) return null;
       }
     }
 
-    if (isSubmittingRef.current) return;
+    if (isSubmittingRef.current) return null;
     isSubmittingRef.current = true;
     setIsSaving(true);
 
@@ -764,17 +866,70 @@ export function EnhancedInvoiceBuilder({
         }, invoice.customer.province || 'punjab');
       }
 
-      await onSave?.(finalInvoice);
-      // Success toast handled by parent
+      const savedInvoice = await onSave?.(finalInvoice);
+      return savedInvoice || null;
     } catch (error) {
       console.error('Error saving invoice:', error);
       toast.error(error?.message || 'Failed to save invoice. Please try again.');
       isSubmittingRef.current = false; // Reset only on error
+      return null;
     } finally {
       setIsSaving(false);
       // Note: We don't reset isSubmittingRef on success because component unmounts 
       // or we explicitly want to block further clicks until close.
       if (!onSave) isSubmittingRef.current = false;
+    }
+  };
+
+  // Handle save with validation
+  const handleSave = async () => {
+    await persistInvoice();
+  };
+
+  const handleSaveAndSubmitForApproval = async () => {
+    if (!canSubmitForApproval) {
+      toast.error('Complete customer and item details before submitting for approval');
+      return;
+    }
+
+    const confirmed = confirm('Submit this invoice for approval? It will move to pending approval.');
+    if (!confirmed) return;
+
+    setIsSubmittingApproval(true);
+    try {
+      const savedInvoice = await persistInvoice();
+      const invoiceId = savedInvoice?.id || invoice?.id || initialData?.id;
+
+      if (!invoiceId || !business?.id) {
+        toast.error('Invoice saved but approval submission needs a valid invoice reference');
+        return;
+      }
+
+      const submitRes = await submitInvoiceForApprovalAction(business.id, invoiceId);
+      if (!submitRes?.success) {
+        throw new Error(submitRes?.error || submitRes?.message || 'Failed to submit for approval');
+      }
+
+      if (invoice.dueDate) {
+        await schedulePaymentRemindersAction(business.id, invoiceId);
+      }
+
+      setInvoice(prev => ({
+        ...prev,
+        id: invoiceId,
+        approval_status: 'pending',
+      }));
+
+      const historyRes = await getApprovalHistoryAction(business.id, invoiceId);
+      setApprovalHistory(historyRes?.success ? (historyRes.history || []) : []);
+
+      toast.success('Invoice submitted for approval successfully');
+    } catch (error) {
+      console.error('Error submitting invoice for approval:', error);
+      toast.error(error?.message || 'Failed to submit invoice for approval');
+    } finally {
+      setIsSubmittingApproval(false);
+      isSubmittingRef.current = false;
     }
   };
 
@@ -819,6 +974,10 @@ export function EnhancedInvoiceBuilder({
             <div className="flex items-center gap-3">
               <span className="text-gray-500 font-bold text-xs uppercase tracking-widest">Compliance Mode:</span>
               <Badge className="bg-emerald-500 text-white border-0 text-[10px] font-black uppercase">Active</Badge>
+              <Badge className={cn('text-[10px] font-black uppercase border', activeApprovalStatus.className)}>
+                <activeApprovalStatus.icon className="w-3.5 h-3.5 mr-1" />
+                {activeApprovalStatus.label}
+              </Badge>
               <Badge variant="outline" className="text-[10px] font-black uppercase tracking-widest" style={{ backgroundColor: `${colors.primary}10`, color: colors.primary, borderColor: `${colors.primary}20` }}>
                 {category.replace('-', ' ')}
               </Badge>
@@ -1413,11 +1572,47 @@ export function EnhancedInvoiceBuilder({
             </div>
           </div>
 
+          <div className="border-t pt-4">
+            <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+              <div className="flex items-center gap-2 text-sm text-slate-700">
+                <ShieldCheck className="w-4 h-4" />
+                <span className="font-semibold">Workflow Status:</span>
+                <span>{activeApprovalStatus.helper}</span>
+              </div>
+              <span className="text-xs text-slate-500 font-medium">Invoice Ref: {invoice.invoiceNumber}</span>
+            </div>
+
+            {approvalHistory.length > 0 && (
+              <div className="mt-3 rounded-xl border border-slate-200 bg-white px-4 py-3">
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Recent Approval Activity</p>
+                <div className="space-y-2">
+                  {approvalHistory.slice(0, 3).map((entry) => (
+                    <div key={entry.id} className="flex items-center justify-between text-xs">
+                      <span className="font-medium text-slate-700 capitalize">{entry.approval_status}</span>
+                      <span className="text-slate-500">{new Date(entry.created_at).toLocaleString()}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {duplicateItemSignals.length > 0 && (
+              <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+                <p className="text-xs font-bold uppercase tracking-wider text-amber-700 mb-1">Review Needed</p>
+                <p className="text-xs text-amber-700">
+                  Possible duplicate rows detected. Merge similar items when possible to reduce posting errors.
+                </p>
+              </div>
+            )}
+          </div>
+
           {/* Actions */}
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4 pt-8 border-t">
+          <div className="sticky bottom-0 z-20 -mx-8 mt-6 border-t bg-white/95 px-8 py-4 backdrop-blur supports-[backdrop-filter]:bg-white/85">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="space-y-2 w-full md:w-auto">
               <div className="flex gap-4">
                 <Button
+                  type="button"
                   variant="outline"
                   onClick={() => applySmartDraft('items')}
                   className="rounded-xl border-indigo-100 text-indigo-600 hover:bg-indigo-50 font-bold h-12 px-6"
@@ -1426,6 +1621,7 @@ export function EnhancedInvoiceBuilder({
                   Smart Items
                 </Button>
                 <Button
+                  type="button"
                   variant="outline"
                   onClick={() => applySmartDraft('full')}
                   className="rounded-xl border-violet-100 text-violet-600 hover:bg-violet-50 font-bold h-12 px-6"
@@ -1434,6 +1630,7 @@ export function EnhancedInvoiceBuilder({
                   Smart Full
                 </Button>
                 <Button
+                  type="button"
                   variant="outline"
                   onClick={() => toast.success('Link generated for WhatsApp message')}
                   className="rounded-xl border-emerald-100 text-emerald-600 hover:bg-emerald-50 font-bold h-12 px-6"
@@ -1452,10 +1649,11 @@ export function EnhancedInvoiceBuilder({
             </div>
 
             <div className="flex gap-4 w-full md:w-auto">
-              <Button variant="ghost" onClick={onClose} className="flex-1 md:flex-none font-bold text-gray-500 rounded-xl px-8 h-12">
+              <Button type="button" variant="ghost" onClick={onClose} className="flex-1 md:flex-none font-bold text-gray-500 rounded-xl px-8 h-12">
                 Dismiss
               </Button>
               <Button
+                type="button"
                 variant="outline"
                 onClick={handleExportPDF}
                 disabled={isSaving || isExporting}
@@ -1465,14 +1663,27 @@ export function EnhancedInvoiceBuilder({
                 Print {standards.taxLabel} Invoice
               </Button>
               <Button
+                type="button"
                 disabled={isSaving}
                 onClick={handleSave}
-                className="flex-1 md:flex-none bg-wine-600 hover:opacity-90 text-white font-black px-12 h-12 rounded-xl shadow-xl shadow-wine-600/20 transition-all active:scale-95"
+                className="flex-1 md:flex-none bg-wine-600 hover:opacity-90 text-white font-black px-8 h-12 rounded-xl shadow-xl shadow-wine-600/20 transition-all active:scale-95"
               >
                 {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5 mr-2" />}
-                Finalize & Post
+                Save Draft
+              </Button>
+              <Button
+                type="button"
+                disabled={!canSubmitForApproval}
+                onClick={handleSaveAndSubmitForApproval}
+                className="flex-1 md:flex-none bg-emerald-600 hover:bg-emerald-700 text-white font-black px-8 h-12 rounded-xl shadow-xl shadow-emerald-600/20 transition-all active:scale-95 disabled:opacity-60"
+              >
+                {(isSaving || isSubmittingApproval)
+                  ? <Loader2 className="w-5 h-5 animate-spin" />
+                  : <Send className="w-5 h-5 mr-2" />}
+                Save & Submit
               </Button>
             </div>
+          </div>
           </div>
         </CardContent>
       </Card>

@@ -409,7 +409,7 @@ model invoice_approvals {
   id                String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   business_id       String      @db.Uuid
   invoice_id        String      @db.Uuid
-  approved_by       String
+  approved_by       String?
   approval_status   String      // approved, rejected
   notes             String?
   metadata          Json?       @default("{}")
@@ -417,7 +417,7 @@ model invoice_approvals {
   
   businesses        businesses  @relation(fields: [business_id], references: [id], onDelete: Cascade)
   invoices          invoices    @relation(fields: [invoice_id], references: [id], onDelete: Cascade)
-  approver          User        @relation("invoice_approvals", fields: [approved_by], references: [id], onDelete: SetNull)
+  approver          User?       @relation("invoice_approvals", fields: [approved_by], references: [id], onDelete: SetNull)
 
   @@unique([invoice_id])
   @@index([business_id])

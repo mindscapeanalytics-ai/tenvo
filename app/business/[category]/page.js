@@ -75,6 +75,7 @@ function BusinessDashboardContent() {
   }, [currentDomain, router]);
 
   const [showQuickAction, setShowQuickAction] = useState(false);
+  const [showQuickInvoice, setShowQuickInvoice] = useState(false);
   const [showInvoiceBuilder, setShowInvoiceBuilder] = useState(false);
   const [invoiceInitialData, setInvoiceInitialData] = useState(null); // New state for pre-filling invoice
   const [showProductForm, setShowProductForm] = useState(false);
@@ -116,6 +117,11 @@ function BusinessDashboardContent() {
       case 'add-invoice':
       case QUICK_ACTION_IDS.ADD_INVOICE:
         setShowInvoiceBuilder(true);
+        break;
+      case 'create-invoice':
+      case 'quick-invoice':
+      case 'quick-checkout':
+        setShowQuickInvoice(true);
         break;
       case 'new-product':
       case 'add-product':
@@ -692,12 +698,13 @@ function BusinessDashboardContent() {
 
       // 1. Actually call the API to persist data
       const isUpdate = invoiceInitialData?.id && typeof invoiceInitialData.id === 'string' && invoiceInitialData.id.length > 20;
+      let savedInvoice = null;
 
       if (isUpdate) {
-        await invoiceAPI.update(invoiceInitialData.id, payload, mappedItems);
+        savedInvoice = await invoiceAPI.update(invoiceInitialData.id, payload, mappedItems);
         toast.success('Invoice updated successfully');
       } else {
-        await invoiceAPI.create(payload, mappedItems);
+        savedInvoice = await invoiceAPI.create(payload, mappedItems);
         toast.success('Invoice created successfully');
       }
 
@@ -707,6 +714,8 @@ function BusinessDashboardContent() {
 
       // Refresh products as stock might have changed
       refreshAllData();
+
+      return savedInvoice;
     } catch (error) {
       console.error('Error saving invoice:', error);
       if (isEntitlementError(error)) {
@@ -1237,6 +1246,8 @@ function BusinessDashboardContent() {
         setShowProductForm={setShowProductForm}
         showQuickAction={showQuickAction}
         setShowQuickAction={setShowQuickAction}
+        showQuickInvoice={showQuickInvoice}
+        setShowQuickInvoice={setShowQuickInvoice}
         showCustomerForm={showCustomerForm}
         setShowCustomerForm={setShowCustomerForm}
         showInvoiceBuilder={showInvoiceBuilder}
@@ -1252,6 +1263,7 @@ function BusinessDashboardContent() {
         setCustomerFormData={setCustomerFormData}
         products={products}
         customers={customers}
+        invoices={invoices}
         category={category}
         colors={colors}
         currency={currency}
