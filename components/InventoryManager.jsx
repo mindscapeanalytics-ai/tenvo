@@ -75,6 +75,8 @@ import { StockReservation } from './inventory/StockReservation';
 import { StockAdjustmentManager } from './inventory/StockAdjustmentManager';
 import { AutoReorderManager } from './inventory/AutoReorderManager';
 import { StockTransferForm } from './inventory/StockTransferForm';
+import { LowStockAlerts } from './inventory/LowStockAlerts';
+import { CycleCountManager } from './inventory/CycleCountManager';
 import { exportProducts } from '@/lib/utils/export';
 import { productAPI } from '@/lib/api/product';
 
@@ -1904,6 +1906,29 @@ export function InventoryManager({
                 </div>
               </CardContent>
             </Card>
+          </div>
+
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+            <LowStockAlerts
+              businessId={businessId}
+              currency={standards.currency}
+              maxAlerts={8}
+              onReorderClick={(alert) => {
+                setActiveTab('reports');
+                toast.success(`Review reorder for ${alert?.product_name || 'selected product'}`);
+              }}
+            />
+
+            <CycleCountManager
+              businessId={businessId}
+              products={products}
+              warehouses={locations}
+              currency={standards.currency}
+              onCountComplete={() => {
+                refreshData?.();
+                toast.success('Cycle count completed and inventory refreshed');
+              }}
+            />
           </div>
 
           {/* AI Demand Forecasting */}
