@@ -6,6 +6,7 @@ import { Header } from '@/components/layout/Header';
 import { useLanguage } from '@/lib/context/LanguageContext';
 import { FilterProvider } from '@/lib/context/FilterContext';
 import { DataProvider } from '@/lib/context/DataContext';
+import { GlobalCommandPalette } from '@/components/GlobalCommandPalette';
 
 export default function BusinessLayout({ children }) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -20,6 +21,7 @@ export default function BusinessLayout({ children }) {
     return (
         <FilterProvider>
             <DataProvider>
+                <GlobalCommandPalette />
                 <div className="min-h-screen bg-gray-50 flex">
                     {/* Sidebar */}
                     <Sidebar

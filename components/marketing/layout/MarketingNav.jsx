@@ -146,6 +146,12 @@ export default function MarketingNav({
               >
                 Industries
               </button>
+              <button
+                className="text-sm font-bold text-gray-600 hover:text-brand-primary-dark transition-colors"
+                onClick={() => router.push('/integrations')}
+              >
+                Integrations
+              </button>
             </div>
 
             <div className="h-4 w-px bg-neutral-200 mx-2" />
