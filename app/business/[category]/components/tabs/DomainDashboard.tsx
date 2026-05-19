@@ -935,9 +935,9 @@ export function DomainDashboard({
                             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
                                 {easyActions.map(action => {
                                     const actionColors: Record<string, { border: string, bg: string, text: string, hoverBg: string }> = {
-                                        'new-invoice': { border: 'border-l-[#e34242]', bg: 'bg-[#e34242]/5', text: 'text-[#e34242]', hoverBg: 'hover:bg-[#e34242]/5' },
+                                        'new-invoice': { border: 'border-l-emerald-500', bg: 'bg-emerald-500/5', text: 'text-emerald-600', hoverBg: 'hover:bg-emerald-50' },
                                         'add-product': { border: 'border-l-indigo-500', bg: 'bg-indigo-500/5', text: 'text-indigo-600', hoverBg: 'hover:bg-indigo-50' },
-                                        'add-customer': { border: 'border-l-emerald-500', bg: 'bg-emerald-500/5', text: 'text-emerald-600', hoverBg: 'hover:bg-emerald-50' },
+                                        'add-customer': { border: 'border-l-blue-500', bg: 'bg-blue-50/5', text: 'text-blue-600', hoverBg: 'hover:bg-blue-50' },
                                         'inventory': { border: 'border-l-amber-500', bg: 'bg-amber-500/5', text: 'text-amber-600', hoverBg: 'hover:bg-amber-50' },
                                         'reports': { border: 'border-l-orange-500', bg: 'bg-orange-500/5', text: 'text-orange-600', hoverBg: 'hover:bg-orange-50' },
                                     };
@@ -1206,7 +1206,7 @@ export function DomainDashboard({
                                                 const preset = e.target.value as 'today' | '7d' | '30d' | '90d' | 'mtd' | 'last_month' | 'ytd' | 'custom';
                                                 if (preset !== 'custom') onDateRangePresetChange?.(preset);
                                             }}
-                                            className="h-7 rounded-md border border-slate-200 bg-slate-50 px-2 text-[11px] font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-wine/20"
+                                            className="h-7 rounded-md border border-slate-200 bg-slate-50 px-2 text-[11px] font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
                                         >
                                             <option value="today">Today</option>
                                             <option value="7d">Last 7 Days</option>
@@ -1388,7 +1388,7 @@ export function DomainDashboard({
                                 onClick={() => onQuickAction?.(insight.actionTab)}
                                 aria-label={`${insight.title}. ${insight.text}`}
                                 className={cn(
-                                    'w-full text-left p-2.5 rounded-xl border transition-all hover:shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-wine/30',
+                                    'w-full text-left p-2.5 rounded-xl border transition-all hover:shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30',
                                     insight.tone === 'indigo' && 'bg-brand-50 border-brand-100 hover:bg-brand-100/50',
                                     insight.tone === 'emerald' && 'bg-emerald-50 border-emerald-100 hover:bg-emerald-100/50',
                                     insight.tone === 'amber' && 'bg-amber-50 border-amber-100 hover:bg-amber-100/50',

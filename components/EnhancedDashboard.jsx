@@ -121,7 +121,7 @@ export function EnhancedDashboard({ businessId, category, onQuickAction }) {
         change: t.on_track || 'On Track',
         trend: 'up',
         icon: Wrench,
-        ...(colors?.stats?.products || { bg: 'bg-wine-50', iconColor: 'text-wine-600' }),
+        ...(colors?.stats?.products || { bg: 'bg-brand-50', iconColor: 'text-brand-primary' }),
         target: 10,
         current: 0,
       });
@@ -134,7 +134,7 @@ export function EnhancedDashboard({ businessId, category, onQuickAction }) {
           : '+0%',
         trend: (metrics.products?.growth || 0) >= 0 ? 'up' : 'down',
         icon: Package,
-        ...(colors?.stats?.products || { bg: 'bg-wine-50', iconColor: 'text-wine-600' }),
+        ...(colors?.stats?.products || { bg: 'bg-brand-50', iconColor: 'text-brand-primary' }),
         target: 500,
         current: metrics.products?.count || metrics.products || 0,
       });
