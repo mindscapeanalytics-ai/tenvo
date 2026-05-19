@@ -116,7 +116,7 @@ export default function DomainShowcase({
                 placeholder="Search industries (e.g., pharmacy, textile, restaurant)..."
                 value={searchQuery}
                 onChange={handleSearchChange}
-                className="pl-12 pr-4 py-6 text-lg rounded-xl border-2 border-neutral-200 focus:border-wine-500"
+                className="pl-12 pr-4 py-6 text-lg rounded-xl border-2 border-neutral-200 focus:border-brand-primary"
               />
             </div>
           </div>
@@ -129,7 +129,7 @@ export default function DomainShowcase({
               onClick={() => handleCategoryClick(null)}
               className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
                 selectedCategory === null
-                  ? 'bg-wine-600 text-white shadow-lg'
+                  ? 'bg-brand-primary text-white shadow-lg'
                   : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
               }`}
             >
@@ -141,7 +141,7 @@ export default function DomainShowcase({
                 onClick={() => handleCategoryClick(category)}
                 className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
                   selectedCategory === category
-                    ? 'bg-wine-600 text-white shadow-lg'
+                    ? 'bg-brand-primary text-white shadow-lg'
                     : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
                 }`}
               >
@@ -162,18 +162,18 @@ export default function DomainShowcase({
                   <Link
                     key={domain.slug}
                     href={`/register?domain=${domain.slug}`}
-                    className={`group relative bg-white rounded-xl p-6 border-2 border-neutral-200 hover:border-wine-500 hover:shadow-lg transition-all duration-300 ${
+                    className={`group relative bg-white rounded-xl p-6 border-2 border-neutral-200 hover:border-brand-primary hover:shadow-lg transition-all duration-300 ${
                       mounted ? 'animate-fade-in-up' : 'opacity-0'
                     }`}
                     style={{ animationDelay: `${index * 50}ms` }}
                   >
                     {/* Icon */}
-                    <div className="w-12 h-12 bg-wine-50 rounded-lg flex items-center justify-center mb-4 group-hover:bg-wine-600 transition-colors duration-300">
-                      <DomainIcon className="w-6 h-6 text-wine-600 group-hover:text-white transition-colors duration-300" />
+                    <div className="w-12 h-12 bg-brand-50 rounded-lg flex items-center justify-center mb-4 group-hover:bg-brand-primary transition-colors duration-300">
+                      <DomainIcon className="w-6 h-6 text-brand-primary group-hover:text-white transition-colors duration-300" />
                     </div>
 
                     {/* Name */}
-                    <h3 className="text-sm font-semibold text-neutral-900 group-hover:text-wine-600 transition-colors duration-300">
+                    <h3 className="text-sm font-semibold text-neutral-900 group-hover:text-brand-primary transition-colors duration-300">
                       {domain.name}
                     </h3>
 
@@ -185,7 +185,7 @@ export default function DomainShowcase({
                     )}
 
                     {/* Hover underline effect */}
-                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-wine-600 scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left" />
+                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand-primary scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left" />
                   </Link>
                 );
               })}
@@ -198,7 +198,7 @@ export default function DomainShowcase({
                   onClick={handleShowMore}
                   variant="outline"
                   size="lg"
-                  className="border-2 border-wine-600 text-wine-600 hover:bg-wine-600 hover:text-white px-8 py-6 text-lg font-semibold rounded-xl transition-all duration-300"
+                  className="border-2 border-brand-primary text-brand-primary hover:bg-brand-primary hover:text-white px-8 py-6 text-lg font-semibold rounded-xl transition-all duration-300"
                 >
                   Show More Industries
                   <LucideIcons.ChevronDown className="ml-2 w-5 h-5" />
@@ -228,7 +228,7 @@ export default function DomainShowcase({
                 setDisplayCount(initialDisplay);
               }}
               variant="outline"
-              className="border-2 border-wine-600 text-wine-600 hover:bg-wine-600 hover:text-white"
+              className="border-2 border-brand-primary text-brand-primary hover:bg-brand-primary hover:text-white"
             >
               Clear Filters
             </Button>
@@ -247,7 +247,7 @@ export default function DomainShowcase({
             <Button
               asChild
               size="lg"
-              className="bg-wine-600 hover:bg-wine-700 text-white px-8 py-6 text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+              className="bg-brand-primary hover:bg-brand-primary-dark text-white px-8 py-6 text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
             >
               <Link href={ctaHref}>
                 {ctaText}

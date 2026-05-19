@@ -89,7 +89,7 @@ export function DemoRequestForm({ onSuccess, className = '' }) {
         <input
           ref={nameInputRef}
           type="text" id="demo-name" name="name" value={formData.name} onChange={handleChange}
-          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-wine-500 focus:border-wine-500 transition-colors ${errors.name ? 'border-red-500' : 'border-gray-300'}`}
+          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-brand-primary focus:border-brand-primary transition-colors ${errors.name ? 'border-red-500' : 'border-gray-300'}`}
           placeholder="John Doe" aria-required="true" aria-invalid={!!errors.name}
         />
         {errors.name && <p className="mt-1 text-sm text-red-600" role="alert">{errors.name}</p>}
@@ -101,7 +101,7 @@ export function DemoRequestForm({ onSuccess, className = '' }) {
         </label>
         <input
           type="email" id="demo-email" name="email" value={formData.email} onChange={handleChange}
-          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-wine-500 focus:border-wine-500 transition-colors ${errors.email ? 'border-red-500' : 'border-gray-300'}`}
+          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-brand-primary focus:border-brand-primary transition-colors ${errors.email ? 'border-red-500' : 'border-gray-300'}`}
           placeholder="john@company.com" aria-required="true" aria-invalid={!!errors.email}
         />
         {errors.email && <p className="mt-1 text-sm text-red-600" role="alert">{errors.email}</p>}
@@ -113,7 +113,7 @@ export function DemoRequestForm({ onSuccess, className = '' }) {
         </label>
         <input
           type="tel" id="demo-phone" name="phone" value={formData.phone} onChange={handleChange}
-          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-wine-500 focus:border-wine-500 transition-colors ${errors.phone ? 'border-red-500' : 'border-gray-300'}`}
+          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-brand-primary focus:border-brand-primary transition-colors ${errors.phone ? 'border-red-500' : 'border-gray-300'}`}
           placeholder="+92 300 1234567" aria-required="true" aria-invalid={!!errors.phone}
         />
         {errors.phone && <p className="mt-1 text-sm text-red-600" role="alert">{errors.phone}</p>}
@@ -125,7 +125,7 @@ export function DemoRequestForm({ onSuccess, className = '' }) {
         </label>
         <input
           type="text" id="demo-company" name="company" value={formData.company} onChange={handleChange}
-          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-wine-500 focus:border-wine-500 transition-colors ${errors.company ? 'border-red-500' : 'border-gray-300'}`}
+          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-brand-primary focus:border-brand-primary transition-colors ${errors.company ? 'border-red-500' : 'border-gray-300'}`}
           placeholder="Your Company" aria-required="true" aria-invalid={!!errors.company}
         />
         {errors.company && <p className="mt-1 text-sm text-red-600" role="alert">{errors.company}</p>}
@@ -137,7 +137,7 @@ export function DemoRequestForm({ onSuccess, className = '' }) {
         </label>
         <select
           id="demo-industry" name="industry" value={formData.industry} onChange={handleChange}
-          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-wine-500 focus:border-wine-500 transition-colors ${errors.industry ? 'border-red-500' : 'border-gray-300'}`}
+          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-brand-primary focus:border-brand-primary transition-colors ${errors.industry ? 'border-red-500' : 'border-gray-300'}`}
           aria-required="true" aria-invalid={!!errors.industry}
         >
           <option value="">Select your industry</option>
@@ -163,7 +163,7 @@ export function DemoRequestForm({ onSuccess, className = '' }) {
         <textarea
           id="demo-message" name="message" value={formData.message} onChange={handleChange}
           rows={4}
-          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-wine-500 focus:border-wine-500 transition-colors resize-none"
+          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-primary focus:border-brand-primary transition-colors resize-none"
           placeholder="Tell us about your requirements..."
         />
       </div>
@@ -176,7 +176,7 @@ export function DemoRequestForm({ onSuccess, className = '' }) {
           <input
             type="date" id="demo-date" name="preferredDate" value={formData.preferredDate} onChange={handleChange}
             min={new Date().toISOString().split('T')[0]}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-wine-500 focus:border-wine-500 transition-colors"
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-primary focus:border-brand-primary transition-colors"
           />
         </div>
         <div>
@@ -185,7 +185,7 @@ export function DemoRequestForm({ onSuccess, className = '' }) {
           </label>
           <select
             id="demo-time" name="preferredTime" value={formData.preferredTime} onChange={handleChange}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-wine-500 focus:border-wine-500 transition-colors"
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-primary focus:border-brand-primary transition-colors"
           >
             <option value="">Select time</option>
             <option value="morning">Morning (9 AM - 12 PM)</option>
@@ -211,7 +211,7 @@ export function DemoRequestForm({ onSuccess, className = '' }) {
 
       <button
         type="submit" disabled={isSubmitting}
-        className="w-full px-6 py-4 bg-wine-600 text-white font-semibold rounded-lg hover:bg-wine-700 focus:outline-none focus:ring-2 focus:ring-wine-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        className="w-full px-6 py-4 bg-brand-primary text-white font-semibold rounded-lg hover:bg-brand-primary-dark focus:outline-none focus:ring-2 focus:ring-brand-primary focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {isSubmitting ? 'Submitting...' : 'Request Demo'}
       </button>

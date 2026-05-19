@@ -29,7 +29,7 @@ export function TrustBadges({ variant = 'horizontal', className = '' }) {
       name: 'ISO 27001',
       icon: '🔒',
       description: 'ISO 27001 certified for information security management',
-      color: 'bg-wine-50 text-wine-700 border-wine-200'
+      color: 'bg-brand-50 text-brand-primary-dark border-brand-200'
     },
     {
       id: 'gdpr',

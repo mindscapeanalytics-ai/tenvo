@@ -41,8 +41,8 @@ export default function StatsBar({
                   style={{ animationDelay: `${index * 100}ms` }}
                 >
                   {StatIcon && (
-                    <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-wine-50">
-                      <StatIcon className="w-6 h-6 text-wine-600" />
+                    <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-brand-50">
+                      <StatIcon className="w-6 h-6 text-brand-primary" />
                     </div>
                   )}
                   <div>
@@ -79,7 +79,7 @@ export default function StatsBar({
   // Highlighted variant - Wine background
   if (variant === 'highlighted') {
     return (
-      <section className="py-12 bg-wine-600 text-white">
+      <section className="py-12 bg-brand-primary text-white">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-wrap justify-center items-center gap-12">
             {stats.map((stat, index) => {
@@ -98,7 +98,7 @@ export default function StatsBar({
                   )}
                   <div>
                     <div className="text-3xl font-bold">{stat.value}</div>
-                    <div className="text-sm text-wine-100">{stat.label}</div>
+                    <div className="text-sm text-brand-100">{stat.label}</div>
                   </div>
                 </div>
               );

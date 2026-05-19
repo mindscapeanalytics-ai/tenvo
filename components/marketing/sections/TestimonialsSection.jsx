@@ -74,14 +74,14 @@ export default function TestimonialsSection({
     return (
       <div
         key={testimonial.id}
-        className={`group relative bg-white rounded-2xl p-8 border-2 border-neutral-200 hover:border-wine-300 hover:shadow-xl transition-all duration-300 ${
+        className={`group relative bg-white rounded-2xl p-8 border-2 border-neutral-200 hover:border-brand-300 hover:shadow-xl transition-all duration-300 ${
           isLarge ? 'lg:p-12' : ''
         } ${mounted ? 'animate-fade-in-up' : 'opacity-0'}`}
         style={{ animationDelay: `${index * 150}ms` }}
       >
         {/* Quote icon */}
         <div className="absolute top-6 right-6 opacity-10">
-          <LucideIcons.Quote className="w-16 h-16 text-wine-600" />
+          <LucideIcons.Quote className="w-16 h-16 text-brand-primary" />
         </div>
 
         {/* Rating */}
@@ -121,7 +121,7 @@ export default function TestimonialsSection({
 
           {/* Industry badge */}
           {showIndustry && testimonial.industry && (
-            <div className="flex-shrink-0 px-3 py-1 bg-wine-50 text-wine-700 text-xs font-medium rounded-full">
+            <div className="flex-shrink-0 px-3 py-1 bg-brand-50 text-brand-primary-dark text-xs font-medium rounded-full">
               {testimonial.industry}
             </div>
           )}
@@ -163,7 +163,7 @@ export default function TestimonialsSection({
     const currentTestimonial = testimonialsData[currentIndex];
     
     return (
-      <section className="py-16 lg:py-24 bg-gradient-to-br from-wine-50 to-white">
+      <section className="py-16 lg:py-24 bg-brand-50">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           {/* Section header */}
           <div className="max-w-3xl mx-auto text-center mb-16">
@@ -186,7 +186,7 @@ export default function TestimonialsSection({
               {/* Previous button */}
               <button
                 onClick={() => setCurrentIndex((prev) => (prev - 1 + testimonialsData.length) % testimonialsData.length)}
-                className="w-12 h-12 rounded-full bg-white border-2 border-neutral-200 hover:border-wine-600 hover:bg-wine-50 flex items-center justify-center transition-all duration-300"
+                className="w-12 h-12 rounded-full bg-white border-2 border-neutral-200 hover:border-brand-primary hover:bg-brand-50 flex items-center justify-center transition-all duration-300"
                 aria-label="Previous testimonial"
               >
                 <LucideIcons.ChevronLeft className="w-6 h-6 text-neutral-600" />
@@ -200,7 +200,7 @@ export default function TestimonialsSection({
                     onClick={() => setCurrentIndex(index)}
                     className={`w-2 h-2 rounded-full transition-all duration-300 ${
                       index === currentIndex
-                        ? 'w-8 bg-wine-600'
+                        ? 'w-8 bg-brand-primary'
                         : 'bg-neutral-300 hover:bg-neutral-400'
                     }`}
                     aria-label={`Go to testimonial ${index + 1}`}
@@ -211,7 +211,7 @@ export default function TestimonialsSection({
               {/* Next button */}
               <button
                 onClick={() => setCurrentIndex((prev) => (prev + 1) % testimonialsData.length)}
-                className="w-12 h-12 rounded-full bg-white border-2 border-neutral-200 hover:border-wine-600 hover:bg-wine-50 flex items-center justify-center transition-all duration-300"
+                className="w-12 h-12 rounded-full bg-white border-2 border-neutral-200 hover:border-brand-primary hover:bg-brand-50 flex items-center justify-center transition-all duration-300"
                 aria-label="Next testimonial"
               >
                 <LucideIcons.ChevronRight className="w-6 h-6 text-neutral-600" />

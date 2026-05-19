@@ -46,7 +46,7 @@ export function AIInsightOverlay({ domain, items, businessId }) {
     )}>
       <Card className="w-80 rounded-[2rem] border-none shadow-[0_20px_50px_rgba(0,0,0,0.1)] overflow-hidden bg-white/90 backdrop-blur-xl">
         <div 
-          className="p-4 bg-gradient-to-r from-wine-600 to-indigo-600 flex items-center justify-between cursor-pointer"
+          className="p-4 bg-brand-primary flex items-center justify-between cursor-pointer"
           onClick={() => setMinimized(!minimized)}
         >
           <div className="flex items-center gap-2 text-white">
@@ -67,7 +67,7 @@ export function AIInsightOverlay({ domain, items, businessId }) {
               </div>
             ) : (
               insights.map((insight, idx) => (
-                <div key={idx} className="group relative p-3 rounded-2xl bg-gray-50/50 hover:bg-white border border-transparent hover:border-wine-100 transition-all cursor-default">
+                <div key={idx} className="group relative p-3 rounded-2xl bg-gray-50/50 hover:bg-white border border-transparent hover:border-brand-100 transition-all cursor-default">
                   <div className="flex items-start gap-3">
                     <div className={cn(
                       "p-1.5 rounded-lg mt-0.5",
@@ -99,7 +99,7 @@ export function AIInsightOverlay({ domain, items, businessId }) {
       
       {minimized && (
         <div 
-          className="absolute -top-4 -right-4 w-12 h-12 bg-wine-600 rounded-full flex items-center justify-center text-white shadow-xl cursor-pointer hover:scale-110 transition-all"
+          className="absolute -top-4 -right-4 w-12 h-12 bg-brand-primary rounded-full flex items-center justify-center text-white shadow-xl cursor-pointer hover:scale-110 transition-all"
           onClick={() => setMinimized(false)}
         >
           <Sparkles className="w-6 h-6" />

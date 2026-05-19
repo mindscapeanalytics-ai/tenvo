@@ -33,7 +33,7 @@ export default function CaseStudiesPage() {
         title={
           <>
             Real Results from <br />
-            <span className="text-wine-600">Real Businesses</span>
+            <span className="text-brand-primary">Real Businesses</span>
           </>
         }
         subtitle="See how businesses across Pakistan are transforming their operations with TENVO. From small startups to large enterprises, discover their success stories."
@@ -58,7 +58,7 @@ export default function CaseStudiesPage() {
                 placeholder="Search case studies..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-wine-500 focus:border-wine-500"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-primary focus:border-brand-primary"
               />
             </div>
 
@@ -67,7 +67,7 @@ export default function CaseStudiesPage() {
               <select
                 value={selectedIndustry}
                 onChange={(e) => setSelectedIndustry(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-wine-500 focus:border-wine-500"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-primary focus:border-brand-primary"
               >
                 {industries.map(industry => (
                   <option key={industry} value={industry}>
@@ -102,7 +102,7 @@ export default function CaseStudiesPage() {
                   setSelectedIndustry('all');
                   setSearchQuery('');
                 }}
-                className="mt-4 text-wine-600 hover:underline"
+                className="mt-4 text-brand-primary hover:underline"
               >
                 Clear filters
               </button>
@@ -125,19 +125,19 @@ export default function CaseStudiesPage() {
 
           <div className="grid md:grid-cols-4 gap-8">
             <div className="text-center">
-              <div className="text-4xl font-bold text-wine-600 mb-2">70%</div>
+              <div className="text-4xl font-bold text-brand-primary mb-2">70%</div>
               <div className="text-gray-600">Average Cost Reduction</div>
             </div>
             <div className="text-center">
-              <div className="text-4xl font-bold text-wine-600 mb-2">50%</div>
+              <div className="text-4xl font-bold text-brand-primary mb-2">50%</div>
               <div className="text-gray-600">Time Saved on Operations</div>
             </div>
             <div className="text-center">
-              <div className="text-4xl font-bold text-wine-600 mb-2">95%</div>
+              <div className="text-4xl font-bold text-brand-primary mb-2">95%</div>
               <div className="text-gray-600">Customer Satisfaction</div>
             </div>
             <div className="text-center">
-              <div className="text-4xl font-bold text-wine-600 mb-2">3x</div>
+              <div className="text-4xl font-bold text-brand-primary mb-2">3x</div>
               <div className="text-gray-600">ROI in First Year</div>
             </div>
           </div>

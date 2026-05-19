@@ -199,7 +199,7 @@ export function ContactForm({ onSuccess, className = '' }) {
           name="name"
           value={formData.name}
           onChange={handleChange}
-          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-wine-500 focus:border-wine-500 transition-colors ${
+          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-brand-primary focus:border-brand-primary transition-colors ${
             errors.name ? 'border-red-500' : 'border-gray-300'
           }`}
           placeholder="John Doe"
@@ -228,7 +228,7 @@ export function ContactForm({ onSuccess, className = '' }) {
           name="email"
           value={formData.email}
           onChange={handleChange}
-          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-wine-500 focus:border-wine-500 transition-colors ${
+          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-brand-primary focus:border-brand-primary transition-colors ${
             errors.email ? 'border-red-500' : 'border-gray-300'
           }`}
           placeholder="john@example.com"
@@ -257,7 +257,7 @@ export function ContactForm({ onSuccess, className = '' }) {
           name="phone"
           value={formData.phone}
           onChange={handleChange}
-          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-wine-500 focus:border-wine-500 transition-colors ${
+          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-brand-primary focus:border-brand-primary transition-colors ${
             errors.phone ? 'border-red-500' : 'border-gray-300'
           }`}
           placeholder="+92 300 1234567"
@@ -285,7 +285,7 @@ export function ContactForm({ onSuccess, className = '' }) {
           name="subject"
           value={formData.subject}
           onChange={handleChange}
-          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-wine-500 focus:border-wine-500 transition-colors ${
+          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-brand-primary focus:border-brand-primary transition-colors ${
             errors.subject ? 'border-red-500' : 'border-gray-300'
           }`}
           aria-required="true"
@@ -335,7 +335,7 @@ export function ContactForm({ onSuccess, className = '' }) {
           value={formData.message}
           onChange={handleChange}
           rows={4}
-          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-wine-500 focus:border-wine-500 transition-colors resize-none ${
+          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-brand-primary focus:border-brand-primary transition-colors resize-none ${
             errors.message ? 'border-red-500' : 'border-gray-300'
           }`}
           placeholder="Tell us how we can help you..."
@@ -381,7 +381,7 @@ export function ContactForm({ onSuccess, className = '' }) {
       <button
         type="submit"
         disabled={isSubmitting}
-        className="w-full px-6 py-4 bg-wine-600 text-white font-semibold rounded-lg hover:bg-wine-700 focus:outline-none focus:ring-2 focus:ring-wine-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        className="w-full px-6 py-4 bg-brand-primary text-white font-semibold rounded-lg hover:bg-brand-primary-dark focus:outline-none focus:ring-2 focus:ring-brand-primary focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {isSubmitting ? 'Sending...' : 'Send Message'}
       </button>

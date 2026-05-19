@@ -72,7 +72,7 @@ export function TaxCategorySelector({
     const TAX_COLOR_CLASSES = {
         blue: 'bg-blue-50 text-blue-700 border-blue-200',
         green: 'bg-green-50 text-green-700 border-green-200',
-        purple: 'bg-wine-50 text-wine-700 border-wine-200',
+        purple: 'bg-brand-50 text-brand-primary-dark border-brand-200',
         orange: 'bg-orange-50 text-orange-700 border-orange-200',
         red: 'bg-red-50 text-red-700 border-red-200',
         indigo: 'bg-indigo-50 text-indigo-700 border-indigo-200',

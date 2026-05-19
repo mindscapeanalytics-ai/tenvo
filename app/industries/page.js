@@ -45,7 +45,7 @@ export default function IndustriesPage() {
       <section className="py-24 bg-transparent">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12">
           <div className="text-center max-w-3xl mx-auto mb-16 space-y-4">
-            <h2 className="text-[11px] font-black text-wine-600 uppercase tracking-[0.3em]">Industry-Specific Benefits</h2>
+            <h2 className="text-[11px] font-black text-brand-primary uppercase tracking-[0.3em]">Industry-Specific Benefits</h2>
             <h3 className="text-4xl md:text-5xl font-black text-gray-900 tracking-tighter">Why Industry Specialization Matters</h3>
           </div>
 

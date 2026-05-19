@@ -40,28 +40,28 @@ export default function FeatureCard({
   // Variant styles
   const variantStyles = {
     default: {
-      card: 'bg-white border border-neutral-200 hover:border-wine-300 hover:shadow-xl',
-      iconBg: 'bg-wine-50 group-hover:bg-wine-600',
-      iconColor: 'text-wine-600 group-hover:text-white',
+      card: 'bg-white border border-neutral-200 hover:border-brand-300 hover:shadow-xl',
+      iconBg: 'bg-brand-50 group-hover:bg-brand-primary',
+      iconColor: 'text-brand-primary group-hover:text-white',
       title: 'text-neutral-900',
       description: 'text-neutral-600',
-      link: 'text-wine-600'
+      link: 'text-brand-primary'
     },
     highlighted: {
-      card: 'bg-wine-600 border border-wine-700 hover:shadow-2xl hover:scale-[1.02]',
+      card: 'bg-brand-primary border border-brand-primary-dark hover:shadow-2xl hover:scale-[1.02]',
       iconBg: 'bg-white/20 group-hover:bg-white',
-      iconColor: 'text-white group-hover:text-wine-600',
+      iconColor: 'text-white group-hover:text-brand-primary',
       title: 'text-white',
-      description: 'text-wine-50',
-      link: 'text-white hover:text-wine-100'
+      description: 'text-brand-50',
+      link: 'text-white hover:text-brand-100'
     },
     minimal: {
       card: 'bg-transparent hover:bg-neutral-50',
-      iconBg: 'bg-wine-50 group-hover:bg-wine-600',
-      iconColor: 'text-wine-600 group-hover:text-white',
+      iconBg: 'bg-brand-50 group-hover:bg-brand-primary',
+      iconColor: 'text-brand-primary group-hover:text-white',
       title: 'text-neutral-900',
       description: 'text-neutral-600',
-      link: 'text-wine-600'
+      link: 'text-brand-primary'
     }
   };
 

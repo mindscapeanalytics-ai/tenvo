@@ -45,7 +45,7 @@ export default function CaseStudyCard({
     return (
       <Link
         href={caseStudyUrl}
-        className={`group block bg-white border border-neutral-200 rounded-xl overflow-hidden hover:border-wine-600 hover:shadow-lg transition-all duration-300 ${
+        className={`group block bg-white border border-neutral-200 rounded-xl overflow-hidden hover:border-brand-primary hover:shadow-lg transition-all duration-300 ${
           mounted ? 'animate-fade-in-up' : 'opacity-0'
         }`}
         aria-label={`Read case study: ${company}`}
@@ -65,12 +65,12 @@ export default function CaseStudyCard({
 
         <div className="p-6">
           {/* Industry badge */}
-          <span className="inline-flex items-center px-3 py-1 bg-wine-50 text-wine-700 text-xs font-medium rounded-full mb-3">
+          <span className="inline-flex items-center px-3 py-1 bg-brand-50 text-brand-primary-dark text-xs font-medium rounded-full mb-3">
             {industry}
           </span>
 
           {/* Company name */}
-          <h3 className="text-xl font-bold text-neutral-900 mb-2 group-hover:text-wine-600 transition-colors duration-300">
+          <h3 className="text-xl font-bold text-neutral-900 mb-2 group-hover:text-brand-primary transition-colors duration-300">
             {company}
           </h3>
 
@@ -80,7 +80,7 @@ export default function CaseStudyCard({
           </p>
 
           {/* Read more link */}
-          <div className="flex items-center gap-2 text-wine-600 font-semibold mt-4 group-hover:gap-3 transition-all duration-300">
+          <div className="flex items-center gap-2 text-brand-primary font-semibold mt-4 group-hover:gap-3 transition-all duration-300">
             <span>Read case study</span>
             <LucideIcons.ArrowRight className="w-4 h-4" />
           </div>
@@ -94,7 +94,7 @@ export default function CaseStudyCard({
     return (
       <Link
         href={caseStudyUrl}
-        className={`group block bg-white border border-neutral-200 rounded-2xl overflow-hidden hover:border-wine-600 hover:shadow-2xl transition-all duration-300 ${
+        className={`group block bg-white border border-neutral-200 rounded-2xl overflow-hidden hover:border-brand-primary hover:shadow-2xl transition-all duration-300 ${
           mounted ? 'animate-fade-in-up' : 'opacity-0'
         }`}
         aria-label={`Read case study: ${company}`}
@@ -127,7 +127,7 @@ export default function CaseStudyCard({
         <div className="p-8">
           {/* Industry badge and read time */}
           <div className="flex items-center gap-3 mb-4">
-            <span className="inline-flex items-center px-3 py-1 bg-wine-50 text-wine-700 text-xs font-medium rounded-full">
+            <span className="inline-flex items-center px-3 py-1 bg-brand-50 text-brand-primary-dark text-xs font-medium rounded-full">
               {industry}
             </span>
             {readTime && (
@@ -139,7 +139,7 @@ export default function CaseStudyCard({
           </div>
 
           {/* Company name */}
-          <h3 className="text-2xl font-bold text-neutral-900 mb-3 group-hover:text-wine-600 transition-colors duration-300">
+          <h3 className="text-2xl font-bold text-neutral-900 mb-3 group-hover:text-brand-primary transition-colors duration-300">
             {company}
           </h3>
 
@@ -153,7 +153,7 @@ export default function CaseStudyCard({
             <div className="grid grid-cols-3 gap-4 mb-6 pb-6 border-b border-neutral-200">
               {results.slice(0, 3).map((result, index) => (
                 <div key={index} className="text-center">
-                  <div className="text-2xl font-bold text-wine-600 mb-1">
+                  <div className="text-2xl font-bold text-brand-primary mb-1">
                     {result.metric}
                   </div>
                   <div className="text-xs text-neutral-600">
@@ -165,7 +165,7 @@ export default function CaseStudyCard({
           )}
 
           {/* Read more link */}
-          <div className="flex items-center gap-2 text-wine-600 font-semibold group-hover:gap-3 transition-all duration-300">
+          <div className="flex items-center gap-2 text-brand-primary font-semibold group-hover:gap-3 transition-all duration-300">
             <span>Read full case study</span>
             <LucideIcons.ArrowRight className="w-5 h-5" />
           </div>
@@ -178,7 +178,7 @@ export default function CaseStudyCard({
   return (
     <Link
       href={caseStudyUrl}
-      className={`group block bg-white border border-neutral-200 rounded-xl overflow-hidden hover:border-wine-600 hover:shadow-lg transition-all duration-300 ${
+      className={`group block bg-white border border-neutral-200 rounded-xl overflow-hidden hover:border-brand-primary hover:shadow-lg transition-all duration-300 ${
         mounted ? 'animate-fade-in-up' : 'opacity-0'
       }`}
       aria-label={`Read case study: ${company}`}
@@ -199,12 +199,12 @@ export default function CaseStudyCard({
 
         <div className="flex-1 p-6">
           {/* Industry badge */}
-          <span className="inline-flex items-center px-3 py-1 bg-wine-50 text-wine-700 text-xs font-medium rounded-full mb-3">
+          <span className="inline-flex items-center px-3 py-1 bg-brand-50 text-brand-primary-dark text-xs font-medium rounded-full mb-3">
             {industry}
           </span>
 
           {/* Company name */}
-          <h3 className="text-xl font-bold text-neutral-900 mb-2 group-hover:text-wine-600 transition-colors duration-300">
+          <h3 className="text-xl font-bold text-neutral-900 mb-2 group-hover:text-brand-primary transition-colors duration-300">
             {company}
           </h3>
 
@@ -218,7 +218,7 @@ export default function CaseStudyCard({
             <div className="flex flex-wrap gap-4 mb-4">
               {results.slice(0, 3).map((result, index) => (
                 <div key={index} className="flex items-baseline gap-1">
-                  <span className="text-lg font-bold text-wine-600">
+                  <span className="text-lg font-bold text-brand-primary">
                     {result.metric}
                   </span>
                   <span className="text-xs text-neutral-600">
@@ -230,7 +230,7 @@ export default function CaseStudyCard({
           )}
 
           {/* Read more link */}
-          <div className="flex items-center gap-2 text-wine-600 font-semibold group-hover:gap-3 transition-all duration-300">
+          <div className="flex items-center gap-2 text-brand-primary font-semibold group-hover:gap-3 transition-all duration-300">
             <span>Read case study</span>
             <LucideIcons.ArrowRight className="w-4 h-4" />
           </div>

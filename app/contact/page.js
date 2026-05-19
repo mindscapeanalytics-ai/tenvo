@@ -16,7 +16,7 @@ export default function ContactPage() {
         title={
           <>
             We're Here to <br />
-            <span className="text-wine-600">Help You Succeed</span>
+            <span className="text-brand-primary">Help You Succeed</span>
           </>
         }
         subtitle="Have questions about TENVO? Our team is ready to help you find the right solution for your business."
@@ -88,15 +88,15 @@ export default function ContactPage() {
                 </h3>
                 <ul className="space-y-3">
                   <li className="flex items-start gap-3">
-                    <svg className="w-5 h-5 text-wine-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                    <svg className="w-5 h-5 text-brand-primary flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                     </svg>
                     <span className="text-gray-700">
-                      Check our <a href="#faq" className="text-wine-600 hover:underline">FAQ section</a> for quick answers
+                      Check our <a href="#faq" className="text-brand-primary hover:underline">FAQ section</a> for quick answers
                     </span>
                   </li>
                   <li className="flex items-start gap-3">
-                    <svg className="w-5 h-5 text-wine-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                    <svg className="w-5 h-5 text-brand-primary flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                     </svg>
                     <span className="text-gray-700">
@@ -104,11 +104,11 @@ export default function ContactPage() {
                     </span>
                   </li>
                   <li className="flex items-start gap-3">
-                    <svg className="w-5 h-5 text-wine-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                    <svg className="w-5 h-5 text-brand-primary flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                     </svg>
                     <span className="text-gray-700">
-                      Schedule a <a href="/demo" className="text-wine-600 hover:underline">live demo</a> with our team
+                      Schedule a <a href="/demo" className="text-brand-primary hover:underline">live demo</a> with our team
                     </span>
                   </li>
                 </ul>
@@ -132,7 +132,7 @@ export default function ContactPage() {
 function ContactInfoCard({ icon, title, content, link }) {
   const CardContent = (
     <div className="flex items-start gap-4 p-6 bg-white border border-gray-100 rounded-2xl hover:shadow-lg transition-all duration-300">
-      <div className="text-wine-600 flex-shrink-0">{icon}</div>
+      <div className="text-brand-primary flex-shrink-0">{icon}</div>
       <div>
         <h3 className="font-bold text-gray-900 mb-1">{title}</h3>
         <p className="text-gray-600">{content}</p>

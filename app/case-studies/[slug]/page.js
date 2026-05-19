@@ -20,7 +20,7 @@ export default function CaseStudyDetailPage() {
         <div className="py-24 text-center">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">Case Study Not Found</h1>
           <p className="text-gray-600 mb-8">The case study you're looking for doesn't exist.</p>
-          <a href="/case-studies" className="text-wine-600 hover:underline">
+          <a href="/case-studies" className="text-brand-primary hover:underline">
             View all case studies
           </a>
         </div>
@@ -36,9 +36,9 @@ export default function CaseStudyDetailPage() {
   return (
     <MarketingLayout>
       {/* Hero Section */}
-      <section className="py-20 bg-gradient-to-br from-wine-50 via-white to-gray-50">
+      <section className="py-20 bg-brand-50">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="inline-block px-4 py-2 bg-wine-100 text-wine-700 rounded-full text-sm font-semibold mb-6">
+          <div className="inline-block px-4 py-2 bg-brand-100 text-brand-primary-dark rounded-full text-sm font-semibold mb-6">
             {caseStudy.industry}
           </div>
           <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
@@ -52,7 +52,7 @@ export default function CaseStudyDetailPage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {caseStudy.results.map((result, index) => (
               <div key={index} className="bg-white rounded-lg p-4 border border-gray-100">
-                <div className="text-2xl font-bold text-wine-600 mb-1">
+                <div className="text-2xl font-bold text-brand-primary mb-1">
                   {result.metric}
                 </div>
                 <div className="text-sm text-gray-600">{result.label}</div>
@@ -110,7 +110,7 @@ export default function CaseStudyDetailPage() {
                 'Mobile Access'
               ]).map((feature, index) => (
                 <div key={index} className="flex items-start gap-3">
-                  <CheckCircle className="w-5 h-5 text-wine-600 flex-shrink-0 mt-0.5" />
+                  <CheckCircle className="w-5 h-5 text-brand-primary flex-shrink-0 mt-0.5" />
                   <span className="text-gray-700">{feature}</span>
                 </div>
               ))}
@@ -131,7 +131,7 @@ export default function CaseStudyDetailPage() {
 
           {/* Testimonial */}
           {caseStudy.testimonial && (
-            <div className="bg-wine-50 rounded-2xl p-8 border-l-4 border-wine-600">
+            <div className="bg-brand-50 rounded-2xl p-8 border-l-4 border-brand-primary">
               <p className="text-lg text-gray-700 italic mb-4">
                 "{caseStudy.testimonial.quote}"
               </p>
@@ -196,7 +196,7 @@ function ResultCard({ result }) {
 
   return (
     <div className="bg-gray-50 rounded-2xl p-6">
-      <div className="text-wine-600 mb-3">
+      <div className="text-brand-primary mb-3">
         {getIcon(result.label)}
       </div>
       <div className="text-3xl font-bold text-gray-900 mb-2">

@@ -97,7 +97,7 @@ export const RecentActivityFeed = memo(function RecentActivityFeed({ businessId,
         switch (type) {
             case 'invoice': return <FileText className="w-3.5 h-3.5 text-brand-primary" />;
             case 'payment': return <CreditCard className="w-3.5 h-3.5 text-emerald-500" />;
-            case 'customer': return <UserPlus className="w-3.5 h-3.5 text-wine-500" />;
+            case 'customer': return <UserPlus className="w-3.5 h-3.5 text-brand-primary" />;
             case 'alert': return <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />;
             default: return <Clock className="w-3.5 h-3.5 text-slate-400" />;
         }
@@ -107,7 +107,7 @@ export const RecentActivityFeed = memo(function RecentActivityFeed({ businessId,
         switch (type) {
             case 'invoice': return 'bg-brand-50';
             case 'payment': return 'bg-emerald-50';
-            case 'customer': return 'bg-wine-50';
+            case 'customer': return 'bg-brand-50';
             case 'alert': return 'bg-amber-50';
             default: return 'bg-slate-50';
         }

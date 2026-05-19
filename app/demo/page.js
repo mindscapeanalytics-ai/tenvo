@@ -17,7 +17,7 @@ export default function DemoPage() {
         title={
           <>
             See TENVO in <br />
-            <span className="text-wine-600">Action</span>
+            <span className="text-brand-primary">Action</span>
           </>
         }
         subtitle="Get a personalized demo tailored to your industry and business needs. See how TENVO can transform your operations."
@@ -81,19 +81,19 @@ export default function DemoPage() {
                 </h3>
                 <div className="grid grid-cols-2 gap-6">
                   <div>
-                    <div className="text-3xl font-bold text-wine-600 mb-1">450k+</div>
+                    <div className="text-3xl font-bold text-brand-primary mb-1">450k+</div>
                     <div className="text-sm text-gray-600">Active Users</div>
                   </div>
                   <div>
-                    <div className="text-3xl font-bold text-wine-600 mb-1">55+</div>
+                    <div className="text-3xl font-bold text-brand-primary mb-1">55+</div>
                     <div className="text-sm text-gray-600">Industries</div>
                   </div>
                   <div>
-                    <div className="text-3xl font-bold text-wine-600 mb-1">99.9%</div>
+                    <div className="text-3xl font-bold text-brand-primary mb-1">99.9%</div>
                     <div className="text-sm text-gray-600">Uptime</div>
                   </div>
                   <div>
-                    <div className="text-3xl font-bold text-wine-600 mb-1">24/7</div>
+                    <div className="text-3xl font-bold text-brand-primary mb-1">24/7</div>
                     <div className="text-sm text-gray-600">Support</div>
                   </div>
                 </div>
@@ -151,7 +151,7 @@ export default function DemoPage() {
 function BenefitItem({ text }) {
   return (
     <div className="flex items-start gap-3">
-      <CheckCircle className="w-6 h-6 text-wine-600 flex-shrink-0 mt-0.5" />
+      <CheckCircle className="w-6 h-6 text-brand-primary flex-shrink-0 mt-0.5" />
       <span className="text-gray-700 font-medium">{text}</span>
     </div>
   );

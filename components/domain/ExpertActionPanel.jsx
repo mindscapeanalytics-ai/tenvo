@@ -52,7 +52,7 @@ export function ExpertActionPanel({ category, item, onUpdate }) {
       <DialogContent className="max-w-md rounded-3xl border-none shadow-2xl">
         <DialogHeader>
           <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 rounded-xl bg-wine-600/10 text-wine-600">
+            <div className="p-2 rounded-xl bg-brand-primary/10 text-brand-primary">
               {getDomainIcon()}
             </div>
             <div>
@@ -86,9 +86,9 @@ export function ExpertActionPanel({ category, item, onUpdate }) {
             })}
           </div>
 
-          <div className="flex items-start gap-3 p-3 rounded-2xl bg-wine-50/50 border border-wine-100/30">
-            <AlertCircle className="w-4 h-4 text-wine-400 mt-0.5" />
-            <p className="text-[10px] text-wine-800 font-medium leading-relaxed">
+          <div className="flex items-start gap-3 p-3 rounded-2xl bg-brand-50/50 border border-brand-100/30">
+            <AlertCircle className="w-4 h-4 text-brand-primary mt-0.5" />
+            <p className="text-[10px] text-brand-primary-dark font-medium leading-relaxed">
               Precision data is automatically synced with domain-aware reporting. 
               Changes here are reflected in real-time in the {category.split('-')[0]} analytics engine.
             </p>
@@ -98,7 +98,7 @@ export function ExpertActionPanel({ category, item, onUpdate }) {
         <div className="flex justify-end pt-4 border-t">
           <Button 
             onClick={() => setOpen(false)}
-            className="bg-wine-600 hover:opacity-90 text-white font-black px-8 h-10 rounded-xl shadow-lg"
+            className="bg-brand-primary hover:opacity-90 text-white font-black px-8 h-10 rounded-xl shadow-lg"
           >
             Apply Precision Data
             <ChevronRight className="ml-2 w-4 h-4" />

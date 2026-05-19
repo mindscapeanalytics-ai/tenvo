@@ -68,7 +68,7 @@ export default function PakistaniFeatures({
                 >
                   {/* Exclusive badge */}
                   {feature.badge && (
-                    <div className="absolute -top-3 -right-3 px-3 py-1 bg-wine-600 text-white text-xs font-bold rounded-full shadow-lg">
+                    <div className="absolute -top-3 -right-3 px-3 py-1 bg-brand-primary text-white text-xs font-bold rounded-full shadow-lg">
                       {feature.badge}
                     </div>
                   )}
@@ -176,7 +176,7 @@ export default function PakistaniFeatures({
                       
                       {/* Badge */}
                       {feature.badge && (
-                        <span className="flex-shrink-0 px-3 py-1 bg-wine-600 text-white text-xs font-bold rounded-full">
+                        <span className="flex-shrink-0 px-3 py-1 bg-brand-primary text-white text-xs font-bold rounded-full">
                           {feature.badge}
                         </span>
                       )}
@@ -237,7 +237,7 @@ export default function PakistaniFeatures({
                 >
                   {/* Exclusive badge */}
                   {feature.badge && (
-                    <div className="absolute -top-3 -right-3 px-3 py-1 bg-wine-600 text-white text-xs font-bold rounded-full shadow-lg">
+                    <div className="absolute -top-3 -right-3 px-3 py-1 bg-brand-primary text-white text-xs font-bold rounded-full shadow-lg">
                       {feature.badge}
                     </div>
                   )}

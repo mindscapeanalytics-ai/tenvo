@@ -59,25 +59,25 @@ export default function TestimonialCard({
   // Variant styles
   const variantStyles = {
     default: {
-      card: 'bg-white border border-neutral-200 hover:border-wine-300 hover:shadow-xl',
+      card: 'bg-white border border-neutral-200 hover:border-brand-300 hover:shadow-xl',
       quote: 'text-neutral-700',
       author: 'text-neutral-900',
       role: 'text-neutral-600',
-      quoteIcon: 'text-wine-200'
+      quoteIcon: 'text-brand-200'
     },
     minimal: {
       card: 'bg-transparent',
       quote: 'text-neutral-700',
       author: 'text-neutral-900',
       role: 'text-neutral-600',
-      quoteIcon: 'text-wine-200'
+      quoteIcon: 'text-brand-200'
     },
     featured: {
-      card: 'bg-wine-600 border border-wine-700 hover:shadow-2xl',
+      card: 'bg-brand-primary border border-brand-primary-dark hover:shadow-2xl',
       quote: 'text-white',
       author: 'text-white',
-      role: 'text-wine-100',
-      quoteIcon: 'text-wine-400'
+      role: 'text-brand-100',
+      quoteIcon: 'text-brand-primary'
     }
   };
 
@@ -135,7 +135,7 @@ export default function TestimonialCard({
             <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
               variant === 'featured'
                 ? 'bg-white/20 text-white'
-                : 'bg-wine-50 text-wine-700'
+                : 'bg-brand-50 text-brand-primary-dark'
             }`}>
               {industry}
             </span>

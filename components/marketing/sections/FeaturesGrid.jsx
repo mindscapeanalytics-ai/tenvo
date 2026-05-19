@@ -65,15 +65,15 @@ export default function FeaturesGrid({
               return (
                 <div
                   key={feature.id}
-                  className={`group relative bg-white rounded-2xl p-8 border border-neutral-200 hover:border-wine-300 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 ${
+                  className={`group relative bg-white rounded-2xl p-8 border border-neutral-200 hover:border-brand-300 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 ${
                     mounted ? 'animate-fade-in-up' : 'opacity-0'
                   }`}
                   style={{ animationDelay: `${index * 100}ms` }}
                 >
                   {/* Icon */}
                   {FeatureIcon && (
-                    <div className="w-14 h-14 bg-wine-50 rounded-xl flex items-center justify-center mb-6 group-hover:bg-wine-600 transition-colors duration-300">
-                      <FeatureIcon className="w-7 h-7 text-wine-600 group-hover:text-white transition-colors duration-300" />
+                    <div className="w-14 h-14 bg-brand-50 rounded-xl flex items-center justify-center mb-6 group-hover:bg-brand-primary transition-colors duration-300">
+                      <FeatureIcon className="w-7 h-7 text-brand-primary group-hover:text-white transition-colors duration-300" />
                     </div>
                   )}
 
@@ -91,7 +91,7 @@ export default function FeaturesGrid({
                   {feature.link && (
                     <Link
                       href={feature.link}
-                      className="inline-flex items-center gap-2 text-wine-600 font-semibold hover:gap-3 transition-all duration-300"
+                      className="inline-flex items-center gap-2 text-brand-primary font-semibold hover:gap-3 transition-all duration-300"
                     >
                       <span>Learn more</span>
                       <LucideIcons.ArrowRight className="w-4 h-4" />
@@ -138,8 +138,8 @@ export default function FeaturesGrid({
                 >
                   {/* Icon */}
                   {FeatureIcon && (
-                    <div className="flex-shrink-0 w-12 h-12 bg-wine-50 rounded-lg flex items-center justify-center group-hover:bg-wine-600 transition-colors duration-300">
-                      <FeatureIcon className="w-6 h-6 text-wine-600 group-hover:text-white transition-colors duration-300" />
+                    <div className="flex-shrink-0 w-12 h-12 bg-brand-50 rounded-lg flex items-center justify-center group-hover:bg-brand-primary transition-colors duration-300">
+                      <FeatureIcon className="w-6 h-6 text-brand-primary group-hover:text-white transition-colors duration-300" />
                     </div>
                   )}
 
@@ -158,7 +158,7 @@ export default function FeaturesGrid({
                     {feature.link && (
                       <Link
                         href={feature.link}
-                        className="inline-flex items-center gap-2 text-wine-600 font-semibold mt-3 hover:gap-3 transition-all duration-300"
+                        className="inline-flex items-center gap-2 text-brand-primary font-semibold mt-3 hover:gap-3 transition-all duration-300"
                       >
                         <span>Learn more</span>
                         <LucideIcons.ArrowRight className="w-4 h-4" />

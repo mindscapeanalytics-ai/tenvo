@@ -16,7 +16,7 @@ export default function AboutPage() {
         title={
           <>
             Building the Future of <br />
-            <span className="text-wine-600">Enterprise Software</span>
+            <span className="text-brand-primary">Enterprise Software</span>
           </>
         }
         subtitle="We're on a mission to make enterprise-grade business management accessible to every Pakistani business, regardless of size or industry."
@@ -46,7 +46,7 @@ export default function AboutPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12">
           <div className="grid md:grid-cols-2 gap-16">
             <div>
-              <h2 className="text-[11px] font-black text-wine-600 uppercase tracking-[0.3em] mb-4">Our Mission</h2>
+              <h2 className="text-[11px] font-black text-brand-primary uppercase tracking-[0.3em] mb-4">Our Mission</h2>
               <h3 className="text-4xl font-black text-gray-900 mb-6">Empowering Pakistani Businesses</h3>
               <p className="text-lg text-gray-500 font-medium leading-relaxed mb-6">
                 We believe every business deserves access to world-class enterprise software. TENVO was built from the ground up to address the unique challenges of Pakistani businesses - from FBR compliance to multi-currency operations.
@@ -56,7 +56,7 @@ export default function AboutPage() {
               </p>
             </div>
             <div>
-              <h2 className="text-[11px] font-black text-wine-600 uppercase tracking-[0.3em] mb-4">Our Vision</h2>
+              <h2 className="text-[11px] font-black text-brand-primary uppercase tracking-[0.3em] mb-4">Our Vision</h2>
               <h3 className="text-4xl font-black text-gray-900 mb-6">The Operating System for Business</h3>
               <p className="text-lg text-gray-500 font-medium leading-relaxed mb-6">
                 We envision a future where every business in Pakistan runs on TENVO - a unified platform that connects inventory, finance, operations, and compliance into one seamless experience.
@@ -73,7 +73,7 @@ export default function AboutPage() {
       <section className="py-24 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12">
           <div className="text-center max-w-3xl mx-auto mb-16 space-y-4">
-            <h2 className="text-[11px] font-black text-wine-600 uppercase tracking-[0.3em]">Our Values</h2>
+            <h2 className="text-[11px] font-black text-brand-primary uppercase tracking-[0.3em]">Our Values</h2>
             <h3 className="text-4xl md:text-5xl font-black text-gray-900 tracking-tighter">What Drives Us</h3>
           </div>
 
@@ -116,7 +116,7 @@ export default function AboutPage() {
       <section id="careers" className="py-24 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12">
           <div className="text-center max-w-3xl mx-auto mb-16 space-y-4">
-            <h2 className="text-[11px] font-black text-wine-600 uppercase tracking-[0.3em]">Join Our Team</h2>
+            <h2 className="text-[11px] font-black text-brand-primary uppercase tracking-[0.3em]">Join Our Team</h2>
             <h3 className="text-4xl md:text-5xl font-black text-gray-900 tracking-tighter">Build the Future with Us</h3>
             <p className="text-lg text-gray-500 font-medium">
               We're always looking for talented individuals who share our passion for empowering businesses.
@@ -125,15 +125,15 @@ export default function AboutPage() {
 
           <div className="grid md:grid-cols-3 gap-8 mb-12">
             <div className="bg-gray-50 rounded-2xl p-8 text-center">
-              <div className="text-4xl font-black text-wine-600 mb-2">50+</div>
+              <div className="text-4xl font-black text-brand-primary mb-2">50+</div>
               <div className="text-sm font-bold text-gray-500 uppercase tracking-wider">Team Members</div>
             </div>
             <div className="bg-gray-50 rounded-2xl p-8 text-center">
-              <div className="text-4xl font-black text-wine-600 mb-2">Remote</div>
+              <div className="text-4xl font-black text-brand-primary mb-2">Remote</div>
               <div className="text-sm font-bold text-gray-500 uppercase tracking-wider">Work Culture</div>
             </div>
             <div className="bg-gray-50 rounded-2xl p-8 text-center">
-              <div className="text-4xl font-black text-wine-600 mb-2">Growing</div>
+              <div className="text-4xl font-black text-brand-primary mb-2">Growing</div>
               <div className="text-sm font-bold text-gray-500 uppercase tracking-wider">Always Hiring</div>
             </div>
           </div>
@@ -141,7 +141,7 @@ export default function AboutPage() {
           <div className="text-center">
             <a 
               href="/contact" 
-              className="inline-flex items-center justify-center px-8 py-4 bg-wine-600 hover:bg-wine-700 text-white font-black rounded-2xl transition-all"
+              className="inline-flex items-center justify-center px-8 py-4 bg-brand-primary hover:bg-brand-primary-dark text-white font-black rounded-2xl transition-all"
             >
               View Open Positions
             </a>
@@ -170,7 +170,7 @@ export default function AboutPage() {
 function ValueCard({ icon, title, description }) {
   return (
     <div className="bg-white border border-gray-100 rounded-2xl p-8 hover:shadow-lg transition-all duration-300">
-      <div className="text-wine-600 mb-4">{icon}</div>
+      <div className="text-brand-primary mb-4">{icon}</div>
       <h4 className="text-xl font-black text-gray-900 mb-3">{title}</h4>
       <p className="text-gray-500 font-medium leading-relaxed">{description}</p>
     </div>

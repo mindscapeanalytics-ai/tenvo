@@ -92,7 +92,7 @@ export function NewsletterForm({ variant = 'inline', className = '' }) {
               value={email}
               onChange={handleChange}
               placeholder="Enter your email"
-              className={`flex-1 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-wine-500 focus:border-wine-500 transition-colors ${
+              className={`flex-1 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-brand-primary focus:border-brand-primary transition-colors ${
                 error ? 'border-red-500' : 'border-gray-300'
               }`}
               aria-label="Email address"
@@ -102,7 +102,7 @@ export function NewsletterForm({ variant = 'inline', className = '' }) {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-6 py-2 bg-wine-600 text-white font-medium rounded-lg hover:bg-wine-700 focus:outline-none focus:ring-2 focus:ring-wine-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+              className="px-6 py-2 bg-brand-primary text-white font-medium rounded-lg hover:bg-brand-primary-dark focus:outline-none focus:ring-2 focus:ring-brand-primary focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
             >
               {isSubmitting ? 'Subscribing...' : 'Subscribe'}
             </button>
@@ -140,7 +140,7 @@ export function NewsletterForm({ variant = 'inline', className = '' }) {
             value={email}
             onChange={handleChange}
             placeholder="Enter your email"
-            className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-wine-500 focus:border-wine-500 transition-colors ${
+            className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-brand-primary focus:border-brand-primary transition-colors ${
               error ? 'border-red-500' : 'border-gray-300'
             }`}
             aria-label="Email address"
@@ -157,7 +157,7 @@ export function NewsletterForm({ variant = 'inline', className = '' }) {
         <button
           type="submit"
           disabled={isSubmitting}
-          className="w-full px-6 py-3 bg-wine-600 text-white font-semibold rounded-lg hover:bg-wine-700 focus:outline-none focus:ring-2 focus:ring-wine-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full px-6 py-3 bg-brand-primary text-white font-semibold rounded-lg hover:bg-brand-primary-dark focus:outline-none focus:ring-2 focus:ring-brand-primary focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isSubmitting ? 'Subscribing...' : 'Subscribe to Newsletter'}
         </button>

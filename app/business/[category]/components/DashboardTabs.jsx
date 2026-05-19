@@ -596,7 +596,7 @@ export function DashboardTabs({
                                         <CardHeader className="pb-2">
                                             <div className="flex items-center justify-between">
                                                 <CardTitle className="text-sm font-medium text-gray-500">Inventory Value</CardTitle>
-                                                <div className="p-2 bg-wine-50 rounded-lg text-wine-600">
+                                                <div className="p-2 bg-brand-50 rounded-lg text-brand-primary">
                                                     <PackageIcon className="w-4 h-4" />
                                                 </div>
                                             </div>

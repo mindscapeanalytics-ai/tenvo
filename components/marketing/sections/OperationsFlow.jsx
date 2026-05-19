@@ -51,19 +51,19 @@ export default function OperationsFlow({
               >
                 {/* Connector line (hidden on mobile, shown on desktop between steps) */}
                 {index < steps.length - 1 && (
-                  <div className="hidden md:block absolute top-16 left-full w-full h-0.5 bg-gradient-to-r from-wine-300 to-wine-100 -translate-x-1/2 z-0" />
+                  <div className="hidden md:block absolute top-16 left-full w-full h-0.5 bg-brand-primary -translate-x-1/2 z-0" />
                 )}
 
-                <div className="relative bg-white rounded-2xl p-8 border-2 border-neutral-200 hover:border-wine-300 hover:shadow-xl transition-all duration-300 group">
+                <div className="relative bg-white rounded-2xl p-8 border-2 border-neutral-200 hover:border-brand-300 hover:shadow-xl transition-all duration-300 group">
                   {/* Step number badge */}
-                  <div className="absolute -top-4 -right-4 w-10 h-10 bg-wine-600 text-white rounded-full flex items-center justify-center font-bold text-lg shadow-lg">
+                  <div className="absolute -top-4 -right-4 w-10 h-10 bg-brand-primary text-white rounded-full flex items-center justify-center font-bold text-lg shadow-lg">
                     {index + 1}
                   </div>
 
                   {/* Icon */}
                   {StepIcon && (
-                    <div className="w-16 h-16 bg-wine-50 rounded-xl flex items-center justify-center mb-6 group-hover:bg-wine-100 transition-colors duration-300">
-                      <StepIcon className="w-8 h-8 text-wine-600" />
+                    <div className="w-16 h-16 bg-brand-50 rounded-xl flex items-center justify-center mb-6 group-hover:bg-brand-100 transition-colors duration-300">
+                      <StepIcon className="w-8 h-8 text-brand-primary" />
                     </div>
                   )}
 

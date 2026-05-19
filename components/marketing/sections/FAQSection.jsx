@@ -90,7 +90,7 @@ export default function FAQSection({
                 placeholder="Search FAQs..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-12 pr-4 py-6 text-lg rounded-xl border-2 border-neutral-200 focus:border-wine-500"
+                className="pl-12 pr-4 py-6 text-lg rounded-xl border-2 border-neutral-200 focus:border-brand-primary"
               />
             </div>
           </div>
@@ -103,7 +103,7 @@ export default function FAQSection({
               onClick={() => setSelectedCategory(null)}
               className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
                 selectedCategory === null
-                  ? 'bg-wine-600 text-white shadow-lg'
+                  ? 'bg-brand-primary text-white shadow-lg'
                   : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
               }`}
             >
@@ -115,7 +115,7 @@ export default function FAQSection({
                 onClick={() => setSelectedCategory(category)}
                 className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
                   selectedCategory === category
-                    ? 'bg-wine-600 text-white shadow-lg'
+                    ? 'bg-brand-primary text-white shadow-lg'
                     : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
                 }`}
               >
@@ -134,7 +134,7 @@ export default function FAQSection({
               return (
                 <div
                   key={faq.id}
-                  className={`bg-neutral-50 rounded-xl border-2 border-neutral-200 hover:border-wine-300 transition-all duration-300 ${
+                  className={`bg-neutral-50 rounded-xl border-2 border-neutral-200 hover:border-brand-300 transition-all duration-300 ${
                     mounted ? 'animate-fade-in-up' : 'opacity-0'
                   }`}
                   style={{ animationDelay: `${index * 50}ms` }}
@@ -150,16 +150,16 @@ export default function FAQSection({
                         {faq.question}
                       </h3>
                       {faq.category && (
-                        <span className="inline-block px-2 py-1 text-xs font-medium text-wine-700 bg-wine-50 rounded">
+                        <span className="inline-block px-2 py-1 text-xs font-medium text-brand-primary-dark bg-brand-50 rounded">
                           {faq.category}
                         </span>
                       )}
                     </div>
                     
-                    <div className={`flex-shrink-0 w-8 h-8 rounded-full bg-wine-100 flex items-center justify-center transition-transform duration-300 ${
+                    <div className={`flex-shrink-0 w-8 h-8 rounded-full bg-brand-100 flex items-center justify-center transition-transform duration-300 ${
                       isExpanded ? 'rotate-180' : ''
                     }`}>
-                      <LucideIcons.ChevronDown className="w-5 h-5 text-wine-600" />
+                      <LucideIcons.ChevronDown className="w-5 h-5 text-brand-primary" />
                     </div>
                   </button>
 
@@ -194,7 +194,7 @@ export default function FAQSection({
                 setSearchQuery('');
                 setSelectedCategory(null);
               }}
-              className="px-6 py-3 bg-wine-600 text-white rounded-xl hover:bg-wine-700 transition-colors duration-300"
+              className="px-6 py-3 bg-brand-primary text-white rounded-xl hover:bg-brand-primary-dark transition-colors duration-300"
             >
               Clear Filters
             </button>
@@ -208,7 +208,7 @@ export default function FAQSection({
           </p>
           <a
             href="/contact"
-            className="inline-flex items-center gap-2 text-wine-600 font-semibold hover:gap-3 transition-all duration-300"
+            className="inline-flex items-center gap-2 text-brand-primary font-semibold hover:gap-3 transition-all duration-300"
           >
             <span>Contact our support team</span>
             <LucideIcons.ArrowRight className="w-5 h-5" />

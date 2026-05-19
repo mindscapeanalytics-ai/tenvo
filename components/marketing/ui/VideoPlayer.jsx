@@ -153,7 +153,7 @@ export function VideoPlayer({
             bg-black bg-opacity-30 rounded-lg
             transition-opacity duration-200
             ${isPlaying ? 'opacity-0 group-hover:opacity-100' : 'opacity-100'}
-            focus:outline-none focus:ring-2 focus:ring-wine-500 focus:ring-offset-2
+            focus:outline-none focus:ring-2 focus:ring-brand-primary focus:ring-offset-2
           `}
           aria-label={isPlaying ? 'Pause video' : 'Play video'}
         >
@@ -161,7 +161,7 @@ export function VideoPlayer({
             {isPlaying ? (
               // Pause Icon
               <svg 
-                className="w-8 h-8 text-wine-600" 
+                className="w-8 h-8 text-brand-primary" 
                 fill="currentColor" 
                 viewBox="0 0 24 24"
                 aria-hidden="true"
@@ -171,7 +171,7 @@ export function VideoPlayer({
             ) : (
               // Play Icon
               <svg 
-                className="w-8 h-8 text-wine-600 ml-1" 
+                className="w-8 h-8 text-brand-primary ml-1" 
                 fill="currentColor" 
                 viewBox="0 0 24 24"
                 aria-hidden="true"
@@ -194,7 +194,7 @@ export function VideoPlayer({
           aria-label="Video progress"
         >
           <div 
-            className="h-full bg-wine-600 transition-all duration-200"
+            className="h-full bg-brand-primary transition-all duration-200"
             style={{ width: `${progress}%` }}
           />
         </div>
