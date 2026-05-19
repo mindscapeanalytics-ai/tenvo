@@ -53,8 +53,8 @@ export function RevenueChartSection({
   showExport = true,
   chartType = 'area', // 'area' or 'line'
   colors = {
-    primary: '#2F5BFF',
-    secondary: '#1738A5'
+    primary: '#edc75c',
+    secondary: '#c49c3b'
   },
   className = ''
 }) {

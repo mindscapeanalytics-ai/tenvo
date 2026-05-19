@@ -161,24 +161,43 @@ const ADVANCED_NAV_SECTIONS = [
   },
 ];
 
-// --- EASY MODE Navigation (simple, flat -- for beginners & POS operators) -----
+// --- EASY MODE Navigation (Zoho-competitive, intuitive for all users) --------
+// Organized by business workflow: Home → Sell → Buy → Track → Finance
 const EASY_NAV_SECTIONS = [
   {
-    label: 'MAIN',
+    label: 'HOME',
     items: [
       { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, alwaysShow: true },
-      { key: 'inventory', label: 'Products', icon: Package, alwaysShow: true },
-      { key: 'invoices', label: 'Sales', icon: FileText, alwaysShow: true },
-      { key: 'customers', label: 'Customers', icon: Users, alwaysShow: true },
-      { key: 'purchases', label: 'Purchases', icon: Truck, alwaysShow: true },
-      { key: 'pos', label: 'Point of Sale', icon: ShoppingCart, domainRule: 'posRelevant' },
     ]
   },
   {
-    label: 'MORE',
+    label: 'SELL',
+    items: [
+      { key: 'invoices', label: 'Invoices', icon: FileText, alwaysShow: true },
+      { key: 'customers', label: 'Customers', icon: Users, alwaysShow: true },
+      { key: 'pos', label: 'Point of Sale', icon: ShoppingCart, domainRule: 'posRelevant' },
+      { key: 'quotations', label: 'Estimates', icon: ClipboardList, conditionKey: 'quotations' },
+    ]
+  },
+  {
+    label: 'BUY',
+    items: [
+      { key: 'purchases', label: 'Purchase Orders', icon: Truck, alwaysShow: true },
+      { key: 'vendors', label: 'Vendors', icon: Building2, alwaysShow: true },
+    ]
+  },
+  {
+    label: 'TRACK',
+    items: [
+      { key: 'inventory', label: 'Products & Stock', icon: Package, alwaysShow: true },
+      { key: 'warehouses', label: 'Warehouses', icon: Warehouse, conditionKey: 'multiLocation' },
+    ]
+  },
+  {
+    label: 'MONEY',
     items: [
       { key: 'payments', label: 'Payments', icon: CreditCard, alwaysShow: true },
-      { key: 'reports', label: 'Reports', icon: Brain, alwaysShow: true },
+      { key: 'reports', label: 'Reports', icon: BarChart3, alwaysShow: true },
       { key: 'settings', label: 'Settings', icon: Settings },
     ]
   },
@@ -553,30 +572,32 @@ export function Sidebar({ isOpen, onClose, isSidebarCollapsed, setIsSidebarColla
             <div className="flex items-center justify-between px-1 py-1">
               <div className="flex items-center gap-1.5">
                 <Sparkles className="w-3 h-3 text-brand-primary" />
-                <span className="text-[9px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Mode</span>
+                <span className="text-[9px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Interface</span>
               </div>
               <div className="flex bg-gray-100 dark:bg-gray-700 rounded-lg p-0.5">
                 <button
                   onClick={() => setAppMode('easy')}
                   className={cn(
-                    "px-2.5 py-1 text-[10px] font-bold rounded-md transition-all",
+                    "px-2.5 py-1 text-[10px] font-bold rounded-md transition-all flex items-center gap-1",
                     isEasyMode
                       ? "bg-white dark:bg-gray-600 text-brand-primary shadow-sm"
                       : "text-gray-500 dark:text-gray-400 hover:text-gray-700"
                   )}
+                  title="Simplified interface for everyday operations"
                 >
-                  Easy
+                  Simple
                 </button>
                 <button
                   onClick={() => setAppMode('advanced')}
                   className={cn(
-                    "px-2.5 py-1 text-[10px] font-bold rounded-md transition-all",
+                    "px-2.5 py-1 text-[10px] font-bold rounded-md transition-all flex items-center gap-1",
                     !isEasyMode
                       ? "bg-white dark:bg-gray-600 text-brand-primary shadow-sm"
                       : "text-gray-500 dark:text-gray-400 hover:text-gray-700"
                   )}
+                  title="Full ERP features for power users"
                 >
-                  Advanced
+                  Pro
                 </button>
               </div>
             </div>
@@ -611,7 +632,7 @@ export function Sidebar({ isOpen, onClose, isSidebarCollapsed, setIsSidebarColla
             )}>
               <div
                 className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs text-white shrink-0"
-                style={{ background: 'linear-gradient(135deg, #1738A5 0%, #2F5BFF 100%)' }}
+                style={{ background: 'linear-gradient(135deg, #c49c3b 0%, #edc75c 100%)' }}
               >
                 {user?.email?.substring(0, 2).toUpperCase() || 'ME'}
               </div>

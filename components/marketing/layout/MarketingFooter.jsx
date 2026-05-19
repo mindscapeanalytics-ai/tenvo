@@ -50,9 +50,9 @@ export default function MarketingFooter({ variant = 'default' }) {
               (C) 2026 TENVO Enterprise. Built for Pakistan.
             </div>
             <div className="flex gap-8 text-[10px] font-black text-gray-400 uppercase tracking-widest">
-              <a href="/privacy" className="hover:text-blue-700 transition-colors">Privacy</a>
-              <a href="/terms" className="hover:text-blue-700 transition-colors">Terms</a>
-              <a href="/contact" className="hover:text-blue-700 transition-colors">Contact</a>
+              <a href="/privacy" className="hover:text-brand-primary-dark transition-colors">Privacy</a>
+              <a href="/terms" className="hover:text-brand-primary-dark transition-colors">Terms</a>
+              <a href="/contact" className="hover:text-brand-primary-dark transition-colors">Contact</a>
             </div>
           </div>
         </div>
@@ -68,7 +68,7 @@ export default function MarketingFooter({ variant = 'default' }) {
           {/* Company Info */}
           <div className="space-y-6">
             <div className="flex items-center gap-3 font-black text-xl uppercase tracking-tighter">
-              <div className="w-8 h-8 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-[0_14px_34px_-18px_rgba(47,91,255,0.8)]">
+              <div className="w-8 h-8 bg-brand-primary rounded-xl flex items-center justify-center text-white shadow-[0_14px_34px_-18px_rgba(237,199,92,0.8)]">
                 <Building2 className="w-5 h-5" />
               </div>
               TENVO
@@ -83,9 +83,9 @@ export default function MarketingFooter({ variant = 'default' }) {
                 <Shield className="w-4 h-4 text-green-600" />
                 <span className="text-[10px] font-black text-green-700 uppercase tracking-wider">FBR Tier-1</span>
               </div>
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 rounded-xl border border-blue-100">
-                <CheckCircle2 className="w-4 h-4 text-blue-700" />
-                <span className="text-[10px] font-black text-blue-700 uppercase tracking-wider">SECP</span>
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 rounded-xl border border-amber-100">
+                <CheckCircle2 className="w-4 h-4 text-amber-700" />
+                <span className="text-[10px] font-black text-amber-700 uppercase tracking-wider">SECP</span>
               </div>
             </div>
           </div>
@@ -94,12 +94,12 @@ export default function MarketingFooter({ variant = 'default' }) {
           <div>
             <h4 className="text-[10px] font-black text-gray-900 uppercase tracking-widest mb-8">Platform</h4>
             <ul className="space-y-4 text-sm text-gray-500 font-bold">
-              <li><a href="/features" className="hover:text-blue-700 transition-colors">Core Features</a></li>
-              <li><a href="/features#integrations" className="hover:text-blue-700 transition-colors">Integrations</a></li>
-              <li><a href="/features#compliance" className="hover:text-blue-700 transition-colors">Compliance</a></li>
-              <li><a href="/features#security" className="hover:text-blue-700 transition-colors">Security</a></li>
-              <li><a href="/pricing" className="hover:text-blue-700 transition-colors">Pricing</a></li>
-              <li><a href="/industries" className="hover:text-blue-700 transition-colors">Industries</a></li>
+              <li><a href="/features" className="hover:text-brand-primary-dark transition-colors">Core Features</a></li>
+              <li><a href="/features#integrations" className="hover:text-brand-primary-dark transition-colors">Integrations</a></li>
+              <li><a href="/features#compliance" className="hover:text-brand-primary-dark transition-colors">Compliance</a></li>
+              <li><a href="/features#security" className="hover:text-brand-primary-dark transition-colors">Security</a></li>
+              <li><a href="/pricing" className="hover:text-brand-primary-dark transition-colors">Pricing</a></li>
+              <li><a href="/industries" className="hover:text-brand-primary-dark transition-colors">Industries</a></li>
             </ul>
           </div>
 
@@ -107,11 +107,11 @@ export default function MarketingFooter({ variant = 'default' }) {
           <div>
             <h4 className="text-[10px] font-black text-gray-900 uppercase tracking-widest mb-8">Company</h4>
             <ul className="space-y-4 text-sm text-gray-500 font-bold">
-              <li><a href="/about" className="hover:text-blue-700 transition-colors">About Us</a></li>
-              <li><a href="/case-studies" className="hover:text-blue-700 transition-colors">Case Studies</a></li>
-              <li><a href="/careers" className="hover:text-blue-700 transition-colors">Careers</a></li>
-              <li><a href="/press" className="hover:text-blue-700 transition-colors">Press</a></li>
-              <li><a href="/contact" className="hover:text-blue-700 transition-colors">Contact</a></li>
+              <li><a href="/about" className="hover:text-brand-primary-dark transition-colors">About Us</a></li>
+              <li><a href="/case-studies" className="hover:text-brand-primary-dark transition-colors">Case Studies</a></li>
+              <li><a href="/careers" className="hover:text-brand-primary-dark transition-colors">Careers</a></li>
+              <li><a href="/press" className="hover:text-brand-primary-dark transition-colors">Press</a></li>
+              <li><a href="/contact" className="hover:text-brand-primary-dark transition-colors">Contact</a></li>
             </ul>
           </div>
 
@@ -119,11 +119,11 @@ export default function MarketingFooter({ variant = 'default' }) {
           <div>
             <h4 className="text-[10px] font-black text-gray-900 uppercase tracking-widest mb-8">Support</h4>
             <ul className="space-y-4 text-sm text-gray-500 font-bold">
-              <li><a href="/help" className="hover:text-blue-700 transition-colors">Help Center</a></li>
-              <li><a href="/docs" className="hover:text-blue-700 transition-colors">Documentation</a></li>
-              <li><a href="/api" className="hover:text-blue-700 transition-colors">API Reference</a></li>
-              <li><a href="/status" className="hover:text-blue-700 transition-colors">System Status</a></li>
-              <li><a href="/privacy" className="hover:text-blue-700 transition-colors">Privacy Policy</a></li>
+              <li><a href="/help" className="hover:text-brand-primary-dark transition-colors">Help Center</a></li>
+              <li><a href="/docs" className="hover:text-brand-primary-dark transition-colors">Documentation</a></li>
+              <li><a href="/api" className="hover:text-brand-primary-dark transition-colors">API Reference</a></li>
+              <li><a href="/status" className="hover:text-brand-primary-dark transition-colors">System Status</a></li>
+              <li><a href="/privacy" className="hover:text-brand-primary-dark transition-colors">Privacy Policy</a></li>
             </ul>
           </div>
         </div>
@@ -154,7 +154,7 @@ export default function MarketingFooter({ variant = 'default' }) {
                 />
                 <Button
                   type="submit"
-                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl"
+                  className="bg-brand-primary hover:bg-brand-primary-dark text-neutral-900 font-bold rounded-xl"
                   disabled={loading}
                 >
                   {loading ? 'Subscribing...' : 'Subscribe'}
@@ -170,9 +170,9 @@ export default function MarketingFooter({ variant = 'default' }) {
             (C) 2026 TENVO Enterprise. Built for Pakistan.
           </div>
           <div className="flex gap-8 text-[10px] font-black text-gray-400 uppercase tracking-widest">
-            <a href="#" className="hover:text-blue-700 transition-colors">Pakistan</a>
-            <a href="#" className="hover:text-blue-700 transition-colors">UAE</a>
-            <a href="#" className="hover:text-blue-700 transition-colors">Saudi Arabia</a>
+            <a href="#" className="hover:text-brand-primary-dark transition-colors">Pakistan</a>
+            <a href="#" className="hover:text-brand-primary-dark transition-colors">UAE</a>
+            <a href="#" className="hover:text-brand-primary-dark transition-colors">Saudi Arabia</a>
           </div>
         </div>
       </div>

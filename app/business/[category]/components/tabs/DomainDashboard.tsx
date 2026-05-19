@@ -778,26 +778,30 @@ export function DomainDashboard({
             .slice(0, 5);
 
         return (
-            <div className="space-y-5 w-full">
+            <div className="space-y-4 w-full text-slate-700 bg-[#f4f7f9] p-1">
                 <div className="grid grid-cols-1 xl:grid-cols-12 gap-4">
-                    <Card className="xl:col-span-8 border-none overflow-hidden bg-[linear-gradient(135deg,#0f172a_0%,#1e293b_54%,#0f766e_100%)] text-white shadow-lg">
-                        <CardContent className="p-6 md:p-7">
-                            <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-                                <div className="max-w-2xl">
-                                    <p className="text-[10px] font-black uppercase tracking-[0.24em] text-cyan-200/80">Easy Mode Command Board</p>
-                                    <h1 className="mt-2 text-2xl md:text-3xl font-black tracking-tight">{greeting}, {userName}.</h1>
-                                    <p className="mt-2 text-sm text-slate-200">A cleaner summary of sales, stock, customers, and collections for {periodLabel.toLowerCase()}.</p>
+                    {/* Header Banner - Zoho Flat White Style */}
+                    <Card className="xl:col-span-8 border border-slate-200 bg-white shadow-sm rounded-lg overflow-hidden">
+                        <CardContent className="p-5">
+                            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-4">
+                                <div>
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Easy Mode Command Board</p>
+                                    </div>
+                                    <h1 className="mt-1 text-xl font-bold tracking-tight text-slate-900">{greeting}, {userName}.</h1>
+                                    <p className="text-xs text-slate-500">Summary of sales, stock, customers, and collections for {periodLabel.toLowerCase()}.</p>
                                 </div>
-                                <div className="flex flex-wrap gap-2">
+                                <div className="flex flex-wrap gap-1.5 bg-slate-100 p-1 rounded border border-slate-200">
                                     {easyPresetOptions.map((preset) => (
                                         <button
                                             key={preset.id}
                                             onClick={() => onDateRangePresetChange?.(preset.id)}
                                             className={cn(
-                                                'rounded-full border px-3 py-1.5 text-[11px] font-black uppercase tracking-wider transition-colors',
+                                                'rounded px-3 py-1 text-[11px] font-bold uppercase tracking-wider transition-all',
                                                 activePreset === preset.id
-                                                    ? 'border-white bg-white text-slate-900'
-                                                    : 'border-white/20 bg-white/10 text-white hover:bg-white/15'
+                                                    ? 'bg-white text-slate-900 shadow-sm border border-slate-200/50'
+                                                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50/50'
                                             )}
                                         >
                                             {preset.label}
@@ -806,31 +810,39 @@ export function DomainDashboard({
                                 </div>
                             </div>
 
-                            <div className="mt-5 grid grid-cols-2 md:grid-cols-4 gap-3">
+                            <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3">
                                 {dashboardHeaderHighlights.map((item) => (
-                                    <div key={item.label} className="rounded-2xl border border-white/10 bg-white/8 px-3 py-3 backdrop-blur-sm">
-                                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-300">{item.label}</p>
-                                        <p className={cn('mt-1 text-lg font-black', item.tone.replace('text-', 'text-'))}>{item.value}</p>
+                                    <div key={item.label} className="rounded border border-slate-100 bg-slate-50 px-3.5 py-3 hover:bg-slate-100/50 transition-colors">
+                                        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{item.label}</p>
+                                        <p className={cn('mt-1.5 text-lg font-extrabold', item.tone)}>{item.value}</p>
                                     </div>
                                 ))}
                             </div>
                         </CardContent>
                     </Card>
 
-                    <Card className="xl:col-span-4 border border-slate-200 bg-white shadow-sm">
+                    {/* Operational Pulse Card - Divider List Style */}
+                    <Card className="xl:col-span-4 border border-slate-200 bg-white shadow-sm rounded-lg">
                         <CardContent className="p-5">
-                            <div className="flex items-center gap-2">
-                                <Zap className="w-4 h-4 text-amber-500" />
-                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Operational Pulse</p>
+                            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                                <div className="flex items-center gap-2">
+                                    <Zap className="w-4 h-4 text-amber-500 shrink-0" />
+                                    <p className="text-[11px] font-bold uppercase tracking-wider text-slate-700">Operational Pulse</p>
+                                </div>
+                                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                             </div>
-                            <div className="mt-4 space-y-3">
+                            <div className="mt-4 divide-y divide-slate-100">
                                 {easyHealthPanels.map((panel) => (
-                                    <div key={panel.label} className="rounded-2xl border border-slate-100 bg-slate-50/70 px-4 py-3">
-                                        <div className="flex items-center justify-between gap-3">
-                                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">{panel.label}</p>
-                                            <p className={cn('text-lg font-black', panel.tone)}>{panel.value}</p>
+                                    <div key={panel.label} className="py-2.5 flex items-center justify-between hover:bg-slate-50/50 transition-colors px-1">
+                                        <div>
+                                            <p className="text-[11px] font-bold text-slate-700">{panel.label}</p>
+                                            <p className="text-[10px] text-slate-400 font-semibold mt-0.5">{panel.detail}</p>
                                         </div>
-                                        <p className="mt-1 text-[11px] font-semibold text-slate-500">{panel.detail}</p>
+                                        <div className="text-right">
+                                            <span className={cn('text-sm font-extrabold tracking-tight', panel.tone)}>
+                                                {panel.value}
+                                            </span>
+                                        </div>
                                     </div>
                                 ))}
                             </div>
@@ -839,10 +851,10 @@ export function DomainDashboard({
                 </div>
 
                 {!hasCoreData && (
-                    <Card className="border border-cyan-100 bg-cyan-50/70 shadow-sm">
+                    <Card className="border border-cyan-100 bg-cyan-50/40 shadow-sm rounded-lg">
                         <CardContent className="p-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                             <div>
-                                <p className="text-[10px] font-black uppercase tracking-widest text-cyan-700">Quick Setup</p>
+                                <p className="text-[10px] font-bold uppercase tracking-widest text-cyan-700">Quick Setup</p>
                                 <p className="mt-1 text-sm font-bold text-slate-800">Complete the three core steps below to unlock richer KPI coverage and better easy-mode insights.</p>
                             </div>
                             <div className="flex flex-wrap gap-2">
@@ -856,203 +868,270 @@ export function DomainDashboard({
                     </Card>
                 )}
 
-                <div className="grid grid-cols-2 xl:grid-cols-6 gap-4">
-                    {easyKpis.map(kpi => (
-                        <Card key={kpi.label} className="border border-slate-200 shadow-sm hover:shadow-md transition-shadow bg-white">
-                            <CardContent className="p-4">
-                                <div className="flex items-center justify-between mb-3">
-                                    <div className={cn("p-2 rounded-xl", kpi.color)}>
-                                        <kpi.icon className="w-4 h-4 text-white" />
+                {/* 6 Key KPIs - Left Accent Border Style */}
+                <div className="grid grid-cols-2 xl:grid-cols-6 gap-3">
+                    {easyKpis.map(kpi => {
+                        const borderColors: Record<string, string> = {
+                            'bg-emerald-500': 'border-l-4 border-l-emerald-500',
+                            'bg-brand-primary': 'border-l-4 border-l-[#edc75c]',
+                            'bg-brand-primary-dark': 'border-l-4 border-l-[#c49c3b]',
+                            'bg-rose-500': 'border-l-4 border-l-rose-500',
+                            'bg-slate-500': 'border-l-4 border-l-slate-400',
+                            'bg-cyan-500': 'border-l-4 border-l-cyan-500',
+                            'bg-amber-500': 'border-l-4 border-l-amber-500',
+                            'bg-emerald-600': 'border-l-4 border-l-emerald-600'
+                        };
+                        const textColors: Record<string, string> = {
+                            'bg-emerald-500': 'text-emerald-600',
+                            'bg-brand-primary': 'text-[#edc75c]',
+                            'bg-brand-primary-dark': 'text-[#c49c3b]',
+                            'bg-rose-500': 'text-rose-600',
+                            'bg-slate-500': 'text-slate-500',
+                            'bg-cyan-500': 'text-cyan-600',
+                            'bg-amber-500': 'text-amber-600',
+                            'bg-emerald-600': 'text-emerald-600'
+                        };
+
+                        const borderClass = borderColors[kpi.color] || 'border-l-4 border-l-slate-200';
+                        const textClass = textColors[kpi.color] || 'text-slate-500';
+
+                        return (
+                            <Card key={kpi.label} className={cn("border border-slate-200 shadow-sm hover:shadow transition-shadow bg-white rounded-lg overflow-hidden", borderClass)}>
+                                <CardContent className="p-3.5">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{kpi.label}</span>
+                                        <div className={cn("p-1.5 rounded bg-slate-50 border border-slate-100", textClass)}>
+                                            <kpi.icon className="w-3.5 h-3.5 shrink-0" />
+                                        </div>
                                     </div>
-                                    {kpi.trend !== undefined && kpi.trend !== 0 && (
-                                        <span className={cn("text-[11px] font-bold flex items-center gap-0.5",
-                                            kpi.trend > 0 ? "text-emerald-600" : "text-rose-600"
-                                        )}>
-                                            {kpi.trend > 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
-                                            {Math.abs(kpi.trend)}%
-                                        </span>
-                                    )}
-                                </div>
-                                <p className="text-xl font-black text-slate-900">{kpi.value}</p>
-                                <p className="text-xs text-slate-500 font-medium mt-0.5">{kpi.label}</p>
-                                <p className="text-[11px] text-slate-400 mt-1">{kpi.subValue}</p>
-                            </CardContent>
-                        </Card>
-                    ))}
+                                    <div className="flex items-baseline justify-between mt-1">
+                                        <p className="text-lg font-extrabold text-slate-900 tracking-tight">{kpi.value}</p>
+                                        {kpi.trend !== undefined && kpi.trend !== 0 && (
+                                            <span className={cn("text-[10px] font-extrabold flex items-center gap-0.5",
+                                                kpi.trend > 0 ? "text-emerald-600" : "text-rose-600"
+                                            )}>
+                                                {kpi.trend > 0 ? <ArrowUpRight className="w-2.5 h-2.5" /> : <ArrowDownRight className="w-2.5 h-2.5" />}
+                                                {Math.abs(kpi.trend)}%
+                                            </span>
+                                        )}
+                                    </div>
+                                    <p className="text-[10px] text-slate-500 font-semibold mt-1.5 truncate">{kpi.subValue}</p>
+                                </CardContent>
+                            </Card>
+                        );
+                    })}
                 </div>
 
                 <div className="grid grid-cols-1 xl:grid-cols-12 gap-4">
-                    <Card className="xl:col-span-7 border border-slate-200 shadow-sm bg-white">
+                    {/* Quick Actions Card - Flat with Colored Left Borders */}
+                    <Card className="xl:col-span-7 border border-slate-200 shadow-sm bg-white rounded-lg">
                         <CardContent className="p-5">
-                            <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
                                 <div>
-                                    <h2 className="text-sm font-black text-slate-500 uppercase tracking-widest">Quick Actions</h2>
-                                    <p className="text-[11px] text-slate-400 mt-1">Shortcuts for the tasks operators do most.</p>
+                                    <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Quick Actions</h2>
+                                    <p className="text-[11px] text-slate-400 mt-0.5">Shortcuts for the tasks operators do most.</p>
                                 </div>
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
-                                {easyActions.map(action => (
-                                    <button
-                                        key={action.id}
-                                        onClick={() => onQuickAction?.(action.id)}
-                                        className={cn(
-                                            'rounded-2xl p-4 text-left transition-all active:scale-[0.98] shadow-sm hover:shadow-md',
-                                            action.color
-                                        )}
-                                    >
-                                        <div className="flex items-start justify-between gap-3">
-                                            <div>
-                                                <p className="text-sm font-black">{action.label}</p>
-                                                <p className="mt-1 text-[11px] opacity-80">{action.desc}</p>
+                                {easyActions.map(action => {
+                                    const actionColors: Record<string, { border: string, bg: string, text: string, hoverBg: string }> = {
+                                        'new-invoice': { border: 'border-l-[#edc75c]', bg: 'bg-[#edc75c]/5', text: 'text-[#edc75c]', hoverBg: 'hover:bg-[#edc75c]/5' },
+                                        'add-product': { border: 'border-l-indigo-500', bg: 'bg-indigo-500/5', text: 'text-indigo-600', hoverBg: 'hover:bg-indigo-50' },
+                                        'add-customer': { border: 'border-l-emerald-500', bg: 'bg-emerald-500/5', text: 'text-emerald-600', hoverBg: 'hover:bg-emerald-50' },
+                                        'inventory': { border: 'border-l-amber-500', bg: 'bg-amber-500/5', text: 'text-amber-600', hoverBg: 'hover:bg-amber-50' },
+                                        'reports': { border: 'border-l-orange-500', bg: 'bg-orange-500/5', text: 'text-orange-600', hoverBg: 'hover:bg-orange-50' },
+                                    };
+
+                                    const style = actionColors[action.id] || { border: 'border-l-slate-400', bg: 'bg-slate-50', text: 'text-slate-700', hoverBg: 'hover:bg-slate-100' };
+
+                                    return (
+                                        <button
+                                            key={action.id}
+                                            onClick={() => onQuickAction?.(action.id)}
+                                            className={cn(
+                                                'rounded-md p-3.5 text-left transition-all active:scale-[0.98] border border-slate-200 border-l-4 bg-white hover:shadow-sm',
+                                                style.border,
+                                                style.hoverBg
+                                            )}
+                                        >
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div>
+                                                    <p className="text-xs font-bold text-slate-800">{action.label}</p>
+                                                    <p className="mt-0.5 text-[10px] text-slate-400 font-semibold">{action.desc}</p>
+                                                </div>
+                                                <div className={cn("p-1.5 rounded bg-slate-50 border border-slate-100", style.text)}>
+                                                    <action.icon className="w-3.5 h-3.5 shrink-0" />
+                                                </div>
                                             </div>
-                                            <action.icon className="w-5 h-5 shrink-0" />
-                                        </div>
-                                    </button>
-                                ))}
+                                        </button>
+                                    );
+                                })}
                             </div>
                         </CardContent>
                     </Card>
 
-                    <div className="xl:col-span-5 space-y-4">
-                        <Card className="border border-slate-200 shadow-sm bg-white">
+                    <div className="xl:col-span-5 space-y-3">
+                        {/* Smart Insights - Flat White List Style */}
+                        <Card className="border border-slate-200 shadow-sm bg-white rounded-lg">
                             <CardContent className="p-5">
-                                <div className="flex items-center gap-2 mb-4">
-                                    <Zap className="w-4 h-4 text-amber-500" />
-                                    <h2 className="text-sm font-black text-slate-500 uppercase tracking-widest">Smart Insights</h2>
+                                <div className="flex items-center gap-2 border-b border-slate-100 pb-3 mb-4">
+                                    <BarChart3 className="w-4 h-4 text-brand-primary shrink-0" />
+                                    <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Smart Insights</h2>
                                 </div>
-                                <div className="space-y-3">
-                                    {intelligentInsights.map((insight, idx) => (
-                                        <button
-                                            key={`${insight.title}-${idx}`}
-                                            onClick={() => onQuickAction?.(insight.actionTab)}
-                                            className={cn(
-                                                'w-full rounded-2xl border p-3 text-left transition-colors',
-                                                insight.tone === 'indigo' && 'bg-brand-50 border-brand-100 hover:bg-brand-100/70',
-                                                insight.tone === 'emerald' && 'bg-emerald-50 border-emerald-100 hover:bg-emerald-100/70',
-                                                insight.tone === 'amber' && 'bg-amber-50 border-amber-100 hover:bg-amber-100/70',
-                                                insight.tone === 'rose' && 'bg-rose-50 border-rose-100 hover:bg-rose-100/70',
-                                                insight.tone === 'slate' && 'bg-slate-50 border-slate-100 hover:bg-slate-100/70'
-                                            )}
-                                        >
-                                            <p className="text-[11px] font-black text-slate-700">{insight.title}</p>
-                                            <p className="mt-1 text-[11px] text-slate-600">{insight.text}</p>
-                                        </button>
-                                    ))}
+                                <div className="space-y-2">
+                                    {intelligentInsights.map((insight, idx) => {
+                                        const defaultStyle = { border: 'border-l-slate-400', bg: 'bg-slate-50/40', text: 'text-slate-700' };
+                                        const toneColors: Record<string, { border: string, bg: string, text: string }> = {
+                                            indigo: { border: 'border-l-indigo-500', bg: 'bg-indigo-50/40', text: 'text-indigo-700' },
+                                            emerald: { border: 'border-l-emerald-500', bg: 'bg-emerald-50/40', text: 'text-emerald-700' },
+                                            amber: { border: 'border-l-amber-500', bg: 'bg-amber-50/40', text: 'text-amber-700' },
+                                            rose: { border: 'border-l-rose-500', bg: 'bg-rose-50/40', text: 'text-rose-700' },
+                                            slate: defaultStyle,
+                                        };
+                                        const style = toneColors[insight.tone] || defaultStyle;
+
+                                        return (
+                                            <button
+                                                key={`${insight.title}-${idx}`}
+                                                onClick={() => onQuickAction?.(insight.actionTab)}
+                                                className={cn(
+                                                    'w-full rounded border border-slate-200 border-l-4 p-3 text-left transition-all hover:shadow-sm bg-slate-50/50',
+                                                    style.border,
+                                                    insight.tone === 'indigo' && 'hover:bg-indigo-50',
+                                                    insight.tone === 'emerald' && 'hover:bg-emerald-50',
+                                                    insight.tone === 'amber' && 'hover:bg-amber-50',
+                                                    insight.tone === 'rose' && 'hover:bg-rose-50',
+                                                    insight.tone === 'slate' && 'hover:bg-slate-100/50'
+                                                )}
+                                            >
+                                                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{insight.title}</p>
+                                                <p className="mt-1 text-xs font-semibold text-slate-700 leading-snug">{insight.text}</p>
+                                            </button>
+                                        );
+                                    })}
                                 </div>
                             </CardContent>
                         </Card>
 
+                        {/* Critical Alerts - Flat Double Border Buttons */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <button
                                 onClick={() => onQuickAction?.('inventory')}
-                                className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-left hover:bg-amber-100 transition-colors"
+                                className="rounded-md border border-slate-200 border-l-4 border-l-amber-500 bg-white p-4 text-left hover:bg-slate-50 transition-colors shadow-sm hover:shadow"
                             >
-                                <p className="text-[10px] font-black uppercase tracking-widest text-amber-700">Inventory Alert</p>
-                                <p className="mt-2 text-lg font-black text-amber-900">{remindersData.lowStock} low stock items</p>
-                                <p className="mt-1 text-[11px] text-amber-700">Review replenishment before stock-outs.</p>
+                                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Inventory Alert</p>
+                                <p className="mt-1.5 text-lg font-extrabold text-amber-600">{remindersData.lowStock} low stock items</p>
+                                <p className="mt-1 text-[10px] text-slate-500 font-semibold leading-normal">Review replenishment before stock-outs.</p>
                             </button>
                             <button
                                 onClick={() => onQuickAction?.('invoices')}
-                                className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-left hover:bg-rose-100 transition-colors"
+                                className="rounded-md border border-slate-200 border-l-4 border-l-rose-500 bg-white p-4 text-left hover:bg-slate-50 transition-colors shadow-sm hover:shadow"
                             >
-                                <p className="text-[10px] font-black uppercase tracking-widest text-rose-700">Collections Alert</p>
-                                <p className="mt-2 text-lg font-black text-rose-900">{remindersData.overdueInvoices} overdue invoices</p>
-                                <p className="mt-1 text-[11px] text-rose-700">Follow up to protect cash flow.</p>
+                                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Collections Alert</p>
+                                <p className="mt-1.5 text-lg font-extrabold text-rose-600">{remindersData.overdueInvoices} overdue invoices</p>
+                                <p className="mt-1 text-[10px] text-slate-500 font-semibold leading-normal">Follow up to protect cash flow.</p>
                             </button>
                         </div>
                     </div>
                 </div>
 
                 <div className="grid grid-cols-1 xl:grid-cols-12 gap-4">
+                    {/* Recent Transactions Table */}
                     <div className="xl:col-span-8">
                         <div className="flex items-center justify-between mb-3">
-                            <h2 className="text-sm font-black text-slate-500 uppercase tracking-widest">Recent Transactions</h2>
+                            <div className="flex items-center gap-2">
+                                <FileText className="w-4 h-4 text-brand-primary shrink-0" />
+                                <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Recent Transactions</h2>
+                            </div>
                             <button
                                 onClick={() => onQuickAction?.('invoices')}
-                                className="text-xs font-bold text-brand-primary hover:text-brand-primary-dark"
+                                className="text-xs font-bold text-[#edc75c] hover:underline"
                             >
                                 View All {'→'}
                             </button>
-
-
                         </div>
                         {recentInvoices.length === 0 ? (
-                        <Card className="border-dashed border-2 border-gray-200 bg-gray-50/50">
-                            <CardContent className="p-8 text-center">
-                                <FileText className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-                                <p className="text-sm font-bold text-gray-600">No transactions yet</p>
-                                <p className="text-xs text-gray-400 mt-1">Create your first invoice to get started</p>
-                                <Button
-                                    size="sm"
-                                    className="mt-4 bg-brand-primary hover:bg-brand-primary-dark"
-                                    onClick={() => onQuickAction?.('new-invoice')}
-                                >
-                                    <Plus className="w-4 h-4 mr-1.5" />
-                                    Create Invoice
-                                </Button>
-                            </CardContent>
-                        </Card>
-                    ) : (
-                        <Card className="border border-slate-200 shadow-sm bg-white overflow-hidden">
-                            <div className="divide-y divide-slate-100">
-                                {recentInvoices.map((inv, idx) => {
-                                    const status = String(inv.status || 'draft').toLowerCase();
-                                    const statusColors: Record<string, string> = {
-                                        paid: 'bg-emerald-100 text-emerald-700',
-                                        unpaid: 'bg-amber-100 text-amber-700',
-                                        pending: 'bg-amber-100 text-amber-700',
-                                        overdue: 'bg-rose-100 text-rose-700',
-                                        draft: 'bg-gray-100 text-gray-600',
-                                    };
-                                    return (
-                                        <div key={idx} className="flex items-center justify-between px-4 py-3 hover:bg-slate-50 transition-colors">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-8 h-8 bg-brand-50 rounded-lg flex items-center justify-center">
-                                                    <FileText className="w-4 h-4 text-brand-primary" />
+                            <Card className="border-dashed border-2 border-slate-200 bg-slate-50/50 rounded-md">
+                                <CardContent className="p-8 text-center">
+                                    <FileText className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                                    <p className="text-xs font-bold text-slate-600">No transactions yet</p>
+                                    <p className="text-[11px] text-slate-400 mt-0.5">Create your first invoice to get started</p>
+                                    <Button
+                                        size="sm"
+                                        className="mt-3 bg-[#edc75c] hover:bg-[#c49c3b] text-white text-[11px] font-bold h-7"
+                                        onClick={() => onQuickAction?.('new-invoice')}
+                                    >
+                                        <Plus className="w-3.5 h-3.5 mr-1" />
+                                        Create Invoice
+                                    </Button>
+                                </CardContent>
+                            </Card>
+                        ) : (
+                            <Card className="border border-slate-200 shadow-sm bg-white overflow-hidden rounded-lg">
+                                <div className="divide-y divide-slate-100">
+                                    {recentInvoices.map((inv, idx) => {
+                                        const status = String(inv.status || 'draft').toLowerCase();
+                                        const statusColors: Record<string, string> = {
+                                            paid: 'bg-emerald-50 text-emerald-700 border-emerald-100',
+                                            unpaid: 'bg-amber-50 text-amber-700 border-amber-100',
+                                            pending: 'bg-amber-50 text-amber-700 border-amber-100',
+                                            overdue: 'bg-rose-50 text-rose-700 border-rose-100',
+                                            draft: 'bg-slate-50 text-slate-600 border-slate-200',
+                                        };
+                                        return (
+                                            <div key={idx} className="flex items-center justify-between px-4 py-3 hover:bg-slate-50 transition-colors">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-7 h-7 bg-slate-50 border border-slate-100 rounded-md flex items-center justify-center text-slate-500">
+                                                        <FileText className="w-3.5 h-3.5" />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-xs font-bold text-slate-900">{inv.customer_name || 'Walk-in Customer'}</p>
+                                                        <p className="text-[10px] text-slate-400 font-semibold">{inv.date ? new Date(inv.date).toLocaleDateString('en-PK') : ''}</p>
+                                                    </div>
                                                 </div>
-                                                <div>
-                                                    <p className="text-sm font-bold text-gray-900">{inv.customer_name || 'Walk-in Customer'}</p>
-                                                    <p className="text-[11px] text-gray-400">{inv.date ? new Date(inv.date).toLocaleDateString('en-PK') : ''}</p>
+                                                <div className="text-right flex items-center gap-4">
+                                                    <div className="text-right">
+                                                        <p className="text-xs font-extrabold text-slate-900">{formatCurrencyCompact(Number(inv.grand_total) || Number(inv.amount) || 0)}</p>
+                                                    </div>
+                                                    <span className={cn("text-[9px] font-bold px-2 py-0.5 rounded border uppercase tracking-wider", statusColors[status] || statusColors.draft)}>
+                                                        {status}
+                                                    </span>
                                                 </div>
                                             </div>
-                                            <div className="text-right">
-                                                <p className="text-sm font-bold text-gray-900">{formatCurrencyCompact(Number(inv.grand_total) || Number(inv.amount) || 0)}</p>
-                                                <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full", statusColors[status] || statusColors.draft)}>
-                                                    {status.charAt(0).toUpperCase() + status.slice(1)}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </Card>
+                                        );
+                                    })}
+                                </div>
+                            </Card>
                         )}
                     </div>
 
+                    {/* Business Snapshot List Card */}
                     <div className="xl:col-span-4 space-y-4">
-                        <Card className="border border-slate-200 shadow-sm bg-white">
+                        <Card className="border border-slate-200 shadow-sm bg-white rounded-lg">
                             <CardContent className="p-5">
-                                <div className="flex items-center gap-2 mb-4">
-                                    <BarChart3 className="w-4 h-4 text-brand-primary" />
-                                    <h2 className="text-sm font-black text-slate-500 uppercase tracking-widest">Business Snapshot</h2>
+                                <div className="flex items-center gap-2 border-b border-slate-100 pb-3 mb-4">
+                                    <BarChart3 className="w-4 h-4 text-brand-primary shrink-0" />
+                                    <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Business Snapshot</h2>
                                 </div>
-                                <div className="space-y-3">
-                                    <div className="rounded-2xl border border-slate-100 bg-slate-50/70 px-4 py-3">
-                                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Products In Catalog</p>
-                                        <p className="mt-1 text-xl font-black text-slate-900">{products.length}</p>
+                                <div className="space-y-2.5">
+                                    <div className="flex items-center justify-between py-2 border-b border-slate-50 hover:bg-slate-50/50 transition-colors px-1">
+                                        <p className="text-[11px] font-bold text-slate-600">Products In Catalog</p>
+                                        <p className="text-sm font-extrabold text-slate-900">{products.length}</p>
                                     </div>
-                                    <div className="rounded-2xl border border-slate-100 bg-slate-50/70 px-4 py-3">
-                                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Pending Orders</p>
-                                        <p className="mt-1 text-xl font-black text-slate-900">{remindersData.pendingOrders}</p>
+                                    <div className="flex items-center justify-between py-2 border-b border-slate-50 hover:bg-slate-50/50 transition-colors px-1">
+                                        <p className="text-[11px] font-bold text-slate-600">Pending Orders</p>
+                                        <p className="text-sm font-extrabold text-slate-900">{remindersData.pendingOrders}</p>
                                     </div>
-                                    <div className="rounded-2xl border border-slate-100 bg-slate-50/70 px-4 py-3">
-                                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Returns</p>
-                                        <p className="mt-1 text-xl font-black text-slate-900">{periodMetrics.returnInvoices}</p>
-                                        <p className="mt-1 text-[11px] text-slate-500">{returnRate.toFixed(1)}% return rate</p>
+                                    <div className="flex items-center justify-between py-2 border-b border-slate-50 hover:bg-slate-50/50 transition-colors px-1">
+                                        <div>
+                                            <p className="text-[11px] font-bold text-slate-600">Returns</p>
+                                            <p className="text-[10px] text-slate-400 font-semibold mt-0.5">{returnRate.toFixed(1)}% return rate</p>
+                                        </div>
+                                        <p className="text-sm font-extrabold text-slate-900">{periodMetrics.returnInvoices}</p>
                                     </div>
-                                    <div className="rounded-2xl border border-slate-100 bg-slate-50/70 px-4 py-3">
-                                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Stock Check Recency</p>
-                                        <p className="mt-1 text-xl font-black text-slate-900">{stockCheckRecencyDisplay}</p>
+                                    <div className="flex items-center justify-between py-2 hover:bg-slate-50/50 transition-colors px-1">
+                                        <p className="text-[11px] font-bold text-slate-600">Stock Check Recency</p>
+                                        <p className="text-sm font-extrabold text-slate-900">{stockCheckRecencyDisplay}</p>
                                     </div>
                                 </div>
                             </CardContent>

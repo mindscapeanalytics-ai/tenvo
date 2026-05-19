@@ -46,6 +46,7 @@ import { cn } from '@/lib/utils';
 import { StockHistory } from '@/components/StockHistory';
 import { CustomParametersManager } from './inventory/CustomParametersManager';
 import { useSafeSmartDefaults, mergeFormDefaults, getCurrentDate } from '@/lib/hooks/useSafeSmartDefaults';
+import { useAppMode } from '@/lib/context/BusyModeContext';
 import { useAutosave, AutosaveIndicator } from '@/hooks/useAutosave';
 import { useKeyboardShortcuts, COMMON_SHORTCUTS } from '@/hooks/useKeyboardShortcuts';
 import { useBusiness } from '@/lib/context/BusinessContext';
@@ -65,6 +66,7 @@ export function ProductForm({
     currency = 'PKR',
 }) {
     const { regionalStandards } = useBusiness();
+    const { isEasyMode } = useAppMode();
     const standards = regionalStandards || {
         currencySymbol: '₨',
         currency: 'PKR',
@@ -545,34 +547,38 @@ export function ProductForm({
                 </CardHeader>
                 <CardContent className="pt-8 px-8 pb-10">
                     {/* Domain Intelligence Banner */}
-                    <div className="mb-8 p-6 rounded-3xl bg-gradient-to-br from-white to-wine-50/20 border border-wine-100/50 shadow-sm relative overflow-hidden group hover:shadow-md transition-all duration-500 cursor-default">
-                        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-                            <div className="flex items-start gap-4">
-                                <div className="p-4 rounded-2xl bg-wine-600 text-white shadow-xl shadow-wine-600/20 group-hover:scale-105 transition-transform duration-500">
-                                    <BrainCircuit className="w-6 h-6" />
+                    {!isEasyMode && (
+                        <div className="mb-8 p-6 rounded-3xl bg-gradient-to-br from-white to-wine-50/20 border border-wine-100/50 shadow-sm relative overflow-hidden group hover:shadow-md transition-all duration-500 cursor-default">
+                            <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                                <div className="flex items-start gap-4">
+                                    <div className="p-4 rounded-2xl bg-wine-600 text-white shadow-xl shadow-wine-600/20 group-hover:scale-105 transition-transform duration-500">
+                                        <BrainCircuit className="w-6 h-6" />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <h4 className="text-xl font-black text-gray-900 leading-tight">Domain Intelligence Active</h4>
+                                        <p className="text-sm text-gray-500 max-w-sm">
+                                            System is optimizing inventory for <span className="font-bold text-wine-600">{category.replace(/-/g, ' ')}</span> standards including reorder automation and specialized property tracking.
+                                        </p>
+                                    </div>
                                 </div>
-                                <div className="space-y-1">
-                                    <h4 className="text-xl font-black text-gray-900 leading-tight">Domain Intelligence Active</h4>
-                                    <p className="text-sm text-gray-500 max-w-sm">
-                                        System is optimizing inventory for <span className="font-bold text-wine-600">{category.replace(/-/g, ' ')}</span> standards including reorder automation and specialized property tracking.
-                                    </p>
+                                <div className="flex flex-wrap gap-2">
+                                    {isBatchTrackingEnabled(category) && <Badge className="bg-white/80 backdrop-blur-sm text-gray-600 border-gray-100">Batch Enabled</Badge>}
+                                    {isSerialTrackingEnabled(category) && <Badge className="bg-white/80 backdrop-blur-sm text-gray-600 border-gray-100">Serial Tracking</Badge>}
+                                    {isExpiryTrackingEnabled(category) && <Badge className="bg-white/80 backdrop-blur-sm text-gray-600 border-gray-100">Expiry Mgmt</Badge>}
                                 </div>
                             </div>
-                            <div className="flex flex-wrap gap-2">
-                                {isBatchTrackingEnabled(category) && <Badge className="bg-white/80 backdrop-blur-sm text-gray-600 border-gray-100">Batch Enabled</Badge>}
-                                {isSerialTrackingEnabled(category) && <Badge className="bg-white/80 backdrop-blur-sm text-gray-600 border-gray-100">Serial Tracking</Badge>}
-                                {isExpiryTrackingEnabled(category) && <Badge className="bg-white/80 backdrop-blur-sm text-gray-600 border-gray-100">Expiry Mgmt</Badge>}
-                            </div>
+                            {/* Decorative background element */}
+                            <div className="absolute -right-8 -bottom-8 w-32 h-32 rounded-full bg-wine-600/5 blur-3xl group-hover:bg-wine-600/10 transition-all duration-700" />
                         </div>
-                        {/* Decorative background element */}
-                        <div className="absolute -right-8 -bottom-8 w-32 h-32 rounded-full bg-wine-600/5 blur-3xl group-hover:bg-wine-600/10 transition-all duration-700" />
-                    </div>
+                    )}
                     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                         <div className="sticky top-0 z-20 bg-white/80 backdrop-blur-md py-4 mb-6 border-b border-gray-100 flex items-center justify-between">
                             <TabsList className="bg-gray-100/50 p-1 rounded-2xl border border-gray-100">
                                 <TabsTrigger value="basic" className="rounded-xl px-6 font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-white data-[state=active]:shadow-sm">Identity</TabsTrigger>
                                 <TabsTrigger value="inventory" className="rounded-xl px-6 font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-white data-[state=active]:shadow-sm">Stock & Flow</TabsTrigger>
-                                <TabsTrigger value="domain" className="rounded-xl px-6 font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-white data-[state=active]:shadow-sm">Expert Detail</TabsTrigger>
+                                {!isEasyMode && (
+                                    <TabsTrigger value="domain" className="rounded-xl px-6 font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-white data-[state=active]:shadow-sm">Expert Detail</TabsTrigger>
+                                )}
                                 <TabsTrigger value="media" className="rounded-xl px-6 font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-white data-[state=active]:shadow-sm">Media</TabsTrigger>
                                 {product && <TabsTrigger value="history" className="rounded-xl px-6 font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-white data-[state=active]:shadow-sm">Audit trail</TabsTrigger>}
                             </TabsList>

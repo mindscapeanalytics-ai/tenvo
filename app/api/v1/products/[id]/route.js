@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { withApiAuth } from '@/lib/api/_shared/middleware';
@@ -171,7 +172,7 @@ const updateProductSchema = z.object({
     domainData: z.record(z.any()).optional() // Accept camelCase variant
 });
 
-export const PUT = withApiAuth(async (request, { businessId, session, role, routeParams }) => {
+export const PUT = withApiAuth(async (request, { businessId, session, role, parsedBody, routeParams }) => {
     try {
         // Check role permissions - viewers cannot update products
         if (role === 'viewer') {
@@ -186,15 +187,11 @@ export const PUT = withApiAuth(async (request, { businessId, session, role, rout
         const productId = routeParams?.params?.id;
         
         if (!productId) {
-            return apiError(
-                'MISSING_PRODUCT_ID',
-                'Product ID is required',
-                400
-            );
+            return apiError('MISSING_PRODUCT_ID', 'Product ID is required', 400);
         }
 
-        // Parse and validate request body
-        const body = await request.json();
+        // Use pre-parsed body from middleware (stream already consumed)
+        const body = parsedBody || {};
 
         // Ensure business_id matches authenticated business
         if (body.business_id && body.business_id !== businessId) {
@@ -364,3 +361,4 @@ export const DELETE = withApiAuth(async (request, { businessId, session, role, r
         );
     }
 });
+

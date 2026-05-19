@@ -1,47 +1,50 @@
-import { NextResponse } from 'next/server';
+export const dynamic = 'force-dynamic';
 import pool from '@/lib/db';
+import { withApiAuth } from '@/lib/api/_shared/middleware';
+import { apiSuccess, apiError } from '@/lib/api/_shared/response';
 
 /**
- * Low Stock Alert Detail API
- * PATCH: Dismiss an alert
+ * PATCH /api/v1/inventory/low-stock-alerts/[id]
+ * Dismiss or update a low-stock alert.
+ * Body: { status: 'dismissed' | 'resolved' }
+ *
+ * Authentication: Required (withApiAuth middleware)
  */
-export async function PATCH(request, { params }) {
-    try {
-        const { id } = params;
-        const body = await request.json();
-        const { status } = body;
+export const PATCH = withApiAuth(async (request, { businessId, parsedBody, routeParams }) => {
+    const id = routeParams?.params?.id;
+    if (!id) return apiError('MISSING_ID', 'Alert ID is required', 400);
 
-        const client = await pool.connect();
-        try {
-            const res = await client.query(`
-                UPDATE low_stock_alerts
-                SET status = $1, updated_at = NOW()
-                WHERE id = $2
-                RETURNING *
-            `, [status || 'dismissed', id]);
+    const body = parsedBody || {};
+    const status = body.status || 'dismissed';
 
-            if (res.rows.length === 0) {
-                return NextResponse.json(
-                    { error: 'Alert not found' },
-                    { status: 404 }
-                );
-            }
-
-            return NextResponse.json(res.rows[0]);
-        } finally {
-            client.release();
-        }
-    } catch (error) {
-        console.error('Error in PATCH /api/v1/inventory/low-stock-alerts/[id]:', error);
-        if (error?.code === '42P01') {
-            return NextResponse.json(
-                { error: 'Low-stock alert tables are not initialized. Apply latest migrations first.' },
-                { status: 503 }
-            );
-        }
-        return NextResponse.json(
-            { error: error.message },
-            { status: 500 }
-        );
+    const allowedStatuses = ['dismissed', 'resolved', 'active'];
+    if (!allowedStatuses.includes(status)) {
+        return apiError('INVALID_STATUS', `Status must be one of: ${allowedStatuses.join(', ')}`, 400);
     }
-}
+
+    const client = await pool.connect();
+    try {
+        const res = await client.query(`
+            UPDATE low_stock_alerts
+            SET status = $1, updated_at = NOW()
+            WHERE id = $2 AND business_id = $3
+            RETURNING *
+        `, [status, id, businessId]);
+
+        if (res.rows.length === 0) {
+            return apiError('NOT_FOUND', 'Alert not found', 404);
+        }
+
+        return apiSuccess({ alert: res.rows[0] });
+    } catch (error) {
+        if (error?.code === '42P01') {
+            return apiError('TABLES_MISSING',
+                'Low-stock alert tables are not initialized. Apply latest migrations first.', 503);
+        }
+        console.error('[PATCH /api/v1/inventory/low-stock-alerts/[id]]', error);
+        return apiError('UPDATE_FAILED', error.message, 500);
+    } finally {
+        client.release();
+    }
+});
+

@@ -1,39 +1,42 @@
+export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
+import { withApiAuth } from '@/lib/api/_shared/middleware';
+import { apiSuccess, apiError } from '@/lib/api/_shared/response';
 
 /**
  * GET /api/v1/finance/journal-entries
  * List journal entries with GL line details.
  * Query params: business_id, start_date, end_date, account_id, search, limit, offset
+ *
+ * Authentication: Required (withApiAuth middleware)
+ * Authorization: accountant / manager / admin / owner
  */
-export async function GET(request) {
+export const GET = withApiAuth(async (request, { businessId }) => {
     const { searchParams } = new URL(request.url);
-    const business_id = searchParams.get('business_id');
-    const start_date = searchParams.get('start_date');
-    const end_date = searchParams.get('end_date');
-    const account_id = searchParams.get('account_id');
-    const search = searchParams.get('search');
-    const limit = Math.min(parseInt(searchParams.get('limit') || '50', 10), 200);
-    const offset = parseInt(searchParams.get('offset') || '0', 10);
-
-    if (!business_id) {
-        return NextResponse.json({ error: 'business_id is required' }, { status: 400 });
-    }
+    const start_date  = searchParams.get('start_date');
+    const end_date    = searchParams.get('end_date');
+    const account_id  = searchParams.get('account_id');
+    const search      = searchParams.get('search');
+    const limit       = Math.min(parseInt(searchParams.get('limit')  || '50',  10), 200);
+    const offset      = parseInt(searchParams.get('offset') || '0', 10);
 
     const client = await pool.connect();
     try {
         const conditions = ['je.business_id = $1'];
-        const params = [business_id];
+        const params = [businessId];
         let i = 2;
 
         if (start_date) { conditions.push(`je.transaction_date >= $${i++}`); params.push(start_date); }
-        if (end_date) { conditions.push(`je.transaction_date <= $${i++}`); params.push(end_date); }
-        if (search) { conditions.push(`(je.description ILIKE $${i} OR je.journal_number ILIKE $${i})`); params.push(`%${search}%`); i++; }
-
-        // If filtering by account_id, add a subquery condition
+        if (end_date)   { conditions.push(`je.transaction_date <= $${i++}`); params.push(end_date); }
+        if (search)     {
+            conditions.push(`(je.description ILIKE $${i} OR je.journal_number ILIKE $${i})`);
+            params.push(`%${search}%`);
+            i++;
+        }
         if (account_id && account_id !== 'all') {
             conditions.push(`EXISTS (
-                SELECT 1 FROM gl_entries ge2 
+                SELECT 1 FROM gl_entries ge2
                 WHERE ge2.journal_id = je.id AND ge2.account_id = $${i++}
             )`);
             params.push(account_id);
@@ -41,44 +44,44 @@ export async function GET(request) {
 
         const whereClause = conditions.join(' AND ');
 
-        // Count total for pagination
         const countRes = await client.query(
             `SELECT COUNT(*)::int as total FROM journal_entries je WHERE ${whereClause}`,
             params
         );
         const total = countRes.rows[0]?.total || 0;
 
-        // Main query -- fetch journals with aggregated debit/credit totals
         const journalsRes = await client.query(
-            `SELECT 
+            `SELECT
                 je.id,
                 je.journal_number,
                 je.transaction_date,
                 je.description,
                 je.reference_type,
                 je.reference_id,
+                je.status,
+                je.is_reversed,
                 je.created_by,
                 je.created_at,
-                COALESCE(SUM(ge.debit), 0)::numeric  AS total_debit,
+                COALESCE(SUM(ge.debit),  0)::numeric AS total_debit,
                 COALESCE(SUM(ge.credit), 0)::numeric AS total_credit,
-                COUNT(ge.id)::int                     AS line_count
+                COUNT(ge.id)::int                    AS line_count
              FROM journal_entries je
              LEFT JOIN gl_entries ge ON ge.journal_id = je.id
              WHERE ${whereClause}
              GROUP BY je.id, je.journal_number, je.transaction_date, je.description,
-                      je.reference_type, je.reference_id, je.created_by, je.created_at
+                      je.reference_type, je.reference_id, je.status, je.is_reversed,
+                      je.created_by, je.created_at
              ORDER BY je.transaction_date DESC, je.created_at DESC
              LIMIT $${i++} OFFSET $${i++}`,
             [...params, limit, offset]
         );
 
-        // Fetch GL lines for the returned journals
         const journalIds = journalsRes.rows.map(j => j.id);
         let linesMap = {};
 
         if (journalIds.length > 0) {
             const linesRes = await client.query(
-                `SELECT 
+                `SELECT
                     ge.journal_id,
                     ge.id,
                     ge.account_id,
@@ -100,22 +103,18 @@ export async function GET(request) {
             });
         }
 
-        const journals = journalsRes.rows.map(j => ({
-            ...j,
-            lines: linesMap[j.id] || [],
-        }));
+        const journals = journalsRes.rows.map(j => ({ ...j, lines: linesMap[j.id] || [] }));
 
-        return NextResponse.json({ journals, total, limit, offset });
+        return apiSuccess({ journals, total, limit, offset });
     } catch (err) {
         if (err.code === '42P01') {
-            return NextResponse.json({
-                journals: [], total: 0, limit, offset,
-                warning: 'Journal entries tables not yet migrated.'
-            });
+            return apiSuccess({ journals: [], total: 0, limit, offset,
+                warning: 'Journal entries tables not yet migrated.' });
         }
         console.error('[finance/journal-entries GET]', err);
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+        return apiError('FETCH_FAILED', 'Internal server error', 500);
     } finally {
         client.release();
     }
-}
+});
+

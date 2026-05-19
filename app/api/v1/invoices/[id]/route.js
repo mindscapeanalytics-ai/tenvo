@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import pool from '@/lib/db';
@@ -173,7 +174,7 @@ const updateInvoiceSchema = z.object({
     items: z.array(invoiceItemSchema).min(1, 'At least one item is required')
 });
 
-export const PUT = withApiAuth(async (request, { businessId, session, role, routeParams }) => {
+export const PUT = withApiAuth(async (request, { businessId, session, role, parsedBody, routeParams }) => {
     try {
         // Check role permissions - viewers cannot update invoices
         if (role === 'viewer') {
@@ -188,15 +189,11 @@ export const PUT = withApiAuth(async (request, { businessId, session, role, rout
         const invoiceId = routeParams?.params?.id;
         
         if (!invoiceId) {
-            return apiError(
-                'MISSING_INVOICE_ID',
-                'Invoice ID is required',
-                400
-            );
+            return apiError('MISSING_INVOICE_ID', 'Invoice ID is required', 400);
         }
 
-        // Parse and validate request body
-        const body = await request.json();
+        // Use pre-parsed body from middleware (stream already consumed)
+        const body = parsedBody || {};
 
         // Ensure business_id matches authenticated business
         if (body.business_id && body.business_id !== businessId) {
@@ -367,3 +364,4 @@ export const DELETE = withApiAuth(async (request, { businessId, session, role, r
         );
     }
 });
+

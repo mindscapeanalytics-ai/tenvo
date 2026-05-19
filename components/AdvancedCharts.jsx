@@ -18,7 +18,7 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 
-const COLORS = ['#2F5BFF', '#1738A5', '#0F172A', '#10B981', '#C69214', '#38BDF8'];
+const COLORS = ['#edc75c', '#c49c3b', '#0F172A', '#10B981', '#C69214', '#e8c051'];
 
 /**
  * @param {Object} props
@@ -26,8 +26,8 @@ const COLORS = ['#2F5BFF', '#1738A5', '#0F172A', '#10B981', '#C69214', '#38BDF8'
  * @param {any} [props.colors]
  */
 export function SalesChart({ data, colors }) {
-  const primary = colors?.primary || '#2F5BFF';
-  const secondary = colors?.primaryLight || '#1738A5';
+  const primary = colors?.primary || '#edc75c';
+  const secondary = colors?.primaryLight || '#c49c3b';
 
   return (
     <ResponsiveContainer width="100%" height={300}>
@@ -50,8 +50,8 @@ export function SalesChart({ data, colors }) {
  * @param {any} [props.colors]
  */
 export function RevenueBarChart({ data, colors }) {
-  const primary = colors?.primary || '#2F5BFF';
-  const secondary = colors?.primaryLight || '#1738A5';
+  const primary = colors?.primary || '#edc75c';
+  const secondary = colors?.primaryLight || '#c49c3b';
 
   return (
     <ResponsiveContainer width="100%" height={300}>
@@ -83,7 +83,7 @@ export function CategoryPieChart({ data }) {
           labelLine={false}
           label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
           outerRadius={80}
-          fill="#8884d8"
+          fill="#edc75c"
           dataKey="value"
         >
           {data.map((entry, index) => (
@@ -102,8 +102,8 @@ export function CategoryPieChart({ data }) {
  * @param {any} [props.colors]
  */
 export function RevenueAreaChart({ data, colors }) {
-  const primary = colors?.primary || '#2F5BFF';
-  const secondary = colors?.primaryLight || '#1738A5';
+  const primary = colors?.primary || '#edc75c';
+  const secondary = colors?.primaryLight || '#c49c3b';
 
   return (
     <ResponsiveContainer width="100%" height={300}>
@@ -136,7 +136,7 @@ export function RevenueAreaChart({ data, colors }) {
  * @param {any} [props.colors]
  */
 export function TopProductsChart({ data, colors }) {
-  const primary = colors?.primary || '#2F5BFF';
+  const primary = colors?.primary || '#edc75c';
 
   return (
     <ResponsiveContainer width="100%" height={300}>

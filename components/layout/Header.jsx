@@ -386,7 +386,7 @@ export function Header({ onMenuClick }) {
 
                     <div className="flex flex-col -space-y-0.5">
                         <span className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] leading-none">
-                            {business?.domain?.replace(/-/g, ' ') || 'Dashboard'}
+                            {business?.name || business?.domain?.replace(/-/g, ' ') || 'Dashboard'}
                         </span>
                         <h1 className="text-sm font-black text-gray-900 tracking-tight">
                             {activeTitle}
@@ -399,7 +399,7 @@ export function Header({ onMenuClick }) {
                     <div className="relative w-full group">
                         <Search className={`absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 group-focus-within:text-brand-primary transition-colors ${language === 'ur' ? 'right-3' : 'left-3'}`} />
                         <Input
-                            placeholder={t.search_placeholder + '...'}
+                            placeholder={t.search_placeholder + '...  (Ctrl+K)'}
                             className={`h-9 text-xs bg-gray-50 border-gray-200/50 focus:bg-white focus:border-brand-100 focus:ring-4 focus:ring-brand-50 transition-all rounded-xl ${language === 'ur' ? 'pr-9' : 'pl-9'}`}
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
@@ -559,6 +559,15 @@ export function Header({ onMenuClick }) {
                                 <DropdownMenuItem onClick={() => window.dispatchEvent(new CustomEvent('open-modal', { detail: { modalId: 'purchase' } }))} className="rounded-xl py-2.5 cursor-pointer">
                                     <ShoppingCart className="w-4 h-4 mr-3 text-brand-primary" />
                                     <span className="font-bold text-xs">New Purchase Order</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => window.dispatchEvent(new CustomEvent('switch-tab', { detail: { tab: 'payments' } }))} className="rounded-xl py-2.5 cursor-pointer">
+                                    <History className="w-4 h-4 mr-3 text-emerald-500" />
+                                    <span className="font-bold text-xs">Record Payment</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => window.dispatchEvent(new CustomEvent('switch-tab', { detail: { tab: 'finance' } }))} className="rounded-xl py-2.5 cursor-pointer">
+                                    <ListFilter className="w-4 h-4 mr-3 text-rose-500" />
+                                    <span className="font-bold text-xs">Log Expense</span>
                                 </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>

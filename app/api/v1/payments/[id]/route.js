@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import pool from '@/lib/db';
@@ -145,38 +146,20 @@ export const GET = withApiAuth(async (request, { businessId, routeParams }) => {
  *   }
  * }
  */
-export const DELETE = withApiAuth(async (request, { businessId, session, role, routeParams }) => {
+export const DELETE = withApiAuth(async (request, { businessId, session, role, parsedBody, routeParams }) => {
     try {
         // Check role permissions - only owners and managers can void payments
         if (role === 'viewer') {
-            return apiError(
-                'FORBIDDEN',
-                'Insufficient permissions. Viewers cannot void payments.',
-                403
-            );
+            return apiError('FORBIDDEN', 'Insufficient permissions. Viewers cannot void payments.', 403);
         }
 
-        // Extract payment ID from route params
         const paymentId = routeParams?.params?.id;
-        
         if (!paymentId) {
-            return apiError(
-                'MISSING_PAYMENT_ID',
-                'Payment ID is required',
-                400
-            );
+            return apiError('MISSING_PAYMENT_ID', 'Payment ID is required', 400);
         }
 
-        // Parse request body for optional reason
-        let reason = 'Payment voided via API';
-        try {
-            const body = await request.json();
-            if (body.reason) {
-                reason = body.reason;
-            }
-        } catch (error) {
-            // Body is optional, ignore parse errors
-        }
+        // Use pre-parsed body from middleware; reason is optional
+        const reason = parsedBody?.reason || 'Payment voided via API';
 
         // Delegate to PaymentService.voidPayment
         // This handles:
@@ -220,3 +203,4 @@ export const DELETE = withApiAuth(async (request, { businessId, session, role, r
         );
     }
 });
+

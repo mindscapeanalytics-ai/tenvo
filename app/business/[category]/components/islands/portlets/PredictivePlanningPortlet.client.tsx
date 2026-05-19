@@ -113,7 +113,7 @@ export const PredictivePlanningPortlet = memo(function PredictivePlanningPortlet
                                         if (res.success) {
                                             alert('AI Agent has prepared a procurement proposal. You can review it in the Approvals section.');
                                         } else {
-                                            alert('Agent failed: ' + res.error);
+                                            alert('Agent failed: ' + (res as any).error);
                                         }
                                     }
                                 }}

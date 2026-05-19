@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useMemo, useEffect } from 'react';
 import {
@@ -276,8 +276,8 @@ export function PharmacyDashboard({ businessId, category, onQuickAction }) {
                       className="h-full rounded-full transition-all duration-1000 ease-out"
                       style={{
                         width: `${progress}%`,
-                        backgroundColor: colors.primary || '#2F5BFF',
-                        boxShadow: `0 0 8px ${colors.primary || '#2F5BFF'}40`
+                        backgroundColor: colors.primary || '#edc75c',
+                        boxShadow: `0 0 8px ${colors.primary || '#edc75c'}40`
                       }}
                     />
                   </div>

@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import pool from '@/lib/db';
@@ -117,7 +118,7 @@ const updatePurchaseStatusSchema = z.object({
     })
 });
 
-export const PUT = withApiAuth(async (request, { businessId, session, role, routeParams }) => {
+export const PUT = withApiAuth(async (request, { businessId, session, role, parsedBody, routeParams }) => {
     try {
         // Check role permissions - viewers cannot update purchases
         if (role === 'viewer') {
@@ -132,15 +133,11 @@ export const PUT = withApiAuth(async (request, { businessId, session, role, rout
         const purchaseId = routeParams?.params?.id;
         
         if (!purchaseId) {
-            return apiError(
-                'MISSING_PURCHASE_ID',
-                'Purchase ID is required',
-                400
-            );
+            return apiError('MISSING_PURCHASE_ID', 'Purchase ID is required', 400);
         }
 
-        // Parse and validate request body
-        const body = await request.json();
+        // Use pre-parsed body from middleware (stream already consumed)
+        const body = parsedBody || {};
 
         // Ensure business_id matches authenticated business
         if (body.business_id && body.business_id !== businessId) {
@@ -389,3 +386,4 @@ export const DELETE = withApiAuth(async (request, { businessId, session, role, r
         client.release();
     }
 });
+

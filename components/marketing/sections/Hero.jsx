@@ -68,7 +68,7 @@ export default function Hero({
     const BadgeIcon = (typeof badge === 'object' && badge.icon) ? LucideIcons[badge.icon] : null;
     
     return (
-      <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-sm font-semibold mb-6 shadow-sm shadow-blue-100">
+      <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-50 border border-amber-200 text-amber-800 text-sm font-semibold mb-6 shadow-sm shadow-amber-100">
         {BadgeIcon && <BadgeIcon className="w-4 h-4" />}
         <span>{badgeText}</span>
       </div>
@@ -87,8 +87,8 @@ export default function Hero({
           return (
             <div key={index} className="flex items-center gap-3">
               {StatIcon && (
-                <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-blue-50 shadow-sm shadow-blue-100">
-                  <StatIcon className="w-5 h-5 text-blue-600" />
+                <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-amber-50 shadow-sm shadow-amber-100">
+                  <StatIcon className="w-5 h-5 text-amber-600" />
                 </div>
               )}
               <div>
@@ -109,7 +109,7 @@ export default function Hero({
         <Button
           asChild
           size="lg"
-          className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-6 text-lg font-semibold rounded-2xl shadow-[0_18px_44px_-20px_rgba(47,91,255,0.65)] hover:shadow-[0_24px_54px_-20px_rgba(47,91,255,0.55)] transition-all duration-300"
+          className="bg-brand-primary hover:bg-brand-primary-dark text-neutral-900 px-8 py-6 text-lg font-bold rounded-2xl shadow-[0_18px_44px_-20px_rgba(237,199,92,0.65)] hover:shadow-[0_24px_54px_-20px_rgba(237,199,92,0.55)] transition-all duration-300"
           onClick={() => handleCTAClick('primary', primaryCTA.href)}
         >
           <Link href={primaryCTA.href}>
@@ -123,7 +123,7 @@ export default function Hero({
           asChild
           variant="outline"
           size="lg"
-          className="border-2 border-neutral-300 hover:border-blue-600 hover:text-blue-700 px-8 py-6 text-lg font-semibold rounded-2xl bg-white/70 backdrop-blur-sm transition-all duration-300"
+          className="border-2 border-neutral-300 hover:border-brand-primary hover:text-brand-primary-dark px-8 py-6 text-lg font-semibold rounded-2xl bg-white/70 backdrop-blur-sm transition-all duration-300"
           onClick={() => handleCTAClick('secondary', secondaryCTA.href)}
         >
           <Link href={secondaryCTA.href}>
@@ -137,9 +137,9 @@ export default function Hero({
   // Default variant: Split layout with text left, image right
   if (variant === 'default') {
     return (
-      <section className="relative overflow-hidden bg-[linear-gradient(135deg,#f6f8fc_0%,#ffffff_55%,#eef4ff_100%)]">
+      <section className="relative overflow-hidden bg-[linear-gradient(135deg,#fdfdfa_0%,#ffffff_55%,#fefbf0_100%)]">
         {/* Decorative blur elements */}
-        <div className="absolute top-0 right-0 w-[32rem] h-[32rem] bg-blue-200/35 rounded-full blur-3xl" />
+        <div className="absolute top-0 right-0 w-[32rem] h-[32rem] bg-amber-200/35 rounded-full blur-3xl" />
         <div className="absolute bottom-0 left-0 w-[28rem] h-[28rem] bg-amber-200/25 rounded-full blur-3xl" />
         
         <div className="relative container mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-24">
@@ -153,7 +153,7 @@ export default function Hero({
                   ? headlineText.split(' ').map((word, index) => {
                       const highlightWords = ['Pakistan', 'Intelligent', 'Operating'];
                       if (highlightWords.some(hw => word.includes(hw))) {
-                        return <span key={index} className="text-blue-600">{word}{' '}</span>;
+                        return <span key={index} className="text-brand-primary">{word}{' '}</span>;
                       }
                       return <span key={index}>{word} </span>;
                     })
@@ -169,7 +169,7 @@ export default function Hero({
               
               {renderStats()}
             </div>
-
+ 
             {/* Hero image */}
             {heroImageSrc && (
               <div className={`relative ${mounted ? 'animate-fade-in' : 'opacity-0'}`}>
@@ -188,7 +188,7 @@ export default function Hero({
                 </div>
                 
                 {/* Decorative elements */}
-                <div className="absolute -top-4 -right-4 w-24 h-24 bg-blue-500 rounded-[1.75rem] opacity-20 blur-xl" />
+                <div className="absolute -top-4 -right-4 w-24 h-24 bg-brand-primary rounded-[1.75rem] opacity-20 blur-xl" />
                 <div className="absolute -bottom-4 -left-4 w-32 h-32 bg-amber-300 rounded-[1.75rem] opacity-20 blur-xl" />
               </div>
             )}
@@ -201,7 +201,7 @@ export default function Hero({
   // Centered variant: Centered text with background image
   if (variant === 'centered') {
     return (
-      <section className="relative overflow-hidden bg-[linear-gradient(135deg,#091225_0%,#10224a_45%,#2f5bff_100%)] text-white">
+      <section className="relative overflow-hidden bg-[linear-gradient(135deg,#0c0f16_0%,#1b1c24_45%,#c49c3b_100%)] text-white">
         {/* Background image */}
         {heroImageSrc && (
           <div className="absolute inset-0">
@@ -264,7 +264,7 @@ export default function Hero({
       <section className="relative overflow-hidden bg-white">
         <div className="grid lg:grid-cols-2 min-h-[600px]">
           {/* Text content */}
-          <div className="flex items-center bg-[linear-gradient(135deg,#eef4ff_0%,#ffffff_70%)]">
+          <div className="flex items-center bg-[linear-gradient(135deg,#fefbf0_0%,#ffffff_70%)]">
             <div className={`container mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-24 space-y-6 ${mounted ? 'animate-fade-in-up' : 'opacity-0'}`}>
               {renderBadge()}
               

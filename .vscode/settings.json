@@ -1,7 +1,0 @@
-{
-    "typescript.tsdk": "./node_modules/typescript/lib",
-    "typescript.enablePromptUseWorkspaceTsdk": true,
-    "javascript.implicitProjectConfig.checkJs": false,
-    "javascript.suggest.autoImports": true,
-    "javascript.autoClosingTags": false
-}

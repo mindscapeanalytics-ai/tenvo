@@ -105,9 +105,9 @@ export default function LoginPage() {
     };
 
     return (
-        <div className="min-h-screen bg-[linear-gradient(180deg,#f6f8fc_0%,#eef4ff_100%)] flex flex-col md:flex-row overflow-hidden">
+        <div className="min-h-screen bg-neutral-50 flex flex-col md:flex-row overflow-hidden">
             {/* Left Side: Branding & Visuals */}
-            <div className="hidden md:flex md:w-1/2 bg-[linear-gradient(160deg,#091225_0%,#1738A5_58%,#2F5BFF_100%)] relative items-center justify-center p-12 overflow-hidden">
+            <div className="hidden md:flex md:w-1/2 bg-neutral-900 border-r border-brand-primary/20 relative items-center justify-center p-12 overflow-hidden">
                 <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
                     <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.2),transparent_70%)]" />
                     <div className="grid grid-cols-10 gap-2 opacity-50 translate-x-[-10%] translate-y-[-10%] rotate-[-12deg]">

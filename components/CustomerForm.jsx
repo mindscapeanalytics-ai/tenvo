@@ -12,6 +12,7 @@ import { DomainFieldRenderer } from './domain/DomainFieldRenderer';
 import { useBusiness } from '@/lib/context/BusinessContext';
 import { CityAutocomplete } from '@/components/CityAutocomplete';
 import { MarketLocationSelector } from '@/components/MarketLocationSelector';
+import { useAppMode } from '@/lib/context/BusyModeContext';
 import { validateNTN, formatNTN } from '@/lib/tax/pakistaniTax';
 import { formatPakistaniPhone, isValidCNIC, isValidPakistaniPhone, customerSchema, validateForm } from '@/lib/validation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -38,6 +39,7 @@ export function CustomerForm({
     category = 'retail-shop'
 }) {
     const { business } = useBusiness();
+    const { isEasyMode } = useAppMode();
     const [isLoading, setIsLoading] = useState(false);
     const [activeTab, setActiveTab] = useState('basic');
     const [errors, setErrors] = useState({});
@@ -278,22 +280,26 @@ export function CustomerForm({
                 </CardHeader>
                 <CardContent className="pt-6">
                     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                        <TabsList className="grid w-full grid-cols-3 mb-8 bg-gray-100/50 p-1 rounded-xl">
+                        <TabsList className={cn("grid w-full mb-8 bg-gray-100/50 p-1 rounded-xl", isEasyMode ? "grid-cols-1" : "grid-cols-3")}>
                             <TabsTrigger value="basic" className="relative rounded-lg data-[state=active]:bg-white data-[state=active]:text-wine data-[state=active]:shadow-sm">
                                 Basic Details
                                 {['name', 'phone', 'city'].some(k => errors[k]) && (
                                     <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500 animate-pulse" />
                                 )}
                             </TabsTrigger>
-                            <TabsTrigger value="tax" className="relative rounded-lg data-[state=active]:bg-white data-[state=active]:text-wine data-[state=active]:shadow-sm">
-                                Financial & Tax
-                                {['ntn', 'cnic', 'srn', 'credit_limit'].some(k => errors[k]) && (
-                                    <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                                )}
-                            </TabsTrigger>
-                            <TabsTrigger value="domain" className="relative rounded-lg data-[state=active]:bg-white data-[state=active]:text-wine data-[state=active]:shadow-sm text-xs">
-                                Domain Expert Info
-                            </TabsTrigger>
+                            {!isEasyMode && (
+                                <>
+                                    <TabsTrigger value="tax" className="relative rounded-lg data-[state=active]:bg-white data-[state=active]:text-wine data-[state=active]:shadow-sm">
+                                        Financial & Tax
+                                        {['ntn', 'cnic', 'srn', 'credit_limit'].some(k => errors[k]) && (
+                                            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                                        )}
+                                    </TabsTrigger>
+                                    <TabsTrigger value="domain" className="relative rounded-lg data-[state=active]:bg-white data-[state=active]:text-wine data-[state=active]:shadow-sm text-xs">
+                                        Domain Expert Info
+                                    </TabsTrigger>
+                                </>
+                            )}
                         </TabsList>
 
                         <TabsContent value="basic" className="space-y-6 animate-in fade-in duration-300">
@@ -372,6 +378,44 @@ export function CustomerForm({
                                     />
                                 </div>
                             </div>
+                            
+                            {isEasyMode && (
+                                <div className="mt-6 pt-6 border-t border-gray-100">
+                                    <h4 className="text-sm font-bold text-wine mb-4 flex items-center gap-2">
+                                        <Wallet className="w-4 h-4" />
+                                        Financial Settings
+                                    </h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Credit Limit (PKR)</Label>
+                                            <div className="relative">
+                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-semibold text-xs">₨</span>
+                                                <Input
+                                                    type="number"
+                                                    value={formData.credit_limit || ''}
+                                                    onChange={(e) => handleInputChange('credit_limit', e.target.value)}
+                                                    placeholder="0"
+                                                    className="h-11 rounded-xl pl-8"
+                                                />
+                                            </div>
+                                            {errors.credit_limit && <FormError message={errors.credit_limit} />}
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Opening Balance (PKR)</Label>
+                                            <div className="relative">
+                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-semibold text-xs">₨</span>
+                                                <Input
+                                                    type="number"
+                                                    value={formData.opening_balance || ''}
+                                                    onChange={(e) => handleInputChange('opening_balance', e.target.value)}
+                                                    placeholder="0"
+                                                    className="h-11 rounded-xl pl-8"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </TabsContent>
 
                         <TabsContent value="tax" className="space-y-6 animate-in fade-in duration-300">

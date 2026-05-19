@@ -15,12 +15,14 @@ import { DomainFieldRenderer } from './domain/DomainFieldRenderer';
 import { formatPakistaniPhone, vendorSchema, validateForm } from '@/lib/validation';
 import { getDomainVendorFields, normalizeKey } from '@/lib/utils/domainHelpers';
 import { getDomainColors } from '@/lib/domainColors';
+import { useAppMode } from '@/lib/context/BusyModeContext';
 import toast from 'react-hot-toast';
 import { isEntitlementError, getEntitlementErrorMessage, isEntitlementErrorHandled } from '@/lib/utils/subscriptionErrors';
 import { showActionError, formatValidationErrors, isValidationError } from '@/lib/utils/formErrorHandler';
 
 export function VendorForm({ initialData = null, onSave, onClose, onEntitlementError, category = 'retail-shop', business = null }) {
     const colors = getDomainColors(category);
+    const { isEasyMode } = useAppMode();
     const [activeTab, setActiveTab] = useState('identity');
     const [isLoading, setIsLoading] = useState(false);
     const [errors, setErrors] = useState({});
@@ -169,25 +171,29 @@ export function VendorForm({ initialData = null, onSave, onClose, onEntitlementE
             </CardHeader>
             <CardContent className="pt-6 space-y-6 overflow-y-auto flex-grow px-8 max-h-[70vh]">
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                    <TabsList className="grid w-full grid-cols-4 mb-8 bg-gray-100/50 p-1 rounded-xl">
+                    <TabsList className={cn("grid w-full mb-8 bg-gray-100/50 p-1 rounded-xl", isEasyMode ? "grid-cols-1" : "grid-cols-4")}>
                         <TabsTrigger value="identity" className="relative rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
                             Identity
                             {['name', 'phone', 'email'].some(k => errors[k]) && (
                                 <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500 animate-pulse" />
                             )}
                         </TabsTrigger>
-                        <TabsTrigger value="tax" className="relative rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
-                            Tax & Finance
-                            {['ntn', 'srn', 'credit_limit'].some(k => errors[k]) && (
-                                <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                            )}
-                        </TabsTrigger>
-                        <TabsTrigger value="attachments" className="relative rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
-                            Attachments
-                        </TabsTrigger>
-                        <TabsTrigger value="domain" className="relative rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm text-xs">
-                            Expert Logic
-                        </TabsTrigger>
+                        {!isEasyMode && (
+                            <>
+                                <TabsTrigger value="tax" className="relative rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                                    Tax & Finance
+                                    {['ntn', 'srn', 'credit_limit'].some(k => errors[k]) && (
+                                        <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                                    )}
+                                </TabsTrigger>
+                                <TabsTrigger value="attachments" className="relative rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                                    Attachments
+                                </TabsTrigger>
+                                <TabsTrigger value="domain" className="relative rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm text-xs">
+                                    Expert Logic
+                                </TabsTrigger>
+                            </>
+                        )}
                     </TabsList>
 
                     <TabsContent value="identity" className="space-y-6">
@@ -257,6 +263,55 @@ export function VendorForm({ initialData = null, onSave, onClose, onEntitlementE
                                 />
                             </div>
                         </div>
+                        
+                        {isEasyMode && (
+                            <div className="mt-6 bg-wine/5 p-6 rounded-3xl border border-wine/10">
+                                <h4 className="text-xs font-black text-wine uppercase tracking-widest mb-4 flex items-center gap-2">
+                                    <Wallet className="w-4 h-4" />
+                                    Trade Credit & Terms
+                                </h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Payment Cycle</Label>
+                                        <select
+                                            className="flex h-11 w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm focus:ring-2 focus:ring-wine/20"
+                                            value={formData.payment_terms || ''}
+                                            onChange={(e) => setFormData({ ...formData, payment_terms: e.target.value })}
+                                        >
+                                            <option value="">Standard Terms</option>
+                                            <option value="Advanced">Advanced (100%)</option>
+                                            <option value="COD">Cash on Delivery</option>
+                                            <option value="Net 7">Net 7 Days</option>
+                                            <option value="Net 15">Net 15 Days</option>
+                                            <option value="Net 30">Net 30 Days</option>
+                                        </select>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Credit Limit</Label>
+                                        <Input
+                                            type="number"
+                                            value={formData.credit_limit || 0}
+                                            onChange={(e) => setFormData({ ...formData, credit_limit: e.target.value })}
+                                            placeholder="Maximum allowable credit"
+                                            className="h-11 rounded-xl"
+                                        />
+                                    </div>
+                                    <div className="col-span-1 md:col-span-2 space-y-2">
+                                        <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Opening Balance (Owed to Supplier)</Label>
+                                        <div className="relative">
+                                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">₨</span>
+                                            <Input
+                                                type="number"
+                                                value={formData.opening_balance || 0}
+                                                onChange={(e) => setFormData({ ...formData, opening_balance: e.target.value })}
+                                                placeholder="Initial credit position"
+                                                className="h-11 pl-12 rounded-xl"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </TabsContent>
 
                     <TabsContent value="tax" className="space-y-6">

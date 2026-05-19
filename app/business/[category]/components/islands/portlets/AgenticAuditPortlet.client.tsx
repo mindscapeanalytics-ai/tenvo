@@ -28,7 +28,7 @@ export const AgenticAuditPortlet = memo(function AgenticAuditPortlet({ businessI
         setScanning(true);
         const res = await runSystemAuditAction(businessId);
         if (res.success) {
-            setResult(res.data as AuditResult);
+            setResult(res as unknown as AuditResult);
         }
         setScanning(false);
     };
