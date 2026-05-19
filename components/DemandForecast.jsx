@@ -147,8 +147,8 @@ export const DemandForecast = memo(function DemandForecast({
               <AreaChart data={chartData}>
                 <defs>
                   <linearGradient id="colorCurrent" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#edc75c" stopOpacity={0.12} />
-                    <stop offset="95%" stopColor="#edc75c" stopOpacity={0} />
+                    <stop offset="5%" stopColor="#e34242" stopOpacity={0.12} />
+                    <stop offset="95%" stopColor="#e34242" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
@@ -156,9 +156,9 @@ export const DemandForecast = memo(function DemandForecast({
                 <YAxis axisLine={false} tickLine={false} tick={{ fill: '#6B7280', fontSize: 12, fontWeight: 600 }} />
                 <Tooltip
                   contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)', fontWeight: 700 }}
-                  cursor={{ stroke: '#edc75c', strokeWidth: 2, strokeDasharray: '5 5' }}
+                  cursor={{ stroke: '#e34242', strokeWidth: 2, strokeDasharray: '5 5' }}
                 />
-                <Area type="monotone" dataKey="current" stroke="#edc75c" strokeWidth={4} fillOpacity={1} fill="url(#colorCurrent)" name="Current Stock" />
+                <Area type="monotone" dataKey="current" stroke="#e34242" strokeWidth={4} fillOpacity={1} fill="url(#colorCurrent)" name="Current Stock" />
                 <Area type="monotone" dataKey="forecast" stroke="#c49c3b" strokeWidth={2} strokeDasharray="5 5" fill="transparent" name="Forecast" />
                 <Area type="monotone" dataKey="recommended" stroke="#10b981" strokeWidth={3} fill="transparent" name="Recommended" />
               </AreaChart>

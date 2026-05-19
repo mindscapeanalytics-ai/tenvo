@@ -68,7 +68,7 @@ export function CustomerLoyaltyPortal({ businessId, currency = 'Rs.' }) {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="relative overflow-hidden rounded-2xl p-6 text-white"
-                style={{ background: 'linear-gradient(135deg, #c49c3b 0%, #edc75c 50%, #f2d785 100%)' }}
+                style={{ background: 'linear-gradient(135deg, #c49c3b 0%, #e34242 50%, #f2d785 100%)' }}
             >
                 <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/3" />
                 <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full translate-y-1/3 -translate-x-1/4" />

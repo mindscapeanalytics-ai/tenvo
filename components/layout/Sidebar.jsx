@@ -632,7 +632,7 @@ export function Sidebar({ isOpen, onClose, isSidebarCollapsed, setIsSidebarColla
             )}>
               <div
                 className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs text-white shrink-0"
-                style={{ background: 'linear-gradient(135deg, #c49c3b 0%, #edc75c 100%)' }}
+                style={{ background: 'linear-gradient(135deg, #c49c3b 0%, #e34242 100%)' }}
               >
                 {user?.email?.substring(0, 2).toUpperCase() || 'ME'}
               </div>

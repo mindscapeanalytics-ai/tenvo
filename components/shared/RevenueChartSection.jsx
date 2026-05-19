@@ -25,12 +25,12 @@
 import { useState, useMemo } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { 
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue 
+  SelectValue
 } from '@/components/ui/select';
 import { Download, TrendingUp } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, AreaChart } from 'recharts';
@@ -53,13 +53,13 @@ export function RevenueChartSection({
   showExport = true,
   chartType = 'area', // 'area' or 'line'
   colors = {
-    primary: '#edc75c',
+    primary: '#e34242',
     secondary: '#c49c3b'
   },
   className = ''
 }) {
   const [timeRange, setTimeRange] = useState(defaultTimeRange);
-  
+
   const { chartData, loading, error, refetch } = useDashboardMetrics({
     timeRange,
     includeChartData: true
@@ -84,11 +84,11 @@ export function RevenueChartSection({
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
-    
+
     link.setAttribute('href', url);
     link.setAttribute('download', `revenue-chart-${timeRange}-${Date.now()}.csv`);
     link.style.visibility = 'hidden';
-    
+
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -121,8 +121,8 @@ export function RevenueChartSection({
         <p className="text-sm font-semibold text-gray-900 mb-2">{label}</p>
         {payload.map((entry, index) => (
           <div key={index} className="flex items-center gap-2 text-sm">
-            <div 
-              className="w-3 h-3 rounded-full" 
+            <div
+              className="w-3 h-3 rounded-full"
               style={{ backgroundColor: entry.color }}
             />
             <span className="text-gray-600">{entry.name}:</span>
@@ -145,7 +145,7 @@ export function RevenueChartSection({
             </div>
             <CardTitle className="text-sm font-bold">{title}</CardTitle>
           </div>
-          
+
           <div className="flex items-center gap-2">
             {/* Time range selector */}
             <Select value={timeRange} onValueChange={setTimeRange}>
@@ -160,7 +160,7 @@ export function RevenueChartSection({
                 ))}
               </SelectContent>
             </Select>
-            
+
             {/* Export button */}
             {showExport && (
               <Button
@@ -206,7 +206,7 @@ export function RevenueChartSection({
           </div>
         )}
       </CardHeader>
-      
+
       <CardContent>
         {loading ? (
           <div className="h-[300px] flex items-center justify-center">
@@ -215,7 +215,7 @@ export function RevenueChartSection({
         ) : error ? (
           <ErrorState error={error} onRetry={refetch} />
         ) : !chartData || chartData.length === 0 ? (
-          <EmptyState 
+          <EmptyState
             icon={TrendingUp}
             message="No revenue data available"
             description="Revenue data will appear here once transactions are recorded"
@@ -226,18 +226,18 @@ export function RevenueChartSection({
               {chartType === 'area' ? (
                 <AreaChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                  <XAxis 
-                    dataKey="date" 
+                  <XAxis
+                    dataKey="date"
                     tick={{ fontSize: 12 }}
                     stroke="#9ca3af"
                   />
-                  <YAxis 
+                  <YAxis
                     tick={{ fontSize: 12 }}
                     stroke="#9ca3af"
                     tickFormatter={(value) => formatCurrency(value, { compact: true })}
                   />
                   <Tooltip content={<CustomTooltip />} />
-                  <Legend 
+                  <Legend
                     wrapperStyle={{ fontSize: '12px' }}
                     iconType="circle"
                   />
@@ -251,17 +251,17 @@ export function RevenueChartSection({
                       <stop offset="95%" stopColor={colors.secondary} stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <Area 
-                    type="monotone" 
-                    dataKey="revenue" 
+                  <Area
+                    type="monotone"
+                    dataKey="revenue"
                     stroke={colors.primary}
                     strokeWidth={3}
                     fill="url(#colorRevenue)"
                     name="Revenue"
                   />
-                  <Area 
-                    type="monotone" 
-                    dataKey="expenses" 
+                  <Area
+                    type="monotone"
+                    dataKey="expenses"
                     stroke={colors.secondary}
                     strokeWidth={3}
                     fill="url(#colorExpenses)"
@@ -271,33 +271,33 @@ export function RevenueChartSection({
               ) : (
                 <LineChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                  <XAxis 
-                    dataKey="date" 
+                  <XAxis
+                    dataKey="date"
                     tick={{ fontSize: 12 }}
                     stroke="#9ca3af"
                   />
-                  <YAxis 
+                  <YAxis
                     tick={{ fontSize: 12 }}
                     stroke="#9ca3af"
                     tickFormatter={(value) => formatCurrency(value, { compact: true })}
                   />
                   <Tooltip content={<CustomTooltip />} />
-                  <Legend 
+                  <Legend
                     wrapperStyle={{ fontSize: '12px' }}
                     iconType="circle"
                   />
-                  <Line 
-                    type="monotone" 
-                    dataKey="revenue" 
+                  <Line
+                    type="monotone"
+                    dataKey="revenue"
                     stroke={colors.primary}
                     strokeWidth={3}
                     dot={{ r: 4, strokeWidth: 2 }}
                     activeDot={{ r: 6 }}
                     name="Revenue"
                   />
-                  <Line 
-                    type="monotone" 
-                    dataKey="expenses" 
+                  <Line
+                    type="monotone"
+                    dataKey="expenses"
                     stroke={colors.secondary}
                     strokeWidth={3}
                     dot={{ r: 4, strokeWidth: 2 }}

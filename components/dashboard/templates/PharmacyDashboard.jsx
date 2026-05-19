@@ -276,8 +276,8 @@ export function PharmacyDashboard({ businessId, category, onQuickAction }) {
                       className="h-full rounded-full transition-all duration-1000 ease-out"
                       style={{
                         width: `${progress}%`,
-                        backgroundColor: colors.primary || '#edc75c',
-                        boxShadow: `0 0 8px ${colors.primary || '#edc75c'}40`
+                        backgroundColor: colors.primary || '#e34242',
+                        boxShadow: `0 0 8px ${colors.primary || '#e34242'}40`
                       }}
                     />
                   </div>
@@ -319,14 +319,14 @@ export function PharmacyDashboard({ businessId, category, onQuickAction }) {
           currency={currency}
           onViewDetails={(type) => onQuickAction?.(`view-${type}`)}
         />
-        
+
         {/* FBR Compliance Widget - Critical for Pakistani pharmacies */}
         <FBRComplianceWidget
           businessId={businessId}
           currency={currency}
           onViewDetails={(type) => onQuickAction?.(`view-${type}`)}
         />
-        
+
         {/* Inventory Valuation Widget */}
         <InventoryValuationWidget
           businessId={businessId}
@@ -334,7 +334,7 @@ export function PharmacyDashboard({ businessId, category, onQuickAction }) {
           currency={currency}
           onViewDetails={(type) => onQuickAction?.(`view-${type}`)}
         />
-        
+
         {/* Controlled Substances Widget - Placeholder for future implementation */}
         <Card className="glass-card border-none">
           <CardHeader className="pb-3">

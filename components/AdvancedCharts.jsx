@@ -18,7 +18,7 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 
-const COLORS = ['#edc75c', '#c49c3b', '#0F172A', '#10B981', '#C69214', '#e8c051'];
+const COLORS = ['#e34242', '#c49c3b', '#0F172A', '#10B981', '#C69214', '#e8c051'];
 
 /**
  * @param {Object} props
@@ -26,7 +26,7 @@ const COLORS = ['#edc75c', '#c49c3b', '#0F172A', '#10B981', '#C69214', '#e8c051'
  * @param {any} [props.colors]
  */
 export function SalesChart({ data, colors }) {
-  const primary = colors?.primary || '#edc75c';
+  const primary = colors?.primary || '#e34242';
   const secondary = colors?.primaryLight || '#c49c3b';
 
   return (
@@ -50,7 +50,7 @@ export function SalesChart({ data, colors }) {
  * @param {any} [props.colors]
  */
 export function RevenueBarChart({ data, colors }) {
-  const primary = colors?.primary || '#edc75c';
+  const primary = colors?.primary || '#e34242';
   const secondary = colors?.primaryLight || '#c49c3b';
 
   return (
@@ -83,7 +83,7 @@ export function CategoryPieChart({ data }) {
           labelLine={false}
           label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
           outerRadius={80}
-          fill="#edc75c"
+          fill="#e34242"
           dataKey="value"
         >
           {data.map((entry, index) => (
@@ -102,7 +102,7 @@ export function CategoryPieChart({ data }) {
  * @param {any} [props.colors]
  */
 export function RevenueAreaChart({ data, colors }) {
-  const primary = colors?.primary || '#edc75c';
+  const primary = colors?.primary || '#e34242';
   const secondary = colors?.primaryLight || '#c49c3b';
 
   return (
@@ -136,7 +136,7 @@ export function RevenueAreaChart({ data, colors }) {
  * @param {any} [props.colors]
  */
 export function TopProductsChart({ data, colors }) {
-  const primary = colors?.primary || '#edc75c';
+  const primary = colors?.primary || '#e34242';
 
   return (
     <ResponsiveContainer width="100%" height={300}>

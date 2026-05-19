@@ -145,7 +145,7 @@ export default function Home() {
     <MarketingLayout transparentNav={true}>
       
       {/* 1. HERO SECTION - Zoho Inventory Accurate Clone with Zeeshan Keerio & Styled CSS Boxes */}
-      <section className="bg-brand-50 pt-24 pb-20 lg:pt-32 lg:pb-28 overflow-hidden relative border-b border-neutral-200/60">
+      <section className="bg-brand-50 pt-16 pb-12 lg:pt-20 lg:pb-16 overflow-hidden relative border-b border-neutral-200/60">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 relative z-10">
           <div className="grid lg:grid-cols-12 gap-12 items-center">
             
@@ -158,29 +158,26 @@ export default function Home() {
               
               <div className="space-y-4">
                 <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-neutral-900 leading-[1.08]">
-                  Manage inventory and fulfill orders - <br />
-                  <span className="text-brand-primary">the right way</span>
+                  Orchestrate your inventory, sales, and <span className="text-brand-primary">FBR compliance on autopilot</span>
                 </h1>
                 <p className="max-w-2xl text-lg sm:text-xl font-medium leading-relaxed text-neutral-600">
-                  Successful business relies on successful inventory management. Automate your warehouse, sync order channels in real-time, handle FBR tax compliance, and sell more with less effort.
+                  Tenvo is the modern enterprise hub built to automate your warehouses, sync local courier APIs, and stream live retail channels in real time. Transition from manual tracking to agentic intelligence in under 4 days.
                 </p>
               </div>
 
               {/* Zoho Style Premium Gold/White Call to Action Buttons */}
               <div className="flex flex-col sm:flex-row gap-4 pt-2">
                 <Button asChild size="lg" className="h-14 rounded-xl bg-brand-primary hover:bg-brand-primary-dark text-white px-8 text-base font-black uppercase tracking-[0.12em] shadow-md transition-all active:scale-[0.98]">
-                  <Link href={primaryHref}>
-                    {primaryText}
-                  </Link>
+                  <Link href="/demo">BOOK A DEMO</Link>
                 </Button>
                 <Button asChild size="lg" variant="outline" className="h-14 rounded-xl border-2 border-neutral-300 bg-white hover:border-brand-primary hover:text-brand-primary px-8 text-base font-black uppercase tracking-[0.12em] transition-all">
-                  <Link href="/demo">EXPLORE DEMO ACCOUNT</Link>
+                  <Link href={primaryHref}>{primaryText}</Link>
                 </Button>
               </div>
             </div>
 
-            {/* Right Column: Zoho Clone Masterpiece Visual (Zeeshan Keerio + Stacked CSS Boxes + 6 Floating Cards) */}
-            <div className="lg:col-span-6 relative h-[500px] sm:h-[580px] w-full flex items-end justify-center">
+            {/* Right Column: Zoho Clone Masterpiece Visual (Zeeshan Keerio + Stacked CSS Boxes + 5 Floating Cards) */}
+            <div className="lg:col-span-6 relative h-[520px] sm:h-[600px] w-full flex items-end justify-center">
               
               {/* STACKED CARDBOARD BOXES (Minimalist CSS Shapes replicating stacked boxes in photo) */}
               <div className="absolute inset-0 z-0 pointer-events-none">
@@ -195,12 +192,12 @@ export default function Home() {
               </div>
 
               {/* MAIN OPERATOR IMAGE (Zeeshan Keerio - public/zeeshan-keerio.png) */}
-              <div className="relative w-[360px] sm:w-[410px] aspect-[4/5] z-10 bottom-0 overflow-visible flex items-end">
+              <div className="relative w-[400px] sm:w-[450px] aspect-[4/5] z-10 bottom-0 overflow-visible flex items-end">
                 <Image
                   src="/zeeshan-keerio.png"
                   alt="Zeeshan Keerio - Tenvo Logistics Operations Lead"
-                  width={410}
-                  height={512}
+                  width={450}
+                  height={562}
                   priority
                   className="object-contain drop-shadow-[0_15px_30px_rgba(0,0,0,0.15)]"
                 />
@@ -208,99 +205,86 @@ export default function Home() {
 
               {/* ================= FLOATING WIDGETS CLONE ================= */}
 
-              {/* Widget 1: Sales Order Table (Upper Left) */}
-              <div className="absolute left-[-2%] top-[4%] z-20 bg-white border border-neutral-200/80 rounded-2xl p-4 shadow-[0_20px_40px_-15px_rgba(0,0,0,0.12)] w-[210px] transform hover:-translate-y-1 transition-all duration-300">
-                <div className="border-b border-neutral-100 pb-2 mb-2">
-                  <h5 className="font-extrabold text-[11px] text-neutral-900">Sales Order</h5>
-                  <p className="text-[9px] font-bold text-neutral-400">SO-00208</p>
+              {/* Widget 1: Sales Order Table with Auto-FBR Verification (Upper Left) */}
+              <div className="absolute left-[-2%] top-[2%] z-20 bg-white border border-neutral-200/80 rounded-2xl p-4 shadow-[0_20px_40px_-15px_rgba(0,0,0,0.12)] w-[220px] transform hover:-translate-y-1 transition-all duration-300">
+                <div className="border-b border-neutral-100 pb-2 mb-2 flex justify-between items-start">
+                  <div>
+                    <h5 className="font-extrabold text-[11px] text-neutral-900">Sales Order</h5>
+                    <p className="text-[9px] font-bold text-neutral-400">SO-00208</p>
+                  </div>
+                  <span className="inline-flex items-center gap-1 rounded bg-green-50 px-1.5 py-0.5 text-[8px] font-black uppercase text-green-700">
+                    <Check className="h-2 w-2" /> FBR Signed
+                  </span>
                 </div>
                 <div className="grid grid-cols-4 text-[8px] font-black uppercase text-neutral-400 pb-1 mb-1 border-b border-neutral-50">
                   <span>Item</span>
                   <span className="text-center">Qty</span>
-                  <span className="text-center">Status</span>
+                  <span className="text-center">Tax</span>
                   <span className="text-right">Amt</span>
                 </div>
                 <div className="grid grid-cols-4 items-center text-[9px] font-bold text-neutral-700">
-                  <span className="truncate">Tshirt</span>
+                  <span className="truncate font-black">Cotton Shirt</span>
                   <span className="text-center">8</span>
-                  <span className="flex items-center justify-center gap-0.5">
-                    <span className="h-1 w-1 rounded-full bg-orange-400" />
-                    <span className="h-1 w-1 rounded-full bg-blue-400" />
-                    <span className="h-1 w-1 rounded-full bg-green-400" />
-                  </span>
-                  <span className="text-right text-brand-primary">$275</span>
+                  <span className="text-center text-green-600 font-extrabold">GST 18%</span>
+                  <span className="text-right text-brand-primary">PKR 76k</span>
                 </div>
                 <div className="flex justify-between border-t border-neutral-100 pt-2 mt-2 text-[10px] font-black">
-                  <span className="text-neutral-500">Total</span>
-                  <span className="text-neutral-900">$275</span>
+                  <span className="text-neutral-500">Auto-Reconciled</span>
+                  <span className="text-green-600 flex items-center gap-0.5"><CheckCircle2 className="w-3 h-3" /> Ready</span>
                 </div>
               </div>
 
               {/* Widget 2: Total Sales & Sync ring (Upper Right) */}
-              <div className="absolute right-[-4%] top-[10%] z-20 bg-white border border-neutral-200/80 rounded-2xl p-4 shadow-[0_20px_40px_-15px_rgba(0,0,0,0.12)] w-[160px] transform hover:-translate-y-1 transition-all duration-300 text-center">
-                <h5 className="font-extrabold text-[10px] text-neutral-400 uppercase tracking-wider mb-2">Total Sales</h5>
+              <div className="absolute right-[-2%] top-[6%] z-20 bg-white border border-neutral-200/80 rounded-2xl p-4 shadow-[0_20px_40px_-15px_rgba(0,0,0,0.12)] w-[160px] transform hover:-translate-y-1 transition-all duration-300 text-center">
+                <h5 className="font-extrabold text-[10px] text-neutral-400 uppercase tracking-wider mb-2">Omnichannel Sync</h5>
                 
                 {/* Visual Sync Ring */}
                 <div className="relative w-16 h-16 mx-auto mb-2 flex items-center justify-center">
-                  <div className="absolute inset-0 rounded-full border-4 border-dashed border-brand-100 animate-spin duration-10000" />
+                  <div className="absolute inset-0 rounded-full border-4 border-dashed border-brand-primary/40 animate-spin duration-10000" />
                   <div className="absolute inset-2 rounded-full border-4 border-solid border-neutral-100" />
-                  <div className="absolute h-8 w-8 bg-brand-primary rounded-full flex items-center justify-center text-white font-black text-[10px]">
+                  <div className="absolute h-8 w-8 bg-brand-primary rounded-full flex items-center justify-center text-white font-black text-[10px] shadow-sm">
                     T
                   </div>
                   {/* Channels Small Icons */}
-                  <span className="absolute -top-1 -right-1 h-4.5 w-4.5 rounded-full bg-[#10B981] flex items-center justify-center text-[7px] font-black text-white shadow-sm">S</span>
-                  <span className="absolute -bottom-1 -left-1 h-4.5 w-4.5 rounded-full bg-[#8B5CF6] flex items-center justify-center text-[7px] font-black text-white shadow-sm">W</span>
+                  <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-[#10B981] flex items-center justify-center text-[7px] font-black text-white shadow-sm">S</span>
+                  <span className="absolute -bottom-1 -left-1 h-5 w-5 rounded-full bg-[#8B5CF6] flex items-center justify-center text-[7px] font-black text-white shadow-sm">D</span>
                 </div>
-                <p className="text-xs font-black text-neutral-800">PKR 142.5k</p>
-                <p className="text-[8px] text-neutral-400 font-bold uppercase tracking-wider mt-0.5">Synced Channels</p>
+                <p className="text-xs font-black text-neutral-800">PKR 142.5k Sales</p>
+                <p className="text-[8px] text-[#10B981] font-black uppercase tracking-wider mt-0.5 flex items-center justify-center gap-0.5">
+                  <Sparkles className="w-2.5 h-2.5" /> 100% Synced
+                </p>
               </div>
 
-              {/* Widget 3: Orange "4130 To be Packed" tag (Mid-Left) */}
-              <div className="absolute left-[-5%] bottom-[30%] z-20 bg-white border border-neutral-200/80 rounded-xl p-3 shadow-md flex items-center gap-3 w-[150px] transform hover:-translate-y-1 transition-all duration-300">
-                <div className="h-9 w-9 bg-orange-100 rounded-lg flex items-center justify-center text-orange-600 flex-shrink-0">
-                  <Package className="w-5 h-5" />
+              {/* Widget 3: AI Auto-Reorder Procurement (Mid-Left) */}
+              <div className="absolute left-[-6%] bottom-[32%] z-20 bg-white border border-neutral-200/80 rounded-xl p-3 shadow-md flex items-center gap-3 w-[170px] transform hover:-translate-y-1 transition-all duration-300">
+                <div className="h-9 w-9 bg-brand-primary/10 rounded-lg flex items-center justify-center text-brand-primary flex-shrink-0">
+                  <Cpu className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="text-xs font-black text-neutral-900">4,130</p>
-                  <p className="text-[9px] text-neutral-400 font-bold uppercase tracking-wider">To be Packed</p>
+                  <p className="text-xs font-black text-neutral-900">AI AUTO-REORDER</p>
+                  <p className="text-[9px] text-[#c49c3b] font-black uppercase tracking-wider">Triggered (2 Days Lead)</p>
                 </div>
               </div>
 
-              {/* Widget 4: Blue "2340 To be Shipped" tag (Mid-Right) */}
-              <div className="absolute right-[-6%] bottom-[38%] z-20 bg-white border border-neutral-200/80 rounded-xl p-3 shadow-md flex items-center gap-3 w-[160px] transform hover:-translate-y-1 transition-all duration-300">
-                <div className="h-9 w-9 bg-blue-100 rounded-lg flex items-center justify-center text-blue-600 flex-shrink-0">
+              {/* Widget 4: Courier / Shipment Dispatch (Mid-Right) */}
+              <div className="absolute right-[-4%] bottom-[34%] z-20 bg-white border border-neutral-200/80 rounded-xl p-3 shadow-md flex items-center gap-3 w-[170px] transform hover:-translate-y-1 transition-all duration-300">
+                <div className="h-9 w-9 bg-blue-50 rounded-lg flex items-center justify-center text-blue-600 flex-shrink-0">
                   <Truck className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="text-xs font-black text-neutral-900">2,340</p>
-                  <p className="text-[9px] text-neutral-400 font-bold uppercase tracking-wider">To be Shipped</p>
+                  <p className="text-xs font-black text-neutral-900">TCS DISPATCHED</p>
+                  <p className="text-[9px] text-blue-500 font-bold uppercase tracking-wider">AWB #72918231</p>
                 </div>
               </div>
 
-              {/* Widget 5: Yellow/Gold "1653 To be Delivered" tag (Bottom-Right) */}
-              <div className="absolute right-[2%] bottom-[16%] z-20 bg-white border border-neutral-200/80 rounded-xl p-3 shadow-md flex items-center gap-3 w-[170px] transform hover:-translate-y-1 transition-all duration-300">
-                <div className="h-9 w-9 bg-amber-100 rounded-lg flex items-center justify-center text-amber-600 flex-shrink-0">
-                  <CheckCircle className="w-5 h-5" />
+              {/* Widget 5: Agentic Audit integrity (Bottom-Right) */}
+              <div className="absolute right-[2%] bottom-[14%] z-20 bg-white border border-neutral-200/80 rounded-xl p-3 shadow-md flex items-center gap-3 w-[180px] transform hover:-translate-y-1 transition-all duration-300">
+                <div className="h-9 w-9 bg-green-50 rounded-lg flex items-center justify-center text-green-600 flex-shrink-0">
+                  <ShieldCheck className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="text-xs font-black text-neutral-900">1,653</p>
-                  <p className="text-[9px] text-neutral-400 font-bold uppercase tracking-wider">To be Delivered</p>
-                </div>
-              </div>
-
-              {/* Widget 6: Request a Demo Bubble (Bottom Right) */}
-              <div className="absolute right-[-10%] bottom-[2%] z-20 flex items-center gap-2 transform hover:-translate-y-1 transition-all duration-300">
-                <div className="bg-white border border-neutral-200/80 rounded-2xl py-2.5 px-4 shadow-md text-xs font-extrabold text-neutral-800 relative after:content-[''] after:absolute after:right-[-6px] after:top-[40%] after:border-t-6 after:border-t-transparent after:border-b-6 after:border-b-transparent after:border-l-6 after:border-l-white">
-                  Request a demo
-                </div>
-                <div className="h-9 w-9 rounded-full bg-brand-50 border border-brand-100 overflow-hidden relative shadow-sm flex-shrink-0">
-                  <Image
-                    src="/zeeshan-keerio.png"
-                    alt="Success Representative"
-                    width={36}
-                    height={36}
-                    className="object-cover scale-150 mt-1"
-                  />
+                  <p className="text-xs font-black text-neutral-900">AGENTIC AUDIT OK</p>
+                  <p className="text-[9px] text-green-600 font-bold uppercase tracking-wider">0 anomalies detected</p>
                 </div>
               </div>
 

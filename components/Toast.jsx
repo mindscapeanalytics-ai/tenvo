@@ -17,7 +17,7 @@ export function ToastProvider() {
         },
         success: {
           iconTheme: {
-            primary: '#edc75c',
+            primary: '#e34242',
             secondary: '#fff',
           },
         },

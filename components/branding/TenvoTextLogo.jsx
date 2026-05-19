@@ -18,7 +18,7 @@ export function TenvoTextLogo({
       <div
         className={cn(
           'w-9 h-9 rounded-xl flex items-center justify-center font-black text-lg shadow-lg shrink-0',
-          'bg-[linear-gradient(135deg,#c49c3b_0%,#edc75c_100%)] text-white',
+          'bg-[linear-gradient(135deg,#c49c3b_0%,#e34242_100%)] text-white',
           compact && 'w-8 h-8 text-base rounded-lg',
           iconClassName
         )}

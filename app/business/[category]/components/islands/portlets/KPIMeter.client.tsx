@@ -26,7 +26,7 @@ export const KPIMeter = memo(function KPIMeter({
     target = 100,
     prefix = "",
     suffix = "%",
-    color = "#edc75c",
+    color = "#e34242",
     trendValue = 0,
     trendLabel = "vs previous period"
 }: KPIMeterProps) {

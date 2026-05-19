@@ -873,7 +873,7 @@ export function DomainDashboard({
                     {easyKpis.map(kpi => {
                         const borderColors: Record<string, string> = {
                             'bg-emerald-500': 'border-l-4 border-l-emerald-500',
-                            'bg-brand-primary': 'border-l-4 border-l-[#edc75c]',
+                            'bg-brand-primary': 'border-l-4 border-l-[#e34242]',
                             'bg-brand-primary-dark': 'border-l-4 border-l-[#c49c3b]',
                             'bg-rose-500': 'border-l-4 border-l-rose-500',
                             'bg-slate-500': 'border-l-4 border-l-slate-400',
@@ -883,7 +883,7 @@ export function DomainDashboard({
                         };
                         const textColors: Record<string, string> = {
                             'bg-emerald-500': 'text-emerald-600',
-                            'bg-brand-primary': 'text-[#edc75c]',
+                            'bg-brand-primary': 'text-[#e34242]',
                             'bg-brand-primary-dark': 'text-[#c49c3b]',
                             'bg-rose-500': 'text-rose-600',
                             'bg-slate-500': 'text-slate-500',
@@ -935,7 +935,7 @@ export function DomainDashboard({
                             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
                                 {easyActions.map(action => {
                                     const actionColors: Record<string, { border: string, bg: string, text: string, hoverBg: string }> = {
-                                        'new-invoice': { border: 'border-l-[#edc75c]', bg: 'bg-[#edc75c]/5', text: 'text-[#edc75c]', hoverBg: 'hover:bg-[#edc75c]/5' },
+                                        'new-invoice': { border: 'border-l-[#e34242]', bg: 'bg-[#e34242]/5', text: 'text-[#e34242]', hoverBg: 'hover:bg-[#e34242]/5' },
                                         'add-product': { border: 'border-l-indigo-500', bg: 'bg-indigo-500/5', text: 'text-indigo-600', hoverBg: 'hover:bg-indigo-50' },
                                         'add-customer': { border: 'border-l-emerald-500', bg: 'bg-emerald-500/5', text: 'text-emerald-600', hoverBg: 'hover:bg-emerald-50' },
                                         'inventory': { border: 'border-l-amber-500', bg: 'bg-amber-500/5', text: 'text-amber-600', hoverBg: 'hover:bg-amber-50' },
@@ -1045,7 +1045,7 @@ export function DomainDashboard({
                             </div>
                             <button
                                 onClick={() => onQuickAction?.('invoices')}
-                                className="text-xs font-bold text-[#edc75c] hover:underline"
+                                className="text-xs font-bold text-[#e34242] hover:underline"
                             >
                                 View All {'→'}
                             </button>
@@ -1058,7 +1058,7 @@ export function DomainDashboard({
                                     <p className="text-[11px] text-slate-400 mt-0.5">Create your first invoice to get started</p>
                                     <Button
                                         size="sm"
-                                        className="mt-3 bg-[#edc75c] hover:bg-[#c49c3b] text-white text-[11px] font-bold h-7"
+                                        className="mt-3 bg-[#e34242] hover:bg-[#c49c3b] text-white text-[11px] font-bold h-7"
                                         onClick={() => onQuickAction?.('new-invoice')}
                                     >
                                         <Plus className="w-3.5 h-3.5 mr-1" />
