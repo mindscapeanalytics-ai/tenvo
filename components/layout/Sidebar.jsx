@@ -12,7 +12,8 @@ import {
   ChevronDown, Warehouse, Hash, History, X, Globe, Megaphone,
   Scale, RefreshCcw, BookOpen, ScrollText, FileCheck,
   ChevronLeft, ChevronRight, PanelLeftClose, PanelLeftOpen,
-  RotateCcw, ArrowLeftRight, Calendar, Shield
+  RotateCcw, ArrowLeftRight, Calendar, Shield,
+  ExternalLink, Store
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/lib/context/AuthContext';
@@ -124,6 +125,8 @@ const ADVANCED_NAV_SECTIONS = [
       { key: 'loyalty', label: 'Loyalty & CRM', icon: Heart, domainRule: 'posRelevant' },
       { key: 'quotations', label: 'Quotations', icon: ClipboardList, conditionKey: 'quotations' },
       { key: 'sales', label: 'Sales Manager', icon: TrendingUp, alwaysShow: true },
+      { key: 'view-storefront', label: 'View Public Store', icon: ExternalLink, alwaysShow: true, isExternal: true, externalUrl: (business) => `/store/${business?.handle || business?.domain || ''}` },
+      { key: 'store-settings', label: 'Store Settings', icon: Store, alwaysShow: true },
     ]
   },
   {
@@ -177,6 +180,7 @@ const EASY_NAV_SECTIONS = [
       { key: 'customers', label: 'Customers', icon: Users, alwaysShow: true },
       { key: 'pos', label: 'Point of Sale', icon: ShoppingCart, domainRule: 'posRelevant' },
       { key: 'quotations', label: 'Estimates', icon: ClipboardList, conditionKey: 'quotations' },
+      { key: 'view-storefront', label: 'View Public Store', icon: ExternalLink, alwaysShow: true, isExternal: true, externalUrl: (business) => `/store/${business?.handle || business?.domain || ''}` },
     ]
   },
   {
@@ -427,14 +431,22 @@ export function Sidebar({ isOpen, onClose, isSidebarCollapsed, setIsSidebarColla
                         const Icon = item.icon;
                         // Prevent lock-state SSR/client drift from causing hydration mismatch.
                         const isLocked = hasHydrated ? item.locked : false;
-                        const itemHref = item.key === 'platform-admin'
-                          ? '/admin'
-                          : (item.key === 'dashboard' ? baseUrl : `${baseUrl}?tab=${item.key}`);
+                        const isExternal = item.isExternal;
+                        const externalUrl = isExternal && item.externalUrl ? item.externalUrl(business) : null;
+                        const itemHref = isExternal 
+                          ? externalUrl || '#'
+                          : (item.key === 'platform-admin'
+                            ? '/admin'
+                            : (item.key === 'dashboard' ? baseUrl : `${baseUrl}?tab=${item.key}`));
+
+                        // Use <a> tag for external links, Link for internal
+                        const NavLink = isExternal ? 'a' : Link;
 
                         return (
-                          <Link
+                          <NavLink
                             key={item.key}
                             href={itemHref}
+                            {...(isExternal && { target: '_blank', rel: 'noopener noreferrer' })} 
                             aria-disabled={isLocked}
                             onClick={(e) => {
                               if (isLocked) {
@@ -501,7 +513,7 @@ export function Sidebar({ isOpen, onClose, isSidebarCollapsed, setIsSidebarColla
                                 {item.badge}
                               </span>
                             )}
-                          </Link>
+                          </NavLink>
                         );
                       })}
                     </motion.div>
