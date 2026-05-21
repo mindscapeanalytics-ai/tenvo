@@ -7,6 +7,8 @@ import { Calculator } from 'lucide-react';
 import { formatCurrency } from '@/lib/currency';
 import { useLanguage } from '@/lib/context/LanguageContext';
 import { translations } from '@/lib/translations';
+import { getTaxCalculations } from '@/lib/actions/dashboard/widgets';
+import toast from 'react-hot-toast';
 
 /**
  * TaxCalculationsWidget Component
@@ -56,28 +58,17 @@ export function TaxCalculationsWidget({
     try {
       setLoading(true);
       
-      // In a real implementation, this would fetch from API
-      // For now, we'll simulate tax calculations data
-      const mockData = {
-        totalSales: 2450000,
-        taxableAmount: 2450000,
-        pst: {
-          rate: 17,
-          amount: 416500
-        },
-        fst: {
-          rate: 1,
-          amount: 24500
-        },
-        totalTax: 441000,
-        taxPaid: 400000,
-        taxPending: 41000,
-        nextFilingDate: new Date(Date.now() + 12 * 24 * 60 * 60 * 1000)
-      };
+      const result = await getTaxCalculations(businessId, currency);
       
-      setTaxData(mockData);
+      if (result.success) {
+        setTaxData(result.data);
+      } else {
+        console.error('Failed to load tax calculations:', result.error);
+        toast.error(result.error || 'Failed to load tax data');
+      }
     } catch (err) {
       console.error('Failed to load tax calculations:', err);
+      toast.error('Failed to load tax data');
     } finally {
       setLoading(false);
     }

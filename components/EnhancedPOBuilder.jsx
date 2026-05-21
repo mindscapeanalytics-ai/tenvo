@@ -1,47 +1,47 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Trash2, Save, ShoppingCart, Building2, Package, Search, Loader2, AlertCircle, Warehouse } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+    Plus, Trash2, Save, Package, Loader2, X,
+    Building2, Warehouse, Hash, CalendarDays,
+    FileText, CheckCircle2, ChevronRight, AlertCircle
+} from 'lucide-react';
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Combobox } from '@/components/ui/combobox';
 import { formatCurrency } from '@/lib/currency';
 import { purchaseAPI } from '@/lib/api/purchases';
 import { productAPI } from '@/lib/api/product';
 import { vendorAPI } from '@/lib/api/vendors';
 import { warehouseAPI } from '@/lib/api/warehouse';
-import { ProductForm } from '@/components/ProductForm';
 import { QuickVendorForm } from '@/components/QuickVendorForm';
 import { QuickWarehouseForm } from '@/components/QuickWarehouseForm';
 import toast from 'react-hot-toast';
 import { purchaseSchema, validateWithSchema } from '@/lib/validation/schemas';
+import { cn } from '@/lib/utils';
 
 export default function EnhancedPOBuilder({ businessId, onSuccess, onCancel, category = 'retail-shop', colors }) {
+    const accentColor = colors?.primary || '#059669';
+
     const [loading, setLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // Data lists
     const [vendors, setVendors] = useState([]);
     const [products, setProducts] = useState([]);
     const [warehouses, setWarehouses] = useState([]);
 
-    // UI States
-    const [showProductForm, setShowProductForm] = useState(false);
     const [showVendorForm, setShowVendorForm] = useState(false);
     const [showWarehouseForm, setShowWarehouseForm] = useState(false);
 
-    // Form State
     const [header, setHeader] = useState({
         vendorId: '',
         warehouseId: '',
         purchaseNumber: `PO-${new Date().toISOString().slice(2, 4)}${new Date().toISOString().slice(5, 7)}-${Math.floor(1000 + Math.random() * 9000)}`,
         date: new Date().toISOString().split('T')[0],
         notes: '',
-        status: 'draft' // Default to draft for POs
+        status: 'draft',
     });
 
     const [items, setItems] = useState([{
@@ -53,31 +53,32 @@ export default function EnhancedPOBuilder({ businessId, onSuccess, onCancel, cat
         taxRate: 0,
         batchNumber: '',
         expiryDate: '',
-        total: 0
+        total: 0,
     }]);
 
-    // Load initial data
     useEffect(() => {
         async function loadData() {
             if (!businessId) return;
+            setLoading(true);
             try {
-                setLoading(true);
-                const [vendRes, prodRes, whRes] = await Promise.all([
+                const [vendResult, prodResult, whResult] = await Promise.allSettled([
                     vendorAPI.getAll(businessId),
                     productAPI.getAll(businessId),
-                    warehouseAPI.getLocations(businessId)
+                    warehouseAPI.getLocations(businessId),
                 ]);
+                if (vendResult.status === 'fulfilled') setVendors(vendResult.value || []);
+                else toast.error('Could not load vendors');
 
-                setVendors(vendRes || []);
-                setProducts(prodRes || []);
-                setWarehouses(whRes || []);
+                if (prodResult.status === 'fulfilled') setProducts(prodResult.value || []);
+                else toast.error('Could not load products');
 
-                if (whRes?.length > 0) {
-                    setHeader(prev => ({ ...prev, warehouseId: whRes[0].id }));
+                if (whResult.status === 'fulfilled') {
+                    const locs = whResult.value || [];
+                    setWarehouses(locs);
+                    if (locs.length > 0) setHeader(p => ({ ...p, warehouseId: locs[0].id }));
+                } else {
+                    toast.error('Could not load warehouses');
                 }
-            } catch (err) {
-                console.error('Data load error:', err);
-                toast.error('Failed to load required data');
             } finally {
                 setLoading(false);
             }
@@ -85,57 +86,57 @@ export default function EnhancedPOBuilder({ businessId, onSuccess, onCancel, cat
         loadData();
     }, [businessId]);
 
-    const addItem = () => {
-        setItems([...items, {
-            id: Date.now(),
-            productId: '',
-            description: '',
-            quantity: 1,
-            unitCost: 0,
-            taxRate: 0,
-            batchNumber: '',
-            expiryDate: '',
-            total: 0
-        }]);
-    };
+    const addItem = () => setItems(prev => [...prev, {
+        id: Date.now(), productId: '', description: '',
+        quantity: 1, unitCost: 0, taxRate: 0,
+        batchNumber: '', expiryDate: '', total: 0,
+    }]);
 
     const updateItem = (id, field, value) => {
         setItems(prev => prev.map(item => {
-            if (item.id === id) {
-                const updated = { ...item, [field]: value };
-                if (field === 'productId') {
-                    const prod = products.find(p => p.id === value);
-                    if (prod) {
-                        updated.description = prod.name;
-                        updated.unitCost = prod.cost_price || 0;
-                        updated.taxRate = prod.tax_percent || 0;
-                    }
+            if (item.id !== id) return item;
+            const updated = { ...item, [field]: value };
+            if (field === 'productId') {
+                const prod = products.find(p => p.id === value);
+                if (prod) {
+                    updated.description = prod.name;
+                    updated.unitCost = parseFloat(prod.cost_price || prod.price || 0);
+                    updated.taxRate = parseFloat(prod.tax_percent || 0);
                 }
-                const fieldsAffectingTotal = ['quantity', 'unitCost', 'taxRate', 'productId'];
-                if (fieldsAffectingTotal.includes(field)) {
-                    const q = field === 'quantity' ? parseFloat(value || 0) : updated.quantity;
-                    const c = field === 'unitCost' ? parseFloat(value || 0) : updated.unitCost;
-                    const t = field === 'taxRate' ? parseFloat(value || 0) : updated.taxRate;
-                    updated.total = (q * c) + (q * c * t / 100);
-                }
-                return updated;
             }
-            return item;
+            if (['quantity', 'unitCost', 'taxRate', 'productId'].includes(field)) {
+                const q = parseFloat(updated.quantity || 0);
+                const c = parseFloat(updated.unitCost || 0);
+                const t = parseFloat(updated.taxRate || 0);
+                updated.total = parseFloat(((q * c) + (q * c * t / 100)).toFixed(2));
+            }
+            return updated;
         }));
     };
 
-    const removeItem = (id) => {
-        setItems(prev => prev.filter(i => i.id !== id));
-    };
+    const removeItem = (id) => setItems(prev => prev.filter(i => i.id !== id));
 
     const totals = useMemo(() => {
-        const subtotal = items.reduce((sum, i) => sum + (i.quantity * i.unitCost), 0);
-        const taxTotal = items.reduce((sum, i) => sum + (i.quantity * i.unitCost * i.taxRate / 100), 0);
-        return { subtotal, taxTotal, total: subtotal + taxTotal };
+        const subtotal = items.reduce((s, i) => s + parseFloat(i.quantity || 0) * parseFloat(i.unitCost || 0), 0);
+        const taxTotal = items.reduce((s, i) => {
+            const base = parseFloat(i.quantity || 0) * parseFloat(i.unitCost || 0);
+            return s + base * parseFloat(i.taxRate || 0) / 100;
+        }, 0);
+        const total = parseFloat((subtotal + taxTotal).toFixed(2));
+        return {
+            subtotal: parseFloat(subtotal.toFixed(2)),
+            taxTotal: parseFloat(taxTotal.toFixed(2)),
+            total,
+            grandTotal: total,
+        };
     }, [items]);
 
     const handleSubmit = async () => {
-        // Zod schema validation
+        const validItems = items.filter(i => i.productId && Number(i.unitCost || 0) > 0 && Number(i.quantity || 0) > 0);
+        if (validItems.length === 0) {
+            toast.error('Add at least one item with a product, quantity, and cost');
+            return;
+        }
         const validation = validateWithSchema(purchaseSchema, {
             business_id: businessId,
             vendor_id: header.vendorId || undefined,
@@ -149,6 +150,7 @@ export default function EnhancedPOBuilder({ businessId, onSuccess, onCancel, cat
                 quantity: Number(i.quantity || 0),
                 unit_cost: Number(i.unitCost || 0),
                 tax_rate: Number(i.taxRate || 0),
+                total_amount: Number(i.total || 0),
             })),
             subtotal: totals.subtotal,
             tax_total: totals.taxTotal,
@@ -156,17 +158,15 @@ export default function EnhancedPOBuilder({ businessId, onSuccess, onCancel, cat
             notes: header.notes || null,
         });
         if (!validation.success) {
-            const firstError = Object.values(validation.errors)[0];
-            toast.error(firstError || 'Please fix validation errors');
+            toast.error(Object.values(validation.errors)[0] || 'Please fix validation errors');
             return;
         }
-
         if (!header.vendorId) return toast.error('Please select a vendor');
         if (!header.warehouseId) return toast.error('Please select a warehouse');
 
         try {
             setIsSubmitting(true);
-            const payload = {
+            await purchaseAPI.create({
                 business_id: businessId,
                 vendor_id: header.vendorId,
                 warehouse_id: header.warehouseId,
@@ -178,208 +178,405 @@ export default function EnhancedPOBuilder({ businessId, onSuccess, onCancel, cat
                 tax_total: totals.taxTotal,
                 total_amount: totals.total,
                 items: items.map(i => ({
-                    product_id: i.productId,
+                    product_id: i.productId || undefined,
+                    name: i.description || 'Item',
                     description: i.description,
                     quantity: Number(i.quantity || 0),
                     unit_cost: Number(i.unitCost || 0),
                     tax_rate: Number(i.taxRate || 0),
-                    batch_number: i.batchNumber,
-                    expiry_date: i.expiryDate,
-                    total_amount: Number(i.total || 0)
-                }))
-            };
-
-            await purchaseAPI.create(payload);
-            toast.success('Purchase Order created');
+                    tax_amount: parseFloat(((Number(i.quantity || 0) * Number(i.unitCost || 0)) * Number(i.taxRate || 0) / 100).toFixed(2)),
+                    batch_number: i.batchNumber || null,
+                    expiry_date: i.expiryDate || null,
+                    total_amount: Number(i.total || 0),
+                })),
+            });
+            toast.success('Purchase Order created successfully');
             onSuccess?.();
         } catch (error) {
-            toast.error(error.message || 'Failed to create purchase');
+            toast.error(error.message || 'Failed to create purchase order');
         } finally {
             setIsSubmitting(false);
         }
     };
 
-    if (loading) return <div className="flex h-64 items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-gray-400" /></div>;
+    if (loading) {
+        return (
+            <div className="bg-white rounded-2xl shadow-2xl border border-slate-100 flex flex-col items-center justify-center h-80 gap-4">
+                <Loader2 className="w-8 h-8 animate-spin text-slate-300" />
+                <p className="text-sm text-slate-400 font-medium">Loading purchase order form…</p>
+            </div>
+        );
+    }
+
+    const isDraft = header.status === 'draft';
+    const selectedVendor = vendors.find(v => String(v.id) === String(header.vendorId));
+    const selectedWarehouse = warehouses.find(w => String(w.id) === String(header.warehouseId));
 
     return (
-        <div className="space-y-6 max-h-[85vh] overflow-y-auto px-1 custom-scrollbar">
-            <div className="grid grid-cols-2 gap-6 p-4 bg-gray-50/50 rounded-2xl border border-gray-100">
-                <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase text-gray-400">Supplier *</Label>
-                    <div className="flex gap-2">
-                        <Combobox
-                            options={vendors.map(v => ({ value: String(v.id), label: v.name, description: String(v.city || '') }))}
-                            value={String(header.vendorId)}
-                            onChange={val => setHeader({ ...header, vendorId: val })}
-                            placeholder="Select Vendor"
-                        />
-                        <Button size="icon" variant="outline" className="h-10 w-10 shrink-0 border-dashed" onClick={() => setShowVendorForm(true)}>
-                            <Plus className="w-4 h-4" />
-                        </Button>
+        <div className="bg-white rounded-2xl shadow-2xl border border-slate-100 flex flex-col overflow-hidden max-h-[92vh]">
+
+            {/* ── Modal Header ─────────────────────────────────────── */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/60 shrink-0">
+                <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center">
+                        <Package className="w-4 h-4 text-emerald-600" />
+                    </div>
+                    <div>
+                        <h2 className="text-base font-bold text-slate-800 leading-tight">New Purchase Order</h2>
+                        <p className="text-[11px] text-slate-400 font-mono">{header.purchaseNumber}</p>
                     </div>
                 </div>
-
-                <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase text-gray-400">Warehouse *</Label>
-                    <div className="flex gap-2">
-                        <Combobox
-                            options={warehouses.map(w => ({ value: String(w.id), label: w.name, description: String(w.location || '') }))}
-                            value={String(header.warehouseId)}
-                            onChange={val => setHeader({ ...header, warehouseId: val })}
-                            placeholder="Select Warehouse"
-                        />
-                        <Button size="icon" variant="outline" className="h-10 w-10 shrink-0 border-dashed" onClick={() => setShowWarehouseForm(true)}>
-                            <Plus className="w-4 h-4" />
-                        </Button>
+                <div className="flex items-center gap-2">
+                    {/* Status pill */}
+                    <div className={cn(
+                        'flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider border',
+                        isDraft
+                            ? 'bg-slate-100 text-slate-600 border-slate-200'
+                            : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                    )}>
+                        {isDraft
+                            ? <FileText className="w-3 h-3" />
+                            : <CheckCircle2 className="w-3 h-3" />}
+                        {isDraft ? 'Draft PO' : 'Direct Inward'}
                     </div>
-                </div>
-
-                <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase text-gray-400">PO Number</Label>
-                    <Input value={header.purchaseNumber} onChange={e => setHeader({ ...header, purchaseNumber: e.target.value })} className="h-10 font-bold" />
-                </div>
-
-                <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase text-gray-400">Date</Label>
-                    <Input type="date" value={header.date} onChange={e => setHeader({ ...header, date: e.target.value })} className="h-10" />
-                </div>
-
-                <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase text-gray-400">Inventory Status</Label>
-                    <div className="flex bg-white border border-gray-200 rounded-xl p-1 h-10">
-                        <button
-                            onClick={() => setHeader({ ...header, status: 'draft' })}
-                            className={`flex-1 rounded-lg text-[10px] font-black uppercase transition-all ${header.status === 'draft' ? 'bg-slate-900 text-white shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
-                        >
-                            Draft PO
-                        </button>
-                        <button
-                            onClick={() => setHeader({ ...header, status: 'received' })}
-                            className={`flex-1 rounded-lg text-[10px] font-black uppercase transition-all ${header.status === 'received' ? 'bg-emerald-600 text-white shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
-                        >
-                            Direct Inward
-                        </button>
-                    </div>
-                    <p className="text-[9px] text-gray-400 italic px-1">
-                        {header.status === 'received' ? '✓ Stock will be added immediately upon save' : '* Pending approval, no stock change'}
-                    </p>
-                </div>
-            </div>
-
-            <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                    <h4 className="text-sm font-black uppercase text-gray-500 tracking-tighter flex items-center gap-2">
-                        <Package className="w-4 h-4" /> Line Items
-                    </h4>
-                    <Button size="sm" variant="outline" onClick={addItem} className="h-8 border-dashed">
-                        <Plus className="w-3.5 h-3.5 mr-1" /> Add Item
+                    <Button variant="ghost" size="icon" onClick={onCancel}
+                        className="h-8 w-8 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100">
+                        <X className="w-4 h-4" />
                     </Button>
                 </div>
+            </div>
 
-                <div className="border border-gray-100 rounded-xl overflow-hidden shadow-sm">
-                    <table className="w-full text-xs">
-                        <thead className="bg-gray-50 font-black text-gray-400 uppercase tracking-widest text-[9px] border-b border-gray-100">
-                            <tr>
-                                <th className="px-3 py-2 text-left">Product</th>
-                                <th className="px-3 py-2 w-20 text-center">Qty</th>
-                                <th className="px-3 py-2 w-28 text-right">Cost</th>
-                                <th className="px-3 py-2 w-32 text-right">Total</th>
-                                <th className="px-2 py-2 w-10"></th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-50">
-                            {items.map(item => (
-                                <tr key={item.id} className="group hover:bg-gray-50/50">
-                                    <td className="px-3 py-2">
-                                        <Combobox
-                                            options={products.map(p => ({ value: p.id, label: p.name, description: `SKU: ${p.sku}` }))}
-                                            value={item.productId}
-                                            onChange={val => updateItem(item.id, 'productId', val)}
-                                            placeholder="Select Product"
-                                            className="h-8 border-none bg-transparent"
-                                        />
-                                    </td>
-                                    <td className="px-3 py-2 text-center">
-                                        <Input
-                                            type="number"
-                                            value={item.quantity}
-                                            onChange={e => updateItem(item.id, 'quantity', e.target.value)}
-                                            className="h-8 text-center font-bold px-1"
-                                        />
-                                    </td>
-                                    <td className="px-3 py-2">
-                                        <Input
-                                            type="number"
-                                            value={item.unitCost}
-                                            onChange={e => updateItem(item.id, 'unitCost', e.target.value)}
-                                            className="h-8 text-right font-bold"
-                                        />
-                                    </td>
-                                    <td className="px-3 py-2 text-right font-bold text-gray-900">
-                                        {formatCurrency(item.total, 'PKR')}
-                                    </td>
-                                    <td className="px-2 py-2 text-right">
-                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-300 hover:text-red-500 rounded-full" onClick={() => removeItem(item.id)}>
-                                            <Trash2 className="w-3.5 h-3.5" />
-                                        </Button>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+            {/* ── Scrollable Body ───────────────────────────────────── */}
+            <div className="flex-1 overflow-y-auto">
+
+                {/* ── Section 1: Header Fields ─────────────────────── */}
+                <div className="px-6 pt-5 pb-4 border-b border-slate-50">
+                    <div className="grid grid-cols-2 gap-x-5 gap-y-4 lg:grid-cols-4">
+
+                        {/* Vendor */}
+                        <div className="col-span-2 lg:col-span-1 space-y-1.5">
+                            <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-1">
+                                <Building2 className="w-3 h-3" /> Supplier *
+                            </Label>
+                            <div className="flex gap-1.5">
+                                <Combobox
+                                    options={vendors.map(v => ({ value: String(v.id), label: v.name, description: v.city || v.phone || '' }))}
+                                    value={String(header.vendorId)}
+                                    onChange={val => setHeader(p => ({ ...p, vendorId: val }))}
+                                    placeholder="Select vendor…"
+                                    className="h-9 text-sm flex-1"
+                                />
+                                <Button size="icon" variant="outline"
+                                    className="h-9 w-9 shrink-0 border-dashed border-slate-300 text-slate-400 hover:text-emerald-600 hover:border-emerald-300"
+                                    onClick={() => setShowVendorForm(true)} title="Add new vendor">
+                                    <Plus className="w-3.5 h-3.5" />
+                                </Button>
+                            </div>
+                            {selectedVendor?.phone && (
+                                <p className="text-[10px] text-slate-400 pl-0.5">{selectedVendor.phone}</p>
+                            )}
+                        </div>
+
+                        {/* Warehouse */}
+                        <div className="col-span-2 lg:col-span-1 space-y-1.5">
+                            <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-1">
+                                <Warehouse className="w-3 h-3" /> Warehouse *
+                            </Label>
+                            <div className="flex gap-1.5">
+                                <Combobox
+                                    options={warehouses.map(w => ({ value: String(w.id), label: w.name, description: w.location || '' }))}
+                                    value={String(header.warehouseId)}
+                                    onChange={val => setHeader(p => ({ ...p, warehouseId: val }))}
+                                    placeholder="Select warehouse…"
+                                    className="h-9 text-sm flex-1"
+                                />
+                                <Button size="icon" variant="outline"
+                                    className="h-9 w-9 shrink-0 border-dashed border-slate-300 text-slate-400 hover:text-emerald-600 hover:border-emerald-300"
+                                    onClick={() => setShowWarehouseForm(true)} title="Add new warehouse">
+                                    <Plus className="w-3.5 h-3.5" />
+                                </Button>
+                            </div>
+                            {selectedWarehouse?.location && (
+                                <p className="text-[10px] text-slate-400 pl-0.5">{selectedWarehouse.location}</p>
+                            )}
+                        </div>
+
+                        {/* PO Number */}
+                        <div className="space-y-1.5">
+                            <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-1">
+                                <Hash className="w-3 h-3" /> PO Number
+                            </Label>
+                            <Input
+                                value={header.purchaseNumber}
+                                onChange={e => setHeader(p => ({ ...p, purchaseNumber: e.target.value }))}
+                                className="h-9 text-sm font-mono font-semibold bg-slate-50 border-slate-200"
+                            />
+                        </div>
+
+                        {/* Date */}
+                        <div className="space-y-1.5">
+                            <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-1">
+                                <CalendarDays className="w-3 h-3" /> Date
+                            </Label>
+                            <Input
+                                type="date"
+                                value={header.date}
+                                onChange={e => setHeader(p => ({ ...p, date: e.target.value }))}
+                                className="h-9 text-sm border-slate-200"
+                            />
+                        </div>
+                    </div>
+
+                    {/* Inventory Mode Toggle */}
+                    <div className="mt-4 flex items-center gap-3">
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Inventory Mode:</span>
+                        <div className="flex bg-slate-100 rounded-lg p-0.5 gap-0.5">
+                            <button
+                                onClick={() => setHeader(p => ({ ...p, status: 'draft' }))}
+                                className={cn(
+                                    'px-3 py-1.5 rounded-md text-[11px] font-bold uppercase tracking-wide transition-all',
+                                    isDraft
+                                        ? 'bg-slate-800 text-white shadow-sm'
+                                        : 'text-slate-500 hover:text-slate-700'
+                                )}>
+                                Draft PO
+                            </button>
+                            <button
+                                onClick={() => setHeader(p => ({ ...p, status: 'received' }))}
+                                className={cn(
+                                    'px-3 py-1.5 rounded-md text-[11px] font-bold uppercase tracking-wide transition-all',
+                                    !isDraft
+                                        ? 'bg-emerald-600 text-white shadow-sm'
+                                        : 'text-slate-500 hover:text-slate-700'
+                                )}>
+                                Direct Inward
+                            </button>
+                        </div>
+                        <span className="text-[10px] text-slate-400 italic">
+                            {isDraft ? '⏳ No stock change until received' : '✓ Stock added immediately on save'}
+                        </span>
+                    </div>
+                </div>
+
+                {/* ── Section 2: Line Items ─────────────────────────── */}
+                <div className="px-6 py-4">
+                    <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500 flex items-center gap-1.5">
+                            <Package className="w-3.5 h-3.5" /> Line Items
+                            <span className="ml-1 bg-slate-100 text-slate-500 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                                {items.length}
+                            </span>
+                        </h3>
+                        <Button size="sm" variant="outline" onClick={addItem}
+                            className="h-7 px-3 text-[11px] font-bold border-dashed border-slate-300 text-slate-500 hover:text-emerald-600 hover:border-emerald-300">
+                            <Plus className="w-3 h-3 mr-1" /> Add Item
+                        </Button>
+                    </div>
+
+                    <div className="rounded-xl border border-slate-100 overflow-hidden shadow-sm">
+                        {/* Table Header */}
+                        <div className="grid bg-slate-50 border-b border-slate-100 text-[10px] font-bold uppercase tracking-widest text-slate-400"
+                            style={{ gridTemplateColumns: '1fr 72px 100px 72px 100px 36px' }}>
+                            <div className="px-3 py-2">Product</div>
+                            <div className="px-2 py-2 text-center">Qty</div>
+                            <div className="px-2 py-2 text-right">Unit Cost</div>
+                            <div className="px-2 py-2 text-right">Tax %</div>
+                            <div className="px-2 py-2 text-right">Total</div>
+                            <div className="px-2 py-2" />
+                        </div>
+
+                        {/* Rows */}
+                        <div className="divide-y divide-slate-50">
+                            {items.map((item, idx) => {
+                                const base = parseFloat(item.quantity || 0) * parseFloat(item.unitCost || 0);
+                                const tax = base * parseFloat(item.taxRate || 0) / 100;
+                                return (
+                                    <div key={item.id}
+                                        className="grid items-center hover:bg-slate-50/60 transition-colors group"
+                                        style={{ gridTemplateColumns: '1fr 72px 100px 72px 100px 36px' }}>
+
+                                        {/* Product */}
+                                        <div className="px-3 py-2 min-w-0">
+                                            <Combobox
+                                                options={products.map(p => ({
+                                                    value: p.id,
+                                                    label: p.name,
+                                                    description: `${p.sku ? `SKU: ${p.sku}` : ''} ${p.cost_price ? `· Rs${p.cost_price}` : ''}`.trim(),
+                                                }))}
+                                                value={item.productId}
+                                                onChange={val => updateItem(item.id, 'productId', val)}
+                                                placeholder="Select product…"
+                                                className="h-8 text-xs border-transparent bg-transparent hover:bg-white hover:border-slate-200 focus-within:bg-white focus-within:border-slate-300 transition-all"
+                                            />
+                                        </div>
+
+                                        {/* Qty */}
+                                        <div className="px-2 py-2">
+                                            <Input type="number" min={0}
+                                                value={item.quantity}
+                                                onChange={e => updateItem(item.id, 'quantity', e.target.value)}
+                                                className="h-8 text-center text-xs font-semibold px-1 border-slate-200 bg-white"
+                                            />
+                                        </div>
+
+                                        {/* Unit Cost */}
+                                        <div className="px-2 py-2">
+                                            <Input type="number" min={0} step="0.01"
+                                                value={item.unitCost}
+                                                onChange={e => updateItem(item.id, 'unitCost', e.target.value)}
+                                                className="h-8 text-right text-xs font-semibold px-2 border-slate-200 bg-white"
+                                            />
+                                        </div>
+
+                                        {/* Tax % */}
+                                        <div className="px-2 py-2">
+                                            <Input type="number" min={0} max={100}
+                                                value={item.taxRate}
+                                                onChange={e => updateItem(item.id, 'taxRate', e.target.value)}
+                                                className="h-8 text-right text-xs px-2 border-slate-200 bg-white"
+                                            />
+                                        </div>
+
+                                        {/* Total */}
+                                        <div className="px-2 py-2 text-right">
+                                            <p className="text-xs font-bold text-slate-800">{formatCurrency(item.total, 'PKR')}</p>
+                                            {item.taxRate > 0 && (
+                                                <p className="text-[9px] text-slate-400 leading-tight">
+                                                    {formatCurrency(base, 'PKR')}+{formatCurrency(tax, 'PKR')}
+                                                </p>
+                                            )}
+                                        </div>
+
+                                        {/* Delete */}
+                                        <div className="px-1 py-2 flex justify-center">
+                                            <button
+                                                onClick={() => removeItem(item.id)}
+                                                disabled={items.length === 1}
+                                                className="w-6 h-6 rounded-full flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all disabled:opacity-30 disabled:cursor-not-allowed">
+                                                <Trash2 className="w-3 h-3" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        {/* Empty state */}
+                        {items.length === 0 && (
+                            <div className="py-8 text-center text-slate-400">
+                                <Package className="w-8 h-8 mx-auto mb-2 text-slate-200" />
+                                <p className="text-sm font-medium">No items added</p>
+                                <p className="text-xs mt-0.5">Click "Add Item" to get started</p>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* ── Section 3: Notes + Totals ─────────────────────── */}
+                <div className="px-6 pb-4 grid grid-cols-1 md:grid-cols-2 gap-5">
+
+                    {/* Notes */}
+                    <div className="space-y-1.5">
+                        <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                            Notes & Instructions
+                        </Label>
+                        <textarea
+                            rows={4}
+                            className="w-full bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 text-sm text-slate-700 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-300 resize-none transition-all"
+                            placeholder="Delivery terms, special instructions…"
+                            value={header.notes}
+                            onChange={e => setHeader(p => ({ ...p, notes: e.target.value }))}
+                        />
+                    </div>
+
+                    {/* Totals card */}
+                    <div className="bg-slate-50 rounded-xl border border-slate-100 p-4 space-y-2.5 self-start">
+                        <div className="flex justify-between items-center text-sm text-slate-600">
+                            <span className="font-medium">Subtotal</span>
+                            <span className="font-semibold tabular-nums">{formatCurrency(totals.subtotal, 'PKR')}</span>
+                        </div>
+                        {totals.taxTotal > 0 && (
+                            <div className="flex justify-between items-center text-sm text-slate-500">
+                                <span>Sales Tax</span>
+                                <span className="tabular-nums">{formatCurrency(totals.taxTotal, 'PKR')}</span>
+                            </div>
+                        )}
+                        <div className="flex justify-between items-center pt-2.5 border-t border-slate-200">
+                            <span className="text-base font-bold text-slate-800">Grand Total</span>
+                            <span className="text-xl font-black tabular-nums" style={{ color: accentColor }}>
+                                {formatCurrency(totals.grandTotal, 'PKR')}
+                            </span>
+                        </div>
+
+                        {/* Item count summary */}
+                        <div className="pt-1 text-[10px] text-slate-400 flex items-center gap-1">
+                            <Package className="w-3 h-3" />
+                            {items.filter(i => i.productId).length} product{items.filter(i => i.productId).length !== 1 ? 's' : ''} ·{' '}
+                            {items.reduce((s, i) => s + parseFloat(i.quantity || 0), 0)} units total
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <div className="flex justify-between items-start gap-8 bg-gray-50/30 p-6 rounded-2xl border border-dashed border-gray-200">
-                <div className="flex-1 space-y-2">
-                    <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Notes & Special Instructions</Label>
-                    <textarea
-                        className="w-full h-24 bg-white border border-gray-100 rounded-xl p-3 text-sm focus:ring-2 focus:ring-blue-500/10 resize-none outline-none"
-                        placeholder="Add delivery terms or other details..."
-                        value={header.notes}
-                        onChange={e => setHeader({ ...header, notes: e.target.value })}
-                    />
+            {/* ── Sticky Footer ─────────────────────────────────────── */}
+            <div className="shrink-0 border-t border-slate-100 bg-white px-6 py-3.5 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2 text-[11px] text-slate-400">
+                    {!header.vendorId && (
+                        <span className="flex items-center gap-1 text-amber-500">
+                            <AlertCircle className="w-3 h-3" /> Vendor required
+                        </span>
+                    )}
+                    {!header.warehouseId && (
+                        <span className="flex items-center gap-1 text-amber-500">
+                            <AlertCircle className="w-3 h-3" /> Warehouse required
+                        </span>
+                    )}
                 </div>
-                <div className="w-64 space-y-3 pt-6">
-                    <div className="flex justify-between text-xs font-bold text-gray-500">
-                        <span>Subtotal</span>
-                        <span>{formatCurrency(totals.subtotal, 'PKR')}</span>
-                    </div>
-                    <div className="flex justify-between text-xs font-bold text-gray-500">
-                        <span>Sales Tax</span>
-                        <span>{formatCurrency(totals.taxTotal, 'PKR')}</span>
-                    </div>
-                    <div className="flex justify-between text-lg font-black text-gray-900 border-t border-gray-100 pt-2">
-                        <span>Grand Total</span>
-                        <span style={{ color: colors?.primary }}>{formatCurrency(totals.total, 'PKR')}</span>
-                    </div>
+                <div className="flex items-center gap-2">
+                    <Button variant="ghost" onClick={onCancel}
+                        className="h-9 px-4 text-sm font-medium text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg">
+                        Cancel
+                    </Button>
                     <Button
                         onClick={handleSubmit}
                         disabled={isSubmitting}
-                        className="w-full font-black rounded-xl h-11 shadow-lg mt-4 bg-emerald-600 hover:bg-emerald-700 text-white"
-                        style={{ backgroundColor: colors?.primary, boxShadow: `0 8px 16px -4px ${colors?.primary}40` }}
-                    >
-                        {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
-                        Finalize Order
+                        className="h-9 px-5 text-sm font-bold rounded-lg text-white shadow-sm transition-all hover:opacity-90 disabled:opacity-60"
+                        style={{ backgroundColor: accentColor }}>
+                        {isSubmitting
+                            ? <><Loader2 className="w-3.5 h-3.5 animate-spin mr-2" /> Saving…</>
+                            : <><Save className="w-3.5 h-3.5 mr-2" />
+                                {isDraft ? 'Save Draft PO' : 'Confirm & Receive Stock'}
+                            </>}
                     </Button>
                 </div>
             </div>
 
-            {/* Helper Dialogs */}
+            {/* ── Quick-add Dialogs ─────────────────────────────────── */}
             <Dialog open={showVendorForm} onOpenChange={setShowVendorForm}>
-                <DialogContent>
-                    <div className="sr-only">
-                        <DialogTitle>Add New Vendor</DialogTitle>
-                    </div>
-                    <QuickVendorForm onSave={(v) => { setVendors([...vendors, v]); setHeader({ ...header, vendorId: v.id }); setShowVendorForm(false); }} onCancel={() => setShowVendorForm(false)} />
+                <DialogContent className="max-w-lg">
+                    <div className="sr-only"><DialogTitle>Add New Vendor</DialogTitle></div>
+                    <QuickVendorForm
+                        onSave={(v) => {
+                            setVendors(prev => [...prev, v]);
+                            setHeader(p => ({ ...p, vendorId: v.id }));
+                            setShowVendorForm(false);
+                        }}
+                        onCancel={() => setShowVendorForm(false)}
+                    />
                 </DialogContent>
             </Dialog>
+
             <Dialog open={showWarehouseForm} onOpenChange={setShowWarehouseForm}>
-                <DialogContent>
-                    <div className="sr-only">
-                        <DialogTitle>Add Storage Location</DialogTitle>
-                    </div>
-                    <QuickWarehouseForm onSave={(w) => { setWarehouses([...warehouses, w]); setHeader({ ...header, warehouseId: w.id }); setShowWarehouseForm(false); }} onCancel={() => setShowWarehouseForm(false)} />
+                <DialogContent className="max-w-lg">
+                    <div className="sr-only"><DialogTitle>Add Storage Location</DialogTitle></div>
+                    <QuickWarehouseForm
+                        onSave={(w) => {
+                            setWarehouses(prev => [...prev, w]);
+                            setHeader(p => ({ ...p, warehouseId: w.id }));
+                            setShowWarehouseForm(false);
+                        }}
+                        onCancel={() => setShowWarehouseForm(false)}
+                    />
                 </DialogContent>
             </Dialog>
         </div>

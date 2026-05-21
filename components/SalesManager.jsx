@@ -20,7 +20,8 @@ export function SalesManager({
     invoices = [],
     customers = [],
     products = [],
-    category = 'retail-shop'
+    category = 'retail-shop',
+    businessId = null
 }) {
     const colors = getDomainColors(category);
     const [timeframe, setTimeframe] = useState('monthly');

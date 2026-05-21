@@ -1,0 +1,69 @@
+import { notFound } from 'next/navigation';
+import { getBusinessByDomain } from '@/lib/actions/storefront/business';
+import { StorefrontProvider } from '@/lib/context/StorefrontContext';
+import { StoreHeader } from '@/components/storefront/StoreHeader';
+import { StoreFooter } from '@/components/storefront/StoreFooter';
+import { LiveChat } from '@/components/storefront/LiveChat';
+import { CartDrawer } from '@/components/storefront/CartDrawer';
+
+export async function generateMetadata({ params }) {
+  const result = await getBusinessByDomain(params.businessDomain);
+  
+  if (!result.success) {
+    return {
+      title: 'Store Not Found',
+    };
+  }
+  
+  const business = result.business;
+  
+  return {
+    title: `${business.business_name} - Online Store`,
+    description: business.description || `Shop online at ${business.business_name}`,
+    keywords: business.keywords || 'online store, shop, ecommerce',
+    openGraph: {
+      title: business.business_name,
+      description: business.description,
+      images: business.logo_url ? [{ url: business.logo_url }] : [],
+    },
+  };
+}
+
+export default async function StoreLayout({ children, params }) {
+  const result = await getBusinessByDomain(params.businessDomain);
+  
+  if (!result.success) {
+    notFound();
+  }
+  
+  const { business, settings, categories } = result;
+  
+  return (
+    <StorefrontProvider 
+      business={business} 
+      settings={settings}
+      categories={categories}
+    >
+      <div className="min-h-screen bg-gray-50">
+        <StoreHeader 
+          business={business} 
+          categories={categories}
+          settings={settings}
+        />
+        
+        <main className="min-h-[calc(100vh-300px)]">
+          {children}
+        </main>
+        
+        <StoreFooter 
+          business={business}
+          settings={settings}
+        />
+        
+        {/* Floating Elements */}
+        <CartDrawer />
+        <LiveChat businessId={business.id} />
+      </div>
+    </StorefrontProvider>
+  );
+}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect, useCallback } from 'react';
 import { EnhancedDashboard } from '@/components/EnhancedDashboard';
 import { SystemHealthWidget } from '@/components/dashboard/widgets/SystemHealthWidget';
 import { AuditTrailViewer } from '@/components/inventory/AuditTrailViewer';
@@ -12,11 +12,15 @@ import {
   Users, 
   Target,
   Award,
-  Activity
+  Activity,
+  Loader2
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/currency';
 import { useLanguage } from '@/lib/context/LanguageContext';
 import { translations } from '@/lib/translations';
+import { getTeamPerformance } from '@/lib/actions/dashboard/widgets';
+import { getFinancialSummary } from '@/lib/actions/basic/dashboard';
+import toast from 'react-hot-toast';
 
 /**
  * OwnerDashboard Component
@@ -45,49 +49,48 @@ export function OwnerDashboard({
 }) {
   const { language } = useLanguage();
   const t = translations[language] || translations['en'] || {};
+  
+  const [teamPerformance, setTeamPerformance] = useState([]);
+  const [financialSummary, setFinancialSummary] = useState({
+    totalRevenue: 0,
+    totalExpenses: 0,
+    netProfit: 0,
+    profitMargin: 0,
+    growthRate: 0
+  });
+  const [loading, setLoading] = useState(true);
 
-  // Mock team performance data (in real implementation, fetch from API)
-  const teamPerformance = useMemo(() => [
-    {
-      id: 1,
-      name: 'Ahmed Khan',
-      role: 'Sales Manager',
-      sales: 450000,
-      orders: 45,
-      target: 500000,
-      achievement: 90,
-      trend: 'up'
-    },
-    {
-      id: 2,
-      name: 'Fatima Ali',
-      role: 'Sales Staff',
-      sales: 320000,
-      orders: 38,
-      target: 300000,
-      achievement: 107,
-      trend: 'up'
-    },
-    {
-      id: 3,
-      name: 'Hassan Raza',
-      role: 'Sales Staff',
-      sales: 280000,
-      orders: 32,
-      target: 300000,
-      achievement: 93,
-      trend: 'down'
+  // Load real data
+  const loadDashboardData = useCallback(async () => {
+    try {
+      setLoading(true);
+      
+      // Load team performance
+      const teamResult = await getTeamPerformance(businessId);
+      if (teamResult.success) {
+        setTeamPerformance(teamResult.data.performance);
+      }
+      
+      // Load financial summary
+      const financeResult = await getFinancialSummary(businessId);
+      if (financeResult.success) {
+        setFinancialSummary(financeResult.data);
+      }
+    } catch (error) {
+      console.error('Failed to load dashboard data:', error);
+      toast.error('Failed to load some dashboard data');
+    } finally {
+      setLoading(false);
     }
-  ], []);
+  }, [businessId]);
 
-  // Calculate financial summary
-  const financialSummary = useMemo(() => ({
-    totalRevenue: 1050000,
-    totalExpenses: 420000,
-    netProfit: 630000,
-    profitMargin: 60,
-    growthRate: 15.5
-  }), []);
+  useEffect(() => {
+    loadDashboardData();
+    
+    // Refresh every 5 minutes
+    const interval = setInterval(loadDashboardData, 300000);
+    return () => clearInterval(interval);
+  }, [loadDashboardData]);
 
   return (
     <div className="space-y-6">

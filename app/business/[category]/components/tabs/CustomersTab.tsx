@@ -6,22 +6,30 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Users, Phone, MapPin, Pencil, Trash2 } from 'lucide-react';
+import { Users, Phone, MapPin, Pencil, Trash2, Plus } from 'lucide-react';
 import { DataTable } from '@/components/DataTable';
+import { ExportButton } from '@/components/ExportButton';
 import type { Customer } from '@/types';
 
 interface CustomersTabProps {
     customers: Customer[];
     onCustomerDelete?: (id: string) => Promise<void>;
     onUpdate?: (customer: Customer) => void;
+    onAdd?: () => void;
     category?: string;
+    /** @deprecated Currently unused but kept for API consistency across tab components */
+    businessId?: string;
 }
 
 export function CustomersTab({
     customers,
     onCustomerDelete,
     onUpdate,
-    category = 'retail-shop'
+    onAdd,
+    category = 'retail-shop',
+    // @ts-expect-error businessId is part of standard Tab component API for consistency,
+    // though not currently used in this presentational component. Container handles data fetching.
+    businessId
 }: CustomersTabProps) {
     return (
         <div className="space-y-6">
@@ -32,6 +40,26 @@ export function CustomersTab({
                     <p className="text-muted-foreground">
                         Manage your customer database
                     </p>
+                </div>
+                <div className="flex gap-2">
+                    <ExportButton
+                        data={customers}
+                        filename="customers"
+                        columns={[
+                            { key: 'name', label: 'Name' },
+                            { key: 'phone', label: 'Phone' },
+                            { key: 'email', label: 'Email' },
+                            { key: 'city', label: 'City' },
+                        ]}
+                        title="Customers Report"
+                    />
+                    <Button
+                        onClick={() => onAdd?.()}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl h-10 px-5 shadow-sm"
+                    >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Add Customer
+                    </Button>
                 </div>
             </div>
 

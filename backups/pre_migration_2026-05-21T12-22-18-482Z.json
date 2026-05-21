@@ -1,0 +1,5 @@
+{
+  "timestamp": "2026-05-21T12:22:18.593Z",
+  "existingTables": [],
+  "note": "This is a reference backup. For full restore, use pg_dump."
+}

@@ -84,31 +84,12 @@ export function QuotationOrderChallanManager({
       toast.error('Invoice module not connected');
       return;
     }
-    // Need to fetch details including items
-    // Assuming we have an API for challan details similar to others
-    // If not, we might need to rely on the list item if it has everything, or fetch.
-    // The previous implementation used getSalesOrderDetail, does getChallanDetail exist?
-    // Let's assume yes or use generic `quotationAPI`.
     setIsProcessing(true);
     try {
-      // Check if getChallanDetail exists, otherwise use list item if sufficient?
-      // Usually list item doesn't have line items.
-      // Step 129 viewed `quotation.js` but didn't exhaustively check API.
-      // I'll try to fetch or just pass rudimentary data.
-      // Actually `quotationAPI` is imported. I'll use it.
-      // If `getChallanDetail` is missing, I might fail.
-      // But let's assume `getDeliveryChallanDetail` or similar.
-      // I'll try `getSalesOrderDetail` as a fallback or just mock it if I'm unsure?
-      // No, I should use `quotationAPI.getChallanDetail` if it exists.
-      // Step 16 `quotationAPI` likely has it.
-      // I'll try `quotationAPI.getChallanDetail(challanId)`.
       const challan = await quotationAPI.getChallanDetail(challanId);
       onIssueInvoice(challan);
     } catch (error) {
-      // Fallback: if function doesn't exist, try to find in list?
-      // But list item lacks items.
-      // Let's notify user if it fails.
-      console.error(error);
+      console.error('Failed to load challan for invoice conversion:', error);
       toast.error('Failed to load challan details');
     } finally {
       setIsProcessing(false);

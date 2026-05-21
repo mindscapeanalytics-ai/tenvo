@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { cn } from '@/lib/utils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -70,7 +71,15 @@ export function VendorForm({ initialData = null, onSave, onClose, onEntitlementE
     const domainFields = getDomainVendorFields(category);
 
     const handleSave = async () => {
-        const validation = validateForm(vendorSchema, formData);
+        const payload = {
+            ...formData,
+            credit_limit: Number(formData.credit_limit) || 0,
+            opening_balance: Number(formData.opening_balance) || 0,
+            srn: formData.srn || null,
+            domain_data: formData.domain_data || {}
+        };
+
+        const validation = validateForm(vendorSchema, payload);
         if (!validation.isValid) {
             setErrors(validation.errors);
             toast.error('Please resolve missing fields');
@@ -83,7 +92,7 @@ export function VendorForm({ initialData = null, onSave, onClose, onEntitlementE
         setIsLoading(true);
         try {
             if (onSave) {
-                const result = await onSave(formData);
+                const result = await onSave(payload);
                 
                 // Check if result indicates failure
                 if (result && !result.success) {
@@ -199,51 +208,51 @@ export function VendorForm({ initialData = null, onSave, onClose, onEntitlementE
                     <TabsContent value="identity" className="space-y-6">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest after:content-['*'] after:ml-0.5 after:text-red-500">Legal Business Name</Label>
+                                <Label className="text-[11px] font-semibold text-slate-600 after:content-['*'] after:ml-0.5 after:text-red-500">Legal Business Name</Label>
                                 <Input
                                     value={formData.name || ''}
                                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                                     placeholder="e.g. Allied Distributors"
-                                    className="h-11 rounded-xl"
+                                    className="h-9 rounded-md"
                                 />
                                 {errors?.name && <FormError message={errors.name} />}
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Principal Contact</Label>
+                                <Label className="text-[11px] font-semibold text-slate-600">Principal Contact</Label>
                                 <Input
                                     value={formData.contact_person || ''}
                                     onChange={(e) => setFormData({ ...formData, contact_person: e.target.value })}
                                     placeholder="Manager Name"
-                                    className="h-11 rounded-xl"
+                                    className="h-9 rounded-md"
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest after:content-['*'] after:ml-0.5 after:text-red-500">Official Phone</Label>
+                                <Label className="text-[11px] font-semibold text-slate-600 after:content-['*'] after:ml-0.5 after:text-red-500">Official Phone</Label>
                                 <Input
                                     value={formData.phone || ''}
                                     onChange={(e) => setFormData({ ...formData, phone: formatPakistaniPhone(e.target.value) })}
                                     placeholder="+92 300 1234567"
-                                    className="h-11 rounded-xl"
+                                    className="h-9 rounded-md"
                                 />
                                 {errors?.phone && <FormError message={errors.phone} />}
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Business Email</Label>
+                                <Label className="text-[11px] font-semibold text-slate-600">Business Email</Label>
                                 <Input
                                     value={formData.email || ''}
                                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                                     placeholder="sales@allied.pk"
-                                    className="h-11 rounded-xl"
+                                    className="h-9 rounded-md"
                                 />
                                 {errors?.email && <FormError message={errors.email} />}
                             </div>
                             <div className="col-span-1 md:col-span-2 space-y-2">
-                                <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Head Office Address</Label>
+                                <Label className="text-[11px] font-semibold text-slate-600">Head Office Address</Label>
                                 <Input
                                     value={formData.address || ''}
                                     onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                                     placeholder="Warehouse/Office location"
-                                    className="h-11 rounded-xl"
+                                    className="h-9 rounded-md"
                                 />
                             </div>
                             <div className="col-span-1 md:col-span-2">
@@ -272,9 +281,9 @@ export function VendorForm({ initialData = null, onSave, onClose, onEntitlementE
                                 </h4>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="space-y-2">
-                                        <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Payment Cycle</Label>
+                                        <Label className="text-[11px] font-semibold text-slate-600">Payment Cycle</Label>
                                         <select
-                                            className="flex h-11 w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm focus:ring-2 focus:ring-wine/20"
+                                            className="flex h-9 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm focus:ring-2 focus:ring-wine/20"
                                             value={formData.payment_terms || ''}
                                             onChange={(e) => setFormData({ ...formData, payment_terms: e.target.value })}
                                         >
@@ -287,17 +296,17 @@ export function VendorForm({ initialData = null, onSave, onClose, onEntitlementE
                                         </select>
                                     </div>
                                     <div className="space-y-2">
-                                        <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Credit Limit</Label>
+                                        <Label className="text-[11px] font-semibold text-slate-600">Credit Limit</Label>
                                         <Input
                                             type="number"
                                             value={formData.credit_limit || 0}
                                             onChange={(e) => setFormData({ ...formData, credit_limit: e.target.value })}
                                             placeholder="Maximum allowable credit"
-                                            className="h-11 rounded-xl"
+                                            className="h-9 rounded-md"
                                         />
                                     </div>
                                     <div className="col-span-1 md:col-span-2 space-y-2">
-                                        <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Opening Balance (Owed to Supplier)</Label>
+                                        <Label className="text-[11px] font-semibold text-slate-600">Opening Balance (Owed to Supplier)</Label>
                                         <div className="relative">
                                             <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">₨</span>
                                             <Input
@@ -322,29 +331,29 @@ export function VendorForm({ initialData = null, onSave, onClose, onEntitlementE
                             </h4>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">NTN Number</Label>
+                                    <Label className="text-[11px] font-semibold text-slate-600">NTN Number</Label>
                                     <Input
                                         value={formData.ntn || ''}
                                         onChange={(e) => setFormData({ ...formData, ntn: e.target.value })}
                                         placeholder="1234567-8"
-                                        className="h-11 rounded-xl font-mono text-sm"
+                                        className="h-9 rounded-md font-mono text-sm"
                                     />
                                     {errors?.ntn && <FormError message={errors.ntn} />}
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">SRN Holder</Label>
+                                    <Label className="text-[11px] font-semibold text-slate-600">SRN Holder</Label>
                                     <Input
                                         value={formData.srn || ''}
                                         onChange={(e) => setFormData({ ...formData, srn: e.target.value })}
                                         placeholder="12-34-5678-910-11"
-                                        className="h-11 rounded-xl font-mono text-sm"
+                                        className="h-9 rounded-md font-mono text-sm"
                                     />
                                     {errors?.srn && <FormError message={errors.srn} />}
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Filer Status</Label>
+                                    <Label className="text-[11px] font-semibold text-slate-600">Filer Status</Label>
                                     <select
-                                        className="flex h-11 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm focus:ring-2 focus:ring-wine/20 font-bold"
+                                        className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:ring-2 focus:ring-wine/20 font-bold"
                                         value={formData.filer_status || 'none'}
                                         onChange={(e) => setFormData({ ...formData, filer_status: e.target.value })}
                                     >
@@ -363,9 +372,9 @@ export function VendorForm({ initialData = null, onSave, onClose, onEntitlementE
                             </h4>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Payment Cycle</Label>
+                                    <Label className="text-[11px] font-semibold text-slate-600">Payment Cycle</Label>
                                     <select
-                                        className="flex h-11 w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm focus:ring-2 focus:ring-wine/20"
+                                        className="flex h-9 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm focus:ring-2 focus:ring-wine/20"
                                         value={formData.payment_terms || ''}
                                         onChange={(e) => setFormData({ ...formData, payment_terms: e.target.value })}
                                     >
@@ -378,17 +387,17 @@ export function VendorForm({ initialData = null, onSave, onClose, onEntitlementE
                                     </select>
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Credit Limit</Label>
+                                    <Label className="text-[11px] font-semibold text-slate-600">Credit Limit</Label>
                                     <Input
                                         type="number"
                                         value={formData.credit_limit || 0}
                                         onChange={(e) => setFormData({ ...formData, credit_limit: e.target.value })}
                                         placeholder="Maximum allowable credit"
-                                        className="h-11 rounded-xl"
+                                        className="h-9 rounded-md"
                                     />
                                 </div>
                                 <div className="col-span-1 md:col-span-2 space-y-2">
-                                    <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Opening Balance (Owed to Supplier)</Label>
+                                    <Label className="text-[11px] font-semibold text-slate-600">Opening Balance (Owed to Supplier)</Label>
                                     <div className="relative">
                                         <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">₨</span>
                                         <Input

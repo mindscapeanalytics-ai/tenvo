@@ -283,10 +283,10 @@ export function ActionModals({
             </Dialog>
 
             <Dialog open={showPOBuilder} onOpenChange={setShowPOBuilder}>
-                <DialogContent className="max-w-5xl max-h-[95vh] overflow-y-auto p-0 border-none bg-transparent shadow-none">
-                    <DialogHeader className="sr-only">
+                <DialogContent className="max-w-4xl p-0 border-none bg-transparent shadow-none overflow-visible">
+                    <div className="sr-only">
                         <DialogTitle>Purchase Order Builder</DialogTitle>
-                    </DialogHeader>
+                    </div>
                     <EnhancedPOBuilder
                         businessId={business?.id}
                         category={category}

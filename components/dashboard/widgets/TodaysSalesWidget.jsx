@@ -13,6 +13,8 @@ import {
 import { useLanguage } from '@/lib/context/LanguageContext';
 import { translations } from '@/lib/translations';
 import { formatCurrency } from '@/lib/currency';
+import { getTodaysSales } from '@/lib/actions/dashboard/widgets';
+import toast from 'react-hot-toast';
 
 /**
  * TodaysSalesWidget
@@ -66,28 +68,17 @@ export function TodaysSalesWidget({
     try {
       setLoading(true);
       
-      // In a real implementation, this would fetch from API
-      // For now, we'll simulate today's sales data
-      const mockData = {
-        totalSales: 45000,
-        totalOrders: 12,
-        avgOrderValue: 3750,
-        target: 50000,
-        achievement: 90,
-        trend: 'up',
-        hourlyBreakdown: [
-          { hour: '9-10', sales: 5000, orders: 2 },
-          { hour: '10-11', sales: 8000, orders: 3 },
-          { hour: '11-12', sales: 12000, orders: 3 },
-          { hour: '12-1', sales: 6000, orders: 1 },
-          { hour: '1-2', sales: 9000, orders: 2 },
-          { hour: '2-3', sales: 5000, orders: 1 }
-        ]
-      };
+      const result = await getTodaysSales(businessId, currency);
       
-      setSalesData(mockData);
+      if (result.success) {
+        setSalesData(result.data);
+      } else {
+        console.error('Failed to load today\'s sales:', result.error);
+        toast.error(result.error || 'Failed to load sales data');
+      }
     } catch (err) {
       console.error('Failed to load today\'s sales:', err);
+      toast.error('Failed to load sales data');
     } finally {
       setLoading(false);
     }

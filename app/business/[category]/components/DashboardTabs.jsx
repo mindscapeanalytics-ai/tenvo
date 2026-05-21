@@ -7,50 +7,50 @@ import { Tabs as BaseTabs, TabsContent, TabsList, TabsTrigger } from '@/componen
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Package, ShoppingCart, DollarSign as DollarIcon, TrendingUp, TrendingDown, Package as PackageIcon } from 'lucide-react';
-import { DomainDashboard } from './tabs/DomainDashboard';
-import { InventoryTab } from './tabs/InventoryTab';
-import { InvoiceTab } from './tabs/InvoiceTab';
-import { CustomersTab } from './tabs/CustomersTab';
-import { MultiLocationInventory } from '@/components/MultiLocationInventory';
-import { ManufacturingModule } from '@/components/ManufacturingModule';
-import { PurchaseOrderManager } from '@/components/PurchaseOrderManager';
-import { SalesManager } from '@/components/SalesManager';
-import { VendorManager } from '@/components/VendorManager';
-import PaymentManager from '@/components/payment/PaymentManager';
-import { QuotationOrderChallanManager } from '@/components/QuotationOrderChallanManager';
-import { AdvancedAnalytics } from '@/components/AdvancedAnalytics';
-import { DemandForecast } from '@/components/DemandForecast';
-import JournalEntryManager from '@/components/JournalEntryManager';
-import TrialBalanceView from '@/components/TrialBalanceView';
-import FinancialReports from '@/components/FinancialReports';
-import { FinancialOverview } from '@/components/dashboard/FinancialOverview';
-import { TaxComplianceManager } from '@/components/TaxComplianceManager';
-import { SettingsManager } from '@/components/SettingsManager';
-import { SerialScanner } from '@/components/inventory/SerialScanner';
-// Phase 3+5+6 New Module Components
-import { PosTerminal } from '@/components/pos/PosTerminal';
-import { SuperStorePOS } from '@/components/pos/SuperStorePOS';
-import { RestaurantManager } from '@/components/restaurant/RestaurantManager';
-import { RestaurantPOS } from '@/components/restaurant/RestaurantPOS';
-import { FloorPlanEditor } from '@/components/restaurant/FloorPlanEditor';
-import { KitchenDisplaySystem } from '@/components/restaurant/KitchenDisplaySystem';
-import { ReservationManager } from '@/components/restaurant/ReservationManager';
-import { ExpenseManager } from '@/components/finance/ExpenseManager';
-import FinanceHub from '@/components/finance/FinanceHub';
-import { PayrollDashboard } from '@/components/hr/PayrollDashboard';
-import { AttendanceTracker } from '@/components/hr/AttendanceTracker';
-import { ShiftScheduler } from '@/components/hr/ShiftScheduler';
-import { ApprovalInbox } from '@/components/workflow/ApprovalInbox';
-import { WorkflowBuilder } from '@/components/workflow/WorkflowBuilder';
-import { LoyaltyManager } from '@/components/crm/LoyaltyManager';
-import { PosRefundPanel } from '@/components/pos/PosRefundPanel';
-import { AuditTrailViewer } from '@/components/audit/AuditTrailViewer';
-import { PromotionEngine } from '@/components/crm/PromotionEngine';
-import { CustomerLoyaltyPortal } from '@/components/crm/CustomerLoyaltyPortal';
-import { AIInsightsPanel } from '@/components/intelligence/AIInsightsPanel';
-import { ReportBuilder } from '@/components/reports/ReportBuilder';
-import { TabGuard } from '@/components/guards/TabGuard';
-import { ResourceLimitBanner } from '@/components/ui/ResourceLimitBanner';
+import dynamic from 'next/dynamic';
+const DomainDashboard = dynamic(() => import('./tabs/DomainDashboard').then(mod => mod.DomainDashboard));
+const InventoryTab = dynamic(() => import('./tabs/InventoryTab').then(mod => mod.InventoryTab));
+const InvoiceTab = dynamic(() => import('./tabs/InvoiceTab').then(mod => mod.InvoiceTab));
+const CustomersTab = dynamic(() => import('./tabs/CustomersTab').then(mod => mod.CustomersTab));
+const MultiLocationInventory = dynamic(() => import('@/components/MultiLocationInventory').then(mod => mod.MultiLocationInventory));
+const ManufacturingModule = dynamic(() => import('@/components/ManufacturingModule').then(mod => mod.ManufacturingModule));
+const PurchaseOrderManager = dynamic(() => import('@/components/PurchaseOrderManager').then(mod => mod.PurchaseOrderManager));
+const SalesManager = dynamic(() => import('@/components/SalesManager').then(mod => mod.SalesManager));
+const VendorManager = dynamic(() => import('@/components/VendorManager').then(mod => mod.VendorManager));
+const PaymentManager = dynamic(() => import('@/components/payment/PaymentManager'));
+const QuotationOrderChallanManager = dynamic(() => import('@/components/QuotationOrderChallanManager').then(mod => mod.QuotationOrderChallanManager));
+const AdvancedAnalytics = dynamic(() => import('@/components/AdvancedAnalytics').then(mod => mod.AdvancedAnalytics));
+const DemandForecast = dynamic(() => import('@/components/DemandForecast').then(mod => mod.DemandForecast));
+const JournalEntryManager = dynamic(() => import('@/components/JournalEntryManager'));
+const TrialBalanceView = dynamic(() => import('@/components/TrialBalanceView'));
+const FinancialReports = dynamic(() => import('@/components/FinancialReports'));
+const FinancialOverview = dynamic(() => import('@/components/dashboard/FinancialOverview').then(mod => mod.FinancialOverview));
+const TaxComplianceManager = dynamic(() => import('@/components/TaxComplianceManager').then(mod => mod.TaxComplianceManager));
+const SettingsManager = dynamic(() => import('@/components/SettingsManager').then(mod => mod.SettingsManager));
+const SerialScanner = dynamic(() => import('@/components/inventory/SerialScanner').then(mod => mod.SerialScanner));
+const PosTerminal = dynamic(() => import('@/components/pos/PosTerminal').then(mod => mod.PosTerminal));
+const SuperStorePOS = dynamic(() => import('@/components/pos/SuperStorePOS').then(mod => mod.SuperStorePOS));
+const RestaurantManager = dynamic(() => import('@/components/restaurant/RestaurantManager').then(mod => mod.RestaurantManager));
+const RestaurantPOS = dynamic(() => import('@/components/restaurant/RestaurantPOS').then(mod => mod.RestaurantPOS));
+const FloorPlanEditor = dynamic(() => import('@/components/restaurant/FloorPlanEditor').then(mod => mod.FloorPlanEditor));
+const KitchenDisplaySystem = dynamic(() => import('@/components/restaurant/KitchenDisplaySystem').then(mod => mod.KitchenDisplaySystem));
+const ReservationManager = dynamic(() => import('@/components/restaurant/ReservationManager').then(mod => mod.ReservationManager));
+const ExpenseManager = dynamic(() => import('@/components/finance/ExpenseManager').then(mod => mod.ExpenseManager));
+const FinanceHub = dynamic(() => import('@/components/finance/FinanceHub'));
+const PayrollDashboard = dynamic(() => import('@/components/hr/PayrollDashboard').then(mod => mod.PayrollDashboard));
+const AttendanceTracker = dynamic(() => import('@/components/hr/AttendanceTracker').then(mod => mod.AttendanceTracker));
+const ShiftScheduler = dynamic(() => import('@/components/hr/ShiftScheduler').then(mod => mod.ShiftScheduler));
+const ApprovalInbox = dynamic(() => import('@/components/workflow/ApprovalInbox').then(mod => mod.ApprovalInbox));
+const WorkflowBuilder = dynamic(() => import('@/components/workflow/WorkflowBuilder').then(mod => mod.WorkflowBuilder));
+const LoyaltyManager = dynamic(() => import('@/components/crm/LoyaltyManager').then(mod => mod.LoyaltyManager));
+const PosRefundPanel = dynamic(() => import('@/components/pos/PosRefundPanel').then(mod => mod.PosRefundPanel));
+const AuditTrailViewer = dynamic(() => import('@/components/audit/AuditTrailViewer').then(mod => mod.AuditTrailViewer));
+const PromotionEngine = dynamic(() => import('@/components/crm/PromotionEngine').then(mod => mod.PromotionEngine));
+const CustomerLoyaltyPortal = dynamic(() => import('@/components/crm/CustomerLoyaltyPortal').then(mod => mod.CustomerLoyaltyPortal));
+const AIInsightsPanel = dynamic(() => import('@/components/intelligence/AIInsightsPanel').then(mod => mod.AIInsightsPanel));
+const ReportBuilder = dynamic(() => import('@/components/reports/ReportBuilder').then(mod => mod.ReportBuilder));
+const TabGuard = dynamic(() => import('@/components/guards/TabGuard').then(mod => mod.TabGuard));
+const ResourceLimitBanner = dynamic(() => import('@/components/ui/ResourceLimitBanner').then(mod => mod.ResourceLimitBanner));
 import { isPosRelevant, isHospitality, isCampaignRelevant } from '@/lib/config/domains';
 
 export function DashboardTabs({
@@ -290,6 +290,7 @@ export function DashboardTabs({
                             <InvoiceTab
                                 invoices={filteredInvoices}
                                 currency={currency}
+                                onAdd={() => setShowInvoiceBuilder(true)}
                                 onInvoiceDelete={handleDeleteInvoice}
                                 onEdit={(invoice) => {
                                     setInvoiceInitialData(invoice);
@@ -373,6 +374,7 @@ export function DashboardTabs({
                                 customers={filteredCustomers}
                                 businessId={business?.id}
                                 onCustomerDelete={handleDeleteCustomer}
+                                onAdd={() => setShowCustomerForm(true)}
                                 onUpdate={(customer) => {
                                     setEditingCustomer(customer);
                                     setShowCustomerForm(true);
@@ -440,6 +442,7 @@ export function DashboardTabs({
                                 customers={customers}
                                 products={products}
                                 category={category}
+                                businessId={business?.id}
                             />
                         </TabGuard>
                     )}
@@ -467,7 +470,7 @@ export function DashboardTabs({
                 {domainKnowledge?.multiLocationEnabled && (
                     <TabsContent value="warehouses" className="space-y-6 outline-none">
                         {wrapTab(
-                            <TabGuard tabKey="warehouses" role={role} planTier={planTier} featureName="Warehouses" onUpgrade={() => handleTabChange('settings')}>
+                            <TabGuard tabKey="warehouses" role={role} planTier={planTier} featureName="Warehouses" requiredPlan="professional" onUpgrade={() => handleTabChange('settings')}>
                                 <MultiLocationInventory
                                     businessId={business?.id}
                                     locations={locations}
@@ -482,32 +485,30 @@ export function DashboardTabs({
                     </TabsContent>
                 )}
 
-                {domainKnowledge?.inventoryFeatures?.includes('Quotation Management') && (
-                    <TabsContent value="quotations" className="space-y-6 outline-none">
-                        {wrapTab(
-                            <TabGuard tabKey="quotations" role={role} planTier={planTier} featureName="Quotations" onUpgrade={() => handleTabChange('settings')}>
-                                <QuotationOrderChallanManager
-                                    quotations={filteredQuotations}
-                                    salesOrders={filteredSalesOrders}
-                                    challans={filteredChallans}
-                                    customers={filteredCustomers}
-                                    products={filteredProducts}
-                                    refreshData={refreshAllData}
-                                    category={category}
-                                    onIssueInvoice={(header) => {
-                                        setInvoiceInitialData(header);
-                                        setShowInvoiceBuilder(true);
-                                    }}
-                                />
-                            </TabGuard>
-                        )}
-                    </TabsContent>
-                )}
+                <TabsContent value="quotations" className="space-y-6 outline-none">
+                    {wrapTab(
+                        <TabGuard tabKey="quotations" role={role} planTier={planTier} featureName="Quotations" onUpgrade={() => handleTabChange('settings')}>
+                            <QuotationOrderChallanManager
+                                quotations={filteredQuotations}
+                                salesOrders={filteredSalesOrders}
+                                challans={filteredChallans}
+                                customers={filteredCustomers}
+                                products={filteredProducts}
+                                refreshData={refreshAllData}
+                                category={category}
+                                onIssueInvoice={(header) => {
+                                    setInvoiceInitialData(header);
+                                    setShowInvoiceBuilder(true);
+                                }}
+                            />
+                        </TabGuard>
+                    )}
+                </TabsContent>
 
                 {domainKnowledge?.batchTrackingEnabled && (
                     <TabsContent value="batches" className="space-y-6 outline-none">
                         {wrapTab(
-                            <TabGuard tabKey="batches" role={role} planTier={planTier} featureName="Batches & Serials" onUpgrade={() => handleTabChange('settings')}>
+                            <TabGuard tabKey="batches" role={role} planTier={planTier} featureName="Batches & Serials" requiredPlan="professional" onUpgrade={() => handleTabChange('settings')}>
                                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                                     <Card>
                                         <CardHeader>
@@ -655,7 +656,7 @@ export function DashboardTabs({
 
                 <TabsContent value="reports" className="space-y-6 outline-none">
                     {wrapTab(
-                        <TabGuard tabKey="reports" role={role} planTier={planTier} requiredPlan="professional" featureName="Analytics & AI" onUpgrade={() => handleTabChange('settings')}>
+                        <TabGuard tabKey="reports" role={role} planTier={planTier} requiredPlan="business" featureName="Analytics & AI" onUpgrade={() => handleTabChange('settings')}>
                             <div className="space-y-6">
                                 <div className="flex items-center justify-between">
                                     <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight">Analytics & Reports</h2>
@@ -687,7 +688,7 @@ export function DashboardTabs({
 
                 <TabsContent value="campaigns" className="space-y-6 outline-none">
                     {wrapTab(
-                        <TabGuard tabKey="campaigns" role={role} planTier={planTier} domainCheck={campaignRelevant} domainTitle="Campaigns & Marketing not relevant for this domain" domainMessage="Marketing automations are enabled for customer-facing retail and service domains." requiredPlan="professional" featureName="Campaigns & Marketing" onUpgrade={() => handleTabChange('settings')}>
+                        <TabGuard tabKey="campaigns" role={role} planTier={planTier} domainCheck={campaignRelevant} domainTitle="Campaigns & Marketing not relevant for this domain" domainMessage="Marketing automations are enabled for customer-facing retail and service domains." requiredPlan="business" featureName="Campaigns & Marketing" onUpgrade={() => handleTabChange('settings')}>
                             <div className="space-y-8">
                                 <PromotionEngine businessId={business?.id} currency={currency} />
                                 <div className="border-t border-gray-100 pt-8">
@@ -729,8 +730,11 @@ export function DashboardTabs({
                                 <RestaurantPOS
                                     businessId={business?.id}
                                     products={filteredProducts}
-                                    onCompleteSale={refreshAllData}
+                                    customers={filteredCustomers}
+                                    onStartSession={handleStartPosSession}
+                                    onCompleteSale={handlePosCheckout}
                                     currency={currency}
+                                    session={posSession}
                                 />
                             ) : ['supermarket', 'grocery', 'wholesale-distribution', 'bakery-confectionery'].includes(category) ? (
                                 <SuperStorePOS
@@ -858,7 +862,7 @@ export function DashboardTabs({
 
                 <TabsContent value="payroll" className="space-y-6 outline-none">
                     {wrapTab(
-                        <TabGuard tabKey="payroll" role={role} planTier={planTier} requiredPlan="enterprise" featureName="HR & Payroll" onUpgrade={() => handleTabChange('settings')}>
+                        <TabGuard tabKey="payroll" role={role} planTier={planTier} requiredPlan="business" featureName="HR & Payroll" onUpgrade={() => handleTabChange('settings')}>
                             <div className="space-y-6">
                                 <div className="flex items-center justify-between">
                                     <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight">HR & Payroll</h2>
@@ -920,7 +924,7 @@ export function DashboardTabs({
 
                 <TabsContent value="approvals" className="space-y-6 outline-none">
                     {wrapTab(
-                        <TabGuard tabKey="approvals" role={role} planTier={planTier} requiredPlan="enterprise" featureName="Approval Workflows" onUpgrade={() => handleTabChange('settings')}>
+                        <TabGuard tabKey="approvals" role={role} planTier={planTier} requiredPlan="business" featureName="Approval Workflows" onUpgrade={() => handleTabChange('settings')}>
                             <div className="space-y-6">
                                 <div className="flex items-center justify-between">
                                     <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight">Approvals & Workflows</h2>

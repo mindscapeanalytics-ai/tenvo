@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Lock, Unlock, RefreshCw } from 'lucide-react';
+import { Lock, Unlock, RefreshCw, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,6 +13,8 @@ import { toast } from 'react-hot-toast';
 import { stockAPI } from '@/lib/api/stock';
 import { batchAPI } from '@/lib/api/batch';
 import { usePermissions } from '@/lib/hooks/usePermissions';
+import { InventoryErrorCard } from './InventoryErrorBoundary';
+import { InventoryCardLoading } from './InventoryLoadingState';
 
 /**
  * StockReservation Component
@@ -44,6 +46,7 @@ export function StockReservation({
   const [batches, setBatches] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
   const [isSyncing, setIsSyncing] = useState(false);
   const [releasingId, setReleasingId] = useState(null);
   const [formData, setFormData] = useState({

@@ -22,6 +22,7 @@ import { JournalEntryForm } from '@/components/JournalEntryForm';
 import { JournalEntryList } from '@/components/finance/JournalEntryList';
 import { FiscalPeriodManager } from '@/components/finance/FiscalPeriodManager';
 import { BankReconciliation } from '@/components/finance/BankReconciliation';
+import { ChartOfAccountsManager } from '@/components/finance/ChartOfAccountsManager';
 import { getCustomersAction } from '@/lib/actions/basic/customer';
 import { getVendorsAction } from '@/lib/actions/basic/vendor';
 import { getInvoicesAction } from '@/lib/actions/basic/invoice';
@@ -72,76 +73,6 @@ function KPICard({ label, value, icon: Icon, trend, color = 'indigo', loading })
     );
 }
 
-// --- Chart of Accounts Panel -------------------------------------------------
-
-function ChartOfAccountsPanel({ businessId, accounts, currency }) {
-    const ACCOUNT_TYPE_ICONS = {
-        asset: '🏦', liability: '[CLIPBOARD]', equity: '🏛️', income: '💰', expense: '💸',
-    };
-
-    const grouped = useMemo(() => {
-        const groups = { asset: [], liability: [], equity: [], income: [], expense: [] };
-        accounts.forEach(acc => {
-            const type = acc.type || 'asset';
-            if (groups[type]) groups[type].push(acc);
-        });
-        return groups;
-    }, [accounts]);
-
-    const [expanded, setExpanded] = useState({ asset: true, liability: true });
-
-    return (
-        <div className="space-y-3">
-            <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold text-gray-800">Chart of Accounts</h3>
-                <span className="text-xs text-gray-400 font-semibold">{accounts.length} accounts</span>
-            </div>
-
-            {Object.entries(grouped).map(([type, accs]) => {
-                if (accs.length === 0) return null;
-                const isExpanded = expanded[type] !== false;
-                return (
-                    <div key={type} className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-                        <button
-                            onClick={() => setExpanded(prev => ({ ...prev, [type]: !prev[type] }))}
-                            className="w-full flex items-center gap-2.5 px-4 py-3 hover:bg-gray-50 transition-colors text-left"
-                        >
-                            <span className="text-base">{ACCOUNT_TYPE_ICONS[type]}</span>
-                            <span className="text-sm font-bold text-gray-800 capitalize flex-1">{type}s</span>
-                            <span className="text-xs font-semibold text-gray-400">{accs.length}</span>
-                            <ChevronRight className={cn('w-4 h-4 text-gray-300 transition-transform', isExpanded && 'rotate-90')} />
-                        </button>
-                        <AnimatePresence>
-                            {isExpanded && (
-                                <motion.div
-                                    initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }}
-                                    className="overflow-hidden"
-                                >
-                                    <div className="border-t border-gray-50">
-                                        {accs.sort((a, b) => (a.code || '').localeCompare(b.code || '')).map(acc => (
-                                            <div key={acc.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-25 text-sm border-b border-gray-50 last:border-0">
-                                                <span className="text-xs font-mono text-gray-400 w-12">{acc.code}</span>
-                                                <span className="flex-1 font-medium text-gray-700">{acc.name}</span>
-                                                <span className={cn('text-xs font-bold',
-                                                    acc.sub_type === 'current_asset' || acc.sub_type === 'fixed_asset' ? 'text-emerald-600' : 'text-gray-500'
-                                                )}>
-                                                    {acc.sub_type?.replace(/_/g, ' ')}
-                                                </span>
-                                                {acc.is_system && (
-                                                    <span className="text-[8px] px-1.5 py-0.5 bg-brand-50 text-brand-primary font-black rounded-full">SYS</span>
-                                                )}
-                                            </div>
-                                        ))}
-                                    </div>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
-                    </div>
-                );
-            })}
-        </div>
-    );
-}
 
 // --- Credit Notes Panel ------------------------------------------------------
 
@@ -605,7 +536,7 @@ export default function FinanceHub({ businessId, initialTab }) {
             case 'overview':
                 return <FinanceOverview accounts={accounts} expenses={expenses} creditNotes={creditNotes} currency={effectiveCurrency} loading={loading} />;
             case 'accounts':
-                return <ChartOfAccountsPanel businessId={effectiveBusinessId} accounts={accounts} currency={effectiveCurrency} />;
+                return <ChartOfAccountsManager businessId={effectiveBusinessId} accounts={accounts} onRefresh={loadData} />;
             case 'expenses':
                 return (
                     <ExpenseManager

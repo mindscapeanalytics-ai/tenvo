@@ -1,0 +1,1409 @@
+{
+  "generatedAt": "2026-05-21T12:42:12.477Z",
+  "database": "Tenvo ERP",
+  "tables": [
+    {
+      "name": "gl_accounts",
+      "columns": 10,
+      "size": "272 kB"
+    },
+    {
+      "name": "audit_logs",
+      "columns": 14,
+      "size": "208 kB"
+    },
+    {
+      "name": "invoices",
+      "columns": 39,
+      "size": "192 kB"
+    },
+    {
+      "name": "products",
+      "columns": 36,
+      "size": "184 kB"
+    },
+    {
+      "name": "sales_orders",
+      "columns": 18,
+      "size": "136 kB"
+    },
+    {
+      "name": "quotations",
+      "columns": 17,
+      "size": "128 kB"
+    },
+    {
+      "name": "payments",
+      "columns": 19,
+      "size": "128 kB"
+    },
+    {
+      "name": "stock_movements",
+      "columns": 14,
+      "size": "120 kB"
+    },
+    {
+      "name": "customers",
+      "columns": 25,
+      "size": "120 kB"
+    },
+    {
+      "name": "purchases",
+      "columns": 21,
+      "size": "120 kB"
+    },
+    {
+      "name": "session",
+      "columns": 9,
+      "size": "112 kB"
+    },
+    {
+      "name": "delivery_challans",
+      "columns": 14,
+      "size": "112 kB"
+    },
+    {
+      "name": "product_batches",
+      "columns": 18,
+      "size": "104 kB"
+    },
+    {
+      "name": "production_orders",
+      "columns": 16,
+      "size": "104 kB"
+    },
+    {
+      "name": "journal_entries",
+      "columns": 12,
+      "size": "96 kB"
+    },
+    {
+      "name": "sales_order_items",
+      "columns": 12,
+      "size": "96 kB"
+    },
+    {
+      "name": "gl_entries",
+      "columns": 11,
+      "size": "96 kB"
+    },
+    {
+      "name": "invoice_items",
+      "columns": 14,
+      "size": "80 kB"
+    },
+    {
+      "name": "payment_allocations",
+      "columns": 7,
+      "size": "80 kB"
+    },
+    {
+      "name": "feature_flags",
+      "columns": 10,
+      "size": "80 kB"
+    },
+    {
+      "name": "businesses",
+      "columns": 29,
+      "size": "80 kB"
+    },
+    {
+      "name": "inventory_ledger",
+      "columns": 15,
+      "size": "80 kB"
+    },
+    {
+      "name": "vendors",
+      "columns": 25,
+      "size": "72 kB"
+    },
+    {
+      "name": "user_invitations",
+      "columns": 14,
+      "size": "72 kB"
+    },
+    {
+      "name": "stock_transfers",
+      "columns": 14,
+      "size": "64 kB"
+    },
+    {
+      "name": "quotation_items",
+      "columns": 11,
+      "size": "64 kB"
+    },
+    {
+      "name": "purchase_items",
+      "columns": 11,
+      "size": "64 kB"
+    },
+    {
+      "name": "user",
+      "columns": 16,
+      "size": "64 kB"
+    },
+    {
+      "name": "user_activity_logs",
+      "columns": 11,
+      "size": "64 kB"
+    },
+    {
+      "name": "delivery_challan_items",
+      "columns": 8,
+      "size": "64 kB"
+    },
+    {
+      "name": "pos_terminals",
+      "columns": 9,
+      "size": "64 kB"
+    },
+    {
+      "name": "impersonation_sessions",
+      "columns": 12,
+      "size": "56 kB"
+    },
+    {
+      "name": "feature_flag_overrides",
+      "columns": 10,
+      "size": "56 kB"
+    },
+    {
+      "name": "expenses",
+      "columns": 17,
+      "size": "56 kB"
+    },
+    {
+      "name": "invoice_payment_reminders",
+      "columns": 9,
+      "size": "56 kB"
+    },
+    {
+      "name": "product_serials",
+      "columns": 23,
+      "size": "56 kB"
+    },
+    {
+      "name": "boms",
+      "columns": 10,
+      "size": "56 kB"
+    },
+    {
+      "name": "invoice_approvals",
+      "columns": 8,
+      "size": "56 kB"
+    },
+    {
+      "name": "account",
+      "columns": 13,
+      "size": "48 kB"
+    },
+    {
+      "name": "bom_materials",
+      "columns": 6,
+      "size": "48 kB"
+    },
+    {
+      "name": "business_users",
+      "columns": 9,
+      "size": "48 kB"
+    },
+    {
+      "name": "credit_notes",
+      "columns": 14,
+      "size": "48 kB"
+    },
+    {
+      "name": "invoice_templates",
+      "columns": 14,
+      "size": "48 kB"
+    },
+    {
+      "name": "pos_transactions",
+      "columns": 16,
+      "size": "48 kB"
+    },
+    {
+      "name": "restaurant_orders",
+      "columns": 15,
+      "size": "48 kB"
+    },
+    {
+      "name": "loyalty_transactions",
+      "columns": 11,
+      "size": "40 kB"
+    },
+    {
+      "name": "approval_requests",
+      "columns": 12,
+      "size": "40 kB"
+    },
+    {
+      "name": "pos_refunds",
+      "columns": 13,
+      "size": "40 kB"
+    },
+    {
+      "name": "bank_reconciliation_sessions",
+      "columns": 10,
+      "size": "40 kB"
+    },
+    {
+      "name": "product_stock_locations",
+      "columns": 7,
+      "size": "40 kB"
+    },
+    {
+      "name": "pos_sessions",
+      "columns": 12,
+      "size": "40 kB"
+    },
+    {
+      "name": "inventory_reservations",
+      "columns": 10,
+      "size": "40 kB"
+    },
+    {
+      "name": "custom_packages",
+      "columns": 18,
+      "size": "40 kB"
+    },
+    {
+      "name": "custom_roles",
+      "columns": 10,
+      "size": "40 kB"
+    },
+    {
+      "name": "bank_statement_lines",
+      "columns": 9,
+      "size": "40 kB"
+    },
+    {
+      "name": "payroll_runs",
+      "columns": 13,
+      "size": "40 kB"
+    },
+    {
+      "name": "kitchen_orders",
+      "columns": 11,
+      "size": "40 kB"
+    },
+    {
+      "name": "_prisma_migrations",
+      "columns": 8,
+      "size": "32 kB"
+    },
+    {
+      "name": "twoFactor",
+      "columns": 4,
+      "size": "32 kB"
+    },
+    {
+      "name": "challan_items",
+      "columns": 8,
+      "size": "32 kB"
+    },
+    {
+      "name": "workflow_history",
+      "columns": 8,
+      "size": "32 kB"
+    },
+    {
+      "name": "warehouse_locations",
+      "columns": 14,
+      "size": "32 kB"
+    },
+    {
+      "name": "promotions",
+      "columns": 17,
+      "size": "32 kB"
+    },
+    {
+      "name": "campaign_messages",
+      "columns": 9,
+      "size": "32 kB"
+    },
+    {
+      "name": "supplier_quotes",
+      "columns": 11,
+      "size": "32 kB"
+    },
+    {
+      "name": "product_variants",
+      "columns": 21,
+      "size": "32 kB"
+    },
+    {
+      "name": "credit_note_items",
+      "columns": 9,
+      "size": "32 kB"
+    },
+    {
+      "name": "fiscal_periods",
+      "columns": 9,
+      "size": "32 kB"
+    },
+    {
+      "name": "payroll_employees",
+      "columns": 18,
+      "size": "32 kB"
+    },
+    {
+      "name": "pos_transaction_items",
+      "columns": 13,
+      "size": "24 kB"
+    },
+    {
+      "name": "restaurant_order_items",
+      "columns": 10,
+      "size": "24 kB"
+    },
+    {
+      "name": "restaurant_tables",
+      "columns": 10,
+      "size": "24 kB"
+    },
+    {
+      "name": "low_stock_alerts",
+      "columns": 9,
+      "size": "24 kB"
+    },
+    {
+      "name": "inventory_abc_analysis",
+      "columns": 11,
+      "size": "24 kB"
+    },
+    {
+      "name": "cycle_count_items",
+      "columns": 10,
+      "size": "24 kB"
+    },
+    {
+      "name": "inventory_adjustments",
+      "columns": 6,
+      "size": "24 kB"
+    },
+    {
+      "name": "campaigns",
+      "columns": 14,
+      "size": "24 kB"
+    },
+    {
+      "name": "workflow_rules",
+      "columns": 8,
+      "size": "24 kB"
+    },
+    {
+      "name": "verification",
+      "columns": 6,
+      "size": "24 kB"
+    },
+    {
+      "name": "payroll_items",
+      "columns": 16,
+      "size": "24 kB"
+    },
+    {
+      "name": "customer_segments",
+      "columns": 8,
+      "size": "24 kB"
+    },
+    {
+      "name": "reorder_points",
+      "columns": 10,
+      "size": "24 kB"
+    },
+    {
+      "name": "pos_refund_items",
+      "columns": 9,
+      "size": "24 kB"
+    },
+    {
+      "name": "exchange_rates",
+      "columns": 9,
+      "size": "24 kB"
+    },
+    {
+      "name": "price_lists",
+      "columns": 8,
+      "size": "24 kB"
+    },
+    {
+      "name": "loyalty_programs",
+      "columns": 9,
+      "size": "16 kB"
+    },
+    {
+      "name": "promotion_products",
+      "columns": 3,
+      "size": "16 kB"
+    },
+    {
+      "name": "price_list_items",
+      "columns": 5,
+      "size": "16 kB"
+    },
+    {
+      "name": "pos_payments",
+      "columns": 6,
+      "size": "16 kB"
+    },
+    {
+      "name": "cycle_counts",
+      "columns": 12,
+      "size": "16 kB"
+    },
+    {
+      "name": "tax_configurations",
+      "columns": 10,
+      "size": "16 kB"
+    },
+    {
+      "name": "segment_customers",
+      "columns": 4,
+      "size": "16 kB"
+    }
+  ],
+  "relationships": {
+    "account": [
+      {
+        "column": "userId",
+        "references": "user.id"
+      }
+    ],
+    "approval_requests": [
+      {
+        "column": "business_id",
+        "references": "businesses.id"
+      }
+    ],
+    "audit_logs": [
+      {
+        "column": "business_id",
+        "references": "businesses.id"
+      }
+    ],
+    "bank_reconciliation_sessions": [
+      {
+        "column": "account_id",
+        "references": "gl_accounts.id"
+      },
+      {
+        "column": "business_id",
+        "references": "businesses.id"
+      }
+    ],
+    "bank_statement_lines": [
+      {
+        "column": "session_id",
+        "references": "bank_reconciliation_sessions.id"
+      },
+      {
+        "column": "gl_entry_id",
+        "references": "gl_entries.id"
+      }
+    ],
+    "bom_materials": [
+      {
+        "column": "bom_id",
+        "references": "boms.id"
+      },
+      {
+        "column": "business_id",
+        "references": "businesses.id"
+      },
+      {
+        "column": "material_id",
+        "references": "products.id"
+      }
+    ],
+    "boms": [
+      {
+        "column": "business_id",
+        "references": "businesses.id"
+      },
+      {
+        "column": "product_id",
+        "references": "products.id"
+      }
+    ],
+    "business_users": [
+      {
+        "column": "user_id",
+        "references": "user.id"
+      },
+      {
+        "column": "business_id",
+        "references": "businesses.id"
+      }
+    ],
+    "businesses": [
+      {
+        "column": "user_id",
+        "references": "user.id"
+      }
+    ],
+    "campaign_messages": [
+      {
+        "column": "campaign_id",
+        "references": "campaigns.id"
+      }
+    ],
+    "campaigns": [
+      {
+        "column": "business_id",
+        "references": "businesses.id"
+      },
+      {
+        "column": "segment_id",
+        "references": "customer_segments.id"
+      }
+    ],
+    "challan_items": [
+      {
+        "column": "product_id",
+        "references": "products.id"
+      },
+      {
+        "column": "batch_id",
+        "references": "product_batches.id"
+      },
+      {
+        "column": "challan_id",
+        "references": "delivery_challans.id"
+      }
+    ],
+    "credit_note_items": [
+      {
+        "column": "credit_note_id",
+        "references": "credit_notes.id"
+      },
+      {
+        "column": "product_id",
+        "references": "products.id"
+      }
+    ],
+    "credit_notes": [
+      {
+        "column": "invoice_id",
+        "references": "invoices.id"
+      },
+      {
+        "column": "customer_id",
+        "references": "customers.id"
+      },
+      {
+        "column": "business_id",
+        "references": "businesses.id"
+      }
+    ],
+    "custom_packages": [
+      {
+        "column": "business_id",
+        "references": "businesses.id"
+      },
+      {
+        "column": "created_by",
+        "references": "user.id"
+      }
+    ],
+    "custom_roles": [
+      {
+        "column": "business_id",
+        "references": "businesses.id"
+      },
+      {
+        "column": "created_by",
+        "references": "user.id"
+      }
+    ],
+    "customer_segments": [
+      {
+        "column": "business_id",
+        "references": "businesses.id"
+      }
+    ],
+    "customers": [
+      {
+        "column": "business_id",
+        "references": "businesses.id"
+      }
+    ],
+    "cycle_count_items": [
+      {
+        "column": "product_id",
+        "references": "products.id"
+      },
+      {
+        "column": "cycle_count_id",
+        "references": "cycle_counts.id"
+      }
+    ],
+    "cycle_counts": [
+      {
+        "column": "business_id",
+        "references": "businesses.id"
+      },
+      {
+        "column": "warehouse_id",
+        "references": "warehouse_locations.id"
+      }
+    ],
+    "delivery_challan_items": [
+      {
+        "column": "business_id",
+        "references": "businesses.id"
+      },
+      {
+        "column": "delivery_challan_id",
+        "references": "delivery_challans.id"
+      },
+      {
+        "column": "product_id",
+        "references": "products.id"
+      }
+    ],
+    "delivery_challans": [
+      {
+        "column": "sales_order_id",
+        "references": "sales_orders.id"
+      },
+      {
+        "column": "customer_id",
+        "references": "customers.id"
+      },
+      {
+        "column": "business_id",
+        "references": "businesses.id"
+      }
+    ],
+    "exchange_rates": [
+      {
+        "column": "business_id",
+        "references": "businesses.id"
+      }
+    ],
+    "expenses": [
+      {
+        "column": "business_id",
+        "references": "businesses.id"
+      },
+      {
+        "column": "account_id",
+        "references": "gl_accounts.id"
+      },
+      {
+        "column": "vendor_id",
+        "references": "vendors.id"
+      }
+    ],
+    "feature_flag_overrides": [
+      {
+        "column": "created_by",
+        "references": "user.id"
+      },
+      {
+        "column": "feature_flag_id",
+        "references": "feature_flags.id"
+      }
+    ],
+    "fiscal_periods": [
+      {
+        "column": "business_id",
+        "references": "businesses.id"
+      }
+    ],
+    "gl_accounts": [
+      {
+        "column": "business_id",
+        "references": "businesses.id"
+      },
+      {
+        "column": "parent_id",
+        "references": "gl_accounts.id"
+      }
+    ],
+    "gl_entries": [
+      {
+        "column": "account_id",
+        "references": "gl_accounts.id"
+      },
+      {
+        "column": "business_id",
+        "references": "businesses.id"
+      },
+      {
+        "column": "journal_id",
+        "references": "journal_entries.id"
+      }
+    ],
+    "impersonation_sessions": [
+      {
+        "column": "target_user_id",
+        "references": "user.id"
+      },
+      {
+        "column": "admin_id",
+        "references": "user.id"
+      },
+      {
+        "column": "business_id",
+        "references": "businesses.id"
+      }
+    ],
+    "inventory_abc_analysis": [
+      {
+        "column": "business_id",
+        "references": "businesses.id"
+      },
+      {
+        "column": "product_id",
+        "references": "products.id"
+      }
+    ],
+    "inventory_adjustments": [
+      {
+        "column": "cycle_count_id",
+        "references": "cycle_counts.id"
+      },
+      {
+        "column": "product_id",
+        "references": "products.id"
+      }
+    ],
+    "inventory_ledger": [
+      {
+        "column": "product_id",
+        "references": "products.id"
+      },
+      {
+        "column": "business_id",
+        "references": "businesses.id"
+      }
+    ],
+    "inventory_reservations": [
+      {
+        "column": "business_id",
+        "references": "businesses.id"
+      },
+      {
+        "column": "product_id",
+        "references": "products.id"
+      }
+    ],
+    "invoice_approvals": [
+      {
+        "column": "invoice_id",
+        "references": "invoices.id"
+      },
+      {
+        "column": "business_id",
+        "references": "businesses.id"
+      },
+      {
+        "column": "approved_by",
+        "references": "user.id"
+      }
+    ],
+    "invoice_items": [
+      {
+        "column": "invoice_id",
+        "references": "invoices.id"
+      },
+      {
+        "column": "business_id",
+        "references": "businesses.id"
+      },
+      {
+        "column": "product_id",
+        "references": "products.id"
+      }
+    ],
+    "invoice_payment_reminders": [
+      {
+        "column": "business_id",
+        "references": "businesses.id"
+      },
+      {
+        "column": "invoice_id",
+        "references": "invoices.id"
+      }
+    ],
+    "invoice_templates": [
+      {
+        "column": "created_by",
+        "references": "user.id"
+      },
+      {
+        "column": "business_id",
+        "references": "businesses.id"
+      }
+    ],
+    "invoices": [
+      {
+        "column": "created_by",
+        "references": "user.id"
+      },
+      {
+        "column": "sent_by",
+        "references": "user.id"
+      },
+      {
+        "column": "business_id",
+        "references": "businesses.id"
+      },
+      {
+        "column": "customer_id",
+        "references": "customers.id"
+      },
+      {
+        "column": "recurring_parent_id",
+        "references": "invoices.id"
+      },
+      {
+        "column": "approval_by",
+        "references": "user.id"
+      }
+    ],
+    "journal_entries": [
+      {
+        "column": "reversed_by",
+        "references": "journal_entries.id"
+      },
+      {
+        "column": "business_id",
+        "references": "businesses.id"
+      }
+    ],
+    "kitchen_orders": [
+      {
+        "column": "business_id",
+        "references": "businesses.id"
+      },
+      {
+        "column": "order_id",
+        "references": "restaurant_orders.id"
+      }
+    ],
+    "low_stock_alerts": [
+      {
+        "column": "product_id",
+        "references": "products.id"
+      },
+      {
+        "column": "business_id",
+        "references": "businesses.id"
+      },
+      {
+        "column": "warehouse_id",
+        "references": "warehouse_locations.id"
+      }
+    ],
+    "loyalty_programs": [
+      {
+        "column": "business_id",
+        "references": "businesses.id"
+      }
+    ],
+    "loyalty_transactions": [
+      {
+        "column": "business_id",
+        "references": "businesses.id"
+      },
+      {
+        "column": "program_id",
+        "references": "loyalty_programs.id"
+      },
+      {
+        "column": "customer_id",
+        "references": "customers.id"
+      }
+    ],
+    "payment_allocations": [
+      {
+        "column": "invoice_id",
+        "references": "invoices.id"
+      },
+      {
+        "column": "purchase_id",
+        "references": "purchases.id"
+      },
+      {
+        "column": "payment_id",
+        "references": "payments.id"
+      }
+    ],
+    "payments": [
+      {
+        "column": "customer_id",
+        "references": "customers.id"
+      },
+      {
+        "column": "business_id",
+        "references": "businesses.id"
+      },
+      {
+        "column": "vendor_id",
+        "references": "vendors.id"
+      }
+    ],
+    "payroll_employees": [
+      {
+        "column": "business_id",
+        "references": "businesses.id"
+      }
+    ],
+    "payroll_items": [
+      {
+        "column": "employee_id",
+        "references": "payroll_employees.id"
+      },
+      {
+        "column": "run_id",
+        "references": "payroll_runs.id"
+      }
+    ],
+    "payroll_runs": [
+      {
+        "column": "business_id",
+        "references": "businesses.id"
+      }
+    ],
+    "pos_payments": [
+      {
+        "column": "transaction_id",
+        "references": "pos_transactions.id"
+      }
+    ],
+    "pos_refund_items": [
+      {
+        "column": "refund_id",
+        "references": "pos_refunds.id"
+      }
+    ],
+    "pos_refunds": [
+      {
+        "column": "business_id",
+        "references": "businesses.id"
+      },
+      {
+        "column": "transaction_id",
+        "references": "pos_transactions.id"
+      }
+    ],
+    "pos_sessions": [
+      {
+        "column": "terminal_id",
+        "references": "pos_terminals.id"
+      },
+      {
+        "column": "business_id",
+        "references": "businesses.id"
+      },
+      {
+        "column": "user_id",
+        "references": "user.id"
+      }
+    ],
+    "pos_terminals": [
+      {
+        "column": "warehouse_id",
+        "references": "warehouse_locations.id"
+      },
+      {
+        "column": "business_id",
+        "references": "businesses.id"
+      }
+    ],
+    "pos_transaction_items": [
+      {
+        "column": "transaction_id",
+        "references": "pos_transactions.id"
+      },
+      {
+        "column": "product_id",
+        "references": "products.id"
+      }
+    ],
+    "pos_transactions": [
+      {
+        "column": "business_id",
+        "references": "businesses.id"
+      },
+      {
+        "column": "session_id",
+        "references": "pos_sessions.id"
+      },
+      {
+        "column": "customer_id",
+        "references": "customers.id"
+      }
+    ],
+    "price_list_items": [
+      {
+        "column": "price_list_id",
+        "references": "price_lists.id"
+      },
+      {
+        "column": "product_id",
+        "references": "products.id"
+      }
+    ],
+    "price_lists": [
+      {
+        "column": "business_id",
+        "references": "businesses.id"
+      }
+    ],
+    "product_batches": [
+      {
+        "column": "warehouse_id",
+        "references": "warehouse_locations.id"
+      },
+      {
+        "column": "product_id",
+        "references": "products.id"
+      },
+      {
+        "column": "business_id",
+        "references": "businesses.id"
+      }
+    ],
+    "product_serials": [
+      {
+        "column": "business_id",
+        "references": "businesses.id"
+      },
+      {
+        "column": "customer_id",
+        "references": "customers.id"
+      },
+      {
+        "column": "warehouse_id",
+        "references": "warehouse_locations.id"
+      },
+      {
+        "column": "product_id",
+        "references": "products.id"
+      },
+      {
+        "column": "variant_id",
+        "references": "product_variants.id"
+      },
+      {
+        "column": "batch_id",
+        "references": "product_batches.id"
+      }
+    ],
+    "product_stock_locations": [
+      {
+        "column": "product_id",
+        "references": "products.id"
+      },
+      {
+        "column": "business_id",
+        "references": "businesses.id"
+      },
+      {
+        "column": "warehouse_id",
+        "references": "warehouse_locations.id"
+      }
+    ],
+    "product_variants": [
+      {
+        "column": "business_id",
+        "references": "businesses.id"
+      },
+      {
+        "column": "product_id",
+        "references": "products.id"
+      }
+    ],
+    "production_orders": [
+      {
+        "column": "warehouse_id",
+        "references": "warehouse_locations.id"
+      },
+      {
+        "column": "bom_id",
+        "references": "boms.id"
+      },
+      {
+        "column": "business_id",
+        "references": "businesses.id"
+      },
+      {
+        "column": "product_id",
+        "references": "products.id"
+      }
+    ],
+    "products": [
+      {
+        "column": "business_id",
+        "references": "businesses.id"
+      }
+    ],
+    "promotion_products": [
+      {
+        "column": "product_id",
+        "references": "products.id"
+      },
+      {
+        "column": "promotion_id",
+        "references": "promotions.id"
+      }
+    ],
+    "promotions": [
+      {
+        "column": "business_id",
+        "references": "businesses.id"
+      }
+    ],
+    "purchase_items": [
+      {
+        "column": "purchase_id",
+        "references": "purchases.id"
+      },
+      {
+        "column": "product_id",
+        "references": "products.id"
+      },
+      {
+        "column": "business_id",
+        "references": "businesses.id"
+      }
+    ],
+    "purchases": [
+      {
+        "column": "business_id",
+        "references": "businesses.id"
+      },
+      {
+        "column": "vendor_id",
+        "references": "vendors.id"
+      }
+    ],
+    "quotation_items": [
+      {
+        "column": "business_id",
+        "references": "businesses.id"
+      },
+      {
+        "column": "product_id",
+        "references": "products.id"
+      },
+      {
+        "column": "quotation_id",
+        "references": "quotations.id"
+      }
+    ],
+    "quotations": [
+      {
+        "column": "customer_id",
+        "references": "customers.id"
+      },
+      {
+        "column": "business_id",
+        "references": "businesses.id"
+      }
+    ],
+    "reorder_points": [
+      {
+        "column": "product_id",
+        "references": "products.id"
+      },
+      {
+        "column": "business_id",
+        "references": "businesses.id"
+      },
+      {
+        "column": "warehouse_id",
+        "references": "warehouse_locations.id"
+      }
+    ],
+    "restaurant_order_items": [
+      {
+        "column": "order_id",
+        "references": "restaurant_orders.id"
+      }
+    ],
+    "restaurant_orders": [
+      {
+        "column": "business_id",
+        "references": "businesses.id"
+      },
+      {
+        "column": "table_id",
+        "references": "restaurant_tables.id"
+      },
+      {
+        "column": "customer_id",
+        "references": "customers.id"
+      }
+    ],
+    "restaurant_tables": [
+      {
+        "column": "business_id",
+        "references": "businesses.id"
+      }
+    ],
+    "sales_order_items": [
+      {
+        "column": "product_id",
+        "references": "products.id"
+      },
+      {
+        "column": "business_id",
+        "references": "businesses.id"
+      },
+      {
+        "column": "sales_order_id",
+        "references": "sales_orders.id"
+      }
+    ],
+    "sales_orders": [
+      {
+        "column": "business_id",
+        "references": "businesses.id"
+      },
+      {
+        "column": "customer_id",
+        "references": "customers.id"
+      },
+      {
+        "column": "quotation_id",
+        "references": "quotations.id"
+      }
+    ],
+    "segment_customers": [
+      {
+        "column": "segment_id",
+        "references": "customer_segments.id"
+      }
+    ],
+    "session": [
+      {
+        "column": "userId",
+        "references": "user.id"
+      }
+    ],
+    "stock_movements": [
+      {
+        "column": "warehouse_id",
+        "references": "warehouse_locations.id"
+      },
+      {
+        "column": "product_id",
+        "references": "products.id"
+      },
+      {
+        "column": "batch_id",
+        "references": "product_batches.id"
+      },
+      {
+        "column": "business_id",
+        "references": "businesses.id"
+      }
+    ],
+    "stock_transfers": [
+      {
+        "column": "business_id",
+        "references": "businesses.id"
+      },
+      {
+        "column": "to_warehouse_id",
+        "references": "warehouse_locations.id"
+      },
+      {
+        "column": "batch_id",
+        "references": "product_batches.id"
+      },
+      {
+        "column": "from_warehouse_id",
+        "references": "warehouse_locations.id"
+      },
+      {
+        "column": "product_id",
+        "references": "products.id"
+      }
+    ],
+    "supplier_quotes": [
+      {
+        "column": "business_id",
+        "references": "businesses.id"
+      }
+    ],
+    "tax_configurations": [
+      {
+        "column": "business_id",
+        "references": "businesses.id"
+      }
+    ],
+    "twoFactor": [
+      {
+        "column": "userId",
+        "references": "user.id"
+      }
+    ],
+    "user_activity_logs": [
+      {
+        "column": "user_id",
+        "references": "user.id"
+      },
+      {
+        "column": "business_id",
+        "references": "businesses.id"
+      }
+    ],
+    "user_invitations": [
+      {
+        "column": "business_id",
+        "references": "businesses.id"
+      },
+      {
+        "column": "invited_by",
+        "references": "user.id"
+      },
+      {
+        "column": "accepted_by",
+        "references": "user.id"
+      }
+    ],
+    "vendors": [
+      {
+        "column": "business_id",
+        "references": "businesses.id"
+      }
+    ],
+    "warehouse_locations": [
+      {
+        "column": "business_id",
+        "references": "businesses.id"
+      }
+    ],
+    "workflow_history": [
+      {
+        "column": "business_id",
+        "references": "businesses.id"
+      },
+      {
+        "column": "rule_id",
+        "references": "workflow_rules.id"
+      }
+    ],
+    "workflow_rules": [
+      {
+        "column": "business_id",
+        "references": "businesses.id"
+      }
+    ]
+  },
+  "issues": [],
+  "summary": {
+    "totalTables": 92,
+    "coreTables": 7,
+    "adminTables": 7,
+    "foreignKeys": 189,
+    "indexes": 361,
+    "issuesFound": 0
+  }
+}

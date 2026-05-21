@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { cn } from '@/lib/utils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -281,7 +282,7 @@ export function CustomerForm({
                 <CardContent className="pt-6">
                     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                         <TabsList className={cn("grid w-full mb-8 bg-gray-100/50 p-1 rounded-xl", isEasyMode ? "grid-cols-1" : "grid-cols-3")}>
-                            <TabsTrigger value="basic" className="relative rounded-lg data-[state=active]:bg-white data-[state=active]:text-wine data-[state=active]:shadow-sm">
+                            <TabsTrigger value="basic" className="relative rounded-lg data-[state=active]:bg-white data-[state=active]:text-slate-800 data-[state=active]:shadow-sm px-4 py-2 font-medium text-xs">
                                 Basic Details
                                 {['name', 'phone', 'city'].some(k => errors[k]) && (
                                     <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500 animate-pulse" />
@@ -289,13 +290,13 @@ export function CustomerForm({
                             </TabsTrigger>
                             {!isEasyMode && (
                                 <>
-                                    <TabsTrigger value="tax" className="relative rounded-lg data-[state=active]:bg-white data-[state=active]:text-wine data-[state=active]:shadow-sm">
+                                    <TabsTrigger value="tax" className="relative rounded-lg data-[state=active]:bg-white data-[state=active]:text-slate-800 data-[state=active]:shadow-sm px-4 py-2 font-medium text-xs">
                                         Financial & Tax
                                         {['ntn', 'cnic', 'srn', 'credit_limit'].some(k => errors[k]) && (
                                             <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500 animate-pulse" />
                                         )}
                                     </TabsTrigger>
-                                    <TabsTrigger value="domain" className="relative rounded-lg data-[state=active]:bg-white data-[state=active]:text-wine data-[state=active]:shadow-sm text-xs">
+                                    <TabsTrigger value="domain" className="relative rounded-lg data-[state=active]:bg-white data-[state=active]:text-slate-800 data-[state=active]:shadow-sm px-4 py-2 font-medium text-xs text-xs">
                                         Domain Expert Info
                                     </TabsTrigger>
                                 </>
@@ -305,20 +306,20 @@ export function CustomerForm({
                         <TabsContent value="basic" className="space-y-6 animate-in fade-in duration-300">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest after:content-['*'] after:ml-0.5 after:text-red-500">Customer Name</Label>
+                                    <Label className="text-[11px] font-semibold text-slate-600 after:content-['*'] after:ml-0.5 after:text-red-500">Customer Name</Label>
                                     <Input
                                         value={formData.name || ''}
                                         onChange={(e) => handleInputChange('name', e.target.value)}
                                         placeholder="Full Name / Company"
-                                        className="h-11 rounded-xl"
+                                        className="h-9 rounded-md"
                                     />
                                     {errors?.name && <FormError message={errors.name} />}
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest after:content-['*'] after:ml-0.5 after:text-red-500">Phone</Label>
+                                    <Label className="text-[11px] font-semibold text-slate-600 after:content-['*'] after:ml-0.5 after:text-red-500">Phone</Label>
                                     <div className="flex gap-2">
                                         <Select value={countryCode} onValueChange={setCountryCode}>
-                                            <SelectTrigger className="w-[110px] h-11 rounded-xl bg-gray-50 border-gray-200">
+                                            <SelectTrigger className="w-[110px] h-9 rounded-md bg-gray-50 border-gray-200">
                                                 <SelectValue placeholder="Code" />
                                             </SelectTrigger>
                                             <SelectContent>
@@ -335,19 +336,19 @@ export function CustomerForm({
                                                 value={localPhone}
                                                 onChange={handleLocalPhoneChange}
                                                 placeholder="300 1234567"
-                                                className="h-11 rounded-xl pl-10"
+                                                className="h-9 rounded-md pl-10"
                                             />
                                         </div>
                                     </div>
                                     {errors?.phone && <FormError message={errors.phone} />}
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Email</Label>
+                                    <Label className="text-[11px] font-semibold text-slate-600">Email</Label>
                                     <Input
                                         value={formData.email || ''}
                                         onChange={(e) => handleInputChange('email', e.target.value)}
                                         placeholder="customer@example.com"
-                                        className="h-11 rounded-xl"
+                                        className="h-9 rounded-md"
                                     />
                                     {errors?.email && <FormError message={errors.email} />}
                                 </div>
@@ -369,12 +370,12 @@ export function CustomerForm({
                                     />
                                 </div>
                                 <div className="col-span-1 md:col-span-2 space-y-2">
-                                    <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Billing Address</Label>
+                                    <Label className="text-[11px] font-semibold text-slate-600">Billing Address</Label>
                                     <Input
                                         value={formData.address || ''}
                                         onChange={(e) => handleInputChange('address', e.target.value)}
                                         placeholder="Complete Address (Shop #, Market, Area)"
-                                        className="h-11 rounded-xl"
+                                        className="h-9 rounded-md"
                                     />
                                 </div>
                             </div>
@@ -387,7 +388,7 @@ export function CustomerForm({
                                     </h4>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div className="space-y-2">
-                                            <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Credit Limit (PKR)</Label>
+                                            <Label className="text-[11px] font-semibold text-slate-600">Credit Limit (PKR)</Label>
                                             <div className="relative">
                                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-semibold text-xs">₨</span>
                                                 <Input
@@ -395,13 +396,13 @@ export function CustomerForm({
                                                     value={formData.credit_limit || ''}
                                                     onChange={(e) => handleInputChange('credit_limit', e.target.value)}
                                                     placeholder="0"
-                                                    className="h-11 rounded-xl pl-8"
+                                                    className="h-9 rounded-md pl-8"
                                                 />
                                             </div>
                                             {errors.credit_limit && <FormError message={errors.credit_limit} />}
                                         </div>
                                         <div className="space-y-2">
-                                            <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Opening Balance (PKR)</Label>
+                                            <Label className="text-[11px] font-semibold text-slate-600">Opening Balance (PKR)</Label>
                                             <div className="relative">
                                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-semibold text-xs">₨</span>
                                                 <Input
@@ -409,7 +410,7 @@ export function CustomerForm({
                                                     value={formData.opening_balance || ''}
                                                     onChange={(e) => handleInputChange('opening_balance', e.target.value)}
                                                     placeholder="0"
-                                                    className="h-11 rounded-xl pl-8"
+                                                    className="h-9 rounded-md pl-8"
                                                 />
                                             </div>
                                         </div>
@@ -427,41 +428,41 @@ export function CustomerForm({
                                     </h4>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div className="space-y-2">
-                                            <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">CNIC (Individuals)</Label>
+                                            <Label className="text-[11px] font-semibold text-slate-600">CNIC (Individuals)</Label>
                                             <Input
                                                 value={formData.cnic || ''}
                                                 onChange={handleCNICChange}
                                                 placeholder="42201-1234567-1"
-                                                className="h-11 rounded-xl font-mono text-sm"
+                                                className="h-9 rounded-md font-mono text-sm"
                                                 maxLength={15}
                                             />
                                             {errors?.cnic && <FormError message={errors.cnic} />}
                                         </div>
                                         <div className="space-y-2">
-                                            <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">NTN (Business)</Label>
+                                            <Label className="text-[11px] font-semibold text-slate-600">NTN (Business)</Label>
                                             <Input
                                                 value={formData.ntn || ''}
                                                 onChange={handleNTNChange}
                                                 placeholder="1234567-8"
-                                                className="h-11 rounded-xl font-mono text-sm"
+                                                className="h-9 rounded-md font-mono text-sm"
                                                 maxLength={9}
                                             />
                                             {errors?.ntn && <FormError message={errors.ntn} />}
                                         </div>
                                         <div className="space-y-2">
-                                            <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">SRN (Services)</Label>
+                                            <Label className="text-[11px] font-semibold text-slate-600">SRN (Services)</Label>
                                             <Input
                                                 value={formData.srn || ''}
                                                 onChange={(e) => handleInputChange('srn', e.target.value)}
                                                 placeholder="12-34-5678-910-1"
-                                                className="h-11 rounded-xl font-mono text-sm"
+                                                className="h-9 rounded-md font-mono text-sm"
                                             />
                                             {errors?.srn && <FormError message={errors.srn} />}
                                         </div>
                                         <div className="space-y-2">
-                                            <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">FBR Filer Status</Label>
+                                            <Label className="text-[11px] font-semibold text-slate-600">FBR Filer Status</Label>
                                             <select
-                                                className="flex h-11 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm focus:ring-2 focus:ring-wine/20 font-bold"
+                                                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:ring-2 focus:ring-wine/20 font-bold"
                                                 value={formData.filer_status || 'none'}
                                                 onChange={(e) => handleInputChange('filer_status', e.target.value)}
                                                 style={{ color: formData.filer_status === 'active' ? '#16a34a' : (formData.filer_status === 'inactive' ? '#dc2626' : 'inherit') }}
@@ -481,7 +482,7 @@ export function CustomerForm({
                                     </h4>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div className="space-y-2">
-                                            <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Credit Limit (PKR)</Label>
+                                            <Label className="text-[11px] font-semibold text-slate-600">Credit Limit (PKR)</Label>
                                             <div className="relative">
                                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-semibold text-xs">₨</span>
                                                 <Input
@@ -489,13 +490,13 @@ export function CustomerForm({
                                                     value={formData.credit_limit || ''}
                                                     onChange={(e) => handleInputChange('credit_limit', e.target.value)}
                                                     placeholder="0"
-                                                    className="h-11 rounded-xl pl-8"
+                                                    className="h-9 rounded-md pl-8"
                                                 />
                                             </div>
                                             {errors.credit_limit && <FormError message={errors.credit_limit} />}
                                         </div>
                                         <div className="space-y-2">
-                                            <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Opening Balance (PKR)</Label>
+                                            <Label className="text-[11px] font-semibold text-slate-600">Opening Balance (PKR)</Label>
                                             <div className="relative">
                                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-semibold text-xs">₨</span>
                                                 <Input
@@ -503,7 +504,7 @@ export function CustomerForm({
                                                     value={formData.opening_balance || ''}
                                                     onChange={(e) => handleInputChange('opening_balance', e.target.value)}
                                                     placeholder="0"
-                                                    className="h-11 rounded-xl pl-8"
+                                                    className="h-9 rounded-md pl-8"
                                                 />
                                             </div>
                                         </div>

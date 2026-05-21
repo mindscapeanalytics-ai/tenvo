@@ -50,8 +50,10 @@ export function EnhancedInvoiceBuilder({
   initialData = null,
   ...props
 }) {
-  const { business, currency, regionalStandards } = useBusiness();
+  const { business, currency: rawCurrency, regionalStandards } = useBusiness();
   const standards = regionalStandards || { taxLabel: 'Tax', taxIdLabel: 'Tax ID', currency: 'PKR', countryCode: 'PK' };
+  // Ensure we always have a valid currency code for formatCurrency
+  const currency = rawCurrency || standards.currency || 'PKR';
   const strategy = getTaxStrategy(standards);
   const colors = getDomainColors(category);
   const domainKnowledge = getDomainKnowledge(category);
@@ -401,7 +403,8 @@ export function EnhancedInvoiceBuilder({
     });
 
     const taxResult = strategy.calculateBulk(itemsForTax, standards);
-    const totalTax = taxResult.totalTax;
+    // taxResult.totalTax is the canonical field; fall back to taxAmount for safety
+    const totalTax = Number(taxResult.totalTax ?? taxResult.taxAmount ?? 0);
 
     const total = Number((finalSubtotal + totalTax).toFixed(2));
     const manualRoundOff = Number(invoice.roundOff || 0) || 0;
@@ -409,6 +412,7 @@ export function EnhancedInvoiceBuilder({
 
     return {
       subtotal: finalSubtotal,
+      rawSubtotal: subtotal,
       totalTax,
       tax_total: totalTax,
       taxDetails: taxResult.details,
@@ -674,15 +678,19 @@ export function EnhancedInvoiceBuilder({
   const totals = calculateTotals;
 
   const postingHealth = useMemo(() => {
-    const debit = Number(totals.total) || 0;
+    const grandTotal = Number(totals.total) || 0;
+    const rawSubtotal = Number(totals.rawSubtotal ?? totals.subtotal) || 0;
     const tax = Number(totals.totalTax || totals.tax_total || 0) || 0;
-    const revenue = Math.max(0, debit - tax);
-    const credit = revenue + tax;
-    const difference = Math.abs(debit - credit);
+    const discount = Number(totals.discount || 0) || 0;
+    const seasonal = Number(totals.seasonalDiscount || 0) || 0;
+    const roundOff = Number(totals.roundOff || 0) || 0;
+    // Expected: rawSubtotal - discount - seasonal + tax + roundOff = grandTotal
+    const expected = Number((rawSubtotal - discount - seasonal + tax + roundOff).toFixed(2));
+    const difference = Math.abs(grandTotal - expected);
     return {
-      debit,
-      credit,
-      balanced: difference < 0.01,
+      debit: grandTotal,
+      credit: expected,
+      balanced: difference < 0.02,
       difference,
     };
   }, [totals]);
@@ -966,112 +974,86 @@ export function EnhancedInvoiceBuilder({
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
       <Card className="w-full max-w-6xl max-h-[95vh] overflow-y-auto rounded-3xl shadow-2xl border-none">
-        <CardHeader className="flex flex-row items-center justify-between border-b py-8 px-8" style={{ backgroundColor: `${colors.primary}08` }}>
-          <div className="space-y-1">
-            <CardTitle className="text-3xl font-black tracking-tighter uppercase italic" style={{ color: colors.primary }}>
-              {standards.taxLabel} Compliance Engine
-            </CardTitle>
+        <CardHeader className="flex flex-row items-center justify-between border-b py-5 px-8 bg-slate-50/50">
+          <div className="space-y-1.5">
             <div className="flex items-center gap-3">
-              <span className="text-gray-500 font-bold text-xs uppercase tracking-widest">Compliance Mode:</span>
-              <Badge className="bg-emerald-500 text-white border-0 text-[10px] font-black uppercase">Active</Badge>
-              <Badge className={cn('text-[10px] font-black uppercase border', activeApprovalStatus.className)}>
+              <CardTitle className="text-2xl font-semibold text-slate-800 tracking-tight">
+                {initialData ? 'Edit Invoice' : 'New Invoice'}
+              </CardTitle>
+              <Badge variant="outline" className="text-[11px] font-medium bg-white text-slate-600 border-slate-200 shadow-sm">
+                {category.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+              </Badge>
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge className={cn('text-[10px] font-semibold uppercase tracking-wider shadow-sm border', activeApprovalStatus.className)}>
                 <activeApprovalStatus.icon className="w-3.5 h-3.5 mr-1" />
                 {activeApprovalStatus.label}
               </Badge>
-              <Badge variant="outline" className="text-[10px] font-black uppercase tracking-widest" style={{ backgroundColor: `${colors.primary}10`, color: colors.primary, borderColor: `${colors.primary}20` }}>
-                {category.replace('-', ' ')}
-              </Badge>
               {currentSeason && (
-                <Badge className="bg-gradient-to-r from-orange-500 to-pink-500 text-white border-0 text-[10px] font-black uppercase animate-pulse">
-                  [CELEBRATION] {currentSeason.name.en} - {currentSeason.discountPercent}% OFF
+                <Badge variant="outline" className="text-[10px] font-semibold text-orange-600 border-orange-200 bg-orange-50 shadow-sm uppercase tracking-wider">
+                  {currentSeason.name.en} ({currentSeason.discountPercent}% OFF)
                 </Badge>
               )}
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 bg-white/20 px-3 py-1.5 rounded-xl border border-white/30 text-white cursor-help" onClick={() => setShowKeyboardHints(!showKeyboardHints)}>
-              <Keyboard className="w-4 h-4" />
-              <span className="text-[10px] font-bold uppercase tracking-tighter">Hotkeys</span>
+            <div className="flex items-center gap-2 bg-slate-100/80 px-2.5 py-1.5 rounded-md border border-slate-200 text-slate-500 cursor-help hover:bg-slate-200 transition-colors" onClick={() => setShowKeyboardHints(!showKeyboardHints)}>
+              <Keyboard className="w-3.5 h-3.5" />
+              <span className="text-[10px] font-bold uppercase tracking-wider">Hotkeys</span>
             </div>
-            <div className="text-right hidden md:block">
-              <p className="text-[10px] font-black text-gray-400 uppercase">Document Ref</p>
-              <p className="font-mono text-sm font-bold text-gray-900">{invoice.invoiceNumber}</p>
+            <div className="text-right hidden md:block border-l pl-4 border-slate-200">
+              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-1">Invoice Number</p>
+              <p className="font-mono text-sm font-semibold text-slate-700 bg-white border border-slate-200 px-2.5 py-0.5 rounded shadow-sm">{invoice.invoiceNumber}</p>
             </div>
-            <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full hover:bg-red-50 hover:text-red-500 transition-colors">
-              <X className="w-6 h-6" />
+            <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full hover:bg-red-50 hover:text-red-600 transition-colors ml-2">
+              <X className="w-5 h-5" />
             </Button>
           </div>
         </CardHeader>
         {showKeyboardHints && (
-          <div className="bg-wine px-8 py-2 flex gap-6 text-[10px] font-bold text-white/80 uppercase tracking-widest animate-in slide-in-from-top-1">
-            <span className="flex items-center gap-1"><kbd className="bg-white/10 px-1 rounded">CTRL+S</kbd> Save</span>
-            <span className="flex items-center gap-1"><kbd className="bg-white/10 px-1 rounded">CTRL+B</kbd> Barcode Focus</span>
-            <span className="flex items-center gap-1"><kbd className="bg-white/10 px-1 rounded">ENTER</kbd> (in items) New Row</span>
-            <span className="flex items-center gap-1"><kbd className="bg-white/10 px-1 rounded">ESC</kbd> Close</span>
+          <div className="bg-slate-800 px-8 py-2.5 flex gap-6 text-[11px] font-medium text-slate-200 border-b border-slate-700 animate-in slide-in-from-top-1 shadow-inner">
+            <span className="flex items-center gap-1.5"><kbd className="bg-slate-700 border border-slate-600 px-1.5 py-0.5 rounded font-mono text-[10px] shadow-sm">CTRL+S</kbd> Save</span>
+            <span className="flex items-center gap-1.5"><kbd className="bg-slate-700 border border-slate-600 px-1.5 py-0.5 rounded font-mono text-[10px] shadow-sm">CTRL+B</kbd> Barcode Focus</span>
+            <span className="flex items-center gap-1.5"><kbd className="bg-slate-700 border border-slate-600 px-1.5 py-0.5 rounded font-mono text-[10px] shadow-sm">ENTER</kbd> New Row</span>
+            <span className="flex items-center gap-1.5"><kbd className="bg-slate-700 border border-slate-600 px-1.5 py-0.5 rounded font-mono text-[10px] shadow-sm">ESC</kbd> Close</span>
           </div>
         )}
-        <CardContent className="space-y-8 p-8 bg-white/50">
+        <CardContent className="space-y-6 p-8 bg-white">
           {/* Business Header - Your Brand */}
           {business?.name && (
-            <div className="border-b-2 border-gray-200 pb-6 mb-6">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <h1 className="text-3xl font-black text-gray-900 mb-2">
-                    {business.name}
-                  </h1>
-                  <div className="space-y-1 text-sm text-gray-600">
-                    {business.address && <p>{business.address}</p>}
-                    <div className="flex gap-4">
-                      {business.ntn && (
-                        <p>
-                          <span className="font-semibold">NTN:</span> {business.ntn}
-                        </p>
-                      )}
-                      {business.srn && (
-                        <p>
-                          <span className="font-semibold">SRN:</span> {business.srn}
-                        </p>
-                      )}
-                    </div>
-                    <div className="flex gap-4">
-                      {business.phone && (
-                        <p>
-                          <span className="font-semibold">Phone:</span> {business.phone}
-                        </p>
-                      )}
-                      {business.email && (
-                        <p>
-                          <span className="font-semibold">Email:</span> {business.email}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-xs font-bold uppercase text-gray-400 tracking-widest">Invoice</p>
-                  <p className="text-2xl font-black" style={{ color: colors.primary }}>{invoice.invoiceNumber}</p>
+            <div className="pb-2 mb-2 flex items-start justify-between">
+              <div className="flex-1">
+                <h1 className="text-xl font-bold text-slate-800 mb-1">
+                  {business.name}
+                </h1>
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
+                  {business.address && <span>{business.address}</span>}
+                  {business.ntn && <span><span className="font-semibold text-slate-600">NTN:</span> {business.ntn}</span>}
+                  {business.srn && <span><span className="font-semibold text-slate-600">SRN:</span> {business.srn}</span>}
+                  {business.phone && <span><span className="font-semibold text-slate-600">Tel:</span> {business.phone}</span>}
+                  {business.email && <span><span className="font-semibold text-slate-600">Email:</span> {business.email}</span>}
                 </div>
               </div>
             </div>
           )}
 
-          {/* Invoice Header */}
-          <div className="grid grid-cols-4 gap-4">
-            <div>
-              <Label>Invoice Number</Label>
-              <Input value={invoice.invoiceNumber} readOnly className="bg-gray-50" />
+          <div className="bg-slate-50 border border-slate-100 rounded-xl p-5 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-slate-500">Invoice Number</Label>
+              <Input value={invoice.invoiceNumber} readOnly className="bg-slate-100/50 border-slate-200 shadow-none h-9 text-sm text-slate-700" />
             </div>
-            <div>
-              <Label>Date *</Label>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-slate-500">Date *</Label>
               <Input
                 type="date"
                 value={invoice.date || ''}
                 onChange={(e) => setInvoice({ ...invoice, date: e.target.value })}
                 required
+                className="h-9 text-sm shadow-sm border-slate-200"
               />
             </div>
-            <div>
-              <Label>Due Date</Label>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-slate-500">Due Date</Label>
               <Input
                 type="date"
                 value={invoice.dueDate || ''}
@@ -1079,10 +1061,11 @@ export function EnhancedInvoiceBuilder({
                   setIsDueDateManuallyEdited(true);
                   setInvoice({ ...invoice, dueDate: e.target.value });
                 }}
+                className="h-9 text-sm shadow-sm border-slate-200"
               />
             </div>
-            <div>
-              <Label>Document Type</Label>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-slate-500">Document Type</Label>
               <Combobox
                 options={[
                   { value: 'tax', label: `${standards.taxLabel} Invoice` },
@@ -1092,14 +1075,14 @@ export function EnhancedInvoiceBuilder({
                 value={invoice.invoiceType}
                 onChange={(val) => setInvoice({ ...invoice, invoiceType: val })}
                 placeholder="Select type..."
-                className="h-10"
+                className="h-9 text-sm shadow-sm border-slate-200"
               />
             </div>
           </div>
 
           {/* Customer Selection */}
-          <div className="border-t pt-4">
-            <div className="flex items-center justify-between mb-4">
+          <div className="border border-slate-100 rounded-xl p-5">
+            <div className="flex items-center justify-between mb-5">
               <h3 className="font-semibold text-lg">Customer Details</h3>
               {customers.length > 0 && (
                 <Combobox
@@ -1118,13 +1101,13 @@ export function EnhancedInvoiceBuilder({
                   }}
                   placeholder="Search customers..."
                   emptyText="No customers found"
-                  className="w-[280px]"
+                  className="w-[300px] h-9 shadow-sm"
                 />
               )}
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Customer Name *</Label>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-4">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-slate-600">Customer Name *</Label>
                 <Input
                   value={invoice.customer.name || ''}
                   onChange={(e) => setInvoice({
@@ -1157,11 +1140,12 @@ export function EnhancedInvoiceBuilder({
                     }
                   }}
                   placeholder={`${standards.taxIdLabel} Number`}
+                  className="h-9 text-sm shadow-sm border-slate-200"
                 />
               </div>
               {standards.countryCode === 'PK' && (
-                <div className="mt-2 flex items-center gap-2">
-                  <Label className="text-[10px] font-bold text-gray-400">Province</Label>
+                <div className="space-y-1.5 flex flex-col justify-center mt-1">
+                  <Label className="text-xs font-semibold text-slate-600">Province</Label>
                   <select
                     value={invoice.customer.province}
                     onChange={(e) => setInvoice({
@@ -1180,26 +1164,26 @@ export function EnhancedInvoiceBuilder({
               )}
               {invoice.customer.credit_limit > 0 && (
                 <div className={cn(
-                  "col-span-2 p-3 rounded-xl border flex items-center justify-between",
+                  "col-span-full p-2.5 rounded-lg border flex items-center justify-between mb-2",
                   totals.total + (invoice.customer.outstanding_balance || 0) > invoice.customer.credit_limit
-                    ? "bg-red-50 border-red-100 text-red-600"
-                    : "bg-emerald-50 border-emerald-100 text-emerald-600"
+                    ? "bg-red-50 border-red-200 text-red-700"
+                    : "bg-slate-50 border-slate-200 text-slate-700"
                 )}>
                   <div className="flex items-center gap-2">
-                    <ShoppingCart className="w-4 h-4" />
-                    <span className="text-xs font-bold uppercase tracking-wider">Credit Profile:</span>
-                    <span className="text-xs font-medium">Limit: {formatCurrency(invoice.customer.credit_limit, currency)} | Current Balance: {formatCurrency(invoice.customer.outstanding_balance || 0, currency)}</span>
+                    <ShoppingCart className="w-4 h-4 text-slate-400" />
+                    <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Credit Profile</span>
+                    <span className="text-xs font-medium ml-2">Limit: {formatCurrency(invoice.customer.credit_limit, currency)} <span className="text-slate-300 mx-1">|</span> Current Balance: {formatCurrency(invoice.customer.outstanding_balance || 0, currency)}</span>
                   </div>
                   {totals.total + (invoice.customer.outstanding_balance || 0) > invoice.customer.credit_limit && (
-                    <div className="flex items-center gap-1 font-black text-[10px] uppercase">
+                    <div className="flex items-center gap-1.5 font-bold text-[10px] uppercase tracking-wider bg-red-100 px-2 py-0.5 rounded text-red-600">
                       <AlertCircle className="w-3 h-3" />
-                      Credit Limit Exceeded
+                      Limit Exceeded
                     </div>
                   )}
                 </div>
               )}
-              <div>
-                <Label>Email</Label>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-slate-600">Email</Label>
                 <Input
                   type="email"
                   value={invoice.customer.email || ''}
@@ -1207,10 +1191,11 @@ export function EnhancedInvoiceBuilder({
                     ...invoice,
                     customer: { ...invoice.customer, email: e.target.value }
                   })}
+                  className="h-9 text-sm shadow-sm border-slate-200"
                 />
               </div>
-              <div>
-                <Label>Phone</Label>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-slate-600">Phone</Label>
                 <Input
                   value={invoice.customer.phone || ''}
                   onChange={(e) => setInvoice({
@@ -1227,16 +1212,18 @@ export function EnhancedInvoiceBuilder({
                       toast.success('Customer auto-filled from phone');
                     }
                   }}
+                  className="h-9 text-sm shadow-sm border-slate-200"
                 />
               </div>
-              <div className="col-span-2">
-                <Label>Address</Label>
+              <div className="col-span-1 md:col-span-2 lg:col-span-3 space-y-1.5">
+                <Label className="text-xs font-semibold text-slate-600">Billing Address</Label>
                 <Input
                   value={invoice.customer.address || ''}
                   onChange={(e) => setInvoice({
                     ...invoice,
                     customer: { ...invoice.customer, address: e.target.value }
                   })}
+                  className="h-9 text-sm shadow-sm border-slate-200"
                 />
               </div>
             </div>
@@ -1257,12 +1244,15 @@ export function EnhancedInvoiceBuilder({
           )}
 
           {/* Items Section */}
-          <div className="border-t pt-4">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-lg">Items</h3>
+          <div className="pt-2">
+            <div className="flex items-center justify-between mb-4 bg-slate-50 border border-slate-200 rounded-lg px-4 py-2">
+              <h3 className="font-semibold text-slate-800 text-sm flex items-center gap-2">
+                <ShoppingCart className="w-4 h-4 text-slate-500" />
+                Line Items
+              </h3>
               <div className="flex gap-2">
                 <div className="relative group lg:w-48">
-                  <Scan className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-wine" />
+                  <Scan className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 group-focus-within:text-indigo-500" />
                   <Input
                     id="barcode-sniffer"
                     placeholder="Scan Barcode (Ctrl+B)"
@@ -1271,7 +1261,7 @@ export function EnhancedInvoiceBuilder({
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') handleBarcodeScan(barcodeInput);
                     }}
-                    className="pl-10 h-9 rounded-xl border-dashed border-wine/30 bg-wine/5 focus:bg-white transition-all font-mono"
+                    className="pl-8 h-8 rounded-md border-dashed border-slate-300 bg-white focus:bg-white transition-all font-mono text-xs shadow-sm"
                   />
                 </div>
                 {isPakistaniDomain && (
@@ -1279,14 +1269,14 @@ export function EnhancedInvoiceBuilder({
                     variant="outline"
                     size="sm"
                     onClick={() => setShowTaxCalculator(!showTaxCalculator)}
-                    className="rounded-xl border-gray-200"
+                    className="h-8 rounded-md border-slate-200 text-xs shadow-sm"
                   >
-                    <Calculator className="w-4 h-4 mr-2" />
+                    <Calculator className="w-3.5 h-3.5 mr-1.5 text-slate-500" />
                     Tax Helper
                   </Button>
                 )}
-                <Button onClick={addItem} size="sm" className="text-white font-bold shadow-lg rounded-xl transition-all hover:scale-105 active:scale-95" style={{ backgroundColor: colors.primary }}>
-                  <Plus className="w-4 h-4 mr-2" />
+                <Button onClick={addItem} size="sm" className="h-8 text-white font-medium shadow-sm rounded-md transition-all hover:opacity-90" style={{ backgroundColor: colors.primary }}>
+                  <Plus className="w-3.5 h-3.5 mr-1.5" />
                   Add Row
                 </Button>
               </div>
@@ -1307,30 +1297,30 @@ export function EnhancedInvoiceBuilder({
 
             <div className="space-y-3">
               {invoice.items.length === 0 ? (
-                <div className="text-center py-8 text-gray-500 border-2 border-dashed rounded-lg">
-                  <FileText className="w-12 h-12 mx-auto mb-2 text-gray-400" />
-                  <p>No items added yet.</p>
-                  <p className="text-sm">Click "Add Item" to get started.</p>
+                <div className="text-center py-10 bg-slate-50 text-slate-500 border border-dashed border-slate-200 rounded-xl">
+                  <FileText className="w-10 h-10 mx-auto mb-3 text-slate-300" />
+                  <p className="font-medium text-sm text-slate-600">No items added yet.</p>
+                  <p className="text-xs mt-1">Click "Add Row" or scan a barcode to get started.</p>
                 </div>
               ) : (
-                <div className="relative overflow-x-auto">
+                <div className="relative overflow-x-auto border border-slate-200 rounded-lg shadow-sm">
                   <table className="w-full text-sm text-left">
-                    <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+                    <thead className="bg-slate-100 border-b border-slate-200 text-slate-600">
                       <tr>
-                        <th className="px-3 py-2 text-left text-[10px] font-black uppercase text-gray-400 tracking-wider w-12">#</th>
-                        <th className="px-3 py-2 text-left text-[10px] font-black uppercase text-gray-400 tracking-wider">Item Details</th>
+                        <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider w-12">#</th>
+                        <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider">Item Details</th>
                         {getDomainInvoiceColumns(category).map(col => (
-                          <th key={col.field} className={`px-3 py-2 text-left text-[10px] font-black uppercase text-gray-400 tracking-wider ${col.width || 'w-24'}`}>
+                          <th key={col.field} className={`px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider ${col.width || 'w-24'}`}>
                             {col.header}
                           </th>
                         ))}
-                        <th className="px-3 py-2 text-right text-[10px] font-black uppercase text-gray-400 tracking-wider w-24">Qty</th>
-                        <th className="px-3 py-2 text-right text-[10px] font-black uppercase text-gray-400 tracking-wider w-24">Rate</th>
-                        <th className="px-3 py-2 text-right text-[10px] font-black uppercase text-gray-400 tracking-wider w-20">Disc%</th>
-                        <th className="px-3 py-2 text-right text-[10px] font-black uppercase text-gray-400 tracking-wider w-20">Tax%</th>
-                        <th className="px-3 py-2 text-right text-[10px] font-black uppercase text-gray-400 tracking-wider w-28">Amount</th>
-                        <th className="px-3 py-2 text-right text-[10px] font-black uppercase text-gray-400 tracking-wider w-16">Expert</th>
-                        <th className="px-3 py-2 w-10"></th>
+                        <th className="px-4 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wider w-24">Qty</th>
+                        <th className="px-4 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wider w-24">Rate</th>
+                        <th className="px-4 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wider w-20">Disc%</th>
+                        <th className="px-4 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wider w-20">Tax%</th>
+                        <th className="px-4 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wider w-28">Amount</th>
+                        <th className="px-4 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wider w-16">Expert</th>
+                        <th className="px-4 py-2.5 w-10"></th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1464,7 +1454,7 @@ export function EnhancedInvoiceBuilder({
               <div className="w-80 space-y-2">
                 <div className="flex justify-between">
                   <span>Subtotal:</span>
-                  <span className="font-semibold">{formatCurrency(totals.subtotal, currency)}</span>
+                  <span className="font-semibold">{formatCurrency(totals.rawSubtotal ?? totals.subtotal, currency)}</span>
                 </div>
                 <div className="flex justify-between items-center bg-gray-50 p-3 rounded-2xl border border-gray-100">
                   <div className="flex items-center gap-2">
@@ -1502,12 +1492,13 @@ export function EnhancedInvoiceBuilder({
                 )}
                 {/* Render dynamic tax breakdown from strategy */}
                 {Object.entries(totals.taxDetails || {}).map(([label, detail]) => {
-                  const taxVal = (detail.amount * detail.rate) / 100;
+                  // detail.amount is already the computed tax amount (not a base)
+                  const taxVal = Number(detail?.amount ?? 0);
                   if (taxVal <= 0) return null;
                   return (
-                    <div key={label} className="flex justify-between">
-                      <span>{label}:</span>
-                      <span>{formatCurrency(taxVal, standards.currency)}</span>
+                    <div key={label} className="flex justify-between text-sm text-slate-600">
+                      <span>{label} ({((detail?.rate ?? 0) * 100).toFixed(0)}%):</span>
+                      <span>{formatCurrency(taxVal, currency || 'PKR')}</span>
                     </div>
                   );
                 })}
@@ -1607,40 +1598,39 @@ export function EnhancedInvoiceBuilder({
           </div>
 
           {/* Actions */}
-          <div className="sticky bottom-0 z-20 -mx-8 mt-6 border-t bg-white/95 px-8 py-4 backdrop-blur supports-[backdrop-filter]:bg-white/85">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="sticky bottom-0 z-20 -mx-8 mt-6 border-t bg-white/95 px-8 py-4 backdrop-blur supports-[backdrop-filter]:bg-white/85 flex flex-col md:flex-row items-center justify-between gap-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
             <div className="space-y-2 w-full md:w-auto">
-              <div className="flex gap-4">
+              <div className="flex gap-3">
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() => applySmartDraft('items')}
-                  className="rounded-xl border-indigo-100 text-indigo-600 hover:bg-indigo-50 font-bold h-12 px-6"
+                  className="rounded-md border-indigo-200 text-indigo-700 hover:bg-indigo-50 font-medium h-9 px-4 text-xs shadow-sm"
                 >
-                  <WandSparkles className="w-4 h-4 mr-2" />
+                  <WandSparkles className="w-3.5 h-3.5 mr-1.5" />
                   Smart Items
                 </Button>
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() => applySmartDraft('full')}
-                  className="rounded-xl border-violet-100 text-violet-600 hover:bg-violet-50 font-bold h-12 px-6"
+                  className="rounded-md border-violet-200 text-violet-700 hover:bg-violet-50 font-medium h-9 px-4 text-xs shadow-sm"
                 >
-                  <WandSparkles className="w-4 h-4 mr-2" />
+                  <WandSparkles className="w-3.5 h-3.5 mr-1.5" />
                   Smart Full
                 </Button>
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() => toast.success('Link generated for WhatsApp message')}
-                  className="rounded-xl border-emerald-100 text-emerald-600 hover:bg-emerald-50 font-bold h-12 px-6"
+                  className="rounded-md border-emerald-200 text-emerald-700 hover:bg-emerald-50 font-medium h-9 px-4 text-xs shadow-sm"
                 >
                   Share via WhatsApp
                 </Button>
               </div>
               {smartDraftMeta && (
-                <div className="text-[11px] text-gray-500 bg-indigo-50/60 border border-indigo-100 rounded-lg px-3 py-2">
-                  <span className="font-bold text-indigo-700">Smart Draft:</span>{' '}
+                <div className="text-[11px] text-indigo-600 bg-indigo-50 border border-indigo-100 rounded-md px-2.5 py-1.5">
+                  <span className="font-semibold text-indigo-800">Smart Draft:</span>{' '}
                   {smartDraftMeta.scope === 'full'
                     ? `Customer ${smartDraftMeta.customerLabel}`
                     : (smartDraftMeta.customerMode === 'preserved' ? 'Customer preserved' : 'Customer unchanged')}; items {smartDraftMeta.productLabels.join(', ')}
@@ -1648,42 +1638,41 @@ export function EnhancedInvoiceBuilder({
               )}
             </div>
 
-            <div className="flex gap-4 w-full md:w-auto">
-              <Button type="button" variant="ghost" onClick={onClose} className="flex-1 md:flex-none font-bold text-gray-500 rounded-xl px-8 h-12">
-                Dismiss
+            <div className="flex gap-3 w-full md:w-auto">
+              <Button type="button" variant="ghost" onClick={onClose} className="flex-1 md:flex-none font-medium text-slate-500 rounded-md px-6 h-9 text-sm hover:bg-slate-100">
+                Cancel
               </Button>
               <Button
                 type="button"
                 variant="outline"
                 onClick={handleExportPDF}
                 disabled={isSaving || isExporting}
-                className="flex-1 md:flex-none font-bold border-gray-200 rounded-xl h-12 px-6"
+                className="flex-1 md:flex-none font-medium border-slate-200 text-slate-700 rounded-md h-9 px-4 text-sm shadow-sm"
               >
-                {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Printer className="w-4 h-4 mr-2" />}
+                {isExporting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Printer className="w-4 h-4 mr-2 text-slate-500" />}
                 Print {standards.taxLabel} Invoice
               </Button>
               <Button
                 type="button"
                 disabled={isSaving}
                 onClick={handleSave}
-                className="flex-1 md:flex-none hover:opacity-90 font-black px-8 h-12 rounded-xl shadow-xl shadow-wine-600/20 transition-all active:scale-95 bg-emerald-600 hover:bg-emerald-700 text-white"
+                className="flex-1 md:flex-none font-medium px-6 h-9 text-sm rounded-md shadow-sm transition-all bg-emerald-600 hover:bg-emerald-700 text-white"
               >
-                {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5 mr-2" />}
+                {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
                 Save Draft
               </Button>
               <Button
                 type="button"
                 disabled={!canSubmitForApproval}
                 onClick={handleSaveAndSubmitForApproval}
-                className="flex-1 md:flex-none bg-emerald-600 hover:bg-emerald-700 text-white font-black px-8 h-12 rounded-xl shadow-xl shadow-emerald-600/20 transition-all active:scale-95 disabled:opacity-60"
+                className="flex-1 md:flex-none bg-blue-600 hover:bg-blue-700 text-white font-medium px-6 h-9 text-sm rounded-md shadow-sm transition-all disabled:opacity-60"
               >
                 {(isSaving || isSubmittingApproval)
-                  ? <Loader2 className="w-5 h-5 animate-spin" />
-                  : <Send className="w-5 h-5 mr-2" />}
+                  ? <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  : <Send className="w-4 h-4 mr-2" />}
                 Save & Submit
               </Button>
             </div>
-          </div>
           </div>
         </CardContent>
       </Card>

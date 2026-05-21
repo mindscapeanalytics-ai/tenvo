@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 import {
     Users,
@@ -20,7 +21,7 @@ import { Progress } from '@/components/ui/progress';
 // Mock data pattern matching the MarketingAgentService logic
 const SEGMENTS = [
     { id: 'vip', name: 'Elite VIPs', count: 42, color: 'text-amber-500 bg-amber-50', icon: Crown, trend: '+12%', description: 'Top 5% by revenue' },
-    { id: 'at-risk', name: 'Churn Risk', count: 18, color: 'text-red-500 bg-red-50', icon: HeartCrash, trend: '-5%', description: 'No orders in 30 days' },
+    { id: 'at-risk', name: 'Churn Risk', count: 18, color: 'text-red-500 bg-red-50', icon: HeartCrack, trend: '-5%', description: 'No orders in 30 days' },
     { id: 'new', name: 'Rising Stars', count: 156, color: 'text-emerald-500 bg-emerald-50', icon: UserPlus, trend: '+30%', description: 'First-time buyers' },
 ];
 
@@ -102,9 +103,4 @@ export function SegmentationIntelligenceIsland({ businessId }) {
             </div>
         </LiquidLayout>
     );
-}
-
-// Helper to keep dependencies clean inside the single file if needed
-function cn(...classes) {
-    return classes.filter(Boolean).join(' ');
 }

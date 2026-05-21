@@ -519,8 +519,8 @@ export function ProductForm({
             <Card className="border-none shadow-2xl shadow-gray-200/50 rounded-3xl overflow-hidden bg-white/80 backdrop-blur-xl">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-6 pt-8 px-8 border-b border-gray-50">
                     <div className="space-y-1">
-                        <CardTitle className="text-3xl font-black text-wine-600 tracking-tight">{product ? 'Update Inventory' : 'New Stock Entry'}</CardTitle>
-                        <CardDescription className="font-medium text-gray-500">
+                        <CardTitle className="text-lg font-semibold text-slate-800">{product ? 'Update Inventory' : 'New Stock Entry'}</CardTitle>
+                        <CardDescription className="text-sm text-slate-500">
                             {product ? `Editing: ${product.name}` : `Initializing ${category.replace('-', ' ')} inventory record`}
                         </CardDescription>
                     </div>
@@ -574,13 +574,13 @@ export function ProductForm({
                     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                         <div className="sticky top-0 z-20 bg-white/80 backdrop-blur-md py-4 mb-6 border-b border-gray-100 flex items-center justify-between">
                             <TabsList className="bg-gray-100/50 p-1 rounded-2xl border border-gray-100">
-                                <TabsTrigger value="basic" className="rounded-xl px-6 font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-white data-[state=active]:shadow-sm">Identity</TabsTrigger>
-                                <TabsTrigger value="inventory" className="rounded-xl px-6 font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-white data-[state=active]:shadow-sm">Stock & Flow</TabsTrigger>
+                                <TabsTrigger value="basic" className="rounded-lg px-4 py-2 font-medium text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm">Identity</TabsTrigger>
+                                <TabsTrigger value="inventory" className="rounded-lg px-4 py-2 font-medium text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm">Stock & Flow</TabsTrigger>
                                 {!isEasyMode && (
-                                    <TabsTrigger value="domain" className="rounded-xl px-6 font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-white data-[state=active]:shadow-sm">Expert Detail</TabsTrigger>
+                                    <TabsTrigger value="domain" className="rounded-lg px-4 py-2 font-medium text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm">Expert Detail</TabsTrigger>
                                 )}
-                                <TabsTrigger value="media" className="rounded-xl px-6 font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-white data-[state=active]:shadow-sm">Media</TabsTrigger>
-                                {product && <TabsTrigger value="history" className="rounded-xl px-6 font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-white data-[state=active]:shadow-sm">Audit trail</TabsTrigger>}
+                                <TabsTrigger value="media" className="rounded-lg px-4 py-2 font-medium text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm">Media</TabsTrigger>
+                                {product && <TabsTrigger value="history" className="rounded-lg px-4 py-2 font-medium text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm">Audit trail</TabsTrigger>}
                             </TabsList>
                             <div className="flex items-center gap-2">
                                 <AutosaveIndicator isSaving={isSaving} lastSaved={lastSaved} />
@@ -600,14 +600,14 @@ export function ProductForm({
                         <TabsContent value="basic" className="space-y-8 animate-in fade-in slide-in-from-left-4 duration-500" data-tab="basic">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="space-y-2">
-                                    <Label htmlFor="name" className="text-xs font-black uppercase text-gray-400 tracking-wider">Product Name *</Label>
-                                    <Input id="name" value={formData.name ?? ''} onChange={(e) => updateField('name', e.target.value)} onBlur={() => handleBlur('name')} placeholder="e.g. Premium Filter" className="h-11 rounded-xl focus:ring-wine/20 font-bold" selectOnFocus />
+                                    <Label htmlFor="name" className="text-[11px] font-semibold text-slate-600">Product Name *</Label>
+                                    <Input id="name" value={formData.name ?? ''} onChange={(e) => updateField('name', e.target.value)} onBlur={() => handleBlur('name')} placeholder="e.g. Premium Filter" className="h-9 rounded-md focus:ring-wine/20 font-bold" selectOnFocus />
                                     {renderError('name')}
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label htmlFor="sku" className="text-xs font-black uppercase text-gray-400 tracking-wider">SKU / Item Code</Label>
-                                    <Input id="sku" value={formData.sku ?? ''} onChange={(e) => updateField('sku', e.target.value.toUpperCase())} placeholder="ITEM-001" className="h-11 rounded-xl font-mono" selectOnFocus />
+                                    <Label htmlFor="sku" className="text-[11px] font-semibold text-slate-600">SKU / Item Code</Label>
+                                    <Input id="sku" value={formData.sku ?? ''} onChange={(e) => updateField('sku', e.target.value.toUpperCase())} placeholder="ITEM-001" className="h-9 rounded-md font-mono" selectOnFocus />
                                     {renderError('sku')}
                                 </div>
                             </div>
@@ -640,9 +640,9 @@ export function ProductForm({
                             )}
 
                             <div className="space-y-2">
-                                <Label htmlFor="barcode" className="text-xs font-black uppercase text-gray-400 tracking-wider">Barcode (EAN/UPC)</Label>
+                                <Label htmlFor="barcode" className="text-[11px] font-semibold text-slate-600">Barcode (EAN/UPC)</Label>
                                 <div className="relative">
-                                    <Input id="barcode" value={formData.barcode ?? ''} onChange={(e) => updateField('barcode', e.target.value)} placeholder="Scanning ready..." className="h-11 rounded-xl pr-10" selectOnFocus />
+                                    <Input id="barcode" value={formData.barcode ?? ''} onChange={(e) => updateField('barcode', e.target.value)} placeholder="Scanning ready..." className="h-9 rounded-md pr-10" selectOnFocus />
                                     <div className="absolute right-3 top-1/2 -translate-y-1/2">
                                         <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                                     </div>
@@ -650,10 +650,10 @@ export function ProductForm({
                                 {renderError('barcode')}
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8 p-6 bg-gray-50/30 rounded-3xl border border-gray-100">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8 p-4 bg-slate-50 rounded-lg border border-slate-100">
                                 <div className="space-y-2">
                                     <div className="flex items-center gap-2">
-                                        <Label htmlFor="unit" className="text-xs font-black uppercase text-gray-400 tracking-wider">Unit</Label>
+                                        <Label htmlFor="unit" className="text-[11px] font-semibold text-slate-600">Unit</Label>
                                         <TooltipProvider>
                                             <Tooltip>
                                                 <TooltipTrigger asChild>
@@ -675,14 +675,14 @@ export function ProductForm({
                                             </Tooltip>
                                         </TooltipProvider>
                                     </div>
-                                    <select id="unit" value={formData.unit ?? ''} onChange={(e) => updateField('unit', e.target.value)} className="w-full h-11 rounded-xl border border-gray-200 bg-white px-3 text-sm focus:ring-2 focus:ring-wine/20">
+                                    <select id="unit" value={formData.unit ?? ''} onChange={(e) => updateField('unit', e.target.value)} className="w-full h-9 rounded-md border border-gray-200 bg-white px-3 text-sm focus:ring-2 focus:ring-wine/20">
                                         {getDomainUnits(category).map(u => <option key={u} value={u}>{u}</option>)}
                                     </select>
                                     {renderError('unit')}
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label htmlFor="price" className="text-xs font-black uppercase text-gray-400 tracking-wider">Selling Price *</Label>
+                                    <Label htmlFor="price" className="text-[11px] font-semibold text-slate-600">Selling Price *</Label>
                                     <div className="relative">
                                         <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">{standards.currencySymbol}</span>
                                         <Input id="price" type="number" value={formData.price ?? ''} onChange={(e) => updateField('price', parseFloat(e.target.value) || 0)} onBlur={() => handleBlur('price')} className="h-11 pl-12 rounded-xl" selectOnFocus />
@@ -692,7 +692,7 @@ export function ProductForm({
 
                                 <div className="space-y-2">
                                     <div className="flex items-center justify-between">
-                                        <Label htmlFor="mrp" className="text-xs font-black uppercase text-gray-400 tracking-wider">MRP (Max Retail Price) *</Label>
+                                        <Label htmlFor="mrp" className="text-[11px] font-semibold text-slate-600">MRP (Max Retail Price) *</Label>
                                         {Number(formData.price) > 0 && Number(formData.costPrice) > 0 && (
                                             <Badge className={cn(
                                                 "text-[10px] font-bold px-2 py-0.5 rounded-full border shadow-sm",
@@ -712,7 +712,7 @@ export function ProductForm({
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label htmlFor="costPrice" className="text-xs font-black uppercase text-gray-400 tracking-wider">Landing Cost</Label>
+                                    <Label htmlFor="costPrice" className="text-[11px] font-semibold text-slate-600">Landing Cost</Label>
                                     <div className="relative">
                                         <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">{standards.currencySymbol}</span>
                                         <Input id="costPrice" type="number" value={formData.costPrice ?? ''} onChange={(e) => updateField('costPrice', parseFloat(e.target.value) || 0)} className="h-11 pl-12 rounded-xl" selectOnFocus />
@@ -724,7 +724,7 @@ export function ProductForm({
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label className="text-xs font-black uppercase text-gray-400 tracking-wider">Brand</Label>
+                                    <Label className="text-[11px] font-semibold text-slate-600">Brand</Label>
                                     <BrandAutocomplete
                                         value={formData.brand}
                                         onChange={(val) => updateField('brand', val)}
@@ -734,13 +734,13 @@ export function ProductForm({
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label htmlFor="productCategory" className="text-xs font-black uppercase text-gray-400 tracking-wider">Category</Label>
-                                    <Input id="productCategory" value={formData.category ?? ''} onChange={(e) => updateField('category', e.target.value)} placeholder="e.g. Electronics, Spares" className="h-11 rounded-xl" selectOnFocus />
+                                    <Label htmlFor="productCategory" className="text-[11px] font-semibold text-slate-600">Category</Label>
+                                    <Input id="productCategory" value={formData.category ?? ''} onChange={(e) => updateField('category', e.target.value)} placeholder="e.g. Electronics, Spares" className="h-9 rounded-md" selectOnFocus />
                                     {renderError('category')}
                                 </div>
 
                                 <div className="space-y-2 md:col-span-2">
-                                    <Label htmlFor="description" className="text-xs font-black uppercase text-gray-400 tracking-wider">Product Description</Label>
+                                    <Label htmlFor="description" className="text-[11px] font-semibold text-slate-600">Product Description</Label>
                                     <textarea id="description" value={formData.description ?? ''} onChange={(e) => updateField('description', e.target.value)} rows={2} className="w-full rounded-xl border border-gray-200 bg-white p-3 text-sm focus:ring-2 focus:ring-wine/20 shadow-inner" placeholder="Technical specifications or notes..." />
                                 </div>
 
@@ -977,7 +977,7 @@ export function ProductForm({
                         <TabsContent value="inventory" className="space-y-6 animate-in fade-in duration-300" data-tab="inventory">
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">
+                                    <Label className="text-[11px] font-semibold text-slate-600">
                                         {product ? 'Current Stock' : 'Opening Stock'}
                                     </Label>
                                     <div className="relative">
@@ -995,28 +995,28 @@ export function ProductForm({
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Min Stock Level</Label>
-                                    <Input type="number" value={formData.minStock ?? ''} onChange={(e) => updateField('minStock', parseInt(e.target.value) || 0)} className="h-11 rounded-xl" selectOnFocus />
+                                    <Label className="text-[11px] font-semibold text-slate-600">Min Stock Level</Label>
+                                    <Input type="number" value={formData.minStock ?? ''} onChange={(e) => updateField('minStock', parseInt(e.target.value) || 0)} className="h-9 rounded-md" selectOnFocus />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Max Stock Level</Label>
-                                    <Input type="number" value={formData.maxStock ?? ''} onChange={(e) => updateField('maxStock', parseInt(e.target.value) || 0)} className="h-11 rounded-xl" selectOnFocus />
+                                    <Label className="text-[11px] font-semibold text-slate-600">Max Stock Level</Label>
+                                    <Input type="number" value={formData.maxStock ?? ''} onChange={(e) => updateField('maxStock', parseInt(e.target.value) || 0)} className="h-9 rounded-md" selectOnFocus />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Reorder Point</Label>
-                                    <Input type="number" value={formData.reorderPoint ?? ''} onChange={(e) => updateField('reorderPoint', parseInt(e.target.value) || 0)} className="h-11 rounded-xl" selectOnFocus />
+                                    <Label className="text-[11px] font-semibold text-slate-600">Reorder Point</Label>
+                                    <Input type="number" value={formData.reorderPoint ?? ''} onChange={(e) => updateField('reorderPoint', parseInt(e.target.value) || 0)} className="h-9 rounded-md" selectOnFocus />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Reorder Qty</Label>
-                                    <Input type="number" value={formData.reorderQuantity ?? ''} onChange={(e) => updateField('reorderQuantity', parseInt(e.target.value) || 0)} className="h-11 rounded-xl" selectOnFocus />
+                                    <Label className="text-[11px] font-semibold text-slate-600">Reorder Qty</Label>
+                                    <Input type="number" value={formData.reorderQuantity ?? ''} onChange={(e) => updateField('reorderQuantity', parseInt(e.target.value) || 0)} className="h-9 rounded-md" selectOnFocus />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Mfg. Date</Label>
-                                    <Input type="date" value={formData.manufacturing_date || ''} onChange={(e) => updateField('manufacturing_date', e.target.value)} className="h-11 rounded-xl" />
+                                    <Label className="text-[11px] font-semibold text-slate-600">Mfg. Date</Label>
+                                    <Input type="date" value={formData.manufacturing_date || ''} onChange={(e) => updateField('manufacturing_date', e.target.value)} className="h-9 rounded-md" />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Expiry Date</Label>
-                                    <Input type="date" value={formData.expiry_date || ''} onChange={(e) => updateField('expiry_date', e.target.value)} className="h-11 rounded-xl" />
+                                    <Label className="text-[11px] font-semibold text-slate-600">Expiry Date</Label>
+                                    <Input type="date" value={formData.expiry_date || ''} onChange={(e) => updateField('expiry_date', e.target.value)} className="h-9 rounded-md" />
                                 </div>
                             </div>
 
@@ -1032,7 +1032,7 @@ export function ProductForm({
                                             const key = field.toLowerCase().replace(/[^a-z0-9]/g, '');
                                             return (
                                                 <div key={field} className="space-y-2">
-                                                    <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">{field}</Label>
+                                                    <Label className="text-[11px] font-semibold text-slate-600">{field}</Label>
                                                     <div className="relative">
                                                         <Input
                                                             type="number"
@@ -1105,12 +1105,12 @@ export function ProductForm({
 
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-6 border-t border-gray-100">
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">{standards.countryCode === 'PK' ? 'HSN Code' : 'Tax/HSN Code'}</Label>
-                                    <Input value={formData.hsnCode ?? ''} onChange={(e) => updateField('hsnCode', e.target.value)} placeholder="Code" className="h-11 rounded-xl" selectOnFocus />
+                                    <Label className="text-[11px] font-semibold text-slate-600">{standards.countryCode === 'PK' ? 'HSN Code' : 'Tax/HSN Code'}</Label>
+                                    <Input value={formData.hsnCode ?? ''} onChange={(e) => updateField('hsnCode', e.target.value)} placeholder="Code" className="h-9 rounded-md" selectOnFocus />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">SAC Code</Label>
-                                    <Input value={formData.sacCode ?? ''} onChange={(e) => updateField('sacCode', e.target.value)} className="h-11 rounded-xl" selectOnFocus />
+                                    <Label className="text-[11px] font-semibold text-slate-600">SAC Code</Label>
+                                    <Input value={formData.sacCode ?? ''} onChange={(e) => updateField('sacCode', e.target.value)} className="h-9 rounded-md" selectOnFocus />
                                 </div>
                                 <div className="space-y-2 col-span-2 md:col-span-1">
                                     <TaxCategorySelector

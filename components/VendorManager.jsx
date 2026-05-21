@@ -142,65 +142,6 @@ export function VendorManager({ vendors = [], onAdd, onUpdate, onDelete, categor
     onAdd?.();
   };
 
-  const handleFillDemo = () => {
-    const isTextile = category.includes('textile');
-    const isPharmacy = category === 'pharmacy';
-    const isFMCG = category === 'fmcg';
-
-    const companies = [
-      'Al-Noor Trading Co.', 'Indus Logistics PK', 'Habib & Sons',
-      'Zubair Chemicals', 'Standard Industrial Corp', 'Premier Supplies Ltd'
-    ];
-
-    const textileMills = [
-      'Gul Ahmed Textile Mills', 'Sapphire Textile', 'Lucky Textile Mills',
-      'Nishat Mills Ltd', 'Al-Karam Textile', 'Yunus Textile'
-    ];
-
-    const pharmaDist = [
-      'Sami Pharmaceuticals', 'Getz Pharma Distribution', 'Abbott Logistics',
-      'GSK Supply Chain', 'RG Pharma'
-    ];
-
-    const cities = ['Karachi', 'Lahore', 'Faisalabad', 'Gujranwala', 'Sialkot', 'Multan'];
-    const addresses = [
-      'Plot # 45, Sector 15, Korangi Industrial Area',
-      'Suit 402, Business Avenue, Main Shahrah-e-Faisal',
-      'Gully # 3, Montgomery Road, near Railway Station',
-      'Phase 2, Sundar Industrial Estate',
-      'Plot 12-C, Small Industrial Estate',
-      'Floor 2, Textile Plaza, I.I Chundrigar Road'
-    ];
-
-    const selectedName = isTextile
-      ? textileMills[Math.floor(Math.random() * textileMills.length)]
-      : (isPharmacy ? pharmaDist[Math.floor(Math.random() * pharmaDist.length)] : companies[Math.floor(Math.random() * companies.length)]);
-
-    const firstNames = ['Haris', 'Ahmed', 'Zeeshan', 'Kamran', 'Mustafa', 'Imran'];
-    const lastNames = ['Khan', 'Sheikh', 'Mughal', 'Ali', 'Ahmed'];
-
-    const demoData = {
-      name: selectedName,
-      contactPerson: `${firstNames[Math.floor(Math.random() * firstNames.length)]} ${lastNames[Math.floor(Math.random() * lastNames.length)]}`,
-      phone: '+92 21 ' + (Math.floor(Math.random() * 899999) + 100000), // Regional format
-      email: `sales@${selectedName.toLowerCase().replace(/[^a-z0-9]/g, '')}.pk`,
-      ntn: (Math.floor(Math.random() * 8999999) + 1000000) + '-' + Math.floor(Math.random() * 9),
-      srn: '12-00-' + (Math.floor(Math.random() * 8999999) + 1000000) + '-0',
-      address: addresses[Math.floor(Math.random() * addresses.length)],
-      city: cities[Math.floor(Math.random() * cities.length)],
-      payment_terms: ['Net 15', 'COD', 'Net 30', 'Net 7'][Math.floor(Math.random() * 4)],
-      filer_status: Math.random() > 0.3 ? 'active' : 'inactive',
-      credit_limit: (Math.floor(Math.random() * 10) + 1) * 100000,
-      domain_data: {
-        millname: isTextile ? selectedName : '',
-        quality_grade: 'A+',
-      }
-    };
-
-    setFormData(prev => ({ ...prev, ...demoData }));
-    toast.success(`Generated: ${selectedName}`);
-  };
-
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -209,6 +150,13 @@ export function VendorManager({ vendors = [], onAdd, onUpdate, onDelete, categor
           <p className="text-gray-500 font-medium">Manage your supply chain and trade credit</p>
         </div>
         <div className="flex gap-2">
+          <Button
+            onClick={handleOpenAdd}
+            className="rounded-xl font-bold h-10 px-5 bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Add Vendor
+          </Button>
           <ExportButton
             data={filteredVendors}
             filename="vendors"

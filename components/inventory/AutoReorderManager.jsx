@@ -1,11 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { RefreshCw, Package, AlertTriangle, CheckCircle2, Clock } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { RefreshCw, Package, AlertTriangle, CheckCircle2, Clock, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { formatCurrency } from '@/lib/currency';
+import { InventoryErrorCard } from './InventoryErrorBoundary';
+import { InventoryCardLoading } from './InventoryLoadingState';
 
 /**
  * AutoReorderManager Component
@@ -25,13 +27,19 @@ export function AutoReorderManager({
 }) {
   const [reorderSuggestions, setReorderSuggestions] = useState([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   // Calculate reorder suggestions
-  useEffect(() => {
-    const toNumber = (value) => {
-      const parsed = Number(value);
-      return Number.isFinite(parsed) ? parsed : 0;
-    };
+  const calculateSuggestions = useCallback(() => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const toNumber = (value) => {
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : 0;
+      };
 
     const suggestions = products
       .map((product) => {
@@ -89,52 +97,17 @@ export function AutoReorderManager({
       });
 
     setReorderSuggestions(suggestions);
+    } catch (err) {
+      console.error('[AutoReorderManager] Calculation error:', err);
+      setError(err.message || 'Failed to calculate reorder suggestions');
+    } finally {
+      setLoading(false);
+    }
   }, [products]);
 
-  const handleGeneratePO = async (suggestion) => {
-    setIsProcessing(true);
-    try {
-      if (onGeneratePO) {
-        await onGeneratePO({
-          productId: suggestion.productId,
-          quantity: suggestion.suggestedQuantity,
-          vendorId: suggestion.vendorId,
-          estimatedCost: suggestion.estimatedCost,
-        });
-      }
-      // Remove from suggestions after PO is generated
-      setReorderSuggestions(prev => prev.filter(s => s.productId !== suggestion.productId));
-    } catch (error) {
-      console.error('Error generating PO:', error);
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const handleGenerateAllPOs = async () => {
-    if (!confirm(`Generate purchase orders for ${reorderSuggestions.length} products?`)) {
-      return;
-    }
-
-    setIsProcessing(true);
-    try {
-      for (const suggestion of reorderSuggestions) {
-        if (onGeneratePO) {
-          await onGeneratePO({
-            productId: suggestion.productId,
-            quantity: suggestion.suggestedQuantity,
-            vendorId: suggestion.vendorId,
-            estimatedCost: suggestion.estimatedCost,
-          });
-        }
-      }
-      setReorderSuggestions([]);
-    } catch (error) {
-      console.error('Error generating POs:', error);
-    } finally {
-      setIsProcessing(false);
-    }
-  };
+  useEffect(() => {
+    calculateSuggestions();
+  }, [calculateSuggestions]);
 
   const getUrgencyColor = (urgency) => {
     switch (urgency) {
@@ -152,23 +125,99 @@ export function AutoReorderManager({
   const criticalCount = reorderSuggestions.filter(s => s.urgency === 'critical').length;
   const totalEstimatedCost = reorderSuggestions.reduce((sum, s) => sum + s.estimatedCost, 0);
 
+  // Handle generate PO error
+  const handleGeneratePO = async (suggestion) => {
+    setIsProcessing(true);
+    try {
+      if (onGeneratePO) {
+        await onGeneratePO({
+          productId: suggestion.productId,
+          quantity: suggestion.suggestedQuantity,
+          vendorId: suggestion.vendorId,
+          estimatedCost: suggestion.estimatedCost,
+        });
+      }
+      // Remove from suggestions after PO is generated
+      setReorderSuggestions(prev => prev.filter(s => s.productId !== suggestion.productId));
+    } catch (err) {
+      console.error('Error generating PO:', err);
+      setError(err.message || 'Failed to generate purchase order');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleGenerateAllPOs = async () => {
+    if (!confirm(`Generate purchase orders for ${reorderSuggestions.length} products?`)) {
+      return;
+    }
+
+    setIsProcessing(true);
+    setError(null);
+    try {
+      for (const suggestion of reorderSuggestions) {
+        if (onGeneratePO) {
+          await onGeneratePO({
+            productId: suggestion.productId,
+            quantity: suggestion.suggestedQuantity,
+            vendorId: suggestion.vendorId,
+            estimatedCost: suggestion.estimatedCost,
+          });
+        }
+      }
+      setReorderSuggestions([]);
+    } catch (err) {
+      console.error('Error generating POs:', err);
+      setError(err.message || 'Failed to generate some purchase orders');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
+      {/* Error Display */}
+      {error && (
+        <InventoryErrorCard 
+          error={error} 
+          onRetry={() => {
+            setError(null);
+            calculateSuggestions();
+          }}
+          onDismiss={() => setError(null)}
+        />
+      )}
+
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-xl font-bold">Auto Reorder Manager</h3>
           <p className="text-sm text-gray-500">Automatically generate purchase orders for low stock items</p>
         </div>
-        {reorderSuggestions.length > 0 && (
+        <div className="flex gap-2">
           <Button
-            onClick={handleGenerateAllPOs}
-            disabled={isProcessing}
-            className="bg-green-600 hover:bg-green-700"
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setError(null);
+              calculateSuggestions();
+            }}
+            disabled={loading}
+            className="gap-2"
           >
-            <RefreshCw className={`w-4 h-4 mr-2 ${isProcessing ? 'animate-spin' : ''}`} />
-            Generate All POs
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
           </Button>
-        )}
+          {reorderSuggestions.length > 0 && (
+            <Button
+              onClick={handleGenerateAllPOs}
+              disabled={isProcessing}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              <RefreshCw className={`w-4 h-4 mr-2 ${isProcessing ? 'animate-spin' : ''}`} />
+              Generate All POs
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Summary */}

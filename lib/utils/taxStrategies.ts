@@ -15,6 +15,8 @@ export interface TaxLineItem {
 export interface TaxBreakdown {
     baseAmount: number;
     taxAmount: number;
+    /** Alias for taxAmount — used by calculateTotals in EnhancedInvoiceBuilder */
+    totalTax: number;
     totalAmount: number;
     label: string;
     details: Record<string, { rate: number; amount: number }>;
@@ -37,6 +39,7 @@ export const PakistanTaxStrategy: TaxStrategy = {
         return {
             baseAmount: base,
             taxAmount: taxAmount,
+            totalTax: taxAmount,
             totalAmount: base + taxAmount,
             label: standards.taxLabel,
             details: {
@@ -45,16 +48,27 @@ export const PakistanTaxStrategy: TaxStrategy = {
         };
     },
     calculateBulk(items, standards) {
-        return items.reduce((acc, item) => {
+        // Aggregate per-item tax amounts, accumulating details by tax label
+        const aggregated = items.reduce((acc, item) => {
             const result = this.calculate(item, standards);
+            const detailKey = 'GST/PST';
+            const prevDetail = acc.details[detailKey] || { rate: result.details[detailKey]?.rate || 0, amount: 0 };
             return {
                 baseAmount: acc.baseAmount + result.baseAmount,
                 taxAmount: acc.taxAmount + result.taxAmount,
+                totalTax: acc.totalTax + result.taxAmount,
                 totalAmount: acc.totalAmount + result.totalAmount,
                 label: standards.taxLabel,
-                details: acc.details // Simplification: aggregation not fully implemented for details
+                details: {
+                    ...acc.details,
+                    [detailKey]: {
+                        rate: prevDetail.rate,
+                        amount: prevDetail.amount + result.taxAmount,
+                    }
+                }
             };
-        }, { baseAmount: 0, taxAmount: 0, totalAmount: 0, label: standards.taxLabel, details: {} });
+        }, { baseAmount: 0, taxAmount: 0, totalTax: 0, totalAmount: 0, label: standards.taxLabel, details: {} as Record<string, { rate: number; amount: number }> });
+        return aggregated;
     }
 };
 
@@ -70,6 +84,7 @@ export const GCCTaxStrategy: TaxStrategy = {
         return {
             baseAmount: base,
             taxAmount: taxAmount,
+            totalTax: taxAmount,
             totalAmount: base + taxAmount,
             label: standards.taxLabel || 'VAT',
             details: {
@@ -78,16 +93,26 @@ export const GCCTaxStrategy: TaxStrategy = {
         };
     },
     calculateBulk(items, standards) {
-        return items.reduce((acc, item) => {
+        const aggregated = items.reduce((acc, item) => {
             const result = this.calculate(item, standards);
+            const detailKey = 'VAT';
+            const prevDetail = acc.details[detailKey] || { rate: result.details[detailKey]?.rate || 0, amount: 0 };
             return {
                 baseAmount: acc.baseAmount + result.baseAmount,
                 taxAmount: acc.taxAmount + result.taxAmount,
+                totalTax: acc.totalTax + result.taxAmount,
                 totalAmount: acc.totalAmount + result.totalAmount,
                 label: standards.taxLabel || 'VAT',
-                details: acc.details
+                details: {
+                    ...acc.details,
+                    [detailKey]: {
+                        rate: prevDetail.rate,
+                        amount: prevDetail.amount + result.taxAmount,
+                    }
+                }
             };
-        }, { baseAmount: 0, taxAmount: 0, totalAmount: 0, label: standards.taxLabel || 'VAT', details: {} });
+        }, { baseAmount: 0, taxAmount: 0, totalTax: 0, totalAmount: 0, label: standards.taxLabel || 'VAT', details: {} as Record<string, { rate: number; amount: number }> });
+        return aggregated;
     }
 };
 

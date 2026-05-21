@@ -6,7 +6,7 @@ import {
     ChevronDown, ChevronRight, MoreVertical, RefreshCcw,
     TrendingUp, UserPlus, Clock, AlertTriangle, Check, X,
     Crown, ArrowUpRight, Eye, Edit2, Trash2, Ban,
-    Activity, BarChart3, Layers, Mail, Calendar
+    Activity, BarChart3, Layers, Mail, Calendar, Flag
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -26,6 +26,8 @@ import {
 } from '@/lib/actions/admin/platform';
 import { PLAN_TIERS } from '@/lib/config/plans';
 import { ROLE_DESCRIPTIONS } from '@/lib/config/platform';
+import { FeatureFlagManager } from './FeatureFlagManager';
+import { UserManagement } from './UserManagement';
 import toast from 'react-hot-toast';
 
 // --- Sub-views ---------------------------------------------------------------
@@ -36,6 +38,7 @@ const ADMIN_TABS = [
     { key: 'users', label: 'Users', icon: Users },
     { key: 'subscriptions', label: 'Subscriptions', icon: CreditCard },
     { key: 'roles', label: 'Roles & Access', icon: UserCog },
+    { key: 'features', label: 'Feature Flags', icon: Flag },
 ];
 
 // --- Overview Panel ----------------------------------------------------------
@@ -735,9 +738,10 @@ export default function PlatformAdminPanel() {
             {/* Tab Content */}
             {activeTab === 'overview' && <OverviewPanel stats={stats} isLoading={statsLoading} />}
             {activeTab === 'businesses' && <BusinessesPanel />}
-            {activeTab === 'users' && <UsersPanel />}
+            {activeTab === 'users' && <UserManagement />}
             {activeTab === 'subscriptions' && <SubscriptionsPanel stats={stats} isLoading={statsLoading} />}
             {activeTab === 'roles' && <RolesPanel />}
+            {activeTab === 'features' && <FeatureFlagManager />}
         </div>
     );
 }
