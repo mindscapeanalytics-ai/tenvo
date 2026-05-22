@@ -14,6 +14,9 @@ import { PLAN_TIERS } from '@/lib/config/plans';
 import { suggestPlanTier } from '@/lib/config/domains';
 import { getRegionalStandards } from '@/lib/utils/regionalHelpers';
 import { authClient } from '@/lib/auth-client';
+import { useRegistrationPersistence, clearRegistrationData } from '@/lib/hooks/useRegistrationPersistence';
+import { DataRecoveryDialog } from '@/components/registration/DataRecoveryDialog';
+import { sendVerificationEmail, resendVerificationEmail, isEmailVerified } from '@/lib/actions/auth/verification';
 import { toast } from 'react-hot-toast';
 import {
     ChevronRight,
@@ -141,21 +144,74 @@ export default function RegisterWizard() {
     const { updateBusiness } = useBusiness();
     const { language } = useLanguage();
     const t = translations[language];
-    const [step, setStep] = useState(1);
+    
+    // Form persistence hook - auto-saves and recovers form data
+    const {
+        formData: persistedFormData,
+        setFormData: setPersistedFormData,
+        currentStep: persistedStep,
+        setCurrentStep: setPersistedStep,
+        showRecoveryDialog,
+        acceptRecoveredData,
+        rejectRecoveredData,
+        clearSavedData,
+        hasRecoveredData
+    } = useRegistrationPersistence(1);
+
+    const [step, setStep] = useState(persistedStep);
     const [searchTerm, setSearchTerm] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [handleStatus, setHandleStatus] = useState({ checking: false, available: true, error: '' });
+    const [verificationState, setVerificationState] = useState('idle'); // idle, sending, sent, verified
+    const [resendTimer, setResendTimer] = useState(0);
+    const [newUser, setNewUser] = useState(null);
+    
+    // Form data with persistence
     const [formData, setFormData] = useState({
-        businessName: '',
-        email: '',
-        password: '',
-        phone: '',
-        country: 'Pakistan',
-        handle: '', // The unique routing slug (e.g., 'abid-textiles')
-        category: '', // The industry vertical (e.g., 'textile-wholesale')
-        planTier: 'free',
-        logo: ''
+        businessName: persistedFormData.businessName || '',
+        email: persistedFormData.email || '',
+        password: persistedFormData.password || '',
+        phone: persistedFormData.phone || '',
+        country: persistedFormData.country || 'Pakistan',
+        handle: persistedFormData.handle || '',
+        category: persistedFormData.category || '',
+        planTier: persistedFormData.planTier || 'free',
+        logo: persistedFormData.logo || ''
     });
+
+    // Sync step with persistence
+    useEffect(() => {
+        setStep(persistedStep);
+    }, [persistedStep]);
+
+    // Update form data with persistence
+    const updateFormData = (updates) => {
+        const newData = { ...formData, ...updates };
+        setFormData(newData);
+        setPersistedFormData(updates);
+    };
+
+    // Resend timer countdown
+    useEffect(() => {
+        if (resendTimer > 0) {
+            const timer = setTimeout(() => setResendTimer(t => t - 1), 1000);
+            return () => clearTimeout(timer);
+        }
+    }, [resendTimer]);
+
+    // Check if email is verified when returning from verification page
+    useEffect(() => {
+        const checkVerification = async () => {
+            if (newUser && step === 2) {
+                const result = await isEmailVerified(newUser.id);
+                if (result.success && result.isVerified) {
+                    setVerificationState('verified');
+                    toast.success('Email verified successfully!');
+                }
+            }
+        };
+        checkVerification();
+    }, [newUser, step]);
 
     useEffect(() => {
         if (typeof window !== 'undefined') {
@@ -182,15 +238,22 @@ export default function RegisterWizard() {
     };
 
     const handleBusinessNameChange = (name) => {
-        setFormData(prev => ({
-            ...prev,
+        updateFormData({
             businessName: name,
             handle: generateSlug(name)
-        }));
+        });
     };
 
-    const nextStep = () => setStep(s => s + 1);
-    const prevStep = () => setStep(s => s - 1);
+    const nextStep = () => {
+        const newStep = step + 1;
+        setStep(newStep);
+        setPersistedStep(newStep);
+    };
+    const prevStep = () => {
+        const newStep = step - 1;
+        setStep(newStep);
+        setPersistedStep(newStep);
+    };
 
     // Debounced domain availability check
     useEffect(() => {
@@ -357,9 +420,23 @@ export default function RegisterWizard() {
                     throw authError;
                 }
                 newUser = authData?.user;
+                setNewUser(newUser);
             }
 
             if (newUser) {
+                // Send verification email after account creation
+                if (!user) {
+                    setVerificationState('sending');
+                    const emailResult = await sendVerificationEmail(
+                        newUser.id,
+                        newUser.email || formData.email,
+                        formData.businessName
+                    );
+                    if (emailResult.success) {
+                        setVerificationState('sent');
+                        toast.success('Verification email sent! Please check your inbox.');
+                    }
+                }
                 // 2. Create business via Server Action
                 const bizResult = await createBusiness({
                     userId: newUser.id,
@@ -386,6 +463,9 @@ export default function RegisterWizard() {
                     } catch (updateErr) {
                         console.error("Failed to mark setup complete:", updateErr);
                     }
+
+                    // Clear registration persistence data on success
+                    clearRegistrationData();
 
                     // Update local context if needed, but router push is cleaner
                     router.push(`/business/${formData.handle}`);
@@ -414,10 +494,22 @@ export default function RegisterWizard() {
     };
 
     return (
-        <div className="min-h-screen bg-[linear-gradient(180deg,#f6f8fc_0%,#eef4ff_100%)] flex flex-col p-4 md:p-6 lg:p-8 relative overflow-hidden">
-            {/* Background Decorative Elements */}
-            <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-wine/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-            <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-amber-300/15 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
+        <>
+            {/* Data Recovery Dialog - shown if previous registration data exists */}
+            <DataRecoveryDialog
+                isOpen={showRecoveryDialog}
+                onClose={() => {}}
+                onAccept={acceptRecoveredData}
+                onReject={rejectRecoveredData}
+                savedAt={persistedFormData._savedAt ? new Date(persistedFormData._savedAt) : null}
+                ageHours={persistedFormData._savedAt ? Math.floor((Date.now() - new Date(persistedFormData._savedAt).getTime()) / (1000 * 60 * 60)) : 0}
+                step={persistedStep}
+            />
+
+            <div className="min-h-screen bg-[linear-gradient(180deg,#f6f8fc_0%,#eef4ff_100%)] flex flex-col p-4 md:p-6 lg:p-8 relative overflow-hidden">
+                {/* Background Decorative Elements */}
+                <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-wine/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+                <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-amber-300/15 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
 
             <div className="max-w-6xl w-full mx-auto relative z-10 flex-1 flex flex-col">
                 {/* Header */}
@@ -792,5 +884,6 @@ export default function RegisterWizard() {
                 </div>
             </div>
         </div>
+        </>
     );
 }

@@ -13,13 +13,14 @@ import { ProductDetailSkeleton } from '@/components/storefront/LoadingSkeletons'
 import { Metadata } from 'next';
 
 export async function generateMetadata({ params }) {
-  const result = await getBusinessByDomain(params.businessDomain);
+  const { businessDomain, slug } = await params;
+  const result = await getBusinessByDomain(businessDomain);
   
   if (!result.success) {
     return { title: 'Product Not Found' };
   }
   
-  const productResult = await getProductBySlug(result.business.id, params.slug);
+  const productResult = await getProductBySlug(result.business.id, slug);
   
   if (!productResult.success) {
     return { title: 'Product Not Found' };
@@ -40,7 +41,7 @@ export async function generateMetadata({ params }) {
 }
 
 export default async function ProductDetailPage({ params }) {
-  const { businessDomain, slug } = params;
+  const { businessDomain, slug } = await params;
   
   // Validate business
   const businessResult = await getBusinessByDomain(businessDomain);

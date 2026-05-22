@@ -7,7 +7,8 @@ import { LiveChat } from '@/components/storefront/LiveChat';
 import { CartDrawer } from '@/components/storefront/CartDrawer';
 
 export async function generateMetadata({ params }) {
-  const result = await getBusinessByDomain(params.businessDomain);
+  const { businessDomain } = await params;
+  const result = await getBusinessByDomain(businessDomain);
   
   if (!result.success) {
     return {
@@ -30,7 +31,8 @@ export async function generateMetadata({ params }) {
 }
 
 export default async function StoreLayout({ children, params }) {
-  const result = await getBusinessByDomain(params.businessDomain);
+  const { businessDomain } = await params;
+  const result = await getBusinessByDomain(businessDomain);
   
   if (!result.success) {
     notFound();

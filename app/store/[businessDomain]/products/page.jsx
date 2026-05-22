@@ -10,7 +10,8 @@ import { ProductsSkeleton } from '@/components/storefront/LoadingSkeletons';
 import { Metadata } from 'next';
 
 export async function generateMetadata({ params, searchParams }) {
-  const result = await getBusinessByDomain(params.businessDomain);
+  const { businessDomain } = await params;
+  const result = await getBusinessByDomain(businessDomain);
   
   if (!result.success) {
     return { title: 'Store Not Found' };
@@ -28,7 +29,7 @@ export async function generateMetadata({ params, searchParams }) {
 }
 
 export default async function ProductsPage({ params, searchParams }) {
-  const { businessDomain } = params;
+  const { businessDomain } = await params;
   
   // Validate business
   const businessResult = await getBusinessByDomain(businessDomain);
