@@ -5,18 +5,57 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     Search, Barcode, ShoppingCart, Plus, Minus, Trash2, X, CreditCard,
     Banknote, Smartphone, SplitSquareHorizontal, User, Clock, Hash,
-    Receipt, CheckCircle2, Star, Gift, ChevronDown, RotateCcw
+    Receipt, CheckCircle2, Star, Gift, ChevronDown, RotateCcw, Percent,
+    Calculator, Keyboard, ScanLine, Package
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 
 // --- Product Grid ------------------------------------------------------------
 
-function PosProductGrid({ products, categories, activeCategory, onCategoryChange, onAddToCart, searchTerm, onSearchChange }) {
+function PosProductGrid({ products, categories, activeCategory, onCategoryChange, onAddToCart, searchTerm, onSearchChange, onBarcodeScan }) {
+    const searchInputRef = useRef(null);
+    const [isScanning, setIsScanning] = useState(false);
+    
+    // Keyboard shortcuts handler
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            // Ctrl/Cmd + F to focus search
+            if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+                e.preventDefault();
+                searchInputRef.current?.focus();
+            }
+            // Escape to clear search
+            if (e.key === 'Escape') {
+                onSearchChange('');
+                searchInputRef.current?.focus();
+            }
+            // Number keys 1-9 for quick category select
+            if (e.key >= '1' && e.key <= '9') {
+                const idx = parseInt(e.key) - 1;
+                if (categories[idx]) {
+                    onCategoryChange(categories[idx]);
+                }
+            }
+        };
+        
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [categories, onCategoryChange, onSearchChange]);
+
+    // Barcode scan simulation (real implementation would use hardware scanner)
+    const handleBarcodeClick = () => {
+        setIsScanning(true);
+        // Simulate scanning with input focus
+        searchInputRef.current?.focus();
+        setTimeout(() => setIsScanning(false), 2000);
+    };
+
     const filtered = useMemo(() => {
         let items = products || [];
         if (activeCategory && activeCategory !== 'all') {
@@ -34,47 +73,77 @@ function PosProductGrid({ products, categories, activeCategory, onCategoryChange
     }, [products, activeCategory, searchTerm]);
 
     return (
-        <div className="flex flex-col h-full">
+        <div className="flex flex-col h-full" role="region" aria-label="Product selection area">
             {/* Search */}
             <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 bg-white">
                 <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" aria-hidden="true" />
                     <Input
-                        placeholder="Search products or scan barcode..."
+                        ref={searchInputRef}
+                        placeholder="Search products, SKU, or scan barcode... (Ctrl+F)"
                         className="pl-10 h-11 rounded-xl bg-gray-50 border-gray-200 focus:bg-white text-sm"
                         value={searchTerm}
                         onChange={(e) => onSearchChange(e.target.value)}
+                        aria-label="Search products or scan barcode"
                         autoFocus
                     />
                 </div>
-                <Button variant="outline" size="icon" className="h-11 w-11 rounded-xl border-gray-200">
-                    <Barcode className="w-5 h-5 text-gray-500" />
-                </Button>
+                <TooltipProvider>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button 
+                                variant="outline" 
+                                size="icon" 
+                                className={cn(
+                                    "h-11 w-11 rounded-xl border-gray-200 transition-all",
+                                    isScanning && "animate-pulse border-blue-500 text-blue-500"
+                                )}
+                                onClick={handleBarcodeClick}
+                                aria-label="Scan barcode"
+                            >
+                                <ScanLine className="w-5 h-5" />
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                            <p>Scan barcode (or type and press Enter)</p>
+                        </TooltipContent>
+                    </Tooltip>
+                </TooltipProvider>
             </div>
 
             {/* Category Filters */}
-            <div className="flex items-center gap-2 px-4 py-2 overflow-x-auto scrollbar-thin bg-gray-50/50 border-b border-gray-100">
+            <div 
+                className="flex items-center gap-2 px-4 py-2 overflow-x-auto scrollbar-thin bg-gray-50/50 border-b border-gray-100"
+                role="tablist"
+                aria-label="Product categories"
+            >
                 <button
                     onClick={() => onCategoryChange('all')}
                     className={cn(
-                        'px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all',
+                        'px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all focus:ring-2 focus:ring-brand-primary focus:outline-none',
                         activeCategory === 'all'
                             ? 'bg-brand-primary text-white shadow-md shadow-brand-primary/20'
                             : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
                     )}
+                    role="tab"
+                    aria-selected={activeCategory === 'all'}
+                    aria-label="Show all items"
                 >
                     All Items
                 </button>
-                {categories.map(cat => (
+                {categories.map((cat, idx) => (
                     <button
                         key={cat}
                         onClick={() => onCategoryChange(cat)}
                         className={cn(
-                            'px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all',
+                            'px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all focus:ring-2 focus:ring-brand-primary focus:outline-none',
                             activeCategory === cat
                                 ? 'bg-brand-primary text-white shadow-md shadow-brand-primary/20'
                                 : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
                         )}
+                        role="tab"
+                        aria-selected={activeCategory === cat}
+                        aria-label={`${cat} category (press ${idx + 1})`}
                     >
                         {cat}
                     </button>
@@ -82,47 +151,85 @@ function PosProductGrid({ products, categories, activeCategory, onCategoryChange
             </div>
 
             {/* Product Grid */}
-            <div className="flex-1 overflow-y-auto p-4">
-                <div className="grid grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
-                    {filtered.map((product) => (
-                        <motion.button
-                            key={product.id}
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.97 }}
-                            onClick={() => onAddToCart(product)}
-                            className={cn(
-                                'flex flex-col items-center p-3 rounded-xl border transition-all text-left',
-                                'bg-white hover:shadow-md hover:border-brand-100',
-                                parseInt(product.stock) <= 0
-                                    ? 'opacity-50 cursor-not-allowed border-red-200 bg-red-50/30'
-                                    : 'border-gray-200 cursor-pointer'
-                            )}
-                            disabled={parseInt(product.stock) <= 0}
-                        >
-                            <div className="w-full aspect-square rounded-lg bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center mb-2 text-2xl">
-                                [BOX]
-                            </div>
-                            <p className="text-xs font-semibold text-gray-900 truncate w-full">{product.name}</p>
-                            <p className="text-[10px] text-gray-400 truncate w-full">{product.sku || '--'}</p>
-                            <div className="flex items-center justify-between w-full mt-1.5">
-                                <span className="text-sm font-black text-brand-primary">
-                                    Rs.{parseFloat(product.selling_price || product.price || 0).toLocaleString()}
-                                </span>
-                                <span className={cn(
-                                    'text-[10px] font-bold px-1.5 py-0.5 rounded-full',
-                                    parseInt(product.stock) <= 5
-                                        ? 'bg-red-100 text-red-600'
-                                        : 'bg-emerald-100 text-emerald-600'
-                                )}>
-                                    {parseInt(product.stock || 0)} left
-                                </span>
-                            </div>
-                        </motion.button>
-                    ))}
+            <div 
+                className="flex-1 overflow-y-auto p-4"
+                role="region"
+                aria-label="Product grid"
+            >
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
+                    {filtered.map((product) => {
+                        const stock = parseInt(product.stock || 0);
+                        const isOutOfStock = stock <= 0;
+                        const isLowStock = stock > 0 && stock <= 5;
+                        
+                        return (
+                            <motion.button
+                                key={product.id}
+                                whileHover={isOutOfStock ? {} : { scale: 1.02 }}
+                                whileTap={isOutOfStock ? {} : { scale: 0.97 }}
+                                onClick={() => !isOutOfStock && onAddToCart(product)}
+                                className={cn(
+                                    'flex flex-col items-center p-3 rounded-xl border transition-all text-left focus:ring-2 focus:ring-brand-primary focus:outline-none',
+                                    'bg-white hover:shadow-md hover:border-brand-100',
+                                    isOutOfStock
+                                        ? 'opacity-50 cursor-not-allowed border-red-200 bg-red-50/30'
+                                        : 'border-gray-200 cursor-pointer',
+                                    isLowStock && 'border-orange-200 bg-orange-50/30'
+                                )}
+                                disabled={isOutOfStock}
+                                aria-label={`${product.name}, Price: ${product.selling_price || product.price || 0}, Stock: ${stock} units${isLowStock ? ', Low stock' : ''}${isOutOfStock ? ', Out of stock' : ''}`}
+                                aria-disabled={isOutOfStock}
+                                tabIndex={isOutOfStock ? -1 : 0}
+                            >
+                                <div 
+                                    className={cn(
+                                        "w-full aspect-square rounded-lg flex items-center justify-center mb-2 text-2xl",
+                                        isOutOfStock 
+                                            ? "bg-gradient-to-br from-red-50 to-red-100 text-red-300"
+                                            : isLowStock
+                                                ? "bg-gradient-to-br from-orange-50 to-orange-100 text-orange-400"
+                                                : "bg-gradient-to-br from-gray-50 to-gray-100 text-gray-300"
+                                    )}
+                                    aria-hidden="true"
+                                >
+                                    {isOutOfStock ? <Package className="w-8 h-8" /> : '[BOX]'}
+                                </div>
+                                <p className="text-xs font-semibold text-gray-900 truncate w-full" title={product.name}>
+                                    {product.name}
+                                </p>
+                                <p className="text-[10px] text-gray-400 truncate w-full" title={product.sku}>
+                                    {product.sku || '--'}
+                                </p>
+                                <div className="flex items-center justify-between w-full mt-1.5">
+                                    <span className="text-sm font-black text-brand-primary">
+                                        Rs.{parseFloat(product.selling_price || product.price || 0).toLocaleString()}
+                                    </span>
+                                    <span 
+                                        className={cn(
+                                            'text-[10px] font-bold px-1.5 py-0.5 rounded-full',
+                                            isOutOfStock
+                                                ? 'bg-red-100 text-red-600'
+                                                : isLowStock
+                                                    ? 'bg-orange-100 text-orange-600'
+                                                    : 'bg-emerald-100 text-emerald-600'
+                                        )}
+                                        aria-label={`${stock} items in stock`}
+                                    >
+                                        {stock} left
+                                    </span>
+                                </div>
+                            </motion.button>
+                        );
+                    })}
                     {filtered.length === 0 && (
-                        <div className="col-span-full py-20 text-center text-gray-400">
-                            <Search className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                        <div 
+                            className="col-span-full py-20 text-center text-gray-400"
+                            role="status"
+                            aria-live="polite"
+                        >
+                            <Search className="w-10 h-10 mx-auto mb-3 opacity-30" aria-hidden="true" />
                             <p className="text-sm">No products found</p>
+                            <p className="text-xs text-gray-300 mt-1">Try adjusting your search or category</p>
                         </div>
                     )}
                 </div>
@@ -135,8 +242,8 @@ function PosProductGrid({ products, categories, activeCategory, onCategoryChange
 
 function PosCart({
     items, onQuantityChange, onRemoveItem, onClearCart,
-    customer, onCustomerSelect, discount = 0,
-    onDiscountChange, onPaymentMethodSelect, onCompleteSale, isProcessing,
+    customer, onCustomerSelect, discount = 0, discountType = 'fixed',
+    onDiscountChange, onDiscountTypeChange, onPaymentMethodSelect, onCompleteSale, isProcessing,
     loyaltyBalance = 0, currency = 'Rs.'
 }) {
     const subtotal = items.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0);
@@ -148,33 +255,57 @@ function PosCart({
     }, 0);
     
     const taxAmount = Math.round(totalTax * 100) / 100;
-    const discountAmount = parseFloat(discount || 0);
+    
+    // Intelligent discount calculation
+    const rawDiscount = parseFloat(discount || 0);
+    const discountAmount = discountType === 'percentage' 
+        ? Math.min(subtotal * (rawDiscount / 100), subtotal) // Cap at subtotal
+        : Math.min(rawDiscount, subtotal);
+    
     const total = Math.round((subtotal + taxAmount - discountAmount) * 100) / 100;
+    
+    // Calculate change due (would be set by payment input in real implementation)
+    const [amountTendered, setAmountTendered] = useState('');
+    const changeDue = amountTendered ? Math.max(0, parseFloat(amountTendered) - total) : 0;
 
     return (
-        <div className="flex flex-col h-full bg-slate-900 text-white">
+        <div 
+            className="flex flex-col h-full bg-slate-900 text-white"
+            role="complementary"
+            aria-label="Shopping cart and checkout"
+        >
             {/* Cart Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700">
                 <div className="flex items-center gap-2">
-                    <ShoppingCart className="w-4 h-4 text-brand-primary" />
+                    <ShoppingCart className="w-4 h-4 text-brand-primary" aria-hidden="true" />
                     <span className="text-sm font-bold">Cart</span>
-                    <Badge variant="secondary" className="bg-brand-primary/20 text-brand-primary text-[10px]">
+                    <Badge 
+                        variant="secondary" 
+                        className="bg-brand-primary/20 text-brand-primary text-[10px]"
+                        aria-label={`${items.length} items in cart`}
+                    >
                         {items.length} items
                     </Badge>
                 </div>
                 {items.length > 0 && (
                     <Button
-                        variant="ghost" size="sm"
+                        variant="ghost" 
+                        size="sm"
                         className="text-red-400 hover:text-red-300 hover:bg-red-500/10 h-7 text-xs"
                         onClick={onClearCart}
+                        aria-label="Clear all items from cart"
                     >
-                        <Trash2 className="w-3 h-3 mr-1" /> Clear
+                        <Trash2 className="w-3 h-3 mr-1" aria-hidden="true" /> Clear
                     </Button>
                 )}
             </div>
 
             {/* Cart Items */}
-            <div className="flex-1 overflow-y-auto px-3 py-2 space-y-1 scrollbar-thin">
+            <div 
+                className="flex-1 overflow-y-auto px-3 py-2 space-y-1 scrollbar-thin"
+                role="list"
+                aria-label="Cart items"
+            >
                 <AnimatePresence>
                     {items.map((item, idx) => (
                         <motion.div
@@ -183,26 +314,40 @@ function PosCart({
                             animate={{ opacity: 1, x: 0 }}
                             exit={{ opacity: 0, x: -20 }}
                             className="flex items-center gap-2 p-2.5 rounded-lg bg-slate-800/60 hover:bg-slate-800 transition-colors"
+                            role="listitem"
+                            aria-label={`${item.name}, ${item.quantity} at ${currency}${item.unitPrice} each`}
                         >
                             <div className="flex-1 min-w-0">
-                                <p className="text-xs font-semibold text-gray-100 truncate">{item.name}</p>
+                                <p className="text-xs font-semibold text-gray-100 truncate" title={item.name}>{item.name}</p>
                                 <p className="text-[10px] text-gray-400">
                                     {currency}{item.unitPrice.toLocaleString()} each
                                 </p>
                             </div>
-                            <div className="flex items-center gap-1 bg-slate-700 rounded-lg px-1">
+                            <div 
+                                className="flex items-center gap-1 bg-slate-700 rounded-lg px-1"
+                                role="group"
+                                aria-label={`Quantity controls for ${item.name}`}
+                            >
                                 <button
                                     onClick={() => onQuantityChange(idx, Math.max(1, item.quantity - 1))}
-                                    className="p-1 hover:bg-slate-600 rounded transition-colors"
+                                    className="p-1 hover:bg-slate-600 rounded transition-colors focus:ring-1 focus:ring-brand-primary"
+                                    aria-label={`Decrease quantity of ${item.name}`}
                                 >
-                                    <Minus className="w-3 h-3" />
+                                    <Minus className="w-3 h-3" aria-hidden="true" />
                                 </button>
-                                <span className="w-7 text-center text-xs font-bold">{item.quantity}</span>
+                                <span 
+                                    className="w-7 text-center text-xs font-bold"
+                                    aria-live="polite"
+                                    aria-atomic="true"
+                                >
+                                    {item.quantity}
+                                </span>
                                 <button
                                     onClick={() => onQuantityChange(idx, item.quantity + 1)}
-                                    className="p-1 hover:bg-slate-600 rounded transition-colors"
+                                    className="p-1 hover:bg-slate-600 rounded transition-colors focus:ring-1 focus:ring-brand-primary"
+                                    aria-label={`Increase quantity of ${item.name}`}
                                 >
-                                    <Plus className="w-3 h-3" />
+                                    <Plus className="w-3 h-3" aria-hidden="true" />
                                 </button>
                             </div>
                             <span className="text-xs font-bold text-brand-primary-dark w-16 text-right">
@@ -210,17 +355,22 @@ function PosCart({
                             </span>
                             <button
                                 onClick={() => onRemoveItem(idx)}
-                                className="p-1 hover:bg-red-500/20 rounded transition-colors text-gray-500 hover:text-red-400"
+                                className="p-1 hover:bg-red-500/20 rounded transition-colors text-gray-500 hover:text-red-400 focus:ring-1 focus:ring-red-400"
+                                aria-label={`Remove ${item.name} from cart`}
                             >
-                                <X className="w-3 h-3" />
+                                <X className="w-3 h-3" aria-hidden="true" />
                             </button>
                         </motion.div>
                     ))}
                 </AnimatePresence>
 
                 {items.length === 0 && (
-                    <div className="flex flex-col items-center justify-center py-16 text-gray-500">
-                        <ShoppingCart className="w-10 h-10 mb-3 opacity-30" />
+                    <div 
+                        className="flex flex-col items-center justify-center py-16 text-gray-500"
+                        role="status"
+                        aria-live="polite"
+                    >
+                        <ShoppingCart className="w-10 h-10 mb-3 opacity-30" aria-hidden="true" />
                         <p className="text-xs">Cart is empty</p>
                         <p className="text-[10px] text-gray-600 mt-1">Click products to add</p>
                     </div>
@@ -251,34 +401,120 @@ function PosCart({
                         </div>
                     )}
 
-                    {/* Totals */}
-                    <div className="space-y-1 text-xs">
+                    {/* Totals with intelligent discount */}
+                    <div 
+                        className="space-y-1 text-xs"
+                        role="region"
+                        aria-label="Order totals"
+                    >
                         <div className="flex justify-between text-gray-400">
-                            <span>Subtotal</span>
+                            <span>Subtotal ({items.reduce((sum, i) => sum + i.quantity, 0)} items)</span>
                             <span>{currency}{subtotal.toLocaleString()}</span>
                         </div>
                         <div className="flex justify-between text-gray-400">
-                            <span>Tax</span>
+                            <span>Tax ({(items[0]?.taxPercent || 17)}%)</span>
                             <span>{currency}{taxAmount.toLocaleString()}</span>
                         </div>
-                        <div className="flex items-center justify-between text-gray-400">
-                            <span>Discount</span>
-                            <Input
-                                type="number"
-                                value={discount}
-                                onChange={(e) => onDiscountChange?.(e.target.value)}
-                                className="w-20 h-6 text-right text-xs bg-slate-800 border-slate-700 text-white rounded px-2"
-                                min={0}
-                            />
+                        
+                        {/* Intelligent Discount with type toggle */}
+                        <div className="flex items-center justify-between text-gray-400 gap-2">
+                            <div className="flex items-center gap-1">
+                                <span>Discount</span>
+                                <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <button
+                                                onClick={() => onDiscountTypeChange?.(discountType === 'fixed' ? 'percentage' : 'fixed')}
+                                                className="p-1 rounded hover:bg-slate-700 transition-colors"
+                                                aria-label={`Switch to ${discountType === 'fixed' ? 'percentage' : 'fixed amount'} discount`}
+                                            >
+                                                {discountType === 'fixed' ? (
+                                                    <Percent className="w-3 h-3" />
+                                                ) : (
+                                                    <Calculator className="w-3 h-3" />
+                                                )}
+                                            </button>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="top">
+                                            <p>Click to switch to {discountType === 'fixed' ? 'percentage' : 'fixed amount'}</p>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
+                                {discount > 0 && (
+                                    <span className="text-[10px] text-brand-primary">
+                                        ({discountType === 'fixed' ? currency : ''}{discount}{discountType === 'percentage' ? '%' : ''})
+                                    </span>
+                                )}
+                            </div>
+                            <div className="flex items-center gap-1">
+                                <Input
+                                    type="number"
+                                    value={discount}
+                                    onChange={(e) => onDiscountChange?.(e.target.value)}
+                                    className="w-20 h-6 text-right text-xs bg-slate-800 border-slate-700 text-white rounded px-2 focus:ring-1 focus:ring-brand-primary"
+                                    min={0}
+                                    max={discountType === 'percentage' ? 100 : subtotal}
+                                    aria-label={`Discount ${discountType === 'percentage' ? 'percentage' : 'amount'}`}
+                                />
+                            </div>
                         </div>
+                        
+                        {/* Quick discount presets */}
+                        {discountType === 'percentage' && discount === 0 && (
+                            <div className="flex gap-1 justify-end">
+                                {[5, 10, 15, 20].map(pct => (
+                                    <button
+                                        key={pct}
+                                        onClick={() => onDiscountChange?.(pct)}
+                                        className="px-2 py-0.5 text-[10px] bg-slate-800 hover:bg-brand-primary/20 rounded transition-colors"
+                                        aria-label={`Apply ${pct}% discount`}
+                                    >
+                                        {pct}%
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                        
+                        {discountAmount > 0 && (
+                            <div className="flex justify-between text-emerald-400 text-[10px]">
+                                <span>You save</span>
+                                <span>-{currency}{discountAmount.toLocaleString()}</span>
+                            </div>
+                        )}
+                        
                         <div className="flex justify-between text-lg font-black text-white pt-2 border-t border-slate-700">
                             <span>TOTAL</span>
-                            <span className="text-brand-primary">{currency}{total.toLocaleString()}</span>
+                            <span className="text-brand-primary" aria-live="polite">{currency}{total.toLocaleString()}</span>
                         </div>
                     </div>
 
+                    {/* Amount Tendered & Change (for cash payments) */}
+                    <div className="space-y-2">
+                        <div className="flex items-center justify-between text-xs">
+                            <span className="text-gray-400">Amount Tendered</span>
+                            <Input
+                                type="number"
+                                value={amountTendered}
+                                onChange={(e) => setAmountTendered(e.target.value)}
+                                className="w-24 h-6 text-right text-xs bg-slate-800 border-slate-700 text-white rounded px-2 focus:ring-1 focus:ring-brand-primary"
+                                placeholder={total.toString()}
+                                aria-label="Amount tendered by customer"
+                            />
+                        </div>
+                        {changeDue > 0 && (
+                            <div className="flex justify-between text-sm text-emerald-400 font-medium">
+                                <span>Change Due</span>
+                                <span aria-live="polite">{currency}{changeDue.toLocaleString()}</span>
+                            </div>
+                        )}
+                    </div>
+
                     {/* Payment Methods */}
-                    <div className="grid grid-cols-4 gap-1.5">
+                    <div 
+                        className="grid grid-cols-4 gap-1.5"
+                        role="radiogroup"
+                        aria-label="Select payment method"
+                    >
                         {[
                             { key: 'cash', icon: Banknote, label: 'Cash', color: 'hover:bg-emerald-500/20 hover:border-emerald-500/40' },
                             { key: 'card', icon: CreditCard, label: 'Card', color: 'hover:bg-brand-primary/20 hover:border-brand-primary/40' },
@@ -289,11 +525,14 @@ function PosCart({
                                 key={key}
                                 onClick={() => onPaymentMethodSelect?.(key)}
                                 className={cn(
-                                    'flex flex-col items-center gap-1 py-2 rounded-lg border border-slate-700 bg-slate-800 transition-all text-gray-400',
+                                    'flex flex-col items-center gap-1 py-2 rounded-lg border border-slate-700 bg-slate-800 transition-all text-gray-400 focus:ring-1 focus:ring-brand-primary',
                                     color
                                 )}
+                                role="radio"
+                                aria-label={`Pay by ${label}`}
+                                aria-pressed={undefined}
                             >
-                                <Icon className="w-4 h-4" />
+                                <Icon className="w-4 h-4" aria-hidden="true" />
                                 <span className="text-[9px] font-medium">{label}</span>
                             </button>
                         ))}
@@ -303,20 +542,27 @@ function PosCart({
                     <Button
                         onClick={onCompleteSale}
                         disabled={isProcessing || items.length === 0}
-                        className="w-full h-12 rounded-xl text-sm font-bold bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 shadow-lg shadow-emerald-500/20 disabled:opacity-50"
+                        className="w-full h-12 rounded-xl text-sm font-bold bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 shadow-lg shadow-emerald-500/20 disabled:opacity-50 focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 focus:ring-offset-slate-900"
+                        aria-label={`Complete sale for ${currency}${total.toLocaleString()}`}
                     >
                         {isProcessing ? (
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2" aria-live="polite">
                                 <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
                                 Processing...
                             </div>
                         ) : (
                             <>
-                                <CheckCircle2 className="w-5 h-5 mr-2" />
+                                <CheckCircle2 className="w-5 h-5 mr-2" aria-hidden="true" />
                                 COMPLETE SALE -- {currency}{total.toLocaleString()}
                             </>
                         )}
                     </Button>
+                    
+                    {/* Keyboard shortcuts hint */}
+                    <div className="flex items-center gap-1 text-[9px] text-gray-500 justify-center">
+                        <Keyboard className="w-3 h-3" aria-hidden="true" />
+                        <span>Ctrl+F: Search | 1-9: Categories | Enter: Complete</span>
+                    </div>
                 </div>
             )}
         </div>
@@ -333,11 +579,42 @@ export function PosTerminal({ businessId, products = [], customers = [], onStart
     const [customerQuery, setCustomerQuery] = useState('');
     const [showCustomerDialog, setShowCustomerDialog] = useState(false);
     const [discount, setDiscount] = useState(0);
+    const [discountType, setDiscountType] = useState('fixed'); // 'fixed' or 'percentage'
     const [paymentMethod, setPaymentMethod] = useState('cash');
     const [isProcessing, setIsProcessing] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
     const [lastSale, setLastSale] = useState(null);
     const [isStartingSession, setIsStartingSession] = useState(false);
+    const searchInputRef = useRef(null);
+
+    // Global keyboard shortcuts
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            // Ctrl/Cmd + F - Focus search
+            if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+                e.preventDefault();
+                searchInputRef.current?.focus();
+            }
+            
+            // Enter to complete sale when cart has items
+            if (e.key === 'Enter' && cart.length > 0 && !isProcessing && !showCustomerDialog) {
+                // Check if not in an input field
+                if (e.target.tagName !== 'INPUT') {
+                    e.preventDefault();
+                    handleCompleteSale();
+                }
+            }
+            
+            // Escape to clear search
+            if (e.key === 'Escape' && searchTerm) {
+                setSearchTerm('');
+                searchInputRef.current?.focus();
+            }
+        };
+        
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [cart.length, isProcessing, searchTerm, showCustomerDialog]);
 
     const hasSession = Boolean(
         session?.id
@@ -444,7 +721,14 @@ export function PosTerminal({ businessId, products = [], customers = [], onStart
             }, 0);
             
             const taxAmount = Math.round(totalTax * 100) / 100;
-            const total = Math.round((subtotal + taxAmount - parseFloat(discount || 0)) * 100) / 100;
+            
+            // Intelligent discount calculation
+            const rawDiscount = parseFloat(discount || 0);
+            const discountAmount = discountType === 'percentage' 
+                ? Math.min(subtotal * (rawDiscount / 100), subtotal)
+                : Math.min(rawDiscount, subtotal);
+            
+            const total = Math.round((subtotal + taxAmount - discountAmount) * 100) / 100;
 
             const result = await onCompleteSale?.({
                 businessId,
@@ -475,6 +759,7 @@ export function PosTerminal({ businessId, products = [], customers = [], onStart
                 setCart([]);
                 setCustomer(null);
                 setDiscount(0);
+                setDiscountType('fixed');
                 setTimeout(() => setShowSuccess(false), 3000);
             }
         } catch (err) {
@@ -482,7 +767,7 @@ export function PosTerminal({ businessId, products = [], customers = [], onStart
         } finally {
             setIsProcessing(false);
         }
-    }, [cart, businessId, session, customer, discount, paymentMethod, isProcessing, onCompleteSale, hasSession]);
+    }, [cart, businessId, session, customer, discount, discountType, paymentMethod, isProcessing, onCompleteSale, hasSession]);
 
     return (
         <div className="flex h-[calc(100vh-60px)] bg-gray-50 rounded-xl overflow-hidden shadow-sm border border-gray-200">
@@ -519,6 +804,7 @@ export function PosTerminal({ businessId, products = [], customers = [], onStart
                     onAddToCart={addToCart}
                     searchTerm={searchTerm}
                     onSearchChange={setSearchTerm}
+                    searchInputRef={searchInputRef}
                 />
             </div>
 
@@ -532,7 +818,9 @@ export function PosTerminal({ businessId, products = [], customers = [], onStart
                     customer={customer}
                     onCustomerSelect={() => setShowCustomerDialog(true)}
                     discount={discount}
+                    discountType={discountType}
                     onDiscountChange={setDiscount}
+                    onDiscountTypeChange={setDiscountType}
                     onPaymentMethodSelect={setPaymentMethod}
                     onCompleteSale={handleCompleteSale}
                     isProcessing={isProcessing}

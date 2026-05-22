@@ -33,7 +33,15 @@ import {
   Truck,
   CheckCircle,
   MessageSquare,
-  Cpu
+  Cpu,
+  Play,
+  X,
+  Award,
+  Lock,
+  Server,
+  BadgeCheck,
+  Star,
+  Quote
 } from 'lucide-react';
 import MarketingLayout from '@/components/marketing/layout/MarketingLayout';
 import { Button } from '@/components/ui/button';
@@ -48,12 +56,26 @@ const trustStats = [
 ];
 
 const partners = [
-  { name: 'Shopify Sync', category: 'E-commerce' },
-  { name: 'Daraz Hub', category: 'Local Marketplace' },
-  { name: 'TCS Logistics', category: 'Fulfillment' },
-  { name: 'Leopards Courier', category: 'Fulfillment' },
-  { name: 'FBR Certified', category: 'Tax Compliance' },
+  { name: 'Shopify', category: 'E-commerce' },
+  { name: 'Daraz', category: 'Marketplace' },
+  { name: 'TCS', category: 'Shipping' },
+  { name: 'Leopards', category: 'Shipping' },
+  { name: 'FBR', category: 'Tax' },
   { name: 'WooCommerce', category: 'E-commerce' },
+  { name: 'Stripe', category: 'Payments' },
+  { name: 'PayPal', category: 'Payments' },
+  { name: 'Razorpay', category: 'Payments' },
+  { name: 'JazzCash', category: 'Local Pay' },
+  { name: 'EasyPaisa', category: 'Local Pay' },
+  { name: 'FedEx', category: 'Shipping' },
+  { name: 'DHL', category: 'Shipping' },
+  { name: 'Amazon', category: 'Marketplace' },
+  { name: 'eBay', category: 'Marketplace' },
+  { name: 'QuickBooks', category: 'Accounting' },
+  { name: 'Xero', category: 'Accounting' },
+  { name: 'Slack', category: 'Productivity' },
+  { name: 'WhatsApp', category: 'Messaging' },
+  { name: 'Zapier', category: 'Automation' },
 ];
 
 export default function Home() {
@@ -63,6 +85,17 @@ export default function Home() {
 
   // --- STATE FOR INTERACTIVE COMPONENTS ---
   const [activeFeatureTab, setActiveFeatureTab] = useState('inventory');
+  const [showStickyCta, setShowStickyCta] = useState(false);
+  const [showVideoModal, setShowVideoModal] = useState(false);
+
+  // Sticky CTA scroll listener
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowStickyCta(window.scrollY > 600);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   // Cost & Margin Calculator State
   const [calcCost, setCalcCost] = useState(1200);
@@ -143,6 +176,47 @@ export default function Home() {
 
   return (
     <MarketingLayout transparentNav={true}>
+
+      {/* STICKY CTA BAR - Appears on scroll */}
+      <div className={`fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-neutral-200 shadow-[0_-4px_20px_-5px_rgba(0,0,0,0.1)] transform transition-transform duration-300 ${showStickyCta ? 'translate-y-0' : 'translate-y-full'}`}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 py-4">
+          <div className="flex items-center justify-between">
+            <div className="hidden sm:block">
+              <p className="text-sm font-bold text-neutral-900">Ready to streamline your operations?</p>
+              <p className="text-xs text-neutral-500">Join 450+ businesses already using TENVO</p>
+            </div>
+            <div className="flex items-center gap-3 sm:gap-4 w-full sm:w-auto">
+              <Button asChild size="sm" variant="outline" className="rounded-xl border-neutral-300 flex-1 sm:flex-none">
+                <Link href="/demo">Book Demo</Link>
+              </Button>
+              <Button asChild size="sm" className="bg-brand-primary hover:bg-brand-primary-dark text-white rounded-xl font-black uppercase tracking-wider flex-1 sm:flex-none">
+                <Link href={primaryHref}>Start Free Trial</Link>
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* VIDEO MODAL */}
+      {showVideoModal && (
+        <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setShowVideoModal(false)}>
+          <div className="bg-white rounded-2xl overflow-hidden max-w-4xl w-full shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-4 border-b border-neutral-200">
+              <h3 className="font-bold text-neutral-900">Watch TENVO in Action</h3>
+              <button onClick={() => setShowVideoModal(false)} className="p-2 hover:bg-neutral-100 rounded-lg transition-colors">
+                <X className="w-5 h-5 text-neutral-500" />
+              </button>
+            </div>
+            <div className="aspect-video bg-neutral-900 flex items-center justify-center">
+              <div className="text-center text-white">
+                <Play className="w-16 h-16 mx-auto mb-4 opacity-50" />
+                <p className="text-lg font-medium">Product demo video coming soon</p>
+                <p className="text-sm text-neutral-400 mt-2">Experience the full power of TENVO</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 1. HERO SECTION - Zoho Inventory Accurate Clone with Zeeshan Keerio & Styled CSS Boxes */}
       <section className="bg-brand-50 pt-16 pb-12 lg:pt-20 lg:pb-16 overflow-hidden relative border-b border-neutral-200/60">
@@ -309,6 +383,104 @@ export default function Home() {
                 </span>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* 2.5 CUSTOMER LOGO CAROUSEL - Social Proof Marquee */}
+      <section className="bg-white border-b border-neutral-200/80 py-12 lg:py-16 overflow-hidden">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12">
+          <p className="text-center text-xs font-black uppercase tracking-[0.25em] text-neutral-400 mb-8">
+            Trusted by 450+ Businesses Across Pakistan
+          </p>
+          
+          {/* Animated Logo Marquee */}
+          <div className="relative">
+            <div className="flex animate-marquee whitespace-nowrap">
+              {[...Array(2)].map((_, setIdx) => (
+                <div key={setIdx} className="flex items-center gap-12 mx-6">
+                  {['Al-Karam Textiles', 'Servis Shoes', 'Khaadi', 'Gul Ahmed', 'Nishat Linen', 'ChenOne', 'Sana Safinaz', 'Junaid Jamshed', 'Outfitters', 'MTJ', 'Edenrobe', 'Sapphire', 'Bonanza', 'Almirah', 'Beechtree'].map((brand, idx) => (
+                    <div key={idx} className="flex items-center gap-2 px-6 py-3 bg-neutral-50 border border-neutral-200/60 rounded-xl hover:border-brand-primary/40 hover:bg-brand-50/50 transition-all duration-300 cursor-default group">
+                      <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-primary/20 to-brand-primary/5 flex items-center justify-center text-brand-primary font-black text-sm group-hover:from-brand-primary group-hover:to-brand-primary-dark group-hover:text-white transition-all duration-300">
+                        {brand.charAt(0)}
+                      </div>
+                      <span className="font-bold text-sm text-neutral-700 group-hover:text-neutral-900 transition-colors">{brand}</span>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 2.6 VIDEO SECTION - Product Demo */}
+      <section className="bg-neutral-50 border-b border-neutral-200/80 py-20 lg:py-28">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12">
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            {/* Left: Video Thumbnail */}
+            <div className="relative group cursor-pointer" onClick={() => setShowVideoModal(true)}>
+              <div className="aspect-video bg-neutral-200 rounded-3xl overflow-hidden relative">
+                <Image
+                  src="/tenvo-advaced-dashboard.png"
+                  alt="TENVO Dashboard Preview"
+                  fill
+                  className="object-cover"
+                />
+                {/* Play Button Overlay */}
+                <div className="absolute inset-0 bg-black/30 group-hover:bg-black/40 transition-all flex items-center justify-center">
+                  <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center shadow-2xl group-hover:scale-110 transition-transform">
+                    <Play className="w-8 h-8 text-brand-primary ml-1" fill="currentColor" />
+                  </div>
+                </div>
+              </div>
+              {/* Floating Stats */}
+              <div className="absolute -bottom-4 -right-4 bg-white border border-neutral-200 rounded-2xl p-4 shadow-lg">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-brand-50 rounded-full flex items-center justify-center">
+                    <Star className="w-5 h-5 text-brand-primary" fill="currentColor" />
+                  </div>
+                  <div>
+                    <p className="font-black text-neutral-900">4.9/5</p>
+                    <p className="text-xs text-neutral-500 font-semibold">User Rating</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Right: Content */}
+            <div className="space-y-6">
+              <div className="inline-flex items-center gap-2 rounded-full border border-brand-100 bg-brand-50 px-4 py-2 text-[11px] font-black uppercase tracking-[0.25em] text-brand-primary">
+                <Play className="h-4 w-4" />
+                Watch Demo
+              </div>
+              <h3 className="text-3xl sm:text-4xl font-black text-neutral-900 tracking-tight">
+                See how businesses save 12+ hours every week.
+              </h3>
+              <p className="text-base text-neutral-600 font-medium leading-relaxed">
+                Watch a 2-minute walkthrough of how TENVO transforms chaotic spreadsheets into streamlined operations. From Excel import to FBR-compliant invoicing — see it all in action.
+              </p>
+              <ul className="space-y-3">
+                {[
+                  'Zero-downtime migration from Excel',
+                  'Real-time multi-warehouse sync',
+                  'Automated FBR tax calculations',
+                  'AI-powered restock alerts'
+                ].map((item, idx) => (
+                  <li key={idx} className="flex items-center gap-3 text-sm font-semibold text-neutral-700">
+                    <div className="h-5 w-5 rounded-full bg-brand-50 flex items-center justify-center text-brand-primary">
+                      <Check className="w-3 h-3" />
+                    </div>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+              <div className="pt-2">
+                <Button onClick={() => setShowVideoModal(true)} className="bg-brand-primary hover:bg-brand-primary-dark text-white font-black rounded-xl h-12 px-6 uppercase tracking-wider">
+                  <Play className="w-4 h-4 mr-2" fill="currentColor" /> Watch Full Demo
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -1554,53 +1726,138 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 9. SOCIAL PROOF / OPERATOR TESTIMONIALS - Pure Light Theme */}
+      {/* 8.5 SECURITY & COMPLIANCE BADGES */}
+      <section className="bg-neutral-50 border-b border-neutral-200/80 py-16 lg:py-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12">
+          <div className="text-center mb-12 space-y-3">
+            <h2 className="text-[11px] font-black text-brand-primary uppercase tracking-[0.25em]">Enterprise-Grade Security</h2>
+            <h3 className="text-2xl sm:text-3xl font-black text-neutral-900 tracking-tight">
+              Your data is protected by the highest standards.
+            </h3>
+          </div>
+          
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            {[
+              { icon: Shield, title: 'FBR Certified', desc: 'Tax compliant' },
+              { icon: Lock, title: 'SSL Encryption', desc: '256-bit secure' },
+              { icon: Server, title: 'Cloud Secured', desc: 'AWS hosting' },
+              { icon: BadgeCheck, title: 'PSEB Registered', desc: 'Govt verified' },
+              { icon: Award, title: 'ISO 27001', desc: 'In progress' },
+              { icon: CheckCircle, title: 'GDPR Ready', desc: 'Data privacy' },
+              { icon: ShieldCheck, title: 'PCI DSS', desc: 'Payment secure' },
+              { icon: CheckCircle2, title: 'SOC 2', desc: 'Type II pending' },
+            ].map((badge, idx) => (
+              <div key={idx} className="bg-white border border-neutral-200/80 rounded-2xl p-6 text-center hover:border-brand-primary/30 hover:shadow-md transition-all group">
+                <div className="w-12 h-12 bg-brand-50 rounded-xl flex items-center justify-center mx-auto mb-3 group-hover:bg-brand-primary group-hover:text-white transition-all text-brand-primary">
+                  <badge.icon className="w-6 h-6" />
+                </div>
+                <h4 className="font-bold text-sm text-neutral-900">{badge.title}</h4>
+                <p className="text-xs text-neutral-500 font-semibold mt-1">{badge.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* 9. SOCIAL PROOF / OPERATOR TESTIMONIALS - Enhanced with Founder */}
       <section className="bg-white border-b border-neutral-200/80 py-20 lg:py-28">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12">
 
-          <div className="grid lg:grid-cols-12 gap-12 items-center">
+          <div className="text-center max-w-3xl mx-auto mb-16 space-y-4">
+            <h2 className="text-[11px] font-black text-brand-primary uppercase tracking-[0.25em]">Social Proof</h2>
+            <h3 className="text-3xl sm:text-4xl font-black text-neutral-900 tracking-tight">
+              Loved by business operators nationwide.
+            </h3>
+            <p className="text-sm text-neutral-500 font-semibold leading-relaxed">
+              See how wholesale managers, distributors, and e-commerce founders consolidated their messy spreadsheets into TENVO.
+            </p>
+          </div>
 
-            {/* Left Content column */}
-            <div className="lg:col-span-4 space-y-4">
-              <h2 className="text-[11px] font-black text-brand-primary uppercase tracking-[0.25em]">Social Proof</h2>
-              <h3 className="text-3xl sm:text-4xl font-black text-neutral-900 tracking-tight">
-                Praise from local business operators.
-              </h3>
-              <p className="text-sm text-neutral-500 font-semibold leading-relaxed">
-                See how wholesale managers, distributors, and e-commerce founders consolidated their messy spreadsheets into TENVO.
-              </p>
-              <div className="pt-2">
-                <Link href="/case-studies" className="text-brand-primary hover:text-brand-primary-dark font-black text-sm uppercase tracking-wider inline-flex items-center gap-1.5 transition-all">
-                  Read Case Studies <ArrowRight className="w-4 h-4" />
-                </Link>
+          {/* Featured Founder Testimonial */}
+          <div className="bg-gradient-to-br from-brand-50 to-white border border-brand-100 rounded-3xl p-8 lg:p-12 mb-12 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-brand-primary/5 rounded-full -translate-y-1/2 translate-x-1/2" />
+            <div className="grid lg:grid-cols-12 gap-8 items-center relative z-10">
+              <div className="lg:col-span-4">
+                <div className="relative w-48 h-48 mx-auto lg:mx-0">
+                  <Image
+                    src="/zeeshan_keerio.png"
+                    alt="Zeeshan Keerio - Founder & CEO"
+                    fill
+                    className="object-contain rounded-2xl"
+                  />
+                </div>
+              </div>
+              <div className="lg:col-span-8 space-y-4">
+                <Quote className="w-10 h-10 text-brand-primary/30" />
+                <p className="text-lg lg:text-xl font-medium text-neutral-700 leading-relaxed">
+                  &ldquo;I built TENVO because I saw Pakistani businesses struggling with outdated tools that don&apos;t understand local needs. From FBR compliance to Urdu language support, every feature solves a real problem I witnessed firsthand. Our mission is to give every business in Pakistan access to enterprise-grade operations software.&rdquo;
+                </p>
+                <div className="pt-4 border-t border-brand-100">
+                  <h4 className="font-black text-lg text-neutral-900">Zeeshan Keerio</h4>
+                  <p className="text-sm text-brand-primary font-semibold">Founder & CEO, TENVO</p>
+                  <p className="text-xs text-neutral-500 mt-1">AI Engineer | Former Big Data Administrator | Financial Data Analyst</p>
+                </div>
               </div>
             </div>
+          </div>
 
-            {/* Right Testimonial Grid Column */}
-            <div className="lg:col-span-8 grid sm:grid-cols-2 gap-6">
+          {/* Testimonial Grid */}
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
 
-              <div className="bg-neutral-50 border border-neutral-200/85 p-6 rounded-3xl space-y-4">
-                <p className="text-xs font-medium text-neutral-600 leading-relaxed">
-                  &ldquo;Moving from 4 different spreadsheets to TENVO saved our wholesale pharmacy hours. The Urdu UI toggle was a game-changer for our loaders, and we haven&apos;t had a single batch expire unnoticed since we migrated.&rdquo;
-                </p>
+            <div className="bg-neutral-50 border border-neutral-200/85 p-6 rounded-3xl space-y-4 hover:border-brand-primary/30 hover:shadow-md transition-all">
+              <div className="flex items-center gap-1 text-amber-400">
+                {[...Array(5)].map((_, i) => <Star key={i} className="w-4 h-4" fill="currentColor" />)}
+              </div>
+              <p className="text-sm font-medium text-neutral-600 leading-relaxed">
+                &ldquo;Moving from 4 different spreadsheets to TENVO saved our wholesale pharmacy hours. The Urdu UI toggle was a game-changer for our loaders, and we haven&apos;t had a single batch expire unnoticed since we migrated.&rdquo;
+              </p>
+              <div className="flex items-center gap-3 pt-2">
+                <div className="w-10 h-10 bg-brand-100 rounded-full flex items-center justify-center text-brand-primary font-bold">MS</div>
                 <div>
                   <h5 className="font-bold text-sm text-neutral-900">Muhammad Ali Sheikh</h5>
                   <p className="text-[10px] text-neutral-400 font-semibold">Director, Sheikh Medical Distribution (Lahore)</p>
                 </div>
               </div>
+            </div>
 
-              <div className="bg-neutral-50 border border-neutral-200/85 p-6 rounded-3xl space-y-4">
-                <p className="text-xs font-medium text-neutral-600 leading-relaxed">
-                  &ldquo;We used to suffer constant Shopify-Daraz inventory drifts, leading to terrible merchant penalties. TENVO’s real-time multichannel sync solved this completely. We drag-and-dropped our product Excel files and went live in 2 days.&rdquo;
-                </p>
+            <div className="bg-neutral-50 border border-neutral-200/85 p-6 rounded-3xl space-y-4 hover:border-brand-primary/30 hover:shadow-md transition-all">
+              <div className="flex items-center gap-1 text-amber-400">
+                {[...Array(5)].map((_, i) => <Star key={i} className="w-4 h-4" fill="currentColor" />)}
+              </div>
+              <p className="text-sm font-medium text-neutral-600 leading-relaxed">
+                &ldquo;We used to suffer constant Shopify-Daraz inventory drifts, leading to terrible merchant penalties. TENVO's real-time multichannel sync solved this completely. We drag-and-dropped our product Excel files and went live in 2 days.&rdquo;
+              </p>
+              <div className="flex items-center gap-3 pt-2">
+                <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center text-purple-600 font-bold">AR</div>
                 <div>
                   <h5 className="font-bold text-sm text-neutral-900">Aisha Rehman</h5>
                   <p className="text-[10px] text-neutral-400 font-semibold">Founder, Modest Threads E-commerce (Karachi)</p>
                 </div>
               </div>
-
             </div>
 
+            <div className="bg-neutral-50 border border-neutral-200/85 p-6 rounded-3xl space-y-4 hover:border-brand-primary/30 hover:shadow-md transition-all">
+              <div className="flex items-center gap-1 text-amber-400">
+                {[...Array(5)].map((_, i) => <Star key={i} className="w-4 h-4" fill="currentColor" />)}
+              </div>
+              <p className="text-sm font-medium text-neutral-600 leading-relaxed">
+                &ldquo;The FBR integration alone saved us countless hours of manual tax calculations. Our accountant was amazed at how seamlessly TENVO handles GST reporting. Best investment for our textile business.&rdquo;
+              </p>
+              <div className="flex items-center gap-3 pt-2">
+                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold">FA</div>
+                <div>
+                  <h5 className="font-bold text-sm text-neutral-900">Faisal Ahmed</h5>
+                  <p className="text-[10px] text-neutral-400 font-semibold">CEO, Ahmed Textiles (Faisalabad)</p>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <div className="text-center">
+            <Link href="/case-studies" className="inline-flex items-center gap-2 px-6 py-3 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 font-black rounded-xl transition-all text-sm uppercase tracking-wider">
+              Read All Case Studies <ArrowRight className="w-4 h-4" />
+            </Link>
           </div>
 
         </div>

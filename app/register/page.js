@@ -31,6 +31,7 @@ import {
     Building2,
     BadgeCheck,
     Shield,
+    Lock,
     Loader2,
     Cake,
     Palette,
@@ -64,7 +65,8 @@ import {
     BicepsFlexed,
     BrickWall,
     Search,
-    UtensilsCrossed
+    UtensilsCrossed,
+    Users
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -462,7 +464,22 @@ export default function RegisterWizard() {
                         </p>
                     </div>
 
-                    <Card className="mt-12 border border-white/80 shadow-[0_30px_90px_-44px_rgba(15,23,42,0.36)] rounded-[32px] overflow-hidden bg-white/92 backdrop-blur-xl">
+                    {/* Trust Badges Row */}
+                    <div className="mt-8 flex flex-wrap items-center justify-center gap-4 md:gap-8">
+                        {[
+                            { icon: Shield, text: 'FBR Certified' },
+                            { icon: BadgeCheck, text: 'PSEB Registered' },
+                            { icon: Lock, text: '256-bit SSL' },
+                            { icon: Users, text: '450+ Businesses' },
+                        ].map((badge, idx) => (
+                            <div key={idx} className="flex items-center gap-2 px-4 py-2 bg-white/80 backdrop-blur-sm border border-gray-200/60 rounded-xl shadow-sm">
+                                <badge.icon className="w-4 h-4 text-wine" />
+                                <span className="text-xs font-bold text-gray-700">{badge.text}</span>
+                            </div>
+                        ))}
+                    </div>
+
+                    <Card className="mt-8 border border-white/80 shadow-[0_30px_90px_-44px_rgba(15,23,42,0.36)] rounded-[32px] overflow-hidden bg-white/92 backdrop-blur-xl">
                         <CardContent className="p-0">
                             <div className="flex flex-col md:flex-row">
                                 {/* Form Section */}

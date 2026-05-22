@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 import { useBusiness } from '@/lib/context/BusinessContext';
 import { getTablesAction, createRestaurantOrderAction, updateTableStatusAction } from '@/lib/actions/standard/restaurant';
 import { createPosTransactionAction } from '@/lib/actions/standard/pos';
+import { Button } from '@/components/ui/button';
 import toast from 'react-hot-toast';
 
 // ===============================================================

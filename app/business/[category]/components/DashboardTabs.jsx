@@ -49,6 +49,7 @@ const PromotionEngine = dynamic(() => import('@/components/crm/PromotionEngine')
 const CustomerLoyaltyPortal = dynamic(() => import('@/components/crm/CustomerLoyaltyPortal').then(mod => mod.CustomerLoyaltyPortal));
 const AIInsightsPanel = dynamic(() => import('@/components/intelligence/AIInsightsPanel').then(mod => mod.AIInsightsPanel));
 const ReportBuilder = dynamic(() => import('@/components/reports/ReportBuilder').then(mod => mod.ReportBuilder));
+const StoreSettingsManager = dynamic(() => import('@/components/StoreSettingsManager').then(mod => mod.StoreSettingsManager));
 const TabGuard = dynamic(() => import('@/components/guards/TabGuard').then(mod => mod.TabGuard));
 const ResourceLimitBanner = dynamic(() => import('@/components/ui/ResourceLimitBanner').then(mod => mod.ResourceLimitBanner));
 import { isPosRelevant, isHospitality, isCampaignRelevant } from '@/lib/config/domains';
@@ -722,7 +723,6 @@ export function DashboardTabs({
                             domainCheck={posRelevant}
                             domainTitle="Point of Sale not relevant for this domain"
                             domainMessage="Switch to a retail or hospitality domain profile to enable POS workflows."
-                            requiredPlan="starter"
                             featureName="Point of Sale"
                             onUpgrade={() => handleTabChange('settings')}
                         >
@@ -998,6 +998,15 @@ export function DashboardTabs({
                     {wrapTab(
                         <TabGuard tabKey="settings" role={role} planTier={planTier} featureName="Settings" onUpgrade={() => handleTabChange('settings')}>
                             <SettingsManager category={category} />
+                        </TabGuard>
+                    )}
+                </TabsContent>
+
+                {/* --- Store Settings Tab --- */}
+                <TabsContent value="store-settings" className="space-y-6 outline-none">
+                    {wrapTab(
+                        <TabGuard tabKey="store-settings" role={role} planTier={planTier} featureName="Store Settings" onUpgrade={() => handleTabChange('settings')}>
+                            <StoreSettingsManager business={business} category={category} />
                         </TabGuard>
                     )}
                 </TabsContent>
