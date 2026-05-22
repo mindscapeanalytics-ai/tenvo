@@ -37,10 +37,11 @@ export default async function StoreHomePage({ params }) {
     notFound();
   }
   
-  const { business, settings } = businessResult;
+  const { business } = businessResult;
   
-  // Check if store is enabled
-  if (settings && settings.enabled === false) {
+  // Check if store is enabled - getBusinessByDomain already validates this
+  // but we double-check here for safety
+  if (business.is_storefront_enabled === false) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center max-w-md mx-auto p-8">

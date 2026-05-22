@@ -53,6 +53,7 @@ const StoreSettingsManager = dynamic(() => import('@/components/StoreSettingsMan
 const OrdersManager = dynamic(() => import('@/components/orders/OrdersManager').then(mod => mod.OrdersManager));
 const TabGuard = dynamic(() => import('@/components/guards/TabGuard').then(mod => mod.TabGuard));
 const ResourceLimitBanner = dynamic(() => import('@/components/ui/ResourceLimitBanner').then(mod => mod.ResourceLimitBanner));
+const NotificationBell = dynamic(() => import('@/components/notifications/NotificationBell').then(mod => mod.NotificationBell));
 import { isPosRelevant, isHospitality, isCampaignRelevant } from '@/lib/config/domains';
 
 export function DashboardTabs({
