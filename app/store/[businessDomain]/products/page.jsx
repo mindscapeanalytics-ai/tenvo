@@ -7,7 +7,7 @@ import { ProductFilters } from '@/components/storefront/ProductFilters';
 import { SearchBar } from '@/components/storefront/SearchBar';
 import { CategoryNav } from '@/components/storefront/CategoryNav';
 import { ProductsSkeleton } from '@/components/storefront/LoadingSkeletons';
-import { Metadata } from 'next';
+import { SortDropdown, ActiveFilters, ViewToggle } from '@/components/storefront/ProductsToolbar';
 
 export async function generateMetadata({ params, searchParams }) {
   const { businessDomain } = await params;
@@ -51,6 +51,7 @@ export default async function ProductsPage({ params, searchParams }) {
     page: parseInt(searchParams.page || '1'),
     limit: 24,
   };
+  const view = searchParams.view || 'grid';
   
   // Fetch categories for filters
   const categoriesResult = await getCategories(business.id);
@@ -98,25 +99,26 @@ export default async function ProductsPage({ params, searchParams }) {
           {/* Product Grid */}
           <main className="flex-1">
             {/* Search and Sort Bar */}
-            <div className="flex flex-col sm:flex-row gap-4 mb-6">
+            <div className="flex flex-col sm:flex-row gap-3 mb-6">
               <div className="flex-1">
                 <SearchBar 
                   businessDomain={businessDomain}
                   initialQuery={filters.search}
                 />
               </div>
-              <SortDropdown 
-                currentSort={filters.sort}
-                businessDomain={businessDomain}
-                searchParams={searchParams}
-              />
+              <div className="flex items-center gap-2">
+                <SortDropdown 
+                  currentSort={filters.sort}
+                  businessDomain={businessDomain}
+                />
+                <ViewToggle currentView={view} businessDomain={businessDomain} />
+              </div>
             </div>
             
             {/* Active Filters */}
             <ActiveFilters 
               filters={filters}
               businessDomain={businessDomain}
-              searchParams={searchParams}
             />
             
             {/* Products */}
@@ -125,6 +127,7 @@ export default async function ProductsPage({ params, searchParams }) {
                 businessId={business.id}
                 businessDomain={businessDomain}
                 filters={filters}
+                view={view}
               />
             </Suspense>
           </main>
@@ -134,7 +137,7 @@ export default async function ProductsPage({ params, searchParams }) {
   );
 }
 
-async function ProductGridContent({ businessId, businessDomain, filters }) {
+async function ProductGridContent({ businessId, businessDomain, filters, view = 'grid' }) {
   const result = await getProducts(businessId, filters);
   
   if (!result.success) {
@@ -155,100 +158,9 @@ async function ProductGridContent({ businessId, businessDomain, filters }) {
       businessDomain={businessDomain}
       currentPage={filters.page}
       filters={filters}
+      view={view}
     />
   );
 }
 
-function SortDropdown({ currentSort, businessDomain, searchParams }) {
-  const sortOptions = [
-    { value: 'featured', label: 'Featured' },
-    { value: 'newest', label: 'Newest Arrivals' },
-    { value: 'price-asc', label: 'Price: Low to High' },
-    { value: 'price-desc', label: 'Price: High to Low' },
-    { value: 'name-asc', label: 'Name: A to Z' },
-    { value: 'popularity', label: 'Most Popular' },
-  ];
-  
-  const handleSort = (value) => {
-    const params = new URLSearchParams(searchParams);
-    params.set('sort', value);
-    window.location.href = `/store/${businessDomain}/products?${params.toString()}`;
-  };
-  
-  return (
-    <select
-      value={currentSort}
-      onChange={(e) => handleSort(e.target.value)}
-      className="border rounded-lg px-4 py-2 bg-white text-sm focus:ring-2 focus:ring-blue-500"
-    >
-      {sortOptions.map((option) => (
-        <option key={option.value} value={option.value}>
-          {option.label}
-        </option>
-      ))}
-    </select>
-  );
-}
 
-function ActiveFilters({ filters, businessDomain, searchParams }) {
-  const activeFilters = [];
-  
-  if (filters.category) {
-    activeFilters.push({ key: 'category', label: `Category: ${filters.category}` });
-  }
-  if (filters.minPrice !== undefined || filters.maxPrice !== undefined) {
-    const priceLabel = `Price: ${filters.minPrice || 0} - ${filters.maxPrice || '∞'}`;
-    activeFilters.push({ key: 'price', label: priceLabel });
-  }
-  if (filters.inStock) {
-    activeFilters.push({ key: 'inStock', label: 'In Stock' });
-  }
-  if (filters.onSale) {
-    activeFilters.push({ key: 'onSale', label: 'On Sale' });
-  }
-  if (filters.search) {
-    activeFilters.push({ key: 'search', label: `Search: ${filters.search}` });
-  }
-  
-  if (activeFilters.length === 0) return null;
-  
-  const removeFilter = (key) => {
-    const params = new URLSearchParams(searchParams);
-    if (key === 'price') {
-      params.delete('minPrice');
-      params.delete('maxPrice');
-    } else {
-      params.delete(key);
-    }
-    window.location.href = `/store/${businessDomain}/products?${params.toString()}`;
-  };
-  
-  return (
-    <div className="flex flex-wrap gap-2 mb-6">
-      {activeFilters.map((filter) => (
-        <span
-          key={filter.key}
-          className="inline-flex items-center gap-1 px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-sm"
-        >
-          {filter.label}
-          <button
-            onClick={() => removeFilter(filter.key)}
-            className="hover:text-blue-900"
-          >
-            ×
-          </button>
-        </span>
-      ))}
-      {activeFilters.length > 1 && (
-        <button
-          onClick={() => {
-            window.location.href = `/store/${businessDomain}/products`;
-          }}
-          className="text-sm text-gray-500 hover:text-gray-700 underline"
-        >
-          Clear all filters
-        </button>
-      )}
-    </div>
-  );
-}

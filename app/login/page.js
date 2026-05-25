@@ -70,16 +70,21 @@ export default function LoginPage() {
 
             // Check for multiple businesses to decide redirection
             try {
-                const businesses = await businessAPI.getJoinedBusinesses(user.id);
+                console.log("Fetching businesses for user:", user.id);
+                const businesses = await businessAPI.getByUserId(user.id);
+                console.log("Found businesses:", businesses);
 
                 if (businesses && businesses.length > 0) {
                     toast.success(`Welcome back, ${user.name || 'User'}!`);
 
                     if (businesses.length === 1) {
                         // Exactly one business - go straight to its dashboard
-                        router.push(`/business/${businesses[0].domain}`);
+                        const redirectUrl = `/business/${businesses[0].domain}`;
+                        console.log("Redirecting to:", redirectUrl);
+                        router.push(redirectUrl);
                     } else {
                         // Multiple businesses - go to selection screen
+                        console.log("Redirecting to multi-business selection");
                         router.push('/multi-business');
                     }
                     return;

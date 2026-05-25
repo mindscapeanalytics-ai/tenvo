@@ -3,31 +3,41 @@
 import Link from 'next/link';
 import { ChevronRight, Home } from 'lucide-react';
 
-export function ProductBreadcrumbs({ items, businessDomain }) {
-  if (!items || items.length === 0) return null;
-  
+/**
+ * ProductBreadcrumbs
+ *
+ * Accepts two calling conventions:
+ *   1. items[]  — generic: [{ label, href? }]
+ *   2. category + categorySlug + productName — product-detail shorthand
+ */
+export function ProductBreadcrumbs({ items, businessDomain, category, categorySlug, productName }) {
+  // Build items array from shorthand props if items not provided
+  const breadcrumbs = items || [
+    ...(category ? [{ label: category, href: categorySlug ? `/store/${businessDomain}/products?category=${categorySlug}` : `/store/${businessDomain}/products` }] : []),
+    ...(productName ? [{ label: productName }] : []),
+  ];
+
+  if (!breadcrumbs || breadcrumbs.length === 0) return null;
+
   return (
-    <nav className="flex items-center gap-2 text-sm text-gray-600 py-4">
-      <Link 
+    <nav className="flex items-center gap-1.5 text-sm text-gray-500 py-4 flex-wrap" aria-label="Breadcrumb">
+      <Link
         href={`/store/${businessDomain}`}
         className="flex items-center gap-1 hover:text-gray-900 transition-colors"
       >
-        <Home className="w-4 h-4" />
-        Home
+        <Home className="w-3.5 h-3.5" />
+        <span>Home</span>
       </Link>
-      
-      {items.map((item, index) => (
-        <span key={index} className="flex items-center gap-2">
-          <ChevronRight className="w-4 h-4 text-gray-400" />
+
+      {breadcrumbs.map((item, index) => (
+        <span key={index} className="flex items-center gap-1.5">
+          <ChevronRight className="w-3.5 h-3.5 text-gray-300 flex-shrink-0" />
           {item.href ? (
-            <Link 
-              href={item.href}
-              className="hover:text-gray-900 transition-colors"
-            >
+            <Link href={item.href} className="hover:text-gray-900 transition-colors truncate max-w-[160px]">
               {item.label}
             </Link>
           ) : (
-            <span className="text-gray-900 font-medium">{item.label}</span>
+            <span className="text-gray-900 font-medium truncate max-w-[200px]">{item.label}</span>
           )}
         </span>
       ))}

@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
+import { useBusiness } from '@/lib/context/BusinessContext';
 import { 
   CreditCard, 
   Wallet, 
@@ -12,17 +13,15 @@ import {
   AlertCircle,
   ExternalLink,
   Plus,
-  ToggleLeft,
-  ToggleRight,
   Save,
-  Loader2
+  Loader2,
+  ArrowLeft
 } from 'lucide-react';
 import { 
   getStorePaymentSettings, 
   createStripeConnectAccount,
   getStripeOnboardingUrl,
   addCODPaymentMethod,
-  addLocalPaymentMethod,
   togglePaymentMethod,
   updatePaymentSettings
 } from '@/lib/actions/storefront/payments';
@@ -36,17 +35,10 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'react-hot-toast';
 
-const paymentIcons = {
-  stripe: CreditCard,
-  cod: Truck,
-  easypaisa: Smartphone,
-  jazzcash: Smartphone,
-  bank_transfer: Building2,
-  paypal: Wallet,
-};
-
 export default function PaymentSettingsPage() {
   const { category } = useParams();
+  const router = useRouter();
+  const { business } = useBusiness();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [settings, setSettings] = useState(null);
@@ -54,9 +46,7 @@ export default function PaymentSettingsPage() {
   const [stripeConnect, setStripeConnect] = useState(null);
   const [activeTab, setActiveTab] = useState('methods');
 
-  // Form states
   const [codSettings, setCodSettings] = useState({
-    enabled: true,
     displayName: 'Cash on Delivery (COD)',
     description: 'Pay when you receive your order',
     instructions: 'Please keep exact change ready',
@@ -74,19 +64,20 @@ export default function PaymentSettingsPage() {
   });
 
   useEffect(() => {
-    loadSettings();
-  }, []);
+    if (business?.id) {
+      loadSettings();
+    }
+  }, [business?.id]);
 
   async function loadSettings() {
+    if (!business?.id) return;
     try {
       setLoading(true);
-      const result = await getStorePaymentSettings();
-      
+      const result = await getStorePaymentSettings(business.id);
       if (result.success) {
         setSettings(result.data.settings);
         setPaymentMethods(result.data.paymentMethods || []);
         setStripeConnect(result.data.stripeConnect);
-        
         if (result.data.settings) {
           setGeneralSettings({
             autoCapturePayments: result.data.settings.auto_capture_payments ?? true,
@@ -106,14 +97,14 @@ export default function PaymentSettingsPage() {
   }
 
   async function handleConnectStripe() {
+    if (!business?.id) return;
     try {
       setSaving(true);
-      const result = await createStripeConnectAccount({
-        businessName: 'Your Store', // Get from business context
-        email: 'store@example.com',
-        country: 'PK',
+      const result = await createStripeConnectAccount(business.id, {
+        businessName: business.business_name || 'My Store',
+        email: business.email || '',
+        country: business.country || 'PK',
       });
-
       if (result.success) {
         toast.success('Stripe account created!');
         if (result.data.onboardingUrl) {
@@ -131,10 +122,10 @@ export default function PaymentSettingsPage() {
   }
 
   async function handleStripeOnboarding() {
+    if (!business?.id) return;
     try {
       setSaving(true);
-      const result = await getStripeOnboardingUrl();
-      
+      const result = await getStripeOnboardingUrl(business.id);
       if (result.success && result.data.onboardingUrl) {
         window.open(result.data.onboardingUrl, '_blank');
       } else {
@@ -148,16 +139,16 @@ export default function PaymentSettingsPage() {
   }
 
   async function handleEnableCOD() {
+    if (!business?.id) return;
     try {
       setSaving(true);
-      const result = await addCODPaymentMethod({
+      const result = await addCODPaymentMethod(business.id, {
         displayName: codSettings.displayName,
         description: codSettings.description,
         instructions: codSettings.instructions,
         feePercentage: codSettings.feePercentage,
         feeFixed: codSettings.feeFixed,
       });
-
       if (result.success) {
         toast.success('COD payment method enabled!');
         await loadSettings();
@@ -172,9 +163,9 @@ export default function PaymentSettingsPage() {
   }
 
   async function handleToggleMethod(methodId, isActive) {
+    if (!business?.id) return;
     try {
-      const result = await togglePaymentMethod(methodId, !isActive);
-      
+      const result = await togglePaymentMethod(business.id, methodId, !isActive);
       if (result.success) {
         toast.success(`Payment method ${!isActive ? 'enabled' : 'disabled'}`);
         await loadSettings();
@@ -187,9 +178,10 @@ export default function PaymentSettingsPage() {
   }
 
   async function handleSaveSettings() {
+    if (!business?.id) return;
     try {
       setSaving(true);
-      const result = await updatePaymentSettings({
+      const result = await updatePaymentSettings(business.id, {
         auto_capture_payments: generalSettings.autoCapturePayments,
         require_billing_address: generalSettings.requireBillingAddress,
         allow_save_cards: generalSettings.allowSaveCards,
@@ -197,7 +189,6 @@ export default function PaymentSettingsPage() {
         allow_cod: generalSettings.allowCod,
         allow_prepaid: generalSettings.allowPrepaid,
       });
-
       if (result.success) {
         toast.success('Settings saved successfully!');
       } else {
@@ -210,9 +201,9 @@ export default function PaymentSettingsPage() {
     }
   }
 
-  if (loading) {
+  if (!business?.id || loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-[400px]">
         <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
       </div>
     );
@@ -224,10 +215,23 @@ export default function PaymentSettingsPage() {
 
   return (
     <div className="container mx-auto py-8 px-4 max-w-5xl">
+      {/* Back navigation */}
+      <div className="mb-6">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => router.push(`/business/${category}?tab=store-settings`)}
+          className="text-gray-500 hover:text-gray-900"
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to Store Settings
+        </Button>
+      </div>
+
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900">Payment Settings</h1>
         <p className="text-gray-600 mt-2">
-          Configure how customers pay for their orders
+          Configure how customers pay for their orders at <span className="font-medium">{business.business_name}</span>
         </p>
       </div>
 
@@ -272,13 +276,14 @@ export default function PaymentSettingsPage() {
                           onClick={handleStripeOnboarding}
                           disabled={saving}
                           variant="outline"
+                          size="sm"
                         >
                           Complete Setup
                           <ExternalLink className="h-4 w-4 ml-2" />
                         </Button>
                       )}
                       <Switch
-                        checked={paymentMethods.find(m => m.provider === 'stripe')?.is_active}
+                        checked={paymentMethods.find(m => m.provider === 'stripe')?.is_active ?? false}
                         onCheckedChange={() => handleToggleMethod(
                           paymentMethods.find(m => m.provider === 'stripe')?.id,
                           paymentMethods.find(m => m.provider === 'stripe')?.is_active
@@ -293,10 +298,7 @@ export default function PaymentSettingsPage() {
                   <p className="text-gray-600 mb-4">
                     Connect Stripe to accept credit/debit card payments
                   </p>
-                  <Button 
-                    onClick={handleConnectStripe}
-                    disabled={saving}
-                  >
+                  <Button onClick={handleConnectStripe} disabled={saving}>
                     {saving ? (
                       <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Connecting...</>
                     ) : (
@@ -326,13 +328,11 @@ export default function PaymentSettingsPage() {
                     <CheckCircle className="h-5 w-5 text-blue-600" />
                     <div>
                       <p className="font-medium text-blue-800">COD Enabled</p>
-                      <p className="text-sm text-blue-600">
-                        Customers can pay on delivery
-                      </p>
+                      <p className="text-sm text-blue-600">Customers can pay on delivery</p>
                     </div>
                   </div>
                   <Switch
-                    checked={paymentMethods.find(m => m.provider === 'cod')?.is_active}
+                    checked={paymentMethods.find(m => m.provider === 'cod')?.is_active ?? false}
                     onCheckedChange={() => handleToggleMethod(
                       paymentMethods.find(m => m.provider === 'cod')?.id,
                       paymentMethods.find(m => m.provider === 'cod')?.is_active
@@ -346,14 +346,14 @@ export default function PaymentSettingsPage() {
                       <Label>Display Name</Label>
                       <Input
                         value={codSettings.displayName}
-                        onChange={(e) => setCodSettings({...codSettings, displayName: e.target.value})}
+                        onChange={(e) => setCodSettings({ ...codSettings, displayName: e.target.value })}
                       />
                     </div>
                     <div>
                       <Label>Description</Label>
                       <Input
                         value={codSettings.description}
-                        onChange={(e) => setCodSettings({...codSettings, description: e.target.value})}
+                        onChange={(e) => setCodSettings({ ...codSettings, description: e.target.value })}
                       />
                     </div>
                   </div>
@@ -361,13 +361,10 @@ export default function PaymentSettingsPage() {
                     <Label>Instructions for Customer</Label>
                     <Input
                       value={codSettings.instructions}
-                      onChange={(e) => setCodSettings({...codSettings, instructions: e.target.value})}
+                      onChange={(e) => setCodSettings({ ...codSettings, instructions: e.target.value })}
                     />
                   </div>
-                  <Button 
-                    onClick={handleEnableCOD}
-                    disabled={saving}
-                  >
+                  <Button onClick={handleEnableCOD} disabled={saving}>
                     {saving ? (
                       <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Enabling...</>
                     ) : (
@@ -392,21 +389,21 @@ export default function PaymentSettingsPage() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Button variant="outline" className="h-auto py-4 flex flex-col items-center gap-2">
+                <div className="flex flex-col items-center gap-2 p-4 border rounded-lg opacity-60">
                   <Smartphone className="h-8 w-8 text-green-600" />
                   <span className="font-medium">EasyPaisa</span>
                   <Badge variant="secondary">Coming Soon</Badge>
-                </Button>
-                <Button variant="outline" className="h-auto py-4 flex flex-col items-center gap-2">
+                </div>
+                <div className="flex flex-col items-center gap-2 p-4 border rounded-lg opacity-60">
                   <Smartphone className="h-8 w-8 text-red-600" />
                   <span className="font-medium">JazzCash</span>
                   <Badge variant="secondary">Coming Soon</Badge>
-                </Button>
-                <Button variant="outline" className="h-auto py-4 flex flex-col items-center gap-2">
+                </div>
+                <div className="flex flex-col items-center gap-2 p-4 border rounded-lg opacity-60">
                   <Building2 className="h-8 w-8 text-blue-600" />
                   <span className="font-medium">Bank Transfer</span>
                   <Badge variant="secondary">Coming Soon</Badge>
-                </Button>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -431,8 +428,8 @@ export default function PaymentSettingsPage() {
                 </div>
                 <Switch
                   checked={generalSettings.autoCapturePayments}
-                  onCheckedChange={(checked) => 
-                    setGeneralSettings({...generalSettings, autoCapturePayments: checked})
+                  onCheckedChange={(checked) =>
+                    setGeneralSettings({ ...generalSettings, autoCapturePayments: checked })
                   }
                 />
               </div>
@@ -448,8 +445,8 @@ export default function PaymentSettingsPage() {
                 </div>
                 <Switch
                   checked={generalSettings.requireBillingAddress}
-                  onCheckedChange={(checked) => 
-                    setGeneralSettings({...generalSettings, requireBillingAddress: checked})
+                  onCheckedChange={(checked) =>
+                    setGeneralSettings({ ...generalSettings, requireBillingAddress: checked })
                   }
                 />
               </div>
@@ -465,8 +462,8 @@ export default function PaymentSettingsPage() {
                 </div>
                 <Switch
                   checked={generalSettings.allowSaveCards}
-                  onCheckedChange={(checked) => 
-                    setGeneralSettings({...generalSettings, allowSaveCards: checked})
+                  onCheckedChange={(checked) =>
+                    setGeneralSettings({ ...generalSettings, allowSaveCards: checked })
                   }
                 />
               </div>
@@ -477,7 +474,7 @@ export default function PaymentSettingsPage() {
                 <Label className="text-base">Default Currency</Label>
                 <select
                   value={generalSettings.defaultCurrency}
-                  onChange={(e) => setGeneralSettings({...generalSettings, defaultCurrency: e.target.value})}
+                  onChange={(e) => setGeneralSettings({ ...generalSettings, defaultCurrency: e.target.value })}
                   className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
                 >
                   <option value="PKR">PKR - Pakistani Rupee</option>
@@ -487,11 +484,7 @@ export default function PaymentSettingsPage() {
                 </select>
               </div>
 
-              <Button 
-                onClick={handleSaveSettings}
-                disabled={saving}
-                className="w-full"
-              >
+              <Button onClick={handleSaveSettings} disabled={saving} className="w-full">
                 {saving ? (
                   <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving...</>
                 ) : (
@@ -533,9 +526,9 @@ export default function PaymentSettingsPage() {
                       <p className="text-sm text-gray-500 mb-1">Charges</p>
                       <div className="flex items-center gap-2">
                         {stripeConnect.is_charges_enabled ? (
-                          <><CheckCircle className="h-4 w-4 text-green-600" /> <span className="text-green-700">Enabled</span></>
+                          <><CheckCircle className="h-4 w-4 text-green-600" /><span className="text-green-700">Enabled</span></>
                         ) : (
-                          <><AlertCircle className="h-4 w-4 text-yellow-600" /> <span className="text-yellow-700">Pending</span></>
+                          <><AlertCircle className="h-4 w-4 text-yellow-600" /><span className="text-yellow-700">Pending</span></>
                         )}
                       </div>
                     </div>
@@ -543,9 +536,9 @@ export default function PaymentSettingsPage() {
                       <p className="text-sm text-gray-500 mb-1">Payouts</p>
                       <div className="flex items-center gap-2">
                         {stripeConnect.is_payouts_enabled ? (
-                          <><CheckCircle className="h-4 w-4 text-green-600" /> <span className="text-green-700">Enabled</span></>
+                          <><CheckCircle className="h-4 w-4 text-green-600" /><span className="text-green-700">Enabled</span></>
                         ) : (
-                          <><AlertCircle className="h-4 w-4 text-yellow-600" /> <span className="text-yellow-700">Pending</span></>
+                          <><AlertCircle className="h-4 w-4 text-yellow-600" /><span className="text-yellow-700">Pending</span></>
                         )}
                       </div>
                     </div>
@@ -556,10 +549,7 @@ export default function PaymentSettingsPage() {
                       <p className="text-blue-800 mb-2">
                         Complete your Stripe onboarding to start accepting payments
                       </p>
-                      <Button
-                        onClick={handleStripeOnboarding}
-                        disabled={saving}
-                      >
+                      <Button onClick={handleStripeOnboarding} disabled={saving}>
                         Continue Onboarding
                         <ExternalLink className="h-4 w-4 ml-2" />
                       </Button>
@@ -573,14 +563,10 @@ export default function PaymentSettingsPage() {
                     Connect with Stripe
                   </h3>
                   <p className="text-gray-600 mb-6 max-w-md mx-auto">
-                    Stripe is the easiest way to accept payments online. 
+                    Stripe is the easiest way to accept payments online.
                     Get started in minutes with Stripe Connect.
                   </p>
-                  <Button
-                    onClick={handleConnectStripe}
-                    disabled={saving}
-                    size="lg"
-                  >
+                  <Button onClick={handleConnectStripe} disabled={saving} size="lg">
                     {saving ? (
                       <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Connecting...</>
                     ) : (

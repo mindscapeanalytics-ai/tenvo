@@ -95,7 +95,7 @@ export function OrdersManager({ business, category }) {
       
       if (result.success) {
         // Client-side search filter
-        let filteredOrders = result.data.orders;
+        let filteredOrders = result.orders || [];
         if (searchQuery) {
           const query = searchQuery.toLowerCase();
           filteredOrders = filteredOrders.filter(order => 
@@ -107,7 +107,7 @@ export function OrdersManager({ business, category }) {
         }
         
         setOrders(filteredOrders);
-        setTotalOrders(result.data.total);
+        setTotalOrders(result.total || 0);
       } else {
         toast.error('Failed to load orders');
       }
@@ -130,7 +130,7 @@ export function OrdersManager({ business, category }) {
     try {
       const result = await getOrderDetails(order.id, business.id);
       if (result.success) {
-        setOrderDetails(result.data);
+        setOrderDetails({ order: result.order, items: result.items, history: result.history || [] });
       } else {
         toast.error('Failed to load order details');
       }
@@ -352,7 +352,7 @@ export function OrdersManager({ business, category }) {
                   <TableRow key={order.id} className="hover:bg-gray-50">
                     <TableCell>
                       <div className="font-medium">{order.order_number}</div>
-                      <div className="text-xs text-gray-500">#{order.id.slice(-6)}</div>
+                      <div className="text-xs text-gray-500">#{String(order.id).slice(-6)}</div>
                     </TableCell>
                     <TableCell>
                       <div className="font-medium">{order.customer_name || 'Guest'}</div>

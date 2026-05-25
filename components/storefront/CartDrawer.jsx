@@ -3,14 +3,14 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { 
-  X, ShoppingBag, Plus, Minus, Trash2, ArrowRight, 
-  Truck, Package 
+import { useRouter } from 'next/navigation';
+import {
+  ShoppingBag, Plus, Minus, Trash2, ArrowRight,
+  Truck, Package
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Separator } from '@/components/ui/separator';
-import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/lib/currency';
 import { useCart } from '@/lib/hooks/storefront/useCart';
 import { useStorefront } from '@/lib/context/StorefrontContext';
@@ -19,152 +19,172 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 export function CartDrawer() {
   const [isOpen, setIsOpen] = useState(false);
+  const router = useRouter();
+
   const { cart, updateQuantity, removeItem, calculateTotals, isLoading } = useCart();
-  const { currency, formatPrice } = useStorefront();
+  const { currency, businessDomain, settings } = useStorefront();
   const { subtotal, itemCount } = calculateTotals();
-  
-  // Listen for cart toggle events
+
+  const freeShippingThreshold = settings?.freeShippingThreshold || 2000;
+  const remaining = Math.max(0, freeShippingThreshold - subtotal);
+  const progressPct = Math.min(100, (subtotal / freeShippingThreshold) * 100);
+
+  // Listen for the global toggle-cart event dispatched by AddToCartSection
   useEffect(() => {
-    const handleToggleCart = () => setIsOpen(true);
-    window.addEventListener('toggle-cart', handleToggleCart);
-    return () => window.removeEventListener('toggle-cart', handleToggleCart);
+    const handleToggle = () => setIsOpen(true);
+    window.addEventListener('toggle-cart', handleToggle);
+    return () => window.removeEventListener('toggle-cart', handleToggle);
   }, []);
-  
-  const handleQuantityChange = (item, newQuantity) => {
-    if (newQuantity < 1) {
+
+  const handleQuantityChange = (item, newQty) => {
+    if (newQty < 1) {
       removeItem(item.productId, item.variantId);
       toast.success('Item removed from cart');
-    } else if (newQuantity > item.maxQuantity) {
-      toast.error(`Maximum ${item.maxQuantity} items available`);
+    } else if (item.maxQuantity && newQty > item.maxQuantity) {
+      toast.error(`Only ${item.maxQuantity} available`);
     } else {
-      updateQuantity(item.productId, item.variantId, newQuantity);
+      updateQuantity(item.productId, item.variantId, newQty);
     }
   };
-  
-  const getBusinessDomain = () => {
-    // Extract business domain from cart or context
-    return cart.businessDomain || 'store';
+
+  const handleCheckout = () => {
+    setIsOpen(false);
+    router.push(`/store/${businessDomain}/checkout`);
   };
-  
+
   return (
     <Sheet open={isOpen} onOpenChange={setIsOpen}>
-      <SheetContent className="w-full sm:max-w-lg flex flex-col">
-        <SheetHeader className="space-y-2.5 pb-4">
-          <SheetTitle className="flex items-center gap-2 text-xl">
+      <SheetContent className="w-full sm:max-w-lg flex flex-col p-0">
+        {/* Header */}
+        <SheetHeader className="px-6 py-4 border-b">
+          <SheetTitle className="flex items-center gap-2 text-lg font-bold">
             <ShoppingBag className="w-5 h-5" />
-            Shopping Cart ({itemCount})
+            Cart
+            {itemCount > 0 && (
+              <span className="ml-1 text-sm font-normal text-gray-500">
+                ({itemCount} {itemCount === 1 ? 'item' : 'items'})
+              </span>
+            )}
           </SheetTitle>
         </SheetHeader>
-        
+
         {cart.items.length === 0 ? (
-          <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
-            <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-              <ShoppingBag className="w-12 h-12 text-gray-400" />
+          /* ── Empty State ─────────────────────────────────────────────── */
+          <div className="flex-1 flex flex-col items-center justify-center text-center px-8 py-12">
+            <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+              <ShoppingBag className="w-10 h-10 text-gray-300" />
             </div>
-            <h3 className="text-lg font-semibold mb-2">Your cart is empty</h3>
-            <p className="text-gray-500 mb-6">
-              Looks like you haven't added anything yet.
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Your cart is empty</h3>
+            <p className="text-sm text-gray-500 mb-6">
+              Add some products to get started.
             </p>
-            <Button onClick={() => setIsOpen(false)} asChild>
-              <Link href={`/store/${getBusinessDomain()}/products`}>
-                Continue Shopping
+            <Button
+              onClick={() => setIsOpen(false)}
+              asChild
+              className="rounded-xl"
+            >
+              <Link href={`/store/${businessDomain}/products`}>
+                Browse Products
               </Link>
             </Button>
           </div>
         ) : (
           <>
-            {/* Cart Items */}
-            <div className="flex-1 overflow-y-auto py-4">
+            {/* ── Cart Items ───────────────────────────────────────────── */}
+            <div className="flex-1 overflow-y-auto">
               <AnimatePresence mode="popLayout">
                 {cart.items.map((item, index) => (
                   <motion.div
-                    key={`${item.productId}-${item.variantId}`}
+                    key={`${item.productId}-${item.variantId ?? 'base'}`}
                     layout
-                    initial={{ opacity: 0, y: 20 }}
+                    initial={{ opacity: 0, y: 16 }}
                     animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, x: -100 }}
-                    transition={{ duration: 0.2, delay: index * 0.05 }}
-                    className="flex gap-4 p-4 rounded-lg hover:bg-gray-50 transition-colors"
+                    exit={{ opacity: 0, x: -80 }}
+                    transition={{ duration: 0.18, delay: index * 0.04 }}
+                    className="flex gap-4 px-6 py-4 border-b border-gray-50 hover:bg-gray-50/60 transition-colors"
                   >
-                    {/* Product Image */}
-                    <Link 
-                      href={`/store/${getBusinessDomain()}/products/${item.slug || item.productId}`}
-                      className="flex-shrink-0"
+                    {/* Image */}
+                    <Link
+                      href={`/store/${businessDomain}/products/${item.slug || item.productId}`}
                       onClick={() => setIsOpen(false)}
+                      className="flex-shrink-0"
                     >
-                      <div className="w-20 h-20 bg-gray-100 rounded-lg overflow-hidden">
+                      <div className="w-18 h-18 w-[72px] h-[72px] bg-gray-100 rounded-xl overflow-hidden">
                         {item.image ? (
                           <Image
                             src={item.image}
                             alt={item.name}
-                            width={80}
-                            height={80}
+                            width={72}
+                            height={72}
                             className="object-cover w-full h-full"
                           />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center text-gray-400">
-                            <Package className="w-6 h-6" />
+                          <div className="w-full h-full flex items-center justify-center">
+                            <Package className="w-6 h-6 text-gray-300" />
                           </div>
                         )}
                       </div>
                     </Link>
-                    
-                    {/* Product Info */}
+
+                    {/* Info */}
                     <div className="flex-1 min-w-0">
-                      <Link 
-                        href={`/store/${getBusinessDomain()}/products/${item.slug || item.productId}`}
-                        className="font-medium text-gray-900 hover:text-blue-600 line-clamp-1"
+                      <Link
+                        href={`/store/${businessDomain}/products/${item.slug || item.productId}`}
                         onClick={() => setIsOpen(false)}
+                        className="text-sm font-semibold text-gray-900 hover:text-gray-600 line-clamp-2 leading-snug"
                       >
                         {item.name}
                       </Link>
-                      
+
                       {item.variantName && (
-                        <p className="text-sm text-gray-500">{item.variantName}</p>
+                        <p className="text-xs text-gray-400 mt-0.5">{item.variantName}</p>
                       )}
-                      
-                      <p className="text-sm text-gray-500">
+
+                      <p className="text-xs text-gray-500 mt-1">
                         {formatCurrency(item.price, currency)} each
                       </p>
-                      
-                      {/* Quantity Controls */}
-                      <div className="flex items-center gap-3 mt-2">
-                        <div className="flex items-center border rounded-lg">
+
+                      {/* Qty controls */}
+                      <div className="flex items-center gap-2 mt-2">
+                        <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden">
                           <button
                             onClick={() => handleQuantityChange(item, item.quantity - 1)}
                             disabled={isLoading}
-                            className="p-2 hover:bg-gray-100 rounded-l-lg transition-colors disabled:opacity-50"
+                            className="w-8 h-8 flex items-center justify-center hover:bg-gray-100 transition-colors disabled:opacity-40"
+                            aria-label="Decrease quantity"
                           >
-                            <Minus className="w-4 h-4" />
+                            <Minus className="w-3.5 h-3.5" />
                           </button>
-                          <span className="w-10 text-center font-medium text-sm">
+                          <span className="w-8 text-center text-sm font-semibold">
                             {item.quantity}
                           </span>
                           <button
                             onClick={() => handleQuantityChange(item, item.quantity + 1)}
-                            disabled={isLoading || item.quantity >= item.maxQuantity}
-                            className="p-2 hover:bg-gray-100 rounded-r-lg transition-colors disabled:opacity-50"
+                            disabled={isLoading || (item.maxQuantity && item.quantity >= item.maxQuantity)}
+                            className="w-8 h-8 flex items-center justify-center hover:bg-gray-100 transition-colors disabled:opacity-40"
+                            aria-label="Increase quantity"
                           >
-                            <Plus className="w-4 h-4" />
+                            <Plus className="w-3.5 h-3.5" />
                           </button>
                         </div>
-                        
+
                         <button
                           onClick={() => {
                             removeItem(item.productId, item.variantId);
-                            toast.success('Item removed');
+                            toast.success('Removed from cart');
                           }}
                           disabled={isLoading}
-                          className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                          className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                          aria-label="Remove item"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     </div>
-                    
-                    {/* Price */}
-                    <div className="text-right">
-                      <p className="font-semibold">
+
+                    {/* Line total */}
+                    <div className="text-right flex-shrink-0">
+                      <p className="text-sm font-bold text-gray-900">
                         {formatCurrency(item.price * item.quantity, currency)}
                       </p>
                     </div>
@@ -172,59 +192,62 @@ export function CartDrawer() {
                 ))}
               </AnimatePresence>
             </div>
-            
-            {/* Footer */}
-            <div className="border-t pt-4 space-y-4">
-              {/* Free Shipping Progress */}
-              {subtotal < 2000 && (
-                <div className="bg-blue-50 rounded-lg p-3">
-                  <div className="flex items-center gap-2 text-sm text-blue-700 mb-2">
-                    <Truck className="w-4 h-4" />
-                    <span>Add {formatCurrency(2000 - subtotal, currency)} more for free shipping!</span>
+
+            {/* ── Footer ───────────────────────────────────────────────── */}
+            <div className="border-t bg-white px-6 py-5 space-y-4">
+              {/* Free shipping progress */}
+              {remaining > 0 && (
+                <div className="bg-amber-50 border border-amber-100 rounded-xl p-3">
+                  <div className="flex items-center gap-2 text-xs font-medium text-amber-700 mb-2">
+                    <Truck className="w-3.5 h-3.5" />
+                    Add {formatCurrency(remaining, currency)} more for free shipping
                   </div>
-                  <div className="w-full bg-blue-200 rounded-full h-2">
-                    <div 
-                      className="bg-blue-600 h-2 rounded-full transition-all"
-                      style={{ width: `${Math.min(100, (subtotal / 2000) * 100)}%` }}
+                  <div className="w-full bg-amber-200 rounded-full h-1.5">
+                    <div
+                      className="bg-amber-500 h-1.5 rounded-full transition-all duration-500"
+                      style={{ width: `${progressPct}%` }}
                     />
                   </div>
                 </div>
               )}
-              
+              {remaining === 0 && (
+                <div className="flex items-center gap-2 text-xs font-medium text-green-700 bg-green-50 border border-green-100 rounded-xl px-3 py-2">
+                  <Truck className="w-3.5 h-3.5" />
+                  You qualify for free shipping!
+                </div>
+              )}
+
               <Separator />
-              
+
               {/* Subtotal */}
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">Subtotal</span>
-                <span className="text-xl font-bold">{formatCurrency(subtotal, currency)}</span>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-600">Subtotal</span>
+                <span className="text-xl font-black text-gray-900">
+                  {formatCurrency(subtotal, currency)}
+                </span>
               </div>
-              
-              <p className="text-sm text-gray-500">
+              <p className="text-xs text-gray-400">
                 Shipping and taxes calculated at checkout
               </p>
-              
-              {/* CTA Buttons */}
-              <div className="space-y-2">
-                <Button 
-                  className="w-full gap-2"
+
+              {/* Actions */}
+              <div className="space-y-2 pt-1">
+                <Button
                   size="lg"
-                  onClick={() => {
-                    setIsOpen(false);
-                    // Navigate to checkout
-                    window.location.href = `/store/${getBusinessDomain()}/checkout`;
-                  }}
+                  className="w-full gap-2 rounded-xl font-bold"
+                  onClick={handleCheckout}
                 >
                   Checkout
                   <ArrowRight className="w-4 h-4" />
                 </Button>
-                
-                <Button 
-                  variant="outline" 
-                  className="w-full"
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full rounded-xl"
                   onClick={() => setIsOpen(false)}
                   asChild
                 >
-                  <Link href={`/store/${getBusinessDomain()}/cart`}>
+                  <Link href={`/store/${businessDomain}/cart`}>
                     View Full Cart
                   </Link>
                 </Button>

@@ -11,12 +11,14 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { 
   Store, Globe, Link, Palette, Truck, CreditCard, 
-  Save, ExternalLink, CheckCircle, AlertCircle 
+  Save, ExternalLink, CheckCircle, AlertCircle, ArrowRight
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useRouter } from 'next/navigation';
 import { getStorefrontSettings, updateBusinessSettings } from '@/lib/actions/storefront/admin';
 
 export function StoreSettingsManager({ business, category }) {
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [settings, setSettings] = useState({
@@ -28,6 +30,11 @@ export function StoreSettingsManager({ business, category }) {
     enableCard: true,
     freeShippingThreshold: 2000,
     returnPolicyDays: 7,
+    heroTitle: '',
+    announcement: '',
+    brand: {
+      primaryColor: ''
+    },
     socialLinks: {
       facebook: '',
       instagram: '',
@@ -73,7 +80,9 @@ export function StoreSettingsManager({ business, category }) {
 
   const storeUrl = business?.domain 
     ? `/store/${business.domain}` 
-    : `/store/${business?.handle || business?.id}`;
+    : business?.handle 
+      ? `/store/${business.handle}` 
+      : null;
 
   if (loading) {
     return (
@@ -97,15 +106,22 @@ export function StoreSettingsManager({ business, category }) {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <a 
-            href={storeUrl} 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
-          >
-            <ExternalLink className="w-4 h-4" />
-            View Store
-          </a>
+          {storeUrl ? (
+            <a 
+              href={storeUrl} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+            >
+              <ExternalLink className="w-4 h-4" />
+              View Store
+            </a>
+          ) : (
+            <span className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-400 bg-gray-50 border border-gray-200 rounded-lg cursor-not-allowed" title="Set a store domain first">
+              <ExternalLink className="w-4 h-4" />
+              View Store
+            </span>
+          )}
           <Button onClick={handleSave} disabled={saving}>
             <Save className="w-4 h-4 mr-2" />
             {saving ? 'Saving...' : 'Save Changes'}
@@ -158,13 +174,13 @@ export function StoreSettingsManager({ business, category }) {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Palette className="w-5 h-5" />
-                Store Appearance
+                Store Appearance & Branding
               </CardTitle>
               <CardDescription>
                 Customize how your store looks to customers
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-6">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Theme</Label>
@@ -191,6 +207,55 @@ export function StoreSettingsManager({ business, category }) {
                     <option value="EUR">EUR (€)</option>
                     <option value="GBP">GBP (£)</option>
                   </select>
+                </div>
+              </div>
+
+              <Separator />
+
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Brand Accent Color</Label>
+                  <div className="flex items-center gap-3">
+                    <input 
+                      type="color"
+                      value={settings.brand?.primaryColor || '#e34242'}
+                      onChange={(e) => setSettings(prev => ({ 
+                        ...prev, 
+                        brand: { ...prev.brand, primaryColor: e.target.value } 
+                      }))}
+                      className="w-10 h-10 rounded border cursor-pointer"
+                    />
+                    <Input 
+                      placeholder="#e34242"
+                      value={settings.brand?.primaryColor || ''}
+                      onChange={(e) => setSettings(prev => ({ 
+                        ...prev, 
+                        brand: { ...prev.brand, primaryColor: e.target.value } 
+                      }))}
+                      className="w-32"
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500">Choose a primary color for buttons and accents.</p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Hero Title (Tagline)</Label>
+                  <Input 
+                    placeholder="E.g., Shop the best products"
+                    value={settings.heroTitle || ''}
+                    onChange={(e) => setSettings(prev => ({ ...prev, heroTitle: e.target.value }))}
+                  />
+                  <p className="text-xs text-gray-500">The main headline displayed on the top of your public store.</p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Announcement Banner</Label>
+                  <Input 
+                    placeholder="E.g., Free shipping on orders over Rs. 2,000"
+                    value={settings.announcement || ''}
+                    onChange={(e) => setSettings(prev => ({ ...prev, announcement: e.target.value }))}
+                  />
+                  <p className="text-xs text-gray-500">A scrolling banner text shown at the very top of your store.</p>
                 </div>
               </div>
             </CardContent>
@@ -273,7 +338,13 @@ export function StoreSettingsManager({ business, category }) {
               <div className="space-y-2">
                 <Label>Store URL</Label>
                 <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
-                  <span className="font-medium">{typeof window !== 'undefined' ? window.location.origin : ''}{storeUrl}</span>
+                  {storeUrl ? (
+                    <span className="font-medium text-sm break-all">
+                      {typeof window !== 'undefined' ? window.location.origin : ''}{storeUrl}
+                    </span>
+                  ) : (
+                    <span className="text-sm text-gray-400 italic">No domain configured yet — set one below</span>
+                  )}
                 </div>
               </div>
               <Separator />
@@ -301,7 +372,7 @@ export function StoreSettingsManager({ business, category }) {
                 Payment Methods
               </CardTitle>
               <CardDescription>
-                Configure which payment options are available
+                Configure which payment options are available to your customers
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -334,6 +405,15 @@ export function StoreSettingsManager({ business, category }) {
                   checked={settings.enableCard}
                   onCheckedChange={(checked) => setSettings(prev => ({ ...prev, enableCard: checked }))}
                 />
+              </div>
+              <div className="pt-2 border-t">
+                <button
+                  onClick={() => router.push(`/business/${business?.domain || category}/store-settings/payments`)}
+                  className="w-full flex items-center justify-between p-3 text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                >
+                  <span className="font-medium">Advanced Payment Settings (Stripe Connect, COD fees, etc.)</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
               </div>
             </CardContent>
           </Card>

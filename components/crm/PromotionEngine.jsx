@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Gift, Plus, Percent, Tag, Calendar, Clock, Users, ShoppingBag,
@@ -14,6 +14,15 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
+import { useBusiness } from '@/lib/context/BusinessContext';
+import {
+    getPromotionsAction,
+    createPromotionAction,
+    updatePromotionAction,
+    togglePromotionAction,
+    deletePromotionAction,
+} from '@/lib/actions/standard/promotions';
+import toast from 'react-hot-toast';
 
 // --- Constants ----------------------------------------------------------------
 
@@ -539,31 +548,31 @@ function PromoCard({ promotion, onEdit, onToggle, onDuplicate, onDelete, currenc
 // --- Main Promotion Engine ---------------------------------------------------
 
 export function PromotionEngine({ businessId, currency = 'Rs.' }) {
-    const [promotions, setPromotions] = useState([
-        // Demo data for rendering
-        {
-            id: '1', name: 'Weekend Special', type: 'percentage', value: 15,
-            is_active: true, start_date: '2026-02-20', end_date: '2026-03-20',
-            min_order: 0, max_discount: 2000, usage_limit: 100, usage_count: 34,
-            applicable_products: 'all',
-        },
-        {
-            id: '2', name: 'Buy 2 Get 1 Free', type: 'bogo',
-            buy_qty: 2, get_qty: 1, get_discount: 100,
-            is_active: true, start_date: '2026-02-01', end_date: '2026-02-28',
-            min_order: 0, usage_limit: 50, usage_count: 12, applicable_products: 'category',
-            category_filter: 'Beverages',
-        },
-        {
-            id: '3', name: 'Ramadan Bundle', type: 'bundle', bundle_price: 2500,
-            is_active: false, start_date: '2026-03-01', end_date: '2026-03-30',
-            min_order: 0, usage_limit: null, usage_count: 0, applicable_products: 'products',
-        },
-    ]);
+    const { business } = useBusiness();
+    const effectiveBusinessId = businessId || business?.id;
+
+    const [promotions, setPromotions] = useState([]);
+    const [loading, setLoading] = useState(true);
     const [showForm, setShowForm] = useState(false);
     const [editingPromo, setEditingPromo] = useState(null);
     const [filterStatus, setFilterStatus] = useState('all');
     const [searchTerm, setSearchTerm] = useState('');
+
+    const loadPromotions = useCallback(async () => {
+        if (!effectiveBusinessId) return;
+        try {
+            const result = await getPromotionsAction(effectiveBusinessId);
+            if (result.success) {
+                setPromotions(result.promotions || []);
+            }
+        } catch (err) {
+            console.error('[PromotionEngine] Load failed:', err);
+        } finally {
+            setLoading(false);
+        }
+    }, [effectiveBusinessId]);
+
+    useEffect(() => { loadPromotions(); }, [loadPromotions]);
 
     const filteredPromotions = useMemo(() => {
         let items = promotions;
@@ -591,25 +600,88 @@ export function PromotionEngine({ businessId, currency = 'Rs.' }) {
     }), [promotions]);
 
     const handleSave = useCallback(async (data) => {
-        if (editingPromo) {
-            setPromotions(prev => prev.map(p => p.id === editingPromo.id ? { ...p, ...data } : p));
-        } else {
-            setPromotions(prev => [...prev, { ...data, id: Date.now().toString(), usage_count: 0 }]);
+        if (!effectiveBusinessId) return;
+        try {
+            if (editingPromo) {
+                const result = await updatePromotionAction(effectiveBusinessId, editingPromo.id, data);
+                if (result.success) {
+                    toast.success('Promotion updated');
+                    await loadPromotions();
+                } else {
+                    toast.error(result.error?.message || 'Failed to update promotion');
+                }
+            } else {
+                const result = await createPromotionAction(effectiveBusinessId, data);
+                if (result.success) {
+                    toast.success('Promotion created');
+                    await loadPromotions();
+                } else {
+                    toast.error(result.error?.message || 'Failed to create promotion');
+                }
+            }
+        } catch (err) {
+            toast.error('An error occurred');
         }
         setEditingPromo(null);
-    }, [editingPromo]);
+    }, [editingPromo, effectiveBusinessId, loadPromotions]);
 
-    const handleToggle = useCallback((promo) => {
-        setPromotions(prev => prev.map(p => p.id === promo.id ? { ...p, is_active: !p.is_active } : p));
-    }, []);
+    const handleToggle = useCallback(async (promo) => {
+        if (!effectiveBusinessId) return;
+        try {
+            const result = await togglePromotionAction(effectiveBusinessId, promo.id, !promo.is_active);
+            if (result.success) {
+                setPromotions(prev => prev.map(p => p.id === promo.id ? { ...p, is_active: !p.is_active } : p));
+            } else {
+                toast.error('Failed to toggle promotion');
+            }
+        } catch (err) {
+            toast.error('An error occurred');
+        }
+    }, [effectiveBusinessId]);
 
-    const handleDuplicate = useCallback((promo) => {
-        setPromotions(prev => [...prev, { ...promo, id: Date.now().toString(), name: `${promo.name} (Copy)`, usage_count: 0 }]);
-    }, []);
+    const handleDuplicate = useCallback(async (promo) => {
+        if (!effectiveBusinessId) return;
+        try {
+            const { id, usage_count, created_at, updated_at, ...rest } = promo;
+            const result = await createPromotionAction(effectiveBusinessId, {
+                ...rest,
+                name: `${promo.name} (Copy)`,
+                is_active: false,
+            });
+            if (result.success) {
+                toast.success('Promotion duplicated');
+                await loadPromotions();
+            } else {
+                toast.error('Failed to duplicate promotion');
+            }
+        } catch (err) {
+            toast.error('An error occurred');
+        }
+    }, [effectiveBusinessId, loadPromotions]);
 
-    const handleDelete = useCallback((promo) => {
-        setPromotions(prev => prev.filter(p => p.id !== promo.id));
-    }, []);
+    const handleDelete = useCallback(async (promo) => {
+        if (!effectiveBusinessId) return;
+        if (!confirm(`Delete "${promo.name}"? This cannot be undone.`)) return;
+        try {
+            const result = await deletePromotionAction(effectiveBusinessId, promo.id);
+            if (result.success) {
+                toast.success('Promotion deleted');
+                setPromotions(prev => prev.filter(p => p.id !== promo.id));
+            } else {
+                toast.error('Failed to delete promotion');
+            }
+        } catch (err) {
+            toast.error('An error occurred');
+        }
+    }, [effectiveBusinessId]);
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center py-16">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-primary" />
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6">
@@ -689,8 +761,20 @@ export function PromotionEngine({ businessId, currency = 'Rs.' }) {
                 {filteredPromotions.length === 0 && (
                     <div className="col-span-full py-16 text-center text-gray-400">
                         <Gift className="w-12 h-12 mx-auto mb-3 opacity-20" />
-                        <p className="text-sm font-bold">No promotions found</p>
-                        <p className="text-[10px] mt-1">Create your first promotion to drive sales</p>
+                        <p className="text-sm font-bold">
+                            {promotions.length === 0 ? 'No promotions yet' : 'No promotions match your filter'}
+                        </p>
+                        <p className="text-[10px] mt-1">
+                            {promotions.length === 0 ? 'Create your first promotion to drive sales' : 'Try a different filter'}
+                        </p>
+                        {promotions.length === 0 && (
+                            <button
+                                onClick={() => { setEditingPromo(null); setShowForm(true); }}
+                                className="mt-4 px-4 py-2 bg-brand-primary text-white text-xs font-bold rounded-xl hover:bg-brand-primary-dark"
+                            >
+                                Create Promotion
+                            </button>
+                        )}
                     </div>
                 )}
             </div>

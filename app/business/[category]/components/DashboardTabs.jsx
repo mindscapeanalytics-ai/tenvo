@@ -446,6 +446,7 @@ export function DashboardTabs({
                                 products={products}
                                 category={category}
                                 businessId={business?.id}
+                                currency={currency}
                             />
                         </TabGuard>
                     )}

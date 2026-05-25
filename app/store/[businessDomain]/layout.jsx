@@ -5,6 +5,7 @@ import { StoreHeader } from '@/components/storefront/StoreHeader';
 import { StoreFooter } from '@/components/storefront/StoreFooter';
 import { LiveChat } from '@/components/storefront/LiveChat';
 import { CartDrawer } from '@/components/storefront/CartDrawer';
+import { BackToTop } from '@/components/storefront/BackToTop';
 
 export async function generateMetadata({ params }) {
   const { businessDomain } = await params;
@@ -65,6 +66,7 @@ export default async function StoreLayout({ children, params }) {
         {/* Floating Elements */}
         <CartDrawer />
         <LiveChat businessId={business.id} />
+        <BackToTop />
       </div>
     </StorefrontProvider>
   );

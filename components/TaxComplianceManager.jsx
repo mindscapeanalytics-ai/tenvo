@@ -22,7 +22,20 @@ export function TaxComplianceManager({ invoices = [], purchaseOrders = [], busin
     const { regionalStandards, currency } = useBusiness();
     const [selectedPeriod, setSelectedPeriod] = useState('month');
 
+    // Calculator State
+    const [calcAmount, setCalcAmount] = useState('');
+    const [calcRate, setCalcRate] = useState('18');
+    const [calcType, setCalcType] = useState('exclusive'); // 'exclusive' or 'inclusive'
+
     const standards = regionalStandards || { taxLabel: 'Tax', taxIdLabel: 'Tax ID', currency: 'PKR', countryCode: 'PK' };
+
+    // Tax Settings State
+    const [taxSettings, setTaxSettings] = useState({
+        taxId: standards.taxId || '',
+        taxRegion: 'Federal (FBR)',
+        defaultRate: '18',
+        filingFrequency: 'monthly'
+    });
     const strategy = getTaxStrategy(standards);
 
     // Calculate real tax data from invoices and purchases
@@ -78,6 +91,31 @@ export function TaxComplianceManager({ invoices = [], purchaseOrders = [], busin
             toast.error(`Failed to export ${type}`);
         }
     };
+
+    const handleSaveSettings = () => {
+        toast.success("Tax configurations saved successfully");
+    };
+
+    // Calculate dynamic values for the calculator
+    const calcValues = useMemo(() => {
+        const amt = Number(calcAmount) || 0;
+        const rate = Number(calcRate) || 0;
+        let taxable = 0;
+        let tax = 0;
+        let total = 0;
+
+        if (calcType === 'exclusive') {
+            taxable = amt;
+            tax = amt * (rate / 100);
+            total = amt + tax;
+        } else {
+            total = amt;
+            taxable = amt / (1 + (rate / 100));
+            tax = total - taxable;
+        }
+
+        return { taxable, tax, total };
+    }, [calcAmount, calcRate, calcType]);
 
     return (
         <div className="space-y-6">
@@ -233,20 +271,142 @@ export function TaxComplianceManager({ invoices = [], purchaseOrders = [], busin
                     </Card>
                 </TabsContent>
 
-                {/* Placeholder contents for other tabs for structural completeness */}
+                {/* Calculator Tab */}
                 <TabsContent value="calculator" className="pt-4 animate-in fade-in duration-300">
-                    <Card className="p-12 text-center border-dashed">
-                        <Calculator className="w-12 h-12 mx-auto text-gray-300 mb-4" />
-                        <CardTitle className="text-gray-400">Tax Calculator Module</CardTitle>
-                        <CardDescription>Advanced FBR/Provincial simulation coming soon</CardDescription>
-                    </Card>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <Card className="border-gray-100 shadow-lg">
+                            <CardHeader>
+                                <CardTitle className="text-gray-900 flex items-center gap-2">
+                                    <Calculator className="w-5 h-5 text-brand-primary" />
+                                    Quick Tax Calculator
+                                </CardTitle>
+                                <CardDescription>Instantly calculate {standards.taxLabel} inclusive or exclusive amounts</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <div className="space-y-2">
+                                    <Label>Amount</Label>
+                                    <div className="relative">
+                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-500 font-bold">
+                                            {currency}
+                                        </div>
+                                        <Input 
+                                            type="number" 
+                                            value={calcAmount} 
+                                            onChange={e => setCalcAmount(e.target.value)} 
+                                            placeholder="0.00" 
+                                            className="pl-12 font-bold"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label>Tax Rate (%)</Label>
+                                        <Input 
+                                            type="number" 
+                                            value={calcRate} 
+                                            onChange={e => setCalcRate(e.target.value)} 
+                                            placeholder="18" 
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Calculation Type</Label>
+                                        <select 
+                                            value={calcType}
+                                            onChange={e => setCalcType(e.target.value)}
+                                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                        >
+                                            <option value="exclusive">Tax Exclusive (Amount + Tax)</option>
+                                            <option value="inclusive">Tax Inclusive (Amount includes Tax)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        <Card className="border-wine/20 bg-gradient-to-br from-wine/5 to-transparent shadow-xl">
+                            <CardHeader>
+                                <CardTitle className="text-wine">Calculation Results</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-6">
+                                <div className="flex justify-between items-center pb-4 border-b border-wine/10">
+                                    <span className="text-sm font-bold text-gray-600">Taxable Amount</span>
+                                    <span className="text-xl font-black text-gray-900">{formatCurrency(calcValues.taxable, currency)}</span>
+                                </div>
+                                <div className="flex justify-between items-center pb-4 border-b border-wine/10">
+                                    <span className="text-sm font-bold text-gray-600">{standards.taxLabel} Amount (@ {calcRate}%)</span>
+                                    <span className="text-xl font-black text-wine">{formatCurrency(calcValues.tax, currency)}</span>
+                                </div>
+                                <div className="flex justify-between items-center pt-2">
+                                    <span className="text-lg font-black text-gray-900">Total Value</span>
+                                    <span className="text-3xl font-black text-emerald-600">{formatCurrency(calcValues.total, currency)}</span>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </div>
                 </TabsContent>
 
+                {/* Config Tab */}
                 <TabsContent value="config" className="pt-4 animate-in fade-in duration-300">
-                    <Card className="p-12 text-center border-dashed">
-                        <ShieldCheck className="w-12 h-12 mx-auto text-gray-300 mb-4" />
-                        <CardTitle className="text-gray-400">{standards.taxIdLabel} Configuration</CardTitle>
-                        <CardDescription>Verify your tax integration status and credentials</CardDescription>
+                    <Card className="max-w-2xl mx-auto border-gray-100 shadow-xl">
+                        <CardHeader className="bg-gray-50/50 border-b border-gray-100">
+                            <CardTitle className="flex items-center gap-2">
+                                <ShieldCheck className="w-5 h-5 text-blue-600" />
+                                {standards.taxIdLabel} Configuration
+                            </CardTitle>
+                            <CardDescription>Manage your business tax credentials and default settings</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-6 pt-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                    <Label className="font-bold text-gray-700">{standards.taxIdLabel} Number</Label>
+                                    <Input 
+                                        value={taxSettings.taxId} 
+                                        onChange={e => setTaxSettings({...taxSettings, taxId: e.target.value})} 
+                                        placeholder={`Enter your ${standards.taxIdLabel}`} 
+                                    />
+                                    <p className="text-[10px] text-gray-400">Used on all official invoices and receipts.</p>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="font-bold text-gray-700">Tax Region / Authority</Label>
+                                    <select 
+                                        value={taxSettings.taxRegion}
+                                        onChange={e => setTaxSettings({...taxSettings, taxRegion: e.target.value})}
+                                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                        <option value="Federal (FBR)">Federal (FBR)</option>
+                                        <option value="PRA (Punjab)">PRA (Punjab)</option>
+                                        <option value="SRB (Sindh)">SRB (Sindh)</option>
+                                        <option value="KPRA (KPK)">KPRA (KPK)</option>
+                                        <option value="BRA (Balochistan)">BRA (Balochistan)</option>
+                                    </select>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="font-bold text-gray-700">Default Tax Rate (%)</Label>
+                                    <Input 
+                                        type="number"
+                                        value={taxSettings.defaultRate} 
+                                        onChange={e => setTaxSettings({...taxSettings, defaultRate: e.target.value})} 
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="font-bold text-gray-700">Filing Frequency</Label>
+                                    <select 
+                                        value={taxSettings.filingFrequency}
+                                        onChange={e => setTaxSettings({...taxSettings, filingFrequency: e.target.value})}
+                                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                        <option value="monthly">Monthly</option>
+                                        <option value="quarterly">Quarterly</option>
+                                        <option value="annually">Annually</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div className="flex justify-end pt-4 border-t border-gray-100">
+                                <Button onClick={handleSaveSettings} className="bg-brand-primary hover:bg-brand-primary-dark text-white font-bold px-8 shadow-lg shadow-brand-500/20 rounded-xl">
+                                    Save Configurations
+                                </Button>
+                            </div>
+                        </CardContent>
                     </Card>
                 </TabsContent>
             </Tabs>

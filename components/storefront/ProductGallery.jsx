@@ -118,7 +118,7 @@ export function ProductGallery({ images, productName }) {
               className={cn(
                 "relative w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 border-2 transition-all",
                 selectedIndex === index 
-                  ? "border-blue-600 ring-2 ring-blue-100" 
+                  ? "border-gray-900 ring-2 ring-gray-200" 
                   : "border-transparent hover:border-gray-300"
               )}
             >

@@ -9,15 +9,17 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/lib/currency';
 import { useCart } from '@/lib/hooks/storefront/useCart';
+import { useWishlist } from '@/lib/hooks/storefront/useWishlist';
 import { useStorefront } from '@/lib/context/StorefrontContext';
 import { toast } from 'react-hot-toast';
 
 export function AddToCartSection({ product, businessDomain, selectedVariant = null }) {
   const [quantity, setQuantity] = useState(1);
   const [isAdding, setIsAdding] = useState(false);
-  const [isWishlisted, setIsWishlisted] = useState(false);
   const { addItem } = useCart();
+  const { isInWishlist, addToWishlist, removeFromWishlist } = useWishlist();
   const { currency } = useStorefront();
+  const isWishlisted = isInWishlist(product.id);
   
   // Determine price and stock
   const price = selectedVariant?.price || product.price;
@@ -210,7 +212,7 @@ export function AddToCartSection({ product, businessDomain, selectedVariant = nu
                   "px-3 border-2",
                   isWishlisted && "border-red-200 bg-red-50 text-red-500 hover:bg-red-100"
                 )}
-                onClick={() => setIsWishlisted(!isWishlisted)}
+                onClick={() => isWishlisted ? removeFromWishlist(product.id) : addToWishlist(product)}
                 aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
                 aria-pressed={isWishlisted}
               >

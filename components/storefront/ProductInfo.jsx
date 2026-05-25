@@ -4,9 +4,11 @@ import { Star, Truck, Shield, RotateCcw } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { formatCurrency } from '@/lib/currency';
 import { useStorefront } from '@/lib/context/StorefrontContext';
+import { getStoreAccentColor } from '@/lib/config/storefrontDomains';
 
 export function ProductInfo({ product }) {
-  const { currency } = useStorefront();
+  const { currency, settings, business } = useStorefront();
+  const accent = getStoreAccentColor(settings, business?.category);
   
   const discountPercentage = product.compare_price && product.compare_price > product.price
     ? Math.round(((product.compare_price - product.price) / product.compare_price) * 100)
@@ -82,7 +84,7 @@ export function ProductInfo({ product }) {
       {/* Trust Badges */}
       <div className="grid grid-cols-3 gap-4 py-4 border-y">
         <div className="text-center">
-          <Truck className="w-6 h-6 mx-auto mb-1 text-blue-600" />
+          <Truck className="w-6 h-6 mx-auto mb-1" style={{ color: accent }} />
           <p className="text-xs text-gray-600">Free Shipping</p>
         </div>
         <div className="text-center">

@@ -28,6 +28,7 @@ import {
   isPosRelevant, isHospitality, isCampaignRelevant
 } from '@/lib/config/domains';
 import { normalizeDashboardTab } from '@/lib/config/tabs';
+import toast from 'react-hot-toast';
 import { useAppMode } from '@/lib/context/BusyModeContext';
 import { UserManager } from '../auth/UserManager';
 import { LanguageToggle } from '../LanguageToggle';
@@ -126,7 +127,7 @@ const ADVANCED_NAV_SECTIONS = [
       { key: 'loyalty', label: 'Loyalty & CRM', icon: Heart, domainRule: 'posRelevant' },
       { key: 'quotations', label: 'Quotations', icon: ClipboardList, conditionKey: 'quotations' },
       { key: 'sales', label: 'Sales Manager', icon: TrendingUp, alwaysShow: true },
-      { key: 'view-storefront', label: 'View Public Store', icon: ExternalLink, alwaysShow: true, isExternal: true, externalUrl: (business) => `/store/${business?.handle || business?.domain || ''}` },
+      { key: 'view-storefront', label: 'View Public Store', icon: ExternalLink, alwaysShow: true, isExternal: true, externalUrl: (business) => business?.handle || business?.domain ? `/store/${business?.handle || business?.domain}` : null },
       { key: 'store-settings', label: 'Store Settings', icon: Store, alwaysShow: true },
     ]
   },
@@ -182,7 +183,7 @@ const EASY_NAV_SECTIONS = [
       { key: 'orders', label: 'Orders', icon: Package, alwaysShow: true, badge: 'NEW' },
       { key: 'pos', label: 'Point of Sale', icon: ShoppingCart, domainRule: 'posRelevant' },
       { key: 'quotations', label: 'Estimates', icon: ClipboardList, conditionKey: 'quotations' },
-      { key: 'view-storefront', label: 'View Public Store', icon: ExternalLink, alwaysShow: true, isExternal: true, externalUrl: (business) => `/store/${business?.handle || business?.domain || ''}` },
+      { key: 'view-storefront', label: 'View Public Store', icon: ExternalLink, alwaysShow: true, isExternal: true, externalUrl: (business) => business?.handle || business?.domain ? `/store/${business?.handle || business?.domain}` : null },
     ]
   },
   {
@@ -435,6 +436,7 @@ export function Sidebar({ isOpen, onClose, isSidebarCollapsed, setIsSidebarColla
                         const isLocked = hasHydrated ? item.locked : false;
                         const isExternal = item.isExternal;
                         const externalUrl = isExternal && item.externalUrl ? item.externalUrl(business) : null;
+                        const isExternalDisabled = isExternal && !externalUrl;
                         const itemHref = isExternal 
                           ? externalUrl || '#'
                           : (item.key === 'platform-admin'
@@ -448,12 +450,17 @@ export function Sidebar({ isOpen, onClose, isSidebarCollapsed, setIsSidebarColla
                           <NavLink
                             key={item.key}
                             href={itemHref}
-                            {...(isExternal && { target: '_blank', rel: 'noopener noreferrer' })} 
-                            aria-disabled={isLocked}
+                            {...(isExternal && externalUrl && { target: '_blank', rel: 'noopener noreferrer' })} 
+                            aria-disabled={isLocked || isExternalDisabled}
+                            title={isExternalDisabled ? 'Set a store domain in Store Settings to view your public store' : undefined}
                             onClick={(e) => {
                               if (isLocked) {
                                 e.preventDefault();
-                                // Could trigger upgrade modal here in future
+                                return;
+                              }
+                              if (isExternalDisabled) {
+                                e.preventDefault();
+                                toast('Set a store domain in Store Settings first', { icon: '🏪' });
                                 return;
                               }
                               if (window.innerWidth < 1024) onClose?.();

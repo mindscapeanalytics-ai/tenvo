@@ -1,19 +1,39 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Search, X, Loader2, ArrowRight } from 'lucide-react';
+import { Search, X, Loader2, ArrowRight, Clock, TrendingUp } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/lib/currency';
+import { useStorefront } from '@/lib/context/StorefrontContext';
+import { getStoreAccentColor } from '@/lib/config/storefrontDomains';
 import { useClickOutside } from '@/lib/hooks/useClickOutside';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 
-export function SearchBar({ businessDomain, initialQuery = '' }) {
+const RECENT_KEY = 'tenvo_recent_searches';
+const MAX_RECENT = 5;
+
+function getRecentSearches() {
+  if (typeof window === 'undefined') return [];
+  try { return JSON.parse(localStorage.getItem(RECENT_KEY) || '[]'); } catch { return []; }
+}
+
+function saveRecentSearch(q) {
+  if (!q?.trim()) return;
+  const prev = getRecentSearches().filter((s) => s !== q);
+  localStorage.setItem(RECENT_KEY, JSON.stringify([q, ...prev].slice(0, MAX_RECENT)));
+}
+
+export function SearchBar({ businessDomain, initialQuery = '', onClose }) {
+  const { currency, settings, business } = useStorefront();
+  const accent = getStoreAccentColor(settings, business?.category);
   const [query, setQuery] = useState(initialQuery);
   const [suggestions, setSuggestions] = useState([]);
+  const [recentSearches, setRecentSearches] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [noResults, setNoResults] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const inputRef = useRef(null);
   const containerRef = useRef(null);
@@ -21,19 +41,25 @@ export function SearchBar({ businessDomain, initialQuery = '' }) {
   
   // Close suggestions on click outside
   useClickOutside(containerRef, () => setShowSuggestions(false));
+
+  // Load recent searches on mount
+  useEffect(() => { setRecentSearches(getRecentSearches()); }, []);
   
   // Debounced search
   useEffect(() => {
     const timeout = setTimeout(async () => {
       if (query.length >= 2) {
         setIsLoading(true);
+        setNoResults(false);
         try {
           const response = await fetch(
             `/api/storefront/${businessDomain}/search?q=${encodeURIComponent(query)}`
           );
           if (response.ok) {
             const data = await response.json();
-            setSuggestions(data.products || []);
+            const results = data.products || [];
+            setSuggestions(results);
+            setNoResults(results.length === 0);
             setShowSuggestions(true);
           }
         } catch (error) {
@@ -43,7 +69,8 @@ export function SearchBar({ businessDomain, initialQuery = '' }) {
         }
       } else {
         setSuggestions([]);
-        setShowSuggestions(false);
+        setNoResults(false);
+        setShowSuggestions(query.length === 0 ? false : false);
       }
     }, 300);
     
@@ -51,18 +78,36 @@ export function SearchBar({ businessDomain, initialQuery = '' }) {
   }, [query, businessDomain]);
   
   const handleSubmit = useCallback((e) => {
-    e.preventDefault();
+    e?.preventDefault();
     if (query.trim()) {
+      saveRecentSearch(query.trim());
+      setRecentSearches(getRecentSearches());
       router.push(`/store/${businessDomain}/products?search=${encodeURIComponent(query)}`);
       setShowSuggestions(false);
+      onClose?.();
     }
-  }, [query, businessDomain, router]);
+  }, [query, businessDomain, router, onClose]);
   
   const handleSuggestionClick = useCallback((product) => {
+    saveRecentSearch(query.trim());
+    setRecentSearches(getRecentSearches());
     router.push(`/store/${businessDomain}/products/${product.slug || product.id}`);
     setShowSuggestions(false);
     setQuery('');
-  }, [businessDomain, router]);
+    onClose?.();
+  }, [businessDomain, router, onClose, query]);
+
+  const handleRecentClick = useCallback((term) => {
+    setQuery(term);
+    router.push(`/store/${businessDomain}/products?search=${encodeURIComponent(term)}`);
+    setShowSuggestions(false);
+    onClose?.();
+  }, [businessDomain, router, onClose]);
+
+  const clearRecentSearches = () => {
+    localStorage.removeItem(RECENT_KEY);
+    setRecentSearches([]);
+  };
   
   const handleKeyDown = useCallback((e) => {
     if (e.key === 'ArrowDown') {
@@ -80,14 +125,21 @@ export function SearchBar({ businessDomain, initialQuery = '' }) {
       }
     } else if (e.key === 'Escape') {
       setShowSuggestions(false);
+      onClose?.();
     }
-  }, [suggestions, selectedIndex, handleSuggestionClick, handleSubmit]);
+  }, [suggestions, selectedIndex, handleSuggestionClick, handleSubmit, onClose]);
   
   const clearSearch = () => {
     setQuery('');
     setSuggestions([]);
+    setNoResults(false);
     setShowSuggestions(false);
     inputRef.current?.focus();
+  };
+
+  const handleFocus = () => {
+    if (query.length >= 2 && suggestions.length > 0) setShowSuggestions(true);
+    else if (query.length === 0 && recentSearches.length > 0) setShowSuggestions(true);
   };
   
   return (
@@ -106,10 +158,10 @@ export function SearchBar({ businessDomain, initialQuery = '' }) {
               setSelectedIndex(-1);
             }}
             onKeyDown={handleKeyDown}
-            onFocus={() => query.length >= 2 && setShowSuggestions(true)}
+            onFocus={handleFocus}
             className={cn(
               "w-full pl-12 pr-12 py-3 rounded-xl border bg-white",
-              "focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent",
+              "focus:outline-none focus:ring-2 focus:border-transparent",
               "transition-all duration-200",
               showSuggestions && suggestions.length > 0 && "rounded-b-none"
             )}
@@ -134,13 +186,60 @@ export function SearchBar({ businessDomain, initialQuery = '' }) {
         {/* Search Button (Mobile) */}
         <button
           type="submit"
-          className="absolute right-3 top-1/2 -translate-y-1/2 bg-blue-600 text-white px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors sm:hidden"
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-white px-4 py-1.5 rounded-lg text-sm font-medium transition-colors sm:hidden"
+          style={{ backgroundColor: accent }}
         >
           Search
         </button>
       </form>
       
-      {/* Suggestions Dropdown */}
+      {/* Dropdown: recent searches (empty query) OR suggestions (active query) */}
+      <AnimatePresence>
+        {showSuggestions && query.length === 0 && recentSearches.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.15 }}
+            className="absolute top-full left-0 right-0 bg-white border border-t-0 rounded-b-xl shadow-lg z-50 overflow-hidden"
+          >
+            <div className="px-4 py-3 flex items-center justify-between border-b">
+              <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5" /> Recent Searches
+              </span>
+              <button onClick={clearRecentSearches} className="text-xs text-gray-400 hover:text-red-500 transition-colors">Clear</button>
+            </div>
+            {recentSearches.map((term) => (
+              <button
+                key={term}
+                onClick={() => handleRecentClick(term)}
+                className="w-full flex items-center gap-3 px-4 py-3 text-left text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                <Clock className="w-4 h-4 text-gray-300 flex-shrink-0" />
+                <span className="flex-1">{term}</span>
+                <ArrowRight className="w-3.5 h-3.5 text-gray-300" />
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showSuggestions && query.length >= 2 && noResults && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.15 }}
+            className="absolute top-full left-0 right-0 bg-white border border-t-0 rounded-b-xl shadow-lg z-50 p-6 text-center"
+          >
+            <TrendingUp className="w-8 h-8 text-gray-200 mx-auto mb-2" />
+            <p className="text-sm font-semibold text-gray-500">No results for &ldquo;{query}&rdquo;</p>
+            <p className="text-xs text-gray-400 mt-1">Try a different keyword or browse all products</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <AnimatePresence>
         {showSuggestions && suggestions.length > 0 && (
           <motion.div
@@ -157,9 +256,10 @@ export function SearchBar({ businessDomain, initialQuery = '' }) {
                   onClick={() => handleSuggestionClick(product)}
                   className={cn(
                     "w-full flex items-center gap-4 p-4 text-left transition-colors",
-                    selectedIndex === index ? "bg-blue-50" : "hover:bg-gray-50",
+                    selectedIndex === index ? "bg-gray-50" : "hover:bg-gray-50",
                     index !== suggestions.length - 1 && "border-b"
                   )}
+                  style={selectedIndex === index ? { backgroundColor: accent + '10' } : {}}
                 >
                   {/* Product Image */}
                   <div className="relative w-14 h-14 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
@@ -193,11 +293,11 @@ export function SearchBar({ businessDomain, initialQuery = '' }) {
                   {/* Price */}
                   <div className="text-right">
                     <p className="font-semibold text-gray-900">
-                      {formatCurrency(product.price, 'PKR')}
+                      {formatCurrency(product.price, currency)}
                     </p>
                     {product.compare_price && product.compare_price > product.price && (
                       <p className="text-sm text-gray-400 line-through">
-                        {formatCurrency(product.compare_price, 'PKR')}
+                        {formatCurrency(product.compare_price, currency)}
                       </p>
                     )}
                   </div>
@@ -210,9 +310,10 @@ export function SearchBar({ businessDomain, initialQuery = '' }) {
             {/* View All Results */}
             <button
               onClick={handleSubmit}
-              className="w-full p-4 text-center text-blue-600 font-medium hover:bg-blue-50 transition-colors border-t"
+              className="w-full p-4 text-center font-medium hover:bg-gray-50 transition-colors border-t text-sm"
+              style={{ color: accent }}
             >
-              View all results for "{query}"
+              View all results for &ldquo;{query}&rdquo;
             </button>
           </motion.div>
         )}

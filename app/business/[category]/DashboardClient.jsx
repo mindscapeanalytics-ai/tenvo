@@ -17,6 +17,7 @@ import {
 import { payrollAPI } from '@/lib/api/payroll';
 import { workflowAPI } from '@/lib/api/workflow';
 import { bulkDeleteAction } from '@/lib/actions/premium/automation/bulk';
+import { getTablesAction, getKitchenQueueAction } from '@/lib/actions/standard/restaurant';
 import { Button } from '@/components/ui/button';
 import { Tabs } from '@/components/ui/tabs';
 import { ProductForm } from '@/components/ProductForm';
@@ -36,9 +37,9 @@ import { ActionModals } from './components/ActionModals';
 import { DashboardTabs } from './components/DashboardTabs';
 import { BusinessLoadingBoundary } from '@/components/guards/BusinessLoadingBoundary';
 import { useResourceLimits } from '@/lib/hooks/useResourceLimits';
-import { BUSINESS_DOMAINS } from '@/lib/config/domains';
+import { getDomainConfig } from '@/lib/config/domains';
 import { QUICK_ACTION_IDS } from '@/lib/config/quickActions';
-import { VALID_DASHBOARD_TABS, normalizeDashboardTab, resolveDashboardTab } from '@/lib/config/tabs';
+import { normalizeDashboardTab, resolveDashboardTab } from '@/lib/config/tabs';
 
 function BusinessDashboardContent() {
   const params = useParams();
@@ -70,10 +71,11 @@ function BusinessDashboardContent() {
       return;
     }
 
-    const targetTab = VALID_DASHBOARD_TABS.has(normalizedTab) ? normalizedTab : 'dashboard';
+    const targetTab = resolveDashboardTab(normalizedTab);
     router.push(`/business/${currentDomain}?tab=${targetTab}`, { scroll: false });
   }, [currentDomain, router]);
 
+  const [showSetupWizard, setShowSetupWizard] = useState(false);
   const [showQuickAction, setShowQuickAction] = useState(false);
   const [showQuickInvoice, setShowQuickInvoice] = useState(false);
   const [showInvoiceBuilder, setShowInvoiceBuilder] = useState(false);
@@ -159,7 +161,7 @@ function BusinessDashboardContent() {
         toast.success("Excel Mode active in Inventory", { icon: '[CHART]' });
         break;
       default:
-        if (VALID_DASHBOARD_TABS.has(normalizeDashboardTab(actionId))) {
+        if (resolveDashboardTab(normalizeDashboardTab(actionId)) !== 'dashboard' || normalizeDashboardTab(actionId) === 'dashboard') {
           handleTabChange(normalizeDashboardTab(actionId));
         }
         break;
@@ -206,7 +208,7 @@ function BusinessDashboardContent() {
 
   // Fallback logic for domains not in the static businessCategories map
   const businessInfo = useMemo(() => {
-    const domainConfig = BUSINESS_DOMAINS[category];
+    const domainConfig = getDomainConfig(category);
     if (domainConfig) return { name: domainConfig.name, icon: domainConfig.icon, color: domainConfig.color };
 
     // Dynamically derive from domainKnowledge
@@ -223,7 +225,6 @@ function BusinessDashboardContent() {
 
   // Auth context
   const { user, loading: authLoading } = useAuth();
-  const [showSetupWizard, setShowSetupWizard] = useState(false);
 
   const {
     invoices,
@@ -300,7 +301,7 @@ function BusinessDashboardContent() {
     return () => {
       if (timer) clearTimeout(timer);
     };
-  }, [authLoading, businessLoading, business?.id, user]);
+  }, [authLoading, businessLoading, business?.id, user, setShowSetupWizard]);
 
   // Resource limit enforcement
   const resourceLimits = useResourceLimits({
@@ -321,17 +322,35 @@ function BusinessDashboardContent() {
 
   // POS & Restaurant States
   const [posSession, setPosSession] = useState(null);
-  const [restaurantTables, setRestaurantTables] = useState([
-    { id: '1', name: 'Table 1', status: 'available', capacity: 4, zone_id: '1' },
-    { id: '2', name: 'Table 2', status: 'available', capacity: 2, zone_id: '1' },
-    { id: '3', name: 'Table 3', status: 'occupied', capacity: 6, zone_id: '1', currentOrder: { id: 'ord-123', items: [], total: 5000 } },
-    { id: '4', name: 'Table 4', status: 'reserved', capacity: 4, zone_id: '2' },
-    { id: '5', name: 'Table 5', status: 'available', capacity: 4, zone_id: '2' },
-  ]);
-  const [kitchenQueue, setKitchenQueue] = useState([
-    { id: 'k-1', orderId: 'ord-123', items: [{ name: 'Biryani', qty: 2 }, { name: 'Coke', qty: 2 }], status: 'preparing', time: '12:45' },
-    { id: 'k-2', orderId: 'ord-124', items: [{ name: 'Karahi', qty: 1 }], status: 'pending', time: '13:02' },
-  ]);
+  const [restaurantTables, setRestaurantTables] = useState([]);
+  const [kitchenQueue, setKitchenQueue] = useState([]);
+
+  // Fetch restaurant data from DB when on a hospitality domain
+  useEffect(() => {
+    const isHospitalityDomain = ['restaurant-cafe', 'bakery-confectionery', 'hotel'].includes(category);
+    if (!business?.id || !isHospitalityDomain) return;
+
+    const fetchRestaurantData = async () => {
+      try {
+        const [tablesRes, queueRes] = await Promise.allSettled([
+          getTablesAction(business.id),
+          getKitchenQueueAction(business.id),
+        ]);
+
+        if (tablesRes.status === 'fulfilled' && tablesRes.value?.success) {
+          setRestaurantTables(tablesRes.value.tables || []);
+        }
+        if (queueRes.status === 'fulfilled' && queueRes.value?.success) {
+          setKitchenQueue(queueRes.value.queue || []);
+        }
+      } catch (err) {
+        // Non-critical — restaurant data will just be empty
+        console.warn('[DashboardClient] Failed to fetch restaurant data:', err);
+      }
+    };
+
+    fetchRestaurantData();
+  }, [business?.id, category]);
 
   useEffect(() => {
     const hydrateActivePosSession = async () => {
@@ -1154,7 +1173,7 @@ function BusinessDashboardContent() {
         </div>
       )}
 
-      <BusinessLoadingBoundary isLoading={!isDataLoaded && !businessLoading}>
+      <BusinessLoadingBoundary isLoading={!isDataLoaded}>
         <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full mt-2">
           <DashboardTabs
             activeTab={activeTab}
@@ -1244,7 +1263,7 @@ function BusinessDashboardContent() {
               handleRejectRequest,
             }}
           />
-        </Tabs >
+        </Tabs>
       </BusinessLoadingBoundary>
 
       <ActionModals
@@ -1303,7 +1322,7 @@ function BusinessDashboardContent() {
         viewingType={viewingType}
         setViewingType={setViewingType}
       />
-    </div >
+    </div>
   );
 }
 

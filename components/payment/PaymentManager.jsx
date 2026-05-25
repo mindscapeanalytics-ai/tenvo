@@ -347,12 +347,15 @@ export default function PaymentManager({
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-in fade-in slide-in-from-top-2 duration-500">
-                <Card className="bg-green-50/50 border-green-100">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-green-600 uppercase tracking-wider">Total Receipts</CardTitle>
+                <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100/50 border-emerald-100 shadow-sm hover:shadow-md transition-all">
+                    <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                        <CardTitle className="text-xs font-black text-emerald-700 uppercase tracking-widest">Total Receipts</CardTitle>
+                        <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 shadow-inner">
+                            <ArrowDownLeft className="w-4 h-4" />
+                        </div>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-green-700">
+                        <div className="text-3xl font-black text-emerald-700 tracking-tight">
                             {formatCurrency(
                                 payments.filter(p => p.payment_type === 'receipt').reduce((sum, p) => sum + Number(p.amount), 0),
                                 currency
@@ -361,12 +364,15 @@ export default function PaymentManager({
                     </CardContent>
                 </Card>
 
-                <Card className="bg-red-50/50 border-red-100">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-red-600 uppercase tracking-wider">Total Payments</CardTitle>
+                <Card className="bg-gradient-to-br from-red-50 to-red-100/50 border-red-100 shadow-sm hover:shadow-md transition-all">
+                    <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                        <CardTitle className="text-xs font-black text-red-700 uppercase tracking-widest">Total Payments</CardTitle>
+                        <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center text-red-600 shadow-inner">
+                            <ArrowUpRight className="w-4 h-4" />
+                        </div>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-red-700">
+                        <div className="text-3xl font-black text-red-700 tracking-tight">
                             {formatCurrency(
                                 payments.filter(p => p.payment_type === 'payment').reduce((sum, p) => sum + Number(p.amount), 0),
                                 currency
@@ -375,12 +381,15 @@ export default function PaymentManager({
                     </CardContent>
                 </Card>
 
-                <Card className="bg-blue-50/50 border-blue-100">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-blue-600 uppercase tracking-wider">Net Cash Flow</CardTitle>
+                <Card className="bg-gradient-to-br from-brand-50 to-brand-100/50 border-brand-100 shadow-sm hover:shadow-md transition-all">
+                    <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                        <CardTitle className="text-xs font-black text-brand-primary uppercase tracking-widest">Net Cash Flow</CardTitle>
+                        <div className="w-8 h-8 rounded-full bg-brand-100 flex items-center justify-center text-brand-primary shadow-inner">
+                            <RefreshCcw className="w-4 h-4" />
+                        </div>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-blue-700">
+                        <div className="text-3xl font-black text-brand-primary tracking-tight">
                             {formatCurrency(
                                 payments.reduce((sum, p) => sum + (p.payment_type === 'receipt' ? Number(p.amount) : -Number(p.amount)), 0),
                                 currency
@@ -399,72 +408,88 @@ export default function PaymentManager({
                     <CardDescription>A chronological record of all financial inflows and outflows.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <DataTable
-                        searchable={true}
-                        exportable={true}
-                        category="retail-shop"
-                        data={payments.filter(p => {
-                            const searchStr = `${p.notes} ${p.bank_name} ${p.transaction_id} ${p.customer_name} ${p.vendor_name}`.toLowerCase();
-                            return searchStr.includes(searchQuery.toLowerCase());
-                        }).map(p => ({
-                            ...p,
-                            formatted_amount: formatCurrency(p.amount, currency),
-                            entity: p.payment_type === 'receipt' ? (p.customer?.name || 'Customer') : (p.vendor?.name || 'Vendor'),
-                            date_formatted: new Date(p.payment_date).toLocaleDateString()
-                        }))}
-                        columns={[
-                            {
-                                accessorKey: 'payment_date',
-                                header: 'Date',
-                                cell: ({ row }) => row.original.date_formatted
-                            },
-                            {
-                                accessorKey: 'payment_type',
-                                header: 'Type',
-                                cell: ({ row }) => (
-                                    <Badge className={row.original.payment_type === 'receipt' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}>
-                                        {row.original.payment_type === 'receipt' ? 'Receipt' : 'Payment'}
-                                    </Badge>
-                                )
-                            },
-                            {
-                                accessorKey: 'entity',
-                                header: 'Party'
-                            },
-                            {
-                                accessorKey: 'payment_mode',
-                                header: 'Mode',
-                                cell: ({ row }) => <span className="capitalize">{row.original.payment_mode}</span>
-                            },
-                            {
-                                accessorKey: 'formatted_amount',
-                                header: 'Amount',
-                                cell: ({ row }) => (
-                                    <span className={`font-bold ${row.original.payment_type === 'receipt' ? 'text-green-600' : 'text-red-600'}`}>
-                                        {row.original.formatted_amount}
-                                    </span>
-                                )
-                            },
-                            {
-                                accessorKey: 'notes',
-                                header: 'Notes'
-                            },
-                            {
-                                accessorKey: 'actions',
-                                header: 'Actions',
-                                cell: ({ row }) => (
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                                        onClick={() => handleDeletePayment(row.original.id)}
-                                    >
-                                        <Trash2 className="w-4 h-4" />
-                                    </Button>
-                                )
-                            }
-                        ]}
-                    />
+                    {payments.length === 0 ? (
+                        <div className="text-center py-16 px-4 bg-gray-50/50 rounded-xl border border-dashed border-gray-200">
+                            <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm border border-gray-100">
+                                <Receipt className="w-8 h-8 text-gray-300" />
+                            </div>
+                            <h3 className="text-base font-black text-gray-900 mb-1 tracking-tight">No Transactions Yet</h3>
+                            <p className="text-sm text-gray-500 max-w-sm mx-auto mb-6">Record your first customer receipt or vendor payment to start tracking your cash flow.</p>
+                            <Button onClick={() => setShowPaymentDialog(true)} className="bg-wine hover:bg-wine/90 text-white rounded-xl shadow-lg shadow-wine/20 font-bold px-6">
+                                <Plus className="w-4 h-4 mr-2" />
+                                Record First Transaction
+                            </Button>
+                        </div>
+                    ) : (
+                        <DataTable
+                            searchable={true}
+                            exportable={true}
+                            category="retail-shop"
+                            data={payments.filter(p => {
+                                const searchStr = `${p.notes} ${p.bank_name} ${p.transaction_id} ${p.customer_name} ${p.vendor_name}`.toLowerCase();
+                                return searchStr.includes(searchQuery.toLowerCase());
+                            }).map(p => ({
+                                ...p,
+                                formatted_amount: formatCurrency(p.amount, currency),
+                                entity: p.payment_type === 'receipt' ? (p.customer?.name || 'Customer') : (p.vendor?.name || 'Vendor'),
+                                date_formatted: new Date(p.payment_date).toLocaleDateString()
+                            }))}
+                            columns={[
+                                {
+                                    accessorKey: 'payment_date',
+                                    header: 'Date',
+                                    cell: ({ row }) => row.original.date_formatted
+                                },
+                                {
+                                    accessorKey: 'payment_type',
+                                    header: 'Type',
+                                    cell: ({ row }) => (
+                                        <Badge className={row.original.payment_type === 'receipt' ? 'bg-emerald-100 text-emerald-700 border-emerald-200 font-bold' : 'bg-red-100 text-red-700 border-red-200 font-bold'}>
+                                            {row.original.payment_type === 'receipt' ? 'Receipt' : 'Payment'}
+                                        </Badge>
+                                    )
+                                },
+                                {
+                                    accessorKey: 'entity',
+                                    header: 'Party',
+                                    cell: ({ row }) => <span className="font-bold text-gray-700">{row.original.entity}</span>
+                                },
+                                {
+                                    accessorKey: 'payment_mode',
+                                    header: 'Mode',
+                                    cell: ({ row }) => <span className="capitalize text-gray-600 font-medium">{row.original.payment_mode}</span>
+                                },
+                                {
+                                    accessorKey: 'formatted_amount',
+                                    header: 'Amount',
+                                    cell: ({ row }) => (
+                                        <span className={`font-black ${row.original.payment_type === 'receipt' ? 'text-emerald-600' : 'text-red-600'}`}>
+                                            {row.original.formatted_amount}
+                                        </span>
+                                    )
+                                },
+                                {
+                                    accessorKey: 'notes',
+                                    header: 'Notes',
+                                    cell: ({ row }) => <span className="text-gray-500 text-xs">{row.original.notes || '-'}</span>
+                                },
+                                {
+                                    accessorKey: 'actions',
+                                    header: 'Actions',
+                                    cell: ({ row }) => (
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="text-red-500 hover:text-red-700 hover:bg-red-50 rounded-xl"
+                                            onClick={() => handleDeletePayment(row.original.id)}
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                        </Button>
+                                    )
+                                }
+                            ]}
+                        />
+                    )}
                 </CardContent>
             </Card>
         </div>

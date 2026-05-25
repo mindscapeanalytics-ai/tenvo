@@ -1,205 +1,315 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { 
-  ShoppingBag, Search, Menu, X, User, Heart, 
-  Phone, MapPin, ChevronDown 
+import {
+  ShoppingBag, Search, Menu, User, Heart,
+  Phone, MapPin, X, ChevronDown
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useStorefront } from '@/lib/context/StorefrontContext';
 import { useCart } from '@/lib/hooks/storefront/useCart';
+import { useWishlist } from '@/lib/hooks/storefront/useWishlist';
 import { SearchBar } from './SearchBar';
 import { MobileNav } from './MobileNav';
-import { CategoryNav } from './CategoryNav';
+import { getDomainConfig, getStoreAccentColor } from '@/lib/config/storefrontDomains';
 
 export function StoreHeader({ business, categories, settings }) {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const pathname = usePathname();
+  const [categoryMenuOpen, setCategoryMenuOpen] = useState(false);
+  const categoryRef = useRef(null);
+
   const { cart } = useCart();
+  const { wishlistCount } = useWishlist();
   const { businessDomain } = useStorefront();
-  
+
   const cartItemCount = cart?.items?.reduce((sum, item) => sum + item.quantity, 0) || 0;
-  
-  useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 50);
-    };
-    
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-  
+
+  // Derive accent color — settings override > domain default
+  const accent = getStoreAccentColor(settings, business?.category);
+  const domainCfg = getDomainConfig(business?.category);
+
+  // Top bar settings
   const topBarEnabled = settings?.storefront?.showTopBar !== false;
-  const primaryColor = settings?.brand?.primaryColor || '#c49c3b';
-  
+  const announcement = settings?.announcement || domainCfg.bannerText;
+  const contactPhone = settings?.contact?.phone || business?.phone;
+  const contactCity = settings?.contact?.address || business?.city;
+
+  useEffect(() => {
+    const onScroll = () => setIsScrolled(window.scrollY > 40);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  // Close category dropdown on outside click
+  useEffect(() => {
+    const onClickOutside = (e) => {
+      if (categoryRef.current && !categoryRef.current.contains(e.target)) {
+        setCategoryMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onClickOutside);
+    return () => document.removeEventListener('mousedown', onClickOutside);
+  }, []);
+
+  const pathname = usePathname();
+  const isActive = (href) => pathname === href || pathname.startsWith(href + '?');
+
+  const visibleCategories = categories?.slice(0, 5) || [];
+  const extraCategories = categories?.slice(5) || [];
+
   return (
     <header className="sticky top-0 z-50">
-      {/* Top Bar */}
+      {/* ── Announcement / Top Bar ─────────────────────────────────────── */}
       {topBarEnabled && (
-        <div 
-          className="bg-gray-900 text-white py-2 px-4 text-sm"
-          style={{ backgroundColor: settings?.brand?.topBarColor || '#1f2937' }}
+        <div
+          className="text-white text-xs py-2 px-4"
+          style={{ backgroundColor: accent }}
         >
-          <div className="max-w-7xl mx-auto flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              {settings?.contact?.phone && (
-                <a 
-                  href={`tel:${settings.contact.phone}`}
-                  className="flex items-center gap-1 hover:text-gray-300 transition-colors"
+          <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
+            {/* Left: contact info */}
+            <div className="flex items-center gap-4 min-w-0">
+              {contactPhone && (
+                <a
+                  href={`tel:${contactPhone}`}
+                  className="flex items-center gap-1 hover:text-white/80 transition-colors whitespace-nowrap"
                 >
-                  <Phone className="w-3 h-3" />
-                  <span className="hidden sm:inline">{settings.contact.phone}</span>
+                  <Phone className="w-3 h-3 flex-shrink-0" />
+                  <span className="hidden sm:inline">{contactPhone}</span>
                 </a>
               )}
-              {settings?.contact?.address && (
-                <span className="hidden md:flex items-center gap-1 text-gray-400">
-                  <MapPin className="w-3 h-3" />
-                  {settings.contact.address}
+              {contactCity && (
+                <span className="hidden md:flex items-center gap-1 text-white/80 truncate">
+                  <MapPin className="w-3 h-3 flex-shrink-0" />
+                  {contactCity}
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-4">
-              {settings?.announcement && (
-                <span className="text-xs font-medium">
-                  {settings.announcement}
-                </span>
-              )}
-            </div>
+
+            {/* Center: announcement */}
+            {announcement && (
+              <p className="text-center font-medium text-white/95 truncate hidden sm:block">
+                {announcement}
+              </p>
+            )}
+
+            {/* Right: orders link */}
+            <Link
+              href={`/store/${businessDomain}/orders`}
+              className="whitespace-nowrap hover:text-white/80 transition-colors hidden sm:block"
+            >
+              Track Order
+            </Link>
           </div>
         </div>
       )}
-      
-      {/* Main Header */}
-      <div 
+
+      {/* ── Main Header ────────────────────────────────────────────────── */}
+      <div
         className={cn(
-          "bg-white border-b transition-all duration-300",
-          isScrolled ? "shadow-md py-2" : "py-4"
+          'bg-white border-b transition-all duration-200',
+          isScrolled ? 'shadow-md' : 'shadow-none'
         )}
       >
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="flex items-center justify-between gap-4">
-            {/* Logo */}
-            <Link 
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div
+            className={cn(
+              'flex items-center justify-between gap-4 transition-all duration-200',
+              isScrolled ? 'py-2.5' : 'py-4'
+            )}
+          >
+            {/* ── Logo ─────────────────────────────────────────────────── */}
+            <Link
               href={`/store/${businessDomain}`}
-              className="flex items-center gap-2 flex-shrink-0"
+              className="flex items-center gap-2.5 flex-shrink-0 group"
             >
-              {business.logo_url ? (
-                <img 
-                  src={business.logo_url} 
+              {business?.logo_url ? (
+                <img
+                  src={business.logo_url}
                   alt={business.business_name}
-                  className="h-8 w-auto object-contain"
+                  className={cn(
+                    'object-contain transition-all duration-200',
+                    isScrolled ? 'h-7' : 'h-9'
+                  )}
                 />
               ) : (
-                <div 
-                  className="h-8 w-8 rounded-lg flex items-center justify-center text-white font-bold"
-                  style={{ backgroundColor: primaryColor }}
+                <div
+                  className={cn(
+                    'rounded-xl flex items-center justify-center text-white font-black transition-all duration-200',
+                    isScrolled ? 'w-7 h-7 text-sm' : 'w-9 h-9 text-base'
+                  )}
+                  style={{ backgroundColor: accent }}
                 >
-                  {business.business_name?.charAt(0)}
+                  {business?.business_name?.charAt(0)?.toUpperCase()}
                 </div>
               )}
-              <span className={cn(
-                "font-bold text-gray-900 hidden sm:block",
-                isScrolled ? "text-lg" : "text-xl"
-              )}>
-                {business.business_name}
+              <span
+                className={cn(
+                  'font-black text-gray-900 hidden sm:block transition-all duration-200 group-hover:opacity-80',
+                  isScrolled ? 'text-base' : 'text-lg'
+                )}
+              >
+                {business?.business_name}
               </span>
             </Link>
-            
-            {/* Desktop Navigation */}
-            <nav className="hidden lg:flex items-center gap-6">
-              <CategoryNav categories={categories} />
+
+            {/* ── Desktop Category Nav ──────────────────────────────────── */}
+            <nav className="hidden lg:flex items-center gap-1 flex-1 justify-center">
+              <Link
+                href={`/store/${businessDomain}/products`}
+                className={cn(
+                  'px-3 py-2 text-sm font-semibold rounded-lg transition-colors whitespace-nowrap',
+                  isActive(`/store/${businessDomain}/products`)
+                    ? 'text-white'
+                    : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50'
+                )}
+                style={isActive(`/store/${businessDomain}/products`) ? { backgroundColor: accent } : {}}
+              >
+                All Products
+              </Link>
+
+              {visibleCategories.map((cat) => (
+                <Link
+                  key={cat.id}
+                  href={`/store/${businessDomain}/products?category=${cat.slug}`}
+                  className="px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap"
+                >
+                  {cat.name}
+                </Link>
+              ))}
+
+              {extraCategories.length > 0 && (
+                <div className="relative" ref={categoryRef}>
+                  <button
+                    onClick={() => setCategoryMenuOpen((v) => !v)}
+                    className="flex items-center gap-1 px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-50 transition-colors"
+                  >
+                    More
+                    <ChevronDown
+                      className={cn(
+                        'w-4 h-4 transition-transform duration-200',
+                        categoryMenuOpen && 'rotate-180'
+                      )}
+                    />
+                  </button>
+
+                  {categoryMenuOpen && (
+                    <div className="absolute top-full left-0 mt-1 w-52 bg-white rounded-2xl shadow-xl border border-gray-100 py-2 z-50">
+                      {extraCategories.map((cat) => (
+                        <Link
+                          key={cat.id}
+                          href={`/store/${businessDomain}/products?category=${cat.slug}`}
+                          onClick={() => setCategoryMenuOpen(false)}
+                          className="block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors"
+                        >
+                          {cat.name}
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </nav>
-            
-            {/* Search & Actions */}
-            <div className="flex items-center gap-2">
+
+            {/* ── Actions ──────────────────────────────────────────────── */}
+            <div className="flex items-center gap-1">
               {/* Search */}
-              <Button
-                variant="ghost"
-                size="icon"
-                className="hidden sm:flex"
+              <button
                 onClick={() => setIsSearchOpen(true)}
+                className="p-2 rounded-xl text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
+                aria-label="Search"
               >
                 <Search className="w-5 h-5" />
-              </Button>
-              
-              {/* Wishlist */}
-              <Button
-                variant="ghost"
-                size="icon"
-                className="hidden sm:flex"
-                asChild
+              </button>
+
+              {/* Wishlist — desktop only */}
+              <Link
+                href={`/store/${businessDomain}/account/wishlist`}
+                className="relative hidden sm:flex p-2 rounded-xl text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
+                aria-label={`Wishlist (${wishlistCount} items)`}
               >
-                <Link href={`/store/${businessDomain}/account/wishlist`}>
-                  <Heart className="w-5 h-5" />
-                </Link>
-              </Button>
-              
-              {/* Account */}
-              <Button
-                variant="ghost"
-                size="icon"
-                className="hidden sm:flex"
-                asChild
+                <Heart className="w-5 h-5" />
+                {wishlistCount > 0 && (
+                  <span
+                    className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full text-white text-[10px] font-black px-1"
+                    style={{ backgroundColor: accent }}
+                  >
+                    {wishlistCount > 99 ? '99+' : wishlistCount}
+                  </span>
+                )}
+              </Link>
+
+              {/* Account — desktop only */}
+              <Link
+                href={`/store/${businessDomain}/orders`}
+                className="hidden sm:flex p-2 rounded-xl text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
+                aria-label="My Orders"
               >
-                <Link href={`/store/${businessDomain}/account`}>
-                  <User className="w-5 h-5" />
-                </Link>
-              </Button>
-              
+                <User className="w-5 h-5" />
+              </Link>
+
               {/* Cart */}
-              <Button
-                variant="ghost"
-                size="icon"
-                className="relative"
-                asChild
+              <Link
+                href={`/store/${businessDomain}/cart`}
+                className="relative p-2 rounded-xl text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
+                aria-label={`Cart (${cartItemCount} items)`}
               >
-                <Link href={`/store/${businessDomain}/cart`}>
-                  <ShoppingBag className="w-5 h-5" />
-                  {cartItemCount > 0 && (
-                    <Badge 
-                      className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
-                      style={{ backgroundColor: primaryColor }}
-                    >
-                      {cartItemCount}
-                    </Badge>
-                  )}
-                </Link>
-              </Button>
-              
-              {/* Mobile Menu */}
-              <Button
-                variant="ghost"
-                size="icon"
-                className="lg:hidden"
+                <ShoppingBag className="w-5 h-5" />
+                {cartItemCount > 0 && (
+                  <span
+                    className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full text-white text-[10px] font-black px-1"
+                    style={{ backgroundColor: accent }}
+                  >
+                    {cartItemCount > 99 ? '99+' : cartItemCount}
+                  </span>
+                )}
+              </Link>
+
+              {/* Mobile menu toggle */}
+              <button
                 onClick={() => setIsMobileMenuOpen(true)}
+                className="lg:hidden p-2 rounded-xl text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors ml-1"
+                aria-label="Open menu"
               >
                 <Menu className="w-5 h-5" />
-              </Button>
+              </button>
             </div>
           </div>
         </div>
       </div>
-      
-      {/* Mobile Search Overlay */}
+
+      {/* ── Search Overlay ─────────────────────────────────────────────── */}
       {isSearchOpen && (
-        <SearchBar 
-          onClose={() => setIsSearchOpen(false)} 
-          businessDomain={businessDomain}
-        />
+        <div className="fixed inset-0 z-[60] bg-black/40 backdrop-blur-sm flex items-start justify-center pt-20 px-4">
+          <div className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl p-4">
+            <div className="flex items-center gap-3 mb-3">
+              <h3 className="font-semibold text-gray-900 flex-1">Search Products</h3>
+              <button
+                onClick={() => setIsSearchOpen(false)}
+                className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+            <SearchBar
+              businessDomain={businessDomain}
+              onClose={() => setIsSearchOpen(false)}
+            />
+          </div>
+        </div>
       )}
-      
-      {/* Mobile Menu */}
-      <MobileNav 
+
+      {/* ── Mobile Nav ─────────────────────────────────────────────────── */}
+      <MobileNav
         isOpen={isMobileMenuOpen}
         onClose={() => setIsMobileMenuOpen(false)}
         categories={categories}
         businessDomain={businessDomain}
+        accent={accent}
       />
     </header>
   );

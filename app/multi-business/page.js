@@ -42,7 +42,7 @@ export default function MultiBusinessPage() {
     async function fetchBusinesses() {
       if (!user) return;
       try {
-        const fetched = await businessAPI.getJoinedBusinesses(user.id);
+        const fetched = await businessAPI.getByUserId(user.id);
         setBusinesses(fetched || []);
       } catch (error) {
         console.error('Failed to load businesses:', error);

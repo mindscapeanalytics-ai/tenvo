@@ -21,7 +21,8 @@ export function SalesManager({
     customers = [],
     products = [],
     category = 'retail-shop',
-    businessId = null
+    businessId = null,
+    currency = 'PKR'
 }) {
     const colors = getDomainColors(category);
     const [timeframe, setTimeframe] = useState('monthly');
@@ -63,9 +64,9 @@ export function SalesManager({
         const customerGrowth = calcGrowth(currentCustomers, lastCustomers);
 
         return {
-            total: formatCurrency(total, 'PKR'),
+            total: formatCurrency(total, currency),
             count: count.toString(),
-            avg: formatCurrency(avg, 'PKR'),
+            avg: formatCurrency(avg, currency),
             customers: customers.length.toString(),
             growth: {
                 revenue: revenueGrowth,
@@ -216,7 +217,7 @@ export function SalesManager({
                                         </div>
                                     </div>
                                     <div className="text-right">
-                                        <p className="text-sm font-black" style={{ color: colors.primary }}>{formatCurrency(p.revenue, 'PKR')}</p>
+                                        <p className="text-sm font-black" style={{ color: colors.primary }}>{formatCurrency(p.revenue, currency)}</p>
                                         <p className="text-[10px] font-bold text-green-500 uppercase">{p.sales} Sold</p>
                                     </div>
                                 </div>
@@ -257,7 +258,7 @@ export function SalesManager({
                                         </div>
                                     </div>
                                     <div className="text-right">
-                                        <p className="text-sm font-black text-gray-900">{formatCurrency(inv.grand_total, 'PKR')}</p>
+                                        <p className="text-sm font-black text-gray-900">{formatCurrency(inv.grand_total, currency)}</p>
                                         <p className="text-[10px] font-black uppercase text-green-600">Secure</p>
                                     </div>
                                 </div>

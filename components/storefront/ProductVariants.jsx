@@ -6,8 +6,12 @@ import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/lib/currency';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'react-hot-toast';
+import { useStorefront } from '@/lib/context/StorefrontContext';
+import { getStoreAccentColor } from '@/lib/config/storefrontDomains';
 
 export function ProductVariants({ product, businessDomain, onVariantSelect }) {
+  const { currency, settings, business } = useStorefront();
+  const accent = getStoreAccentColor(settings, business?.category);
   const [selectedAttributes, setSelectedAttributes] = useState({});
   
   // Group variants by attributes
@@ -154,15 +158,20 @@ export function ProductVariants({ product, businessDomain, onVariantSelect }) {
                   onClick={() => isAvailable && handleAttributeSelect(attributeName, value)}
                   disabled={!isAvailable}
                   className={cn(
-                    "relative px-4 py-2 rounded-lg border text-sm font-medium transition-all",
-                    isSelected && "border-blue-600 bg-blue-50 text-blue-700 ring-2 ring-blue-100",
-                    !isSelected && isAvailable && "border-gray-200 hover:border-gray-300 hover:bg-gray-50",
-                    !isAvailable && "border-gray-100 bg-gray-50 text-gray-400 cursor-not-allowed line-through"
+                    "relative px-4 py-2 rounded-xl border-2 text-sm font-medium transition-all",
+                    !isSelected && isAvailable && "border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-gray-700",
+                    !isAvailable && "border-gray-100 bg-gray-50 text-gray-300 cursor-not-allowed line-through"
                   )}
+                  style={isSelected ? { borderColor: accent, backgroundColor: accent + '10', color: accent } : {}}
                 >
                   {value}
                   {isSelected && (
-                    <Check className="absolute -top-1 -right-1 w-4 h-4 bg-blue-600 text-white rounded-full p-0.5" />
+                    <span
+                      className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full flex items-center justify-center"
+                      style={{ backgroundColor: accent }}
+                    >
+                      <Check className="w-2.5 h-2.5 text-white" />
+                    </span>
                   )}
                 </button>
               );
@@ -186,7 +195,7 @@ export function ProductVariants({ product, businessDomain, onVariantSelect }) {
           <div className="flex items-center justify-between">
             <span className="text-sm text-gray-600">Price:</span>
             <span className="font-bold text-lg">
-              {formatCurrency(selectedVariant.price, 'PKR')}
+              {formatCurrency(selectedVariant.price, currency)}
             </span>
           </div>
           
