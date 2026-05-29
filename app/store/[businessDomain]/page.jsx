@@ -6,6 +6,7 @@ import { getBusinessByDomain } from '@/lib/actions/storefront/business';
 import { getProducts, getCategories } from '@/lib/actions/storefront/products';
 import { ProductGrid } from '@/components/storefront/ProductGrid';
 import { ProductsSkeleton } from '@/components/storefront/LoadingSkeletons';
+import { SmartProductImage } from '@/components/storefront/SmartProductImage';
 import { getDomainConfig, getStoreAccentColor } from '@/lib/config/storefrontDomains';
 import {
   Truck, Shield, RotateCcw, Star, Zap, Leaf, Clock, Gift,
@@ -104,10 +105,11 @@ export default async function StoreHomePage({ params }) {
         {/* Background */}
         <div className="absolute inset-0">
           {heroImage ? (
-            <img
+            <SmartProductImage
               src={heroImage}
               alt={business.business_name}
-              className="w-full h-full object-cover"
+              fill
+              className="object-cover"
             />
           ) : (
             <div style={{ background: `linear-gradient(135deg, ${accent} 0%, ${accentDark} 100%)` }} className="w-full h-full" />
@@ -121,7 +123,7 @@ export default async function StoreHomePage({ params }) {
             {/* Store badge */}
             <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-sm border border-white/20 rounded-full px-4 py-1.5 mb-6">
               {business.logo_url ? (
-                <img src={business.logo_url} alt="" className="w-5 h-5 rounded-full object-cover" />
+                <SmartProductImage src={business.logo_url} alt="" className="w-5 h-5 rounded-full object-cover" width={20} height={20} />
               ) : (
                 <div className="w-5 h-5 rounded-full flex items-center justify-center text-white text-xs font-bold"
                   style={{ backgroundColor: accent }}>
@@ -186,9 +188,9 @@ export default async function StoreHomePage({ params }) {
                 href={`/store/${businessDomain}/products/${product.slug || product.id}`}
                 className="flex items-center gap-3 bg-white/95 backdrop-blur-sm rounded-2xl p-3 shadow-xl hover:shadow-2xl transition-all hover:-translate-y-1 w-64"
               >
-                <div className="w-14 h-14 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0">
+                <div className="w-14 h-14 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0 relative">
                   {product.image_url ? (
-                    <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
+                    <SmartProductImage src={product.image_url} alt={product.name} fill className="object-cover" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
                       <Package className="w-6 h-6 text-gray-400" />
@@ -228,7 +230,9 @@ export default async function StoreHomePage({ params }) {
                   style={{ '--hover-color': accent }}
                 >
                   {cat.image_url && (
-                    <img src={cat.image_url} alt="" className="w-4 h-4 rounded-full object-cover" />
+                    <div className="relative w-4 h-4 rounded-full overflow-hidden">
+                      <SmartProductImage src={cat.image_url} alt="" fill className="object-cover" />
+                    </div>
                   )}
                   {cat.name}
                   {cat.product_count > 0 && (
@@ -302,9 +306,10 @@ export default async function StoreHomePage({ params }) {
                   href={`/store/${businessDomain}/products?category=${cat.slug}`}
                   className="group relative overflow-hidden rounded-2xl aspect-square bg-gray-100 hover:shadow-xl transition-all hover:-translate-y-1"
                 >
-                  <img
+                  <SmartProductImage
                     src={imgSrc}
                     alt={cat.name}
+                    fill
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
@@ -495,7 +500,7 @@ export default async function StoreHomePage({ params }) {
             <div className="flex flex-wrap items-center justify-between gap-6">
               <div className="flex items-center gap-4">
                 {business.logo_url ? (
-                  <img src={business.logo_url} alt={business.business_name} className="h-10 w-auto object-contain" />
+                  <SmartProductImage src={business.logo_url} alt={business.business_name} width={120} height={40} className="h-10 w-auto object-contain" />
                 ) : (
                   <div
                     className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-black text-lg"

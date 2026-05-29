@@ -1,5 +1,10 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 /**
  * POST /api/upload/product-image
@@ -47,15 +52,34 @@ export async function POST(request) {
       );
     }
 
-    // Convert to buffer → base64 data URL
+    // Generate unique filename
+    const uniqueName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+    const filePath = `images/${uniqueName}`;
+
+    // Upload to Supabase Storage
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
-    const base64 = buffer.toString('base64');
-    const dataUrl = `data:${file.type};base64,${base64}`;
+
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from('products')
+      .upload(filePath, buffer, {
+        contentType: file.type,
+        upsert: false,
+      });
+
+    if (uploadError) {
+      console.error('[upload/product-image] Supabase upload error:', uploadError);
+      return NextResponse.json({ error: 'Failed to upload image to storage' }, { status: 500 });
+    }
+
+    // Get public URL
+    const { data: publicUrlData } = supabase.storage
+      .from('products')
+      .getPublicUrl(filePath);
 
     return NextResponse.json({
       success: true,
-      url: dataUrl,
+      url: publicUrlData.publicUrl,
       originalName: file.name,
       size: file.size,
       type: file.type,

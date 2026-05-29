@@ -15,6 +15,7 @@ import { useWishlist } from '@/lib/hooks/storefront/useWishlist';
 import { SearchBar } from './SearchBar';
 import { MobileNav } from './MobileNav';
 import { getDomainConfig, getStoreAccentColor } from '@/lib/config/storefrontDomains';
+import { SmartProductImage } from '@/components/storefront/SmartProductImage';
 
 export function StoreHeader({ business, categories, settings }) {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -128,11 +129,13 @@ export function StoreHeader({ business, categories, settings }) {
               className="flex items-center gap-2.5 flex-shrink-0 group"
             >
               {business?.logo_url ? (
-                <img
+                <SmartProductImage
                   src={business.logo_url}
                   alt={business.business_name}
+                  width={120}
+                  height={36}
                   className={cn(
-                    'object-contain transition-all duration-200',
+                    'w-auto object-contain transition-all duration-200',
                     isScrolled ? 'h-7' : 'h-9'
                   )}
                 />

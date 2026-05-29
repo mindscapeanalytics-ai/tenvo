@@ -4,6 +4,7 @@ import { useState, useEffect, use } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
+import { SmartProductImage } from '@/components/storefront/SmartProductImage';
 import {
   CreditCard, Truck, MapPin, Check, ChevronRight,
   Shield, Lock, AlertCircle, Wallet, Banknote,
@@ -435,7 +436,7 @@ export default function CheckoutPage({ params }) {
                           className="flex gap-3 p-3 bg-gray-50 rounded-xl">
                           <div className="w-14 h-14 bg-gray-200 rounded-lg overflow-hidden flex-shrink-0">
                             {item.image
-                              ? <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                              ? <SmartProductImage src={item.image} alt={item.name} fill className="object-cover" />
                               : <div className="w-full h-full flex items-center justify-center"><Package className="w-5 h-5 text-gray-400" /></div>
                             }
                           </div>

@@ -9,6 +9,7 @@ import {
 import { useStorefront } from '@/lib/context/StorefrontContext';
 import { getStoreAccentColor } from '@/lib/config/storefrontDomains';
 import { toast } from 'react-hot-toast';
+import { SmartProductImage } from '@/components/storefront/SmartProductImage';
 
 export function StoreFooter({ business, settings }) {
   const { businessDomain } = useStorefront();
@@ -99,9 +100,11 @@ export function StoreFooter({ business, settings }) {
             {/* Logo + name */}
             <div className="flex items-center gap-3">
               {business?.logo_url ? (
-                <img
+                <SmartProductImage
                   src={business.logo_url}
                   alt={business.business_name}
+                  width={120}
+                  height={36}
                   className="h-9 w-auto object-contain"
                 />
               ) : (
