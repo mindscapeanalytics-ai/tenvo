@@ -29,6 +29,7 @@ import { ProductForm } from '@/components/ProductForm';
 import { ProductWizard } from '@/components/inventory/ProductWizard';
 import { EnhancedInvoiceBuilder } from '@/components/EnhancedInvoiceBuilder';
 import { QuickInvoiceModal } from '@/components/invoice/QuickInvoiceModal';
+import { PaymentModal } from '@/components/invoice/PaymentModal';
 import { CustomerForm } from '@/components/CustomerForm';
 import toast from 'react-hot-toast';
 import { EntityDetailsDialog } from '@/components/EntityDetailsDialog';
@@ -47,6 +48,10 @@ export function ActionModals({
     setShowCustomerForm,
     showInvoiceBuilder,
     setShowInvoiceBuilder,
+    showPaymentModal,
+    setShowPaymentModal,
+    selectedInvoiceForPayment,
+    setSelectedInvoiceForPayment,
 
     // Data
     editingProduct,
@@ -94,7 +99,9 @@ export function ActionModals({
     viewingItem,
     setViewingItem,
     viewingType,
-    setViewingType
+    setViewingType,
+    // User
+    user
 }) {
     const posRelevant = isPosRelevant(category, domainKnowledge);
 
@@ -299,6 +306,40 @@ export function ActionModals({
                     />
                 </DialogContent>
             </Dialog>
+
+            {/* Payment Modal */}
+            {showPaymentModal && selectedInvoiceForPayment && (
+                <PaymentModal
+                    isOpen={showPaymentModal}
+                    onClose={() => {
+                        setShowPaymentModal(false);
+                        setSelectedInvoiceForPayment(null);
+                    }}
+                    invoice={selectedInvoiceForPayment}
+                    currency={currency}
+                    onRecordPayment={async (paymentData) => {
+                        const { recordInvoicePaymentAction } = await import('@/lib/actions/standard/invoice-payments');
+                        const result = await recordInvoicePaymentAction({
+                            businessId: business?.id,
+                            invoiceId: selectedInvoiceForPayment.id,
+                            amount: paymentData.amount,
+                            paymentMethod: paymentData.paymentMethod,
+                            paymentDate: paymentData.paymentDate,
+                            referenceNumber: paymentData.referenceNumber,
+                            notes: paymentData.notes,
+                            userId: user?.id
+                        });
+
+                        if (result.success) {
+                            setShowPaymentModal(false);
+                            setSelectedInvoiceForPayment(null);
+                            refreshData?.();
+                        } else {
+                            throw new Error(result.error || 'Failed to record payment');
+                        }
+                    }}
+                />
+            )}
 
         </>
     );

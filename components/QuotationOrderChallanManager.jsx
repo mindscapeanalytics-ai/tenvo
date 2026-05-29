@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { SalesDocumentForm } from './SalesDocumentForm';
 import { quotationAPI } from '@/lib/api/quotations';
 import toast from 'react-hot-toast';
+import { useBusiness } from '@/lib/context/BusinessContext';
 import { QuotationsTable } from './sales/QuotationsTable';
 import { SalesOrdersTable } from './sales/SalesOrdersTable';
 import { DeliveryChallansTable } from './sales/DeliveryChallansTable';
@@ -34,11 +35,13 @@ export function QuotationOrderChallanManager({
   const [isProcessing, setIsProcessing] = useState(false);
   const [previewData, setPreviewData] = useState(null);
   const [previewType, setPreviewType] = useState(null);
+  const { business } = useBusiness();
+  const businessId = business?.id;
 
   const handleConvertQuotationToOrder = async (quotationId) => {
     setIsProcessing(true);
     try {
-      const quotation = await quotationAPI.getQuotationDetail(quotationId);
+      const quotation = await quotationAPI.getQuotationDetail(quotationId, businessId);
       setInitialFormData(quotation);
       setActiveTab('orders');
       setShowForm('sales_order');
@@ -52,7 +55,7 @@ export function QuotationOrderChallanManager({
   const handleConvertOrderToChallan = async (orderId) => {
     setIsProcessing(true);
     try {
-      const order = await quotationAPI.getSalesOrderDetail(orderId);
+      const order = await quotationAPI.getSalesOrderDetail(orderId, businessId);
       setInitialFormData(order);
       setActiveTab('challans');
       setShowForm('delivery_challan');
@@ -70,7 +73,7 @@ export function QuotationOrderChallanManager({
     }
     setIsProcessing(true);
     try {
-      const order = await quotationAPI.getSalesOrderDetail(orderId);
+      const order = await quotationAPI.getSalesOrderDetail(orderId, businessId);
       onIssueInvoice(order);
     } catch (error) {
       toast.error('Failed to load order details: ' + error.message);
@@ -86,7 +89,7 @@ export function QuotationOrderChallanManager({
     }
     setIsProcessing(true);
     try {
-      const challan = await quotationAPI.getChallanDetail(challanId);
+      const challan = await quotationAPI.getChallanDetail(challanId, businessId);
       onIssueInvoice(challan);
     } catch (error) {
       console.error('Failed to load challan for invoice conversion:', error);
@@ -100,9 +103,9 @@ export function QuotationOrderChallanManager({
     setIsProcessing(true);
     try {
       let fullDoc;
-      if (type === 'quotation') fullDoc = await quotationAPI.getQuotationDetail(doc.id);
-      else if (type === 'sales_order') fullDoc = await quotationAPI.getSalesOrderDetail(doc.id);
-      else if (type === 'delivery_challan') fullDoc = await quotationAPI.getChallanDetail(doc.id);
+      if (type === 'quotation') fullDoc = await quotationAPI.getQuotationDetail(doc.id, businessId);
+      else if (type === 'sales_order') fullDoc = await quotationAPI.getSalesOrderDetail(doc.id, businessId);
+      else if (type === 'delivery_challan') fullDoc = await quotationAPI.getChallanDetail(doc.id, businessId);
 
       setPreviewData(fullDoc);
       setPreviewType(type);

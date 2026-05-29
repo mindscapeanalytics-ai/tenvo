@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   MoreHorizontal,
   Plus,
@@ -191,6 +191,7 @@ export function InventoryManager({
   const [products, setProducts] = useState(() => deduplicateProducts(initialProducts));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Sync internal state when prop changes (from parent refresh)
   useEffect(() => {
@@ -200,7 +201,7 @@ export function InventoryManager({
   }, [initialProducts]);
 
   // Internal Data Fetching (Only if products not passed or empty, and not controlled by parent)
-  const fetchProducts = async () => {
+  const fetchProducts = useCallback(async () => {
     // If businessId missing OR products provided OR parent controls data refresh => SKIP
     if (!businessId || initialProducts.length > 0 || refreshData) return;
     setLoading(true);
@@ -218,11 +219,12 @@ export function InventoryManager({
     } finally {
       setLoading(false);
     }
-  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [businessId, refreshData]);
 
   useEffect(() => {
     fetchProducts();
-  }, [businessId]);
+  }, [fetchProducts]);
 
   // Wrap internal handlers to update local state + call parent if provided
   const handleAddProduct = async (productData) => {
@@ -258,106 +260,53 @@ export function InventoryManager({
     // Optimistic Update
     const old = [...products];
     setProducts(prev => prev.filter(p => p.id !== id));
-
-    const res = await deleteProductAction(id, businessId);
-    if (!res.success) {
-      setProducts(old); // Revert
-      toast.error(res.error);
-    } else {
-      toast.success("Product deleted");
-      onDelete?.(id); // Notify parent if needed
+    try {
+      const res = await deleteProductAction(id, businessId);
+      if (!res.success) {
+        setProducts(old); // Revert
+        toast.error(res.error || 'Failed to delete product');
+      } else {
+        toast.success('Product deleted');
+        onDelete?.(id);
+      }
+    } catch (err) {
+      setProducts(old); // Revert on network error
+      console.error('Delete error:', err);
+      toast.error('Connection error while deleting');
     }
   };
 
   // Excel Import Handler
   const handleExcelImport = async (importPayload) => {
+    // ExcelImportModal sends { rows: validatedRows[], file, selectedSheet }
+    // File objects cannot cross the server-action boundary — always use the
+    // already-parsed/validated rows directly.
     const importedRows = Array.isArray(importPayload) ? importPayload : (importPayload?.rows || []);
-    const importFile = Array.isArray(importPayload) ? null : importPayload?.file;
-    const selectedSheet = Array.isArray(importPayload) ? 'Products' : (importPayload?.selectedSheet || 'Products');
+
+    if (!importedRows.length) {
+      toast.error('No rows to import');
+      return;
+    }
 
     setLoading(true);
-    let successCount = 0;
-    let failureCount = 0;
-    const errors = [];
-
     try {
-      // Preferred path: use canonical bulk import API for consistency and centralized validation.
-      if (importFile) {
-        const apiResult = await productAPI.bulkImport(businessId, importFile, {
-          strictMode: false,
-          allowDuplicates: false,
-          skipExisting: false,
-          category,
-          sheetName: selectedSheet,
-        });
-
-        if (apiResult?.success) {
-          const refreshResult = await getProductsAction(businessId);
-          if (refreshResult?.success && Array.isArray(refreshResult.products)) {
-            setProducts(deduplicateProducts(refreshResult.products));
-          }
-
-          toast.success(`Imported ${apiResult.total || apiResult.imported || 0} products successfully`);
-          return;
-        }
-      }
-
-      // Fallback path keeps legacy row-level import functional.
-      for (const row of importedRows) {
-        try {
-          // Check if product with same SKU exists (update or create)
-          const existingProduct = products.find(p => p.sku === row.cleaned.sku);
-
-          if (existingProduct && row.cleaned.id) {
-            // Update existing product
-            const res = await updateProductAction(existingProduct.id, businessId, {
-              ...existingProduct,
-              ...row.cleaned,
-              business_id: businessId
-            });
-
-            if (res.success) {
-              setProducts(prev => prev.map(p => p.id === existingProduct.id ? res.product : p));
-              successCount++;
-            } else {
-              failureCount++;
-              errors.push(`Row ${row.rowNumber}: ${res.error || 'Failed to update'}`);
-            }
-          } else {
-            // Create new product
-            const res = await createProductAction({
-              ...row.cleaned,
-              business_id: businessId,
-              import_batch: new Date().toISOString()
-            });
-
-            if (res.success) {
-              setProducts(prev => [res.product, ...prev]);
-              successCount++;
-            } else {
-              failureCount++;
-              errors.push(`Row ${row.rowNumber}: ${res.error || 'Failed to create'}`);
-            }
-          }
-        } catch (err) {
-          failureCount++;
-          errors.push(`Row ${row.rowNumber}: ${err.message}`);
-        }
-      }
-
-      // Show summary
-      if (failureCount === 0) {
-        toast.success(`[OK] Imported ${successCount} products successfully!`);
+      const res = await productAPI.bulkImport(businessId, importedRows, {
+        category,
+        allowDuplicates: false,
+        skipExisting: false
+      });
+      
+      toast.success(`Import completed: ${res.imported} imported, ${res.updated} updated.`);
+      
+      // Refresh the products list to show new data
+      if (refreshData) {
+        await refreshData();
       } else {
-        toast.error(`[WARNING] Imported ${successCount} products, ${failureCount} failed`);
-        if (errors.length > 0) {
-          console.error('Import errors:', errors);
-        }
+        await fetchProducts();
       }
-
     } catch (error) {
       console.error('Excel import error:', error);
-      toast.error(`Import failed: ${error.message}`);
+      toast.error(`Import failed: ${error.message || 'Unknown error'}`);
     } finally {
       setLoading(false);
     }
@@ -585,15 +534,47 @@ export function InventoryManager({
   };
 
   const confirmBulkDelete = async () => {
+    const toDelete = [...productsToBulkDelete];
+    setShowBulkDeleteConfirm(false);
+    setProductsToBulkDelete([]);
+    setLoading(true);
+    
+    const toastId = toast.loading(`Deleting ${toDelete.length} products...`);
     try {
-      const deletePromises = productsToBulkDelete.map(p => onDelete(p.id));
-      await Promise.all(deletePromises);
-      toast.success(`Successfully deleted ${productsToBulkDelete.length} items`);
-      setProductsToBulkDelete([]);
-      setShowBulkDeleteConfirm(false);
-    } catch (error) {
-      console.error('Bulk delete error:', error);
-      toast.error('Failed to delete some items');
+      const results = await Promise.allSettled(
+        toDelete.map(p => deleteProductAction(p.id, businessId))
+      );
+
+      let successCount = 0;
+      let failed = 0;
+      const idsToKeep = [];
+
+      results.forEach((result, index) => {
+        const product = toDelete[index];
+        if (result.status === 'fulfilled' && result.value.success) {
+          successCount++;
+          onDelete?.(product.id);
+        } else {
+          failed++;
+          idsToKeep.push(product.id);
+          const errorMsg = result.status === 'rejected' ? result.reason.message : result.value.error;
+          console.error(`Bulk delete failed for ${product.id}:`, errorMsg);
+        }
+      });
+
+      // Update products state in one batch to trigger only one render pass
+      setProducts(prev => prev.filter(p => !toDelete.some(x => x.id === p.id) || idsToKeep.includes(p.id)));
+
+      if (failed === 0) {
+        toast.success(`Deleted ${toDelete.length} product${toDelete.length !== 1 ? 's' : ''}`, { id: toastId });
+      } else {
+        toast.error(`Deleted ${successCount}, failed ${failed}`, { id: toastId });
+      }
+    } catch (err) {
+      console.error('Parallel bulk delete failed:', err);
+      toast.error('Failed to execute bulk deletion', { id: toastId });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -613,19 +594,68 @@ export function InventoryManager({
 
 
   const handleUpdateProduct = async (productData) => {
+    const old = [...products];
     try {
+      if (onUpdate) {
+        await onUpdate(productData);
+        setShowProductFormInternal(false);
+        setEditingProduct(null);
+        return;
+      }
       const res = await updateProductAction(productData.id, businessId, productData);
       if (res.success) {
         setProducts(prev => prev.map(p => p.id === productData.id ? res.product : p));
-        toast.success("Product updated");
+        toast.success('Product updated');
         setShowProductFormInternal(false);
         setEditingProduct(null);
+        return res.product;
       } else {
-        toast.error(res.error || "Failed to update");
+        toast.error(res.error || 'Failed to update product');
+        throw new Error(res.error || 'Failed to update product');
       }
     } catch (err) {
-      console.error(err);
-      toast.error("Error updating product");
+      setProducts(old);
+      console.error('Update error:', err);
+      toast.error(err.message || 'Error updating product');
+      throw err;
+    }
+  };
+
+  const executeExcelExport = async () => {
+    toast.loading("Preparing export...", { id: 'inventory-export' });
+    try {
+      const result = await productAPI.bulkExport(businessId, {
+        includeBatches: true,
+        includeSerials: true,
+      });
+
+      const bytes = new Uint8Array(result.buffer || []);
+      const blob = new Blob([bytes], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = result.fileName || `inventory-export-${new Date().toISOString().split('T')[0]}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      if (result.roundTripValid === false) {
+        toast.success(`Exported ${result.recordCount || productsToDisplay.length} items (with warnings)`, { id: 'inventory-export' });
+      } else {
+        toast.success(`Exported ${result.recordCount || productsToDisplay.length} items successfully`, { id: 'inventory-export' });
+      }
+    } catch (error) {
+      console.error('Export failed:', error);
+      // Fallback keeps export available if server-side export fails.
+      try {
+        await exportProducts(productsToDisplay, 'excel');
+        toast.success(`Exported ${productsToDisplay.length} items (fallback mode)`, { id: 'inventory-export' });
+      } catch {
+        toast.error('Failed to export inventory', { id: 'inventory-export' });
+      }
     }
   };
 
@@ -673,15 +703,8 @@ export function InventoryManager({
       // Heuristic: Scroll to search or just show toast for now
     };
 
-    const handleExportGlobal = async () => {
-      try {
-        toast.loading("Preparing export...", { id: 'inventory-export' });
-        await exportProducts(productsToDisplay, 'excel');
-        toast.success(`Exported ${productsToDisplay.length} items`, { id: 'inventory-export' });
-      } catch (error) {
-        console.error('Global export failed:', error);
-        toast.error('Failed to export inventory', { id: 'inventory-export' });
-      }
+    const handleExportGlobal = () => {
+      executeExcelExport();
     };
 
     window.addEventListener('toggle-filters', handleToggleFilters);
@@ -1695,9 +1718,19 @@ export function InventoryManager({
                 </div>
                 <VariantManager
                   value={selectedProduct.variants || []}
-                  onChange={(variants) => {
-                    onUpdate?.({ ...selectedProduct, variants });
-                    setSelectedProduct({ ...selectedProduct, variants });
+                  onChange={async (variants) => {
+                    const updatedProduct = { ...selectedProduct, variants };
+                    // Optimistic update
+                    setSelectedProduct(updatedProduct);
+                    // Persist to server
+                    try {
+                      await handleUpdateProduct(updatedProduct);
+                      onUpdate?.(updatedProduct);
+                    } catch (err) {
+                      // Rollback on error
+                      setSelectedProduct(selectedProduct);
+                      console.error('Failed to update variants:', err);
+                    }
                   }}
                   product={selectedProduct}
                   category={category}
@@ -2062,10 +2095,10 @@ export function InventoryManager({
           {/* AI Demand / Restock Engine -- inside Reports */}
           <Card className="rounded-[32px] border-gray-100 shadow-sm overflow-hidden group hover:shadow-xl transition-all duration-500">
             <CardHeader className="bg-slate-50/50 pb-6 border-b border-gray-50">
-              <CardTitle className="text-xl font-black text-gray-900 tracking-tight italic">Auto-Reorder Engine</CardTitle>
+              <CardTitle className="text-xl font-black text-gray-900 tracking-tight">Auto-Reorder Engine</CardTitle>
               <CardDescription className="text-xs font-bold uppercase tracking-widest text-gray-500 opacity-70">Algorithmic replenishment manager</CardDescription>
             </CardHeader>
-            <CardContent className="p-0">
+            <CardContent className="p-0 pt-0">
               <AutoReorderManager
                 products={products}
                 vendors={vendors}
@@ -2094,11 +2127,18 @@ export function InventoryManager({
         <AdvancedInventoryFeatures
           product={selectedProduct}
           domainKnowledge={domainKnowledge}
-          onSave={(data) => {
-            onUpdate?.({ ...selectedProduct, ...data });
-            toast.success('Advanced features updated');
-            setShowAdvancedFeatures(false);
-            setSelectedProduct(null);
+          onSave={async (data) => {
+            const updatedProduct = { ...selectedProduct, ...data };
+            try {
+              await handleUpdateProduct(updatedProduct);
+              onUpdate?.(updatedProduct);
+              toast.success('Advanced features updated');
+              setShowAdvancedFeatures(false);
+              setSelectedProduct(null);
+            } catch (err) {
+              toast.error('Failed to update advanced features');
+              console.error('Advanced features update failed:', err);
+            }
           }}
           onClose={() => {
             setShowAdvancedFeatures(false);
@@ -2132,9 +2172,11 @@ export function InventoryManager({
               product={selectedProduct}
               businessId={selectedProduct.business_id}
               warehouseId={locations[0]?.id}
-              onBatchCreated={() => {
+              onBatchCreated={async () => {
                 toast.success('Batch created successfully');
-                onUpdate?.(selectedProduct);
+                // Refresh data to get updated batches
+                await refreshData?.();
+                setShowBatchManager(false);
               }}
               onClose={() => setShowBatchManager(false)}
             />
@@ -2179,9 +2221,11 @@ export function InventoryManager({
             <VariantMatrixEditor
               product={selectedProduct}
               businessId={selectedProduct.business_id}
-              onVariantsUpdated={() => {
+              onVariantsUpdated={async () => {
                 toast.success('Variants updated successfully');
-                onUpdate?.(selectedProduct);
+                // Refresh data to get updated variants
+                await refreshData?.();
+                setShowVariantEditor(false);
               }}
               onClose={() => setShowVariantEditor(false)}
             />
@@ -2223,11 +2267,15 @@ export function InventoryManager({
         product={productToView}
         open={!!productToView}
         onClose={() => setProductToView(null)}
+        onUpdate={(updatedProduct) => {
+          setProducts(prev => prev.map(p => p.id === updatedProduct.id ? updatedProduct : p));
+          onUpdate?.(updatedProduct);
+        }}
         category={category}
       />
 
       {/* Delete Confirmation */}
-      <AlertDialog open={!!productToDelete} onOpenChange={(open) => !open && setProductToDelete(null)}>
+      <AlertDialog open={!!productToDelete} onOpenChange={(open) => !open && !isDeleting && setProductToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
@@ -2238,16 +2286,38 @@ export function InventoryManager({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-red-600 hover:bg-red-700"
-              onClick={async () => {
+              className="bg-red-600 hover:bg-red-700 flex items-center gap-2"
+              disabled={isDeleting}
+              onClick={async (e) => {
+                e.preventDefault();
+                setIsDeleting(true);
                 const id = productToDelete.id;
-                setProductToDelete(null);
-                await handleDeleteProduct(id);
+                try {
+                  const res = await deleteProductAction(id, businessId);
+                  if (res.success) {
+                    setProducts(prev => prev.filter(p => p.id !== id));
+                    toast.success('Product deleted');
+                    onDelete?.(id);
+                    setProductToDelete(null);
+                  } else {
+                    toast.error(res.error || 'Failed to delete product');
+                  }
+                } catch (err) {
+                  console.error('Delete error:', err);
+                  toast.error('Connection error while deleting');
+                } finally {
+                  setIsDeleting(false);
+                }
               }}
             >
-              Delete
+              {isDeleting ? (
+                <>
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : 'Delete'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

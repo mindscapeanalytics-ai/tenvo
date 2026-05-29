@@ -61,7 +61,9 @@ export const GET = withApiAuth(async (request, { businessId, session }) => {
         const options = {
             limit,
             offset,
-            search
+            search,
+            category,
+            isActive: isActive !== null && isActive !== undefined ? isActive : undefined
         };
 
         // Fetch products using getProductsAction
@@ -76,17 +78,6 @@ export const GET = withApiAuth(async (request, { businessId, session }) => {
         }
 
         let products = result.products || [];
-
-        // Apply additional filters (category, is_active, min_stock_alert)
-        // These filters are applied in-memory since getProductsAction doesn't support them yet
-        if (category) {
-            products = products.filter(p => p.category === category);
-        }
-
-        if (isActive !== null && isActive !== undefined) {
-            const activeFilter = isActive === 'true';
-            products = products.filter(p => p.is_active === activeFilter);
-        }
 
         if (minStockAlert === 'true') {
             products = products.filter(p => {

@@ -27,12 +27,14 @@ import {
     ArrowUpRight,
     Clock,
     Edit3,
-    Eye
+    Eye,
+    Dot
 } from 'lucide-react';
 import { useBusiness } from '@/lib/context/BusinessContext';
 import { formatCurrency } from '@/lib/utils/formatting';
 import { getDomainDefaults } from '@/lib/domainKnowledge';
 import { ProductForm } from './ProductForm';
+import { updateProductAction } from '@/lib/actions/standard/inventory/product';
 import toast from 'react-hot-toast';
 
 const DetailSection = ({ title, icon: Icon, children }) => (
@@ -68,7 +70,8 @@ export function ProductDetailsDialog({
     product: initialProduct,
     open,
     onClose,
-    category = 'retail-shop'
+    category = 'retail-shop',
+    onUpdate
 }) {
     const { regionalStandards } = useBusiness();
     const standards = regionalStandards || {
@@ -82,9 +85,12 @@ export function ProductDetailsDialog({
     const [isEditing, setIsEditing] = useState(false);
     const [product, setProduct] = useState(initialProduct);
 
-    // Sync local state when initialProduct changes
+    // Sync local state when initialProduct changes and reset edit mode
     React.useEffect(() => {
-        if (initialProduct) setProduct(initialProduct);
+        if (initialProduct) {
+            setProduct(initialProduct);
+            setIsEditing(false);
+        }
     }, [initialProduct]);
 
     if (!product) return null;
@@ -101,10 +107,23 @@ export function ProductDetailsDialog({
         window.print();
     };
 
-    const handleUpdateSuccess = (updatedData) => {
-        setProduct(updatedData);
-        setIsEditing(false);
-        toast.success('Product updated successfully');
+    const handleUpdateSuccess = async (updatedData) => {
+        // Persist to database first
+        try {
+            const res = await updateProductAction(product.id, product.business_id, updatedData);
+            if (!res.success) {
+                throw new Error(res.error || 'Failed to update product');
+            }
+            // Update local state with server-returned data
+            setProduct(res.product);
+            setIsEditing(false);
+            toast.success('Product updated successfully');
+            // Propagate to parent so table reflects changes
+            onUpdate?.(res.product);
+        } catch (err) {
+            toast.error(err.message || 'Failed to update product');
+            console.error('Update failed:', err);
+        }
     };
 
     return (
@@ -244,7 +263,7 @@ export function ProductDetailsDialog({
                                                                         {v.sku}
                                                                     </div>
                                                                     <div className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">
-                                                                        {v.size || 'N/A'} * {v.color || 'N/A'}
+                                                                        {v.size || 'N/A'} <Dot className="w-3 h-3 inline mx-1 text-gray-300" /> {v.color || 'N/A'}
                                                                     </div>
                                                                 </div>
                                                                 <Badge className="bg-white border-gray-100 text-gray-600 font-black text-[9px] px-2 py-0.5">

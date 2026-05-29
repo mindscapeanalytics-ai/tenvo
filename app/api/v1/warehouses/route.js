@@ -13,7 +13,7 @@ export async function GET(request) {
         const businessId = searchParams.get('businessId');
         if (!businessId) return NextResponse.json({ error: 'businessId required' }, { status: 400 });
 
-        await withGuard(businessId, { permission: 'inventory.view' });
+        await withGuard(businessId, { permission: 'warehouses.view' });
 
         const result = await WarehouseService.getWarehouses(businessId);
         return NextResponse.json({ success: true, warehouses: result });
@@ -33,7 +33,7 @@ export async function POST(request) {
         const { business_id: businessId, ...warehouseData } = body;
         if (!businessId) return NextResponse.json({ error: 'business_id required' }, { status: 400 });
 
-        const { session } = await withGuard(businessId, { permission: 'inventory.manage_warehouses' });
+        const { session } = await withGuard(businessId, { permission: 'warehouses.manage' });
 
         const warehouse = await WarehouseService.createWarehouse({ ...warehouseData, business_id: businessId });
         return NextResponse.json({ success: true, warehouse }, { status: 201 });

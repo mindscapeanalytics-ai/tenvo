@@ -34,7 +34,7 @@ export function PaymentReceiptForm({
 
     const [formData, setFormData] = useState({
         business_id: business?.id,
-        payment_type: type,
+        payment_type: type === 'receipt' ? 'received' : 'paid',
         customer_id: initialData?.customer_id || '',
         vendor_id: initialData?.vendor_id || '',
         amount: initialData?.amount || 0,

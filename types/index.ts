@@ -369,7 +369,7 @@ export interface Invoice {
     subtotal: number;
     total_tax: number;
     total_amount: number;
-    status: string; // 'draft' | 'pending' | 'paid' | 'overdue' | 'cancelled';
+    status: string; // 'draft' | 'pending' | 'paid' | 'overdue' | 'cancelled' | 'sent' | 'partial' | 'voided';
     notes: string | null;
     created_at: Date;
     updated_at: Date;
@@ -383,4 +383,6 @@ export interface Invoice {
     items?: InvoiceItem[];
     amount?: number; // fallback for legacy code
     customer?: Customer; // Relation
+    balance?: number; // Remaining balance calculated from invoice_payments
+    is_deleted?: boolean;
 }

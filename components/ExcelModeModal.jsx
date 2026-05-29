@@ -232,14 +232,11 @@ export function ExcelModeModal({
         setIsSaving(true);
         try {
             await onSave?.(dataToSave);
-            if (!isAutoSave) {
-                toast.success('Inventory saved successfully!');
-                setHasUnsavedChanges(false);
-                setTimeout(() => onClose(), 300);
-            } else {
-                toast.success('Auto-saved', { icon: '💾' });
-                setHasUnsavedChanges(false);
+            setHasUnsavedChanges(false);
+            if (isAutoSave) {
+                toast.success('Auto-saved', { icon: '💾', duration: 1500 });
             }
+            // Non-autosave: parent (InventoryManager.handleExcelSave) owns the result toast + closes modal
         } catch (err) {
             console.error("Save Error:", err);
             toast.error('Save failed');

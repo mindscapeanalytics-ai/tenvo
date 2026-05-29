@@ -576,29 +576,45 @@ function BusinessDashboardContent() {
     }
   };
 
-  const handleExport = (data) => {
+  const handleExport = (data, filename = 'export') => {
     if (!data || data.length === 0) {
       toast.error('No data to export');
       return;
     }
 
-    // Simple CSV Export
-    const headers = Object.keys(data[0] || {}).join(',');
-    const rows = data.map(obj =>
-      Object.values(obj).map(val =>
-        typeof val === 'string' && val.includes(',') ? `"${val}"` : val
-      ).join(',')
+    // Comprehensive CSV export that handles nested objects, quotes, newlines and commas
+    const headers = Object.keys(data[0] || {});
+    
+    const escapeCsvValue = (val) => {
+      if (val === null || val === undefined) return '';
+      if (typeof val === 'object') {
+        if (val.name) return `"${val.name.replace(/"/g, '""')}"`;
+        if (val.code) return `"${val.code.replace(/"/g, '""')}"`;
+        return `"${JSON.stringify(val).replace(/"/g, '""')}"`;
+      }
+      const str = String(val);
+      if (str.includes(',') || str.includes('\n') || str.includes('"')) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
+    };
+
+    const csvHeaders = headers.join(',');
+    const csvRows = data.map(obj => 
+      headers.map(header => escapeCsvValue(obj[header])).join(',')
     );
-    const csvContent = [headers, ...rows].join('\n');
+    
+    const csvContent = '\uFEFF' + [csvHeaders, ...csvRows].join('\r\n'); // Add UTF-8 BOM for Excel compatibility
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
-    link.setAttribute('download', `export_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute('download', `${filename}_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const handleQuickAddProduct = () => {
@@ -768,6 +784,107 @@ function BusinessDashboardContent() {
         throw error;
       }
     }
+  };
+
+  // New Invoice Handlers for Enhanced Features
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [selectedInvoiceForPayment, setSelectedInvoiceForPayment] = useState(null);
+
+  const handleRecordPayment = (invoice) => {
+    setSelectedInvoiceForPayment(invoice);
+    setShowPaymentModal(true);
+  };
+
+  const handleViewInvoice = (invoice) => {
+    // Navigate to invoice detail view or open modal
+    setInvoiceInitialData(invoice);
+    setShowInvoiceBuilder(true);
+  };
+
+  const handleBulkDeleteInvoices = async (invoiceIds) => {
+    if (!invoiceIds || invoiceIds.length === 0) return;
+    
+    try {
+      const { bulkDeleteInvoicesAction } = await import('@/lib/actions/standard/invoice-bulk');
+      const result = await bulkDeleteInvoicesAction(business.id, invoiceIds, user?.id);
+
+      if (result.success) {
+        toast.success(`${result.data?.deleted || invoiceIds.length} invoice(s) deleted successfully`);
+        if (result.data?.restoredStock > 0) {
+          toast.info(`${result.data.restoredStock} inventory items restored`);
+        }
+        refreshAllData();
+      } else {
+        toast.error(result.error || 'Bulk delete failed');
+      }
+    } catch (error) {
+      console.error('Bulk delete failed:', error);
+      toast.error('Failed to delete invoices: ' + (error.message || 'Unknown error'));
+      throw error;
+    }
+  };
+
+  const handleBulkImportInvoices = async (importedInvoices) => {
+    try {
+      let successCount = 0;
+      let failCount = 0;
+
+      for (const invoiceData of importedInvoices) {
+        try {
+          // Build invoice payload from imported data
+          const payload = {
+            business_id: business.id,
+            customer_id: invoiceData.customer?.id || null,
+            date: new Date().toISOString().split('T')[0],
+            due_date: invoiceData.due_date || null,
+            status: 'draft',
+            payment_status: 'unpaid',
+            subtotal: invoiceData.items?.reduce((sum, item) => sum + (item.calculated_subtotal || 0), 0) || 0,
+            tax_total: invoiceData.items?.reduce((sum, item) => sum + (item.calculated_tax || 0), 0) || 0,
+            discount_total: invoiceData.items?.reduce((sum, item) => sum + (item.parsed_discount_amount || 0), 0) || 0,
+            grand_total: invoiceData.items?.reduce((sum, item) => sum + (item.calculated_total || 0), 0) || 0,
+            notes: `Imported from CSV`,
+            items: invoiceData.items?.map(item => ({
+              name: item.name,
+              description: item.description || '',
+              quantity: item.parsed_quantity,
+              unit_price: item.parsed_unit_price,
+              tax_percent: item.parsed_tax_percent || 0,
+              tax_amount: item.calculated_tax || 0,
+              discount_amount: item.parsed_discount_amount || 0,
+              total_amount: item.calculated_total || 0
+            })) || []
+          };
+
+          await invoiceAPI.create(payload, payload.items);
+          successCount++;
+        } catch (error) {
+          console.error('Failed to import invoice:', error);
+          failCount++;
+        }
+      }
+
+      if (successCount > 0) {
+        toast.success(`${successCount} invoice(s) imported successfully`);
+        refreshAllData();
+      }
+      if (failCount > 0) {
+        toast.error(`${failCount} invoice(s) failed to import`);
+      }
+    } catch (error) {
+      console.error('Bulk import failed:', error);
+      toast.error('Failed to import invoices: ' + (error.message || 'Unknown error'));
+    }
+  };
+
+  const handleExportInvoices = (data) => {
+    if (!data || data.length === 0) {
+      toast.error('No invoices to export');
+      return;
+    }
+
+    // Use the existing handleExport but with invoice-specific filename
+    handleExport(data, 'invoices');
   };
 
   const handleUpdatePOStatus = async (poId, status) => {
@@ -1225,6 +1342,12 @@ function BusinessDashboardContent() {
               handleDeleteInvoice,
               handleBulkDelete,
               handleExport,
+              // New Invoice Handlers
+              handleRecordPayment,
+              handleViewInvoice,
+              handleBulkDeleteInvoices,
+              handleBulkImportInvoices,
+              handleExportInvoices,
               handleSaveProduct,
               handleDeleteProduct,
               handleQuickAddProduct,
@@ -1292,6 +1415,11 @@ function BusinessDashboardContent() {
         setShowCustomerForm={setShowCustomerForm}
         showInvoiceBuilder={showInvoiceBuilder}
         setShowInvoiceBuilder={setShowInvoiceBuilder}
+        // Payment Modal States
+        showPaymentModal={showPaymentModal}
+        setShowPaymentModal={setShowPaymentModal}
+        selectedInvoiceForPayment={selectedInvoiceForPayment}
+        setSelectedInvoiceForPayment={setSelectedInvoiceForPayment}
         // Excel functionality is now handled locally within InventoryManager
         editingProduct={editingProduct}
         setEditingProduct={setEditingProduct}
@@ -1330,6 +1458,7 @@ function BusinessDashboardContent() {
         role={role}
         planTier={business?.plan_tier || 'free'}
         domainKnowledge={domainKnowledge}
+        user={user}
 
         // Details Viewer Props
         viewingItem={viewingItem}

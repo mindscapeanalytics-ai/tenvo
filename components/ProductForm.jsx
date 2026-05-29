@@ -1,8 +1,8 @@
 'use client';
 // v2: Forced recompile
 
-import { useState, useEffect, useCallback } from 'react';
-import { X, Save, Loader2, AlertCircle, CheckCircle2, BrainCircuit, Info, ImagePlus, Package, Layers, TrendingUp } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { X, Save, Loader2, AlertCircle, CheckCircle2, BrainCircuit, Info, ImagePlus, Package, Layers, TrendingUp, Zap, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -49,7 +49,6 @@ import { CustomParametersManager } from './inventory/CustomParametersManager';
 import { useSafeSmartDefaults, mergeFormDefaults, getCurrentDate } from '@/lib/hooks/useSafeSmartDefaults';
 import { useAppMode } from '@/lib/context/BusyModeContext';
 import { useAutosave, AutosaveIndicator } from '@/hooks/useAutosave';
-import { useKeyboardShortcuts, COMMON_SHORTCUTS } from '@/hooks/useKeyboardShortcuts';
 import { useBusiness } from '@/lib/context/BusinessContext';
 import { getCurrentSeason, getSeasonalDiscount, applySeasonalPricing } from '@/lib/domainData/pakistaniSeasons';
 import { hasSeasonalPricing } from '@/lib/utils/pakistaniFeatures';
@@ -78,6 +77,10 @@ export function ProductForm({
 
     const [activeTab, setActiveTab] = useState('basic');
 
+    // Keep a stable ref to handleSubmit so the keyboard effect never stale-closes
+    const handleSubmitRef = useRef(null);
+    useEffect(() => { handleSubmitRef.current = handleSubmit; });
+
     // Keyboard shortcuts for tabs & Focus Flow
     useEffect(() => {
         const handleKeys = (e) => {
@@ -94,12 +97,12 @@ export function ProductForm({
             // Command + Enter to Save
             if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
                 e.preventDefault();
-                handleSubmit(e);
+                handleSubmitRef.current?.(e);
             }
         };
         window.addEventListener('keydown', handleKeys);
         return () => window.removeEventListener('keydown', handleKeys);
-    }, [formData, activeTab]);
+    }, []); // Empty deps: event listener registered once, ref always points to latest handleSubmit
 
     /**
      * Ultra-Speed Navigation: Enter key moves focus to next logical element
@@ -179,6 +182,19 @@ export function ProductForm({
 
     const [errors, setErrors] = useState({});
     const [isLoading, setIsLoading] = useState(false);
+
+    // Autosave: persist draft to localStorage while user types
+    const autosaveDraftKey = `product-draft-${product?.id || 'new'}-${category}`;
+    const { isSaving, lastSaved } = useAutosave(
+        formData,
+        async (data) => {
+            if (typeof window !== 'undefined') {
+                localStorage.setItem(autosaveDraftKey, JSON.stringify(data));
+            }
+        },
+        1500,
+        true
+    );
 
     const domainFields = getDomainProductFields(category);
     const hasBatchTracking = isBatchTrackingEnabled(category);
@@ -1139,14 +1155,14 @@ export function ProductForm({
                         </div>
                     )}
 
-                    {/* Sticky Action Footer */}
-                    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-full max-w-2xl px-6">
-                        <div className="bg-slate-900/95 backdrop-blur-xl p-4 rounded-3xl border border-white/10 shadow-2xl shadow-indigo-500/20 flex items-center justify-between">
+                    {/* Action Footer - Relative (not fixed) so it works inside Dialogs */}
+                    <div className="mt-8 pt-6 border-t border-gray-100">
+                        <div className="bg-slate-900/95 backdrop-blur-xl p-4 rounded-2xl border border-white/10 shadow-xl flex items-center justify-between">
                             <Button type="button" variant="ghost" onClick={fillDemoData} className="text-[10px] text-slate-400 hover:text-white uppercase font-black tracking-widest px-4">
                                 <Sparkles className="w-3 h-3 mr-2 text-yellow-500" />
                                 Smart Fill
                             </Button>
-                            
+
                             <div className="flex gap-3">
                                 {onCancel && (
                                     <Button type="button" variant="ghost" onClick={onCancel} className="font-bold text-slate-400 hover:text-white h-11 px-6 rounded-2xl">
@@ -1170,7 +1186,7 @@ export function ProductForm({
                                 </Button>
                             </div>
                         </div>
-                        <div className="mt-2 text-center">
+                        <div className="mt-3 text-center">
                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Tip: Press <kbd className="bg-gray-100 px-1 rounded">Enter</kbd> to move fields or <kbd className="bg-gray-100 px-1 rounded">Cmd+Enter</kbd> to save</p>
                         </div>
                     </div>

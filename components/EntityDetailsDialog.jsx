@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState } from 'react';
 import {
@@ -47,6 +47,7 @@ export function EntityDetailsDialog({ item: initialItem, type, open, onClose, ca
         setItem(updatedData);
         setIsEditing(false);
         toast.success(`${type.charAt(0).toUpperCase() + type.slice(1).replace('_', ' ')} updated successfully`);
+        return updatedData;
     };
 
     const copyToClipboard = (text, label) => {

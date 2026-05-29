@@ -10,7 +10,7 @@ import { Package, ShoppingCart, DollarSign as DollarIcon, TrendingUp, TrendingDo
 import dynamic from 'next/dynamic';
 const DomainDashboard = dynamic(() => import('./tabs/DomainDashboard').then(mod => mod.DomainDashboard));
 const InventoryTab = dynamic(() => import('./tabs/InventoryTab').then(mod => mod.InventoryTab));
-const InvoiceTab = dynamic(() => import('./tabs/InvoiceTab').then(mod => mod.InvoiceTab));
+const InvoiceList = dynamic(() => import('./islands/InvoiceList.client').then(mod => mod.InvoiceList));
 const CustomersTab = dynamic(() => import('./tabs/CustomersTab').then(mod => mod.CustomersTab));
 const MultiLocationInventory = dynamic(() => import('@/components/MultiLocationInventory').then(mod => mod.MultiLocationInventory));
 const ManufacturingModule = dynamic(() => import('@/components/ManufacturingModule').then(mod => mod.ManufacturingModule));
@@ -290,17 +290,20 @@ export function DashboardTabs({
                     />
                     {wrapTab(
                         <TabGuard tabKey="invoices" role={role} planTier={planTier} featureName="Invoices" onUpgrade={() => handleTabChange('settings')}>
-                            <InvoiceTab
+                            <InvoiceList
                                 invoices={filteredInvoices}
                                 currency={currency}
-                                onAdd={() => setShowInvoiceBuilder(true)}
-                                onInvoiceDelete={handleDeleteInvoice}
+                                onAdd={() => handlers?.setShowInvoiceBuilder?.(true)}
+                                onInvoiceDelete={handlers?.handleDeleteInvoice}
+                                onView={handlers?.handleViewInvoice}
                                 onEdit={(invoice) => {
-                                    setInvoiceInitialData(invoice);
-                                    setShowInvoiceBuilder(true);
+                                    handlers?.setInvoiceInitialData?.(invoice);
+                                    handlers?.setShowInvoiceBuilder?.(true);
                                 }}
-                                onBulkDelete={handleBulkDelete}
-                                onExport={handleExport}
+                                onRecordPayment={handlers?.handleRecordPayment}
+                                onBulkDelete={handlers?.handleBulkDeleteInvoices}
+                                onBulkImport={handlers?.handleBulkImportInvoices}
+                                onExport={handlers?.handleExportInvoices}
                                 category={category}
                                 colors={colors}
                             />

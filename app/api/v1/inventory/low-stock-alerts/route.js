@@ -26,7 +26,7 @@ export async function GET(request) {
                 SELECT 
                     lsa.id, lsa.product_id, lsa.warehouse_id, lsa.current_stock,
                     lsa.min_stock_level, lsa.status, lsa.created_at,
-                    p.name as product_name, p.sku, p.selling_price,
+                    p.name as product_name, p.sku, p.price as selling_price,
                     wl.name as warehouse_name
                 FROM low_stock_alerts lsa
                 JOIN products p ON p.id = lsa.product_id
