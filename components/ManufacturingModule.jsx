@@ -18,12 +18,56 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/t
 import { manufacturingAPI } from '@/lib/api/manufacturing';
 import { getManufacturingConfig } from '@/lib/utils/domainHelpers';
 
-/** Unit cost from product (DB snake_case or API camelCase). */
+/** Weighted average purchase cost from active batches when master cost is unset. */
+function getBatchWeightedUnitCost(product) {
+  const batches = product?.batches;
+  if (!Array.isArray(batches) || batches.length === 0) return 0;
+  let qtySum = 0;
+  let valueSum = 0;
+  for (const b of batches) {
+    const q = Math.max(0, Number(b.quantity) || 0);
+    const c = Number(b.cost_price ?? b.costPrice ?? 0);
+    if (q > 0 && Number.isFinite(c) && c > 0) {
+      qtySum += q;
+      valueSum += q * c;
+    }
+  }
+  if (qtySum <= 0) return 0;
+  return valueSum / qtySum;
+}
+
+/** When master SKU cost is unset, use default variant (or first variant) cost if any. */
+function getDefaultVariantUnitCost(product) {
+  const variants = product?.variants;
+  if (!Array.isArray(variants) || variants.length === 0) return 0;
+  const list = [...variants].sort((a, b) => Number(b?.is_default === true) - Number(a?.is_default === true));
+  for (const v of list) {
+    const c = Number(v?.cost_price ?? v?.costPrice ?? 0);
+    if (Number.isFinite(c) && c > 0) return c;
+  }
+  return 0;
+}
+
+/**
+ * Unit cost for BOM estimates: master cost_price, then default variant cost, then batch weighted average.
+ * Supports legacy keys (cost, unit_cost, camelCase).
+ */
 function getProductUnitCost(product) {
   if (!product) return 0;
-  const raw = product.cost_price ?? product.costPrice ?? product.unit_cost ?? 0;
+  const raw =
+    product.cost_price ??
+    product.costPrice ??
+    product.unit_cost ??
+    product.unitCost ??
+    product.cost ??
+    0;
   const n = Number(raw);
-  return Number.isFinite(n) ? n : 0;
+  const direct = Number.isFinite(n) && n > 0 ? n : 0;
+  if (direct > 0) return direct;
+  const fromVariant = getDefaultVariantUnitCost(product);
+  if (fromVariant > 0) return fromVariant;
+  const fromBatches = getBatchWeightedUnitCost(product);
+  return Number.isFinite(fromBatches) && fromBatches > 0 ? fromBatches : 0;
 }
 
 /**
@@ -306,6 +350,28 @@ export function ManufacturingModule({
     bomHasListedLines &&
     bomListedMaterialValue === 0 &&
     bomData.components.some((c) => (Number(c.quantity) || 0) > 0);
+
+  const bomUsesBatchCostEstimate =
+    bomHasListedLines &&
+    bomData.components.some((c) => {
+      const p = products.find((pr) => pr.id === c.product);
+      if (!p || !(Number(c.quantity) > 0)) return false;
+      const raw = p.cost_price ?? p.costPrice ?? p.unit_cost ?? p.unitCost ?? p.cost ?? 0;
+      const directOk = Number.isFinite(Number(raw)) && Number(raw) > 0;
+      if (directOk) return false;
+      if (getDefaultVariantUnitCost(p) > 0) return false;
+      return getBatchWeightedUnitCost(p) > 0;
+    });
+
+  const bomUsesVariantCostEstimate =
+    bomHasListedLines &&
+    bomData.components.some((c) => {
+      const p = products.find((pr) => pr.id === c.product);
+      if (!p || !(Number(c.quantity) > 0)) return false;
+      const raw = p.cost_price ?? p.costPrice ?? p.unit_cost ?? p.unitCost ?? p.cost ?? 0;
+      const directOk = Number.isFinite(Number(raw)) && Number(raw) > 0;
+      return !directOk && getDefaultVariantUnitCost(p) > 0;
+    });
 
   return (
     <div className="space-y-6">
@@ -744,6 +810,16 @@ export function ManufacturingModule({
                   {bomHasQtyButZeroCost && (
                     <span className="block text-amber-800">
                       Listed materials have quantity but <strong>cost price is 0</strong> on those products — set cost price in inventory for a realistic estimate.
+                    </span>
+                  )}
+                  {bomUsesVariantCostEstimate && (
+                    <span className="block text-emerald-800">
+                      At least one line uses <strong>variant cost price</strong> because the SKU master cost is unset — set cost on the product for consistency.
+                    </span>
+                  )}
+                  {bomUsesBatchCostEstimate && (
+                    <span className="block text-emerald-800">
+                      At least one line uses <strong>average batch purchase cost</strong> because SKU and variant costs are unset — set cost on the product for a single source of truth.
                     </span>
                   )}
                 </p>

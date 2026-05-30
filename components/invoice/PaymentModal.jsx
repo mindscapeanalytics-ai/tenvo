@@ -30,6 +30,13 @@ const PAYMENT_METHODS = [
     { id: 'other', label: 'Other', icon: DollarSign }
 ];
 
+function coerceMoney(value, fallback) {
+    if (value === null || value === undefined || value === '') return fallback;
+    const n = typeof value === 'number' ? value : parseFloat(String(value).replace(/,/g, ''));
+    if (!Number.isFinite(n) || n < 0) return fallback;
+    return n;
+}
+
 export function PaymentModal({
     isOpen,
     onClose,
@@ -45,32 +52,40 @@ export function PaymentModal({
     const [referenceNumber, setReferenceNumber] = useState('');
     const [notes, setNotes] = useState('');
 
-    const total = Number(invoice?.grand_total) || 0;
-    const balance = liveBalance !== null ? liveBalance : (Number(invoice?.balance) ?? total);
-    const alreadyPaid = total - balance;
+    const total = coerceMoney(invoice?.grand_total, 0);
+    const fallbackBalance = coerceMoney(invoice?.balance, total);
+    const balance = liveBalance !== null ? liveBalance : fallbackBalance;
+    const alreadyPaid = Math.max(0, total - balance);
 
     // Fetch live balance when modal opens
     useEffect(() => {
         if (!invoice?.id || !invoice?.business_id || !isOpen) return;
         let cancelled = false;
+        const fb = coerceMoney(invoice.balance, coerceMoney(invoice.grand_total, 0));
         setIsFetchingBalance(true);
+        setLiveBalance(null);
         (async () => {
             try {
                 const { getInvoicePaymentSummaryAction } = await import('@/lib/actions/standard/invoice-payments');
                 const result = await getInvoicePaymentSummaryAction(invoice.business_id, invoice.id);
                 if (!cancelled && result.success && result.summary) {
-                    setLiveBalance(Number(result.summary.balance ?? result.summary.remaining ?? invoice.balance ?? total));
+                    setLiveBalance(
+                        coerceMoney(
+                            result.summary.balance ?? result.summary.remaining,
+                            fb
+                        )
+                    );
                 } else if (!cancelled) {
-                    setLiveBalance(Number(invoice?.balance) ?? total);
+                    setLiveBalance(fb);
                 }
             } catch {
-                if (!cancelled) setLiveBalance(Number(invoice?.balance) ?? total);
+                if (!cancelled) setLiveBalance(fb);
             } finally {
                 if (!cancelled) setIsFetchingBalance(false);
             }
         })();
         return () => { cancelled = true; };
-    }, [invoice?.id, invoice?.business_id, isOpen]);
+    }, [invoice?.id, invoice?.business_id, invoice?.balance, invoice?.grand_total, isOpen]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -160,9 +175,22 @@ export function PaymentModal({
                                 <span className="font-medium text-green-600">{formatCurrency(alreadyPaid, currency)}</span>
                             </div>
                         )}
-                        <div className="flex justify-between text-sm font-semibold pt-2 border-t">
+                        <div className="flex justify-between text-sm font-semibold pt-2 border-t items-center">
                             <span className="text-gray-900">Balance Due</span>
-                            <span className="text-emerald-600">{formatCurrency(balance, currency)}</span>
+                            <span className="flex items-center gap-2">
+                                {isFetchingBalance ? (
+                                    <Loader2 className="w-4 h-4 animate-spin text-gray-400" aria-hidden />
+                                ) : null}
+                                <span
+                                    className={
+                                        balance > 0.005
+                                            ? 'text-amber-700'
+                                            : 'text-emerald-600'
+                                    }
+                                >
+                                    {formatCurrency(balance, currency)}
+                                </span>
+                            </span>
                         </div>
                     </div>
 

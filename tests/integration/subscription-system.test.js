@@ -137,6 +137,23 @@ describe('Subscription & plan integration', () => {
     it('grants owner broad permissions', () => {
       expect(hasPermission('owner', 'settings.billing')).toBe(true);
       expect(hasPermission('owner', 'sales.delete_invoice')).toBe(true);
+      expect(hasPermission('owner', 'sales.record_payment')).toBe(true);
+      expect(hasPermission('owner', 'sales.approve_invoice')).toBe(true);
+      expect(hasPermission('owner', 'hypothetical.future_gate')).toBe(true);
+    });
+
+    it('allows cashier to record invoice payments', () => {
+      expect(hasPermission('cashier', 'sales.record_payment')).toBe(true);
+    });
+
+    it('denies viewer from recording payments', () => {
+      expect(hasPermission('viewer', 'sales.record_payment')).toBe(false);
+    });
+
+    it('failsafe: unknown sales.* keys inherit sales lane for eligible roles', () => {
+      expect(hasPermission('cashier', 'sales.record_payment')).toBe(true);
+      expect(hasPermission('accountant', 'sales.future_permission_key')).toBe(true);
+      expect(hasPermission('viewer', 'sales.future_permission_key')).toBe(false);
     });
 
     it('restricts viewer', () => {

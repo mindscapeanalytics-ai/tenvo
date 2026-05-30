@@ -176,8 +176,7 @@ BEGIN
     -- Get total payments
     SELECT COALESCE(SUM(amount), 0) INTO v_paid
     FROM invoice_payments
-    WHERE invoice_id = p_invoice_id
-      AND (is_deleted = false OR is_deleted IS NULL);
+    WHERE invoice_id = p_invoice_id;
     
     v_balance := COALESCE(v_total, 0) - v_paid;
     
@@ -212,8 +211,7 @@ BEGIN
     -- Get total payments
     SELECT COALESCE(SUM(amount), 0) INTO v_paid
     FROM invoice_payments
-    WHERE invoice_id = v_invoice_id
-      AND (is_deleted = false OR is_deleted IS NULL);
+    WHERE invoice_id = v_invoice_id;
     
     -- Determine new status
     IF v_paid >= v_total THEN

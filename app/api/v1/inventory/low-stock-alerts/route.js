@@ -44,14 +44,17 @@ export async function GET(request) {
             client.release();
         }
     } catch (error) {
-        console.error('Error in GET /api/v1/inventory/low-stock-alerts:', error);
         if (error?.code === '42P01') {
+            console.warn(
+                '[GET /api/v1/inventory/low-stock-alerts] low_stock_alerts missing — returning empty. Apply prisma migration 20260514_inventory_reorder_cycle_counts or lib/db/migrations/035_low_stock_alerts_reorder_points.sql'
+            );
             return NextResponse.json({
                 alerts: [],
                 count: 0,
                 warning: 'Low-stock alert tables are not initialized yet. Apply latest migrations.',
             });
         }
+        console.error('Error in GET /api/v1/inventory/low-stock-alerts:', error);
         return NextResponse.json(
             { error: error.message },
             { status: 500 }

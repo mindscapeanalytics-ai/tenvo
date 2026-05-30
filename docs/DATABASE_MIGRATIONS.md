@@ -6,7 +6,13 @@ The Prisma schema in this repo must match your Postgres database. If you see err
 
 **Supabase:** Prefer a **direct** Postgres URL on port **5432** for `DIRECT_URL` when applying migrations; `DATABASE_URL` may use the **6543** pooler for the app. Both must point to a reachable host or you will see **P1001**.
 
-**Legacy SQL** under `scripts/migrations/` is **not** applied by `prisma migrate deploy`. See **`scripts/migrations/README.md`** for how it relates to `prisma/migrations/` and recovery steps.
+**Legacy SQL** under `scripts/migrations/` is **not** applied by `prisma migrate deploy`. See **`scripts/migrations/README.md`** for how it relates to `prisma/migrations/` and recovery steps. For inventory / manufacturing / RBAC drift and duplicate-path notes, see **`docs/AUDIT_INVENTORY_MANUFACTURING_RBAC_2026.md`**. For a local **validate** checklist (schema, migrate, build, tests), see **`docs/VALIDATION.md`**.
+
+**Invoice payments (P1011 / `ip.is_deleted` / balance modal):** If Postgres errors on `invoice_payments.is_deleted` or `calculate_invoice_balance` disagrees with payments, apply the idempotent script **`lib/db/migrations/033_invoice_payments_soft_delete_columns.sql`** against your database (adds soft-delete columns and refreshes `calculate_invoice_balance`).
+
+**`calculate_invoice_balance` / missing `is_deleted`:** If the error references **`column "is_deleted" does not exist`** inside **`calculate_invoice_balance`**, run **`lib/db/migrations/034_calculate_invoice_balance_no_is_deleted.sql`** (replaces the function so it does not reference `is_deleted` until your table has that column).
+
+**Low-stock alerts (`42P01` / `low_stock_alerts` does not exist):** Apply Prisma migration **`20260514_inventory_reorder_cycle_counts`** via `bun run db:migrate`, or run the idempotent script **`lib/db/migrations/035_low_stock_alerts_reorder_points.sql`** in the SQL editor (creates `reorder_points` and `low_stock_alerts`).
 
 **Windows PowerShell:** use separate lines or `;` between commands — **`&&` is not valid** on older PowerShell. From repo root: `Set-Location E:\path\to\tenvo-main` then run the `bunx` / `bun` commands below.
 

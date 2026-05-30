@@ -52,7 +52,7 @@ const ROLE_TEMPLATES = [
       'pos.*',
       'inventory.view', 'inventory.edit', 'inventory.adjust_stock',
       'customers.*',
-      'sales.view', 'sales.create_invoice',
+      'sales.view', 'sales.create_invoice', 'sales.record_payment',
       'reports.view'
     ],
     restrictions: ['finance.delete', 'settings.billing', 'inventory.delete']
@@ -68,7 +68,7 @@ const ROLE_TEMPLATES = [
       'pos.access', 'pos.process_sale', 'pos.open_session', 'pos.close_session',
       'customers.view', 'customers.create', 'customers.edit',
       'inventory.view',
-      'sales.view', 'sales.create_invoice'
+      'sales.view', 'sales.create_invoice', 'sales.record_payment'
     ],
     restrictions: ['pos.void_transaction', 'pos.process_refund', 'pos.apply_discount', 'sales.delete_invoice']
   },
@@ -97,7 +97,7 @@ const ROLE_TEMPLATES = [
       'dashboard.view', 'dashboard.financial_kpis',
       'finance.view_gl', 'finance.manage_expenses', 'finance.view_reports',
       'finance.create_journal', 'finance.manage_payments',
-      'sales.view',
+      'sales.view', 'sales.record_payment',
       'purchases.view',
       'payments.view', 'payments.create', 'payments.allocate',
       'reports.view'
@@ -186,7 +186,7 @@ const PERMISSION_CATEGORIES = [
     key: 'sales',
     name: 'Sales & Invoicing',
     icon: '🧾',
-    permissions: ['sales.view', 'sales.create_invoice', 'sales.edit_invoice', 'sales.delete_invoice', 'sales.create_quotation', 'sales.create_order', 'sales.create_challan']
+    permissions: ['sales.view', 'sales.create_invoice', 'sales.edit_invoice', 'sales.delete_invoice', 'sales.create_quotation', 'sales.create_order', 'sales.create_challan', 'sales.record_payment', 'sales.void_payment', 'sales.approve_invoice']
   },
   {
     key: 'customers',
@@ -507,7 +507,7 @@ export function RoleBuilder({ businessId, onSave }) {
     }
   };
 
-  const allPermissions = Object.values(PERMISSION_DEFINITIONS).flat();
+  const allPermissions = Object.keys(PERMISSION_DEFINITIONS);
   const selectedCount = selectedPermissions.length;
   const totalCount = allPermissions.length;
 
