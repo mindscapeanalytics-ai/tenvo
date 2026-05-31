@@ -454,7 +454,7 @@ export default function RegisterWizard() {
                     // 3. Seed initial products using server action
                     await seedBusinessData(bizResult.businessId, formData.category, formData.country);
 
-                    // 4. Mark setup as complete (ownership-only action — reliable right after signup)
+                    // 4. Mark setup as complete (ownership-only action; reliable right after signup)
                     try {
                         const setupRes = await completeRegistrationSetupAction(bizResult.businessId, {
                             settings: { setup_completed: true, setup_at: new Date().toISOString() },

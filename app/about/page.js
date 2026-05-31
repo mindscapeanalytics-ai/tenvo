@@ -47,7 +47,8 @@ const timeline = [
   {
     year: '2025',
     title: 'Rapid Growth',
-    description: 'Team expands to 25+ members. Launch FBR-certified tax module, Daraz integration, and Urdu UI toggle. Reach 1,000+ active businesses across Pakistan.',
+    description:
+      'Platform roadmap accelerates: FBR-certified tax module, Daraz integration, and Urdu UI toggle ship to production. Adoption grows across retail, textile, and distribution teams.',
     icon: TrendingUp
   },
   {
@@ -62,10 +63,16 @@ const timeline = [
 const leadershipTeam = [
   {
     name: 'Zeeshan Keerio',
-    role: 'Founder & CEO',
+    role: 'Founder, CEO & Lead AI Engineer',
     image: '/zeeshan_keerio.png',
-    bio: 'AI Engineer & Former Big Data Administrator. Built TENVO to solve real operational challenges faced by Pakistani businesses.',
-    expertise: ['AI/ML Systems', 'Big Data', 'Financial Analytics', 'Enterprise Architecture'],
+    bio: 'Architects and ships Mindscape Analytics and TENVO end to end: product vision, systems design, full-stack development, and production deployment.',
+    expertise: [
+      'AI & agentic systems',
+      'Enterprise architecture',
+      'Full-stack delivery',
+      'Cloud & data platforms',
+      'Security & compliance posture',
+    ],
     social: {
       linkedin: 'https://www.linkedin.com/in/zeeshan-keerio',
       twitter: '#',
@@ -181,8 +188,8 @@ export default function AboutPage() {
             />
             <ValueCard
               icon={<Building2 className="w-8 h-8" />}
-              title="Local Focus"
-              description="Built for Pakistan, with deep understanding of local business needs and regulations."
+              title="Local focus"
+              description="Pakistan-first launch depth where compliance and payments matter most, with a global product roadmap from Mindscape Analytics LLC."
             />
           </div>
         </div>
@@ -195,7 +202,7 @@ export default function AboutPage() {
             <h2 className="text-[11px] font-black text-brand-primary uppercase tracking-[0.3em]">Our Journey</h2>
             <h3 className="text-4xl md:text-5xl font-black text-gray-900 tracking-tighter">From Idea to Impact</h3>
             <p className="text-lg text-gray-500 font-medium">
-              The story of how TENVO became Pakistan&apos;s most trusted business operations platform.
+              The story of how TENVO sharpened operations software for Pakistan and scales with teams worldwide.
             </p>
           </div>
 
@@ -234,7 +241,7 @@ export default function AboutPage() {
             <h2 className="text-[11px] font-black text-brand-primary uppercase tracking-[0.3em]">Leadership</h2>
             <h3 className="text-4xl md:text-5xl font-black text-gray-900 tracking-tighter">Meet the Founder</h3>
             <p className="text-lg text-gray-500 font-medium">
-              Built by operators, for operators. Our leadership brings deep expertise in AI, Big Data, and Pakistani business operations.
+              One founding technical leader behind TENVO and the Mindscape Analytics portfolio: architecture, AI, and delivery in one thread.
             </p>
           </div>
 
@@ -250,7 +257,7 @@ export default function AboutPage() {
                     <div className="absolute inset-0 bg-brand-primary/10 rounded-2xl transform rotate-3" />
                     <Image
                       src="/zeeshan_keerio.png"
-                      alt="Zeeshan Keerio - Founder & CEO of TENVO"
+                      alt="Zeeshan Keerio — Founder, CEO, and Lead AI Engineer of TENVO"
                       fill
                       className="object-contain rounded-2xl relative z-10"
                     />
@@ -261,20 +268,32 @@ export default function AboutPage() {
                 <div className="lg:col-span-8 space-y-6">
                   <div>
                     <h3 className="text-3xl font-black text-gray-900">Zeeshan Keerio</h3>
-                    <p className="text-brand-primary font-bold text-lg">Founder & CEO</p>
+                    <p className="text-brand-primary font-bold text-lg">
+                      Founder, CEO &amp; Lead AI Engineer
+                    </p>
+                    <p className="text-sm font-semibold text-gray-500">
+                      Principal architect · Mindscape Analytics LLC &amp; TENVO
+                    </p>
                   </div>
 
                   <p className="text-gray-600 font-medium leading-relaxed">
-                    AI Engineer and former Big Data Administrator with extensive experience in financial data analytics and enterprise system architecture. Recognized for automation excellence (Employee of the Month, Sep 2022) and led enterprise-grade security hardening for Cloudera HDFS ecosystems at previous roles.
+                    Zeeshan leads TENVO and Mindscape Analytics LLC as founder and chief executive, with hands-on ownership as lead AI engineer and systems architect. He originates the product direction, designs the platform architecture, and carries builds from first commit through production deployment—including the applications and initiatives across the Mindscape portfolio.
                   </p>
 
                   <p className="text-gray-600 font-medium leading-relaxed">
-                    Zeeshan founded TENVO after witnessing Pakistani businesses struggle with ERP systems built for Western markets. His mission: create locally-aware enterprise software that understands FBR compliance, Urdu language needs, and the unique challenges of Pakistani supply chains.
+                    That depth of end-to-end delivery informs how TENVO is engineered: locally aware where Pakistan-first tax, language, and payments matter, and structured to scale globally without losing operational rigor. Earlier roles in big data administration and financial analytics sharpened a bias for secure, observable systems at enterprise scale.
                   </p>
 
                   {/* Expertise Tags */}
                   <div className="flex flex-wrap gap-2">
-                    {['AI/ML Systems', 'Big Data', 'Financial Analytics', 'Enterprise Architecture', 'Agentic AI', 'Cloud Security'].map((skill, idx) => (
+                    {[
+                      'AI & agentic systems',
+                      'Enterprise architecture',
+                      'Full-stack delivery',
+                      'Cloud & DevOps',
+                      'Data & security',
+                      'Product strategy',
+                    ].map((skill, idx) => (
                       <span key={idx} className="px-3 py-1 bg-brand-50 text-brand-primary text-xs font-bold rounded-full border border-brand-100">
                         {skill}
                       </span>
@@ -314,7 +333,7 @@ export default function AboutPage() {
             <h4 className="text-center text-sm font-black text-gray-500 uppercase tracking-wider mb-8">Other Ventures & Projects</h4>
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {[
-                { name: 'Mindscape Analytics', desc: 'AI-driven enterprise platform', icon: Cpu },
+                { name: 'Mindscape Analytics LLC', desc: 'Parent company; founder-led architecture, AI, and full product delivery', icon: Cpu },
                 { name: 'CyberTraderX', desc: 'Autonomous trading bots using ML', icon: LineChart },
                 { name: 'AgriChain', desc: 'Agricultural supply chain DLT', icon: Database },
                 { name: 'DBLynx Intelligence', desc: 'Agentic AI data platform', icon: Code }

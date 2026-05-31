@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import MarketingNav from './MarketingNav';
 import MarketingFooter from './MarketingFooter';
+import MarketingAssistantWidget from '@/components/marketing/MarketingAssistantWidget';
 import { useScrollDepth } from '@/hooks/useScrollDepth';
 import { trackPageView } from '@/lib/analytics/tracking';
 
@@ -42,6 +43,7 @@ export default function MarketingLayout({
       </main>
       
       <MarketingFooter variant={minimalFooter ? 'minimal' : 'default'} />
+      <MarketingAssistantWidget />
     </div>
   );
 }

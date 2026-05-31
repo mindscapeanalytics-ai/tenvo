@@ -48,12 +48,12 @@ import CompetitorComparisonSection from '@/components/marketing/sections/Competi
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/context/AuthContext';
 
-// --- STUB / MOCK DATA ---
+// Marketing highlights (avoid unverifiable user counts on the public site).
 const trustStats = [
-  { value: '450k+', label: 'Operations users onboarded across Pakistan' },
-  { value: '55+', label: 'Pre-configured business templates ready' },
-  { value: '99.99%', label: 'Uptime for live warehouse workloads' },
-  { value: '4 Days', label: 'Average transition time from Excel' },
+  { value: 'One stack', label: 'Storefront, POS, inventory, and accounting in sync' },
+  { value: 'Pakistan-first', label: 'Tax and workflows tuned for local operators' },
+  { value: 'Role-based', label: 'Clear permissions from cashier to owner' },
+  { value: 'Guided rollout', label: 'Imports, templates, and demo-led onboarding' },
 ];
 
 const partners = [
@@ -219,7 +219,7 @@ export default function Home() {
         </div>
       )}
 
-      {/* 1. HERO — value prop & social proof visuals */}
+      {/* 1. HERO: value prop & social proof visuals */}
       <section className="bg-brand-50 pt-16 pb-12 lg:pt-20 lg:pb-16 overflow-hidden relative border-b border-neutral-200/60">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 relative z-10">
           <div className="grid lg:grid-cols-12 gap-12 items-center">
@@ -236,7 +236,7 @@ export default function Home() {
                   Run Your Entire Business From One <span className="text-brand-primary">Intelligent Dashboard</span>
                 </h1>
                 <p className="max-w-xl text-lg sm:text-xl font-medium leading-relaxed text-neutral-600">
-                  Run your brand store, checkout floors, warehouses, and books in one place. TENVO keeps stock, orders, and tax aligned—so you are not stitching spreadsheets, plugins, and separate apps the way generic global platforms expect you to.
+                  Run your brand store, checkout floors, warehouses, and books in one place. TENVO keeps stock, orders, and tax aligned - so you are not stitching spreadsheets, plugins, and separate apps the way generic global platforms expect you to.
                 </p>
               </div>
 
@@ -270,7 +270,7 @@ export default function Home() {
               <div className="relative w-[400px] sm:w-[450px] aspect-[4/5] z-10 bottom-0 overflow-visible flex items-end">
                 <Image
                   src="/zeeshan-keerio.png"
-                  alt="Zeeshan Keerio - Tenvo Logistics Operations Lead"
+                  alt="Zeeshan Keerio, Founder, CEO, and Lead AI Engineer behind TENVO"
                   width={450}
                   height={562}
                   priority
@@ -441,7 +441,7 @@ export default function Home() {
                 See how businesses save 12+ hours every week.
               </h3>
               <p className="text-base text-neutral-600 font-medium leading-relaxed">
-                Watch a 2-minute walkthrough of how TENVO transforms chaotic spreadsheets into streamlined operations. From Excel import to FBR-compliant invoicing — see it all in action.
+                Watch a 2-minute walkthrough of how TENVO transforms chaotic spreadsheets into streamlined operations. From Excel import to FBR-compliant invoicing, see it all in action.
               </p>
               <ul className="space-y-3">
                 {[
@@ -1487,7 +1487,7 @@ export default function Home() {
               </div>
               <h4 className="font-black text-lg text-neutral-900">Retail & E-commerce</h4>
               <p className="text-xs text-neutral-500 font-semibold leading-relaxed">
-                Your own branded storefront plus POS and marketplaces—one stock picture. Sync Daraz and other channels, print barcodes, run checkout offline when the line is long, and ship with TCS, Leopards, and partners you already use.
+                Your own branded storefront plus POS and marketplaces - one stock picture. Sync Daraz and other channels, print barcodes, run checkout offline when the line is long, and ship with TCS, Leopards, and partners you already use.
               </p>
               <ul className="space-y-2 text-[11px] font-bold text-neutral-600">
                 <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-brand-primary" /> Branded web store + channel sync</li>
@@ -1780,7 +1780,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Integrations strip — compact infinite marquee (before FAQ) */}
+      {/* Integrations strip: compact infinite marquee (before FAQ) */}
       <section className="bg-white border-b border-neutral-200/70 py-5 sm:py-6 overflow-hidden">
         <p className="text-center text-[9px] sm:text-[10px] font-black uppercase tracking-[0.22em] text-neutral-400 mb-3 px-4">
           Natively integrated channels &amp; local shipping carriers

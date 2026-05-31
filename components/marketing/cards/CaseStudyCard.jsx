@@ -21,17 +21,18 @@ import * as LucideIcons from 'lucide-react';
  * @param {string} props.readTime - Read time (e.g., "5 min")
  * @param {string} props.variant - Card variant: 'default' | 'featured' | 'compact'
  */
-export default function CaseStudyCard({
-  slug,
-  company,
-  industry,
-  summary,
-  results = [],
-  heroImage,
-  logo,
-  readTime,
-  variant = 'default'
-}) {
+export default function CaseStudyCard(props) {
+  const {
+    slug,
+    company,
+    industry,
+    summary,
+    results = [],
+    heroImage,
+    logo,
+    readTime,
+    variant = 'default',
+  } = props.caseStudy ?? props;
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {

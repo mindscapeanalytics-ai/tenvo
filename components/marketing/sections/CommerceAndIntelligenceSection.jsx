@@ -26,7 +26,7 @@ const IMG = {
 };
 
 /**
- * Storefront, POS, hospitality, orders, automation & roadmap — business-first copy.
+ * Storefront, POS, hospitality, orders, automation & roadmap: business-first copy.
  */
 export default function CommerceAndIntelligenceSection({ variant = 'homepage' }) {
   const isCompact = variant === 'compact';
@@ -55,7 +55,7 @@ export default function CommerceAndIntelligenceSection({ variant = 'homepage' })
               isCompact ? 'text-neutral-900' : 'text-white'
             }`}
           >
-            Sell everywhere your customers are—without juggling five different systems.
+            Sell everywhere your customers are - without juggling five different systems.
           </h2>
           <p
             className={`mt-4 text-lg font-medium leading-relaxed ${
@@ -131,7 +131,7 @@ export default function CommerceAndIntelligenceSection({ variant = 'homepage' })
               <h3 className="text-xl font-black text-white">Hospitality-ready workflows</h3>
               <p className="mt-2 text-xs text-neutral-200 font-semibold leading-relaxed">
                 Tables, kitchen coordination, and front-of-house selling connect to the same product and
-                revenue picture as retail—ideal for growing food brands that also sell retail or online.
+                revenue picture as retail - ideal for growing food brands that also sell retail or online.
               </p>
             </div>
           </article>
@@ -152,7 +152,7 @@ export default function CommerceAndIntelligenceSection({ variant = 'homepage' })
               </div>
               <h3 className="text-xl font-black text-white">One place for every order</h3>
               <p className="mt-2 text-xs text-neutral-200 font-semibold leading-relaxed">
-                Web orders, counter sales, and B2B requests flow into a single operational queue—pack, ship,
+                Web orders, counter sales, and B2B requests flow into a single operational queue - pack, ship,
                 reconcile, and support customers without switching tools or retyping data.
               </p>
             </div>
@@ -179,7 +179,7 @@ export default function CommerceAndIntelligenceSection({ variant = 'homepage' })
                 }`}
               >
                 Industry presets, bulk onboarding from spreadsheets, and sensible defaults mean you spend less
-                time configuring—and more time selling. Your storefront and channels stay aligned as you grow.
+                time configuring - and more time selling. Your storefront and channels stay aligned as you grow.
               </p>
             </div>
             <div className="mt-6 flex flex-wrap gap-2">
@@ -223,7 +223,7 @@ export default function CommerceAndIntelligenceSection({ variant = 'homepage' })
             </div>
             <div>
               <h3 className={`text-lg font-black tracking-tight ${isCompact ? 'text-neutral-900' : 'text-white'}`}>
-                Agentic improvements — on the way
+                Agentic improvements: on the way
               </h3>
               <p
                 className={`mt-1 text-sm font-medium leading-relaxed ${
@@ -231,7 +231,7 @@ export default function CommerceAndIntelligenceSection({ variant = 'homepage' })
                 }`}
               >
                 Soon, TENVO will surface proactive suggestions across purchasing, compliance checks, and
-                customer follow-ups—always under your control, with clear explanations so your team trusts every
+                customer follow-ups - always under your control, with clear explanations so your team trusts every
                 recommendation.
               </p>
             </div>

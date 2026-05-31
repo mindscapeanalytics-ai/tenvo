@@ -1,4 +1,6 @@
 /** @type {import('next').NextConfig} */
+const path = require('path');
+
 const nextConfig = {
   reactStrictMode: true,
   images: {
@@ -6,6 +8,8 @@ const nextConfig = {
     remotePatterns: [
       // Unsplash (used for storefront hero/category fallback images)
       { protocol: 'https', hostname: 'images.unsplash.com' },
+      { protocol: 'https', hostname: 'ui-avatars.com' },
+      { protocol: 'https', hostname: 'placehold.co' },
       // Common CDN / upload hosts
       { protocol: 'https', hostname: '**.supabase.co' },
       { protocol: 'https', hostname: '**.supabase.in' },
@@ -24,7 +28,7 @@ const nextConfig = {
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
   },
   turbopack: {
-    root: '.',
+    root: path.resolve(__dirname),
   },
 };
 

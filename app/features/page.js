@@ -22,7 +22,7 @@ export default function FeaturesPage() {
             <span className="text-brand-primary">Run Your Business</span>
           </>
         }
-        subtitle="Storefront, POS, warehouses, accounting, and Pakistan-ready compliance in one platform—so operators are not paying for a patchwork of global apps that were never designed together."
+        subtitle="Storefront, POS, warehouses, accounting, and Pakistan-ready compliance in one platform - so operators are not paying for a patchwork of global apps that were never designed together."
         primaryCTA={{
           text: 'Start Free Trial',
           href: '/register'
@@ -33,16 +33,17 @@ export default function FeaturesPage() {
         }}
       />
 
-      {/* Core Features */}
-      <FeaturesGrid 
-        variant="grid"
-        title="Core ERP Capabilities"
-        subtitle="Integrated modules that work together seamlessly"
-        features={marketingContent.features}
-      />
+      {/* Core features & operations (integrations anchor for footer deep links) */}
+      <div id="integrations" className="scroll-mt-28">
+        <FeaturesGrid
+          variant="grid"
+          title="Core ERP Capabilities"
+          subtitle="Integrated modules that work together seamlessly"
+          features={marketingContent.features}
+        />
 
-      {/* Operations Flow */}
-      <OperationsFlow />
+        <OperationsFlow />
+      </div>
 
       <CommerceAndIntelligenceSection variant="compact" />
 
@@ -59,6 +60,7 @@ export default function FeaturesPage() {
 
           <div className="grid md:grid-cols-2 gap-8">
             <FeatureDetail
+              id="inventory"
               title="Multi-Warehouse Management"
               description="Manage inventory across unlimited locations with real-time synchronization, inter-warehouse transfers, and location-specific pricing."
               features={[
@@ -70,6 +72,7 @@ export default function FeaturesPage() {
               ]}
             />
             <FeatureDetail
+              id="multi-location"
               title="Manufacturing & BOM"
               description="Complete manufacturing management with Bill of Materials, work orders, production planning, and shop floor control."
               features={[
@@ -81,6 +84,7 @@ export default function FeaturesPage() {
               ]}
             />
             <FeatureDetail
+              id="analytics"
               title="Advanced Accounting"
               description="Full double-entry accounting with chart of accounts, journal entries, financial statements, and multi-currency support."
               features={[
@@ -92,6 +96,7 @@ export default function FeaturesPage() {
               ]}
             />
             <FeatureDetail
+              id="compliance"
               title="Tax Compliance"
               description="Automated tax calculations and reporting for FBR, SRB, and PRA with built-in compliance rules for Pakistan."
               features={[
@@ -103,6 +108,7 @@ export default function FeaturesPage() {
               ]}
             />
             <FeatureDetail
+              id="security"
               title="Branded storefront & checkout"
               description="Launch a customer-facing shop that reflects your brand, with catalog, cart, checkout, and post-purchase pages aligned to your live stock and fulfilment rules."
               features={[
@@ -115,7 +121,7 @@ export default function FeaturesPage() {
             />
             <FeatureDetail
               title="POS, tables & kitchen coordination"
-              description="Serve walk-in retail alongside cafés and dining—roles, permissions, and selling surfaces tuned for how mixed-format businesses actually operate."
+              description="Serve walk-in retail alongside cafés and dining - roles, permissions, and selling surfaces tuned for how mixed-format businesses actually operate."
               features={[
                 'Fast in-store checkout',
                 'Table-service and hospitality roles',
@@ -136,7 +142,7 @@ export default function FeaturesPage() {
       <CTASection 
         variant="split"
         title="Ready to Transform Your Business?"
-        subtitle="Join thousands of businesses already using TENVO to streamline their operations."
+        subtitle="Join growing teams using TENVO to streamline inventory, sales, and finance in one workspace."
         primaryCTA={{
           text: 'Start Free Trial',
           href: '/register'
@@ -150,9 +156,12 @@ export default function FeaturesPage() {
   );
 }
 
-function FeatureDetail({ title, description, features }) {
+function FeatureDetail({ id, title, description, features }) {
   return (
-    <div className="bg-white border border-gray-100 rounded-3xl p-8 hover:shadow-xl transition-all duration-300">
+    <div
+      id={id}
+      className={`rounded-3xl border border-gray-100 bg-white p-8 transition-all duration-300 hover:shadow-xl ${id ? 'scroll-mt-28' : ''}`}
+    >
       <h4 className="text-2xl font-black text-gray-900 mb-3">{title}</h4>
       <p className="text-gray-500 font-medium mb-6">{description}</p>
       <ul className="space-y-3">

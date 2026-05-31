@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { ArrowRight, Quote, Star } from 'lucide-react';
 
 const FOUNDER_QUOTE =
-  'I built TENVO because I saw Pakistani businesses struggling with outdated tools that don\'t understand local needs. From FBR compliance to Urdu language support, every feature solves a real problem I witnessed firsthand. Our mission is to give every business in Pakistan access to enterprise-grade operations software.';
+  "I run Mindscape Analytics and TENVO as founder and CEO, and I still own the architecture and AI layer as lead engineer. Every major application under Mindscape—from first idea through deploy—has gone through my hands so the stack stays coherent, secure, and honest about what operators actually need. TENVO is where that discipline meets Pakistan-first compliance and language, with a product path that scales globally.";
 
 const TESTIMONIALS = [
   {
@@ -78,13 +78,13 @@ export default function AboutVoicesSection() {
           </p>
         </div>
 
-        {/* Founder — compact professional strip */}
+        {/* Founder: compact professional strip */}
         <div className="mb-10 overflow-hidden rounded-2xl border border-neutral-200/90 bg-white shadow-sm">
           <div className="flex flex-col gap-6 p-6 sm:flex-row sm:items-center sm:gap-8 sm:p-7 lg:p-8">
             <div className="relative mx-auto h-28 w-28 shrink-0 sm:mx-0 sm:h-32 sm:w-32">
               <Image
                 src="/zeeshan_keerio.png"
-                alt="Zeeshan Keerio, Founder and CEO of TENVO"
+                alt="Zeeshan Keerio — Founder, CEO, and Lead AI Engineer of TENVO"
                 fill
                 className="rounded-2xl object-contain"
                 sizes="128px"
@@ -101,10 +101,12 @@ export default function AboutVoicesSection() {
                   <span className="mx-2 text-neutral-300" aria-hidden>
                     ·
                   </span>
-                  <span className="text-sm font-semibold text-brand-primary">Founder &amp; CEO, TENVO</span>
+                  <span className="text-sm font-semibold text-brand-primary">
+                    Founder, CEO &amp; Lead AI Engineer, TENVO
+                  </span>
                 </cite>
                 <p className="w-full text-[11px] font-semibold text-neutral-400 sm:w-auto sm:pl-0">
-                  AI Engineer · Former Big Data Administrator · Financial Data Analyst
+                  Principal architect · Mindscape Analytics LLC
                 </p>
               </footer>
             </div>
@@ -123,7 +125,7 @@ export default function AboutVoicesSection() {
           </Link>
         </div>
 
-        {/* Looping marquee — same technique as integration strip */}
+        {/* Looping marquee: same technique as integration strip */}
         <div className="relative integration-marquee-fade -mx-4 px-0 sm:mx-0">
           <div className="flex w-max animate-marquee-partners motion-reduce:animate-none hover:[animation-play-state:paused]">
             {[0, 1].map((set) => (

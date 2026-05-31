@@ -6,6 +6,7 @@ import { Building2, Shield, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { trackEvent, EVENTS } from '@/lib/analytics/tracking';
+import { validateEmail } from '@/lib/marketing/validation';
 
 /**
  * MarketingFooter Component
@@ -17,9 +18,17 @@ export default function MarketingFooter({ variant = 'default' }) {
   const [email, setEmail] = useState('');
   const [subscribed, setSubscribed] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [newsletterError, setNewsletterError] = useState('');
 
   const handleNewsletterSubmit = async (e) => {
     e.preventDefault();
+    setNewsletterError('');
+    const check = validateEmail(email);
+    if (!check.isValid) {
+      setNewsletterError(check.error);
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -29,13 +38,18 @@ export default function MarketingFooter({ variant = 'default' }) {
         body: JSON.stringify({ email })
       });
 
+      const data = await response.json().catch(() => ({}));
+
       if (response.ok) {
         setSubscribed(true);
         setEmail('');
         trackEvent(EVENTS.NEWSLETTER_SUBSCRIBE, { email });
+      } else {
+        setNewsletterError(data.message || 'Could not subscribe. Try again or use /contact.');
       }
     } catch (error) {
       console.error('Newsletter subscription error:', error);
+      setNewsletterError('Network error. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -47,9 +61,9 @@ export default function MarketingFooter({ variant = 'default' }) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12">
           <div className="flex flex-col md:flex-row justify-between items-center gap-6">
             <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-              (C) 2026 TENVO Enterprise. Built for Pakistan.
+              © {new Date().getFullYear()} TENVO · Mindscape Analytics LLC. Pakistan launch; global roadmap.
             </div>
-            <div className="flex gap-8 text-[10px] font-black text-gray-400 uppercase tracking-widest">
+            <div className="flex flex-wrap gap-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">
               <a href="/privacy" className="hover:text-brand-primary-dark transition-colors">Privacy</a>
               <a href="/terms" className="hover:text-brand-primary-dark transition-colors">Terms</a>
               <a href="/contact" className="hover:text-brand-primary-dark transition-colors">Contact</a>
@@ -74,7 +88,7 @@ export default function MarketingFooter({ variant = 'default' }) {
               TENVO
             </div>
             <p className="text-sm text-gray-500 font-medium leading-relaxed">
-              The backbone for modern Pakistani enterprises looking for scalability, precision, and compliance.
+              The backbone for growing businesses: deep Pakistan fit at launch, scaling globally. Parent: Mindscape Analytics LLC (Sheridan, WY, USA).
             </p>
 
             {/* Trust Badges */}
@@ -109,7 +123,7 @@ export default function MarketingFooter({ variant = 'default' }) {
             <h4 className="text-[10px] font-black text-gray-900 uppercase tracking-widest mb-8">Company</h4>
             <ul className="space-y-4 text-sm text-gray-500 font-bold">
               <li><a href="/about" className="hover:text-brand-primary-dark transition-colors">About Us</a></li>
-              <li><a href="/case-studies" className="hover:text-brand-primary-dark transition-colors">Case Studies</a></li>
+              <li><a href="/case-studies" className="hover:text-brand-primary-dark transition-colors">Case studies</a></li>
               <li><a href="/careers" className="hover:text-brand-primary-dark transition-colors">Careers</a></li>
               <li><a href="/press" className="hover:text-brand-primary-dark transition-colors">Press</a></li>
               <li><a href="/contact" className="hover:text-brand-primary-dark transition-colors">Contact</a></li>
@@ -120,11 +134,11 @@ export default function MarketingFooter({ variant = 'default' }) {
           <div>
             <h4 className="text-[10px] font-black text-gray-900 uppercase tracking-widest mb-8">Support</h4>
             <ul className="space-y-4 text-sm text-gray-500 font-bold">
-              <li><a href="/help" className="hover:text-brand-primary-dark transition-colors">Help Center</a></li>
-              <li><a href="/docs" className="hover:text-brand-primary-dark transition-colors">Documentation</a></li>
-              <li><a href="/api" className="hover:text-brand-primary-dark transition-colors">API Reference</a></li>
-              <li><a href="/status" className="hover:text-brand-primary-dark transition-colors">System Status</a></li>
-              <li><a href="/privacy" className="hover:text-brand-primary-dark transition-colors">Privacy Policy</a></li>
+              <li><a href="/help" className="hover:text-brand-primary-dark transition-colors">Help center</a></li>
+              <li><a href="/docs" className="hover:text-brand-primary-dark transition-colors">Documentation &amp; API overview</a></li>
+              <li><a href="/status" className="hover:text-brand-primary-dark transition-colors">System status</a></li>
+              <li><a href="/privacy" className="hover:text-brand-primary-dark transition-colors">Privacy policy</a></li>
+              <li><a href="/terms" className="hover:text-brand-primary-dark transition-colors">Terms of use</a></li>
             </ul>
           </div>
         </div>
@@ -143,23 +157,34 @@ export default function MarketingFooter({ variant = 'default' }) {
                 <span>Thanks for subscribing!</span>
               </div>
             ) : (
-              <form onSubmit={handleNewsletterSubmit} className="flex gap-3">
-                <Input
-                  type="email"
-                  placeholder="Enter your email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  className="flex-1"
-                  disabled={loading}
-                />
-                <Button
-                  type="submit"
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl"
-                  disabled={loading}
-                >
-                  {loading ? 'Subscribing...' : 'Subscribe'}
-                </Button>
+              <form onSubmit={handleNewsletterSubmit} className="space-y-2">
+                <div className="flex gap-3">
+                  <Input
+                    type="email"
+                    placeholder="Enter your email"
+                    value={email}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      if (newsletterError) setNewsletterError('');
+                    }}
+                    required
+                    className="flex-1"
+                    disabled={loading}
+                    aria-invalid={!!newsletterError}
+                  />
+                  <Button
+                    type="submit"
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl"
+                    disabled={loading}
+                  >
+                    {loading ? 'Subscribing...' : 'Subscribe'}
+                  </Button>
+                </div>
+                {newsletterError ? (
+                  <p className="text-sm font-medium text-red-600" role="alert">
+                    {newsletterError}
+                  </p>
+                ) : null}
               </form>
             )}
           </div>
@@ -168,13 +193,14 @@ export default function MarketingFooter({ variant = 'default' }) {
         {/* Bottom Bar */}
         <div className="border-t border-slate-200 pt-12 flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-            (C) 2026 TENVO Enterprise. Built for Pakistan.
+            © {new Date().getFullYear()} TENVO · Mindscape Analytics LLC. Pakistan launch; global roadmap.
           </div>
-          <div className="flex gap-8 text-[10px] font-black text-gray-400 uppercase tracking-widest">
-            <a href="#" className="hover:text-brand-primary-dark transition-colors">Pakistan</a>
-            <a href="#" className="hover:text-brand-primary-dark transition-colors">UAE</a>
-            <a href="#" className="hover:text-brand-primary-dark transition-colors">Saudi Arabia</a>
-          </div>
+          <a
+            href="/industries"
+            className="text-[10px] font-black text-gray-400 uppercase tracking-widest hover:text-brand-primary-dark transition-colors"
+          >
+            Markets we serve
+          </a>
         </div>
       </div>
     </footer>

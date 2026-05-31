@@ -6,6 +6,7 @@ import CaseStudyCard from '@/components/marketing/cards/CaseStudyCard';
 import { caseStudies } from '@/lib/marketing/case-studies';
 import { useParams } from 'next/navigation';
 import { CheckCircle, TrendingUp, Clock, DollarSign } from 'lucide-react';
+import Image from 'next/image';
 
 export default function CaseStudyDetailPage() {
   const params = useParams();
@@ -63,14 +64,19 @@ export default function CaseStudyDetailPage() {
       </section>
 
       {/* Hero Image */}
-      {caseStudy.image && (
+      {caseStudy.heroImage && (
         <section className="py-8 bg-white">
-          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-            <img
-              src={caseStudy.image}
-              alt={caseStudy.company}
-              className="w-full rounded-2xl shadow-lg"
-            />
+          <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+            <div className="relative aspect-[5/3] w-full overflow-hidden rounded-2xl shadow-lg">
+              <Image
+                src={caseStudy.heroImage}
+                alt={caseStudy.company}
+                fill
+                className="object-cover"
+                sizes="(max-width: 1280px) 100vw, 1024px"
+                priority
+              />
+            </div>
           </div>
         </section>
       )}
@@ -136,6 +142,17 @@ export default function CaseStudyDetailPage() {
                 "{caseStudy.testimonial.quote}"
               </p>
               <div className="flex items-center gap-4">
+                {caseStudy.testimonial.avatar && (
+                  <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-full bg-white ring-2 ring-brand-primary/20">
+                    <Image
+                      src={caseStudy.testimonial.avatar}
+                      alt={caseStudy.testimonial.author}
+                      fill
+                      className="object-cover"
+                      sizes="48px"
+                    />
+                  </div>
+                )}
                 <div>
                   <div className="font-bold text-gray-900">{caseStudy.testimonial.author}</div>
                   <div className="text-sm text-gray-600">{caseStudy.testimonial.role}</div>

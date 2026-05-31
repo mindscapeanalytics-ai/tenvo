@@ -152,9 +152,9 @@ Home (/)
 
 ### Form Submissions
 All forms are ready for API integration:
-- `/api/marketing/demo-request` (Phase 6 - pending)
-- `/api/marketing/contact` (Phase 6 - pending)
-- `/api/marketing/newsletter` (Phase 6 - pending)
+- `/api/marketing/demo-request` — implemented (`app/api/marketing/demo-request/route.js`)
+- `/api/marketing/contact` — implemented (`app/api/marketing/contact/route.js`)
+- `/api/marketing/newsletter` — implemented (`app/api/marketing/newsletter/route.js`)
 
 ### Authentication Integration
 - Landing page detects logged-in users

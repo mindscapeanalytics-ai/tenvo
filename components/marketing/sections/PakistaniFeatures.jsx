@@ -36,11 +36,11 @@ export default function PakistaniFeatures({
         <div className="absolute bottom-0 left-0 w-96 h-96 bg-green-200/20 rounded-full blur-3xl" />
         
         <div className="relative container mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Section header with "Built for Pakistan" badge */}
+          {/* Section header with launch-market badge */}
           <div className="max-w-3xl mx-auto text-center mb-16">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-green-600 text-white text-sm font-bold mb-6 shadow-lg">
               <LucideIcons.Flag className="w-4 h-4" />
-              <span>Built for Pakistan</span>
+              <span>Pakistan launch · global scale</span>
             </div>
             
             <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-neutral-900 mb-4">
@@ -134,7 +134,7 @@ export default function PakistaniFeatures({
           <div className="max-w-3xl mx-auto text-center mb-16">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-green-600 text-white text-sm font-bold mb-6">
               <LucideIcons.Flag className="w-4 h-4" />
-              <span>Built for Pakistan</span>
+              <span>Pakistan launch · global scale</span>
             </div>
             
             <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-neutral-900 mb-4">
@@ -209,7 +209,7 @@ export default function PakistaniFeatures({
           <div className="max-w-3xl mx-auto text-center mb-16">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/20 backdrop-blur-sm text-white text-sm font-bold mb-6">
               <LucideIcons.Flag className="w-4 h-4" />
-              <span>Built for Pakistan</span>
+              <span>Pakistan launch · global scale</span>
             </div>
             
             <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-4">

@@ -75,7 +75,7 @@ function Cell({ value }) {
 }
 
 /**
- * Outcome-focused comparison — not a feature spec sheet.
+ * Outcome-focused comparison (not a feature spec sheet).
  */
 export default function CompetitorComparisonSection() {
   return (
@@ -98,7 +98,7 @@ export default function CompetitorComparisonSection() {
           </h2>
           <p className="text-lg text-neutral-600 font-medium leading-relaxed">
             Shopify shines at storefronts. Zoho offers many apps. TENVO is designed for operators who need the
-            whole business—not a patchwork of subscriptions—to run smoothly in Pakistan and beyond.
+            whole business, not a patchwork of subscriptions, to run smoothly in Pakistan and beyond.
           </p>
         </div>
 

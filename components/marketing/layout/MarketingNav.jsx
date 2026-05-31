@@ -64,12 +64,12 @@ export default function MarketingNav({
   const [currency, setCurrency] = useState('PKR');
 
   const navItemClass =
-    'inline-flex h-10 items-center rounded-lg px-1.5 text-sm font-semibold text-neutral-600 transition-colors hover:bg-neutral-50 hover:text-brand-primary-dark';
+    'inline-flex h-10 shrink-0 items-center whitespace-nowrap rounded-md px-1.5 text-[13px] font-semibold text-neutral-800 transition-colors hover:bg-neutral-100/90 hover:text-brand-primary-dark xl:px-2 xl:text-sm';
 
   return (
     <nav className={navClasses} aria-label="Primary marketing">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12">
-        <div className="flex h-20 items-center justify-between gap-6">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 xl:px-12">
+        <div className="flex h-[4.5rem] min-h-[4.5rem] items-center justify-between gap-3 sm:gap-4 lg:gap-5">
           {/* Logo */}
           <Link
             href="/"
@@ -78,9 +78,10 @@ export default function MarketingNav({
             <TenvoTextLogo />
           </Link>
 
-          {/* Desktop Menu */}
-          <div className="hidden min-w-0 flex-1 items-center justify-end gap-0 lg:flex">
-            <div className="flex flex-wrap items-center justify-end gap-x-1 gap-y-1 sm:gap-x-2">
+          {/* Desktop: primary links (single row, scroll if viewport is tight) + utilities (never wraps) */}
+          <div className="hidden min-w-0 flex-1 items-center justify-end gap-2 lg:flex lg:gap-3">
+            <div className="min-w-0 flex-1" role="navigation" aria-label="Product pages">
+              <div className="flex flex-nowrap items-center justify-end gap-x-0.5 sm:gap-x-1 md:gap-x-1.5 lg:gap-x-2">
               {/* Solutions Dropdown */}
               <NavDropdown
                 label="Solutions"
@@ -161,14 +162,24 @@ export default function MarketingNav({
               <button type="button" className={navItemClass} onClick={() => router.push('/integrations')}>
                 Integrations
               </button>
+              <Link href="/about" className={navItemClass}>
+                About
+              </Link>
+              <Link href="/demo" className={navItemClass}>
+                Demo
+              </Link>
+              <Link href="/contact" className={navItemClass}>
+                Contact
+              </Link>
+              </div>
             </div>
 
-            {/* Utilities + auth — grouped, aligned to same row height */}
-            <div className="ml-4 flex items-center gap-3 border-l border-neutral-200/90 pl-5 xl:ml-6 xl:pl-6">
+            {/* Utilities + auth: fixed cluster so links never push CTAs to a new row */}
+            <div className="flex shrink-0 items-center gap-2 border-l border-neutral-200/90 pl-3 sm:gap-3 sm:pl-4 xl:pl-5">
               <div className="relative group">
                 <button
                   type="button"
-                  className="inline-flex h-10 items-center gap-1 rounded-lg px-2 text-xs font-bold uppercase tracking-wider text-neutral-600 transition-colors hover:bg-neutral-50 hover:text-neutral-900"
+                  className="inline-flex h-10 items-center gap-1 rounded-lg px-2 text-xs font-semibold uppercase tracking-wider text-neutral-800 transition-colors hover:bg-neutral-100 hover:text-neutral-900"
                   aria-haspopup="listbox"
                   aria-expanded="false"
                   aria-label={`Display currency: ${currency}`}
@@ -267,6 +278,24 @@ export default function MarketingNav({
             >
               Integrations
             </button>
+            <button
+              className="w-full text-left font-bold text-gray-700 px-2 py-2 hover:text-brand-primary-dark transition-colors"
+              onClick={() => router.push('/about')}
+            >
+              About
+            </button>
+            <button
+              className="w-full text-left font-bold text-gray-700 px-2 py-2 hover:text-brand-primary-dark transition-colors"
+              onClick={() => router.push('/demo')}
+            >
+              Demo
+            </button>
+            <button
+              className="w-full text-left font-bold text-gray-700 px-2 py-2 hover:text-brand-primary-dark transition-colors"
+              onClick={() => router.push('/contact')}
+            >
+              Contact
+            </button>
           </div>
 
           {showAuthButtons && (
@@ -306,11 +335,11 @@ export default function MarketingNav({
 // Sub-components
 function NavDropdown({ label, isOpen, onToggle, children, triggerClassName }) {
   return (
-    <div className="relative">
+    <div className="relative shrink-0">
       <button
         type="button"
         className={cn(
-          'gap-1.5 font-semibold transition-colors',
+          'gap-1 font-semibold transition-colors',
           triggerClassName,
           isOpen ? 'text-brand-primary-dark' : undefined
         )}

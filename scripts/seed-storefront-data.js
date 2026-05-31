@@ -50,7 +50,7 @@ async function seedStorefrontData() {
         WHERE id = $10`,
         [
           `${business.business_name} - Your trusted partner for quality products and services.`,
-          `https://ui-avatars.com/api/?name=${encodeURIComponent(business.business_name)}&background=random&size=128`,
+          `https://ui-avatars.com/api/?name=${encodeURIComponent(business.business_name)}&size=128&format=png&background=0d9488&color=ffffff&bold=true`,
           null,
           `https://${business.domain}.tenvo.com`,
           business.category || 'Retail',

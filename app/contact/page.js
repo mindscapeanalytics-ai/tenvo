@@ -4,7 +4,8 @@ import MarketingLayout from '@/components/marketing/layout/MarketingLayout';
 import Hero from '@/components/marketing/sections/Hero';
 import { ContactForm } from '@/components/marketing/forms/ContactForm';
 import FAQSection from '@/components/marketing/sections/FAQSection';
-import { Mail, Phone, MapPin, Clock } from 'lucide-react';
+import { Mail, Phone, MapPin, Clock, Building2, ExternalLink, MessageCircle } from 'lucide-react';
+import { TENVO_PARENT_COMPANY } from '@/lib/marketing/tenvo-assistant-knowledge';
 
 export default function ContactPage() {
   return (
@@ -54,6 +55,66 @@ export default function ContactPage() {
                 <p className="text-gray-600 mb-8">
                   Reach out to us through any of these channels
                 </p>
+              </div>
+
+              <div className="rounded-2xl border border-brand-primary/20 bg-gradient-to-br from-brand-50/80 to-white p-6 shadow-sm">
+                <div className="mb-4 flex items-center gap-2">
+                  <Building2 className="h-6 w-6 text-brand-primary" aria-hidden />
+                  <h3 className="text-lg font-bold text-gray-900">Parent company</h3>
+                </div>
+                <p className="mb-4 text-sm text-gray-600">
+                  TENVO is built by{' '}
+                  <span className="font-semibold text-gray-900">{TENVO_PARENT_COMPANY.name}</span>.
+                  For corporate, partnership, or press inquiries you can use the official Mindscape
+                  channels below.
+                </p>
+                <ul className="space-y-2 text-sm text-gray-700">
+                  <li>
+                    <a
+                      href={TENVO_PARENT_COMPANY.website}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 font-semibold text-brand-primary hover:underline"
+                    >
+                      mindscapeanalytics.com
+                      <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+                    </a>
+                  </li>
+                  <li>
+                    <a
+                      href={TENVO_PARENT_COMPANY.contactPage}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 font-semibold text-brand-primary hover:underline"
+                    >
+                      Mindscape contact page
+                      <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+                    </a>
+                  </li>
+                  <li>
+                    <a href={`mailto:${TENVO_PARENT_COMPANY.email}`} className="hover:underline">
+                      {TENVO_PARENT_COMPANY.email}
+                    </a>
+                  </li>
+                  <li>
+                    <a href={`tel:${TENVO_PARENT_COMPANY.phone.replace(/\s/g, '')}`} className="hover:underline">
+                      {TENVO_PARENT_COMPANY.phone}
+                    </a>{' '}
+                    · {TENVO_PARENT_COMPANY.hq}
+                  </li>
+                  <li>
+                    <a
+                      href={TENVO_PARENT_COMPANY.whatsappUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 font-semibold text-brand-primary hover:underline"
+                    >
+                      <MessageCircle className="h-3.5 w-3.5" aria-hidden />
+                      WhatsApp {TENVO_PARENT_COMPANY.phone}
+                      <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+                    </a>
+                  </li>
+                </ul>
               </div>
 
               <div className="space-y-6">
