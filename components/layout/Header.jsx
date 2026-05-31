@@ -231,7 +231,10 @@ export function Header({ onMenuClick }) {
     };
 
     React.useEffect(() => {
-        setActiveIndex(-1);
+        const id = requestAnimationFrame(() => {
+            setActiveIndex(-1);
+        });
+        return () => cancelAnimationFrame(id);
     }, [searchQuery]);
 
     // Extract category from URL
@@ -509,10 +512,10 @@ export function Header({ onMenuClick }) {
                 </div>
 
                 {/* Right: Consolidated Actions */}
-                <div className="flex items-center gap-2 shrink-0">
-                    {/* Date Range -- hidden in Easy mode for cleanliness */}
+                <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 min-w-0">
+                    {/* Date range: all breakpoints in advanced mode (popover stays usable on small screens). */}
                     {!isEasyMode && (
-                        <div className="hidden md:flex items-center gap-1.5 border-r border-gray-100 pr-2">
+                        <div className="flex items-center gap-1 sm:gap-1.5 border-r border-gray-100 pr-1.5 sm:pr-2 min-w-0">
                             <DateRangePicker
                                 date={dateRange}
                                 onDateChange={(newRange) => {
@@ -520,7 +523,7 @@ export function Header({ onMenuClick }) {
                                         setDateRange(newRange);
                                     }
                                 }}
-                                className="w-[205px] lg:w-[214px]"
+                                className="min-w-0 w-[min(12.5rem,calc(100vw-10rem))] sm:w-[205px] lg:w-[214px]"
                             />
                             <Button
                                 size="icon"

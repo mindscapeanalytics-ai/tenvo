@@ -23,12 +23,40 @@ interface DemandForecastItem {
 
 interface PredictivePlanningPortletProps {
     businessId?: string;
-    domainKnowledge?: any;
+    /** Business / domain context; `intelligence` is passed to the forecast action when set. */
+    domainKnowledge?: unknown;
+    dateRange?: { from: Date; to: Date };
+}
+
+function normalizeForecastRow(raw: Record<string, unknown>): DemandForecastItem {
+    const trend = raw.trend === 'down' ? 'down' : 'up';
+    return {
+        id: String(raw.id ?? ''),
+        name: String(raw.name ?? ''),
+        sku: String(raw.sku ?? ''),
+        current: Number(raw.current) || 0,
+        forecast: Number(raw.forecast) || 0,
+        recommended: Number(raw.recommended) || 0,
+        confidence: Number(raw.confidence) || 0,
+        insight: String(raw.insight ?? ''),
+        isAi: Boolean(raw.isAi),
+        trend,
+        priority: raw.priority === 'high' ? 'high' : 'normal',
+        variance: Number(raw.variance) || 0,
+    };
+}
+
+function buildDateFilter(dr?: { from: Date; to: Date }) {
+    if (!dr?.from || !dr?.to) return {};
+    const from = dr.from instanceof Date ? dr.from.toISOString() : String(dr.from);
+    const to = dr.to instanceof Date ? dr.to.toISOString() : String(dr.to);
+    return { from, to };
 }
 
 export const PredictivePlanningPortlet = memo(function PredictivePlanningPortlet({
     businessId,
-    domainKnowledge
+    domainKnowledge,
+    dateRange,
 }: PredictivePlanningPortletProps) {
     const [data, setData] = useState<DemandForecastItem[]>([]);
     const [loading, setLoading] = useState(true);
@@ -36,17 +64,25 @@ export const PredictivePlanningPortlet = memo(function PredictivePlanningPortlet
     useEffect(() => {
         async function load() {
             if (!businessId) return;
-            const res = await getDemandForecastAction(businessId, domainKnowledge?.intelligence, true);
-            if (res.success && res.data) {
-                setData(res.data.map((item: any) => ({
-                    ...item,
-                    trend: item.trend as 'up' | 'down'
-                })));
+            const dk =
+                domainKnowledge && typeof domainKnowledge === 'object'
+                    ? (domainKnowledge as Record<string, unknown>)
+                    : null;
+            const res = await getDemandForecastAction(
+                businessId,
+                (dk?.intelligence as Record<string, unknown> | undefined) ?? {},
+                true,
+                buildDateFilter(dateRange)
+            );
+            if (res.success && Array.isArray(res.data)) {
+                setData(res.data.map((row) => normalizeForecastRow(row as Record<string, unknown>)));
+            } else {
+                setData([]);
             }
             setLoading(false);
         }
-        load();
-    }, [businessId, domainKnowledge]);
+        void load();
+    }, [businessId, domainKnowledge, dateRange]);
 
     return (
         <Portlet
@@ -113,7 +149,11 @@ export const PredictivePlanningPortlet = memo(function PredictivePlanningPortlet
                                         if (res.success) {
                                             alert('AI Agent has prepared a procurement proposal. You can review it in the Approvals section.');
                                         } else {
-                                            alert('Agent failed: ' + (res as any).error);
+                                            const errMsg =
+                                                !res.success && 'error' in res
+                                                    ? String((res as { error?: unknown }).error ?? '')
+                                                    : 'Unknown error';
+                                            alert(`Agent failed: ${errMsg}`);
                                         }
                                     }
                                 }}

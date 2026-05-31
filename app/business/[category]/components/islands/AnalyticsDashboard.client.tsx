@@ -27,10 +27,21 @@ interface AnalyticsDashboardProps {
     invoices: InvoiceLike[];
     colors?: Record<string, unknown>;
     category?: string;
+    /** Same range as Business Overview / workspace filter — passed through to demand forecast. */
+    dateRange?: { from: Date; to: Date };
     onQuickAction?: (actionId: string) => void;
 }
 
-export function AnalyticsDashboard({ businessId, chartData, products, invoices, colors, category, onQuickAction }: AnalyticsDashboardProps) {
+export function AnalyticsDashboard({
+    businessId,
+    chartData,
+    products,
+    invoices,
+    colors,
+    category,
+    dateRange,
+    onQuickAction,
+}: AnalyticsDashboardProps) {
     const latestInvoiceDate = invoices
         .map((inv) => inv?.date ? new Date(inv.date) : null)
         .filter((d): d is Date => !!d && !Number.isNaN(d.getTime()))
@@ -126,6 +137,7 @@ export function AnalyticsDashboard({ businessId, chartData, products, invoices, 
                                 businessId={businessId}
                                 category={category}
                                 products={products}
+                                dateRange={dateRange}
                             />
                         </TabsContent>
                     </CardContent>

@@ -167,9 +167,11 @@ export const IntegratedPerformanceChart = memo(function IntegratedPerformanceCha
                         tickLine={false}
                         tick={{ fontSize: 9, fontWeight: 900, fill: '#94a3b8' }}
                         tickFormatter={(v) => {
-                            if (v >= 1000000) return `${(v / 1000000).toFixed(1)}m`;
-                            if (v >= 1000) return `${(v / 1000).toFixed(0)}k`;
-                            return v;
+                            const n = typeof v === 'number' ? v : Number(v);
+                            if (!Number.isFinite(n)) return '';
+                            if (n >= 1000000) return `${(n / 1000000).toFixed(1)}m`;
+                            if (n >= 1000) return `${(n / 1000).toFixed(0)}k`;
+                            return String(n);
                         }}
                         domain={['auto', 'auto']}
                         allowDataOverflow={false}

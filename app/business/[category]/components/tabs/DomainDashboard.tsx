@@ -6,7 +6,7 @@ import {
     CreditCard, Clock,
     Zap, ArrowUpRight, ArrowDownRight,
     Boxes, Warehouse, RotateCcw, BadgeDollarSign,
-    Package, FileText, BarChart3, Plus
+    Package, FileText, BarChart3, Plus, CheckCircle2
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -111,6 +111,11 @@ interface AccountingSummaryLike {
 
 interface DomainKnowledgeLike {
     multiLocationEnabled?: boolean;
+    /** Used by `isCampaignRelevant` for non-catalog categories */
+    retailMode?: boolean;
+    serviceMode?: boolean;
+    /** Optional AI / analytics intelligence blob for forecasting */
+    intelligence?: Record<string, unknown>;
 }
 
 interface MetricCardProps {
@@ -184,7 +189,7 @@ export function DomainDashboard({
     const { isEasyMode } = useAppMode();
     const activeBusinessId = businessId || business?.id;
     const colors = getDomainColors(category) as Record<string, unknown>;
-    const campaignEnabled = isCampaignRelevant(category, (domainKnowledge ?? null) as any);
+    const campaignEnabled = isCampaignRelevant(category, domainKnowledge ?? null);
     const multiLocationEnabled = Boolean(domainKnowledge?.multiLocationEnabled);
 
     const formatCurrencyCompact = useCallback(
@@ -442,6 +447,16 @@ export function DomainDashboard({
         }, 0);
     }, [invoices]);
 
+    /** Open / unpaid sales documents — Easy Mode header uses this instead of duplicating low-stock count. */
+    const openInvoicesCount = useMemo(
+        () =>
+            invoices.filter((inv: InvoiceLike) => {
+                const status = String(inv?.status || '').toLowerCase();
+                return !['paid', 'cancelled', 'draft', 'voided'].includes(status);
+            }).length,
+        [invoices]
+    );
+
     const paidOrderRate = useMemo(() => {
         const totalFromMetrics = Number(dashboardMetrics?.orders?.total) || 0;
         const paidFromMetrics = Number(dashboardMetrics?.orders?.paid) || 0;
@@ -484,28 +499,36 @@ export function DomainDashboard({
     const stockCheckRecencyDisplay = `${stockCheckRecencyValue}d`;
     const stockCheckRecencyDetail = stockCheckRecency === null ? 'No stock touch timestamps yet' : 'Since last stock touch';
 
-    const dashboardHeaderHighlights = useMemo(() => ([
-        {
-            label: 'At-Risk SKUs',
-            value: remindersData.lowStock || 0,
-            tone: remindersData.lowStock > 0 ? 'text-rose-600' : 'text-emerald-600'
-        },
-        {
-            label: 'Pending Orders',
-            value: remindersData.pendingOrders || 0,
-            tone: remindersData.pendingOrders > 0 ? 'text-amber-600' : 'text-emerald-600'
-        },
-        {
-            label: 'Overdue Invoices',
-            value: remindersData.overdueInvoices || 0,
-            tone: remindersData.overdueInvoices > 0 ? 'text-rose-600' : 'text-emerald-600'
-        },
-        {
-            label: 'Return Rate',
-            value: `${returnRate.toFixed(1)}%`,
-            tone: returnRate > 5 ? 'text-rose-600' : 'text-emerald-600'
-        }
-    ]), [remindersData, returnRate]);
+    /** Compact header strip: operational risk + throughput (return rate stays in KPI row below to avoid duplication). */
+    const dashboardHeaderHighlights = useMemo(
+        () => [
+            {
+                label: 'At-Risk SKUs',
+                value: remindersData.lowStock || 0,
+                tone: remindersData.lowStock > 0 ? 'text-rose-600' : 'text-emerald-600',
+                icon: Package,
+            },
+            {
+                label: 'Pending Orders',
+                value: remindersData.pendingOrders || 0,
+                tone: remindersData.pendingOrders > 0 ? 'text-amber-600' : 'text-emerald-600',
+                icon: ShoppingCart,
+            },
+            {
+                label: 'Overdue Invoices',
+                value: remindersData.overdueInvoices || 0,
+                tone: remindersData.overdueInvoices > 0 ? 'text-rose-600' : 'text-emerald-600',
+                icon: Clock,
+            },
+            {
+                label: 'Units Sold',
+                value: periodMetrics.soldUnits.toLocaleString(),
+                tone: periodMetrics.soldUnits > 0 ? 'text-slate-900' : 'text-slate-400',
+                icon: BarChart3,
+            },
+        ],
+        [remindersData, periodMetrics.soldUnits]
+    );
 
     const hasCoreData = (products.length + invoices.length + customers.length) > 0;
 
@@ -557,6 +580,23 @@ export function DomainDashboard({
         if (days >= 89 && days <= 92) return '90d';
         return 'custom';
     }, [dateRange.from, dateRange.to]);
+
+    const activePresetDisplayLabel = useMemo(() => {
+        const labels: Record<
+            'today' | '7d' | '30d' | '90d' | 'mtd' | 'last_month' | 'ytd' | 'custom',
+            string
+        > = {
+            today: 'Today',
+            '7d': 'Last 7 days',
+            '30d': 'Last 30 days',
+            '90d': 'Last 90 days',
+            mtd: 'Month to date',
+            last_month: 'Last month',
+            ytd: 'Year to date',
+            custom: 'Custom range',
+        };
+        return labels[activePreset];
+    }, [activePreset]);
 
     const topStripKpis = useMemo(() => ([
         {
@@ -677,6 +717,39 @@ export function DomainDashboard({
             { id: 'mtd', label: 'MTD' }
         ];
 
+        const easyCommandStrip = [
+            {
+                label: 'Open invoices',
+                value: openInvoicesCount,
+                tone: openInvoicesCount > 0 ? 'text-amber-600' : 'text-emerald-600',
+                icon: FileText,
+            },
+            {
+                label: 'Pending Orders',
+                value: remindersData.pendingOrders || 0,
+                tone: remindersData.pendingOrders > 0 ? 'text-amber-600' : 'text-emerald-600',
+                icon: ShoppingCart,
+            },
+            {
+                label: 'Overdue Invoices',
+                value: remindersData.overdueInvoices || 0,
+                tone: remindersData.overdueInvoices > 0 ? 'text-rose-600' : 'text-emerald-600',
+                icon: Clock,
+            },
+            {
+                label: 'Units Sold',
+                value: periodMetrics.soldUnits.toLocaleString(),
+                tone: periodMetrics.soldUnits > 0 ? 'text-slate-900' : 'text-slate-400',
+                icon: BarChart3,
+            },
+        ];
+
+        /** Avoid repeating low-stock counts: header + health strip + KPI already cover inventory. */
+        const easySmartInsights = intelligentInsights.filter(
+            (insight) => !(remindersData.lowStock > 0 && insight.title === 'Predictive Restock')
+        );
+        const easyInsightsToRender = easySmartInsights.length > 0 ? easySmartInsights : intelligentInsights;
+
         const easyKpis = [
             {
                 label: 'Revenue',
@@ -691,7 +764,7 @@ export function DomainDashboard({
                 value: dashboardMetrics?.orders?.total ?? periodMetrics.currentOrders,
                 subValue: `${periodMetrics.soldUnits} units sold`,
                 icon: ShoppingCart,
-                color: 'bg-brand-primary',
+                color: ordersTrend < -10 ? 'bg-rose-500' : 'bg-cyan-600',
                 trend: Number(ordersTrend.toFixed(1)),
             },
             {
@@ -705,7 +778,7 @@ export function DomainDashboard({
             {
                 label: 'Receivables Due',
                 value: formatCurrencyCompact(outstandingAmount),
-                subValue: `${remindersData.overdueInvoices} overdue invoices`,
+                subValue: openInvoicesCount > 0 ? `${openInvoicesCount} open invoice${openInvoicesCount === 1 ? '' : 's'}` : 'Nothing outstanding',
                 icon: CreditCard,
                 color: outstandingAmount > 0 ? 'bg-rose-500' : 'bg-slate-500',
                 trend: undefined,
@@ -721,7 +794,11 @@ export function DomainDashboard({
             {
                 label: 'Low Stock',
                 value: remindersData.lowStock,
-                subValue: coverageDays > 365 ? 'Coverage stable' : `${coverageDays} days coverage`,
+                subValue: remindersData.lowStock > 0
+                    ? 'Below minimum — review shelf'
+                    : coverageDays > 365
+                        ? 'Coverage looks stable'
+                        : `${coverageDays} days coverage`,
                 icon: Package,
                 color: remindersData.lowStock > 0 ? 'bg-amber-500' : 'bg-emerald-600',
                 trend: undefined,
@@ -778,10 +855,9 @@ export function DomainDashboard({
 
         return (
             <div className="space-y-4 w-full text-slate-700 bg-[#f4f7f9] p-1">
-                <div className="grid grid-cols-1 xl:grid-cols-12 gap-4">
-                    {/* Header Banner - Zoho Flat White Style */}
-                    <Card className="xl:col-span-8 border border-slate-200 bg-white shadow-sm rounded-lg overflow-hidden">
-                        <CardContent className="p-5">
+                <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 xl:items-stretch">
+                    <Card className="xl:col-span-8 border border-slate-200 bg-white shadow-sm rounded-lg overflow-hidden h-full flex flex-col">
+                        <CardContent className="p-4 sm:p-5 flex flex-col flex-1">
                             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-4">
                                 <div>
                                     <div className="flex items-center gap-1.5">
@@ -789,7 +865,7 @@ export function DomainDashboard({
                                         <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Easy Mode Command Board</p>
                                     </div>
                                     <h1 className="mt-1 text-xl font-bold tracking-tight text-slate-900">{greeting}, {userName}.</h1>
-                                    <p className="text-xs text-slate-500">Summary of sales, stock, customers, and collections for {periodLabel.toLowerCase()}.</p>
+                                    <p className="text-xs text-slate-500">Revenue, orders, stock, and cash in one view — aligned to <span className="font-semibold text-slate-600">{periodLabel}</span>.</p>
                                 </div>
                                 <div className="flex flex-wrap gap-1.5 bg-slate-100 p-1 rounded border border-slate-200">
                                     {easyPresetOptions.map((preset) => (
@@ -809,39 +885,49 @@ export function DomainDashboard({
                                 </div>
                             </div>
 
-                            <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3">
-                                {dashboardHeaderHighlights.map((item) => (
-                                    <div key={item.label} className="rounded border border-slate-100 bg-slate-50 px-3.5 py-3 hover:bg-slate-100/50 transition-colors">
-                                        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{item.label}</p>
-                                        <p className={cn('mt-1.5 text-lg font-extrabold', item.tone)}>{item.value}</p>
-                                    </div>
-                                ))}
+                            <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-2.5">
+                                {easyCommandStrip.map((item) => {
+                                    const Hi = item.icon;
+                                    return (
+                                        <div
+                                            key={item.label}
+                                            className="rounded-lg border border-slate-100 bg-slate-50/90 px-2.5 py-2 hover:bg-slate-100/60 transition-colors flex gap-2 items-start"
+                                        >
+                                            <div className="mt-0.5 rounded-md bg-white p-1 border border-slate-100 text-slate-500">
+                                                <Hi className="w-3.5 h-3.5" aria-hidden />
+                                            </div>
+                                            <div className="min-w-0">
+                                                <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 leading-tight">
+                                                    {item.label}
+                                                </p>
+                                                <p className={cn('mt-0.5 text-base font-extrabold tabular-nums', item.tone)}>{item.value}</p>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </CardContent>
                     </Card>
 
-                    {/* Operational Pulse Card - Divider List Style */}
-                    <Card className="xl:col-span-4 border border-slate-200 bg-white shadow-sm rounded-lg">
-                        <CardContent className="p-5">
-                            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                    {/* Operational Pulse — compact 2×2 (Zoho-style density) */}
+                    <Card className="xl:col-span-4 border border-slate-200 bg-white shadow-sm rounded-lg h-full flex flex-col">
+                        <CardContent className="p-4 flex flex-col flex-1">
+                            <div className="flex items-center justify-between border-b border-slate-100 pb-2.5 shrink-0">
                                 <div className="flex items-center gap-2">
                                     <Zap className="w-4 h-4 text-amber-500 shrink-0" />
-                                    <p className="text-[11px] font-bold uppercase tracking-wider text-slate-700">Operational Pulse</p>
+                                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-700">Operational pulse</p>
                                 </div>
-                                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" aria-hidden />
                             </div>
-                            <div className="mt-4 divide-y divide-slate-100">
+                            <div className="mt-3 grid grid-cols-2 gap-2 flex-1 content-start">
                                 {easyHealthPanels.map((panel) => (
-                                    <div key={panel.label} className="py-2.5 flex items-center justify-between hover:bg-slate-50/50 transition-colors px-1">
-                                        <div>
-                                            <p className="text-[11px] font-bold text-slate-700">{panel.label}</p>
-                                            <p className="text-[10px] text-slate-400 font-semibold mt-0.5">{panel.detail}</p>
-                                        </div>
-                                        <div className="text-right">
-                                            <span className={cn('text-sm font-extrabold tracking-tight', panel.tone)}>
-                                                {panel.value}
-                                            </span>
-                                        </div>
+                                    <div
+                                        key={panel.label}
+                                        className="rounded-lg border border-slate-100 bg-slate-50/90 px-2.5 py-2 min-h-[4.25rem] flex flex-col justify-between"
+                                    >
+                                        <p className="text-[9px] font-bold uppercase tracking-wide text-slate-500 leading-tight line-clamp-2">{panel.label}</p>
+                                        <p className={cn('text-sm font-extrabold tabular-nums mt-0.5', panel.tone)}>{panel.value}</p>
+                                        <p className="text-[9px] text-slate-400 font-medium leading-snug line-clamp-2 mt-0.5">{panel.detail}</p>
                                     </div>
                                 ))}
                             </div>
@@ -877,6 +963,7 @@ export function DomainDashboard({
                             'bg-rose-500': 'border-l-4 border-l-rose-500',
                             'bg-slate-500': 'border-l-4 border-l-slate-400',
                             'bg-cyan-500': 'border-l-4 border-l-cyan-500',
+                            'bg-cyan-600': 'border-l-4 border-l-cyan-600',
                             'bg-amber-500': 'border-l-4 border-l-amber-500',
                             'bg-emerald-600': 'border-l-4 border-l-emerald-600'
                         };
@@ -887,6 +974,7 @@ export function DomainDashboard({
                             'bg-rose-500': 'text-rose-600',
                             'bg-slate-500': 'text-slate-500',
                             'bg-cyan-500': 'text-cyan-600',
+                            'bg-cyan-600': 'text-cyan-700',
                             'bg-amber-500': 'text-amber-600',
                             'bg-emerald-600': 'text-emerald-600'
                         };
@@ -921,17 +1009,17 @@ export function DomainDashboard({
                     })}
                 </div>
 
-                <div className="grid grid-cols-1 xl:grid-cols-12 gap-4">
-                    {/* Quick Actions Card - Flat with Colored Left Borders */}
-                    <Card className="xl:col-span-7 border border-slate-200 shadow-sm bg-white rounded-lg">
-                        <CardContent className="p-5">
-                            <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+                <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 xl:items-stretch">
+                    {/* Quick Actions — balanced height with insights column */}
+                    <Card className="xl:col-span-7 border border-slate-200 shadow-sm bg-white rounded-lg h-full min-h-[280px] flex flex-col">
+                        <CardContent className="p-4 flex flex-col flex-1">
+                            <div className="flex items-center justify-between border-b border-slate-100 pb-2.5 mb-3 shrink-0">
                                 <div>
-                                    <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Quick Actions</h2>
-                                    <p className="text-[11px] text-slate-400 mt-0.5">Shortcuts for the tasks operators do most.</p>
+                                    <h2 className="text-[10px] font-bold text-slate-700 uppercase tracking-wider">Quick actions</h2>
+                                    <p className="text-[10px] text-slate-400 mt-0.5">Most-used tasks — same paths as advanced mode.</p>
                                 </div>
                             </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2.5 flex-1 content-start">
                                 {easyActions.map(action => {
                                     const actionColors: Record<string, { border: string, bg: string, text: string, hoverBg: string }> = {
                                         'new-invoice': { border: 'border-l-emerald-500', bg: 'bg-emerald-500/5', text: 'text-emerald-600', hoverBg: 'hover:bg-emerald-50' },
@@ -948,7 +1036,7 @@ export function DomainDashboard({
                                             key={action.id}
                                             onClick={() => onQuickAction?.(action.id)}
                                             className={cn(
-                                                'rounded-md p-3.5 text-left transition-all active:scale-[0.98] border border-slate-200 border-l-4 bg-white hover:shadow-sm',
+                                                'rounded-lg p-3 text-left transition-all active:scale-[0.99] border border-slate-200 border-l-4 bg-white hover:shadow-sm min-h-[4.5rem]',
                                                 style.border,
                                                 style.hoverBg
                                             )}
@@ -969,16 +1057,18 @@ export function DomainDashboard({
                         </CardContent>
                     </Card>
 
-                    <div className="xl:col-span-5 space-y-3">
-                        {/* Smart Insights - Flat White List Style */}
-                        <Card className="border border-slate-200 shadow-sm bg-white rounded-lg">
-                            <CardContent className="p-5">
-                                <div className="flex items-center gap-2 border-b border-slate-100 pb-3 mb-4">
+                    <div className="xl:col-span-5 flex flex-col gap-3 min-h-[280px]">
+                        <Card className="border border-slate-200 shadow-sm bg-white rounded-lg flex-1 flex flex-col min-h-0">
+                            <CardContent className="p-4 flex flex-col flex-1">
+                                <div className="flex items-center gap-2 border-b border-slate-100 pb-2.5 mb-3 shrink-0">
                                     <BarChart3 className="w-4 h-4 text-brand-primary shrink-0" />
-                                    <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Smart Insights</h2>
+                                    <div>
+                                        <h2 className="text-[10px] font-bold text-slate-700 uppercase tracking-wider">Smart insights</h2>
+                                        <p className="text-[10px] text-slate-400 mt-0.5">Guided next steps from your live data.</p>
+                                    </div>
                                 </div>
-                                <div className="space-y-2">
-                                    {intelligentInsights.map((insight, idx) => {
+                                <div className="space-y-2 flex-1 min-h-0">
+                                    {easyInsightsToRender.map((insight, idx) => {
                                         const defaultStyle = { border: 'border-l-slate-400', bg: 'bg-slate-50/40', text: 'text-slate-700' };
                                         const toneColors: Record<string, { border: string, bg: string, text: string }> = {
                                             indigo: { border: 'border-l-indigo-500', bg: 'bg-indigo-50/40', text: 'text-indigo-700' },
@@ -994,7 +1084,7 @@ export function DomainDashboard({
                                                 key={`${insight.title}-${idx}`}
                                                 onClick={() => onQuickAction?.(insight.actionTab)}
                                                 className={cn(
-                                                    'w-full rounded border border-slate-200 border-l-4 p-3 text-left transition-all hover:shadow-sm bg-slate-50/50',
+                                                    'w-full rounded-lg border border-slate-200 border-l-4 p-2.5 text-left transition-all hover:shadow-sm bg-slate-50/50',
                                                     style.border,
                                                     insight.tone === 'indigo' && 'hover:bg-indigo-50',
                                                     insight.tone === 'emerald' && 'hover:bg-emerald-50',
@@ -1012,25 +1102,45 @@ export function DomainDashboard({
                             </CardContent>
                         </Card>
 
-                        {/* Critical Alerts - Flat Double Border Buttons */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <button
-                                onClick={() => onQuickAction?.('inventory')}
-                                className="rounded-md border border-slate-200 border-l-4 border-l-amber-500 bg-white p-4 text-left hover:bg-slate-50 transition-colors shadow-sm hover:shadow"
-                            >
-                                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Inventory Alert</p>
-                                <p className="mt-1.5 text-lg font-extrabold text-amber-600">{remindersData.lowStock} low stock items</p>
-                                <p className="mt-1 text-[10px] text-slate-500 font-semibold leading-normal">Review replenishment before stock-outs.</p>
-                            </button>
-                            <button
-                                onClick={() => onQuickAction?.('invoices')}
-                                className="rounded-md border border-slate-200 border-l-4 border-l-rose-500 bg-white p-4 text-left hover:bg-slate-50 transition-colors shadow-sm hover:shadow"
-                            >
-                                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Collections Alert</p>
-                                <p className="mt-1.5 text-lg font-extrabold text-rose-600">{remindersData.overdueInvoices} overdue invoices</p>
-                                <p className="mt-1 text-[10px] text-slate-500 font-semibold leading-normal">Follow up to protect cash flow.</p>
-                            </button>
-                        </div>
+                        {/* Single health strip — avoids repeating the same counts as KPI row + insights */}
+                        <Card className="border border-slate-200 shadow-sm bg-white rounded-lg shrink-0">
+                            <CardContent className="p-3.5">
+                                <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-2">Needs attention</p>
+                                {remindersData.lowStock === 0 && remindersData.overdueInvoices === 0 ? (
+                                    <div className="flex items-center gap-2 text-emerald-700">
+                                        <CheckCircle2 className="w-4 h-4 shrink-0" aria-hidden />
+                                        <span className="text-xs font-semibold leading-snug">No urgent stock or overdue invoice issues for this period.</span>
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col gap-2">
+                                        {remindersData.lowStock > 0 && (
+                                            <button
+                                                type="button"
+                                                onClick={() => onQuickAction?.('inventory')}
+                                                className="flex items-center justify-between gap-2 rounded-lg border border-amber-100 bg-amber-50/60 px-3 py-2 text-left hover:bg-amber-50 transition-colors"
+                                            >
+                                                <span className="text-xs font-semibold text-amber-900">
+                                                    <span className="font-extrabold tabular-nums">{remindersData.lowStock}</span> SKU{remindersData.lowStock === 1 ? '' : 's'} below safety stock
+                                                </span>
+                                                <span className="text-[10px] font-bold text-amber-700 uppercase shrink-0">Restock →</span>
+                                            </button>
+                                        )}
+                                        {remindersData.overdueInvoices > 0 && (
+                                            <button
+                                                type="button"
+                                                onClick={() => onQuickAction?.('invoices')}
+                                                className="flex items-center justify-between gap-2 rounded-lg border border-rose-100 bg-rose-50/60 px-3 py-2 text-left hover:bg-rose-50 transition-colors"
+                                            >
+                                                <span className="text-xs font-semibold text-rose-900">
+                                                    <span className="font-extrabold tabular-nums">{remindersData.overdueInvoices}</span> overdue invoice{remindersData.overdueInvoices === 1 ? '' : 's'}
+                                                </span>
+                                                <span className="text-[10px] font-bold text-rose-700 uppercase shrink-0">Collect →</span>
+                                            </button>
+                                        )}
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
                     </div>
                 </div>
 
@@ -1118,8 +1228,12 @@ export function DomainDashboard({
                                         <p className="text-sm font-extrabold text-slate-900">{products.length}</p>
                                     </div>
                                     <div className="flex items-center justify-between py-2 border-b border-slate-50 hover:bg-slate-50/50 transition-colors px-1">
-                                        <p className="text-[11px] font-bold text-slate-600">Pending Orders</p>
-                                        <p className="text-sm font-extrabold text-slate-900">{remindersData.pendingOrders}</p>
+                                        <p className="text-[11px] font-bold text-slate-600">Open invoices</p>
+                                        <p className="text-sm font-extrabold text-slate-900 tabular-nums">{openInvoicesCount}</p>
+                                    </div>
+                                    <div className="flex items-center justify-between py-2 border-b border-slate-50 hover:bg-slate-50/50 transition-colors px-1">
+                                        <p className="text-[11px] font-bold text-slate-600">Low-stock SKUs</p>
+                                        <p className={cn('text-sm font-extrabold tabular-nums', remindersData.lowStock > 0 ? 'text-amber-600' : 'text-slate-900')}>{remindersData.lowStock}</p>
                                     </div>
                                     <div className="flex items-center justify-between py-2 border-b border-slate-50 hover:bg-slate-50/50 transition-colors px-1">
                                         <div>
@@ -1148,7 +1262,7 @@ export function DomainDashboard({
     return (
         <NetsuiteDashboard>
             {/* Main Area (9/12) */}
-            <div className="space-y-4 order-1 lg:order-1 lg:col-span-9">
+            <div className="space-y-3 order-1 lg:order-1 lg:col-span-9">
                 {!hasCoreData && (
                     <Card className="border border-brand-100 bg-brand-50/40 shadow-sm">
                         <CardContent className="p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
@@ -1165,7 +1279,7 @@ export function DomainDashboard({
                     </Card>
                 )}
 
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 xl:auto-rows-fr">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-2.5 xl:auto-rows-fr">
                     {topStripKpis.map((item) => (
                         <DomainMetricCard
                             key={item.label}
@@ -1180,58 +1294,64 @@ export function DomainDashboard({
                     ))}
                 </div>
 
-                <div className="grid grid-cols-1 xl:grid-cols-12 gap-3 xl:items-stretch">
+                <div className="grid grid-cols-1 xl:grid-cols-12 gap-2.5 xl:items-stretch">
                     <Card className="xl:col-span-8 border border-slate-200 shadow-sm bg-white">
-                        <CardContent className="p-3.5 md:p-4.5">
-                            <div className="flex items-start justify-between gap-4">
+                        <CardContent className="p-3.5 md:p-4">
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                                 <div>
                                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Dashboard Overview</p>
                                     <h2 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight mt-1">Business Overview</h2>
                                     <p className="text-[11px] text-slate-500 font-semibold mt-1">
-                                        {new Date(dateRange.from).toLocaleDateString()} - {new Date(dateRange.to).toLocaleDateString()}
+                                        {new Date(dateRange.from).toLocaleDateString()} — {new Date(dateRange.to).toLocaleDateString()}
+                                    </p>
+                                    <p className="text-[10px] text-slate-400 mt-1 max-w-md">
+                                        This period drives KPIs, reminders, analytics, and AI projections on this tab (same range as the workspace filter).
                                     </p>
                                 </div>
-                                <div className="flex items-center gap-2">
+                                <div className="flex flex-wrap items-center gap-2 shrink-0">
                                     <div className="hidden sm:flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-slate-50">
                                         <TrendingUp className="w-4 h-4 text-emerald-600" />
                                         <span className="text-[10px] font-black uppercase tracking-wider text-slate-600">Realtime KPI Sync</span>
                                     </div>
-                                    <div className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg border border-slate-200 bg-white">
-                                        <label htmlFor="domain-date-filter" className="text-[10px] font-black uppercase tracking-wider text-slate-500">Date</label>
-                                        <select
-                                            id="domain-date-filter"
-                                            value={activePreset}
-                                            onChange={(e) => {
-                                                const preset = e.target.value as 'today' | '7d' | '30d' | '90d' | 'mtd' | 'last_month' | 'ytd' | 'custom';
-                                                if (preset !== 'custom') onDateRangePresetChange?.(preset);
-                                            }}
-                                            className="h-7 rounded-md border border-slate-200 bg-slate-50 px-2 text-[11px] font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
-                                        >
-                                            <option value="today">Today</option>
-                                            <option value="7d">Last 7 Days</option>
-                                            <option value="30d">Last 30 Days</option>
-                                            <option value="90d">Last 90 Days</option>
-                                            <option value="mtd">This Month</option>
-                                            <option value="last_month">Last Month</option>
-                                            <option value="ytd">Year to Date</option>
-                                            <option value="custom">Custom</option>
-                                        </select>
+                                    <div
+                                        className="flex flex-col items-stretch sm:items-end gap-0.5 text-left sm:text-right max-w-full sm:max-w-xs rounded-xl border border-slate-100 bg-slate-50/90 px-3 py-2"
+                                        role="status"
+                                        aria-live="polite"
+                                    >
+                                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Active period</p>
+                                        <p className="text-sm font-black text-slate-900 tabular-nums">{activePresetDisplayLabel}</p>
+                                        <p className="text-[10px] text-slate-500 leading-snug">
+                                            Change the date range in the top bar to refresh KPIs, analytics, and projections.
+                                        </p>
                                     </div>
                                 </div>
                             </div>
 
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-3">
-                                {dashboardHeaderHighlights.map((item) => (
-                                    <div key={item.label} className="rounded-xl border border-slate-100 bg-slate-50/60 px-3 py-2.5">
-                                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">{item.label}</p>
-                                        <p className={cn('text-base font-black mt-1', item.tone)}>{item.value}</p>
-                                    </div>
-                                ))}
+                                {dashboardHeaderHighlights.map((item) => {
+                                    const Hi = item.icon;
+                                    return (
+                                        <div
+                                            key={item.label}
+                                            className="rounded-xl border border-slate-100 bg-slate-50/70 px-2.5 py-2 flex gap-2 items-start"
+                                        >
+                                            <div className="mt-0.5 rounded-md bg-white p-1.5 border border-slate-100 text-slate-500">
+                                                <Hi className="w-3.5 h-3.5" aria-hidden />
+                                            </div>
+                                            <div className="min-w-0">
+                                                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 leading-tight">
+                                                    {item.label}
+                                                </p>
+                                                <p className={cn('text-base font-black mt-0.5 tabular-nums', item.tone)}>{item.value}</p>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </CardContent>
                     </Card>
 
-                    <div className="xl:col-span-4 grid grid-cols-2 gap-3 auto-rows-fr">
+                    <div className="xl:col-span-4 grid grid-cols-2 gap-2 auto-rows-fr">
                         <Card className="border border-slate-200 shadow-sm bg-white">
                             <CardContent className="p-3.5">
                                 <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Coverage Days</p>
@@ -1270,7 +1390,7 @@ export function DomainDashboard({
                 />
 
                 {/* Domain Specialized KPI Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2.5">
                     {domainKpis.map(kpi => (
                         <DomainMetricCard
                             key={kpi.id}
@@ -1285,7 +1405,7 @@ export function DomainDashboard({
                     ))}
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 lg:auto-rows-fr">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5 lg:auto-rows-fr">
                     <DomainMetricCard
                         label="Pending Returns"
                         value={periodMetrics.pendingReturns}
@@ -1296,12 +1416,12 @@ export function DomainDashboard({
                         className="h-full"
                     />
                     <DomainMetricCard
-                        label="Coverage Days"
-                        value={coverageDays > 365 ? '365+' : coverageDays}
-                        subValue="Estimated stock coverage"
-                        trend={Number((coverageDays / 10).toFixed(1))}
-                        icon={Boxes}
-                        colorClass="bg-brand-primary"
+                        label="Outstanding A/R"
+                        value={formatCurrencyCompact(outstandingAmount)}
+                        subValue="Unpaid / partial invoice balance"
+                        trend={remindersData.overdueInvoices > 0 ? -Math.min(remindersData.overdueInvoices * 4, 30) : 0}
+                        icon={CreditCard}
+                        colorClass="bg-slate-700"
                         className="h-full"
                     />
                     <DomainMetricCard
@@ -1316,8 +1436,8 @@ export function DomainDashboard({
                 </div>
 
                 {/* Analytics Section */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 lg:items-stretch">
-                    <div className="lg:col-span-7">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-2.5 lg:items-stretch">
+                    <div className="lg:col-span-7 min-h-0">
                         <AnalyticsDashboard
                             businessId={activeBusinessId}
                             category={category}
@@ -1325,10 +1445,12 @@ export function DomainDashboard({
                             invoices={invoices}
                             products={products}
                             colors={colors}
+                            dateRange={dateRange}
                             onQuickAction={onQuickAction}
                         />
                     </div>
-                    <div className="lg:col-span-5 space-y-3">
+                    <div className="lg:col-span-5 flex flex-col gap-2.5 min-h-0">
+                        <div className="shrink-0">
                         <KPIMeter
                             title="Domain Efficiency"
                             value={domainEfficiency}
@@ -1337,17 +1459,32 @@ export function DomainDashboard({
                             trendValue={Number(revenueTrendSigned.toFixed(1))}
                             trendLabel="vs previous period"
                         />
+                        </div>
 
-                        <Card className="border border-slate-200 shadow-sm bg-white">
-                            <CardContent className="p-3.5">
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
-                                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Active Customers</p>
-                                        <p className="text-base font-black text-slate-900 mt-1">{dashboardMetrics?.customers?.active ?? 0}</p>
+                        <Card className="border border-slate-200 shadow-sm bg-white flex-1 min-h-[7.5rem]">
+                            <CardContent className="p-3 h-full flex flex-col justify-center">
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div className="rounded-lg border border-slate-100 bg-slate-50/80 p-2.5 flex gap-2 items-start">
+                                        <div className="rounded-md bg-white p-1 border border-slate-100 text-slate-500">
+                                            <Users className="w-3.5 h-3.5" aria-hidden />
+                                        </div>
+                                        <div>
+                                            <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Active Customers</p>
+                                            <p className="text-base font-black text-slate-900 mt-0.5 tabular-nums">
+                                                {dashboardMetrics?.customers?.active ?? 0}
+                                            </p>
+                                        </div>
                                     </div>
-                                    <div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
-                                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Cash Flow</p>
-                                        <p className="text-base font-black text-slate-900 mt-1">{formatCurrencyCompact(dashboardMetrics?.cashFlow?.current || 0)}</p>
+                                    <div className="rounded-lg border border-slate-100 bg-slate-50/80 p-2.5 flex gap-2 items-start">
+                                        <div className="rounded-md bg-white p-1 border border-slate-100 text-slate-500">
+                                            <BadgeDollarSign className="w-3.5 h-3.5" aria-hidden />
+                                        </div>
+                                        <div>
+                                            <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Cash Flow</p>
+                                            <p className="text-base font-black text-slate-900 mt-0.5 tabular-nums">
+                                                {formatCurrencyCompact(dashboardMetrics?.cashFlow?.current || 0)}
+                                            </p>
+                                        </div>
                                     </div>
                                 </div>
                             </CardContent>
@@ -1355,9 +1492,13 @@ export function DomainDashboard({
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 lg:items-stretch">
-                    <div className="lg:col-span-8">
-                        <PredictivePlanningPortlet businessId={activeBusinessId} domainKnowledge={domainKnowledge} />
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-2.5 lg:items-stretch">
+                    <div className="lg:col-span-8 min-h-0">
+                        <PredictivePlanningPortlet
+                            businessId={activeBusinessId}
+                            domainKnowledge={domainKnowledge}
+                            dateRange={dateRange}
+                        />
                     </div>
                     <div className="lg:col-span-4">
                         <AgenticAuditPortlet businessId={activeBusinessId!} />
