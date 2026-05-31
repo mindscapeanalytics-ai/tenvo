@@ -43,6 +43,7 @@ import {
   Star,
 } from 'lucide-react';
 import MarketingLayout from '@/components/marketing/layout/MarketingLayout';
+import { TenvoTextLogo } from '@/components/branding/TenvoTextLogo';
 import CommerceAndIntelligenceSection from '@/components/marketing/sections/CommerceAndIntelligenceSection';
 import CompetitorComparisonSection from '@/components/marketing/sections/CompetitorComparisonSection';
 import { Button } from '@/components/ui/button';
@@ -86,15 +87,40 @@ export default function Home() {
 
   // --- STATE FOR INTERACTIVE COMPONENTS ---
   const [activeFeatureTab, setActiveFeatureTab] = useState('inventory');
-  const [showStickyCta, setShowStickyCta] = useState(false);
+  const [stickyCtaScrollReady, setStickyCtaScrollReady] = useState(false);
+  const [stickyCtaDismissed, setStickyCtaDismissed] = useState(false);
   const [showVideoModal, setShowVideoModal] = useState(false);
+
+  const STICKY_CTA_DISMISS_KEY = 'tenvo_sticky_cta_dismissed_session';
+
+  useEffect(() => {
+    try {
+      if (typeof window !== 'undefined' && sessionStorage.getItem(STICKY_CTA_DISMISS_KEY) === '1') {
+        setStickyCtaDismissed(true);
+      }
+    } catch {
+      /* ignore private mode */
+    }
+  }, []);
+
+  const dismissStickyCta = () => {
+    setStickyCtaDismissed(true);
+    try {
+      sessionStorage.setItem(STICKY_CTA_DISMISS_KEY, '1');
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const showStickyCta = stickyCtaScrollReady && !stickyCtaDismissed;
 
   // Sticky CTA scroll listener
   useEffect(() => {
     const handleScroll = () => {
-      setShowStickyCta(window.scrollY > 600);
+      setStickyCtaScrollReady(window.scrollY > 600);
     };
-    window.addEventListener('scroll', handleScroll);
+    handleScroll();
+    window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
@@ -178,22 +204,48 @@ export default function Home() {
   return (
     <MarketingLayout transparentNav={true}>
 
-      {/* STICKY CTA BAR - Appears on scroll */}
-      <div className={`fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-neutral-200 shadow-[0_-4px_20px_-5px_rgba(0,0,0,0.1)] transform transition-transform duration-300 ${showStickyCta ? 'translate-y-0' : 'translate-y-full'}`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 py-4">
-          <div className="flex items-center justify-between">
-            <div className="hidden sm:block">
-              <p className="text-sm font-bold text-neutral-900">Ready to streamline your operations?</p>
-              <p className="text-xs text-neutral-500">Join 450+ businesses already using TENVO</p>
+      {/* STICKY CTA — compact strip; dismiss (session); pr reserves assistant FAB */}
+      <div
+        className={`fixed bottom-0 left-0 right-0 z-50 border-t border-neutral-200 bg-white shadow-[0_-3px_16px_-6px_rgba(0,0,0,0.08)] transition-transform duration-300 ease-out ${showStickyCta ? 'translate-y-0' : 'translate-y-full'}`}
+        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+      >
+        <div className="mx-auto flex max-w-7xl items-center gap-2 py-2 pl-4 pr-14 sm:gap-4 sm:px-5 sm:py-2.5 sm:pl-8 sm:pr-32 md:pl-10 lg:px-12 lg:pr-40">
+          <div className="hidden min-w-0 flex-1 items-center gap-2.5 sm:flex sm:gap-3">
+            <div className="shrink-0 translate-y-px">
+              <TenvoTextLogo compact iconClassName="border border-neutral-200/90 shadow-sm" />
             </div>
-            <div className="flex items-center gap-3 sm:gap-4 w-full sm:w-auto">
-              <Button asChild size="sm" variant="outline" className="rounded-xl border-neutral-300 flex-1 sm:flex-none">
-                <Link href="/demo">Book Demo</Link>
-              </Button>
-              <Button asChild size="sm" className="bg-brand-primary hover:bg-brand-primary-dark text-white rounded-xl font-black uppercase tracking-wider flex-1 sm:flex-none">
-                <Link href={primaryHref}>Start Free Trial</Link>
-              </Button>
+            <div className="min-w-0 border-l border-neutral-200 pl-2.5 sm:pl-3">
+              <p className="text-[13px] font-bold leading-tight text-neutral-900">Ready to streamline your operations?</p>
+              <p className="text-[11px] font-medium leading-snug text-neutral-500">
+                Storefront, POS, inventory, and finance in one workspace.
+              </p>
             </div>
+          </div>
+
+          <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-2 sm:flex-none sm:flex-nowrap sm:gap-2.5">
+            <Button
+              asChild
+              variant="outline"
+              className="h-9 shrink-0 rounded-lg border-neutral-300 px-3 text-xs font-bold sm:px-4 sm:text-sm"
+            >
+              <Link href="/demo">Book Demo</Link>
+            </Button>
+            <Button
+              asChild
+              className="h-9 min-w-0 max-w-[10.5rem] shrink rounded-lg bg-brand-primary px-3 text-[11px] font-black uppercase tracking-wide text-white hover:bg-brand-primary-dark sm:max-w-[13rem] sm:px-4 sm:text-xs"
+            >
+              <Link href={primaryHref} className="block truncate text-center">
+                Start Free Trial
+              </Link>
+            </Button>
+            <button
+              type="button"
+              onClick={dismissStickyCta}
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-neutral-200/90 text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/40"
+              aria-label="Close promotion bar"
+            >
+              <X className="h-4 w-4" aria-hidden />
+            </button>
           </div>
         </div>
       </div>

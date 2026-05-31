@@ -13,7 +13,7 @@ const PILLARS = [
     icon: Megaphone,
     title: 'Campaigns & marketing',
     body:
-      'Run promotions and customer journeys without exporting lists to a separate email tool. Segments and offers stay tied to real purchase history, storefront activity, and POS — closer to how Zoho Campaigns or Shopify Email sit on top of real commerce data.',
+      'Run promotions and customer journeys without exporting lists to a separate email tool. Segments and offers stay tied to real purchase history, storefront activity, and POS - closer to how Zoho Campaigns or Shopify Email sit on top of real commerce data.',
     bullets: ['Promotion windows and messaging hooks', 'Plan-gated on Professional+ where enabled', 'Same customer record as invoices & POS'],
   },
   {
@@ -29,7 +29,7 @@ const PILLARS = [
     icon: Brain,
     title: 'Analytics & AI',
     body:
-      'Dashboards and reports draw from one ledger: inventory, orders, payments, and tax. Ask better questions without stitching exports from five silos — the same promise buyers expect from enterprise analytics, without a separate BI stack for day-one operators.',
+      'Dashboards and reports draw from one ledger: inventory, orders, payments, and tax. Ask better questions without stitching exports from five silos - the same promise buyers expect from enterprise analytics, without a separate BI stack for day-one operators.',
     bullets: ['Operational and financial signals together', 'Roadmap: guided insights with human approval', 'Drill from summary to underlying documents'],
   },
 ];
@@ -39,13 +39,13 @@ const SALES_OPS = [
     icon: TrendingUp,
     title: 'Quotations & Sales Manager',
     body:
-      'B2B quotes, follow-ups, and pipeline-style tracking live next to inventory availability and credit exposure — so sales teams stop promising SKUs you cannot fulfil.',
+      'B2B quotes, follow-ups, and pipeline-style tracking live next to inventory availability and credit exposure, so sales teams stop promising SKUs you cannot fulfil.',
   },
   {
     icon: CheckSquare,
     title: 'Approvals & governance',
     body:
-      'Discounts, refunds, and high-impact changes can follow approval paths so growing teams keep control like they would in larger ERPs — without slowing honest day-to-day selling.',
+      'Discounts, refunds, and high-impact changes can follow approval paths so growing teams keep control like they would in larger ERPs, without slowing honest day-to-day selling.',
   },
 ];
 
@@ -60,7 +60,7 @@ export default function MarketingCrmSolutionsPage() {
             Marketing & CRM that share <span className="text-brand-primary">one source of truth</span>
           </>
         }
-        subtitle="Campaigns, loyalty, analytics, and B2B selling — wired to the same products, orders, and payments as your storefront and POS. Positioned for teams comparing TENVO to stitched Zoho + Shopify + spreadsheets."
+        subtitle="Campaigns, loyalty, analytics, and B2B selling - wired to the same products, orders, and payments as your storefront and POS. Positioned for teams comparing TENVO to stitched Current Solutions + spreadsheets."
         primaryCTA={{ text: 'Start free trial', href: '/register' }}
         secondaryCTA={{ text: 'Compare positioning', href: '/why-tenvo' }}
       />
@@ -112,7 +112,7 @@ export default function MarketingCrmSolutionsPage() {
             <p className="mb-3 text-[11px] font-black uppercase tracking-[0.28em] text-brand-primary">Sales & operations</p>
             <h2 className="text-3xl font-black tracking-tight text-neutral-900 md:text-4xl">What else sits next to campaigns</h2>
             <p className="mt-4 text-lg font-medium text-neutral-600">
-              These modules mirror what power users see in the Enterprise Hub sidebar — so marketing promises match the
+              These modules mirror what power users see in the Enterprise Hub sidebar - so marketing promises match the
               product surface.
             </p>
           </div>
@@ -139,7 +139,7 @@ export default function MarketingCrmSolutionsPage() {
               <div>
                 <h3 className="text-base font-black text-neutral-900">Payroll & HR</h3>
                 <p className="mt-1 text-sm font-medium text-neutral-600">
-                  People, shifts, and pay runs stay in the same permissioned workspace as operations — important for
+                  People, shifts, and pay runs stay in the same permissioned workspace as operations - important for
                   chains that promote staff between outlets and still need clean audit trails.
                 </p>
               </div>
@@ -151,7 +151,7 @@ export default function MarketingCrmSolutionsPage() {
               <div>
                 <h3 className="text-base font-black text-neutral-900">Audit trail</h3>
                 <p className="mt-1 text-sm font-medium text-neutral-600">
-                  Who changed prices, approved a refund, or edited tax settings — surfaced for finance and compliance
+                  Who changed prices, approved a refund, or edited tax settings - surfaced for finance and compliance
                   reviewers alongside FBR-facing workflows.
                 </p>
               </div>
@@ -183,7 +183,7 @@ export default function MarketingCrmSolutionsPage() {
             <Link href="/demo" className="font-bold text-brand-primary underline-offset-2 hover:underline">
               demo call
             </Link>{' '}
-            — we prefer accurate expectations over overselling.
+             we prefer accurate expectations over overselling.
           </p>
         </div>
       </section>

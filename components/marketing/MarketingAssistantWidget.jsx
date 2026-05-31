@@ -108,7 +108,7 @@ export default function MarketingAssistantWidget() {
   );
 
   return (
-    <div className="fixed bottom-5 right-5 z-[60] flex flex-col items-end sm:bottom-6 sm:right-6">
+    <div className="fixed bottom-[max(4.35rem,calc(env(safe-area-inset-bottom,0px)+3.85rem))] right-4 z-[60] flex translate-y-1 flex-col items-end sm:right-6 sm:translate-y-1.5">
       {open && (
         <div
           className="mb-3 flex w-[min(100vw-2rem,22rem)] flex-col overflow-hidden rounded-2xl border border-neutral-200/90 bg-white shadow-[0_24px_64px_-24px_rgba(15,23,42,0.35)] sm:w-[24rem]"

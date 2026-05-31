@@ -192,6 +192,22 @@ CREATE TABLE IF NOT EXISTS invoice_payments (
 );
 
 -- Add missing columns if table already exists without them
+ALTER TABLE invoice_payments ADD COLUMN IF NOT EXISTS payment_method TEXT;
+ALTER TABLE invoice_payments ADD COLUMN IF NOT EXISTS reference_number TEXT;
+ALTER TABLE invoice_payments ADD COLUMN IF NOT EXISTS transaction_id TEXT;
+ALTER TABLE invoice_payments ADD COLUMN IF NOT EXISTS gateway_response JSONB DEFAULT '{}';
+ALTER TABLE invoice_payments ADD COLUMN IF NOT EXISTS notes TEXT;
+ALTER TABLE invoice_payments ADD COLUMN IF NOT EXISTS payment_date DATE DEFAULT CURRENT_DATE;
+UPDATE invoice_payments SET payment_method = 'cash' WHERE payment_method IS NULL;
+
+ALTER TABLE invoice_payments ADD COLUMN IF NOT EXISTS business_id UUID;
+UPDATE invoice_payments ip
+SET business_id = i.business_id
+FROM invoices i
+WHERE ip.invoice_id = i.id
+  AND ip.business_id IS NULL
+  AND i.business_id IS NOT NULL;
+
 ALTER TABLE invoice_payments ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN DEFAULT false;
 ALTER TABLE invoice_payments ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
 ALTER TABLE invoice_payments ADD COLUMN IF NOT EXISTS deleted_by TEXT;
@@ -247,6 +263,7 @@ ALTER TABLE stock_movements ALTER COLUMN warehouse_id DROP NOT NULL;
 
 -- =====================================================
 -- ALSO FIX: calculate_invoice_balance function
+-- (invoice_payments.is_deleted is added above ~195; this block must stay after those ALTERs)
 -- =====================================================
 CREATE OR REPLACE FUNCTION calculate_invoice_balance(invoice_uuid UUID)
 RETURNS DECIMAL(12,2) AS $$
@@ -255,21 +272,17 @@ DECLARE
     total_paid DECIMAL(12,2);
     balance DECIMAL(12,2);
 BEGIN
-    -- Get invoice grand total
     SELECT COALESCE(grand_total, 0) INTO invoice_total
     FROM invoices
     WHERE id = invoice_uuid
-    AND (is_deleted = false OR is_deleted IS NULL);
-    
-    -- Get total payments
+      AND (is_deleted = false OR is_deleted IS NULL);
+
     SELECT COALESCE(SUM(amount), 0) INTO total_paid
     FROM invoice_payments
     WHERE invoice_id = invoice_uuid
-    AND (is_deleted = false OR is_deleted IS NULL);
-    
-    -- Calculate balance
+      AND (is_deleted = false OR is_deleted IS NULL);
+
     balance := invoice_total - total_paid;
-    
     RETURN GREATEST(balance, 0);
 END;
 $$ LANGUAGE plpgsql;
@@ -290,34 +303,39 @@ DECLARE
     v_paid DECIMAL(12,2);
     v_new_status TEXT;
 BEGIN
-    v_invoice_id := COALESCE(NEW.invoice_id, OLD.invoice_id);
-    
+    IF TG_OP = 'DELETE' THEN
+        v_invoice_id := OLD.invoice_id;
+    ELSE
+        v_invoice_id := NEW.invoice_id;
+    END IF;
+
     SELECT COALESCE(grand_total, 0) INTO v_total
-    FROM invoices WHERE id = v_invoice_id;
-    
+    FROM invoices
+    WHERE id = v_invoice_id;
+
     SELECT COALESCE(SUM(amount), 0) INTO v_paid
-    FROM invoice_payments 
-    WHERE invoice_id = v_invoice_id 
-    AND (is_deleted = false OR is_deleted IS NULL);
-    
-    IF v_paid >= v_total THEN
+    FROM invoice_payments
+    WHERE invoice_id = v_invoice_id
+      AND (is_deleted = false OR is_deleted IS NULL);
+
+    IF v_paid >= v_total AND v_total > 0 THEN
         v_new_status := 'paid';
     ELSIF v_paid > 0 THEN
         v_new_status := 'partial';
     ELSE
         v_new_status := 'unpaid';
     END IF;
-    
+
     UPDATE invoices
     SET payment_status = v_new_status,
-        status = CASE 
+        status = CASE
             WHEN v_new_status = 'paid' AND status IN ('draft', 'sent', 'awaiting_approval') THEN 'paid'
             ELSE status
         END,
         updated_at = NOW()
     WHERE id = v_invoice_id;
-    
-    RETURN NEW;
+
+    RETURN COALESCE(NEW, OLD);
 END;
 $$ LANGUAGE plpgsql;
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import {
   MoreHorizontal,
   Plus,
@@ -123,6 +123,40 @@ function parseProductDomainData(raw) {
     }
   }
   return {};
+}
+
+/** Same grid row whether keyed by persisted `id` or client-only `_tempId`. */
+function rowsMatchInventoryRow(p, row) {
+  if (!p || !row) return false;
+  if (row.id != null && row.id !== '') {
+    return p.id === row.id;
+  }
+  if (row._tempId) {
+    return p._tempId === row._tempId;
+  }
+  return false;
+}
+
+function readInventoryFieldValue(row, field, domainKnowledge) {
+  if (!row) return undefined;
+  if (field.includes('.')) {
+    const parts = field.split('.');
+    let cur = row;
+    for (const part of parts) {
+      if (cur == null) return undefined;
+      cur = cur[part];
+    }
+    return cur;
+  }
+  const isDomainField = domainKnowledge?.productFields?.some((f) => normalizeKey(f) === field);
+  if (isDomainField) return row.domain_data?.[field];
+  return row[field];
+}
+
+function busyFieldValueUnchanged(prevVal, nextVal) {
+  if (prevVal === nextVal) return true;
+  if (typeof nextVal === 'number' && Number(prevVal) === nextVal) return true;
+  return String(prevVal ?? '') === String(nextVal ?? '');
 }
 
 /**
@@ -361,6 +395,9 @@ export function InventoryManager({
   const [showStockAdjustment, setShowStockAdjustment] = useState(false);
   const [showStockTransferForm, setShowStockTransferForm] = useState(false);
 
+  /** Per persisted product id: monotonically increasing save generation to drop stale async results. */
+  const busyCellSaveGenRef = useRef(new Map());
+
   // Bulk Save Handler for Excel Mode
   const handleExcelSave = async (updatedData) => {
     setLoading(true);
@@ -373,7 +410,7 @@ export function InventoryManager({
         if (item._tempId && !item.id) return true;
 
         // Edited item (compare with original)
-        const original = products.find(p => p.id === item.id);
+        const original = products.find((p) => rowsMatchInventoryRow(p, item));
         if (!original) return true; // Should not happen for edits
 
         // Simple stringified comparison for quick diffing
@@ -1535,6 +1572,11 @@ export function InventoryManager({
                       processedValue = Number.isFinite(n) ? n : 0;
                     }
 
+                    const prevFieldVal = readInventoryFieldValue(product, field, domainKnowledge);
+                    if (busyFieldValueUnchanged(prevFieldVal, processedValue)) {
+                      return;
+                    }
+
                     let updatedProduct;
                     try {
                       updatedProduct = structuredClone(product);
@@ -1571,7 +1613,7 @@ export function InventoryManager({
                     }
 
                     // [OK] CRITICAL: Ensure batches/serials are preserved
-                    const originalProduct = products.find(p => p.id === product.id);
+                    const originalProduct = products.find((p) => rowsMatchInventoryRow(p, product));
                     if (!updatedProduct.batches && originalProduct?.batches) {
                       updatedProduct.batches = originalProduct.batches;
                     }
@@ -1579,23 +1621,39 @@ export function InventoryManager({
                       updatedProduct.serial_numbers = originalProduct?.serial_numbers || originalProduct?.serialNumbers || [];
                     }
 
+                    // Draft rows (no persisted id): local state only — never call updateProductAction
+                    if (!updatedProduct?.id) {
+                      setProducts((prev) =>
+                        prev.map((p) => (rowsMatchInventoryRow(p, product) ? updatedProduct : p))
+                      );
+                      return;
+                    }
+
+                    const saveKey = String(updatedProduct.id);
+                    const gen = (busyCellSaveGenRef.current.get(saveKey) || 0) + 1;
+                    busyCellSaveGenRef.current.set(saveKey, gen);
+
                     // [OK] Optimistic Update with Rollback
                     const oldProducts = [...products];
-                    setProducts(prev => prev.map(p => p.id === product.id ? updatedProduct : p));
+                    setProducts((prev) =>
+                      prev.map((p) => (rowsMatchInventoryRow(p, product) ? updatedProduct : p))
+                    );
 
                     try {
                       if (onUpdate) {
                         await onUpdate(updatedProduct);
+                        if (busyCellSaveGenRef.current.get(saveKey) !== gen) return;
                         toast.success(`Saved ${field}`, { id: 'inventory-busy-save', duration: 2000 });
                       } else {
                         const saveRes = await updateProductAction(updatedProduct.id, businessId, updatedProduct);
+                        if (busyCellSaveGenRef.current.get(saveKey) !== gen) return;
                         if (!saveRes?.success) {
                           throw new Error(saveRes?.error || 'Failed to persist update');
                         }
                         if (saveRes.product) {
-                          setProducts(prev =>
-                            prev.map(p => {
-                              if (p.id !== product.id) return p;
+                          setProducts((prev) =>
+                            prev.map((p) => {
+                              if (!rowsMatchInventoryRow(p, product)) return p;
                               const srv = saveRes.product;
                               return {
                                 ...p,
@@ -1620,7 +1678,9 @@ export function InventoryManager({
                       }
                     } catch (error) {
                       // [X] ROLLBACK on failure
-                      setProducts(oldProducts);
+                      if (busyCellSaveGenRef.current.get(saveKey) === gen) {
+                        setProducts(oldProducts);
+                      }
                       toast.error(
                         `Failed to update ${field}: ${formatInventoryActionError(error)}`,
                         {

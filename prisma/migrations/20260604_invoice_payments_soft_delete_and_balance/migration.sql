@@ -1,11 +1,13 @@
--- Idempotent repair: missing invoice_payments.is_deleted + broken calculate_invoice_balance (42703).
--- Same logic as prisma/migrations/20260604_invoice_payments_soft_delete_and_balance/migration.sql
--- Run in Supabase SQL editor or: psql $DATABASE_URL -f lib/db/migrations/034_calculate_invoice_balance_no_is_deleted.sql
+-- Align legacy Postgres with prisma schema: invoice_payments soft-delete columns
+-- and SQL functions used by InvoicePaymentService (calculate_invoice_balance, payment_status trigger).
+-- Fixes: column "is_deleted" does not exist (42703) when legacy DB created invoice_payments without these columns
+-- but EXECUTE_THIS / Supabase SQL installed functions that reference is_deleted.
 
-ALTER TABLE invoice_payments ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN NOT NULL DEFAULT false;
-ALTER TABLE invoice_payments ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
-ALTER TABLE invoice_payments ADD COLUMN IF NOT EXISTS deleted_by UUID;
+ALTER TABLE "invoice_payments" ADD COLUMN IF NOT EXISTS "is_deleted" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "invoice_payments" ADD COLUMN IF NOT EXISTS "deleted_at" TIMESTAMPTZ(6);
+ALTER TABLE "invoice_payments" ADD COLUMN IF NOT EXISTS "deleted_by" UUID;
 
+-- Parameter name must stay `invoice_uuid` for CREATE OR REPLACE on DBs that already had this function (PG 42P13).
 CREATE OR REPLACE FUNCTION calculate_invoice_balance(invoice_uuid UUID)
 RETURNS DECIMAL(12,2) AS $$
 DECLARE

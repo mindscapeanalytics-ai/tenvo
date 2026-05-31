@@ -150,7 +150,7 @@ export default function MarketingNav({
                       href="/solutions/marketing-crm#campaigns"
                       icon={<Megaphone className="w-5 h-5" />}
                       title="Campaigns & marketing"
-                      desc="Promotions and segments tied to real orders — not a siloed list tool."
+                      desc="Promotions and segments tied to real orders - not a siloed list tool."
                     />
                     <DropdownLink
                       href="/solutions/marketing-crm#crm"
