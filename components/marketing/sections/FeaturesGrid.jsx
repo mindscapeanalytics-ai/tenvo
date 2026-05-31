@@ -61,11 +61,15 @@ export default function FeaturesGrid({
           <div className={`grid grid-cols-1 ${getGridClass()} gap-8`}>
             {features.map((feature, index) => {
               const FeatureIcon = feature.icon ? LucideIcons[feature.icon] : null;
-              
+              const gridOnlyAnchor = ['analytics', 'security', 'cloud', 'growth-crm', 'order-hub'].includes(
+                feature.id
+              );
+
               return (
                 <div
                   key={feature.id}
-                  className={`group relative bg-white rounded-2xl p-8 border border-neutral-200 hover:border-brand-300 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 ${
+                  id={gridOnlyAnchor ? feature.id : undefined}
+                  className={`group relative scroll-mt-28 bg-white rounded-2xl p-8 border border-neutral-200 hover:border-brand-300 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 ${
                     mounted ? 'animate-fade-in-up' : 'opacity-0'
                   }`}
                   style={{ animationDelay: `${index * 100}ms` }}

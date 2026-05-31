@@ -6,6 +6,7 @@ import { Bot, MessageCircle, Send, X, Loader2, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { TENVO_PARENT_COMPANY } from '@/lib/marketing/tenvo-assistant-knowledge';
+import AssistantMessageMarkdown from '@/components/marketing/AssistantMessageMarkdown';
 
 const STARTER = `Hi, I am TENVO's assistant. Ask about inventory, storefront, POS, pricing, demos, or how we compare to stitched-together tools. We go deep in Pakistan at launch and scale globally. For corporate or partnership questions, I can point you to Mindscape Analytics LLC.`;
 
@@ -150,17 +151,26 @@ export default function MarketingAssistantWidget() {
               >
                 <div
                   className={cn(
-                    'max-w-[92%] rounded-2xl px-3 py-2 text-[13px] leading-relaxed shadow-sm',
+                    'max-w-[92%] rounded-2xl px-3 py-2 shadow-sm',
                     msg.role === 'user'
-                      ? 'rounded-br-md bg-brand-primary text-white'
+                      ? 'rounded-br-md bg-brand-primary text-[13px] leading-relaxed text-white'
                       : 'rounded-bl-md border border-neutral-200/80 bg-white text-neutral-800'
                   )}
                 >
-                  {msg.content}
+                  {msg.role === 'user' ? (
+                    <span className="block whitespace-pre-wrap break-words">{msg.content}</span>
+                  ) : (
+                    <AssistantMessageMarkdown>{msg.content}</AssistantMessageMarkdown>
+                  )}
                 </div>
               </div>
             ))}
-            {loading && (
+            {loading &&
+              !(
+                messages.length > 0 &&
+                messages[messages.length - 1]?.role === 'assistant' &&
+                messages[messages.length - 1]?.content?.trim()
+              ) && (
               <div className="flex items-center gap-2 text-xs font-semibold text-neutral-500">
                 <Loader2 className="h-4 w-4 animate-spin text-brand-primary" aria-hidden />
                 Thinking…

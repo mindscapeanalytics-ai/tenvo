@@ -84,7 +84,7 @@ export default function FeaturesPage() {
               ]}
             />
             <FeatureDetail
-              id="analytics"
+              id="accounting"
               title="Advanced Accounting"
               description="Full double-entry accounting with chart of accounts, journal entries, financial statements, and multi-currency support."
               features={[
@@ -108,7 +108,7 @@ export default function FeaturesPage() {
               ]}
             />
             <FeatureDetail
-              id="security"
+              id="storefront"
               title="Branded storefront & checkout"
               description="Launch a customer-facing shop that reflects your brand, with catalog, cart, checkout, and post-purchase pages aligned to your live stock and fulfilment rules."
               features={[
@@ -120,6 +120,7 @@ export default function FeaturesPage() {
               ]}
             />
             <FeatureDetail
+              id="pos-hospitality"
               title="POS, tables & kitchen coordination"
               description="Serve walk-in retail alongside cafés and dining - roles, permissions, and selling surfaces tuned for how mixed-format businesses actually operate."
               features={[

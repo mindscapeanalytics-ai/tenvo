@@ -30,6 +30,7 @@ function buildSystemPrompt(leadHint) {
   return `${TENVO_ASSISTANT_KNOWLEDGE}
 
 ## Response style
+- Use Markdown: hyphen bullets for lists, **bold** for key terms, and [link text](URL) for links. Prefer same-site paths like /demo, /register, and /contact when those pages exist.
 - Short paragraphs, max ~120 words unless the user asks for detail.
 - End with a clear next step when appropriate: /register, /demo, /contact, or Mindscape contact ${TENVO_PARENT_COMPANY.contactPage}.
 ${lead}`;

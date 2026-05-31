@@ -245,6 +245,21 @@ export default function CommerceAndIntelligenceSection({ variant = 'homepage' })
             </Link>
           </Button>
         </div>
+        <p
+          className={`mt-6 text-center text-xs font-semibold ${
+            isCompact ? 'text-neutral-600' : 'text-neutral-400'
+          }`}
+        >
+          <Link
+            href="/solutions/marketing-crm"
+            className={`font-black underline-offset-2 hover:underline ${
+              isCompact ? 'text-brand-primary' : 'text-white'
+            }`}
+          >
+            Campaigns, loyalty &amp; analytics
+          </Link>{' '}
+          — same customer and order data as this stack.
+        </p>
       </div>
     </section>
   );

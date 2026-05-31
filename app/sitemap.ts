@@ -10,6 +10,7 @@ const PATHS = [
   '/demo',
   '/integrations',
   '/industries',
+  '/solutions/marketing-crm',
   '/why-tenvo',
   '/register',
   '/login',

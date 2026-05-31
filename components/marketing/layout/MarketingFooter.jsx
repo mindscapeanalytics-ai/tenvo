@@ -112,6 +112,8 @@ export default function MarketingFooter({ variant = 'default' }) {
               <li><a href="/features" className="hover:text-brand-primary-dark transition-colors">Core Features</a></li>
               <li><a href="/features#integrations" className="hover:text-brand-primary-dark transition-colors">Integrations</a></li>
               <li><a href="/features#compliance" className="hover:text-brand-primary-dark transition-colors">Compliance</a></li>
+              <li><a href="/solutions/marketing-crm" className="hover:text-brand-primary-dark transition-colors">Marketing &amp; CRM</a></li>
+              <li><a href="/features#accounting" className="hover:text-brand-primary-dark transition-colors">Accounting</a></li>
               <li><a href="/features#security" className="hover:text-brand-primary-dark transition-colors">Security</a></li>
               <li><a href="/pricing" className="hover:text-brand-primary-dark transition-colors">Pricing</a></li>
               <li><a href="/industries" className="hover:text-brand-primary-dark transition-colors">Industries</a></li>

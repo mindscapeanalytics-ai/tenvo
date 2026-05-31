@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Menu, X, ChevronDown, Package, Receipt, Briefcase, Store, Factory, Globe, ShoppingBag, UtensilsCrossed } from 'lucide-react';
+import { Menu, X, ChevronDown, Package, Receipt, Briefcase, Store, Factory, Globe, ShoppingBag, UtensilsCrossed, Megaphone, Heart, Brain, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { trackNavMenuOpen, trackCTAClick } from '@/lib/analytics/tracking';
 import { useAuth } from '@/lib/context/AuthContext';
@@ -89,23 +89,23 @@ export default function MarketingNav({
                 onToggle={() => toggleMenu('solutions')}
                 triggerClassName={navItemClass}
               >
-                <div className="w-[640px] p-8 grid grid-cols-2 gap-8">
+                <div className="grid w-[min(96vw,56rem)] grid-cols-1 gap-6 p-6 sm:p-8 lg:grid-cols-3 lg:gap-8">
                   <div>
                     <h4 className="text-[10px] font-black text-gray-400 mb-6 uppercase tracking-widest">Enterprise Core</h4>
                     <DropdownLink
-                      href="/register"
+                      href="/features#inventory"
                       icon={<Package className="w-5 h-5" />}
                       title="Inventory Engine"
                       desc="Precision stock control with batch & serial tracking."
                     />
                     <DropdownLink
-                      href="/register"
+                      href="/features#compliance"
                       icon={<Receipt className="w-5 h-5" />}
                       title="Tax Compliance"
                       desc="FBR-aligned sales tax and provincial workflows for Pakistan."
                     />
                     <DropdownLink
-                      href="/register"
+                      href="/features#accounting"
                       icon={<Briefcase className="w-5 h-5" />}
                       title="General Ledger"
                       desc="Double-entry accounting for professionals."
@@ -132,16 +132,43 @@ export default function MarketingNav({
                       desc="Wholesale and distribution management."
                     />
                     <DropdownLink
-                      href="/why-tenvo"
+                      href="/features#storefront"
                       icon={<ShoppingBag className="w-5 h-5" />}
                       title="Branded online store"
                       desc="Public storefront in sync with stock & POS."
                     />
                     <DropdownLink
-                      href="/why-tenvo"
+                      href="/features#pos-hospitality"
                       icon={<UtensilsCrossed className="w-5 h-5" />}
                       title="Cafés & restaurants"
                       desc="Tables, service, and kitchen-aware selling."
+                    />
+                  </div>
+                  <div>
+                    <h4 className="text-[10px] font-black text-gray-400 mb-6 uppercase tracking-widest">Growth & customers</h4>
+                    <DropdownLink
+                      href="/solutions/marketing-crm#campaigns"
+                      icon={<Megaphone className="w-5 h-5" />}
+                      title="Campaigns & marketing"
+                      desc="Promotions and segments tied to real orders — not a siloed list tool."
+                    />
+                    <DropdownLink
+                      href="/solutions/marketing-crm#crm"
+                      icon={<Heart className="w-5 h-5" />}
+                      title="Loyalty & CRM"
+                      desc="Rewards and customer context next to POS and web sales."
+                    />
+                    <DropdownLink
+                      href="/features#analytics"
+                      icon={<Brain className="w-5 h-5" />}
+                      title="Analytics & AI"
+                      desc="Dashboards and reporting from one operational ledger."
+                    />
+                    <DropdownLink
+                      href="/solutions/marketing-crm#sales-suite"
+                      icon={<TrendingUp className="w-5 h-5" />}
+                      title="Quotations & sales pipeline"
+                      desc="B2B quotes and follow-ups with live stock awareness."
                     />
                   </div>
                 </div>
@@ -265,6 +292,12 @@ export default function MarketingNav({
               onClick={() => router.push('/pricing')}
             >
               Pricing
+            </button>
+            <button
+              className="w-full text-left font-bold text-gray-700 px-2 py-2 hover:text-brand-primary-dark transition-colors"
+              onClick={() => router.push('/solutions/marketing-crm')}
+            >
+              Marketing &amp; CRM
             </button>
             <button
               className="w-full text-left font-bold text-gray-700 px-2 py-2 hover:text-brand-primary-dark transition-colors"
