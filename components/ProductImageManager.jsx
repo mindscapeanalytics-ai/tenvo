@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import Image from 'next/image';
 import {
   Upload, Link2, Sparkles, X, Check, Loader2,
@@ -36,6 +36,10 @@ export function ProductImageManager({ value, onChange, productName = '', categor
   const [fetching, setFetching] = useState(false);
   const [preview, setPreview] = useState(value || '');
   const fileRef = useRef(null);
+
+  useEffect(() => {
+    setPreview(value || '');
+  }, [value]);
 
   const commit = useCallback(
     (url) => {

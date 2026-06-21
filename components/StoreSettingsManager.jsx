@@ -16,11 +16,14 @@ import {
   CheckCircle2, XCircle, Package, Info
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
-import { 
-  getStorefrontSettings, updateBusinessSettings, 
-  configureStorefrontDomain, syncInventoryToStorefront 
+import {
+  getStorefrontSettings, updateBusinessSettings,
+  configureStorefrontDomain, syncInventoryToStorefront
 } from '@/lib/actions/storefront/admin';
+import { MobileTabHeader } from '@/components/mobile/MobileTabHeader';
+import { useStorefrontEmbedded } from '@/lib/context/StorefrontMobileContext';
 
 // ── Image Upload Field ────────────────────────────────────────────────────────
 function ImageUploadField({ label, hint, value, onChange }) {
@@ -215,10 +218,53 @@ export function StoreSettingsManager({ business, category }) {
     );
   }
 
+  const embeddedInStorefront = useStorefrontEmbedded();
+
   return (
-    <div className="space-y-5">
-      {/* ── Header ──────────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between">
+    <div className="space-y-2 lg:space-y-5">
+      {!embeddedInStorefront && (
+        <MobileTabHeader
+          icon={Store}
+          iconClassName="bg-emerald-100 text-emerald-600"
+          title="Online Store"
+          subtitle={settings.enabled ? 'Store is live' : 'Store is offline'}
+          primaryAction={{
+            label: saving ? 'Saving…' : 'Save',
+            icon: Save,
+            className: 'bg-emerald-600 hover:bg-emerald-700 text-white',
+            onClick: handleSave,
+          }}
+          actions={
+            fullStoreUrl
+              ? [{ id: 'view', label: 'View', icon: ExternalLink, onClick: () => window.open(storeUrl, '_blank', 'noopener,noreferrer') }]
+              : []
+          }
+        />
+      )}
+
+      {embeddedInStorefront && (
+        <div className="flex items-center justify-between gap-2 lg:hidden">
+          <span className={cn(
+            'rounded-full px-2 py-0.5 text-[10px] font-semibold',
+            settings.enabled ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'
+          )}>
+            {settings.enabled ? 'Live' : 'Offline'}
+          </span>
+          <div className="flex gap-1">
+            {fullStoreUrl && (
+              <Button type="button" variant="outline" size="sm" className="h-8 px-2.5 text-[10px]" onClick={() => window.open(storeUrl, '_blank', 'noopener,noreferrer')}>
+                <ExternalLink className="mr-1 h-3 w-3" /> View
+              </Button>
+            )}
+            <Button type="button" size="sm" className="h-8 bg-emerald-600 px-2.5 text-[10px] text-white hover:bg-emerald-700" onClick={handleSave} disabled={saving}>
+              <Save className="mr-1 h-3 w-3" /> {saving ? 'Saving…' : 'Save'}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Desktop header */}
+      <div className="hidden items-center justify-between lg:flex">
         <div>
           <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
             <Store className="w-5 h-5 text-gray-600" />

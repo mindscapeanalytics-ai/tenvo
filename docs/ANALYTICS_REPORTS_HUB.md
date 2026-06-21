@@ -8,8 +8,8 @@ This document describes how **Analytics & Reports** (`DashboardTabs` → `report
 |--------|-----------|---------------------|
 | **Analytics** | `components/AdvancedAnalytics.jsx` | `getAnalyticsBundleAction` (single round-trip) — internally same SQL as the individual actions, scoped by the **dashboard header date range** |
 | **Demand Forecast** | `components/DemandForecast.tsx` | `getDemandForecastAction` (+ `AIOrderForecaster` when enabled) |
-| **AI Insights** | `components/intelligence/AIInsightsPanel.jsx` | `getAnalyticsBundleAction` + `getDemandForecastAction` (with range) + promos + restock suggestions |
-| **Report Builder** | `components/reports/ReportBuilder.jsx` | Canvas widgets remain **layout/demo**; **live snapshot** uses `getAnalyticsBundleAction` with **`mergeReportWindowFilter`**: default **Match header** uses the dashboard range; other presets re-anchor `{ from, to }` on the header **`to`** date. **Save layout / load / export JSON / top-products CSV** persist layouts in **localStorage** (per `business_id`, max 20) until a DB-backed model exists. |
+| **AI Insights** | `components/intelligence/AIInsightsPanel.jsx` | `getAnalyticsBundleAction` + `getDemandForecastAction` (with range and **domain `intelligence`** from `getDomainKnowledge(category)`) + promos + restock suggestions |
+| **Report Builder** | `components/reports/ReportBuilder.jsx` | Canvas starts empty (templates / Add widget). **Live snapshot** uses `getAnalyticsBundleAction` with **`mergeReportWindowFilter`**: default **Match header** uses the dashboard range; other presets re-anchor `{ from, to }` on the header **`to`** date. Table and summary widgets can show **live top products** and range / 6-mo figures from the snapshot. **Save layout / load / export JSON / top-products CSV** persist layouts in **localStorage** (per `business_id`, max 20) until a DB-backed model exists. |
 
 All analytics actions go through `withGuard(..., 'ai_analytics')` and `analytics.basic` permission.
 

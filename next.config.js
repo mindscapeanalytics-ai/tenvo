@@ -3,6 +3,11 @@ const path = require('path');
 
 const nextConfig = {
   reactStrictMode: true,
+  async redirects() {
+    return [
+      { source: '/favicon.ico', destination: '/favicon.svg', permanent: false },
+    ];
+  },
   images: {
     // Allow Next.js Image optimization with a domain allowlist
     remotePatterns: [

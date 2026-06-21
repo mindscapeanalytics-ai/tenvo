@@ -7,15 +7,14 @@ import { useLanguage } from '@/lib/context/LanguageContext';
 import { FilterProvider } from '@/lib/context/FilterContext';
 import { DataProvider } from '@/lib/context/DataContext';
 import { GlobalCommandPalette } from '@/components/GlobalCommandPalette';
-import { useBusiness } from '@/lib/context/BusinessContext';
 import { AgenticFloatingChatbot } from '@/components/layout/AgenticFloatingChatbot';
 import { SubscriptionBillingBanner } from '@/components/billing/SubscriptionBillingBanner';
+import { HubMobileBottomNav } from '@/components/layout/HubMobileBottomNav';
 
 export default function BusinessLayout({ children }) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
     const { language } = useLanguage();
-    const { business } = useBusiness();
 
     const sidebarWidth = isSidebarCollapsed ? '20' : '64';
     const marginClass = language === 'ur'
@@ -39,17 +38,14 @@ export default function BusinessLayout({ children }) {
                     <div className={`flex-1 flex flex-col h-full min-w-0 transition-all duration-300 ${marginClass}`}>
                         <Header onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
 
-                        <main className="flex-1 p-4 lg:p-6 overflow-y-auto custom-scrollbar">
+                        <main className="flex-1 overflow-y-auto custom-scrollbar p-3 pb-20 lg:p-6 lg:pb-6">
                             <SubscriptionBillingBanner />
                             {children}
                         </main>
                     </div>
                 </div>
-                <AgenticFloatingChatbot 
-                    businessId={business?.id} 
-                    businessName={business?.business_name} 
-                    businessCategory={business?.category} 
-                />
+                <HubMobileBottomNav />
+                <AgenticFloatingChatbot />
             </DataProvider>
         </FilterProvider>
     );

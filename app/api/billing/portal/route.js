@@ -4,6 +4,7 @@ import { createBillingPortalSession } from '@/lib/payments/stripe';
 import { getSessionUser } from '@/lib/auth/session';
 import { assertUserHasBusinessAccess } from '@/lib/tenancy/businessAccess';
 import { isManualBillingMode } from '@/lib/config/billingMode';
+import { businessHubUrl } from '@/lib/utils/billingReturnUrls';
 
 /**
  * POST /api/billing/portal
@@ -51,7 +52,7 @@ export async function POST(request) {
 
     const business = await prismaBase.businesses.findUnique({
       where: { id: businessId },
-      select: { stripe_customer_id: true },
+      select: { stripe_customer_id: true, domain: true },
     });
 
     if (!business) {
@@ -69,8 +70,14 @@ export async function POST(request) {
       );
     }
 
+    const appBase = (process.env.NEXT_PUBLIC_APP_URL || '').replace(/\/$/, '');
+    const domainSlug = String(business.domain || '').trim().toLowerCase();
     const returnUrlFull =
-      returnUrl || `${process.env.NEXT_PUBLIC_APP_URL}/business/settings/billing`;
+      typeof returnUrl === 'string' && returnUrl.trim().startsWith('http')
+        ? returnUrl.trim()
+        : domainSlug
+          ? businessHubUrl(appBase, domainSlug, { tab: 'settings', billing: 'portal_return' })
+          : `${appBase}/pricing?billing=portal_return`;
 
     const portalResult = await createBillingPortalSession({
       customerId,

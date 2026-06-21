@@ -186,18 +186,10 @@ const PRESET_TEMPLATES = [
     },
 ];
 
-const DEMO_WIDGETS = [
-    { id: 'w1', type: 'kpi', source: 'sales', title: 'Total Revenue', value: '1,245,000', trend: '+12.3%', positive: true, col: 4 },
-    { id: 'w2', type: 'kpi', source: 'sales', title: 'Orders', value: '342', trend: '+8.1%', positive: true, col: 4 },
-    { id: 'w3', type: 'kpi', source: 'sales', title: 'Avg. Order Value', value: '3,640', trend: '-2.4%', positive: false, col: 4 },
-    { id: 'w4', type: 'bar', source: 'sales', title: 'Revenue by Category', col: 6 },
-    { id: 'w5', type: 'pie', source: 'inventory', title: 'Stock Distribution', col: 6 },
-    { id: 'w6', type: 'table', source: 'sales', title: 'Top 10 Products', col: 12 },
-];
-
-function WidgetPreview({ widget, onRemove }) {
+function WidgetPreview({ widget, onRemove, liveSnapshot, currency }) {
     const typeConfig = WIDGET_TYPES.find(w => w.id === widget.type);
     const Icon = typeConfig?.icon || Layers;
+    const lineGradId = `lineGrad-${widget.id}`;
 
     return (
         <motion.div
@@ -236,66 +228,106 @@ function WidgetPreview({ widget, onRemove }) {
                             {widget.trend}
                         </span>
                     )}
+                    {liveSnapshot?.kpi ? (
+                        <p className="text-[10px] text-gray-500 mt-2 font-medium">
+                            Live: growth {liveSnapshot.kpi.growth?.value ?? '—'} · 6-mo revenue {formatCurrency(liveSnapshot.trailingRevenue || 0, currency)}
+                        </p>
+                    ) : null}
                 </div>
             )}
             {widget.type === 'bar' && (
-                <div className="flex items-end gap-2 h-24 px-4 pt-2">
-                    {[65, 45, 80, 55, 90, 70, 50, 85].map((h, i) => (
-                        <div key={i} className="flex-1 bg-indigo-100 rounded-t-md hover:bg-indigo-300 transition-colors"
-                            style={{ height: `${h}%` }} />
-                    ))}
+                <div>
+                    <p className="text-[9px] text-gray-400 mb-2">Chart layout preview — open Analytics for full revenue charts.</p>
+                    <div className="flex items-end gap-2 h-24 px-4 pt-2">
+                        {[65, 45, 80, 55, 90, 70, 50, 85].map((h, i) => (
+                            <div key={i} className="flex-1 bg-indigo-100 rounded-t-md hover:bg-indigo-300 transition-colors"
+                                style={{ height: `${h}%` }} />
+                        ))}
+                    </div>
                 </div>
             )}
             {widget.type === 'line' && (
-                <div className="h-24 flex items-end px-2">
-                    <svg viewBox="0 0 200 80" className="w-full h-full" preserveAspectRatio="none">
-                        <path d="M0,60 Q30,40 50,50 Q80,20 100,35 Q130,10 160,25 Q180,15 200,20"
-                            fill="none" stroke="#6366F1" strokeWidth="2.5" />
-                        <path d="M0,60 Q30,40 50,50 Q80,20 100,35 Q130,10 160,25 Q180,15 200,20 L200,80 L0,80 Z"
-                            fill="url(#lineGrad)" opacity="0.15" />
-                        <defs>
-                            <linearGradient id="lineGrad" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stopColor="#6366F1" />
-                                <stop offset="100%" stopColor="#6366F1" stopOpacity="0" />
-                            </linearGradient>
-                        </defs>
-                    </svg>
+                <div>
+                    <p className="text-[9px] text-gray-400 mb-1 px-2">Trend preview — live monthly series is in Analytics.</p>
+                    <div className="h-24 flex items-end px-2">
+                        <svg viewBox="0 0 200 80" className="w-full h-full" preserveAspectRatio="none">
+                            <path d="M0,60 Q30,40 50,50 Q80,20 100,35 Q130,10 160,25 Q180,15 200,20"
+                                fill="none" stroke="#6366F1" strokeWidth="2.5" />
+                            <path d="M0,60 Q30,40 50,50 Q80,20 100,35 Q130,10 160,25 Q180,15 200,20 L200,80 L0,80 Z"
+                                fill={`url(#${lineGradId})`} opacity="0.15" />
+                            <defs>
+                                <linearGradient id={lineGradId} x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0%" stopColor="#6366F1" />
+                                    <stop offset="100%" stopColor="#6366F1" stopOpacity="0" />
+                                </linearGradient>
+                            </defs>
+                        </svg>
+                    </div>
                 </div>
             )}
             {widget.type === 'pie' && (
-                <div className="flex items-center justify-center h-24">
-                    <svg viewBox="0 0 100 100" className="w-20 h-20">
-                        <circle cx="50" cy="50" r="40" fill="none" stroke="#E0E7FF" strokeWidth="20" />
-                        <circle cx="50" cy="50" r="40" fill="none" stroke="#6366F1" strokeWidth="20"
-                            strokeDasharray="100 251" strokeDashoffset="0" transform="rotate(-90 50 50)" />
-                        <circle cx="50" cy="50" r="40" fill="none" stroke="#818CF8" strokeWidth="20"
-                            strokeDasharray="70 251" strokeDashoffset="-100" transform="rotate(-90 50 50)" />
-                        <circle cx="50" cy="50" r="40" fill="none" stroke="#C7D2FE" strokeWidth="20"
-                            strokeDasharray="81 251" strokeDashoffset="-170" transform="rotate(-90 50 50)" />
-                    </svg>
+                <div>
+                    <p className="text-[9px] text-gray-400 mb-2 text-center">Composition preview — category pie uses the same bundle in Analytics.</p>
+                    <div className="flex items-center justify-center h-24">
+                        <svg viewBox="0 0 100 100" className="w-20 h-20">
+                            <circle cx="50" cy="50" r="40" fill="none" stroke="#E0E7FF" strokeWidth="20" />
+                            <circle cx="50" cy="50" r="40" fill="none" stroke="#6366F1" strokeWidth="20"
+                                strokeDasharray="100 251" strokeDashoffset="0" transform="rotate(-90 50 50)" />
+                            <circle cx="50" cy="50" r="40" fill="none" stroke="#818CF8" strokeWidth="20"
+                                strokeDasharray="70 251" strokeDashoffset="-100" transform="rotate(-90 50 50)" />
+                            <circle cx="50" cy="50" r="40" fill="none" stroke="#C7D2FE" strokeWidth="20"
+                                strokeDasharray="81 251" strokeDashoffset="-170" transform="rotate(-90 50 50)" />
+                        </svg>
+                    </div>
                 </div>
             )}
             {widget.type === 'table' && (
-                <div className="space-y-1">
-                    {[1, 2, 3].map(i => (
-                        <div key={i} className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg">
-                            <div className="h-2 bg-gray-200 rounded flex-1" style={{ width: `${80 - i * 15}%` }} />
-                            <div className="h-2 bg-gray-200 rounded w-16" />
-                            <div className="h-2 bg-gray-200 rounded w-12" />
-                        </div>
-                    ))}
-                </div>
+                liveSnapshot?.topProducts?.length ? (
+                    <div className="space-y-1 max-h-36 overflow-y-auto text-left">
+                        {liveSnapshot.topProducts.slice(0, 12).map((p, i) => (
+                            <div key={`${p.name}-${i}`} className="flex justify-between gap-2 p-2 bg-gray-50 rounded-lg text-[10px]">
+                                <span className="font-semibold text-gray-800 truncate">{p.name}</span>
+                                <span className="shrink-0 font-bold text-gray-700">{formatCurrency(Number(p.value) || 0, currency)}</span>
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    <p className="text-[10px] text-gray-400 text-center py-3">No table rows for this window — add sales or widen the report range.</p>
+                )
             )}
             {widget.type === 'summary' && (
                 <div className="space-y-2 py-2">
-                    {['Revenue', 'Expenses', 'Net Profit'].map((lbl, i) => (
-                        <div key={lbl} className="flex justify-between text-sm">
-                            <span className={i === 2 ? 'font-black text-gray-900' : 'text-gray-500'}>{lbl}</span>
-                            <span className={i === 2 ? 'font-black text-emerald-600' : 'text-gray-700'}>
-                                {i === 0 ? '1,245,000' : i === 1 ? '820,000' : '425,000'}
-                            </span>
-                        </div>
-                    ))}
+                    {liveSnapshot?.kpi ? (
+                        <>
+                            <div className="flex justify-between text-xs">
+                                <span className="text-gray-500">Range revenue</span>
+                                <span className="font-bold text-gray-800">
+                                    {formatCurrency(Number(liveSnapshot.kpi.growthDetail?.periodRevenue) || 0, currency)}
+                                </span>
+                            </div>
+                            <div className="flex justify-between text-xs">
+                                <span className="text-gray-500">6-mo revenue (chart series)</span>
+                                <span className="font-bold text-gray-800">
+                                    {formatCurrency(Number(liveSnapshot.trailingRevenue) || 0, currency)}
+                                </span>
+                            </div>
+                            <div className="flex justify-between text-sm border-t border-gray-100 pt-2">
+                                <span className="font-black text-gray-900">6-mo GL profit (net)</span>
+                                <span className="font-black text-emerald-600">
+                                    {formatCurrency(Number(liveSnapshot.trailingProfit) || 0, currency)}
+                                </span>
+                            </div>
+                        </>
+                    ) : (
+                        <>
+                            {['Revenue', 'Expenses', 'Net profit'].map((lbl, i) => (
+                                <div key={lbl} className="flex justify-between text-sm">
+                                    <span className={i === 2 ? 'font-black text-gray-900' : 'text-gray-500'}>{lbl}</span>
+                                    <span className={i === 2 ? 'font-black text-emerald-600' : 'text-gray-700'}>—</span>
+                                </div>
+                            ))}
+                        </>
+                    )}
                 </div>
             )}
         </motion.div>
@@ -303,7 +335,7 @@ function WidgetPreview({ widget, onRemove }) {
 }
 
 export function ReportBuilder({ businessId, currency = 'PKR', dateRange: dashboardDateRange }) {
-    const [widgets, setWidgets] = useState(DEMO_WIDGETS);
+    const [widgets, setWidgets] = useState([]);
     const [showAddWidget, setShowAddWidget] = useState(false);
     const idCounterRef = useRef(1);
     const [reportName, setReportName] = useState('My Custom Report');
@@ -548,11 +580,11 @@ export function ReportBuilder({ businessId, currency = 'PKR', dateRange: dashboa
                 <Button variant="outline" className="h-10 text-xs font-bold rounded-xl border-2" onClick={() => setShowAddWidget(true)}>
                     <Plus className="w-4 h-4 mr-2" /> Add Widget
                 </Button>
-                <Button variant="outline" className="h-10 text-xs font-bold rounded-xl border-2">
+                <Button variant="outline" className="h-10 text-xs font-bold rounded-xl border-2" type="button" title="PDF export coming soon" disabled>
                     <Download className="w-4 h-4 mr-2" /> Export PDF
                 </Button>
-                <Button className="h-10 font-bold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white">
-                    <Save className="w-4 h-4 mr-2" /> Save Report
+                <Button className="h-10 font-bold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white" type="button" onClick={handleSaveLayout}>
+                    <Save className="w-4 h-4 mr-2" /> Save report
                 </Button>
             </div>
 
@@ -576,8 +608,14 @@ export function ReportBuilder({ businessId, currency = 'PKR', dateRange: dashboa
             {/* Report Canvas */}
             <div className="grid grid-cols-12 gap-4 min-h-[400px]">
                 <AnimatePresence>
-                    {widgets.map(widget => (
-                        <WidgetPreview key={widget.id} widget={widget} onRemove={handleRemoveWidget} />
+                    {widgets.map((widget) => (
+                        <WidgetPreview
+                            key={widget.id}
+                            widget={widget}
+                            onRemove={handleRemoveWidget}
+                            liveSnapshot={liveSnapshot}
+                            currency={currency}
+                        />
                     ))}
                 </AnimatePresence>
 

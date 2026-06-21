@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useParams, useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/context/AuthContext';
 import { useBusiness } from '@/lib/context/BusinessContext';
 import {
@@ -18,7 +18,7 @@ import { payrollAPI } from '@/lib/api/payroll';
 import { workflowAPI } from '@/lib/api/workflow';
 import { bulkDeleteAction } from '@/lib/actions/premium/automation/bulk';
 import { getTablesAction, getKitchenQueueAction } from '@/lib/actions/standard/restaurant';
-import { formatInventoryActionError } from '@/lib/utils/productMutationPayload';
+import { formatInventoryActionError, isPersistedProductUuid } from '@/lib/utils/productMutationPayload';
 import { Button } from '@/components/ui/button';
 import { Tabs } from '@/components/ui/tabs';
 import { ProductForm } from '@/components/ProductForm';
@@ -26,14 +26,17 @@ import { EnhancedInvoiceBuilder } from '@/components/EnhancedInvoiceBuilder';
 import { CustomerForm } from '@/components/CustomerForm';
 import { SetupWizard } from '@/components/onboarding/SetupWizard';
 import { getDomainColors } from '@/lib/domainColors';
-import { getDomainKnowledge } from '@/lib/domainKnowledge';
+import { getDomainKnowledgeForBusiness } from '@/lib/utils/businessRegionalContext';
 import { formatCurrency } from '@/lib/currency';
 import toast from 'react-hot-toast';
+import { getPurchaseStatusLabel, PURCHASE_STATUSES } from '@/lib/constants/purchaseStatus';
+import notify, { TOAST_IDS } from '@/lib/utils/appToast';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { useFilters } from '@/lib/context/FilterContext';
 import { useData } from '@/lib/context/DataContext';
 import { getDateRangeFromPreset } from '@/lib/utils/datePresets';
 import { isBatchTrackingEnabled, isSerialTrackingEnabled } from '@/lib/utils/domainHelpers';
+import { filterMeaningfulBatches, filterMeaningfulSerials } from '@/lib/utils/inventoryTrackingHelpers';
 import { isEntitlementError, getEntitlementErrorMessage, markEntitlementErrorHandled } from '@/lib/utils/subscriptionErrors';
 import { ActionModals } from './components/ActionModals';
 import { DashboardTabs } from './components/DashboardTabs';
@@ -42,6 +45,7 @@ import { useResourceLimits } from '@/lib/hooks/useResourceLimits';
 import { getDomainConfig } from '@/lib/config/domains';
 import { QUICK_ACTION_IDS } from '@/lib/config/quickActions';
 import { normalizeDashboardTab, resolveDashboardTab } from '@/lib/config/tabs';
+import { TRIAL_CONFIG } from '@/lib/config/platform';
 
 /**
  * Role-based / vertical dashboard templates emit string action ids (`view-*`, etc.).
@@ -60,6 +64,7 @@ const QUICK_VIEW_ACTION_TO_TAB = {
   'view-team-details': 'payroll',
   'view-profit-loss': 'finance',
   'view-balance-sheet': 'finance',
+  'view-general-ledger': 'finance',
   'view-category-expenses': 'expenses',
   'view-all-expenses': 'expenses',
   'view-all-accounts': 'accounting',
@@ -85,6 +90,7 @@ const QUICK_VIEW_ACTION_TO_TAB = {
 function BusinessDashboardContent() {
   const params = useParams();
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   // Auth & Business context -- must come before any hook that references `business`
   const {
@@ -93,8 +99,11 @@ function BusinessDashboardContent() {
     planTier: contextPlanTier,
     updateBusiness,
     isLoading: businessLoading,
-    switchBusinessByDomain
+    switchBusinessByDomain,
+    regionalStandards,
   } = useBusiness();
+
+  const countryIso = regionalStandards?.countryCode || 'PK';
 
   // Use business domain for URL routing, but keep category for UI rendering logic
   const currentDomain = business?.domain || String(params?.category || 'retail-shop');
@@ -117,6 +126,47 @@ function BusinessDashboardContent() {
       setOptimisticTab(null);
     });
   }, [optimisticTab, resolvedUrlTab]);
+
+  useEffect(() => {
+    const billing = searchParams.get('billing');
+    const legacyPayment = searchParams.get('payment');
+    const cryptoFlag = searchParams.get('crypto');
+    const showSuccess =
+      billing === 'success' || legacyPayment === 'success' || cryptoFlag === 'success';
+    const showCancelled = billing === 'cancelled' || cryptoFlag === 'cancelled';
+    if (!showSuccess && !showCancelled) return;
+
+    const toastFingerprint = `tenvo-billing-return:${billing || ''}:${legacyPayment || ''}:${cryptoFlag || ''}`;
+    const alreadyShown =
+      typeof sessionStorage !== 'undefined' && sessionStorage.getItem(toastFingerprint) === '1';
+
+    if (!alreadyShown) {
+      if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.setItem(toastFingerprint, '1');
+      }
+
+      if (billing === 'success' || legacyPayment === 'success') {
+        notify.success(
+          `Subscription confirmed. Your ${TRIAL_CONFIG.durationDays}-day trial applies on card checkout; manage billing in Settings.`,
+          { id: TOAST_IDS.BILLING_RETURN, duration: 6000 }
+        );
+      } else if (cryptoFlag === 'success') {
+        notify.success('Crypto payment status will update when the transfer confirms.', {
+          id: TOAST_IDS.BILLING_RETURN,
+        });
+      } else if (showCancelled) {
+        notify.info('Checkout was cancelled.', { id: TOAST_IDS.BILLING_RETURN });
+      }
+    }
+
+    const next = new URLSearchParams(searchParams.toString());
+    for (const k of ['billing', 'payment', 'session_id', 'crypto', 'order_id']) {
+      next.delete(k);
+    }
+    const q = next.toString();
+    const basePath = pathname || `/business/${encodeURIComponent(currentDomain)}`;
+    router.replace(q ? `${basePath}?${q}` : basePath, { scroll: false });
+  }, [searchParams, router, pathname, currentDomain]);
 
   // Sync URL when state changes (e.g. valid tab click)
   const handleTabChange = useCallback((val) => {
@@ -147,10 +197,30 @@ function BusinessDashboardContent() {
   const [viewingItem, setViewingItem] = useState(null);
   const [viewingType, setViewingType] = useState(null);
 
+  const [financeInitialTab, setFinanceInitialTab] = useState(null);
+
+  useEffect(() => {
+    const financeView = searchParams.get('financeView');
+    if (financeView) {
+      setFinanceInitialTab(financeView);
+    }
+  }, [searchParams]);
+
   const handleQuickAction = useCallback((actionId) => {
     if (actionId == null) return;
     const id = String(actionId).trim();
     if (!id) return;
+
+    if (id === 'view-profit-loss' || id === 'view-balance-sheet') {
+      setFinanceInitialTab('statements');
+      handleTabChange('finance');
+      return;
+    }
+    if (id === 'view-general-ledger') {
+      setFinanceInitialTab('general-ledger');
+      handleTabChange('finance');
+      return;
+    }
 
     const routedTab = QUICK_VIEW_ACTION_TO_TAB[id];
     if (routedTab) {
@@ -162,7 +232,8 @@ function BusinessDashboardContent() {
       return;
     }
     if (id.startsWith('reconcile-account')) {
-      handleTabChange('accounting');
+      handleTabChange('finance');
+      setFinanceInitialTab('reconciliation');
       return;
     }
     if (id.startsWith('create-purchase-order') || id.startsWith('receive-goods') || id.startsWith('start-cycle-count')) {
@@ -266,7 +337,12 @@ function BusinessDashboardContent() {
       case 'excel-mode':
       case 'fast-entry':
         handleTabChange('inventory');
-        toast.success("Excel Mode active in Inventory", { icon: '[CHART]' });
+        if (typeof window !== 'undefined') {
+          queueMicrotask(() => {
+            window.dispatchEvent(new CustomEvent('inventory-open-excel-mode'));
+          });
+        }
+        toast.success('Opening Excel mode…', { duration: 2200 });
         break;
       default: {
         const normalized = normalizeDashboardTab(id);
@@ -323,16 +399,19 @@ function BusinessDashboardContent() {
     if (domainConfig) return { name: domainConfig.name, icon: domainConfig.icon, color: domainConfig.color };
 
     // Dynamically derive from domainKnowledge
-    const knowledge = getDomainKnowledge(category);
+    const knowledge = getDomainKnowledgeForBusiness(category, countryIso);
     return {
       name: category.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
       icon: knowledge.icon || '🚀',
       color: 'wine'
     };
-  }, [category]);
+  }, [category, countryIso]);
 
   const colors = getDomainColors(category);
-  const domainKnowledge = getDomainKnowledge(category);
+  const domainKnowledge = useMemo(
+    () => getDomainKnowledgeForBusiness(category, countryIso),
+    [category, countryIso]
+  );
 
   // Auth context
   const { user, loading: authLoading } = useAuth();
@@ -564,18 +643,22 @@ function BusinessDashboardContent() {
 
   /**
    * @param {object} productData
-   * @param {{ skipFullWorkspaceRefresh?: boolean }} [options] — Busy grid / inline edits:
+   * @param {{ skipFullWorkspaceRefresh?: boolean, silentToast?: boolean }} [options] — Busy grid / inline edits:
    *   refresh products only so optimistic UI is not overwritten by a concurrent full refetch.
+   *   silentToast: do not toast here (InventoryManager BusyGrid / Excel already surfaces success).
    */
   const handleSaveProduct = async (productData, options = {}) => {
-    const { skipFullWorkspaceRefresh = false } = options;
+    const { skipFullWorkspaceRefresh = false, silentToast = false } = options;
     if (!business?.id) {
       toast.error('System is initializing. Please try again in 2 seconds.');
       throw new Error('Business context not ready');
     }
     try {
-      const isEditing = !!(editingProduct || productData.id);
-      const productId = productData.id || editingProduct?.id;
+      const persistedProductId =
+        editingProduct?.id ??
+        (isPersistedProductUuid(productData.id) ? productData.id : null);
+      const isEditing = Boolean(editingProduct || persistedProductId);
+      const productId = persistedProductId;
       const toNumber = (value, fallback = 0) => {
         if (value === '' || value === null || value === undefined) return fallback;
         const parsed = Number(value);
@@ -585,9 +668,11 @@ function BusinessDashboardContent() {
       // Only send batch/serial payloads when the domain actually uses them — otherwise
       // composite upsert treats any non-empty `batches` as batch-tracked and omits `stock` from UPDATE.
       const domainCat = business?.category || 'retail-shop';
-      const allBatches = isBatchTrackingEnabled(domainCat) ? (productData.batches || []) : [];
+      const allBatches = isBatchTrackingEnabled(domainCat)
+        ? filterMeaningfulBatches(productData.batches || [])
+        : [];
       const allSerials = isSerialTrackingEnabled(domainCat)
-        ? (productData.serialNumbers || productData.serial_numbers || [])
+        ? filterMeaningfulSerials(productData.serialNumbers || productData.serial_numbers || [])
         : [];
       const normalizedProductData = {
         ...productData,
@@ -618,6 +703,11 @@ function BusinessDashboardContent() {
       }
       normalizedProductData.domain_data = domainData;
 
+      // New-product flows must not send a stale / client-only `id` or composite runs UPDATE against a missing row.
+      if (!isEditing) {
+        delete normalizedProductData.id;
+      }
+
       // 🚀 ATOMIC PERSISTENCE CALL
       // This single call replaces 3+ sequential network requests with a single ACID transaction
       await productAPI.upsertIntegrated({
@@ -630,12 +720,14 @@ function BusinessDashboardContent() {
         batches: allBatches,
         serialNumbers: allSerials,
         isUpdate: isEditing,
-        productId: productId || productData.id,
+        productId: isEditing ? productId : null,
         // Pass initial stock for new products without batch/serial tracking
         initialStock: !isEditing ? (normalizedProductData.stock || 0) : 0,
       });
 
-      toast.success(isEditing ? 'Product updated' : 'Product created');
+      if (!silentToast) {
+        toast.success(isEditing ? 'Product updated' : 'Product created');
+      }
 
       if (skipFullWorkspaceRefresh) {
         await fetchInventory();
@@ -963,7 +1055,7 @@ function BusinessDashboardContent() {
       if (result.success) {
         toast.success(`${result.data?.deleted || invoiceIds.length} invoice(s) deleted successfully`);
         if (result.data?.restoredStock > 0) {
-          toast.info(`${result.data.restoredStock} inventory items restored`);
+          notify.info(`${result.data.restoredStock} inventory items restored`);
         }
         refreshAllData();
       } else {
@@ -1044,15 +1136,15 @@ function BusinessDashboardContent() {
       const updated = await purchaseOrderAPI.updateStatus(business.id, poId, status);
       await fetchPurchases();
 
-      if (status === 'received' && business?.id) {
+      if (status === PURCHASE_STATUSES.RECEIVED && business?.id) {
         await fetchInventory();
         toast.success('Inventory updated automatically');
       } else {
-        toast.success(`Order marked as ${status}`);
+        toast.success(`Order marked as ${getPurchaseStatusLabel(status)}`);
       }
     } catch (error) {
       console.error('Error updating PO status:', error);
-      toast.error('Failed to update order status');
+      toast.error(error?.message || 'Failed to update order status');
     }
   };
 
@@ -1212,10 +1304,14 @@ function BusinessDashboardContent() {
         unitPrice: Number(item.unitPrice || item.price) || 0,
         taxPercent: Number(item.taxPercent) || 0,
         taxAmount: Number(item.taxAmount) || 0,
+        discountAmount: Number(item.discountAmount) || 0,
       }));
-      const subtotal = normalizedItems.reduce((sum, i) => sum + (i.quantity * i.unitPrice), 0);
-      const taxAmount = normalizedItems.reduce((sum, i) => sum + (i.taxAmount || 0), 0);
-      const total = Number(checkoutData.total) || (subtotal + taxAmount);
+      const subtotal = Number(checkoutData.subtotal) ||
+        normalizedItems.reduce((sum, i) => sum + (i.quantity * i.unitPrice), 0);
+      const taxAmount = Number(checkoutData.taxAmount) ||
+        normalizedItems.reduce((sum, i) => sum + (i.taxAmount || 0), 0);
+      const discountAmount = Number(checkoutData.discountAmount) || 0;
+      const total = Number(checkoutData.total) || Math.round((subtotal + taxAmount - discountAmount) * 100) / 100;
 
       // Prefer POS transaction flow when a session is open so refunds and session reporting stay consistent.
       if (checkoutData.sessionId) {
@@ -1224,6 +1320,7 @@ function BusinessDashboardContent() {
           sessionId: checkoutData.sessionId,
           customerId: checkoutData.customerId || null,
           items: normalizedItems,
+          discountAmount,
           payments: checkoutData.payments?.length
             ? checkoutData.payments
             : [{ method: checkoutData.paymentMethod || 'cash', amount: total }],
@@ -1258,6 +1355,7 @@ function BusinessDashboardContent() {
         grand_total: total,
         subtotal,
         tax_total: taxAmount,
+        discount_total: discountAmount,
         status: 'paid',
         date: new Date().toISOString(),
         payment_status: 'paid',
@@ -1489,6 +1587,8 @@ function BusinessDashboardContent() {
             resourceLimits={resourceLimits}
             domainKnowledge={domainKnowledge}
             isLoading={!isDataLoaded}
+            financeInitialTab={financeInitialTab}
+            onFinanceInitialTabConsumed={() => setFinanceInitialTab(null)}
             handlers={{
               handleTabChange,
               handleDeleteInvoice,
@@ -1524,6 +1624,7 @@ function BusinessDashboardContent() {
               setInvoiceInitialData,
               formatCurrency,
               handleQuickAction,
+              openFinanceSubTab: (subTab) => setFinanceInitialTab(subTab),
               handleDateRangePreset,
               setShowVendorForm,
               setEditingVendor,

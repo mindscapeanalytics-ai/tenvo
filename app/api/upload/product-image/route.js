@@ -4,25 +4,23 @@ import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const supabase = createClient(supabaseUrl, supabaseKey);
+
+function getSupabaseClient() {
+  if (!supabaseUrl || !supabaseKey) return null;
+  return createClient(supabaseUrl, supabaseKey);
+}
 
 /**
  * POST /api/upload/product-image
  *
  * Accepts multipart/form-data with a single `file` field.
- * Converts the image to WebP (via browser Canvas API on client side,
- * here we accept and return it as-is as a data URL for self-hosted use).
+ * Client should resize to WebP (~800×800) before upload when possible.
  *
- * Returns: { success: true, url: "data:image/webp;base64,..." }
- *
- * Optimal sizes for storefront:
- *   - Max 800×800px (product cards are 4:5 ratio)
- *   - Max 300KB after conversion
- *   - Format: WebP for best compression/quality ratio
+ * Storage: Supabase `products` bucket when configured; otherwise returns a
+ * compact data URL for self-hosted / dev (max ~512KB after client resize).
  */
 export async function POST(request) {
   try {
-    // Auth check
     const session = await auth.api.getSession({ headers: request.headers });
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -35,16 +33,14 @@ export async function POST(request) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     }
 
-    // Validate type
     const allowed = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif', 'image/avif'];
     if (!allowed.includes(file.type)) {
       return NextResponse.json(
-        { error: `Unsupported format. Allowed: JPEG, PNG, WebP, GIF` },
+        { error: 'Unsupported format. Allowed: JPEG, PNG, WebP, GIF' },
         { status: 400 }
       );
     }
 
-    // Validate size (max 5MB raw upload)
     if (file.size > 5 * 1024 * 1024) {
       return NextResponse.json(
         { error: 'File too large. Maximum upload size is 5MB.' },
@@ -52,15 +48,36 @@ export async function POST(request) {
       );
     }
 
-    // Generate unique filename
+    const bytes = await file.arrayBuffer();
+    const buffer = Buffer.from(bytes);
+    const supabase = getSupabaseClient();
+
+    if (!supabase) {
+      if (buffer.length > 512 * 1024) {
+        return NextResponse.json(
+          {
+            error:
+              'Image storage is not configured. Set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY, or upload a smaller image (under 512KB after resize).',
+          },
+          { status: 503 }
+        );
+      }
+      const mime = file.type || 'image/webp';
+      const dataUrl = `data:${mime};base64,${buffer.toString('base64')}`;
+      return NextResponse.json({
+        success: true,
+        url: dataUrl,
+        originalName: file.name,
+        size: file.size,
+        type: file.type,
+        storage: 'inline',
+      });
+    }
+
     const uniqueName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
     const filePath = `images/${uniqueName}`;
 
-    // Upload to Supabase Storage
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-
-    const { data: uploadData, error: uploadError } = await supabase.storage
+    const { error: uploadError } = await supabase.storage
       .from('products')
       .upload(filePath, buffer, {
         contentType: file.type,
@@ -69,13 +86,21 @@ export async function POST(request) {
 
     if (uploadError) {
       console.error('[upload/product-image] Supabase upload error:', uploadError);
+      if (buffer.length <= 512 * 1024) {
+        const mime = file.type || 'image/webp';
+        return NextResponse.json({
+          success: true,
+          url: `data:${mime};base64,${buffer.toString('base64')}`,
+          originalName: file.name,
+          size: file.size,
+          type: file.type,
+          storage: 'inline-fallback',
+        });
+      }
       return NextResponse.json({ error: 'Failed to upload image to storage' }, { status: 500 });
     }
 
-    // Get public URL
-    const { data: publicUrlData } = supabase.storage
-      .from('products')
-      .getPublicUrl(filePath);
+    const { data: publicUrlData } = supabase.storage.from('products').getPublicUrl(filePath);
 
     return NextResponse.json({
       success: true,
@@ -83,6 +108,7 @@ export async function POST(request) {
       originalName: file.name,
       size: file.size,
       type: file.type,
+      storage: 'supabase',
     });
   } catch (error) {
     console.error('[upload/product-image] Error:', error);

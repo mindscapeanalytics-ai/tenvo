@@ -22,7 +22,11 @@
     "db:push": "prisma db push",
     "db:repair:failed-audit": "node scripts/repair-prisma-failed-audit.mjs",
     "audit:constraints": "tsx scripts/audit_constraints.ts",
-    "verify:domains": "node scripts/verify-domain-wiring.mjs"
+    "verify:domains": "node scripts/verify-domain-wiring.mjs",
+    "verify:regional-market": "node scripts/verify-regional-market.mjs",
+    "verify:registration-flow": "npx tsx scripts/verify-registration-flow.mjs",
+    "verify:storefront-tenancy": "node scripts/verify-storefront-tenancy.mjs",
+    "verify:mvp-launch": "node scripts/verify-mvp-launch.mjs"
   },
   "dependencies": {
     "@ai-sdk/google": "^3.0.80",

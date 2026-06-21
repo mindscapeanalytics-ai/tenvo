@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { X, Maximize2, Minimize2, Download, Upload, Save, Grid3x3, Table2, FileSpreadsheet, AlertCircle, CheckCircle2, Loader2, Copy, Trash2, Eraser, Undo, Redo, Search, Sparkles } from 'lucide-react';
+import { X, Maximize2, Minimize2, Download, Save, Table2, AlertCircle, CheckCircle2, Loader2, Copy, Trash2, Eraser, Undo, Redo, Search, Sparkles, Columns, ChevronDown } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { BusyGrid } from './BusyGrid';
 import { Button } from '@/components/ui/button';
@@ -34,6 +34,9 @@ export function ExcelModeModal({
     const [isSaving, setIsSaving] = useState(false);
     const [validationErrors, setValidationErrors] = useState({});
     const [searchQuery, setSearchQuery] = useState('');
+    const [hiddenCols, setHiddenCols] = useState(new Set());
+    const [showColPicker, setShowColPicker] = useState(false);
+    const colPickerRef = useRef(null);
 
     const wasOpenRef = useRef(false);
 
@@ -60,6 +63,7 @@ export function ExcelModeModal({
             setFuture([]);
             setHasUnsavedChanges(false);
             setValidationErrors({});
+            setHiddenCols(new Set());
         }
         wasOpenRef.current = isOpen;
     }, [isOpen, data]);
@@ -161,8 +165,50 @@ export function ExcelModeModal({
             addIfMissing('terms', 'Terms', 150);
         }
 
-        return base;
+        let out = [...base];
+        const isProducts = entityType === 'products' || !entityType;
+        if (isProducts && !out.some((c) => c.id === 'status_dot')) {
+            out.unshift({
+                id: 'status_dot',
+                header: '',
+                accessorKey: 'is_active',
+                width: 28,
+                size: 28,
+                readOnly: true,
+                cell: ({ row }) => (
+                    <div className="flex items-center justify-center h-full">
+                        <span
+                            className={cn(
+                                'h-2 w-2 rounded-full',
+                                row.original.is_active === false ? 'bg-amber-400' : 'bg-green-500'
+                            )}
+                            title={row.original.is_active === false ? 'Inactive' : 'Active'}
+                        />
+                    </div>
+                ),
+            });
+        }
+
+        return out;
     }, [columns, category, entityType]);
+
+    const displayColumns = useMemo(() => {
+        return enhancedColumns.filter((c) => {
+            if (c.id === 'status_dot') return true;
+            const key = c.accessorKey || c.id;
+            return !hiddenCols.has(key);
+        });
+    }, [enhancedColumns, hiddenCols]);
+
+    useEffect(() => {
+        if (!isOpen || !hasUnsavedChanges) return undefined;
+        const onBeforeUnload = (e) => {
+            e.preventDefault();
+            e.returnValue = '';
+        };
+        window.addEventListener('beforeunload', onBeforeUnload);
+        return () => window.removeEventListener('beforeunload', onBeforeUnload);
+    }, [isOpen, hasUnsavedChanges]);
 
     // Validation
     const validateRow = useCallback((row, rowKey) => {
@@ -397,7 +443,7 @@ export function ExcelModeModal({
         const isNew = !row.id;
         const confirmMsg = isNew
             ? 'Are you sure you want to remove this new row?'
-            : `Are you sure you want to permanently delete "${row.name || 'this item'}" from the database?`;
+            : `Archive "${row.name || 'this product'}"? It will be hidden from inventory; history is kept.`;
 
         if (!window.confirm(confirmMsg)) return;
 
@@ -406,7 +452,7 @@ export function ExcelModeModal({
                 await onDeleteRow(row);
             } catch (err) {
                 console.error("Failed to delete row:", err);
-                toast.error("Failed to delete from database");
+                toast.error("Failed to archive product");
                 return;
             }
         }
@@ -420,8 +466,18 @@ export function ExcelModeModal({
             pushState(next);
             return next;
         });
-        toast.success(isNew ? 'Row removed' : 'Product deleted successfully');
+        toast.success(isNew ? 'Row removed' : 'Product archived');
     }, [onDeleteRow, pushState]);
+
+    // Close col picker on outside click
+    useEffect(() => {
+        if (!showColPicker) return;
+        const handler = (e) => {
+            if (colPickerRef.current && !colPickerRef.current.contains(e.target)) setShowColPicker(false);
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, [showColPicker]);
 
     const handleClose = () => {
         if (hasUnsavedChanges) {
@@ -493,6 +549,54 @@ export function ExcelModeModal({
                             {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4 mr-2" />} SAVE
                         </Button>
 
+                        <div className="relative" ref={colPickerRef}>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setShowColPicker((v) => !v)}
+                                className="h-10 px-3 font-bold border-2 text-slate-700"
+                            >
+                                <Columns className="w-4 h-4 mr-1.5" />
+                                Columns
+                                <ChevronDown className={cn('ml-1 h-3.5 w-3.5 transition-transform', showColPicker && 'rotate-180')} />
+                            </Button>
+                            {showColPicker && (
+                                <div className="absolute right-0 top-full z-[10000] mt-1 max-h-72 w-60 overflow-auto rounded-xl border border-slate-200 bg-white p-2 text-left shadow-2xl">
+                                    <p className="px-2 pb-1 text-[9px] font-black uppercase tracking-wider text-slate-400">Visible columns</p>
+                                    {enhancedColumns
+                                        .filter((c) => c.id !== 'status_dot')
+                                        .map((col) => {
+                                            const key = col.accessorKey || col.id;
+                                            const label =
+                                                typeof col.header === 'function' ? col.header() : col.header || key;
+                                            const visible = !hiddenCols.has(key);
+                                            return (
+                                                <label
+                                                    key={String(key)}
+                                                    className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-xs hover:bg-slate-50"
+                                                >
+                                                    <input
+                                                        type="checkbox"
+                                                        className="rounded border-slate-300"
+                                                        checked={visible}
+                                                        onChange={() => {
+                                                            setHiddenCols((prev) => {
+                                                                const next = new Set(prev);
+                                                                if (next.has(key)) next.delete(key);
+                                                                else next.add(key);
+                                                                return next;
+                                                            });
+                                                        }}
+                                                    />
+                                                    <span className="truncate font-medium text-slate-700">{label}</span>
+                                                </label>
+                                            );
+                                        })}
+                                </div>
+                            )}
+                        </div>
+
                         <div className="h-8 w-0.5 bg-slate-200 mx-1" />
                         <Button variant="ghost" size="icon" onClick={() => setIsFullscreen(!isFullscreen)} className="h-10 w-10 text-slate-500 hover:bg-slate-100">{isFullscreen ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}</Button>
                         <Button variant="ghost" size="icon" onClick={handleClose} className="h-10 w-10 hover:bg-red-50 hover:text-red-500 transition-colors"><X className="w-6 h-6" /></Button>
@@ -503,7 +607,7 @@ export function ExcelModeModal({
                 <div className="flex-1 overflow-hidden relative bg-slate-50">
                     <BusyGrid
                         data={filteredData}
-                        columns={enhancedColumns}
+                        columns={displayColumns}
                         onCellEdit={handleLocalCellEdit}
                         onAddRow={handleLocalAddRow}
                         onDeleteRow={handleLocalDeleteRow}
@@ -527,6 +631,8 @@ export function ExcelModeModal({
                         <div className="h-4 w-px bg-slate-700" />
                         <div className="flex items-center gap-2">
                             <kbd className="px-1.5 py-0.5 bg-slate-800 border border-slate-700 rounded text-[9px] text-slate-300">CTRL+S</kbd> Save
+                            <kbd className="px-1.5 py-0.5 bg-slate-800 border border-slate-700 rounded text-[9px] text-slate-300 ml-2">Tab</kbd> Save + next
+                            <kbd className="px-1.5 py-0.5 bg-slate-800 border border-slate-700 rounded text-[9px] text-slate-300 ml-2">F2</kbd> Edit
                             <kbd className="px-1.5 py-0.5 bg-slate-800 border border-slate-700 rounded text-[9px] text-slate-300 ml-2">CTRL+Z</kbd> Undo
                             <kbd className="rounded border border-slate-700 bg-slate-800 px-1.5 py-0.5 font-mono text-[9px] text-slate-300">
                                 Ctrl+D
@@ -538,7 +644,7 @@ export function ExcelModeModal({
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
                         <div className="flex items-center gap-4 text-slate-500">
                             <button onClick={handleClear} className="hover:text-red-400 transition-colors flex items-center gap-1.5"><Eraser className="w-3.5 h-3.5" /> Clear Workspace</button>
-                            <button onClick={() => { const csv = localData.map(r => enhancedColumns.map(c => `"${r[c.accessorKey] || ''}"`).join(',')).join('\n'); const b = new Blob([csv], { type: 'text/csv' }); const u = URL.createObjectURL(b); const a = document.createElement('a'); a.href = u; a.download = 'export.csv'; a.click(); }} className="hover:text-blue-400 transition-colors flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"><Download className="w-3.5 h-3.5" /> Export CSV</button>
+                            <button onClick={() => { const cols = displayColumns; const csv = localData.map(r => cols.map(c => `"${String(r[c.accessorKey] ?? '').replace(/"/g, '""')}"`).join(',')).join('\n'); const b = new Blob([csv], { type: 'text/csv' }); const u = URL.createObjectURL(b); const a = document.createElement('a'); a.href = u; a.download = 'export.csv'; a.click(); }} className="hover:text-blue-400 transition-colors flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"><Download className="w-3.5 h-3.5" /> Export CSV</button>
                         </div>
                         <div className="h-4 w-px bg-slate-700" />
                         <span className="text-slate-300">INTELLIGENT MODE ACTIVE</span>

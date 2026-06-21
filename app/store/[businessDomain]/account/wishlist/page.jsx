@@ -13,7 +13,7 @@ import { toast } from 'react-hot-toast';
 
 export default function WishlistPage({ params }) {
   const { businessDomain } = use(params);
-  const { business, settings, currency } = useStorefront();
+  const { business, settings, currency, businessId } = useStorefront();
   const accent = getStoreAccentColor(settings, business?.category);
   const { addItem } = useCart();
   const { wishlist, removeFromWishlist, clearWishlist } = useWishlist();
@@ -22,7 +22,7 @@ export default function WishlistPage({ params }) {
 
   const moveToCart = async (item) => {
     try {
-      await addItem({ productId: item.productId, quantity: 1, variantId: null });
+      await addItem({ productId: item.productId, quantity: 1, variantId: null, businessId });
       removeFromWishlist(item.productId);
     } catch (err) {
       toast.error(err.message || 'Failed to add to cart');

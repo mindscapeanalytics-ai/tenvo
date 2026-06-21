@@ -52,6 +52,11 @@ export const DemandForecast = memo(function DemandForecast({
     const [forecastData, setForecastData] = useState<ForecastRow[]>([]);
     const [loading, setLoading] = useState(true);
 
+    const rangeFromKey =
+        dateRange?.from instanceof Date ? dateRange.from.getTime() : dateRange?.from != null ? String(dateRange.from) : '';
+    const rangeToKey =
+        dateRange?.to instanceof Date ? dateRange.to.getTime() : dateRange?.to != null ? String(dateRange.to) : '';
+
     useEffect(() => {
         async function load() {
             if (!businessId) {
@@ -61,7 +66,8 @@ export const DemandForecast = memo(function DemandForecast({
             }
 
             try {
-                const intel = domainKnowledge?.intelligence ?? {};
+                const dk = (propDomainKnowledge ?? getDomainKnowledge(category)) as DomainKnowledgeSlice;
+                const intel = dk?.intelligence ?? {};
                 const res = await getDemandForecastAction(businessId, intel, true, buildDateFilter(dateRange));
                 if (res && res.success) {
                     setForecastData((res.data as ForecastRow[]) || []);
@@ -76,7 +82,7 @@ export const DemandForecast = memo(function DemandForecast({
             }
         }
         void load();
-    }, [businessId, domainKnowledge, dateRange]);
+    }, [businessId, category, propDomainKnowledge, rangeFromKey, rangeToKey]);
 
     const chartData = useMemo(
         () =>

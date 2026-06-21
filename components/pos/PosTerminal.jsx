@@ -6,7 +6,7 @@ import {
     Search, Barcode, ShoppingCart, Plus, Minus, Trash2, X, CreditCard,
     Banknote, Smartphone, SplitSquareHorizontal, User, Clock, Hash,
     Receipt, CheckCircle2, Star, Gift, ChevronDown, RotateCcw, Percent,
-    Calculator, Keyboard, ScanLine, Package
+    Calculator, Keyboard, ScanLine, Package, ArrowLeft
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,10 +15,25 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { useBusiness } from '@/lib/context/BusinessContext';
+import { buildThermalReceiptHtml, printThermalReceiptHtml } from '@/lib/print/thermalReceipt';
+import {
+    buildPosCheckoutPayload,
+    findProductByScanCode,
+    getPosUiConfig,
+    getProductAvailableStock,
+} from '@/lib/utils/posHelpers';
+import { getEffectiveProductImageUrl } from '@/lib/storefront/productImageFallback';
+import { ProductThumbnail } from '@/components/product/ProductThumbnail';
+import toast from 'react-hot-toast';
 
 // --- Product Grid ------------------------------------------------------------
 
-function PosProductGrid({ products, categories, activeCategory, onCategoryChange, onAddToCart, searchTerm, onSearchChange, onBarcodeScan }) {
+function PosProductGrid({
+    products, categories, activeCategory, onCategoryChange, onAddToCart,
+    searchTerm, onSearchChange, onBarcodeScan, currency = '₨', taxLabel = 'Tax',
+    barcodeFirst = false, businessCategory,
+}) {
     const searchInputRef = useRef(null);
     const [isScanning, setIsScanning] = useState(false);
     
@@ -56,6 +71,19 @@ function PosProductGrid({ products, categories, activeCategory, onCategoryChange
         setTimeout(() => setIsScanning(false), 2000);
     };
 
+    const handleSearchKeyDown = useCallback((e) => {
+        if (e.key !== 'Enter') return;
+        const code = String(searchTerm || '').trim();
+        if (!code) return;
+        e.preventDefault();
+        const match = findProductByScanCode(products, code);
+        if (match) {
+            onAddToCart(match);
+            onSearchChange('');
+            onBarcodeScan?.(code);
+        }
+    }, [searchTerm, products, onAddToCart, onSearchChange, onBarcodeScan]);
+
     const filtered = useMemo(() => {
         let items = products || [];
         if (activeCategory && activeCategory !== 'all') {
@@ -80,10 +108,13 @@ function PosProductGrid({ products, categories, activeCategory, onCategoryChange
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" aria-hidden="true" />
                     <Input
                         ref={searchInputRef}
-                        placeholder="Search products, SKU, or scan barcode... (Ctrl+F)"
+                        placeholder={barcodeFirst
+                            ? 'Scan barcode or search SKU / name… (Enter to add)'
+                            : 'Search products, SKU, or scan barcode… (Ctrl+F)'}
                         className="pl-10 h-11 rounded-xl bg-gray-50 border-gray-200 focus:bg-white text-sm"
                         value={searchTerm}
                         onChange={(e) => onSearchChange(e.target.value)}
+                        onKeyDown={handleSearchKeyDown}
                         aria-label="Search products or scan barcode"
                         autoFocus
                     />
@@ -158,9 +189,10 @@ function PosProductGrid({ products, categories, activeCategory, onCategoryChange
             >
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
                     {filtered.map((product) => {
-                        const stock = parseInt(product.stock || 0);
+                        const stock = getProductAvailableStock(product);
+                        const minStock = Number(product.min_stock ?? product.min_stock_level ?? 5);
                         const isOutOfStock = stock <= 0;
-                        const isLowStock = stock > 0 && stock <= 5;
+                        const isLowStock = stock > 0 && stock <= minStock;
                         
                         return (
                             <motion.button
@@ -181,19 +213,16 @@ function PosProductGrid({ products, categories, activeCategory, onCategoryChange
                                 aria-disabled={isOutOfStock}
                                 tabIndex={isOutOfStock ? -1 : 0}
                             >
-                                <div 
+                                <ProductThumbnail
+                                    product={product}
+                                    businessCategory={businessCategory}
+                                    size="lg"
                                     className={cn(
-                                        "w-full aspect-square rounded-lg flex items-center justify-center mb-2 text-2xl",
-                                        isOutOfStock 
-                                            ? "bg-gradient-to-br from-red-50 to-red-100 text-red-300"
-                                            : isLowStock
-                                                ? "bg-gradient-to-br from-orange-50 to-orange-100 text-orange-400"
-                                                : "bg-gradient-to-br from-gray-50 to-gray-100 text-gray-300"
+                                        'mb-2 border border-neutral-100',
+                                        isOutOfStock && 'opacity-60',
+                                        isLowStock && 'ring-1 ring-orange-200'
                                     )}
-                                    aria-hidden="true"
-                                >
-                                    {isOutOfStock ? <Package className="w-8 h-8" /> : '[BOX]'}
-                                </div>
+                                />
                                 <p className="text-xs font-semibold text-gray-900 truncate w-full" title={product.name}>
                                     {product.name}
                                 </p>
@@ -202,7 +231,7 @@ function PosProductGrid({ products, categories, activeCategory, onCategoryChange
                                 </p>
                                 <div className="flex items-center justify-between w-full mt-1.5">
                                     <span className="text-sm font-black text-brand-primary">
-                                        Rs.{parseFloat(product.selling_price || product.price || 0).toLocaleString()}
+                                        {currency}{parseFloat(product.selling_price || product.price || 0).toLocaleString()}
                                     </span>
                                     <span 
                                         className={cn(
@@ -244,7 +273,8 @@ function PosCart({
     items, onQuantityChange, onRemoveItem, onClearCart,
     customer, onCustomerSelect, discount = 0, discountType = 'fixed',
     onDiscountChange, onDiscountTypeChange, onPaymentMethodSelect, onCompleteSale, isProcessing,
-    loyaltyBalance = 0, currency = 'Rs.'
+    loyaltyBalance = 0, currency = '₨', taxLabel = 'Tax', selectedPaymentMethod = 'cash',
+    onBack, hideKeyboardHint = false, businessCategory,
 }) {
     const subtotal = items.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0);
     
@@ -276,8 +306,18 @@ function PosCart({
         >
             {/* Cart Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700">
-                <div className="flex items-center gap-2">
-                    <ShoppingCart className="w-4 h-4 text-brand-primary" aria-hidden="true" />
+                <div className="flex items-center gap-2 min-w-0">
+                    {onBack ? (
+                        <button
+                            type="button"
+                            onClick={onBack}
+                            className="p-1.5 -ml-1 rounded-lg hover:bg-slate-800 transition-colors flex-shrink-0"
+                            aria-label="Back to products"
+                        >
+                            <ArrowLeft className="w-4 h-4" />
+                        </button>
+                    ) : null}
+                    <ShoppingCart className="w-4 h-4 text-brand-primary flex-shrink-0" aria-hidden="true" />
                     <span className="text-sm font-bold">Cart</span>
                     <Badge 
                         variant="secondary" 
@@ -317,6 +357,12 @@ function PosCart({
                             role="listitem"
                             aria-label={`${item.name}, ${item.quantity} at ${currency}${item.unitPrice} each`}
                         >
+                            <ProductThumbnail
+                                product={{ image_url: item.imageUrl, name: item.name, id: item.productId }}
+                                businessCategory={businessCategory}
+                                size="cart"
+                                className="border border-slate-600/80"
+                            />
                             <div className="flex-1 min-w-0">
                                 <p className="text-xs font-semibold text-gray-100 truncate" title={item.name}>{item.name}</p>
                                 <p className="text-[10px] text-gray-400">
@@ -412,7 +458,7 @@ function PosCart({
                             <span>{currency}{subtotal.toLocaleString()}</span>
                         </div>
                         <div className="flex justify-between text-gray-400">
-                            <span>Tax ({(items[0]?.taxPercent || 17)}%)</span>
+                            <span>{taxLabel}</span>
                             <span>{currency}{taxAmount.toLocaleString()}</span>
                         </div>
                         
@@ -523,14 +569,17 @@ function PosCart({
                         ].map(({ key, icon: Icon, label, color }) => (
                             <button
                                 key={key}
+                                type="button"
                                 onClick={() => onPaymentMethodSelect?.(key)}
                                 className={cn(
-                                    'flex flex-col items-center gap-1 py-2 rounded-lg border border-slate-700 bg-slate-800 transition-all text-gray-400 focus:ring-1 focus:ring-brand-primary',
-                                    color
+                                    'flex flex-col items-center gap-1 py-2 rounded-lg border transition-all text-gray-400 focus:ring-1 focus:ring-brand-primary',
+                                    selectedPaymentMethod === key
+                                        ? 'border-brand-primary bg-brand-primary/15 text-white'
+                                        : cn('border-slate-700 bg-slate-800', color)
                                 )}
                                 role="radio"
+                                aria-checked={selectedPaymentMethod === key}
                                 aria-label={`Pay by ${label}`}
-                                aria-pressed={undefined}
                             >
                                 <Icon className="w-4 h-4" aria-hidden="true" />
                                 <span className="text-[9px] font-medium">{label}</span>
@@ -558,11 +607,13 @@ function PosCart({
                         )}
                     </Button>
                     
-                    {/* Keyboard shortcuts hint */}
+                    {/* Keyboard shortcuts hint — desktop only */}
+                    {!hideKeyboardHint && (
                     <div className="flex items-center gap-1 text-[9px] text-gray-500 justify-center">
                         <Keyboard className="w-3 h-3" aria-hidden="true" />
                         <span>Ctrl+F: Search | 1-9: Categories | Enter: Complete</span>
                     </div>
+                    )}
                 </div>
             )}
         </div>
@@ -571,7 +622,22 @@ function PosCart({
 
 // --- Main POS Terminal -------------------------------------------------------
 
-export function PosTerminal({ businessId, products = [], customers = [], onStartSession, onCompleteSale, currency = 'Rs.', session }) {
+export function PosTerminal({
+    businessId,
+    products = [],
+    customers = [],
+    onStartSession,
+    onCompleteSale,
+    currency = '₨',
+    session,
+    category: categoryProp,
+}) {
+    const { business } = useBusiness();
+    const category = categoryProp || business?.category || 'retail-shop';
+    const posUi = useMemo(() => getPosUiConfig(category, business), [category, business]);
+    const documentLabel = posUi.receiptLabel;
+    const currencyCode = posUi.currencyCode;
+    const displayCurrency = currency || posUi.currencySymbol;
     const [cart, setCart] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [activeCategory, setActiveCategory] = useState('all');
@@ -585,6 +651,7 @@ export function PosTerminal({ businessId, products = [], customers = [], onStart
     const [showSuccess, setShowSuccess] = useState(false);
     const [lastSale, setLastSale] = useState(null);
     const [isStartingSession, setIsStartingSession] = useState(false);
+    const [mobilePane, setMobilePane] = useState('browse');
     const searchInputRef = useRef(null);
 
     // Global keyboard shortcuts
@@ -625,12 +692,13 @@ export function PosTerminal({ businessId, products = [], customers = [], onStart
     const sessionStartedLabel = sessionStartedAt
         ? new Date(sessionStartedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         : null;
-    const terminalLabel = session?.terminalName || session?.terminal_name || 'Counter';
+    const terminalLabel = session?.terminalName || session?.terminal_name || posUi.terminalLabel;
 
     const categories = useMemo(() => {
-        const cats = [...new Set((products || []).map(p => p.category).filter(Boolean))];
-        return cats.sort();
-    }, [products]);
+        const fromProducts = [...new Set((products || []).map(p => p.category).filter(Boolean))];
+        const merged = [...new Set([...fromProducts, ...posUi.defaultCategories])];
+        return merged.sort((a, b) => String(a).localeCompare(String(b)));
+    }, [products, posUi.defaultCategories]);
 
     const filteredCustomers = useMemo(() => {
         if (!customerQuery.trim()) return (customers || []).slice(0, 40);
@@ -642,33 +710,34 @@ export function PosTerminal({ businessId, products = [], customers = [], onStart
         ).slice(0, 40);
     }, [customers, customerQuery]);
 
+    const cartSummary = useMemo(() => {
+        const subtotal = cart.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0);
+        const totalTax = cart.reduce(
+            (sum, i) => sum + (i.unitPrice * i.quantity) * ((i.taxPercent || 0) / 100),
+            0
+        );
+        const taxAmount = Math.round(totalTax * 100) / 100;
+        const rawDiscount = parseFloat(discount || 0);
+        const discountAmount = discountType === 'percentage'
+            ? Math.min(subtotal * (rawDiscount / 100), subtotal)
+            : Math.min(rawDiscount, subtotal);
+        const total = Math.round((subtotal + taxAmount - discountAmount) * 100) / 100;
+        const itemCount = cart.reduce((sum, i) => sum + i.quantity, 0);
+        return { subtotal, taxAmount, discountAmount, total, itemCount };
+    }, [cart, discount, discountType]);
+
     const handlePrintReceipt = useCallback(() => {
         if (!lastSale) return;
-        const receiptLines = [
-            'TENVO POS RECEIPT',
-            '------------------------------',
-            `Sale: ${lastSale.transaction_number || lastSale.saleNumber || 'N/A'}`,
-            `Date: ${new Date().toLocaleString()}`,
-            `Customer: ${lastSale.customerName || 'Walk-in Customer'}`,
-            `Items: ${lastSale.items || 0}`,
-            `Payment: ${(lastSale.paymentMethod || paymentMethod || 'cash').toUpperCase()}`,
-            '------------------------------',
-            `TOTAL: ${currency}${Number(lastSale.total || 0).toLocaleString()}`,
-            '------------------------------',
-            'Thank you for your purchase!',
-        ];
-
-        const win = window.open('', '_blank', 'width=420,height=640');
-        if (!win) return;
-
-        win.document.write(`<!doctype html><html><head><title>Receipt</title><style>
-            body { font-family: monospace; padding: 16px; }
-            pre { white-space: pre-wrap; font-size: 14px; line-height: 1.5; }
-        </style></head><body><pre>${receiptLines.join('\n')}</pre></body></html>`);
-        win.document.close();
-        win.focus();
-        win.print();
-    }, [currency, lastSale, paymentMethod]);
+        const html = buildThermalReceiptHtml({
+            business,
+            documentLabel,
+            category,
+            currencyCode,
+            sale: lastSale,
+            lineItems: lastSale.lineItems || [],
+        });
+        printThermalReceiptHtml(html);
+    }, [business, category, currencyCode, documentLabel, lastSale]);
 
     const handleStartSession = useCallback(async () => {
         if (!onStartSession || isStartingSession) return;
@@ -681,28 +750,54 @@ export function PosTerminal({ businessId, products = [], customers = [], onStart
     }, [onStartSession, isStartingSession]);
 
     const addToCart = useCallback((product) => {
-        if (parseInt(product.stock) <= 0) return;
-        setCart(prev => {
-            const existing = prev.findIndex(i => i.productId === product.id);
+        const stock = getProductAvailableStock(product);
+        if (stock <= 0) {
+            toast.error(`${product.name} is out of stock`, { id: 'pos-stock' });
+            return;
+        }
+        setCart((prev) => {
+            const existing = prev.findIndex((i) => i.productId === product.id);
             if (existing >= 0) {
+                const nextQty = prev[existing].quantity + 1;
+                if (nextQty > stock) {
+                    toast.error(`Only ${stock} in stock for ${product.name}`, { id: 'pos-stock' });
+                    return prev;
+                }
                 const updated = [...prev];
-                updated[existing] = { ...updated[existing], quantity: updated[existing].quantity + 1 };
+                updated[existing] = { ...updated[existing], quantity: nextQty };
                 return updated;
             }
+            const defaultTax = Number(product.tax_percent);
+            const taxPercent = Number.isFinite(defaultTax) && defaultTax >= 0
+                ? defaultTax
+                : posUi.defaultTaxRate;
             return [...prev, {
                 productId: product.id,
                 name: product.name,
                 sku: product.sku,
+                imageUrl: getEffectiveProductImageUrl(product, category),
                 unitPrice: parseFloat(product.selling_price || product.price || 0),
-                taxPercent: parseFloat(product.tax_percent || 17),
+                taxPercent,
                 quantity: 1,
+                maxStock: stock,
             }];
         });
-    }, []);
+        setSearchTerm('');
+    }, [posUi.defaultTaxRate, category]);
 
     const handleQuantityChange = useCallback((idx, qty) => {
-        setCart(prev => prev.map((item, i) => i === idx ? { ...item, quantity: qty } : item));
-    }, []);
+        setCart((prev) => prev.map((item, i) => {
+            if (i !== idx) return item;
+            const cap = item.maxStock ?? getProductAvailableStock(
+                products.find((p) => p.id === item.productId)
+            );
+            const next = Math.max(1, Math.min(Number(qty) || 1, cap > 0 ? cap : Number(qty) || 1));
+            if (cap > 0 && next > cap) {
+                toast.error(`Max ${cap} available for ${item.name}`, { id: 'pos-stock' });
+            }
+            return { ...item, quantity: cap > 0 ? Math.min(next, cap) : next };
+        }));
+    }, [products]);
 
     const handleRemoveItem = useCallback((idx) => {
         setCart(prev => prev.filter((_, i) => i !== idx));
@@ -712,121 +807,184 @@ export function PosTerminal({ businessId, products = [], customers = [], onStart
         if (cart.length === 0 || isProcessing) return;
         setIsProcessing(true);
         try {
-            const subtotal = cart.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0);
-            
-            // Calculate total tax by summing per-item tax
-            const totalTax = cart.reduce((sum, i) => {
-                const itemTax = (i.unitPrice * i.quantity) * (i.taxPercent / 100);
-                return sum + itemTax;
-            }, 0);
-            
-            const taxAmount = Math.round(totalTax * 100) / 100;
-            
-            // Intelligent discount calculation
-            const rawDiscount = parseFloat(discount || 0);
-            const discountAmount = discountType === 'percentage' 
-                ? Math.min(subtotal * (rawDiscount / 100), subtotal)
-                : Math.min(rawDiscount, subtotal);
-            
-            const total = Math.round((subtotal + taxAmount - discountAmount) * 100) / 100;
-
-            const result = await onCompleteSale?.({
+            const payload = buildPosCheckoutPayload({
                 businessId,
                 sessionId: session?.id,
                 customerId: customer?.id || null,
-                items: cart.map(i => ({
-                    productId: i.productId,
-                    productName: i.name,
-                    quantity: i.quantity,
-                    unitPrice: i.unitPrice,
-                    taxPercent: i.taxPercent,
-                    taxAmount: Math.round((i.unitPrice * i.quantity * (i.taxPercent / 100)) * 100) / 100,
-                })),
-                payments: [{ method: paymentMethod, amount: total }],
+                cart,
+                discount,
+                discountType,
+                paymentMethod,
             });
 
+            const result = await onCompleteSale?.(payload);
+
             if (result?.success) {
+                const lineItems = cart.map((i) => ({
+                    name: i.name,
+                    sku: i.sku,
+                    quantity: i.quantity,
+                    unitPrice: i.unitPrice,
+                    lineTotal: Math.round(i.unitPrice * i.quantity * (1 + (i.taxPercent || 0) / 100) * 100) / 100,
+                }));
                 setLastSale({
                     ...result.transaction,
                     saleNumber: result.transaction?.transaction_number || `SALE-${Date.now()}`,
-                    total,
+                    transaction_number: result.transaction?.transaction_number || result.transaction?.invoice_number,
+                    invoice_number: result.transaction?.invoice_number,
+                    total: payload.total,
+                    subtotal: payload.subtotal,
+                    taxAmount: payload.taxAmount,
+                    discountAmount: payload.discountAmount,
+                    lineItems,
                     items: cart.length,
                     customerName: customer?.name || null,
                     paymentMethod,
                     mode: result?.mode || (hasSession ? 'pos' : 'invoice-fallback'),
+                    date: new Date().toISOString(),
                 });
                 setShowSuccess(true);
                 setCart([]);
                 setCustomer(null);
                 setDiscount(0);
                 setDiscountType('fixed');
+                setMobilePane('browse');
                 setTimeout(() => setShowSuccess(false), 3000);
+            } else if (result?.error) {
+                const msg = result.error?.message || String(result.error);
+                toast.error(msg || 'Sale could not be completed', { id: 'pos-sale-error' });
             }
         } catch (err) {
             console.error('POS sale error:', err);
+            toast.error(err?.message || 'Sale failed', { id: 'pos-sale-error' });
         } finally {
             setIsProcessing(false);
         }
     }, [cart, businessId, session, customer, discount, discountType, paymentMethod, isProcessing, onCompleteSale, hasSession]);
 
+    const cartPanelProps = {
+        items: cart,
+        onQuantityChange: handleQuantityChange,
+        onRemoveItem: handleRemoveItem,
+        onClearCart: () => setCart([]),
+        customer,
+        onCustomerSelect: () => setShowCustomerDialog(true),
+        discount,
+        discountType,
+        onDiscountChange: setDiscount,
+        onDiscountTypeChange: setDiscountType,
+        onPaymentMethodSelect: setPaymentMethod,
+        onCompleteSale: handleCompleteSale,
+        isProcessing,
+        currency: displayCurrency,
+        taxLabel: posUi.taxLabel,
+        selectedPaymentMethod: paymentMethod,
+        loyaltyBalance: 0,
+        businessCategory: category,
+    };
+
+    const sessionBanner = (
+        <div className={cn(
+            'mx-3 lg:mx-4 mt-2 lg:mt-3 mb-0 px-3 py-2 rounded-xl border text-[11px] lg:text-xs font-semibold flex items-center justify-between gap-2',
+            hasSession
+                ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                : 'bg-amber-50 border-amber-200 text-amber-700'
+        )}>
+            <span className="truncate">
+                {hasSession
+                    ? `Session · ${terminalLabel}${sessionStartedLabel ? ` · ${sessionStartedLabel}` : ''}`
+                    : 'No session — invoice fallback'}
+            </span>
+            {!hasSession && (
+                <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 lg:h-8 text-[10px] lg:text-[11px] flex-shrink-0"
+                    onClick={handleStartSession}
+                    disabled={isStartingSession}
+                >
+                    {isStartingSession ? '…' : 'Start'}
+                </Button>
+            )}
+        </div>
+    );
+
     return (
-        <div className="flex h-[calc(100vh-60px)] bg-gray-50 rounded-xl overflow-hidden shadow-sm border border-gray-200">
-            {/* Left: Product Grid */}
-            <div className="flex-1 min-w-0 bg-white">
-                <div className={cn(
-                    'mx-4 mt-3 mb-0 px-3 py-2 rounded-xl border text-xs font-semibold flex items-center justify-between gap-3',
-                    hasSession
-                        ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
-                        : 'bg-amber-50 border-amber-200 text-amber-700'
-                )}>
-                    <span>
-                        {hasSession
-                            ? `POS Session Active * ${terminalLabel}${sessionStartedLabel ? ` * Opened ${sessionStartedLabel}` : ''}`
-                            : 'Session not active: checkout will use invoice fallback mode'}
-                    </span>
-                    {!hasSession && (
-                        <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-8 text-[11px]"
-                            onClick={handleStartSession}
-                            disabled={isStartingSession}
-                        >
-                            {isStartingSession ? 'Starting...' : 'Start Session'}
-                        </Button>
-                    )}
+        <>
+            {/* Desktop — split product grid + cart */}
+            <div className="hidden lg:flex h-[calc(100vh-60px)] bg-gray-50 rounded-xl overflow-hidden shadow-sm border border-gray-200">
+                <div className="flex-1 min-w-0 bg-white">
+                    {sessionBanner}
+                    <PosProductGrid
+                        products={products}
+                        categories={categories}
+                        activeCategory={activeCategory}
+                        onCategoryChange={setActiveCategory}
+                        onAddToCart={addToCart}
+                        searchTerm={searchTerm}
+                        onSearchChange={setSearchTerm}
+                        currency={displayCurrency}
+                        taxLabel={posUi.taxLabel}
+                        barcodeFirst={posUi.barcodeFirst}
+                        businessCategory={category}
+                    />
                 </div>
-                <PosProductGrid
-                    products={products}
-                    categories={categories}
-                    activeCategory={activeCategory}
-                    onCategoryChange={setActiveCategory}
-                    onAddToCart={addToCart}
-                    searchTerm={searchTerm}
-                    onSearchChange={setSearchTerm}
-                    searchInputRef={searchInputRef}
-                />
+                <div className="w-[380px] xl:w-[420px] flex-shrink-0">
+                    <PosCart {...cartPanelProps} />
+                </div>
             </div>
 
-            {/* Right: Cart */}
-            <div className="w-[380px] xl:w-[420px] flex-shrink-0">
-                <PosCart
-                    items={cart}
-                    onQuantityChange={handleQuantityChange}
-                    onRemoveItem={handleRemoveItem}
-                    onClearCart={() => setCart([])}
-                    customer={customer}
-                    onCustomerSelect={() => setShowCustomerDialog(true)}
-                    discount={discount}
-                    discountType={discountType}
-                    onDiscountChange={setDiscount}
-                    onDiscountTypeChange={setDiscountType}
-                    onPaymentMethodSelect={setPaymentMethod}
-                    onCompleteSale={handleCompleteSale}
-                    isProcessing={isProcessing}
-                    currency={currency}
-                    loyaltyBalance={0}
-                />
+            {/* Mobile — browse products + checkout sheet */}
+            <div className="lg:hidden flex flex-col h-[calc(100dvh-5.25rem)] min-h-[420px] bg-gray-50 rounded-xl overflow-hidden border border-gray-200 shadow-sm">
+                {sessionBanner}
+                {mobilePane === 'browse' ? (
+                    <>
+                        <div className="flex-1 min-h-0 bg-white">
+                            <PosProductGrid
+                                products={products}
+                                categories={categories}
+                                activeCategory={activeCategory}
+                                onCategoryChange={setActiveCategory}
+                                onAddToCart={addToCart}
+                                searchTerm={searchTerm}
+                                onSearchChange={setSearchTerm}
+                                currency={displayCurrency}
+                                taxLabel={posUi.taxLabel}
+                                barcodeFirst={posUi.barcodeFirst}
+                                businessCategory={category}
+                            />
+                        </div>
+                        {cart.length > 0 ? (
+                            <button
+                                type="button"
+                                onClick={() => setMobilePane('checkout')}
+                                className="flex items-center justify-between gap-3 px-4 py-3.5 bg-slate-900 text-white border-t border-slate-700 active:bg-slate-800"
+                            >
+                                <div className="flex items-center gap-2 min-w-0">
+                                    <span className="flex items-center justify-center w-8 h-8 rounded-full bg-brand-primary text-xs font-black">
+                                        {cartSummary.itemCount}
+                                    </span>
+                                    <span className="text-sm font-semibold truncate">View cart</span>
+                                </div>
+                                <span className="text-base font-black text-brand-primary flex-shrink-0">
+                                    {displayCurrency}{cartSummary.total.toLocaleString()}
+                                </span>
+                            </button>
+                        ) : (
+                            <div className="px-4 py-2.5 text-center text-[11px] text-gray-400 border-t bg-white">
+                                Tap a product to add to cart
+                            </div>
+                        )}
+                    </>
+                ) : (
+                    <div className="flex-1 min-h-0">
+                        <PosCart
+                            {...cartPanelProps}
+                            onBack={() => setMobilePane('browse')}
+                            hideKeyboardHint
+                        />
+                    </div>
+                )}
             </div>
 
             {/* Sale Success Toast */}
@@ -836,13 +994,13 @@ export function PosTerminal({ businessId, products = [], customers = [], onStart
                         initial={{ opacity: 0, y: 50, scale: 0.95 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 50, scale: 0.95 }}
-                        className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-6 py-4 rounded-2xl bg-emerald-600 text-white shadow-2xl shadow-emerald-600/30"
+                        className="fixed bottom-20 left-4 right-4 lg:bottom-6 lg:left-auto lg:right-6 lg:max-w-md z-50 flex items-center gap-3 px-5 py-4 rounded-2xl bg-emerald-600 text-white shadow-2xl shadow-emerald-600/30"
                     >
                         <CheckCircle2 className="w-6 h-6" />
                         <div>
                             <p className="font-bold text-sm">Sale Completed!</p>
                             <p className="text-xs text-emerald-100">
-                                {lastSale?.transaction_number} -- {currency}{lastSale?.total?.toLocaleString()} ({lastSale?.mode === 'invoice-fallback' ? 'Invoice Mode' : 'POS Mode'})
+                                {lastSale?.transaction_number} — {displayCurrency}{lastSale?.total?.toLocaleString()} ({lastSale?.mode === 'invoice-fallback' ? 'Invoice Mode' : 'POS Mode'})
                             </p>
                         </div>
                         <Button
@@ -897,7 +1055,7 @@ export function PosTerminal({ businessId, products = [], customers = [], onStart
                     </div>
                 </DialogContent>
             </Dialog>
-        </div>
+        </>
     );
 }
 

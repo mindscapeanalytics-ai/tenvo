@@ -160,7 +160,7 @@ export function JournalEntryForm({ onClose, onSave }) {
             date: formData.date,
             description: formData.description,
             referenceType: formData.reference ? 'manual' : null,
-            referenceId: formData.reference || null,
+            referenceNumber: formData.reference || null,
             entries: formData.entries.map(e => ({
                 account_id: e.account_id || undefined,
                 debit: e.type === 'debit' ? parseFloat(e.amount) || 0 : 0,
@@ -191,7 +191,7 @@ export function JournalEntryForm({ onClose, onSave }) {
                 businessId: business?.id,
                 date: formData.date,
                 description: formData.description,
-                referenceId: formData.reference,
+                referenceNumber: formData.reference,
                 entries: formData.entries.map(e => ({
                     account_id: e.account_id,
                     debit: e.type === 'debit' ? parseFloat(e.amount) || 0 : 0,
@@ -227,10 +227,10 @@ export function JournalEntryForm({ onClose, onSave }) {
     const creditEntries = formData.entries.filter(e => e.type === 'credit');
 
     return (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <Card className="w-full max-w-5xl max-h-[95vh] overflow-hidden flex flex-col shadow-2xl border-none rounded-3xl">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4 overflow-y-auto overscroll-contain">
+            <Card className="w-full max-w-5xl max-h-[min(95vh,calc(100dvh-1rem))] my-auto overflow-hidden flex flex-col min-h-0 shadow-2xl border-none rounded-3xl">
                 {/* Header */}
-                <CardHeader className="flex flex-row items-center justify-between border-b p-6 bg-gradient-to-r from-emerald-900 via-emerald-800 to-teal-900 text-white flex-shrink-0">
+                <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b p-4 sm:p-6 bg-gradient-to-r from-emerald-900 via-emerald-800 to-teal-900 text-white flex-shrink-0">
                     <div className="flex items-center gap-4">
                         <div className="p-3 rounded-2xl bg-emerald-500/20 text-emerald-300 ring-1 ring-emerald-500/50">
                             <BookOpen className="w-6 h-6" />
@@ -257,7 +257,7 @@ export function JournalEntryForm({ onClose, onSave }) {
                     </div>
                 </CardHeader>
 
-                <CardContent className="flex-1 overflow-y-auto p-8 space-y-8 bg-gray-50/50">
+                <CardContent className="flex-1 min-h-0 overflow-y-auto bg-gray-50/50 p-3 space-y-4 sm:p-6 sm:space-y-6">
                     {/* Header Fields */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div className="space-y-2">

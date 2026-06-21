@@ -116,7 +116,7 @@ function VerifyEmailContent() {
             <div className="space-y-3">
               <Button 
                 className="w-full bg-blue-600 hover:bg-blue-700"
-                onClick={() => window.location.href = '/register?verified=true'}
+                onClick={() => { window.location.href = '/register?verified=true&step=3'; }}
               >
                 Continue Registration
               </Button>

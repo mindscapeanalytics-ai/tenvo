@@ -7,6 +7,7 @@ import { StoreFooter } from '@/components/storefront/StoreFooter';
 import { LiveChat } from '@/components/storefront/LiveChat';
 import { CartDrawer } from '@/components/storefront/CartDrawer';
 import { BackToTop } from '@/components/storefront/BackToTop';
+import { StoreMobileBottomNav } from '@/components/storefront/mobile/StoreMobileBottomNav';
 
 export async function generateMetadata({ params }) {
   const { businessDomain } = await params;
@@ -86,7 +87,7 @@ export default async function StoreLayout({ children, params }) {
           settings={settings}
         />
         
-        <main id="store-main" className="min-h-[calc(100vh-300px)]" tabIndex={-1}>
+        <main id="store-main" className="min-h-[calc(100vh-300px)] pb-[calc(3.5rem+env(safe-area-inset-bottom))] lg:pb-0" tabIndex={-1}>
           {children}
         </main>
         
@@ -94,10 +95,12 @@ export default async function StoreLayout({ children, params }) {
           business={business}
           settings={settings}
         />
+
+        <StoreMobileBottomNav />
         
         {/* Floating Elements */}
         <CartDrawer />
-        <LiveChat businessId={business.id} />
+        <LiveChat />
         <BackToTop />
       </div>
     </StoreProviders>

@@ -6,9 +6,9 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context/AuthContext';
 import { useBusiness } from '@/lib/context/BusinessContext';
 // Supabase removed - using Better Auth + Server Actions
-import { createBusiness, checkDomainAvailabilityAction, completeRegistrationSetupAction } from '@/lib/actions/basic/business';
-import { seedBusinessProductsAction } from '@/lib/actions/standard/inventory/product';
-import { domainKnowledge } from '@/lib/domainKnowledge';
+import { createBusiness, checkDomainAvailabilityAction, completeRegistrationSetupAction, seedRegistrationInventoryAction } from '@/lib/actions/basic/business';
+import { domainKnowledge, getDomainKnowledge } from '@/lib/domainKnowledge';
+import { getBrandPlaceholderExamples } from '@/lib/regionalMarket/index.js';
 import { PLAN_TIERS, PLAN_ORDER, resolvePlanTier } from '@/lib/config/plans';
 import { suggestPlanTier } from '@/lib/config/domains';
 import {
@@ -23,8 +23,12 @@ import { formatCurrency, isValidCurrency } from '@/lib/currency';
 import { authClient } from '@/lib/auth-client';
 import { useRegistrationPersistence, clearRegistrationData } from '@/lib/hooks/useRegistrationPersistence';
 import { DataRecoveryDialog } from '@/components/registration/DataRecoveryDialog';
-import { SupportWhatsAppLink } from '@/components/marketing/SupportWhatsAppLink';
-import { sendVerificationEmail, resendVerificationEmail, isEmailVerified } from '@/lib/actions/auth/verification';
+import Link from 'next/link';
+import { AuthShell, AuthDivider, AuthFooterLink, AuthGoogleButton, authInputClass, authLabelClass } from '@/components/auth/AuthShell';
+import { isEmailVerified } from '@/lib/actions/auth/verification';
+import { getRegistrationEmailDeliveryAction } from '@/lib/actions/auth/registrationEmail';
+import { mapEmailDeliveryError } from '@/lib/email/emailDeliveryConfig';
+import { businessAPI } from '@/lib/api/business';
 import { toast } from 'react-hot-toast';
 import {
     ChevronRight,
@@ -93,12 +97,14 @@ import { TenvoTextLogo } from '@/components/branding/TenvoTextLogo';
 import { getPublicSupportEmail, getPublicStoreUrl } from '@/lib/marketing/site-url';
 import { Textarea } from '@/components/ui/textarea';
 
+const googleAuthEnabled = process.env.NEXT_PUBLIC_GOOGLE_AUTH_ENABLED === 'true';
+
 const DOMAIN_CATEGORY_BLUEPRINTS = [
     {
         id: 'retail',
         name: 'Retail & Shops',
         icon: Store,
-        domains: ['retail-shop', 'textile-wholesale', 'grocery', 'fmcg', 'ecommerce', 'garments', 'mobile', 'mobile-repairing', 'electronics-goods', 'boutique-fashion', 'leather-footwear', 'bookshop-stationery', 'supermarket']
+        domains: ['retail-shop', 'textile-wholesale', 'grocery', 'fmcg', 'ecommerce', 'garments', 'mobile', 'mobile-repairing', 'electronics-goods', 'boutique-fashion', 'leather-footwear', 'bookshop-stationery', 'supermarket', 'tyre-shop']
     },
     {
         id: 'hospitality',
@@ -110,7 +116,7 @@ const DOMAIN_CATEGORY_BLUEPRINTS = [
         id: 'industrial',
         name: 'Manufacturing',
         icon: Factory,
-        domains: ['chemical', 'paper-mill', 'paint', 'plastic-manufacturing', 'textile-mill', 'printing-packaging', 'furniture', 'ceramics-tiles', 'flour-mill', 'rice-mill', 'sugar-mill']
+        domains: ['chemical', 'paper-mill', 'paint', 'plastic-manufacturing', 'textile-mill', 'printing-packaging', 'furniture', 'ceramics-tiles', 'flour-mill', 'rice-mill', 'sugar-mill', 'steel-industry', 'industrial-parts']
     },
     {
         id: 'services',
@@ -200,9 +206,14 @@ export default function RegisterWizard() {
     const [searchTerm, setSearchTerm] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [handleStatus, setHandleStatus] = useState({ checking: false, available: true, error: '' });
-    const [verificationState, setVerificationState] = useState('idle'); // idle, sending, sent, verified
+    const [verificationState, setVerificationState] = useState('idle'); // idle, sending, sent, verified (legacy link-based verify)
     const [resendTimer, setResendTimer] = useState(0);
     const [newUser, setNewUser] = useState(null);
+    const [awaitingRegistrationOtp, setAwaitingRegistrationOtp] = useState(false);
+    const [registrationOtp, setRegistrationOtp] = useState('');
+    const [emailDeliveryHint, setEmailDeliveryHint] = useState(null);
+    const [resumeChecked, setResumeChecked] = useState(false);
+    const [showOptionalFields, setShowOptionalFields] = useState(false);
     
     // Form data with persistence
     const [formData, setFormData] = useState(() => buildRegistrationFormState(persistedFormData));
@@ -220,6 +231,9 @@ export default function RegisterWizard() {
     }, [formData.country]);
 
     const regionalForWizard = getRegionalStandards(formData.country);
+    const domainKnowledgeForWizard = formData.category
+        ? getDomainKnowledge(formData.category, { countryIso: formData.country })
+        : null;
 
     // Sync step with persistence
     useEffect(() => {
@@ -299,16 +313,99 @@ export default function RegisterWizard() {
         });
     };
 
-    const nextStep = () => {
-        const newStep = step + 1;
+    const goToStep = (newStep) => {
         setStep(newStep);
         setPersistedStep(newStep);
+        setPersistedFormData(formData);
     };
-    const prevStep = () => {
-        const newStep = step - 1;
-        setStep(newStep);
-        setPersistedStep(newStep);
+
+    const nextStep = () => goToStep(step + 1);
+    const prevStep = () => goToStep(step - 1);
+
+    const handleAcceptRecovery = () => {
+        acceptRecoveredData();
+        setFormData(buildRegistrationFormState(persistedFormData));
+        if (persistedStep >= 1 && persistedStep <= 3) {
+            setStep(persistedStep);
+        }
     };
+
+    // Debounced sync of wizard state to localStorage
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setPersistedFormData(formData);
+        }, 1500);
+        return () => clearTimeout(timer);
+    }, [formData, setPersistedFormData]);
+
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            const res = await getRegistrationEmailDeliveryAction();
+            if (!cancelled && res?.success && res.hint) {
+                setEmailDeliveryHint(res.hint);
+            }
+        })();
+        return () => { cancelled = true; };
+    }, []);
+
+    // Resume onboarding from URL params or returning verified users
+    useEffect(() => {
+        if (typeof window === 'undefined' || resumeChecked) return;
+
+        const params = new URLSearchParams(window.location.search);
+        const stepParam = params.get('step');
+        const verifiedParam = params.get('verified') === 'true';
+
+        if (stepParam === '2' || stepParam === '3') {
+            const parsed = parseInt(stepParam, 10);
+            if (parsed >= 1 && parsed <= 3) {
+                setStep(parsed);
+                setPersistedStep(parsed);
+            }
+        }
+
+        if (verifiedParam) {
+            setVerificationState('verified');
+            toast.success('Email verified — finish your workspace setup.');
+        }
+
+        setResumeChecked(true);
+    }, [resumeChecked, setPersistedStep]);
+
+    useEffect(() => {
+        if (!user?.id || resumeChecked === false) return;
+
+        let cancelled = false;
+        (async () => {
+            if (user.email && !formData.email) {
+                setFormData((prev) => ({ ...prev, email: user.email }));
+            }
+
+            const params = new URLSearchParams(window.location.search);
+            const wantsStep3 = params.get('step') === '3' || params.get('verified') === 'true';
+
+            try {
+                const businesses = await businessAPI.getByUserId(user.id);
+                if (cancelled || businesses?.length > 0) return;
+
+                if (wantsStep3 && step < 3) {
+                    setStep(3);
+                    setPersistedStep(3);
+                }
+
+                const ev = await isEmailVerified(user.id);
+                if (cancelled) return;
+                if (ev.success && ev.isVerified) {
+                    setVerificationState('verified');
+                }
+            } catch (e) {
+                console.error('[register] resume check failed', e);
+            }
+        })();
+
+        return () => { cancelled = true; };
+    }, [user, resumeChecked, step, setPersistedStep, formData.email]);
 
     // Debounced domain availability check
     useEffect(() => {
@@ -346,7 +443,7 @@ export default function RegisterWizard() {
         return (
             <button
                 onClick={() => handleDomainSelect(domainKey)}
-                className="group flex flex-col items-start p-4 rounded-2xl border border-gray-100 hover:border-wine/30 hover:bg-wine/5 transition-all text-left relative overflow-hidden active:scale-[0.97] w-full"
+                className="group flex flex-col items-start rounded-xl border border-gray-100 p-2.5 text-left transition-all hover:border-wine/30 hover:bg-wine/5 active:scale-[0.98] w-full"
             >
                 <div className="absolute -right-2 -bottom-2 w-12 h-12 bg-wine/5 rounded-full group-hover:scale-150 transition-transform duration-500" />
                 <div className="p-2 bg-gray-50 rounded-xl mb-3 group-hover:bg-wine group-hover:text-white transition-colors relative z-10">
@@ -362,95 +459,173 @@ export default function RegisterWizard() {
         );
     };
 
-    const seedBusinessData = async (businessId, domainKey, country) => {
+    const seedBusinessData = async (businessId, domainKey, country, alreadySeeded = false) => {
+        if (alreadySeeded) return;
         try {
-            console.log(`Starting seeding for business ${businessId} with domain ${domainKey} in ${country}`);
-
-            const standards = getRegionalStandards(country);
-            const regionalTaxRate = standards.defaultTaxRate;
-
-            // 1. Get Domain Knowledge
-            const knowledge = domainKnowledge[domainKey] || domainKnowledge['retail-shop'];
-
-            if (!knowledge || !knowledge.setupTemplate || (!knowledge.setupTemplate.suggestedItems && !knowledge.setupTemplate.suggestedProducts)) {
-                console.log("No seeding template found for this domain.");
-                return;
-            }
-
-            const items = knowledge.setupTemplate.suggestedProducts || knowledge.setupTemplate.suggestedItems || [];
-
-            // 2. Define Master Schema Known Columns (Explicit columns in DB)
-            const KNOWN_COLUMNS = [
-                'name', 'description', 'business_id', 'stock', 'price', 'cost_price',
-                'tax_percent', 'sku', 'barcode', 'category', 'brand', 'unit',
-                'min_stock_level', 'reorder_point', 'location', 'batch_number',
-                'expiry_date', 'manufacturing_date', 'hsn_code', 'is_active', 'image_url'
-            ];
-
-            // 3. Construct Items with Intelligent Mapping
-            const itemsToInsert = items.map(item => {
-                const cleanItem = {
-                    business_id: businessId,
-                    name: item.name,
-                    category: item.category,
-                    unit: item.unit || 'pcs',
-                    price: 0, // Default
-                    stock: 0, // Default
-                    tax_percent: regionalTaxRate || knowledge.defaultTax || 0,
-                    is_active: true,
-                    domain_data: {} // Initialize domain_data
-                };
-
-                // Iterate over all keys in the source item
-                Object.keys(item).forEach(key => {
-                    if (KNOWN_COLUMNS.includes(key)) {
-                        // If it's a known column, override/set it at top level (if present in item)
-                        cleanItem[key] = item[key];
-                    } else {
-                        // If it's NOT a known column (e.g., Color, Fabric, IMEI), move to domain_data
-                        cleanItem.domain_data[key] = item[key];
-                    }
-                });
-
-                return cleanItem;
-            });
-
-            console.log("Seeding items:", itemsToInsert);
-
-            // Use server action for secure product seeding
-            const seedResult = await seedBusinessProductsAction({
+            const seedResult = await seedRegistrationInventoryAction({
                 businessId,
-                items: itemsToInsert
+                domainKey,
+                countryIso: country,
             });
 
             if (!seedResult.success) {
-                console.error("Seeding Error:", seedResult.error);
-                toast.error("Dashboard created, but sample products failed to load.");
-            } else {
-                console.log("Seeding successful:", seedResult.message);
+                console.error('Seeding Error:', seedResult.error);
+                toast.error('Dashboard created, but sample products failed to load.');
+            } else if (seedResult.skipped) {
+                console.log('Seeding skipped:', seedResult.message);
+            } else if (seedResult.count > 0) {
+                console.log('Seeding successful:', seedResult.message);
             }
-
         } catch (err) {
-            console.error("Seeding Exception:", err);
+            console.error('Seeding Exception:', err);
+        }
+    };
+
+    const completeProvisioning = async (newUser) => {
+        const bizResult = await createBusiness({
+            userId: newUser.id,
+            businessName: formData.businessName,
+            email: newUser.email || formData.email,
+            phone: formData.phone,
+            country: formData.country,
+            domain: formData.handle,
+            category: formData.category || 'retail-shop',
+            planTier: formData.planTier || 'free',
+            currency: formData.currency,
+            ntn: formData.ntn,
+            description: formData.storeTagline || null,
+        });
+
+        if (!bizResult.success) {
+            console.error('Business provision failed:', bizResult.error);
+            if (bizResult.code === 'DATABASE_SCHEMA_OUT_OF_DATE') {
+                toast.error(
+                    bizResult.error || 'Database needs updating. Run: bunx prisma migrate deploy',
+                    { duration: 12000 }
+                );
+            } else if (bizResult.error?.includes('Domain Handle') || bizResult.error?.includes('already taken')) {
+                toast.error(`The domain "${formData.handle}" is already in use. Please pick a unique handle.`, { duration: 6000 });
+            } else {
+                toast.error(bizResult.error || 'Identity created, but dashboard could not be provisioned.');
+            }
+            return;
+        }
+
+        toast.success('Registration successful! Welcome to Tenvo.');
+        await seedBusinessData(
+            bizResult.businessId,
+            formData.category,
+            formData.country,
+            Boolean(bizResult.seeded)
+        );
+
+        try {
+            const setupRes = await completeRegistrationSetupAction(bizResult.businessId, {
+                settings: { setup_completed: true, setup_at: new Date().toISOString() },
+            });
+            if (!setupRes.success) {
+                console.error('Failed to mark setup complete:', setupRes.error);
+            }
+        } catch (updateErr) {
+            console.error('Failed to mark setup complete:', updateErr);
+        }
+
+        clearRegistrationData();
+        const dashboardDomain = String(formData.handle || '').trim().toLowerCase();
+        const dashboardPath = `/business/${encodeURIComponent(dashboardDomain)}?tab=dashboard`;
+        if (typeof window !== 'undefined') {
+            window.location.assign(dashboardPath);
+        } else {
+            router.replace(dashboardPath);
+        }
+    };
+
+    const handleResendRegistrationOtp = async () => {
+        const emailNorm = formData.email.trim().toLowerCase();
+        if (!emailNorm) return;
+        if (resendTimer > 0) return;
+        setResendTimer(60);
+        const { error } = await authClient.emailOtp.sendVerificationOtp({
+            email: emailNorm,
+            type: 'email-verification',
+        });
+        if (error) {
+            toast.error(mapEmailDeliveryError(error.message) || 'Could not resend code.');
+            setResendTimer(0);
+            return;
+        }
+        toast.success('A new code was sent to your email.');
+    };
+
+    const handleVerifyOtpAndProvision = async () => {
+        const activeUser = user || newUser;
+        if (!activeUser?.id) {
+            toast.error('Session missing. Go back and try again.');
+            return;
+        }
+        const emailNorm = (activeUser.email || formData.email).trim().toLowerCase();
+        if (!registrationOtp.trim()) {
+            toast.error('Enter the verification code from your email.');
+            return;
+        }
+        setIsLoading(true);
+        try {
+            const { error } = await authClient.emailOtp.verifyEmail({
+                email: emailNorm,
+                otp: registrationOtp.trim(),
+            });
+            if (error) {
+                toast.error(error.message || 'Invalid or expired code.');
+                setIsLoading(false);
+                return;
+            }
+            setAwaitingRegistrationOtp(false);
+            setRegistrationOtp('');
+            setVerificationState('verified');
+            await completeProvisioning(activeUser);
+        } catch (e) {
+            console.error(e);
+            toast.error(e.message || 'Verification failed.');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleGoogleRegister = async () => {
+        const callbackURL =
+            typeof window !== 'undefined' ? `${window.location.origin}/register?step=1` : '/register';
+        setIsLoading(true);
+        try {
+            await authClient.signIn.social({
+                provider: 'google',
+                callbackURL,
+            });
+        } catch (e) {
+            console.error(e);
+            toast.error(e?.message || 'Google sign-in failed to start.');
+            setIsLoading(false);
         }
     };
 
     const handleFinish = async () => {
-        // Validation: If user is logged in, only check businessName and domain. If not, check all.
-        const isAuth = !!user;
+        const sessionUser = user || newUser;
+        const isAuth = !!sessionUser;
+        if (awaitingRegistrationOtp) {
+            toast.error('Enter the verification code sent to your email, then tap “Verify & launch”.');
+            return;
+        }
         if (!formData.businessName || (!isAuth && (!formData.email || !formData.password)) || !formData.handle || !formData.category) {
-            toast.error("Please fill in all required fields.");
+            toast.error('Please fill in all required fields.');
             return;
         }
 
         setIsLoading(true);
         try {
-            let newUser = user;
+            let activeUser = sessionUser;
 
-            // 1. If NOT logged in, Create Account first
-            if (!newUser) {
+            if (!activeUser) {
                 const { data: authData, error: authError } = await authClient.signUp.email({
-                    email: formData.email,
+                    email: formData.email.trim().toLowerCase(),
                     password: formData.password,
                     name: formData.businessName,
                     username: formData.handle,
@@ -458,17 +633,17 @@ export default function RegisterWizard() {
 
                 if (authError) {
                     if (authError.status === 422 || authError.code === 'USER_ALREADY_EXISTS') {
-                        toast.error("An account with this email already exists. Please login instead.");
+                        toast.error('An account with this email already exists. Please login instead.');
                         setIsLoading(false);
                         return;
                     }
                     if (authError.code === 'INVALID_EMAIL') {
-                        toast.error("Please provide a valid email address.");
+                        toast.error('Please provide a valid email address.');
                         setIsLoading(false);
                         return;
                     }
                     if (authError.code === 'PASSWORD_TOO_SHORT') {
-                        toast.error("Password is too short. Please use at least 8 characters.");
+                        toast.error('Password is too short. Please use at least 8 characters.');
                         setIsLoading(false);
                         return;
                     }
@@ -481,91 +656,55 @@ export default function RegisterWizard() {
                     }
                     throw authError;
                 }
-                newUser = authData?.user;
-                setNewUser(newUser);
+                activeUser = authData?.user;
+                setNewUser(activeUser);
+
+                const emailNorm = formData.email.trim().toLowerCase();
+                const { error: otpErr } = await authClient.emailOtp.sendVerificationOtp({
+                    email: emailNorm,
+                    type: 'email-verification',
+                });
+                if (otpErr) {
+                    toast.error(mapEmailDeliveryError(otpErr.message) || 'Account created, but we could not send a verification code. Contact support.');
+                    setIsLoading(false);
+                    return;
+                }
+                setAwaitingRegistrationOtp(true);
+                setVerificationState('sent');
+                setResendTimer(60);
+                toast.success('Check your email for a 6-digit code to verify before we create your workspace.');
+                setIsLoading(false);
+                return;
             }
 
-            if (newUser) {
-                // Send verification email after account creation
-                if (!user) {
-                    setVerificationState('sending');
-                    const emailResult = await sendVerificationEmail(
-                        newUser.id,
-                        newUser.email || formData.email,
-                        formData.businessName
-                    );
-                    if (emailResult.success) {
-                        setVerificationState('sent');
-                        toast.success('Verification email sent! Please check your inbox.');
+            if (activeUser) {
+                const ev = await isEmailVerified(activeUser.id);
+                const verified = Boolean(ev.success && ev.isVerified);
+                if (!verified) {
+                    const emailNorm = (activeUser.email || formData.email).trim().toLowerCase();
+                    const { error: otpErr } = await authClient.emailOtp.sendVerificationOtp({
+                        email: emailNorm,
+                        type: 'email-verification',
+                    });
+                    if (otpErr) {
+                        toast.error(mapEmailDeliveryError(otpErr.message) || 'Could not send verification code.');
+                        setIsLoading(false);
+                        return;
                     }
+                    setAwaitingRegistrationOtp(true);
+                    setVerificationState('sent');
+                    setResendTimer(60);
+                    toast.success('Check your email for a 6-digit code to verify before we create your workspace.');
+                    setIsLoading(false);
+                    return;
                 }
-                // 2. Create business via Server Action
-                const bizResult = await createBusiness({
-                    userId: newUser.id,
-                    businessName: formData.businessName,
-                    email: newUser.email || formData.email, // Use authenticated email
-                    phone: formData.phone,
-                    country: formData.country,
-                    domain: formData.handle, // Use the unique handle as 'domain'
-                    category: formData.category || 'retail-shop',
-                    planTier: formData.planTier || 'free',
-                    currency: formData.currency,
-                    ntn: formData.ntn,
-                    description: formData.storeTagline || null,
-                });
-
-                if (bizResult.success) {
-                    toast.success('Registration successful! Welcome to Tenvo.');
-
-                    // 3. Seed initial products using server action
-                    await seedBusinessData(bizResult.businessId, formData.category, formData.country);
-
-                    // 4. Mark setup as complete (ownership-only action; reliable right after signup)
-                    try {
-                        const setupRes = await completeRegistrationSetupAction(bizResult.businessId, {
-                            settings: { setup_completed: true, setup_at: new Date().toISOString() },
-                        });
-                        if (!setupRes.success) {
-                            console.error('Failed to mark setup complete:', setupRes.error);
-                        }
-                    } catch (updateErr) {
-                        console.error('Failed to mark setup complete:', updateErr);
-                    }
-
-                    // Clear registration persistence data on success
-                    clearRegistrationData();
-
-                    const dashboardDomain = String(formData.handle || '').trim().toLowerCase();
-                    const dashboardPath = `/business/${encodeURIComponent(dashboardDomain)}?tab=dashboard`;
-                    // Full page navigation: avoids a race where client `useSession`/AuthContext lags
-                    // behind the new cookie and `/business/...` briefly renders with `user === null`
-                    // and redirects to `/login`.
-                    if (typeof window !== 'undefined') {
-                        window.location.assign(dashboardPath);
-                    } else {
-                        router.replace(dashboardPath);
-                    }
-                } else {
-                    console.error("Business provision failed:", bizResult.error);
-
-                    if (bizResult.code === 'DATABASE_SCHEMA_OUT_OF_DATE') {
-                        toast.error(
-                            bizResult.error ||
-                                'Database needs updating. Run: bunx prisma migrate deploy',
-                            { duration: 12000 }
-                        );
-                    } else if (bizResult.error?.includes("Domain Handle") || bizResult.error?.includes("already taken")) {
-                        toast.error(`The domain "${formData.handle}" is already in use. Please pick a unique handle.`, { duration: 6000 });
-                    } else {
-                        toast.error(bizResult.error || 'Identity created, but dashboard could not be provisioned.');
-                    }
-                }
+                await completeProvisioning(activeUser);
             }
         } catch (error) {
             console.error('Registration Error:', error);
-            const msg = error.message || "Registration failed. Please check your details.";
-            if (msg.includes("Invalid URL")) {
-                toast.error("System configuration error. Please contact support.");
+            const msg = error.message || 'Registration failed. Please check your details.';
+            if (msg.includes('Invalid URL')) {
+                toast.error('System configuration error. Please contact support.');
             } else {
                 toast.error(msg);
             }
@@ -574,114 +713,89 @@ export default function RegisterWizard() {
         }
     };
 
+    const stepMeta = {
+        1: { title: 'Create your workspace', subtitle: 'Name your business, pick a region, and secure your account.' },
+        2: { title: 'Choose your industry', subtitle: 'We apply the right tax, inventory, and report defaults for your vertical.' },
+        3: { title: 'Review & launch', subtitle: 'Pick a plan, verify your email, and open your dashboard.' },
+    };
+
+    const stepIndicator = (
+        <div className="flex items-center gap-2" aria-label={`Step ${step} of 3`}>
+            {[1, 2, 3].map((i) => (
+                <div key={i} className="flex items-center gap-2">
+                    <div
+                        className={cn(
+                            'flex h-7 w-7 items-center justify-center rounded-full text-[11px] font-bold transition-colors',
+                            step >= i ? 'bg-wine text-white shadow-sm shadow-wine/25' : 'bg-gray-200 text-gray-500'
+                        )}
+                    >
+                        {i}
+                    </div>
+                    {i < 3 ? <div className={cn('h-px w-4', step > i ? 'bg-wine/40' : 'bg-gray-200')} /> : null}
+                </div>
+            ))}
+        </div>
+    );
+
     return (
         <>
-            {/* Data Recovery Dialog - shown if previous registration data exists */}
             <DataRecoveryDialog
                 isOpen={showRecoveryDialog}
                 onClose={() => {}}
-                onAccept={acceptRecoveredData}
+                onAccept={handleAcceptRecovery}
                 onReject={rejectRecoveredData}
                 savedAt={persistedFormData._savedAt ? new Date(persistedFormData._savedAt) : null}
                 ageHours={persistedFormData._savedAt ? Math.floor((Date.now() - new Date(persistedFormData._savedAt).getTime()) / (1000 * 60 * 60)) : 0}
                 step={persistedStep}
             />
 
-            <div className="min-h-screen bg-[linear-gradient(180deg,#f6f8fc_0%,#eef4ff_100%)] flex flex-col p-4 md:p-6 lg:p-8 relative overflow-hidden">
-                {/* Background Decorative Elements */}
-                <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-wine/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-                <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-amber-300/15 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
-
-            <div className="max-w-6xl w-full mx-auto relative z-10 flex-1 flex flex-col">
-                {/* Header */}
-                <div className="flex items-center justify-between mb-8">
-                    <div className="flex items-center gap-3">
-                        <TenvoTextLogo />
-                    </div>
-                    <div className="hidden md:flex items-center gap-6">
-                        <div className="px-3 py-2 rounded-xl bg-white border border-gray-100 shadow-sm">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Secure Setup</p>
-                            <p className="text-xs font-bold text-gray-900">ISO-grade encrypted workspace</p>
-                        </div>
-                        <div className="flex flex-col items-end gap-0.5">
-                            <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Support</span>
-                            <SupportWhatsAppLink variant="light" className="text-sm font-bold text-gray-900" iconClassName="h-4 w-4" />
-                        </div>
-                        <Button variant="outline" onClick={() => router.push('/login')} className="rounded-xl border-gray-200 font-bold hover:bg-white hover:border-wine/30">
-                            Log In
-                        </Button>
-                    </div>
-                </div>
-
-                <div className="flex-1 flex flex-col justify-center max-w-4xl mx-auto w-full">
-                    {/* Top Progress */}
-                    <div className="flex items-center gap-4 mb-8 max-w-xs mx-auto md:mx-0">
-                        {[1, 2, 3].map((i) => (
-                            <div key={i} className="flex items-center gap-2">
-                                <div className={`h-2.5 w-12 rounded-full transition-all duration-500 ${step >= i ? 'bg-wine shadow-sm shadow-wine/20' : 'bg-gray-200'}`} />
-                                {i < 3 && <div className="h-0.5 w-2 bg-gray-100" />}
-                            </div>
-                        ))}
-                    </div>
-
-                    <div className="space-y-1 text-center md:text-left">
-                        <h1 className="text-4xl md:text-5xl font-black text-gray-900 tracking-tighter">
-                            {step === 1 ? "Business Identity" :
-                                step === 2 ? "Market Vertical" :
-                                    "Final Configuration"}
-                        </h1>
-                        <p className="text-gray-500 font-medium text-lg">
-                            {step === 1 ? "Define your business identity, compliance region, and public store defaults." :
-                                step === 2 ? "Tailor the ERP to your industry needs." :
-                                    "Setting up your localized compliance rules."}
-                        </p>
-                    </div>
-
-                    {/* Trust Badges Row */}
-                    <div className="mt-8 flex flex-wrap items-center justify-center gap-4 md:gap-8">
-                        {[
-                            { icon: Shield, text: 'FBR Certified' },
-                            { icon: BadgeCheck, text: 'PSEB Registered' },
-                            { icon: Lock, text: '256-bit SSL' },
-                            { icon: Users, text: '450+ Businesses' },
-                        ].map((badge, idx) => (
-                            <div key={idx} className="flex items-center gap-2 px-4 py-2 bg-white/80 backdrop-blur-sm border border-gray-200/60 rounded-xl shadow-sm">
-                                <badge.icon className="w-4 h-4 text-wine" />
-                                <span className="text-xs font-bold text-gray-700">{badge.text}</span>
-                            </div>
-                        ))}
-                    </div>
-
-                    <Card className="mt-8 border border-white/80 shadow-[0_30px_90px_-44px_rgba(15,23,42,0.36)] rounded-[32px] overflow-hidden bg-white/92 backdrop-blur-xl">
-                        <CardContent className="p-0">
-                            <div className="flex flex-col md:flex-row">
-                                {/* Form Section */}
-                                <div className="flex-1 p-8 md:p-12">
+            <AuthShell
+                variant="register"
+                title={stepMeta[step]?.title}
+                subtitle={stepMeta[step]?.subtitle}
+                maxWidthClass={step === 2 ? 'max-w-3xl' : step === 3 ? 'max-w-2xl' : 'max-w-xl'}
+                stepIndicator={stepIndicator}
+                headerRight={
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-9 rounded-lg border-gray-200 bg-white px-4 text-xs font-bold shadow-sm hover:bg-gray-50"
+                        asChild
+                    >
+                        <Link href="/login">Log in</Link>
+                    </Button>
+                }
+                footer={
+                    step === 1 && !user ? (
+                        <AuthFooterLink prompt="Already have an account?" href="/login" linkLabel="Sign in" />
+                    ) : null
+                }
+            >
                                     {step === 1 && (
-                                        <div className="grid gap-6 animate-in slide-in-from-left-4 duration-500">
+                                        <div className="grid gap-4 animate-in slide-in-from-left-4 duration-300">
                                             {user ? (
-                                                <div className="bg-wine/5 border border-wine/10 rounded-2xl p-6 text-center space-y-4">
-                                                    <div className="w-16 h-16 bg-white rounded-full mx-auto flex items-center justify-center shadow-sm">
-                                                        <Building2 className="w-8 h-8 text-wine" />
-                                                    </div>
-                                                    <div>
-                                                        <h3 className="font-black text-xl text-gray-900">Welcome back, {user.name || user.email?.split('@')[0]}!</h3>
-                                                        <p className="text-gray-500 text-sm mt-1">You are logged in as <span className="font-bold text-gray-900">{user.email}</span></p>
-                                                    </div>
-                                                    <p className="text-sm font-medium text-wine bg-white/50 p-3 rounded-xl">
-                                                        Let&apos;s set up a new business entity under your existing account.
-                                                    </p>
-                                                </div>
+                                                <p className="rounded-xl border border-wine/15 bg-wine/5 px-3 py-2 text-xs font-medium text-gray-700">
+                                                    Signed in as <strong>{user.email}</strong> — adding a new business.
+                                                </p>
                                             ) : null}
 
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            {!user && googleAuthEnabled ? (
+                                                <>
+                                                    <AuthGoogleButton disabled={isLoading} onClick={handleGoogleRegister}>
+                                                        Continue with Google
+                                                    </AuthGoogleButton>
+                                                    <AuthDivider label="Or with email" />
+                                                </>
+                                            ) : null}
+
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                                 <div className="space-y-2">
-                                                    <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest ml-1">Legal Business Name</Label>
+                                                    <Label className={authLabelClass}>Legal business name</Label>
                                                     <Input
                                                         placeholder="Nexus Trading Co."
                                                         value={formData.businessName}
                                                         onChange={e => handleBusinessNameChange(e.target.value)}
-                                                        className="h-12 rounded-2xl border-gray-100 focus:ring-wine/20"
+                                                        className={authInputClass}
                                                     />
                                                 </div>
                                                 <div className="space-y-2">
@@ -702,7 +816,7 @@ export default function RegisterWizard() {
                                                             value={formData.handle}
                                                             onChange={e => setFormData({ ...formData, handle: generateSlug(e.target.value) })}
                                                             className={cn(
-                                                                "h-12 rounded-2xl border-gray-100 focus:ring-wine/20 pr-16 sm:pr-20",
+                                                                "h-11 rounded-xl border-gray-200 focus:ring-wine/20 pr-16 sm:pr-20",
                                                                 !handleStatus.available && formData.handle && "border-rose-200 bg-rose-50/30"
                                                             )}
                                                         />
@@ -710,17 +824,14 @@ export default function RegisterWizard() {
                                                             /store
                                                         </div>
                                                     </div>
-                                                    <p className="text-[11px] text-gray-500 font-medium leading-snug">
-                                                        Your public storefront:{' '}
-                                                        <span className="font-mono text-wine/90 break-all">
-                                                            {getPublicStoreUrl(formData.handle || 'your-handle')}
-                                                        </span>
+                                                    <p className="text-[10px] text-gray-400 truncate">
+                                                        {getPublicStoreUrl(formData.handle || 'your-handle')}
                                                     </p>
                                                 </div>
                                                 <div className="space-y-2">
                                                     <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest ml-1">Business Region</Label>
                                                     <Select value={formData.country} onValueChange={(v) => setFormData({ ...formData, country: v })}>
-                                                        <SelectTrigger className="h-12 rounded-2xl border-gray-100">
+                                                        <SelectTrigger className={authInputClass}>
                                                             <SelectValue />
                                                         </SelectTrigger>
                                                         <SelectContent className="rounded-2xl border-gray-100 max-h-[min(24rem,70vh)]">
@@ -733,25 +844,15 @@ export default function RegisterWizard() {
                                                     </Select>
                                                 </div>
                                                 <div className="space-y-2">
-                                                    <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest ml-1">Business phone (optional)</Label>
-                                                    <Input
-                                                        type="tel"
-                                                        placeholder={`${regionalForWizard.phoneCode} - local number`}
-                                                        value={formData.phone}
-                                                        onChange={e => setFormData({ ...formData, phone: e.target.value })}
-                                                        className="h-12 rounded-2xl border-gray-100 focus:ring-wine/20"
-                                                    />
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest ml-1">Operating currency</Label>
+                                                    <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest ml-1">Currency</Label>
                                                     <Select
                                                         value={formData.currency}
                                                         onValueChange={(v) => setFormData({ ...formData, currency: v })}
                                                     >
-                                                        <SelectTrigger className="h-12 rounded-2xl border-gray-100">
+                                                        <SelectTrigger className={authInputClass}>
                                                             <SelectValue />
                                                         </SelectTrigger>
-                                                        <SelectContent className="rounded-2xl border-gray-100 max-h-[min(24rem,70vh)]">
+                                                        <SelectContent className="rounded-xl border-gray-100 max-h-48">
                                                             {getRegistrationCurrencyOptions(formData.country).map((row) => (
                                                                 <SelectItem key={row.code} value={row.code}>
                                                                     {row.label}
@@ -759,96 +860,99 @@ export default function RegisterWizard() {
                                                             ))}
                                                         </SelectContent>
                                                     </Select>
-                                                    <p className="text-[10px] text-gray-400 font-medium">Used for invoices, POS, and your public store prices.</p>
                                                 </div>
-                                                <div className="space-y-2">
-                                                    <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest ml-1">
-                                                        {regionalForWizard.taxIdLabel} (optional)
-                                                    </Label>
-                                                    <Input
-                                                        placeholder={`Registered ${regionalForWizard.taxIdLabel}`}
-                                                        value={formData.ntn}
-                                                        onChange={e => setFormData({ ...formData, ntn: e.target.value })}
-                                                        className="h-12 rounded-2xl border-gray-100 focus:ring-wine/20"
-                                                    />
-                                                </div>
+                                                {!user ? (
+                                                    <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                        <div className="space-y-1.5">
+                                                            <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest ml-1">Email</Label>
+                                                            <Input
+                                                                type="email"
+                                                                placeholder="owner@business.com"
+                                                                value={formData.email}
+                                                                onChange={e => setFormData({ ...formData, email: e.target.value })}
+                                                                className={authInputClass}
+                                                            />
+                                                        </div>
+                                                        <div className="space-y-1.5">
+                                                            <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest ml-1">Password</Label>
+                                                            <Input
+                                                                type="password"
+                                                                placeholder="Min. 8 characters"
+                                                                value={formData.password}
+                                                                onChange={e => setFormData({ ...formData, password: e.target.value })}
+                                                                className={authInputClass}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                ) : null}
                                             </div>
 
-                                            <div className="space-y-2">
-                                                <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest ml-1">
-                                                    Public storefront tagline (optional)
-                                                </Label>
-                                                <Textarea
-                                                    placeholder="Fresh groceries, same-day delivery in Karachi."
-                                                    value={formData.storeTagline}
-                                                    onChange={e => setFormData({ ...formData, storeTagline: e.target.value })}
-                                                    maxLength={240}
-                                                    rows={2}
-                                                    className="rounded-2xl border-gray-100 focus:ring-wine/20 resize-none text-sm"
-                                                />
-                                                <p className="text-[10px] text-gray-400 font-medium">
-                                                    Shown on your customer-facing store - you can refine this anytime in Store settings.
-                                                </p>
-                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowOptionalFields((v) => !v)}
+                                                className="text-[10px] font-bold uppercase tracking-widest text-wine hover:underline"
+                                            >
+                                                {showOptionalFields ? 'Hide optional fields' : '+ Phone, tax ID, tagline (optional)'}
+                                            </button>
 
-                                            {!user && (
-                                                <>
-                                                    <div className="space-y-2">
-                                                        <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest ml-1">Administrator Email</Label>
+                                            {showOptionalFields ? (
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 rounded-xl border border-gray-100 bg-gray-50/80 p-3">
+                                                    <div className="space-y-1.5">
+                                                        <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Phone</Label>
                                                         <Input
-                                                            type="email"
-                                                            placeholder="owner@business.com"
-                                                            value={formData.email}
-                                                            onChange={e => setFormData({ ...formData, email: e.target.value })}
-                                                            className="h-12 rounded-2xl border-gray-100 focus:ring-wine/20"
+                                                            type="tel"
+                                                            placeholder={`${regionalForWizard.phoneCode} number`}
+                                                            value={formData.phone}
+                                                            onChange={e => setFormData({ ...formData, phone: e.target.value })}
+                                                            className={cn(authInputClass, 'bg-white')}
                                                         />
                                                     </div>
-
-                                                    <div className="space-y-2">
-                                                        <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest ml-1">Security Password</Label>
+                                                    <div className="space-y-1.5">
+                                                        <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">{regionalForWizard.taxIdLabel}</Label>
                                                         <Input
-                                                            type="password"
-                                                            placeholder="************"
-                                                            value={formData.password}
-                                                            onChange={e => setFormData({ ...formData, password: e.target.value })}
-                                                            className="h-12 rounded-2xl border-gray-100 focus:ring-wine/20"
+                                                            placeholder={regionalForWizard.taxIdLabel}
+                                                            value={formData.ntn}
+                                                            onChange={e => setFormData({ ...formData, ntn: e.target.value })}
+                                                            className={cn(authInputClass, 'bg-white')}
                                                         />
                                                     </div>
-                                                </>
-                                            )}
+                                                    <div className="space-y-1.5 sm:col-span-2">
+                                                        <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Store tagline</Label>
+                                                        <Input
+                                                            placeholder="Short storefront headline"
+                                                            value={formData.storeTagline}
+                                                            onChange={e => setFormData({ ...formData, storeTagline: e.target.value })}
+                                                            maxLength={240}
+                                                            className={cn(authInputClass, 'bg-white')}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            ) : null}
 
                                             <Button
-                                                className="w-full h-14 mt-4 text-lg font-black bg-wine hover:bg-wine/90 text-white rounded-2xl shadow-xl shadow-wine/20 transition-all active:scale-[0.98]"
+                                                className="h-11 w-full rounded-xl bg-wine text-sm font-black text-white hover:bg-wine/90"
                                                 onClick={nextStep}
                                                 disabled={!formData.businessName || !formData.handle || !handleStatus.available || handleStatus.checking || (!user && (!formData.email || !formData.password))}
                                             >
-                                                Continue to Setup <ChevronRight className="ml-2 w-5 h-5" />
+                                                Continue <ChevronRight className="ml-1 h-4 w-4" />
                                             </Button>
-
-                                            {!user && (
-                                                <div className="text-center mt-4">
-                                                    <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">
-                                                        Already have an account? <span className="text-wine cursor-pointer hover:underline" onClick={() => router.push('/login')}>Log In here</span> to add a new business.
-                                                    </p>
-                                                </div>
-                                            )}
                                         </div>
                                     )}
 
                                     {step === 2 && (
-                                        <div className="space-y-8 animate-in slide-in-from-left-4 duration-500">
+                                        <div className="space-y-3 animate-in slide-in-from-left-4 duration-300">
                                             <div className="relative">
-                                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                                                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                                                 <Input
-                                                    placeholder={language === 'en' ? "Search for your business type..." : "اپنی کاروباری قسم تلاش کریں..."}
+                                                    placeholder={language === 'en' ? 'Search business type…' : 'اپنی کاروباری قسم تلاش کریں…'}
                                                     value={searchTerm}
                                                     onChange={e => setSearchTerm(e.target.value)}
-                                                    className="h-14 pl-12 rounded-2xl border-gray-100 focus:ring-wine/20 bg-gray-50/50"
+                                                    className="h-11 pl-10 rounded-xl border-gray-200 bg-gray-50/50"
                                                 />
                                             </div>
                                             {!searchTerm ? (
                                                 <Tabs defaultValue="retail" className="w-full">
-                                                    <TabsList className="flex flex-wrap h-auto gap-2 bg-transparent p-0 mb-8">
+                                                    <TabsList className="mb-3 flex h-auto flex-wrap gap-1.5 bg-transparent p-0">
                                                         {DOMAIN_CATEGORIES.map(cat => (
                                                             <TabsTrigger
                                                                 key={cat.id}
@@ -863,7 +967,7 @@ export default function RegisterWizard() {
 
                                                     {DOMAIN_CATEGORIES.map(cat => (
                                                         <TabsContent key={cat.id} value={cat.id} className="mt-0">
-                                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                                            <div className="grid max-h-[min(42vh,280px)] grid-cols-2 gap-2 overflow-y-auto pr-1 lg:grid-cols-3">
                                                                 {cat.domains.map(domain => (
                                                                     <DomainButton key={domain} domainKey={domain} />
                                                                 ))}
@@ -872,7 +976,7 @@ export default function RegisterWizard() {
                                                     ))}
                                                 </Tabs>
                                             ) : (
-                                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[400px] overflow-y-auto pr-2 pb-4">
+                                                <div className="grid max-h-[min(42vh,280px)] grid-cols-2 gap-2 overflow-y-auto pr-1 lg:grid-cols-3">
                                                     {Object.keys(domainKnowledge)
                                                         .filter((domain) => {
                                                             const q = searchTerm.toLowerCase().trim();
@@ -900,54 +1004,18 @@ export default function RegisterWizard() {
                                     )}
 
                                     {step === 3 && (
-                                        <div className="max-w-2xl mx-auto space-y-8 animate-in zoom-in duration-500">
-                                            <div className="bg-wine/5 border border-wine/10 rounded-3xl p-8 flex flex-col items-center text-center space-y-6">
-                                                <div className="w-20 h-20 bg-wine rounded-[28px] flex items-center justify-center text-white shadow-2xl shadow-wine/30 relative">
-                                                    <div className="absolute inset-0 animate-ping bg-wine/20 rounded-[28px]" />
-                                                    {LucideIcons[domainKnowledge[formData.category]?.icon] ?
-                                                        React.createElement(LucideIcons[domainKnowledge[formData.category].icon], { className: "w-10 h-10 relative z-10" }) :
-                                                        <Rocket className="w-10 h-10 relative z-10" />
-                                                    }
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <h3 className="text-2xl font-black text-gray-900 tracking-tight">Enterprise Infrastructure Ready</h3>
-                                                    <p className="text-gray-500 font-medium max-w-md">
-                                                        We&apos;ve calibrated the dashboard for <span className="text-wine font-black uppercase tracking-tight">{translations[language]?.domains?.[formData.category] || formData.category?.replace(/-/g, ' ')}</span>
-                                                        {' '}with {regionalForWizard.taxLabel} expectations for {regionalForWizard.countryName} ({regionalForWizard.currency}). Adjust tax rates in settings as your adviser recommends.
-                                                    </p>
-                                                </div>
-
-                                                {domainKnowledge[formData.category]?.setupTemplate?.categories?.length > 0 && (
-                                                    <div className="w-full pt-4 border-t border-wine/10">
-                                                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Pre-built Industry Setup</p>
-                                                        <div className="flex flex-wrap justify-center gap-2">
-                                                            {domainKnowledge[formData.category].setupTemplate.categories.map(cat => (
-                                                                <span key={cat} className="px-3 py-1 bg-white border border-wine/5 rounded-full text-[10px] font-bold text-wine shadow-sm">
-                                                                    {cat}
-                                                                </span>
-                                                            ))}
-                                                        </div>
-                                                    </div>
-                                                )}
+                                        <div className="space-y-4 animate-in zoom-in duration-300">
+                                            <div className="rounded-xl border border-wine/15 bg-wine/5 px-4 py-3 text-sm text-gray-700">
+                                                <span className="font-bold text-gray-900">{formData.businessName}</span>
+                                                {' · '}
+                                                <span className="capitalize text-wine">{formData.category.replace(/-/g, ' ')}</span>
+                                                {' · '}
+                                                {regionalForWizard.countryName} ({regionalForWizard.currency})
                                             </div>
 
-                                            <div className="bg-gray-50 rounded-3xl p-6 space-y-4">
-                                                <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Identity Confirmation</h4>
-                                                <div className="grid grid-cols-2 gap-4">
-                                                    <div className="p-4 bg-white rounded-2xl shadow-sm border border-gray-100/50">
-                                                        <span className="text-[10px] font-black text-gray-400 uppercase block mb-1">Company</span>
-                                                        <span className="font-bold text-gray-900">{formData.businessName}</span>
-                                                    </div>
-                                                    <div className="p-4 bg-white rounded-2xl shadow-sm border border-gray-100/50">
-                                                        <span className="text-[10px] font-black text-gray-400 uppercase block mb-1">Vertical</span>
-                                                        <span className="font-bold text-wine capitalize">{formData.category.replace(/-/g, ' ')}</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <div className="bg-gray-50 rounded-3xl p-6 space-y-4">
-                                                <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Subscription Plan</h4>
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                            <div className="space-y-2">
+                                                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Plan</p>
+                                                <div className="grid grid-cols-2 gap-2">
                                                     {Object.entries(PLAN_TIERS).map(([tier, config]) => {
                                                         const isSelected = formData.planTier === tier;
                                                         const isRecommended = recommendedPlanForDomain(formData.category) === tier;
@@ -962,8 +1030,8 @@ export default function RegisterWizard() {
                                                                 type="button"
                                                                 onClick={() => setFormData(prev => ({ ...prev, planTier: tier }))}
                                                                 className={cn(
-                                                                    'text-left rounded-2xl border p-4 transition-all',
-                                                                    isSelected ? 'border-wine bg-wine/5 shadow-sm' : 'border-gray-200 bg-white hover:border-wine/30'
+                                                                    'rounded-xl border p-3 text-left transition-all',
+                                                                    isSelected ? 'border-wine bg-wine/5' : 'border-gray-200 bg-white hover:border-wine/30'
                                                                 )}
                                                             >
                                                                 <div className="flex items-center justify-between mb-2">
@@ -975,80 +1043,77 @@ export default function RegisterWizard() {
                                                                     {formatCurrency(amount, currency)} / mo
                                                                 </p>
                                                                 {footnote ? (
-                                                                    <p className="text-[10px] text-gray-400 mt-1 leading-snug">{footnote}</p>
+                                                                    <p className="text-[10px] text-gray-400">{footnote}</p>
                                                                 ) : null}
-                                                                <ul className="mt-2 space-y-1">
-                                                                    {planCardBullets(tier).map((item, idx) => (
-                                                                        <li key={`${tier}-${idx}`} className="text-[11px] text-gray-600">• {item}</li>
-                                                                    ))}
-                                                                </ul>
                                                             </button>
                                                         );
                                                     })}
                                                 </div>
                                             </div>
 
-                                            <div className="flex gap-4">
-                                                <Button variant="outline" onClick={prevStep} className="flex-1 h-14 rounded-2xl font-bold border-gray-100">
-                                                    Review Basic
+                                            {awaitingRegistrationOtp ? (
+                                                <div className="rounded-xl border border-wine/20 bg-wine/[0.06] p-4 space-y-3">
+                                                    <p className="text-xs text-gray-600">
+                                                        Code sent to{' '}
+                                                        <strong>{(user?.email || newUser?.email || formData.email).trim().toLowerCase()}</strong>
+                                                    </p>
+                                                    {emailDeliveryHint ? (
+                                                        <p className="text-[11px] text-amber-800 bg-amber-50 rounded-lg px-2 py-1.5">{emailDeliveryHint}</p>
+                                                    ) : null}
+                                                    <div className="flex gap-2">
+                                                        <Input
+                                                            id="registration-otp"
+                                                            inputMode="numeric"
+                                                            autoComplete="one-time-code"
+                                                            maxLength={6}
+                                                            placeholder="000000"
+                                                            value={registrationOtp}
+                                                            onChange={(e) => setRegistrationOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                                                            className="h-11 flex-1 rounded-xl text-center font-mono text-lg tracking-widest"
+                                                        />
+                                                        <button
+                                                            type="button"
+                                                            className="shrink-0 text-xs font-bold text-wine hover:underline disabled:opacity-45"
+                                                            disabled={resendTimer > 0 || isLoading}
+                                                            onClick={handleResendRegistrationOtp}
+                                                        >
+                                                            {resendTimer > 0 ? `${resendTimer}s` : 'Resend'}
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ) : null}
+
+                                            <div className="flex gap-2 pt-1">
+                                                <Button
+                                                    variant="outline"
+                                                    onClick={prevStep}
+                                                    className="h-11 flex-1 rounded-xl font-bold"
+                                                    disabled={awaitingRegistrationOtp}
+                                                >
+                                                    Back
                                                 </Button>
-                                                <Button onClick={handleFinish} disabled={isLoading} className="flex-[2] h-14 bg-wine hover:bg-wine/90 text-white font-black rounded-2xl shadow-xl shadow-wine/20 text-lg">
-                                                    {isLoading ? (
-                                                        <div className="flex items-center gap-2">
-                                                            <Loader2 className="w-5 h-5 animate-spin" />
-                                                            <span>Launching...</span>
-                                                        </div>
-                                                    ) : "Generate Dashboard"}
-                                                </Button>
+                                                {awaitingRegistrationOtp ? (
+                                                    <Button
+                                                        type="button"
+                                                        onClick={handleVerifyOtpAndProvision}
+                                                        disabled={isLoading}
+                                                        className="h-11 flex-[2] rounded-xl bg-wine text-sm font-black text-white hover:bg-wine/90"
+                                                    >
+                                                        {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Verify & launch'}
+                                                    </Button>
+                                                ) : (
+                                                    <Button
+                                                        onClick={handleFinish}
+                                                        disabled={isLoading}
+                                                        className="h-11 flex-[2] rounded-xl bg-wine text-sm font-black text-white hover:bg-wine/90"
+                                                    >
+                                                        {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Launch workspace'}
+                                                    </Button>
+                                                )}
                                             </div>
                                         </div>
                                     )}
-                                </div>
-
-                                {/* Sidebar Info */}
-                                <div className="hidden lg:flex w-80 bg-[linear-gradient(180deg,rgba(248,251,255,0.95),rgba(238,244,255,0.82))] border-l border-slate-200 flex-col p-8 xl:p-10 justify-between">
-                                    <div className="space-y-6">
-                                        <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Deployment Assurance</h4>
-                                        <div className="flex flex-col gap-2">
-                                            <div className="p-3 bg-white w-fit rounded-xl shadow-sm border border-gray-100">
-                                                <BadgeCheck className="w-5 h-5 text-wine" />
-                                            </div>
-                                            <h5 className="font-black text-gray-900 mt-1">Certified Platform</h5>
-                                            <p className="text-xs text-gray-500 font-medium">FBR Tier-1 and SECP-ready architecture for consistent compliance workflows.</p>
-                                        </div>
-                                        <div className="flex flex-col gap-2">
-                                            <div className="p-3 bg-white w-fit rounded-xl shadow-sm border border-gray-100">
-                                                <Shield className="w-5 h-5 text-wine" />
-                                            </div>
-                                            <h5 className="font-black text-gray-900 mt-1">Zero-Trust Security</h5>
-                                            <p className="text-xs text-gray-500 font-medium">Role-based isolation, encryption, and audit-safe records across modules.</p>
-                                        </div>
-                                        <div className="flex flex-col gap-2">
-                                            <div className="p-3 bg-white w-fit rounded-xl shadow-sm border border-gray-100">
-                                                <CheckCircle2 className="w-5 h-5 text-wine" />
-                                            </div>
-                                            <h5 className="font-black text-gray-900 mt-1">Fast Go-Live</h5>
-                                            <p className="text-xs text-gray-500 font-medium">Complete setup in minutes with preconfigured chart, tax, and inventory defaults.</p>
-                                        </div>
-                                    </div>
-
-                                    <div className="rounded-2xl bg-white border border-gray-100 p-4">
-                                        <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Need onboarding help?</p>
-                                        <p className="text-sm font-bold text-gray-900">{getPublicSupportEmail()}</p>
-                                        <p className="text-xs text-gray-500 font-medium mt-1">Average response time under 15 minutes.</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
-
-                {/* Footer Credits */}
-                <div className="mt-12 text-center text-[10px] font-black uppercase text-gray-400 tracking-[0.2em] pb-8">
-                    POWERED BY TENVO ENTERPRISE CLOUD
-                </div>
-            </div>
-        </div>
+            </AuthShell>
         </>
     );
 }

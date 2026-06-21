@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { SmartProductImage } from '@/components/storefront/SmartProductImage';
 import {
   Package, Clock, CheckCircle, XCircle, Truck, Search,
-  Mail, Hash, ArrowLeft, ChevronRight, DollarSign, MapPin,
+  Mail, Hash, ChevronRight, DollarSign, MapPin,
   AlertCircle, RefreshCw, ShoppingBag
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -17,7 +17,14 @@ import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/lib/currency';
 import { useStorefront } from '@/lib/context/StorefrontContext';
 import { getStoreAccentColor } from '@/lib/config/storefrontDomains';
-import { getStorefrontOrders } from '@/lib/actions/storefront/business';
+import { StoreBuyerPageShell } from '@/components/storefront/StoreBuyerPageShell';
+
+async function fetchPublicOrders(businessDomain, { email, orderNumber }) {
+  const params = new URLSearchParams({ email });
+  if (orderNumber) params.set('orderNumber', orderNumber);
+  const res = await fetch(`/api/storefront/${encodeURIComponent(businessDomain)}/orders?${params}`);
+  return res.json();
+}
 
 const STATUS_CONFIG = {
   pending:    { label: 'Pending',    color: 'bg-amber-100 text-amber-700',   icon: Clock },
@@ -63,37 +70,49 @@ export default function OrderHistoryPage({ params }) {
   // Auto-search when redirected from checkout with ?email=
   useEffect(() => {
     const emailParam = searchParams.get('email')?.trim();
-    if (!emailParam || !business?.id || autoFetchedEmailRef.current) return;
+    if (!emailParam || autoFetchedEmailRef.current) return;
     autoFetchedEmailRef.current = true;
     setLoading(true);
-    getStorefrontOrders(business.id, { customerEmail: emailParam, limit: 50 })
+    fetchPublicOrders(businessDomain, { email: emailParam })
       .then((result) => {
         setOrders(result?.success ? (result.orders || []) : []);
+        if (!result?.success) setError(result?.error || 'Unable to load orders.');
       })
-      .catch(() => setOrders([]))
+      .catch(() => {
+        setOrders([]);
+        setError('Unable to load orders. Please try again.');
+      })
       .finally(() => {
         setLoading(false);
         setSearched(true);
       });
-  }, [business?.id, searchParams]);
+  }, [businessDomain, searchParams]);
 
   const handleSearch = async (e) => {
     e.preventDefault();
     setError('');
-    const query = tab === 'email' ? emailInput.trim() : orderNumInput.trim();
-    if (!query) return;
+    const email = emailInput.trim().toLowerCase();
+    const orderNumber = orderNumInput.trim();
+    if (!email) {
+      setError('Please enter the email you used at checkout.');
+      return;
+    }
+    if (tab === 'number' && !orderNumber) {
+      setError('Please enter your order number.');
+      return;
+    }
     setLoading(true);
     setSearched(false);
     try {
-      const filters = tab === 'email'
-        ? { customerEmail: query, limit: 50 }
-        : { orderNumber: query, limit: 10 };
-      const result = await getStorefrontOrders(business.id, filters);
+      const result = await fetchPublicOrders(businessDomain, {
+        email,
+        orderNumber: tab === 'number' ? orderNumber : undefined,
+      });
       if (result?.success) {
         setOrders(result.orders || []);
       } else {
         setOrders([]);
-        setError('Unable to load orders. Please try again.');
+        setError(result?.error || 'Unable to load orders. Please try again.');
       }
     } catch {
       setOrders([]);
@@ -114,24 +133,12 @@ export default function OrderHistoryPage({ params }) {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* ── Hero strip */}
-      <div className="bg-white border-b">
-        <div className="max-w-3xl mx-auto px-4 py-8">
-          <Link
-            href={`/store/${businessDomain}`}
-            className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 mb-4 transition-colors"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" /> Back to Store
-          </Link>
-          <h1 className="text-3xl font-black text-gray-900">Order Tracking</h1>
-          <p className="text-gray-500 mt-1">
-            Find and track your orders with {business?.business_name}
-          </p>
-        </div>
-      </div>
-
-      <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
+    <StoreBuyerPageShell
+      businessDomain={businessDomain}
+      title="Order tracking"
+      subtitle={`Find and track your orders with ${business?.business_name || 'this store'}.`}
+    >
+      <div className="space-y-4 sm:space-y-6">
 
         {/* ── Lookup card */}
         {!searched && (
@@ -160,30 +167,29 @@ export default function OrderHistoryPage({ params }) {
               </div>
 
               {/* Form */}
-              <form onSubmit={handleSearch} className="flex gap-3">
-                {tab === 'email' ? (
-                  <Input
-                    type="email"
-                    placeholder="Enter the email you used at checkout"
-                    value={emailInput}
-                    onChange={e => setEmailInput(e.target.value)}
-                    className="flex-1 rounded-xl"
-                    required
-                  />
-                ) : (
+              <form onSubmit={handleSearch} className="space-y-3">
+                <Input
+                  type="email"
+                  placeholder="Email used at checkout"
+                  value={emailInput}
+                  onChange={(e) => setEmailInput(e.target.value)}
+                  className="rounded-xl"
+                  required
+                />
+                {tab === 'number' ? (
                   <Input
                     type="text"
-                    placeholder="e.g. ORD-20240523-0042"
+                    placeholder="Order number e.g. ORD-20240523-0042"
                     value={orderNumInput}
-                    onChange={e => setOrderNumInput(e.target.value.toUpperCase())}
-                    className="flex-1 rounded-xl font-mono"
+                    onChange={(e) => setOrderNumInput(e.target.value.toUpperCase())}
+                    className="rounded-xl font-mono"
                     required
                   />
-                )}
+                ) : null}
                 <Button
                   type="submit"
                   disabled={loading}
-                  className="gap-2 rounded-xl px-6 font-bold"
+                  className="w-full gap-2 rounded-xl font-bold sm:w-auto sm:px-6"
                   style={{ backgroundColor: accent }}
                 >
                   {loading ? (
@@ -191,12 +197,14 @@ export default function OrderHistoryPage({ params }) {
                   ) : (
                     <Search className="w-4 h-4" />
                   )}
-                  {loading ? 'Searching…' : 'Find Orders'}
+                  {loading ? 'Searching…' : 'Find orders'}
                 </Button>
               </form>
 
-              <p className="text-xs text-gray-400 text-center">
-                Use the email address or order number from your confirmation
+              <p className="text-center text-xs text-gray-400">
+                {tab === 'email'
+                  ? 'We will show all orders linked to this email.'
+                  : 'Enter the email and order number from your confirmation.'}
               </p>
             </CardContent>
           </Card>
@@ -237,14 +245,19 @@ export default function OrderHistoryPage({ params }) {
             <h3 className="text-lg font-bold text-gray-900 mb-1">No orders found</h3>
             <p className="text-sm text-gray-500 mb-6 max-w-xs mx-auto">
               {tab === 'email'
-                ? `We couldn't find any orders for that email. Make sure it matches what you used at checkout.`
-                : `Order number not found. Check the number in your confirmation email.`}
+                ? "We couldn't find any orders for that email. Make sure it matches what you used at checkout."
+                : 'No matching order for that email and order number.'}
             </p>
-            <Link href={`/store/${businessDomain}/products`}>
-              <Button className="rounded-xl gap-2 font-bold" style={{ backgroundColor: accent }}>
-                <ShoppingBag className="w-4 h-4" /> Browse Products
-              </Button>
-            </Link>
+            <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+              <Link href={`/store/${businessDomain}/products`}>
+                <Button className="rounded-xl gap-2 font-bold" style={{ backgroundColor: accent }}>
+                  <ShoppingBag className="w-4 h-4" /> Browse products
+                </Button>
+              </Link>
+              <Link href={`/store/${businessDomain}/contact`} className="text-sm font-semibold hover:underline" style={{ color: accent }}>
+                Need help? Contact us
+              </Link>
+            </div>
           </div>
         )}
 
@@ -336,18 +349,30 @@ export default function OrderHistoryPage({ params }) {
                           )}
                         </div>
 
-                        {addr && (
-                          <div className="flex items-start gap-2 p-3 bg-gray-50 rounded-xl text-sm">
-                            <MapPin className="w-4 h-4 text-gray-400 flex-shrink-0 mt-0.5" />
+                        {addr ? (
+                          <div className="flex items-start gap-2 rounded-xl bg-gray-50 p-3 text-sm">
+                            <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" />
                             <div className="text-gray-600">
-                              {addr.name && <p className="font-medium text-gray-800">{addr.name}</p>}
-                              {addr.street && <p>{addr.street}</p>}
-                              {addr.city && <p>{addr.city}{addr.state ? `, ${addr.state}` : ''}{addr.zip ? ` ${addr.zip}` : ''}</p>}
-                              {addr.country && <p>{addr.country}</p>}
-                              {addr.phone && <p className="mt-1 text-gray-500">📞 {addr.phone}</p>}
+                              {typeof addr === 'string' ? (
+                                <p>{addr}</p>
+                              ) : (
+                                <>
+                                  {addr.name && <p className="font-medium text-gray-800">{addr.name}</p>}
+                                  {addr.street && <p>{addr.street}</p>}
+                                  {addr.city && (
+                                    <p>
+                                      {addr.city}
+                                      {addr.state ? `, ${addr.state}` : ''}
+                                      {addr.zip ? ` ${addr.zip}` : ''}
+                                    </p>
+                                  )}
+                                  {addr.country && <p>{addr.country}</p>}
+                                  {addr.phone && <p className="mt-1 text-gray-500">{addr.phone}</p>}
+                                </>
+                              )}
                             </div>
                           </div>
-                        )}
+                        ) : null}
                       </div>
                     )}
 
@@ -385,6 +410,6 @@ export default function OrderHistoryPage({ params }) {
         )}
 
       </div>
-    </div>
+    </StoreBuyerPageShell>
   );
 }

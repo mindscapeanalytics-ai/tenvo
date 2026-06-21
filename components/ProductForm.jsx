@@ -43,6 +43,7 @@ import { productSchema, validateForm } from '@/lib/validation';
 import toast from 'react-hot-toast';
 import { showActionError, formatValidationErrors, isValidationError } from '@/lib/utils/formErrorHandler';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import { StockHistory } from '@/components/StockHistory';
 import { CustomParametersManager } from './inventory/CustomParametersManager';
@@ -53,6 +54,17 @@ import { useBusiness } from '@/lib/context/BusinessContext';
 import { getCurrentSeason, getSeasonalDiscount, applySeasonalPricing } from '@/lib/domainData/pakistaniSeasons';
 import { hasSeasonalPricing } from '@/lib/utils/pakistaniFeatures';
 import { pakistaniSizes, pakistaniColors } from '@/lib/domainData/pakistaniRetailData';
+
+function slugifyProductName(name) {
+    return String(name || '')
+        .normalize('NFKD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+        .slice(0, 120);
+}
 
 /**
  * ProductForm Component
@@ -80,6 +92,11 @@ export function ProductForm({
     // Keep a stable ref to handleSubmit so the keyboard effect never stale-closes
     const handleSubmitRef = useRef(null);
     useEffect(() => { handleSubmitRef.current = handleSubmit; });
+    const slugTouchedRef = useRef(false);
+
+    useEffect(() => {
+        slugTouchedRef.current = false;
+    }, [product?.id]);
 
     // Keyboard shortcuts for tabs & Focus Flow
     useEffect(() => {
@@ -171,6 +188,8 @@ export function ProductForm({
             sacCode: product.sac_code || '',
             taxPercent: product.tax_percent || getDomainDefaultTax(category),
             image_url: product.image_url || '',
+            isActive: product.is_active !== false,
+            slug: product.slug || '',
             batches: product.batches || [],
             serialNumbers: product.serial_numbers || [],
             customParameters: product.customParameters || product.domain_data?.custom_parameters || [],
@@ -208,7 +227,16 @@ export function ProductForm({
 
     // Update handlers
     const updateField = (field, value) => {
-        setFormData(prev => ({ ...prev, [field]: value }));
+        if (field === 'slug') {
+            slugTouchedRef.current = true;
+        }
+        setFormData((prev) => {
+            let next = { ...prev, [field]: value };
+            if (field === 'name' && !slugTouchedRef.current) {
+                next = { ...next, slug: slugifyProductName(value) };
+            }
+            return next;
+        });
         // Clear error if exists
         if (errors[field]) {
             setErrors(prev => {
@@ -258,7 +286,7 @@ export function ProductForm({
     };
 
     const fillDemoData = () => {
-        const knowledge = getDomainKnowledge(category);
+        const knowledge = getDomainKnowledge(category, { countryIso: standards?.countryCode || 'PK' });
         const suggestions = knowledge?.setupTemplate?.suggestedProducts || [];
         const domainFieldsList = getDomainProductFields(category);
         const domainDataObj = {};
@@ -335,6 +363,8 @@ export function ProductForm({
             sacCode: '',
             taxPercent: getDomainDefaultTax(category),
             image_url: '',
+            isActive: true,
+            slug: '',
             ...getDomainDefaults(category),
             batches: [],
             serialNumbers: [],
@@ -460,12 +490,19 @@ export function ProductForm({
                 cost_price: Number(formData.costPrice) || 0,
                 mrp: Number(formData.mrp) || 0,
                 min_stock: Number(formData.minStock) || 0,
+                min_stock_level: Number(formData.minStock) || 0,
                 max_stock: Number(formData.maxStock) || 0,
                 reorder_point: Number(formData.reorderPoint) || 0,
                 reorder_quantity: Number(formData.reorderQuantity) || 0,
                 hsn_code: formData.hsnCode || null,
                 sac_code: formData.sacCode || null,
                 tax_percent: Number(formData.taxPercent) || 0,
+                image_url: formData.image_url || null,
+                is_active: formData.isActive !== false,
+                slug:
+                    formData.slug && String(formData.slug).trim()
+                        ? String(formData.slug).trim().slice(0, 200)
+                        : null,
                 expiry_date: formData.expiry_date || null,
                 manufacturing_date: formData.manufacturing_date || null,
                 domain_data: {
@@ -532,16 +569,16 @@ export function ProductForm({
     };
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-6" noValidate>
-            <Card className="border-none shadow-2xl shadow-gray-200/50 rounded-3xl overflow-hidden bg-white/80 backdrop-blur-xl">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-6 pt-8 px-8 border-b border-gray-50">
-                    <div className="space-y-1">
-                        <CardTitle className="text-lg font-semibold text-slate-800">{product ? 'Update Inventory' : 'New Stock Entry'}</CardTitle>
-                        <CardDescription className="text-sm text-slate-500">
-                            {product ? `Editing: ${product.name}` : `Initializing ${category.replace('-', ' ')} inventory record`}
+        <form onSubmit={handleSubmit} className="flex max-h-full min-h-0 flex-col space-y-6" noValidate>
+            <Card className="flex min-h-0 flex-1 flex-col overflow-hidden border-none rounded-3xl bg-white/80 shadow-2xl shadow-gray-200/50 backdrop-blur-xl">
+                <CardHeader className="shrink-0 flex flex-row items-center justify-between space-y-0 border-b border-gray-50 px-3 py-3 sm:px-6 sm:py-4">
+                    <div className="min-w-0 space-y-0.5">
+                        <CardTitle className="truncate text-sm font-semibold text-slate-800 sm:text-lg">{product ? 'Update Product' : 'New Product'}</CardTitle>
+                        <CardDescription className="truncate text-[11px] text-slate-500 sm:text-sm">
+                            {product ? product.name : `Add to ${category.replace('-', ' ')} catalog`}
                         </CardDescription>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex shrink-0 items-center gap-2">
                         <div className="hidden md:flex flex-col items-end mr-4">
                             <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Compliance Status</span>
                             <div className="flex items-center gap-2">
@@ -556,16 +593,16 @@ export function ProductForm({
                                 )}
                             </div>
                         </div>
-                        <Badge variant="outline" className="bg-wine-50 text-wine-600 border-wine-100 px-4 py-1.5 rounded-full font-black uppercase tracking-widest text-[10px] flex items-center gap-2 shadow-sm">
-                            <div className="w-2 h-2 rounded-full bg-wine-600 animate-pulse" />
-                            {category.replace('-', ' ')} Mode
+                        <Badge variant="outline" className="hidden rounded-full border-wine-100 bg-wine-50 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest text-wine-600 sm:flex sm:px-4 sm:py-1.5 sm:text-[10px]">
+                            <div className="mr-1.5 hidden h-2 w-2 animate-pulse rounded-full bg-wine-600 sm:block" />
+                            {category.replace('-', ' ')}
                         </Badge>
                     </div>
                 </CardHeader>
-                <CardContent className="pt-8 px-8 pb-10">
+                <CardContent className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pb-4 pt-3 sm:px-6 sm:pb-6 sm:pt-4">
                     {/* Domain Intelligence Banner */}
                     {!isEasyMode && (
-                        <div className="mb-8 p-6 rounded-3xl bg-gradient-to-br from-white to-wine-50/20 border border-wine-100/50 shadow-sm relative overflow-hidden group hover:shadow-md transition-all duration-500 cursor-default">
+                        <div className="mb-4 hidden rounded-2xl border border-wine-100/50 bg-gradient-to-br from-white to-wine-50/20 p-4 sm:mb-6 sm:block sm:p-6">
                             <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
                                 <div className="flex items-start gap-4">
                                     <div className="p-4 rounded-2xl bg-wine-600 text-white shadow-xl shadow-wine-600/20 group-hover:scale-105 transition-transform duration-500">
@@ -589,17 +626,17 @@ export function ProductForm({
                         </div>
                     )}
                     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                        <div className="sticky top-0 z-20 bg-white/80 backdrop-blur-md py-4 mb-6 border-b border-gray-100 flex items-center justify-between">
-                            <TabsList className="bg-gray-100/50 p-1 rounded-2xl border border-gray-100">
-                                <TabsTrigger value="basic" className="rounded-lg px-4 py-2 font-medium text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm">Identity</TabsTrigger>
-                                <TabsTrigger value="inventory" className="rounded-lg px-4 py-2 font-medium text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm">Stock & Flow</TabsTrigger>
+                        <div className="sticky top-0 z-20 mb-4 flex items-center justify-between gap-2 border-b border-gray-100 bg-white/90 py-2 backdrop-blur-md sm:mb-6 sm:py-4">
+                            <TabsList className="h-9 max-w-full justify-start overflow-x-auto rounded-xl border border-gray-100 bg-gray-100/50 p-0.5 scrollbar-none sm:overflow-visible">
+                                <TabsTrigger value="basic" className="shrink-0 rounded-lg px-3 py-1.5 text-[11px] font-medium data-[state=active]:bg-white data-[state=active]:shadow-sm sm:px-4 sm:text-xs">Identity</TabsTrigger>
+                                <TabsTrigger value="inventory" className="shrink-0 rounded-lg px-3 py-1.5 text-[11px] font-medium data-[state=active]:bg-white data-[state=active]:shadow-sm sm:px-4 sm:text-xs">Stock</TabsTrigger>
                                 {!isEasyMode && (
-                                    <TabsTrigger value="domain" className="rounded-lg px-4 py-2 font-medium text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm">Expert Detail</TabsTrigger>
+                                    <TabsTrigger value="domain" className="shrink-0 rounded-lg px-3 py-1.5 text-[11px] font-medium data-[state=active]:bg-white data-[state=active]:shadow-sm sm:px-4 sm:text-xs">Expert</TabsTrigger>
                                 )}
-                                <TabsTrigger value="media" className="rounded-lg px-4 py-2 font-medium text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm">Media</TabsTrigger>
-                                {product && <TabsTrigger value="history" className="rounded-lg px-4 py-2 font-medium text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm">Audit trail</TabsTrigger>}
+                                <TabsTrigger value="media" className="shrink-0 rounded-lg px-3 py-1.5 text-[11px] font-medium data-[state=active]:bg-white data-[state=active]:shadow-sm sm:px-4 sm:text-xs">Media</TabsTrigger>
+                                {product && <TabsTrigger value="history" className="shrink-0 rounded-lg px-3 py-1.5 text-[11px] font-medium data-[state=active]:bg-white data-[state=active]:shadow-sm sm:px-4 sm:text-xs">History</TabsTrigger>}
                             </TabsList>
-                            <div className="flex items-center gap-2">
+                            <div className="hidden shrink-0 items-center gap-2 sm:flex">
                                 <AutosaveIndicator isSaving={isSaving} lastSaved={lastSaved} />
                                 <TooltipProvider>
                                     <Tooltip>
@@ -626,6 +663,23 @@ export function ProductForm({
                                     <Label htmlFor="sku" className="text-[11px] font-semibold text-slate-600">SKU / Item Code</Label>
                                     <Input id="sku" value={formData.sku ?? ''} onChange={(e) => updateField('sku', e.target.value.toUpperCase())} placeholder="ITEM-001" className="h-9 rounded-md font-mono" selectOnFocus />
                                     {renderError('sku')}
+                                </div>
+                            </div>
+
+                            <div className="flex flex-col gap-2 rounded-xl border border-slate-100 bg-slate-50/80 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                                <div>
+                                    <p className="text-[11px] font-semibold text-slate-700">Storefront listing</p>
+                                    <p className="text-[10px] text-slate-500">Inactive products stay in history but are hidden from default picks.</p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500">
+                                        {formData.isActive !== false ? 'Active' : 'Inactive'}
+                                    </span>
+                                    <Switch
+                                        id="product-active"
+                                        checked={formData.isActive !== false}
+                                        onCheckedChange={(v) => updateField('isActive', Boolean(v))}
+                                    />
                                 </div>
                             </div>
 
@@ -746,7 +800,7 @@ export function ProductForm({
                                         value={formData.brand}
                                         onChange={(val) => updateField('brand', val)}
                                         domain={category}
-                                        placeholder={`e.g. ${category === 'textile-wholesale' ? 'Gul Ahmed, Khaadi' : 'Samsung, Toyota'}`}
+                                        countryIso={standards?.countryCode || 'PK'}
                                     />
                                 </div>
 
@@ -858,6 +912,23 @@ export function ProductForm({
                                         onChange={(url) => updateField('image_url', url)}
                                         productName={formData.name || ''}
                                         category={category}
+                                    />
+                                </div>
+
+                                <div className="space-y-2 rounded-xl border border-slate-100 bg-white p-4 shadow-sm">
+                                    <Label htmlFor="product-slug" className="text-[11px] font-semibold text-slate-600">
+                                        URL slug
+                                    </Label>
+                                    <p className="text-[10px] text-slate-500 -mt-1 mb-2">
+                                        Short handle for links and integrations. Fills from the product name until you edit it.
+                                    </p>
+                                    <Input
+                                        id="product-slug"
+                                        value={formData.slug ?? ''}
+                                        onChange={(e) => updateField('slug', e.target.value)}
+                                        placeholder={slugifyProductName(formData.name) || 'my-product'}
+                                        className="h-9 rounded-md font-mono text-sm"
+                                        selectOnFocus
                                     />
                                 </div>
                             </div>
@@ -1119,7 +1190,8 @@ export function ProductForm({
                                 <div className="space-y-2 col-span-2 md:col-span-1">
                                     <TaxCategorySelector
                                         category={category}
-                                        value={formData.taxCategory || (getDomainDefaultTax(category) ? `Sales Tax ${getDomainDefaultTax(category)}%` : '')}
+                                        countryIso={standards?.countryCode || 'PK'}
+                                        value={formData.taxCategory || (getDomainDefaultTax(category, { countryIso: standards?.countryCode }) ? `${standards?.taxLabel || 'Tax'} ${getDomainDefaultTax(category, { countryIso: standards?.countryCode })}%` : '')}
                                         onChange={(cat, rate) => {
                                             updateField('taxCategory', cat);
                                             updateField('taxPercent', rate);
@@ -1155,42 +1227,36 @@ export function ProductForm({
                         </div>
                     )}
 
-                    {/* Action Footer - Relative (not fixed) so it works inside Dialogs */}
-                    <div className="mt-8 pt-6 border-t border-gray-100">
-                        <div className="bg-slate-900/95 backdrop-blur-xl p-4 rounded-2xl border border-white/10 shadow-xl flex items-center justify-between">
-                            <Button type="button" variant="ghost" onClick={fillDemoData} className="text-[10px] text-slate-400 hover:text-white uppercase font-black tracking-widest px-4">
-                                <Sparkles className="w-3 h-3 mr-2 text-yellow-500" />
-                                Smart Fill
-                            </Button>
+                </CardContent>
 
-                            <div className="flex gap-3">
-                                {onCancel && (
-                                    <Button type="button" variant="ghost" onClick={onCancel} className="font-bold text-slate-400 hover:text-white h-11 px-6 rounded-2xl">
-                                        Dismiss
-                                    </Button>
-                                )}
-
-                                {!product && (
-                                    <Button
-                                        type="button"
-                                        onClick={(e) => handleSubmit(e, true)}
-                                        disabled={isLoading}
-                                        className="font-black px-6 h-11 rounded-2xl border border-white/10 transition-all bg-emerald-600 hover:bg-emerald-700 text-white"
-                                    >
-                                        {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Save & Next'}
-                                    </Button>
-                                )}
-
-                                <Button type="submit" disabled={isLoading} className="font-black px-10 h-11 rounded-2xl shadow-lg transition-all active:scale-95 flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white">
-                                    {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : (product ? <><Save className="w-4 h-4" /> Finalize Update</> : <><CheckCircle2 className="w-4 h-4" /> Deploy to Stock</>)}
+                <div className="shrink-0 border-t border-gray-100 bg-white px-3 py-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] sm:px-6 sm:py-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                        <Button type="button" variant="ghost" onClick={fillDemoData} className="hidden h-9 px-2 text-[10px] font-bold uppercase tracking-widest text-slate-500 sm:inline-flex">
+                            <Sparkles className="mr-1.5 h-3 w-3 text-yellow-500" />
+                            Smart Fill
+                        </Button>
+                        <div className="ml-auto flex w-full gap-2 sm:w-auto">
+                            {onCancel && (
+                                <Button type="button" variant="outline" onClick={onCancel} className="h-9 flex-1 rounded-xl text-xs font-semibold sm:flex-none sm:px-4">
+                                    Cancel
                                 </Button>
-                            </div>
-                        </div>
-                        <div className="mt-3 text-center">
-                           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Tip: Press <kbd className="bg-gray-100 px-1 rounded">Enter</kbd> to move fields or <kbd className="bg-gray-100 px-1 rounded">Cmd+Enter</kbd> to save</p>
+                            )}
+                            {!product && (
+                                <Button
+                                    type="button"
+                                    onClick={(e) => handleSubmit(e, true)}
+                                    disabled={isLoading}
+                                    className="hidden h-9 rounded-xl bg-emerald-600 px-4 text-xs font-bold text-white hover:bg-emerald-700 sm:inline-flex"
+                                >
+                                    Save & Next
+                                </Button>
+                            )}
+                            <Button type="submit" disabled={isLoading} className="h-9 flex-1 rounded-xl bg-emerald-600 px-4 text-xs font-bold text-white hover:bg-emerald-700 sm:flex-none sm:px-6">
+                                {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : (product ? 'Update' : 'Save Product')}
+                            </Button>
                         </div>
                     </div>
-                </CardContent>
+                </div>
             </Card>
         </form >
     );

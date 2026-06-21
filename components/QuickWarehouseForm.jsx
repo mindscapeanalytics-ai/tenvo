@@ -8,6 +8,8 @@ import { warehouseAPI } from '@/lib/api/warehouse';
 import { useBusiness } from '@/lib/context/BusinessContext';
 import { Loader2, Building2, MapPin } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { MOBILE_INPUT_CLASS, MOBILE_BTN_PRIMARY, MOBILE_BTN_SECONDARY } from '@/lib/utils/formMobileStyles';
+import { cn } from '@/lib/utils';
 
 export function QuickWarehouseForm({ onSave, onCancel }) {
     const { business } = useBusiness();
@@ -39,39 +41,39 @@ export function QuickWarehouseForm({ onSave, onCancel }) {
     };
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-6 pt-4">
-            <div className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4 pt-2 sm:space-y-6 sm:pt-4">
+            <div className="space-y-3 sm:space-y-4">
                 <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Location Name *</Label>
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Location Name *</Label>
                     <div className="relative">
-                        <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        <Building2 className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                         <Input
                             placeholder="e.g. Main Warehouse, Shop Floor"
                             value={formData.name}
                             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                            className="h-11 pl-10 rounded-xl border-gray-200 focus:ring-blue-500 font-medium"
+                            className={cn(MOBILE_INPUT_CLASS, 'pl-10 font-medium')}
                             required
                         />
                     </div>
                 </div>
 
                 <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Address / Description</Label>
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Address / Description</Label>
                     <div className="relative">
-                        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        <MapPin className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                         <Input
                             placeholder="Optional location details..."
                             value={formData.address}
                             onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                            className="h-11 pl-10 rounded-xl border-gray-200 focus:ring-blue-500 font-medium"
+                            className={cn(MOBILE_INPUT_CLASS, 'pl-10 font-medium')}
                         />
                     </div>
                 </div>
 
                 <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Location Type</Label>
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Location Type</Label>
                     <select
-                        className="flex h-11 w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-bold text-gray-900"
+                        className={cn(MOBILE_INPUT_CLASS, 'w-full border bg-white px-3 py-2 font-bold text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500')}
                         value={formData.type}
                         onChange={(e) => setFormData({ ...formData, type: e.target.value })}
                     >
@@ -83,19 +85,19 @@ export function QuickWarehouseForm({ onSave, onCancel }) {
                 </div>
             </div>
 
-            <div className="flex gap-3 pt-4">
+            <div className="flex gap-2 pt-2 sm:gap-3 sm:pt-4">
                 <Button
                     type="button"
                     variant="ghost"
                     onClick={onCancel}
-                    className="flex-1 h-11 rounded-xl font-bold text-gray-500 hover:bg-gray-100"
+                    className={cn(MOBILE_BTN_SECONDARY, 'flex-1 font-bold text-gray-500 hover:bg-gray-100')}
                 >
                     Cancel
                 </Button>
                 <Button
                     type="submit"
                     disabled={isSubmitting}
-                    className="flex-1 h-11 rounded-xl font-bold shadow-lg bg-emerald-600 hover:bg-emerald-700 text-white"
+                    className={cn(MOBILE_BTN_PRIMARY, 'flex-1 bg-emerald-600 font-bold text-white shadow-lg hover:bg-emerald-700')}
                 >
                     {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
                     Create Location

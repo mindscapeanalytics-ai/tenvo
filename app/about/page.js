@@ -3,6 +3,8 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import MarketingLayout from '@/components/marketing/layout/MarketingLayout';
+import { MarketingSection } from '@/components/marketing/layout/MarketingSection';
+import { MARKETING_CONTAINER } from '@/lib/utils/marketingLayout';
 import Hero from '@/components/marketing/sections/Hero';
 import StatsBar from '@/components/marketing/sections/StatsBar';
 import CTASection from '@/components/marketing/sections/CTASection';
@@ -125,13 +127,12 @@ export default function AboutPage() {
       />
 
       {/* Mission & Vision */}
-      <section className="py-24 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12">
-          <div className="grid md:grid-cols-2 gap-16">
+      <MarketingSection className="bg-white" padding="loose">
+          <div className="grid gap-8 md:grid-cols-2 lg:gap-16">
             <div>
-              <h2 className="text-[11px] font-black text-brand-primary uppercase tracking-[0.3em] mb-4">Our Mission</h2>
-              <h3 className="text-4xl font-black text-gray-900 mb-6">Empowering Pakistani Businesses</h3>
-              <p className="text-lg text-gray-500 font-medium leading-relaxed mb-6">
+              <h2 className="mb-3 text-[10px] font-black uppercase tracking-[0.22em] text-brand-primary sm:mb-4 sm:text-[11px] sm:tracking-[0.3em]">Our Mission</h2>
+              <h3 className="mb-4 text-2xl font-black text-gray-900 sm:mb-6 sm:text-3xl lg:text-4xl">Empowering Pakistani Businesses</h3>
+              <p className="mb-4 text-base font-medium leading-relaxed text-gray-500 sm:mb-6 sm:text-lg">
                 We believe every business deserves access to world-class enterprise software. TENVO was built from the ground up to address the unique challenges of Pakistani businesses - from FBR compliance to multi-currency operations.
               </p>
               <p className="text-lg text-gray-500 font-medium leading-relaxed">
@@ -139,28 +140,27 @@ export default function AboutPage() {
               </p>
             </div>
             <div>
-              <h2 className="text-[11px] font-black text-brand-primary uppercase tracking-[0.3em] mb-4">Our Vision</h2>
-              <h3 className="text-4xl font-black text-gray-900 mb-6">The Operating System for Business</h3>
-              <p className="text-lg text-gray-500 font-medium leading-relaxed mb-6">
+              <h2 className="mb-3 text-[10px] font-black uppercase tracking-[0.22em] text-brand-primary sm:mb-4 sm:text-[11px] sm:tracking-[0.3em]">Our Vision</h2>
+              <h3 className="mb-4 text-2xl font-black text-gray-900 sm:mb-6 sm:text-3xl lg:text-4xl">The Operating System for Business</h3>
+              <p className="mb-4 text-base font-medium leading-relaxed text-gray-500 sm:mb-6 sm:text-lg">
                 We envision a future where every business in Pakistan runs on TENVO - a unified platform that connects inventory, finance, operations, and compliance into one seamless experience.
               </p>
-              <p className="text-lg text-gray-500 font-medium leading-relaxed">
+              <p className="text-base font-medium leading-relaxed text-gray-500 sm:text-lg">
                 By 2030, we aim to be the backbone of Pakistan&apos;s digital economy, powering millions of businesses and creating thousands of jobs.
               </p>
             </div>
           </div>
-        </div>
-      </section>
+      </MarketingSection>
 
       {/* Values */}
-      <section className="py-24 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12">
-          <div className="text-center max-w-3xl mx-auto mb-16 space-y-4">
-            <h2 className="text-[11px] font-black text-brand-primary uppercase tracking-[0.3em]">Our Values</h2>
-            <h3 className="text-4xl md:text-5xl font-black text-gray-900 tracking-tighter">What Drives Us</h3>
+      <section className="py-10 sm:py-16 lg:py-24 bg-gray-50">
+        <div className={MARKETING_CONTAINER}>
+          <div className="mx-auto mb-8 max-w-3xl space-y-3 text-center sm:mb-12 lg:mb-16 sm:space-y-4">
+            <h2 className="text-[10px] font-black uppercase tracking-[0.22em] text-brand-primary sm:text-[11px] sm:tracking-[0.3em]">Our Values</h2>
+            <h3 className="text-2xl font-black tracking-tighter text-gray-900 sm:text-3xl md:text-4xl lg:text-5xl">What Drives Us</h3>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="grid gap-5 sm:grid-cols-2 md:grid-cols-3 sm:gap-6 md:gap-8">
             <ValueCard
               icon={<Heart className="w-8 h-8" />}
               title="Customer First"
@@ -196,8 +196,8 @@ export default function AboutPage() {
       </section>
 
       {/* Company Timeline */}
-      <section className="py-24 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12">
+      <section className="py-10 sm:py-16 lg:py-24 bg-gray-50">
+        <div className={MARKETING_CONTAINER}>
           <div className="text-center max-w-3xl mx-auto mb-16 space-y-4">
             <h2 className="text-[11px] font-black text-brand-primary uppercase tracking-[0.3em]">Our Journey</h2>
             <h3 className="text-4xl md:text-5xl font-black text-gray-900 tracking-tighter">From Idea to Impact</h3>
@@ -235,8 +235,8 @@ export default function AboutPage() {
       </section>
 
       {/* Leadership Team */}
-      <section id="team" className="py-24 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12">
+      <section id="team" className="py-10 sm:py-16 lg:py-24 bg-white">
+        <div className={MARKETING_CONTAINER}>
           <div className="text-center max-w-3xl mx-auto mb-16 space-y-4">
             <h2 className="text-[11px] font-black text-brand-primary uppercase tracking-[0.3em]">Leadership</h2>
             <h3 className="text-4xl md:text-5xl font-black text-gray-900 tracking-tighter">Meet the Founder</h3>
@@ -247,13 +247,13 @@ export default function AboutPage() {
 
           {/* Zeeshan Keerio Featured Profile */}
           <div className="max-w-4xl mx-auto">
-            <div className="bg-gradient-to-br from-gray-50 to-white border border-gray-200 rounded-3xl p-8 lg:p-12 relative overflow-hidden">
+            <div className="rounded-3xl border border-gray-200 bg-gradient-to-br from-gray-50 to-white p-5 sm:p-8 lg:p-12 relative overflow-hidden">
               <div className="absolute top-0 right-0 w-96 h-96 bg-brand-primary/5 rounded-full -translate-y-1/2 translate-x-1/2" />
               
               <div className="grid lg:grid-cols-12 gap-8 items-center relative z-10">
                 {/* Profile Image */}
                 <div className="lg:col-span-4">
-                  <div className="relative w-64 h-80 mx-auto lg:mx-0">
+                  <div className="relative mx-auto h-60 w-48 sm:mx-0 sm:h-80 sm:w-64">
                     <div className="absolute inset-0 bg-brand-primary/10 rounded-2xl transform rotate-3" />
                     <Image
                       src="/zeeshan_keerio.png"
@@ -354,8 +354,8 @@ export default function AboutPage() {
       <AboutVoicesSection />
 
       {/* Certifications & Compliance */}
-      <section className="py-24 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12">
+      <section className="py-10 sm:py-16 lg:py-24 bg-gray-50">
+        <div className={MARKETING_CONTAINER}>
           <div className="text-center max-w-3xl mx-auto mb-16 space-y-4">
             <h2 className="text-[11px] font-black text-brand-primary uppercase tracking-[0.3em]">Certifications</h2>
             <h3 className="text-4xl md:text-5xl font-black text-gray-900 tracking-tighter">Trusted & Verified</h3>
@@ -418,8 +418,8 @@ export default function AboutPage() {
       </section>
 
       {/* Careers CTA */}
-      <section id="careers" className="py-24 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12">
+      <section id="careers" className="py-10 sm:py-16 lg:py-24 bg-white">
+        <div className={MARKETING_CONTAINER}>
           <div className="text-center max-w-3xl mx-auto mb-12 space-y-4">
             <h2 className="text-[11px] font-black text-brand-primary uppercase tracking-[0.3em]">Join Our Team</h2>
             <h3 className="text-4xl md:text-5xl font-black text-gray-900 tracking-tighter">Build the Future with Us</h3>
@@ -471,7 +471,7 @@ export default function AboutPage() {
 
 function ValueCard({ icon, title, description }) {
   return (
-    <div className="bg-white border border-gray-100 rounded-2xl p-8 hover:shadow-lg transition-all duration-300">
+    <div className="rounded-2xl border border-gray-100 bg-white p-5 transition-all duration-300 hover:shadow-lg sm:p-6 lg:p-8">
       <div className="text-brand-primary mb-4">{icon}</div>
       <h4 className="text-xl font-black text-gray-900 mb-3">{title}</h4>
       <p className="text-gray-500 font-medium leading-relaxed">{description}</p>

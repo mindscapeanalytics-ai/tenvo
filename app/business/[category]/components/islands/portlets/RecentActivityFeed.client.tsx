@@ -7,9 +7,14 @@ import { FileText, CreditCard, UserPlus, AlertTriangle, Clock } from 'lucide-rea
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 
+/** Visible list height tuned for ~6 activity rows + tight rhythm */
+const ACTIVITY_LIST_MAX_HEIGHT_CLASS = 'max-h-[min(21rem,42svh)]';
+
 interface RecentActivityFeedProps {
     businessId?: string;
     onViewAll?: () => void;
+    /** How many events to load; list scrolls when taller than the viewport window */
+    feedLimit?: number;
 }
 
 type ActivityType = 'invoice' | 'payment' | 'customer' | 'alert' | 'system';
@@ -30,7 +35,11 @@ function formatRelativeDate(dateValue?: string | Date): string {
     return formatDistanceToNow(parsed, { addSuffix: true });
 }
 
-export const RecentActivityFeed = memo(function RecentActivityFeed({ businessId, onViewAll }: RecentActivityFeedProps) {
+export const RecentActivityFeed = memo(function RecentActivityFeed({
+    businessId,
+    onViewAll,
+    feedLimit = 40,
+}: RecentActivityFeedProps) {
     const [activities, setActivities] = useState<ActivityItem[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -39,39 +48,51 @@ export const RecentActivityFeed = memo(function RecentActivityFeed({ businessId,
 
         const fetchActivity = async () => {
             try {
-                const res = await getUnifiedActivityFeedAction(businessId, 6);
+                const res = await getUnifiedActivityFeedAction(businessId, feedLimit);
                 if (res.success) {
                     setActivities(res.data);
                 }
             } catch (error) {
-                console.error("Failed to load activity feed", error);
+                console.error('Failed to load activity feed', error);
             } finally {
                 setLoading(false);
             }
         };
 
         fetchActivity();
-    }, [businessId]);
+    }, [businessId, feedLimit]);
 
     if (loading) {
         return (
-            <Card className="h-full border border-slate-200 shadow-sm bg-white">
-                <CardHeader className="px-3.5 py-2.5 border-b border-slate-100">
-                    <CardTitle className="text-[11px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                        <Clock className="w-3.5 h-3.5" />
+            <Card className="flex h-full min-h-0 flex-col border border-slate-200 bg-white shadow-sm">
+                <CardHeader className="shrink-0 border-b border-slate-100 px-3.5 py-2.5">
+                    <CardTitle className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-slate-500">
+                        <Clock className="h-3.5 w-3.5 shrink-0" aria-hidden />
                         Recent Activity
                     </CardTitle>
                 </CardHeader>
-                <CardContent className="p-3.5 space-y-3">
-                    {[1, 2, 3].map(i => (
-                        <div key={i} className="flex gap-3 animate-pulse">
-                            <div className="w-8 h-8 rounded-full bg-slate-100" />
-                            <div className="flex-1 space-y-2">
-                                <div className="h-3 bg-slate-100 rounded w-3/4" />
-                                <div className="h-2 bg-slate-50 rounded w-1/2" />
-                            </div>
+                <CardContent className="flex min-h-0 flex-1 flex-col p-0">
+                    <div
+                        className={cn(
+                            'min-h-0 overflow-hidden px-3.5 py-2',
+                            ACTIVITY_LIST_MAX_HEIGHT_CLASS
+                        )}
+                    >
+                        <div className="flex flex-col divide-y divide-slate-100">
+                            {[1, 2, 3, 4, 5, 6].map((i) => (
+                                <div key={i} className="flex min-h-[3.25rem] items-center gap-3 py-2.5 animate-pulse">
+                                    <div className="h-8 w-8 shrink-0 rounded-full bg-slate-100" />
+                                    <div className="min-w-0 flex-1 space-y-2">
+                                        <div className="h-2.5 w-[80%] max-w-[12rem] rounded bg-slate-100" />
+                                        <div className="h-2 w-1/3 rounded bg-slate-50" />
+                                    </div>
+                                </div>
+                            ))}
                         </div>
-                    ))}
+                    </div>
+                    <div className="shrink-0 border-t border-slate-100 px-3.5 pb-3 pt-2">
+                        <div className="h-9 w-full animate-pulse rounded-lg bg-slate-100" />
+                    </div>
                 </CardContent>
             </Card>
         );
@@ -79,14 +100,14 @@ export const RecentActivityFeed = memo(function RecentActivityFeed({ businessId,
 
     if (activities.length === 0) {
         return (
-            <Card className="h-full border border-slate-200 shadow-sm bg-white">
-                <CardHeader className="px-3.5 py-2.5 border-b border-slate-100">
-                    <CardTitle className="text-[11px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                        <Clock className="w-3.5 h-3.5" />
+            <Card className="flex h-full flex-col border border-slate-200 bg-white shadow-sm">
+                <CardHeader className="shrink-0 border-b border-slate-100 px-3.5 py-2.5">
+                    <CardTitle className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-slate-500">
+                        <Clock className="h-3.5 w-3.5 shrink-0" aria-hidden />
                         Recent Activity
                     </CardTitle>
                 </CardHeader>
-                <CardContent className="p-4 text-center text-slate-400 text-xs italic">
+                <CardContent className="px-3.5 py-6 text-center text-xs italic text-slate-400">
                     No recent activity recorded.
                 </CardContent>
             </Card>
@@ -95,61 +116,88 @@ export const RecentActivityFeed = memo(function RecentActivityFeed({ businessId,
 
     const getIcon = (type?: ActivityType) => {
         switch (type) {
-            case 'invoice': return <FileText className="w-3.5 h-3.5 text-brand-primary" />;
-            case 'payment': return <CreditCard className="w-3.5 h-3.5 text-emerald-500" />;
-            case 'customer': return <UserPlus className="w-3.5 h-3.5 text-brand-primary" />;
-            case 'alert': return <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />;
-            default: return <Clock className="w-3.5 h-3.5 text-slate-400" />;
+            case 'invoice':
+                return <FileText className="h-3.5 w-3.5 text-brand-primary" />;
+            case 'payment':
+                return <CreditCard className="h-3.5 w-3.5 text-emerald-500" />;
+            case 'customer':
+                return <UserPlus className="h-3.5 w-3.5 text-brand-primary" />;
+            case 'alert':
+                return <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />;
+            default:
+                return <Clock className="h-3.5 w-3.5 text-slate-400" />;
         }
     };
 
     const getBg = (type?: ActivityType) => {
         switch (type) {
-            case 'invoice': return 'bg-brand-50';
-            case 'payment': return 'bg-emerald-50';
-            case 'customer': return 'bg-brand-50';
-            case 'alert': return 'bg-amber-50';
-            default: return 'bg-slate-50';
+            case 'invoice':
+                return 'bg-brand-50';
+            case 'payment':
+                return 'bg-emerald-50';
+            case 'customer':
+                return 'bg-brand-50';
+            case 'alert':
+                return 'bg-amber-50';
+            default:
+                return 'bg-slate-50';
         }
     };
 
     return (
-        <Card className="h-full border border-slate-200 shadow-sm bg-white">
-            <CardHeader className="px-3.5 py-2.5 border-b border-slate-100">
-                <CardTitle className="text-[11px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                    <Clock className="w-3.5 h-3.5" />
+        <Card className="flex min-h-0 flex-col border border-slate-200 bg-white shadow-sm">
+            <CardHeader className="shrink-0 border-b border-slate-100 px-3.5 py-2.5">
+                <CardTitle className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-slate-500">
+                    <Clock className="h-3.5 w-3.5 shrink-0" aria-hidden />
                     Recent Activity
                 </CardTitle>
             </CardHeader>
-            <CardContent className="p-3.5 space-y-3">
-                {activities.map((item) => (
-                    <div key={item.id} className="flex gap-3 group items-start">
-                        <div className={cn("w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-colors", getBg(item.type))}>
-                            {getIcon(item.type)}
-                        </div>
-                        <div className="space-y-0.5 min-w-0 flex-1">
-                            <p className="text-[11px] font-bold text-slate-700 leading-tight group-hover:text-slate-900 transition-colors truncate">
-                                {item.description}
-                            </p>
-                            <div className="flex items-center justify-between">
-                                <span className="text-[10px] text-slate-400 font-medium">
-                                    {formatRelativeDate(item.date)}
-                                </span>
-                                {Number(item.amount || 0) > 0 && (
-                                    <span className="text-[10px] font-black text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded">
-                                        {item.status === 'warning'
-                                            ? Number(item.amount || 0)
-                                            : `PKR ${Number(item.amount || 0).toLocaleString()}`}
-                                    </span>
+            <CardContent className="flex min-h-0 flex-1 flex-col p-0">
+                <ul
+                    className={cn(
+                        'min-h-0 list-none overflow-y-auto overscroll-y-contain px-3.5',
+                        ACTIVITY_LIST_MAX_HEIGHT_CLASS
+                    )}
+                    aria-label="Recent activity list"
+                >
+                    {activities.map((item) => (
+                        <li
+                            key={item.id}
+                            className="flex min-h-[3.25rem] gap-3 border-b border-slate-100 py-2.5 last:border-b-0"
+                        >
+                            <div
+                                className={cn(
+                                    'flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors',
+                                    getBg(item.type)
                                 )}
+                            >
+                                {getIcon(item.type)}
                             </div>
-                        </div>
-                    </div>
-                ))}
-                <div className="pt-1">
+                            <div className="min-w-0 flex-1">
+                                <p className="truncate text-[11px] font-bold leading-tight text-slate-700">
+                                    {item.description}
+                                </p>
+                                <div className="mt-1 flex items-start justify-between gap-2">
+                                    <span className="text-[10px] font-medium text-slate-400">
+                                        {formatRelativeDate(item.date)}
+                                    </span>
+                                    {Number(item.amount || 0) > 0 && (
+                                        <span className="shrink-0 rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-black text-slate-600">
+                                            {item.status === 'warning'
+                                                ? Number(item.amount || 0)
+                                                : `PKR ${Number(item.amount || 0).toLocaleString()}`}
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+                        </li>
+                    ))}
+                </ul>
+                <div className="shrink-0 border-t border-slate-100 px-3.5 pb-3 pt-2">
                     <button
+                        type="button"
                         onClick={onViewAll}
-                        className="w-full text-center text-[10px] font-bold text-slate-400 hover:text-wine uppercase tracking-wider transition-colors py-2 border border-slate-100 rounded-lg hover:border-wine/20 hover:bg-wine/5"
+                        className="w-full rounded-full border border-slate-200 bg-white py-2.5 text-center text-[10px] font-bold uppercase tracking-wider text-slate-500 transition-colors hover:border-slate-300 hover:bg-slate-50 hover:text-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30"
                     >
                         View All Activity
                     </button>
@@ -158,4 +206,3 @@ export const RecentActivityFeed = memo(function RecentActivityFeed({ businessId,
         </Card>
     );
 });
-

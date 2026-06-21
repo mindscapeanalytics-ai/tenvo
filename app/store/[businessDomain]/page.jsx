@@ -10,10 +10,13 @@ import { formatCurrency } from '@/lib/currency';
 import { getDomainConfig, getStoreAccentColor } from '@/lib/config/storefrontDomains';
 import { getEffectiveProductImageUrl } from '@/lib/storefront/productImageFallback';
 import { getMergedStorefrontHero } from '@/lib/storefront/mergeHero';
+import { getStoreHomeCopy } from '@/lib/storefront/storeCopy';
+import { resolveStoreContact } from '@/lib/storefront/businessContact';
+import { StoreBuyerSupportStrip } from '@/components/storefront/StoreBuyerSupportStrip';
 import {
   Truck, Shield, RotateCcw, Star, Zap, Leaf, Clock, Gift,
   Lock, Tag, ArrowRight, ChevronRight, Package, Sparkles,
-  ShoppingBag, TrendingUp, BadgePercent
+  ShoppingBag
 } from 'lucide-react';
 
 export async function generateMetadata({ params }) {
@@ -41,6 +44,29 @@ const BADGE_ICONS = {
   tag: Tag, user: Shield, package: Package,
 };
 
+function StoreSectionHeader({ title, subtitle, href, accent, linkLabel = 'View all' }) {
+  return (
+    <div className="mb-3 flex items-end justify-between gap-3 sm:mb-5">
+      <div className="min-w-0">
+        <h2 className="truncate text-base font-bold text-gray-900 sm:text-xl">{title}</h2>
+        {subtitle ? (
+          <p className="mt-0.5 truncate text-xs text-gray-500">{subtitle}</p>
+        ) : null}
+      </div>
+      {href ? (
+        <Link
+          href={href}
+          className="flex shrink-0 items-center gap-0.5 text-xs font-semibold sm:text-sm"
+          style={{ color: accent }}
+        >
+          {linkLabel}
+          <ArrowRight className="h-3.5 w-3.5" />
+        </Link>
+      ) : null}
+    </div>
+  );
+}
+
 export default async function StoreHomePage({ params }) {
   const { businessDomain } = await params;
 
@@ -54,29 +80,28 @@ export default async function StoreHomePage({ params }) {
   const accentDark = domainCfg.accentDark;
   const accentLight = domainCfg.accentLight;
   const hero = getMergedStorefrontHero({ settings, domainCfg, business });
+  const copy = getStoreHomeCopy(business, domainCfg);
+  const contact = resolveStoreContact({ business, settings });
 
-  // Fetch data in parallel — no hard inStock filter so all inventory items show
-  const [featuredResult, newArrivalsResult, categoriesResult, onSaleResult, popularResult] = await Promise.all([
+  const [featuredResult, newArrivalsResult, categoriesResult, onSaleResult] = await Promise.all([
     getProducts(business.id, { limit: 8, sort: 'featured' }),
     getProducts(business.id, { limit: 8, sort: 'newest' }),
     getCategories(business.id),
     getProducts(business.id, { limit: 4, onSale: true }),
-    getProducts(business.id, { limit: 12, sort: 'popularity' }),
   ]);
 
   const featuredProducts = featuredResult.success ? featuredResult.products : [];
   const newArrivalsRaw = newArrivalsResult.success ? newArrivalsResult.products : [];
   const categories = categoriesResult.success ? categoriesResult.categories : [];
   const onSaleProductsRaw = onSaleResult.success ? onSaleResult.products : [];
-  const popularProducts = popularResult.success ? popularResult.products : [];
 
   const featuredIds = new Set(featuredProducts.map((p) => p.id));
   const newArrivals = newArrivalsRaw.filter((p) => !featuredIds.has(p.id));
   const homepagePriorIds = new Set([...featuredIds, ...newArrivals.map((p) => p.id)]);
   const onSaleProducts = onSaleProductsRaw.filter((p) => !homepagePriorIds.has(p.id)).slice(0, 8);
-  const onSaleIds = new Set(onSaleProducts.map((p) => p.id));
-  const homepageSeen = new Set([...homepagePriorIds, ...onSaleIds]);
-  const popularProductsDeduped = popularProducts.filter((p) => !homepageSeen.has(p.id)).slice(0, 4);
+
+  const catalogTotal = featuredResult.total ?? newArrivalsResult.total ?? featuredProducts.length;
+  const showNewArrivals = newArrivals.length > 0 && catalogTotal > featuredProducts.length;
 
   const heroImage = business.cover_image_url || domainCfg.heroImage;
   const freeShippingThreshold = settings?.freeShippingThreshold || 2000;
@@ -88,19 +113,15 @@ export default async function StoreHomePage({ params }) {
       {/* ── Announcement Banner ─────────────────────────────────────────────── */}
       {hero.banner ? (
         <div
-          className="text-white text-center py-2.5 px-4 text-sm font-medium"
+          className="md:hidden text-white text-center py-2 px-4 text-xs font-medium truncate"
           style={{ backgroundColor: accent }}
         >
-          <span className="inline-flex items-center gap-2">
-            <Zap className="w-4 h-4" />
-            {hero.banner}
-            <Zap className="w-4 h-4" />
-          </span>
+          {hero.banner}
         </div>
       ) : null}
 
       {/* ── Hero Section ────────────────────────────────────────────────────── */}
-      <section className="relative overflow-hidden" style={{ minHeight: '520px' }}>
+      <section className="relative overflow-hidden min-h-[240px] sm:min-h-[380px] lg:min-h-[520px]">
         {/* Background */}
         <div className="absolute inset-0">
           {heroImage ? (
@@ -117,44 +138,45 @@ export default async function StoreHomePage({ params }) {
         </div>
 
         {/* Content */}
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-32">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-16 lg:py-32">
           <div className="max-w-2xl">
-            {/* Store badge */}
-            <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-sm border border-white/20 rounded-full px-4 py-1.5 mb-6">
+            <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-sm border border-white/20 rounded-full px-3 py-1 mb-4 sm:mb-6 max-w-full">
               {business.logo_url ? (
-                <SmartProductImage src={business.logo_url} alt="" className="w-5 h-5 rounded-full object-cover" width={20} height={20} />
+                <SmartProductImage src={business.logo_url} alt="" className="w-4 h-4 sm:w-5 sm:h-5 rounded-full object-cover" width={20} height={20} />
               ) : (
-                <div className="w-5 h-5 rounded-full flex items-center justify-center text-white text-xs font-bold"
+                <div className="w-4 h-4 sm:w-5 sm:h-5 rounded-full flex items-center justify-center text-white text-[10px] sm:text-xs font-bold"
                   style={{ backgroundColor: accent }}>
                   {business.business_name?.charAt(0)}
                 </div>
               )}
-              <span className="text-white/90 text-sm font-medium">{business.business_name}</span>
+              <span className="text-white/90 text-xs sm:text-sm font-medium truncate">{business.business_name}</span>
               {business.is_verified && (
-                <span className="bg-white/20 text-white text-xs px-2 py-0.5 rounded-full">✓ Verified</span>
+                <span className="hidden sm:inline bg-white/20 text-white text-xs px-2 py-0.5 rounded-full">Verified</span>
               )}
             </div>
 
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-white leading-tight mb-4 tracking-tight">
+            <h1 className="text-2xl sm:text-5xl lg:text-6xl font-black text-white leading-tight mb-2 sm:mb-4 tracking-tight">
               {hero.title}
             </h1>
-            <p className="text-lg sm:text-xl text-white/85 mb-8 leading-relaxed max-w-xl">
-              {hero.subtitle}
-            </p>
+            {hero.subtitle ? (
+              <p className="text-sm sm:text-xl text-white/85 mb-4 sm:mb-8 leading-relaxed max-w-xl line-clamp-2 sm:line-clamp-none">
+                {hero.subtitle}
+              </p>
+            ) : null}
 
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap gap-2 sm:gap-3">
               <Link
                 href={`/store/${businessDomain}/products`}
-                className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl font-bold text-white text-lg shadow-2xl transition-all hover:scale-105 hover:shadow-xl"
+                className="inline-flex items-center gap-2 px-5 py-2.5 sm:px-8 sm:py-4 rounded-xl sm:rounded-2xl font-bold text-white text-sm sm:text-lg shadow-xl transition-all active:scale-[0.98] sm:hover:scale-105"
                 style={{ backgroundColor: accent }}
               >
-                <ShoppingBag className="w-5 h-5" />
-                {domainCfg.ctaLabel}
+                <ShoppingBag className="w-4 h-4 sm:w-5 sm:h-5" />
+                {copy.heroCta}
               </Link>
               {categories.length > 0 && (
                 <Link
                   href={`/store/${businessDomain}/products?category=${categories[0]?.slug}`}
-                  className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl font-bold text-white text-lg bg-white/15 backdrop-blur-sm border border-white/30 hover:bg-white/25 transition-all"
+                  className="hidden sm:inline-flex items-center gap-2 px-8 py-4 rounded-2xl font-bold text-white text-lg bg-white/15 backdrop-blur-sm border border-white/30 hover:bg-white/25 transition-all"
                 >
                   Browse Categories
                   <ChevronRight className="w-5 h-5" />
@@ -162,8 +184,8 @@ export default async function StoreHomePage({ params }) {
               )}
             </div>
 
-            {/* Quick stats */}
-            <div className="flex flex-wrap gap-6 mt-10">
+            {/* Quick stats — desktop only (mobile: footer / policies) */}
+            <div className="hidden sm:flex flex-wrap gap-6 mt-10">
               {[
                 { label: `${featuredResult.total || featuredProducts.length}+ Products`, icon: Package },
                 {
@@ -223,10 +245,10 @@ export default async function StoreHomePage({ params }) {
       {categories.length > 0 && (
         <section className="bg-white border-b shadow-sm">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center gap-2 overflow-x-auto py-4 scrollbar-hide">
+            <div className="flex items-center gap-2 overflow-x-auto py-3 sm:py-4 scrollbar-hide">
               <Link
                 href={`/store/${businessDomain}/products`}
-                className="flex-shrink-0 flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold transition-all border-2 text-white"
+                className="flex-shrink-0 flex items-center gap-1.5 px-4 py-2 sm:px-5 sm:py-2.5 rounded-full text-xs sm:text-sm font-semibold transition-all border-2 text-white"
                 style={{ backgroundColor: accent, borderColor: accent }}
               >
                 <ShoppingBag className="w-4 h-4" />
@@ -236,7 +258,7 @@ export default async function StoreHomePage({ params }) {
                 <Link
                   key={cat.id}
                   href={`/store/${businessDomain}/products?category=${cat.slug}`}
-                  className="flex-shrink-0 flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold border-2 border-gray-200 text-gray-700 hover:border-current transition-all bg-white"
+                  className="flex-shrink-0 flex items-center gap-1.5 px-4 py-2 sm:px-5 sm:py-2.5 rounded-full text-xs sm:text-sm font-semibold border-2 border-gray-200 text-gray-700 hover:border-current transition-all bg-white"
                   style={{ '--hover-color': accent }}
                 >
                   {cat.image_url && (
@@ -255,8 +277,8 @@ export default async function StoreHomePage({ params }) {
         </section>
       )}
 
-      {/* ── Trust Badges ─────────────────────────────────────────────────────── */}
-      <section className="bg-white border-b">
+      {/* ── Trust Badges (tablet+) ─────────────────────────────────────────── */}
+      <section className="hidden md:block bg-white border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             {domainCfg.trustBadges.map((badge, i) => {
@@ -280,9 +302,9 @@ export default async function StoreHomePage({ params }) {
         </div>
       </section>
 
-      {/* ── Category Cards Grid ──────────────────────────────────────────────── */}
+      {/* ── Category Cards Grid (tablet+) — chips cover mobile ─────────────── */}
       {categories.length >= 3 && (
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <section className="hidden sm:block max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="flex items-center justify-between mb-6">
             <div>
               <h2 className="text-2xl font-black text-gray-900">Shop by Category</h2>
@@ -336,36 +358,38 @@ export default async function StoreHomePage({ params }) {
         </section>
       )}
 
-      {/* ── Featured Products ────────────────────────────────────────────────── */}
+      {/* ── Featured / primary catalog ───────────────────────────────────── */}
       {featuredProducts.length > 0 && (
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl flex items-center justify-center" style={{ backgroundColor: accentLight }}>
-                <Star className="w-5 h-5" style={{ color: accent }} />
-              </div>
-              <div>
-                <h2 className="text-2xl font-black text-gray-900">{domainCfg.featuredSectionTitle}</h2>
-                <p className="text-gray-500 text-sm">Handpicked just for you</p>
-              </div>
-            </div>
-            <Link
-              href={`/store/${businessDomain}/products?sort=featured`}
-              className="flex items-center gap-1 text-sm font-semibold hover:gap-2 transition-all"
-              style={{ color: accent }}
-            >
-              View All <ArrowRight className="w-4 h-4" />
-            </Link>
-          </div>
-
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-10">
+          <StoreSectionHeader
+            title={copy.featuredTitle}
+            subtitle={copy.featuredSubtitle}
+            href={`/store/${businessDomain}/products?sort=featured`}
+            accent={accent}
+          />
           <Suspense fallback={<ProductsSkeleton count={8} />}>
-            <ProductGrid products={featuredProducts} businessDomain={businessDomain} />
+            <ProductGrid products={featuredProducts} businessDomain={businessDomain} showResultsCount={false} />
           </Suspense>
         </section>
       )}
 
-      {/* ── Promotional Banner ───────────────────────────────────────────────── */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      {/* ── Fallback primary grid when no featured flag ──────────────────── */}
+      {featuredProducts.length === 0 && newArrivalsRaw.length > 0 && (
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-10">
+          <StoreSectionHeader
+            title={copy.shopAllTitle}
+            subtitle={copy.shopAllSubtitle}
+            href={`/store/${businessDomain}/products`}
+            accent={accent}
+          />
+          <Suspense fallback={<ProductsSkeleton count={8} />}>
+            <ProductGrid products={newArrivalsRaw.slice(0, 8)} businessDomain={businessDomain} showResultsCount={false} />
+          </Suspense>
+        </section>
+      )}
+
+      {/* ── Promotional Banner (desktop — avoids duplicate free-shipping on mobile) */}
+      <section className="hidden md:block max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div
           className="relative overflow-hidden rounded-3xl p-8 sm:p-12"
           style={{ background: `linear-gradient(135deg, ${accent} 0%, ${accentDark} 100%)` }}
@@ -399,64 +423,43 @@ export default async function StoreHomePage({ params }) {
         </div>
       </section>
 
-      {/* ── New Arrivals ─────────────────────────────────────────────────────── */}
-      {newArrivals.length > 0 && (
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl flex items-center justify-center" style={{ backgroundColor: accentLight }}>
-                <Zap className="w-5 h-5" style={{ color: accent }} />
-              </div>
-              <div>
-                <h2 className="text-2xl font-black text-gray-900">{domainCfg.newArrivalsSectionTitle}</h2>
-                <p className="text-gray-500 text-sm">Fresh additions to our collection</p>
-              </div>
-            </div>
-            <Link
-              href={`/store/${businessDomain}/products?sort=newest`}
-              className="flex items-center gap-1 text-sm font-semibold hover:gap-2 transition-all"
-              style={{ color: accent }}
-            >
-              View All <ArrowRight className="w-4 h-4" />
-            </Link>
-          </div>
-
+      {/* ── New Arrivals (only when catalog has more beyond featured) ───────── */}
+      {showNewArrivals && (
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-10">
+          <StoreSectionHeader
+            title={copy.newArrivalsTitle}
+            subtitle={copy.newArrivalsSubtitle}
+            href={`/store/${businessDomain}/products?sort=newest`}
+            accent={accent}
+          />
           <Suspense fallback={<ProductsSkeleton count={8} />}>
-            <ProductGrid products={newArrivals} businessDomain={businessDomain} />
+            <ProductGrid products={newArrivals} businessDomain={businessDomain} showResultsCount={false} />
           </Suspense>
         </section>
       )}
 
       {/* ── On Sale Section ──────────────────────────────────────────────────── */}
       {onSaleProducts.length > 0 && (
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-red-50 flex items-center justify-center">
-                <BadgePercent className="w-5 h-5 text-red-500" />
-              </div>
-              <div>
-                <h2 className="text-2xl font-black text-gray-900">On Sale</h2>
-                <p className="text-gray-500 text-sm">Limited time deals — grab them before they are gone</p>
-              </div>
-            </div>
-            <Link
-              href={`/store/${businessDomain}/products?onSale=true`}
-              className="flex items-center gap-1 text-sm font-semibold text-red-500 hover:gap-2 transition-all"
-            >
-              View All Deals <ArrowRight className="w-4 h-4" />
-            </Link>
-          </div>
-
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-10">
+          <StoreSectionHeader
+            title={copy.onSaleTitle}
+            subtitle={copy.onSaleSubtitle}
+            href={`/store/${businessDomain}/products?onSale=true`}
+            accent={accent}
+            linkLabel="All deals"
+          />
           <Suspense fallback={<ProductsSkeleton count={4} />}>
-            <ProductGrid products={onSaleProducts} businessDomain={businessDomain} />
+            <ProductGrid products={onSaleProducts} businessDomain={businessDomain} showResultsCount={false} />
           </Suspense>
         </section>
       )}
 
-      {/* ── Store Info Strip ─────────────────────────────────────────────────── */}
-      {(business.phone || business.email || business.city) && (
-        <section className="bg-gray-900 text-white py-8">
+      {/* ── Mobile buyer support ───────────────────────────────────────────── */}
+      <StoreBuyerSupportStrip businessDomain={businessDomain} accent={accent} />
+
+      {/* ── Store Info Strip (large screens — footer covers mobile) ─────────── */}
+      {contact.hasAnyContact && (
+        <section className="hidden lg:block bg-gray-900 text-white py-8">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex flex-wrap items-center justify-between gap-6">
               <div className="flex items-center gap-4">
@@ -472,21 +475,29 @@ export default async function StoreHomePage({ params }) {
                 )}
                 <div>
                   <p className="font-bold text-white">{business.business_name}</p>
-                  {business.city && <p className="text-gray-400 text-sm">{business.city}{business.country ? `, ${business.country}` : ''}</p>}
+                  {contact.city && (
+                    <p className="text-gray-400 text-sm">
+                      {contact.city}
+                      {contact.country ? `, ${contact.country}` : ''}
+                    </p>
+                  )}
                 </div>
               </div>
 
               <div className="flex flex-wrap gap-6 text-sm text-gray-400">
-                {business.phone && (
-                  <a href={`tel:${business.phone}`} className="hover:text-white transition-colors">
-                    📞 {business.phone}
+                {contact.phone && (
+                  <a href={`tel:${contact.phone}`} className="hover:text-white transition-colors">
+                    {contact.phone}
                   </a>
                 )}
-                {business.email && (
-                  <a href={`mailto:${business.email}`} className="hover:text-white transition-colors">
-                    ✉️ {business.email}
+                {contact.email && (
+                  <a href={`mailto:${contact.email}`} className="hover:text-white transition-colors">
+                    {contact.email}
                   </a>
                 )}
+                <Link href={`/store/${businessDomain}/contact`} className="hover:text-white transition-colors">
+                  Contact page →
+                </Link>
               </div>
 
               <Link
@@ -502,54 +513,45 @@ export default async function StoreHomePage({ params }) {
         </section>
       )}
 
-      {/* ── Best Sellers ─────────────────────────────────────────────────────── */}
-      {popularProductsDeduped.length > 0 && (
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl flex items-center justify-center" style={{ backgroundColor: accentLight }}>
-                <TrendingUp className="w-5 h-5" style={{ color: accent }} />
-              </div>
-              <div>
-                <h2 className="text-2xl font-black text-gray-900">Best Sellers</h2>
-                <p className="text-gray-500 text-sm">Our most popular products</p>
-              </div>
-            </div>
-            <Link
-              href={`/store/${businessDomain}/products?sort=popularity`}
-              className="flex items-center gap-1 text-sm font-semibold hover:gap-2 transition-all"
-              style={{ color: accent }}
-            >
-              View All <ArrowRight className="w-4 h-4" />
-            </Link>
-          </div>
-          <Suspense fallback={<ProductsSkeleton count={4} />}>
-            <ProductGrid products={popularProductsDeduped} businessDomain={businessDomain} />
-          </Suspense>
-        </section>
-      )}
-
-      {/* ── Empty State ──────────────────────────────────────────────────────── */}
       {featuredProducts.length === 0 &&
-        newArrivals.length === 0 &&
-        popularProductsDeduped.length === 0 &&
+        newArrivalsRaw.length === 0 &&
         onSaleProducts.length === 0 && (
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 text-center">
-          <div className="w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6" style={{ backgroundColor: accentLight }}>
-            <Package className="w-12 h-12" style={{ color: accent }} />
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24 text-center">
+          <div className="w-16 h-16 sm:w-24 sm:h-24 rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6" style={{ backgroundColor: accentLight }}>
+            <Package className="w-8 h-8 sm:w-12 sm:h-12" style={{ color: accent }} />
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-3">Products Coming Soon</h2>
-          <p className="text-gray-500 mb-8 max-w-md mx-auto">
-            {business.business_name} is setting up their store. Check back soon for amazing products!
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2 sm:mb-3">{copy.emptyTitle}</h2>
+          <p className="text-sm text-gray-500 mb-6 sm:mb-8 max-w-md mx-auto px-4">
+            {copy.emptyBody}
           </p>
-          {business.phone && (
-            <a
-              href={`tel:${business.phone}`}
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-white"
+          {(contact.phone || contact.whatsappUrl) && (
+            <div className="flex flex-col items-center gap-2 sm:flex-row sm:justify-center">
+              {contact.phone ? (
+                <a
+                  href={`tel:${contact.phone}`}
+                  className="inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold text-white sm:px-6 sm:py-3"
+                  style={{ backgroundColor: accent }}
+                >
+                  Call {copy.storeName}
+                </a>
+              ) : null}
+              <Link
+                href={`/store/${businessDomain}/contact`}
+                className="text-sm font-semibold hover:underline"
+                style={{ color: accent }}
+              >
+                Contact us →
+              </Link>
+            </div>
+          )}
+          {!contact.phone && !contact.whatsappUrl && (
+            <Link
+              href={`/store/${businessDomain}/contact`}
+              className="inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold text-white sm:px-6 sm:py-3"
               style={{ backgroundColor: accent }}
             >
-              Contact Us
-            </a>
+              Contact {copy.storeName}
+            </Link>
           )}
         </section>
       )}

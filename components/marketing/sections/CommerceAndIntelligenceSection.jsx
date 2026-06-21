@@ -14,6 +14,8 @@ import {
   Truck,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { MARKETING_CONTAINER, MARKETING_SECTION, MARKETING_SECTION_LOOSE } from '@/lib/utils/marketingLayout';
+import { cn } from '@/lib/utils';
 
 const IMG = {
   storefront:
@@ -33,38 +35,36 @@ export default function CommerceAndIntelligenceSection({ variant = 'homepage' })
 
   return (
     <section
-      className={`relative border-b border-neutral-200/80 overflow-hidden ${
-        isCompact ? 'py-16 lg:py-20 bg-white' : 'py-20 lg:py-28 bg-neutral-950 text-white'
-      }`}
+      className={cn(
+        'relative overflow-hidden border-b border-neutral-200/80',
+        isCompact ? cn(MARKETING_SECTION, 'bg-white') : cn(MARKETING_SECTION_LOOSE, 'bg-neutral-950 text-white')
+      )}
     >
       {!isCompact && (
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(227,66,66,0.22),transparent)]" />
       )}
 
-      <div className={`relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 ${isCompact ? '' : ''}`}>
-        <div className={`max-w-3xl ${isCompact ? 'mb-12' : 'mb-14 lg:mb-16'}`}>
-          <p
-            className={`text-[11px] font-black uppercase tracking-[0.28em] mb-4 ${
-              isCompact ? 'text-brand-primary' : 'text-brand-primary'
-            }`}
-          >
+      <div className={MARKETING_CONTAINER}>
+        <div className={cn('max-w-3xl', isCompact ? 'mb-8 sm:mb-10 lg:mb-12' : 'mb-10 sm:mb-12 lg:mb-16')}>
+          <p className="mb-3 text-[10px] font-black uppercase tracking-[0.22em] text-brand-primary sm:mb-4 sm:text-[11px] sm:tracking-[0.28em]">
             Storefront · POS · Hospitality
           </p>
           <h2
-            className={`text-3xl sm:text-4xl md:text-5xl font-black tracking-tight leading-tight ${
+            className={cn(
+              'text-2xl font-black leading-tight tracking-tight sm:text-3xl md:text-4xl lg:text-5xl',
               isCompact ? 'text-neutral-900' : 'text-white'
-            }`}
+            )}
           >
             Sell everywhere your customers are - without juggling five different systems.
           </h2>
           <p
-            className={`mt-4 text-lg font-medium leading-relaxed ${
+            className={cn(
+              'mt-3 text-base font-medium leading-relaxed sm:mt-4 sm:text-lg',
               isCompact ? 'text-neutral-600' : 'text-neutral-300'
-            }`}
+            )}
           >
-            Your online brand store, in-store checkout, and café or restaurant service share one live view of
-            products, pricing, and fulfilment. Stock moves once; your team stays aligned from first click to
-            final delivery.
+            Your online brand store, in-store checkout, and café or restaurant service share one product catalog.
+            Pricing and fulfilment stay aligned when your team uses the same hub — confirm multi-location stock rules with onboarding.
           </p>
         </div>
 
@@ -258,7 +258,7 @@ export default function CommerceAndIntelligenceSection({ variant = 'homepage' })
           >
             Campaigns, loyalty &amp; analytics
           </Link>{' '}
-          — same customer and order data as this stack.
+           same customer and order data as this stack.
         </p>
       </div>
     </section>

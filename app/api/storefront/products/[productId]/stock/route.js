@@ -3,21 +3,23 @@ import { checkProductStock } from '@/lib/actions/storefront/products';
 
 /**
  * POST /api/storefront/products/[productId]/stock
- * Check stock availability before adding to cart.
- * Also returns product name/price/image for cart display.
+ * Check stock availability before adding to cart (tenant-scoped).
+ * Requires businessId — product must belong to that business.
  */
 export async function POST(request, { params }) {
   try {
     const { productId } = await params;
     const body = await request.json().catch(() => ({}));
-    const { variantId = null, quantity = 1 } = body;
+    const { variantId = null, quantity = 1, businessId = null } = body;
 
     if (!productId) {
       return NextResponse.json({ message: 'Product ID required' }, { status: 400 });
     }
+    if (!businessId) {
+      return NextResponse.json({ message: 'Business ID required' }, { status: 400 });
+    }
 
-    // Get stock info
-    const stockResult = await checkProductStock(productId, variantId, quantity);
+    const stockResult = await checkProductStock(productId, variantId, quantity, businessId);
 
     if (!stockResult.success) {
       return NextResponse.json(
@@ -35,7 +37,6 @@ export async function POST(request, { params }) {
       );
     }
 
-    // Fetch product details for cart display
     const pool = (await import('@/lib/db')).default;
     const client = await pool.connect();
     let product = null;
@@ -50,8 +51,9 @@ export async function POST(request, { params }) {
                   pv.attribute_1_value, pv.attribute_2_value
            FROM products p
            JOIN product_variants pv ON pv.id = $1::uuid AND pv.product_id = p.id::uuid
-           WHERE p.id = $2`,
-          [variantId, productId]
+           WHERE p.id = $2::uuid AND p.business_id = $3::uuid AND pv.business_id = $3::uuid
+             AND COALESCE(p.is_deleted, false) = false AND p.is_active = true`,
+          [variantId, productId, businessId]
         );
         productRow = res.rows[0];
         if (productRow) {
@@ -66,8 +68,10 @@ export async function POST(request, { params }) {
       } else {
         const res = await client.query(
           `SELECT id, name, business_id, slug, price, image_url
-           FROM products WHERE id = $1`,
-          [productId]
+           FROM products
+           WHERE id = $1::uuid AND business_id = $2::uuid
+             AND COALESCE(is_deleted, false) = false AND is_active = true`,
+          [productId, businessId]
         );
         productRow = res.rows[0];
         if (productRow) {

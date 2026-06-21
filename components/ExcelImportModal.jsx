@@ -27,13 +27,22 @@ import {
   generateSkuFromName
 } from '@/lib/services/excelImportService';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
+import { MOBILE_DIALOG_SHELL_WIDE } from '@/lib/utils/formMobileStyles';
+import { cn } from '@/lib/utils';
 
 /**
  * Excel Import Modal Component
  * 4-Step import workflow: Upload -> Parse -> Preview -> Validate -> Confirm
  * Production-ready with comprehensive error handling
  */
-export function ExcelImportModal({ onImport, onCancel, existingProducts = {} }) {
+export function ExcelImportModal({
+  onImport,
+  onCancel,
+  existingProducts = {},
+  open: controlledOpen,
+  onOpenChange: controlledOnOpenChange,
+  hideTrigger = false,
+}) {
   const fileInputRef = useRef(null);
   const [step, setStep] = useState(1); // 1: Upload, 2: Preview, 3: Validate, 4: Confirm
   const [loading, setLoading] = useState(false);
@@ -187,16 +196,30 @@ export function ExcelImportModal({ onImport, onCancel, existingProducts = {} }) 
     }
   };
 
-  return (
-    <Dialog onOpenChange={(open) => !open && resetModal()}>
-      <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
-          <Upload className="w-4 h-4 mr-2" />
-          Import Excel
-        </Button>
-      </DialogTrigger>
+  const isControlled = controlledOpen !== undefined;
+  const dialogOpen = isControlled ? controlledOpen : undefined;
 
-      <DialogContent className="max-w-3xl max-h-screen overflow-y-auto">
+  const handleOpenChange = (nextOpen) => {
+    if (!nextOpen) resetModal();
+    controlledOnOpenChange?.(nextOpen);
+  };
+
+  return (
+    <Dialog open={dialogOpen} onOpenChange={handleOpenChange}>
+      {!hideTrigger && (
+        <DialogTrigger asChild>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 shrink-0 whitespace-nowrap rounded-lg border-gray-200 px-3 text-[10px] font-black uppercase tracking-wider text-gray-700 hover:bg-gray-50"
+          >
+            <Upload className="mr-2 h-4 w-4 shrink-0" />
+            Import
+          </Button>
+        </DialogTrigger>
+      )}
+
+      <DialogContent className={cn(MOBILE_DIALOG_SHELL_WIDE, 'max-w-3xl')}>
         <DialogHeader>
           <DialogTitle>Excel Import Wizard</DialogTitle>
           <DialogDescription>
@@ -207,7 +230,7 @@ export function ExcelImportModal({ onImport, onCancel, existingProducts = {} }) 
         {/* Step 1: Upload */}
         {step === 1 && (
           <div className="space-y-4 py-4">
-            <div className="border-2 border-dashed rounded-lg p-8 text-center hover:bg-gray-50 cursor-pointer transition"
+            <div className="border-2 border-dashed rounded-lg p-4 text-center hover:bg-gray-50 cursor-pointer transition sm:p-8"
               onClick={() => fileInputRef.current?.click()}>
               <FileUp className="w-12 h-12 mx-auto mb-4 text-gray-400" />
               <p className="text-sm font-medium text-gray-700">Click to upload or drag and drop</p>

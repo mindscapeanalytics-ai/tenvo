@@ -3,6 +3,8 @@ import { prismaBase } from '@/lib/db';
 import { getSessionUser } from '@/lib/auth/session';
 import { assertUserHasBusinessAccess } from '@/lib/tenancy/businessAccess';
 import { createPayment } from '@/lib/payments/nowpayments';
+import { businessHubUrl } from '@/lib/utils/billingReturnUrls';
+import { registerPendingCryptoCheckout } from '@/lib/billing/cryptoSubscription';
 
 function appBaseUrl() {
   const explicit = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '');
@@ -32,8 +34,11 @@ export async function POST(request) {
       cryptoCurrency = 'btc',
       business_id: businessIdSnake,
       businessId: businessIdCamel,
+      planTier,
+      plan_tier: planTierSnake,
     } = body;
     const businessId = businessIdSnake || businessIdCamel;
+    const resolvedPlanTier = planTier || planTierSnake || null;
 
     if (!businessId) {
       return NextResponse.json(
@@ -82,6 +87,18 @@ export async function POST(request) {
     const ipnCallbackUrl =
       process.env.NOWPAYMENTS_IPN_CALLBACK_URL?.trim() || `${baseUrl}/api/webhooks/nowpayments`;
 
+    const domainSlug = String(business.domain || '').trim().toLowerCase();
+    const successUrl = domainSlug
+      ? businessHubUrl(baseUrl, domainSlug, {
+          tab: 'settings',
+          crypto: 'success',
+          order_id: orderId,
+        })
+      : `${baseUrl}/pricing?crypto=success&order_id=${encodeURIComponent(orderId)}`;
+    const cancelUrl = domainSlug
+      ? businessHubUrl(baseUrl, domainSlug, { tab: 'settings', crypto: 'cancelled' })
+      : `${baseUrl}/pricing?crypto=cancelled`;
+
     const created = await createPayment({
       priceAmount: numAmount,
       priceCurrency: String(currency).toLowerCase(),
@@ -91,8 +108,8 @@ export async function POST(request) {
       customerEmail: business.email || undefined,
       customerName: business.business_name || undefined,
       callbackUrl: ipnCallbackUrl,
-      successUrl: `${baseUrl}/business/settings?crypto=success&order_id=${encodeURIComponent(orderId)}`,
-      cancelUrl: `${baseUrl}/business/settings?crypto=cancelled`,
+      successUrl,
+      cancelUrl,
     });
 
     if (created?.skipped) {
@@ -100,6 +117,19 @@ export async function POST(request) {
         { error: 'Crypto payments not configured', code: 'NOWPAYMENTS_NOT_CONFIGURED' },
         { status: 503 }
       );
+    }
+
+    try {
+      await registerPendingCryptoCheckout({
+        businessId,
+        orderId: created.orderId || orderId,
+        paymentId: created.paymentId,
+        planTier: resolvedPlanTier,
+        amountMinor: Math.round(numAmount * 100),
+        currency: String(currency).toUpperCase(),
+      });
+    } catch (regErr) {
+      console.warn('[Crypto create] Could not register pending subscription row:', regErr);
     }
 
     return NextResponse.json({

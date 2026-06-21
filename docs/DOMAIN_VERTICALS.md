@@ -5,11 +5,11 @@
 - **Rich vertical presets** (units, fields, seed templates, reports, `intelligence`): `lib/domainKnowledge.js` aggregating `lib/domainData/*.js`.
 - **Plan / module matrix** (required vs recommended modules, tax labels for admin): `lib/config/domains.js` (`BUSINESS_DOMAINS`) plus **`lib/config/syntheticBusinessDomain.js`** for any key that exists in `domainKnowledge` but does not yet have an explicit `BUSINESS_DOMAINS` row.
 
-`getDomainConfig(key)` returns an explicit row when present, otherwise a **synthetic** row derived from `domainKnowledge[key]` so all **59** verticals stay wired for `getDomainOptions()` and `getModulesForDomainPlan()`.
+`getDomainConfig(key)` returns an explicit row when present, otherwise a **synthetic** row derived from `domainKnowledge[key]` so all **62** verticals stay wired for `getDomainOptions()` and `getModulesForDomainPlan()`.
 
 ## Defaults merged for every vertical
 
-`getDomainKnowledge(category)` merges baseline `taxCategories`, `pakistaniFeatures`, and `intelligence` so UI and helpers do not receive empty objects for those shapes. Each vertical should define its own `intelligence` block (seasonality, peak months, perishability, shelf life, demand volatility, min order qty, lead time) so **Industry Insights**, **Smart Restock**, and **AI forecasting** stay accurate; rows without `name` get a **title-cased slug** label for prompts and badges.
+`getDomainKnowledge(category, { countryIso })` merges baseline `taxCategories`, country-aware `marketFeatures` (legacy key `pakistaniFeatures`), and `intelligence` so UI and helpers do not receive empty objects for those shapes. Pass **`countryIso`** (`PK`, `AE`, `US`, `CN`, …) from business registration so brands, payment gateways, and tax compliance match the selected market — see **`docs/REGIONAL_STANDARDS.md`** and **`lib/regionalMarket/`**.
 
 Domain-specific analytics copy for **dental-clinic**, **veterinary-clinic**, and **salon-spa** lives in `getDomainIndustryInsightsAction` (`lib/actions/premium/ai/analytics.js`) alongside pharmacy, education, and textile.
 
@@ -25,9 +25,10 @@ Domain-specific analytics copy for **dental-clinic**, **veterinary-clinic**, and
 
 ```bash
 npm run verify:domains
+npm run verify:regional-market
 ```
 
-Checks: icon present on each raw `domainKnowledge` entry, `getDomainConfig` returns modules, `suggestPlanTier` returns a valid tier.
+Checks: icon present on each raw `domainKnowledge` entry, `getDomainConfig` returns modules, `suggestPlanTier` returns a valid tier; regional script ensures all 62 verticals have brand catalogs for PK, AE, US, CN, SA.
 
 ## Best practices (maintenance)
 

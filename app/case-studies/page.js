@@ -1,6 +1,7 @@
 'use client';
 
 import MarketingLayout from '@/components/marketing/layout/MarketingLayout';
+import { MARKETING_CONTAINER } from '@/lib/utils/marketingLayout';
 import Hero from '@/components/marketing/sections/Hero';
 import CaseStudyCard from '@/components/marketing/cards/CaseStudyCard';
 import CTASection from '@/components/marketing/sections/CTASection';
@@ -48,26 +49,24 @@ export default function CaseStudiesPage() {
       />
 
       {/* Filters and Search */}
-      <section className="py-16 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row gap-4 mb-12">
-            {/* Search */}
-            <div className="flex-1">
+      <section className="bg-white py-10 sm:py-14 lg:py-16">
+        <div className={MARKETING_CONTAINER}>
+          <div className="mb-8 flex flex-col gap-3 sm:mb-10 md:flex-row md:gap-4 lg:mb-12">
+            <div className="min-w-0 flex-1">
               <input
                 type="text"
                 placeholder="Search case studies..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-primary focus:border-brand-primary"
+                className="w-full rounded-xl border border-gray-300 px-4 py-3 text-base focus:border-brand-primary focus:ring-2 focus:ring-brand-primary"
               />
             </div>
 
-            {/* Industry Filter */}
-            <div className="md:w-64">
+            <div className="w-full md:w-64">
               <select
                 value={selectedIndustry}
                 onChange={(e) => setSelectedIndustry(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-primary focus:border-brand-primary"
+                className="w-full rounded-xl border border-gray-300 px-4 py-3 text-base focus:border-brand-primary focus:ring-2 focus:ring-brand-primary"
               >
                 {industries.map(industry => (
                   <option key={industry} value={industry}>
@@ -87,7 +86,7 @@ export default function CaseStudiesPage() {
 
           {/* Case Studies Grid */}
           {filteredCaseStudies.length > 0 ? (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div className="grid gap-5 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3 lg:gap-8">
               {filteredCaseStudies.map((caseStudy) => (
                 <CaseStudyCard key={caseStudy.slug} caseStudy={caseStudy} />
               ))}
@@ -112,20 +111,20 @@ export default function CaseStudiesPage() {
       </section>
 
       {/* Stats Section */}
-      <section className="py-16 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">
+      <section className="bg-gray-50 py-10 sm:py-14 lg:py-16">
+        <div className={MARKETING_CONTAINER}>
+          <div className="mb-8 space-y-3 text-center sm:mb-10 lg:mb-12">
+            <h2 className="text-2xl font-bold text-gray-900 sm:text-3xl">
               Impact Across Industries
             </h2>
-            <p className="text-gray-600">
+            <p className="text-sm text-gray-600 sm:text-base">
               Aggregate results from our customers
             </p>
           </div>
 
-          <div className="grid md:grid-cols-4 gap-8">
+          <div className="grid grid-cols-2 gap-6 md:grid-cols-4 md:gap-8">
             <div className="text-center">
-              <div className="text-4xl font-bold text-brand-primary mb-2">70%</div>
+              <div className="mb-1 text-3xl font-bold text-brand-primary sm:mb-2 sm:text-4xl">70%</div>
               <div className="text-gray-600">Average Cost Reduction</div>
             </div>
             <div className="text-center">

@@ -4,6 +4,8 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { ArrowRight, Building2, Globe2, Shield, Sparkles, Users } from 'lucide-react';
 import MarketingLayout from '@/components/marketing/layout/MarketingLayout';
+import { MARKETING_CONTAINER, MARKETING_SECTION } from '@/lib/utils/marketingLayout';
+import { cn } from '@/lib/utils';
 import Hero from '@/components/marketing/sections/Hero';
 import CommerceAndIntelligenceSection from '@/components/marketing/sections/CommerceAndIntelligenceSection';
 import CompetitorComparisonSection from '@/components/marketing/sections/CompetitorComparisonSection';
@@ -27,9 +29,9 @@ export default function WhyTenvoPage() {
         secondaryCTA={{ text: 'Book a walkthrough', href: '/demo' }}
       />
 
-      <section className="py-16 lg:py-20 bg-white border-b border-neutral-200/80">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 grid lg:grid-cols-2 gap-12 items-center">
-          <div className="relative aspect-[4/3] rounded-[2rem] overflow-hidden border border-neutral-200 shadow-xl">
+      <section className={cn(MARKETING_SECTION, 'border-b border-neutral-200/80 bg-white')}>
+        <div className={cn(MARKETING_CONTAINER, 'grid items-center gap-8 lg:grid-cols-2 lg:gap-12')}>
+          <div className="relative aspect-[4/3] overflow-hidden rounded-2xl border border-neutral-200 shadow-xl sm:rounded-[2rem]">
             <Image
               src="https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=1200&q=80"
               alt="Team collaborating around operations"
@@ -38,9 +40,9 @@ export default function WhyTenvoPage() {
               sizes="(max-width: 1024px) 100vw, 50vw"
             />
           </div>
-          <div className="space-y-6">
-            <p className="text-[11px] font-black text-brand-primary uppercase tracking-[0.28em]">Small to enterprise</p>
-            <h2 className="text-3xl sm:text-4xl font-black text-neutral-900 tracking-tight">
+          <div className="space-y-5 sm:space-y-6">
+            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-brand-primary sm:text-[11px] sm:tracking-[0.28em]">Small to enterprise</p>
+            <h2 className="text-2xl font-black tracking-tight text-neutral-900 sm:text-3xl lg:text-4xl">
               From a single outlet to a national footprint - same product philosophy.
             </h2>
             <p className="text-neutral-600 font-medium leading-relaxed">
@@ -53,8 +55,8 @@ export default function WhyTenvoPage() {
               {[
                 { icon: Users, t: 'Roles that match real jobs', d: 'Cashier, warehouse, accountant, and owner - each sees what they need, nothing extra.' },
                 { icon: Building2, t: 'Scales with your entity structure', d: 'Multiple brands or branches under one disciplined operating model.' },
-                { icon: Shield, t: 'Compliance as a daily habit', d: 'Local tax and documentation expectations are part of the workflow - not a weekend catch-up.' },
-                { icon: Globe2, t: 'Commerce without chaos', d: 'Your public store, marketplaces, and in-person selling stay aligned to one source of truth.' },
+                { icon: Shield, t: 'Compliance as a daily habit', d: 'Local tax configuration and audit-friendly ledgers are part of the workflow — live FBR IRIS sync is on the roadmap.' },
+                { icon: Globe2, t: 'Commerce without chaos', d: 'Branded storefront, POS, and B2B documents share one product catalog and customer record — marketplace connectors are roadmap; see Integrations.' },
               ].map(({ icon: Icon, t, d }) => (
                 <li key={t} className="flex gap-4">
                   <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-primary">
@@ -73,11 +75,11 @@ export default function WhyTenvoPage() {
 
       <CommerceAndIntelligenceSection variant="homepage" />
 
-      <section className="py-16 lg:py-24 bg-neutral-50 border-b border-neutral-200/80">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12">
-          <div className="max-w-3xl mb-12">
-            <p className="text-[11px] font-black text-brand-primary uppercase tracking-[0.28em]">Compared to stitched-together stacks</p>
-            <h2 className="text-3xl sm:text-4xl font-black text-neutral-900 tracking-tight mt-2">
+      <section className={cn(MARKETING_SECTION, 'border-b border-neutral-200/80 bg-neutral-50')}>
+        <div className={MARKETING_CONTAINER}>
+          <div className="mb-8 max-w-3xl sm:mb-10 lg:mb-12">
+            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-brand-primary sm:text-[11px] sm:tracking-[0.28em]">Compared to stitched-together stacks</p>
+            <h2 className="mt-2 text-2xl font-black tracking-tight text-neutral-900 sm:text-3xl lg:text-4xl">
               Why “good enough” tools quietly tax your margin.
             </h2>
             <p className="mt-4 text-neutral-600 font-medium leading-relaxed">
@@ -86,7 +88,7 @@ export default function WhyTenvoPage() {
               worlds connected so leadership can trust the numbers on Tuesday morning - not only after month-end.
             </p>
           </div>
-          <div className="grid md:grid-cols-3 gap-6">
+          <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 sm:gap-5 md:gap-6">
             {[
               {
                 title: 'Versus storefront-only platforms',
@@ -101,7 +103,7 @@ export default function WhyTenvoPage() {
                 body: 'Automation that respects your policies: smarter replenishment signals, guided data cleanup, and soon, assistants that prepare drafts for humans to approve - never black-box decisions on your revenue.',
               },
             ].map((c) => (
-              <div key={c.title} className="rounded-3xl border border-neutral-200 bg-white p-8 shadow-sm hover:border-brand-primary/30 transition-colors">
+              <div key={c.title} className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm transition-colors hover:border-brand-primary/30 sm:rounded-3xl sm:p-6 lg:p-8">
                 <Sparkles className="w-8 h-8 text-brand-primary mb-4" />
                 <h3 className="font-black text-lg text-neutral-900">{c.title}</h3>
                 <p className="mt-3 text-sm text-neutral-600 font-medium leading-relaxed">{c.body}</p>

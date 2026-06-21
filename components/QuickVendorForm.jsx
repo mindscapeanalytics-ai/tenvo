@@ -13,6 +13,8 @@ import { CityAutocomplete } from '@/components/CityAutocomplete';
 import { vendorSchema, validateWithSchema } from '@/lib/validation/schemas';
 import { formatPakistaniPhone, formatNTN } from '@/lib/tax/pakistaniTax';
 import { FormError } from '@/components/ui/form-error';
+import { cn } from '@/lib/utils';
+import { MOBILE_GRID_FIELDS, MOBILE_INPUT_CLASS, MOBILE_LABEL_CLASS, MOBILE_FORM_FOOTER } from '@/lib/utils/formMobileStyles';
 
 export function QuickVendorForm({ onSave, onCancel }) {
     const { business } = useBusiness();
@@ -102,23 +104,23 @@ export function QuickVendorForm({ onSave, onCancel }) {
     };
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-4 p-1">
-            <div className="flex justify-between items-center mb-4">
-                <div className="space-y-1">
-                    <h3 className="font-bold text-lg flex items-center gap-2">
-                        <Building2 className="w-5 h-5 text-blue-600" />
+        <form onSubmit={handleSubmit} className="space-y-3">
+            <div className="mb-2 flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                    <h3 className="flex items-center gap-2 text-sm font-bold sm:text-base">
+                        <Building2 className="h-4 w-4 text-blue-600" />
                         New Vendor
                     </h3>
-                    <p className="text-sm text-gray-500">Quickly onboard a new supplier</p>
+                    <p className="text-[11px] text-gray-500">Quick supplier entry</p>
                 </div>
-                <Button type="button" variant="ghost" size="sm" onClick={handleFillDemo} className="text-xs">
-                    <Sparkles className="w-3 h-3 mr-1" /> Magic Fill
+                <Button type="button" variant="ghost" size="sm" onClick={handleFillDemo} className="h-8 shrink-0 text-[10px]">
+                    <Sparkles className="mr-1 h-3 w-3" /> Fill
                 </Button>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-                <div className="col-span-2">
-                    <Label>City</Label>
+            <div className={MOBILE_GRID_FIELDS}>
+                <div className="col-span-full space-y-1.5">
+                    <Label className={MOBILE_LABEL_CLASS}>City</Label>
                     <CityAutocomplete
                         value={formData.city}
                         onChange={val => handleInputChange('city', val)}
@@ -126,13 +128,13 @@ export function QuickVendorForm({ onSave, onCancel }) {
                     {errors.city && <FormError message={errors.city} />}
                 </div>
 
-                <div className="col-span-2 space-y-2">
-                    <Label>Company Name *</Label>
+                <div className="col-span-full space-y-1.5">
+                    <Label className={MOBILE_LABEL_CLASS}>Company Name *</Label>
                     <Input
                         value={formData.name}
                         onChange={e => handleInputChange('name', e.target.value)}
                         placeholder="e.g. Acme Corp"
-                        className={errors.name ? 'border-red-500' : ''}
+                        className={cn(MOBILE_INPUT_CLASS, errors.name ? 'border-red-500' : '')}
                     />
                     {errors.name && <FormError message={errors.name} />}
                 </div>
@@ -218,9 +220,9 @@ export function QuickVendorForm({ onSave, onCancel }) {
                 </div>
             )}
 
-            <div className="flex justify-end gap-2 mt-6 pt-4 border-t">
-                <Button type="button" variant="ghost" onClick={onCancel}>Cancel</Button>
-                <Button type="submit" disabled={isLoading} className=" bg-emerald-600 hover:bg-emerald-700 text-white">
+            <div className={cn(MOBILE_FORM_FOOTER, 'mt-2 flex justify-end gap-2')}>
+                <Button type="button" variant="outline" onClick={onCancel} className="h-9 rounded-xl text-xs">Cancel</Button>
+                <Button type="submit" disabled={isLoading} className="h-9 rounded-xl bg-emerald-600 px-4 text-xs font-bold text-white hover:bg-emerald-700">
                     {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Create Vendor'}
                 </Button>
             </div>

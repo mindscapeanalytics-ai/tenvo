@@ -22,7 +22,6 @@ import { useCart } from '@/lib/hooks/storefront/useCart';
 import { useStorefront } from '@/lib/context/StorefrontContext';
 import { getStoreAccentColor } from '@/lib/config/storefrontDomains';
 import { toast } from 'react-hot-toast';
-import { createStorefrontOrder } from '@/lib/actions/storefront/orders';
 import { getAvailablePaymentMethods } from '@/lib/actions/storefront/payments';
 
 const PAYMENT_ICONS = {
@@ -125,34 +124,54 @@ export default function CheckoutPage({ params }) {
 
   const placeOrder = async () => {
     if (!businessId) { toast.error('Store not ready'); return; }
+    if (cart.businessId && cart.businessId !== businessId) {
+      toast.error('Your cart contains items from another store. Please clear your cart.');
+      return;
+    }
     setProcessing(true);
     try {
-      const result = await createStorefrontOrder(businessId, {
-        customer: {
-          email: form.email, firstName: form.firstName, lastName: form.lastName,
-          phone: form.phone, address: form.address, city: form.city,
-          postalCode: form.postalCode, country: form.country,
-        },
-        items: cart.items.map(i => ({
-          id: i.productId, name: i.name, price: i.price,
-          quantity: i.quantity, variantId: i.variantId || null,
-        })),
-        subtotal,
-        shipping: { cost: shippingCost, method: form.shippingMethod },
-        tax,
-        total,
-        payment: {
-          method: form.paymentMethod,
-          status: form.paymentMethod === 'cod' ? 'pending' : 'awaiting_payment',
-        },
+      const response = await fetch(`/api/storefront/${businessDomain}/orders`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customer: {
+            email: form.email,
+            firstName: form.firstName,
+            lastName: form.lastName,
+            phone: form.phone,
+          },
+          shippingAddress: {
+            address: form.address,
+            city: form.city,
+            postalCode: form.postalCode,
+            country: form.country,
+          },
+          billingAddress: {
+            address: form.address,
+            city: form.city,
+            postalCode: form.postalCode,
+            country: form.country,
+          },
+          items: cart.items.map((i) => ({
+            productId: i.productId,
+            quantity: i.quantity,
+            variantId: i.variantId || null,
+          })),
+          shipping: shippingCost,
+          shippingMethod: form.shippingMethod,
+          paymentMethod: form.paymentMethod,
+        }),
       });
 
-      if (!result.success) throw new Error(result.error || 'Failed to create order');
+      const result = await response.json();
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Failed to create order');
+      }
 
-      setOrderNumber(result.orderNumber);
+      setOrderNumber(result.order.orderNumber);
       setOrderDone(true);
       clearCart();
-      toast.success(`Order ${result.orderNumber} placed!`);
+      toast.success(`Order ${result.order.orderNumber} placed!`);
     } catch (err) {
       toast.error(err.message || 'Failed to place order. Please try again.');
     } finally {

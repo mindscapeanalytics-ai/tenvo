@@ -8,6 +8,7 @@ import { Loader2, Download, RefreshCw, Calendar, TrendingUp, TrendingDown, Scale
 import { formatCurrency } from '@/lib/currency';
 import { accountingAPI } from '@/lib/api/accounting';
 import { useBusiness } from '@/lib/context/BusinessContext';
+import { AgingReportsPanel } from '@/components/reports/AgingReportsPanel';
 import toast from 'react-hot-toast';
 
 // Helper for row rendering
@@ -192,6 +193,7 @@ export default function FinancialReports({ businessId }) {
                             <TabsTrigger value="pl">Profit & Loss</TabsTrigger>
                             <TabsTrigger value="bs">Balance Sheet</TabsTrigger>
                             <TabsTrigger value="cf">Cash Flow</TabsTrigger>
+                            <TabsTrigger value="aging">A/R & A/P Aging</TabsTrigger>
                         </TabsList>
 
                         <div className="flex items-center gap-2 print:hidden">
@@ -217,7 +219,7 @@ export default function FinancialReports({ businessId }) {
                                         <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
                                     </Button>
                                 </>
-                            ) : (
+                            ) : activeTab === 'cf' ? (
                                 <>
                                     <div className="flex items-center gap-2 bg-white border rounded-md px-2 py-1">
                                         <Calendar className="w-4 h-4 text-gray-400" />
@@ -229,18 +231,20 @@ export default function FinancialReports({ businessId }) {
                                         <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
                                     </Button>
                                 </>
-                            )}
+                            ) : null}
+                            {activeTab !== 'aging' && (
                             <Button variant="outline" size="sm" onClick={handlePrint}>
                                 <Download className="w-4 h-4 mr-2" />
                                 Export
                             </Button>
+                            )}
                         </div>
                     </div>
 
                     {/* PROFIT & LOSS CONTENT */}
                     <TabsContent value="pl">
                         <Card className="border shadow-sm print:shadow-none bg-white min-h-[500px]">
-                            <CardContent className="p-8">
+                            <CardContent className="p-3 sm:p-8">
                                 <div className="text-center mb-8 border-b pb-4">
                                     <h2 className="text-2xl font-bold text-gray-900 uppercase">Profit & Loss Statement</h2>
                                     {business?.business_name && (
@@ -344,7 +348,7 @@ export default function FinancialReports({ businessId }) {
                     {/* BALANCE SHEET CONTENT */}
                     <TabsContent value="bs">
                         <Card className="border shadow-sm print:shadow-none bg-white min-h-[500px]">
-                            <CardContent className="p-8">
+                            <CardContent className="p-3 sm:p-8">
                                 <div className="text-center mb-8 border-b pb-4">
                                     <h2 className="text-2xl font-bold text-gray-900 uppercase">Balance Sheet</h2>
                                     {business?.business_name && (
@@ -425,7 +429,7 @@ export default function FinancialReports({ businessId }) {
                     {/* CASH FLOW STATEMENT */}
                     <TabsContent value="cf">
                         <Card className="border shadow-sm print:shadow-none bg-white min-h-[500px]">
-                            <CardContent className="p-8">
+                            <CardContent className="p-3 sm:p-8">
                                 <div className="text-center mb-8 border-b pb-4">
                                     <h2 className="text-2xl font-bold text-gray-900 uppercase">Cash Flow Statement</h2>
                                     {business?.business_name && (
@@ -504,6 +508,10 @@ export default function FinancialReports({ businessId }) {
                                 )}
                             </CardContent>
                         </Card>
+                    </TabsContent>
+
+                    <TabsContent value="aging" className="mt-0">
+                        <AgingReportsPanel businessId={businessId} currency={reportCurrency} />
                     </TabsContent>
                 </Tabs>
             </CardContent>

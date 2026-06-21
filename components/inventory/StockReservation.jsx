@@ -44,6 +44,7 @@ export function StockReservation({
 
   const [reservationList, setReservationList] = useState(reservations);
   const [batches, setBatches] = useState([]);
+  const [batchesLoadFailed, setBatchesLoadFailed] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -127,10 +128,14 @@ export function StockReservation({
   const loadBatches = async (productId) => {
     if (!productId || !businessId) return;
     try {
+      setBatchesLoadFailed(false);
       const data = await batchAPI.getByProduct(productId, businessId);
       setBatches(data || []);
     } catch (err) {
       console.error(err);
+      setBatches([]);
+      setBatchesLoadFailed(true);
+      toast.error('Could not load batches for this product');
     }
   };
 
@@ -145,6 +150,16 @@ export function StockReservation({
       return;
     }
 
+    if (batchRequired && !formData.batchId) {
+      toast.error('Please select a batch');
+      return;
+    }
+
+    if (batchesLoadFailed) {
+      toast.error('Batches could not be loaded. Pick the product again or refresh.');
+      return;
+    }
+
     const selectedBatch = batches.find(b => b.id === formData.batchId);
     const availableBatchQty = selectedBatch
       ? ((Number(selectedBatch.quantity) || 0) - (Number(selectedBatch.reserved_quantity) || 0))
@@ -152,6 +167,14 @@ export function StockReservation({
 
     if (selectedBatch && Number(formData.quantity) > availableBatchQty) {
       toast.error(`Requested quantity exceeds available batch stock (${availableBatchQty})`);
+      return;
+    }
+
+    const selectedProduct = products.find(p => p.id === formData.productId);
+    const headlineStock = Number(selectedProduct?.stock ?? 0);
+    const useHeadlineOnly = !formData.batchId && !batchRequired && !batchesLoadFailed;
+    if (useHeadlineOnly && headlineStock > 0 && Number(formData.quantity) > headlineStock) {
+      toast.error(`Requested quantity exceeds on-hand stock (${headlineStock})`);
       return;
     }
 
@@ -220,6 +243,7 @@ export function StockReservation({
   };
 
   const resetForm = () => {
+    setBatchesLoadFailed(false);
     setFormData({
       productId: '',
       batchId: '',
@@ -233,6 +257,11 @@ export function StockReservation({
     setBatches([]);
   };
 
+  const selectableBatches = useMemo(
+    () => (batches || []).filter((b) => b.is_active !== false),
+    [batches]
+  );
+  const batchRequired = selectableBatches.length > 0;
   const activeReservations = reservationList.filter(r => r.status === 'active');
   const totalReserved = activeReservations.reduce((sum, r) => sum + r.quantity, 0);
   const now = useMemo(() => new Date(), [reservationList.length, isSyncing]);
@@ -268,28 +297,27 @@ export function StockReservation({
             Expire Overdue
           </Button>
         </div>
-        <Dialog open={showForm} onOpenChange={setShowForm}>
+        <Dialog open={showForm} onOpenChange={(open) => { setShowForm(open); if (!open) resetForm(); }}>
           <DialogTrigger asChild>
             <Button onClick={resetForm} disabled={!canAdjustStock}>
               <Lock className="w-4 h-4 mr-2" />
               Reserve Stock
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
+          <DialogContent className="max-w-2xl w-[calc(100vw-1.5rem)] sm:w-full max-h-[min(92vh,900px)] flex flex-col gap-0 p-0 overflow-hidden">
+            <DialogHeader className="shrink-0 px-6 pt-6 pb-2 space-y-1.5">
               <DialogTitle>Reserve Stock</DialogTitle>
               <DialogDescription>
                 Place a hold on items for a specific customer or upcoming order to prevent overselling.
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4">
+            <div className="space-y-4 px-6 pb-6 overflow-y-auto min-h-0 flex-1">
               <div className="space-y-2">
                 <Label>Product *</Label>
                 <select
                   value={formData.productId}
                   onChange={(e) => {
                     const productId = e.target.value;
-                    const product = products.find(p => p.id === productId);
                     setFormData({ ...formData, productId, batchId: '' });
                     loadBatches(productId);
                   }}
@@ -306,16 +334,16 @@ export function StockReservation({
               </div>
 
               <div className="space-y-2">
-                <Label>Batch *</Label>
+                <Label>{batchRequired ? 'Batch *' : 'Batch (optional)'}</Label>
                 <select
                   value={formData.batchId}
                   onChange={(e) => setFormData({ ...formData, batchId: e.target.value })}
-                  className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
-                  required
-                  disabled={!formData.productId}
+                  className="flex h-10 w-full min-w-0 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
+                  required={batchRequired}
+                  disabled={!formData.productId || batchesLoadFailed}
                 >
-                  <option value="">Select Batch</option>
-                  {batches.map(batch => {
+                  <option value="">{batchRequired ? 'Select Batch' : 'General product stock (no batch)'}</option>
+                  {selectableBatches.map(batch => {
                     const available = (Number(batch.quantity) || 0) - (Number(batch.reserved_quantity) || 0);
                     return (
                       <option key={batch.id} value={batch.id} disabled={available <= 0}>
@@ -324,12 +352,18 @@ export function StockReservation({
                     );
                   })}
                 </select>
-                {formData.productId && batches.length === 0 && (
-                  <p className="text-xs text-amber-600">No active batches found for this product.</p>
+                {formData.productId && batchesLoadFailed && (
+                  <p className="text-xs text-red-600">Could not load batches. Try re-selecting the product.</p>
+                )}
+                {formData.productId && !batchesLoadFailed && batches.length > 0 && selectableBatches.length === 0 && (
+                  <p className="text-xs text-amber-600">Batches exist but none are active — activate a batch or use general stock.</p>
+                )}
+                {formData.productId && !batchesLoadFailed && !batchRequired && (
+                  <p className="text-xs text-slate-500">No batch rows — reservation uses headline product stock (same checks as the hub).</p>
                 )}
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Quantity *</Label>
                   <Input
@@ -398,7 +432,17 @@ export function StockReservation({
                 <Button variant="outline" onClick={() => { setShowForm(false); resetForm(); }}>
                   Cancel
                 </Button>
-                <Button onClick={handleReserve} disabled={loading || !canAdjustStock || !formData.productId || !formData.batchId || formData.quantity <= 0}>
+                <Button
+                  onClick={handleReserve}
+                  disabled={
+                    loading ||
+                    !canAdjustStock ||
+                    !formData.productId ||
+                    (batchRequired && !formData.batchId) ||
+                    formData.quantity <= 0 ||
+                    batchesLoadFailed
+                  }
+                >
                   {loading ? 'Reserving...' : 'Reserve Stock'}
                 </Button>
               </div>

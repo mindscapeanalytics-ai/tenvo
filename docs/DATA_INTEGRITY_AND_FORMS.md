@@ -40,7 +40,18 @@ Reference implementations: **`ProductForm`**, **`CustomerForm`**, **`VendorForm`
 
 For hooks or APIs that **throw** instead of returning `{ success }` (e.g. some offline/sync paths), keep **`try/catch`** + **`toast.error`** and ensure the underlying API still scopes by **`business_id`**.
 
-Ship / launch expectations (QA, billing, legal): **`docs/MARKET_READINESS.md`**.
+Ship / launch expectations (QA, billing, legal): **`docs/MARKET_READINESS.md`**. Competitive phased roadmap (Zoho / Odoo / Busy-style, conflict avoidance): **`docs/ENTERPRISE_READINESS_ROADMAP.md`**.
+
+## Public storefront (raw SQL, not Prisma tenant extension)
+
+Storefront routes and actions use the shared **`pg` pool** directly. The Prisma tenant extension **does not** auto-scope these queries.
+
+- **Checkout**: `POST /api/storefront/[businessDomain]/orders` only — server-side pricing, row locks (`FOR UPDATE`), and **`business_id`** on every stock/customer write. Do not use client-declared prices or legacy **`createStorefrontOrder`**.
+- **Business resolution**: **`resolveStorefrontBusiness`** (`lib/tenancy/resolveStorefrontBusiness.js`) — case-insensitive domain, custom domains, storefront-enabled check.
+- **Stock / cart**: stock API requires **`businessId`**; **`checkProductStock(productId, variantId, qty, businessId)`** must verify product/variant belongs to that business.
+- **Hub dashboard actions**: wrap with **`requireStorefrontHubAccess(businessId)`** (`lib/tenancy/storefrontHubAuth.js`) — orders admin, payments config, storefront settings.
+- **Public payloads**: strip internal fields (e.g. **`cost_price`**) from product responses; scope reviews and order-item joins by **`business_id`**.
+- **Verification**: run **`npm run verify:storefront-tenancy`** after edits to storefront checkout, stock, or hub order flows.
 
 ## Related audits
 

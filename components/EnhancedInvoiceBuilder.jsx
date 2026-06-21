@@ -26,6 +26,7 @@ import { getCurrentSeason, getSeasonalDiscount } from '@/lib/domainData/pakistan
 import { hasSeasonalPricing } from '@/lib/utils/pakistaniFeatures';
 import { ExpertActionPanel } from '@/components/domain/ExpertActionPanel';
 import { submitInvoiceForApprovalAction, getApprovalHistoryAction, schedulePaymentRemindersAction } from '@/lib/actions/standard/invoice-approval';
+import { MOBILE_OVERLAY, MOBILE_OVERLAY_CARD, MOBILE_FORM_FOOTER, MOBILE_GRID_FIELDS } from '@/lib/utils/formMobileStyles';
 
 /**
  * Enhanced Invoice Builder Component
@@ -982,12 +983,12 @@ export function EnhancedInvoiceBuilder({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
-      <Card className="w-full max-w-6xl max-h-[95vh] overflow-y-auto rounded-3xl shadow-2xl border-none">
-        <CardHeader className="flex flex-row items-center justify-between border-b py-5 px-8 bg-slate-50/50">
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-3">
-              <CardTitle className="text-2xl font-semibold text-slate-800 tracking-tight">
+    <div className={cn(MOBILE_OVERLAY, 'animate-in fade-in duration-300')}>
+      <Card className={cn(MOBILE_OVERLAY_CARD, 'max-w-6xl shadow-2xl')}>
+        <CardHeader className="shrink-0 flex flex-col gap-3 border-b bg-slate-50/50 px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-8 sm:py-5">
+          <div className="min-w-0 space-y-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <CardTitle className="text-base font-semibold tracking-tight text-slate-800 sm:text-2xl">
                 {initialData ? 'Edit Invoice' : 'New Invoice'}
               </CardTitle>
               <Badge variant="outline" className="text-[11px] font-medium bg-white text-slate-600 border-slate-200 shadow-sm">
@@ -1021,14 +1022,16 @@ export function EnhancedInvoiceBuilder({
           </div>
         </CardHeader>
         {showKeyboardHints && (
-          <div className="bg-slate-800 px-8 py-2.5 flex gap-6 text-[11px] font-medium text-slate-200 border-b border-slate-700 animate-in slide-in-from-top-1 shadow-inner">
+          <div className="border-b border-slate-700 bg-slate-800 px-3 py-2 text-[10px] font-medium text-slate-200 shadow-inner sm:px-8 sm:text-[11px]">
+            <div className="flex flex-wrap gap-3 sm:gap-6">
             <span className="flex items-center gap-1.5"><kbd className="bg-slate-700 border border-slate-600 px-1.5 py-0.5 rounded font-mono text-[10px] shadow-sm">CTRL+S</kbd> Save</span>
             <span className="flex items-center gap-1.5"><kbd className="bg-slate-700 border border-slate-600 px-1.5 py-0.5 rounded font-mono text-[10px] shadow-sm">CTRL+B</kbd> Barcode Focus</span>
             <span className="flex items-center gap-1.5"><kbd className="bg-slate-700 border border-slate-600 px-1.5 py-0.5 rounded font-mono text-[10px] shadow-sm">ENTER</kbd> New Row</span>
-            <span className="flex items-center gap-1.5"><kbd className="bg-slate-700 border border-slate-600 px-1.5 py-0.5 rounded font-mono text-[10px] shadow-sm">ESC</kbd> Close</span>
+            <span className="flex items-center gap-1.5"><kbd className="rounded border border-slate-600 bg-slate-700 px-1.5 py-0.5 font-mono text-[10px] shadow-sm">ESC</kbd> Close</span>
+            </div>
           </div>
         )}
-        <CardContent className="space-y-6 p-8 bg-white">
+        <CardContent className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain bg-white p-3 sm:space-y-6 sm:p-8">
           {/* Business Header - Your Brand */}
           {business?.name && (
             <div className="pb-2 mb-2 flex items-start justify-between">
@@ -1047,7 +1050,7 @@ export function EnhancedInvoiceBuilder({
             </div>
           )}
 
-          <div className="bg-slate-50 border border-slate-100 rounded-xl p-5 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className={cn('rounded-xl border border-slate-100 bg-slate-50 p-3 sm:p-5', MOBILE_GRID_FIELDS, 'lg:grid-cols-4')}>
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold text-slate-500">Invoice Number</Label>
               <Input value={invoice.invoiceNumber} readOnly className="bg-slate-100/50 border-slate-200 shadow-none h-9 text-sm text-slate-700" />
@@ -1111,7 +1114,7 @@ export function EnhancedInvoiceBuilder({
                   }}
                   placeholder="Search customers..."
                   emptyText="No customers found"
-                  className="w-[300px] h-9 shadow-sm"
+                  className="w-full sm:w-[300px] h-9 shadow-sm"
                 />
               )}
             </div>
@@ -1606,85 +1609,46 @@ export function EnhancedInvoiceBuilder({
               </div>
             )}
           </div>
+        </CardContent>
 
-          {/* Actions */}
-          <div className="sticky bottom-0 z-20 -mx-8 mt-6 border-t bg-white/95 px-8 py-4 backdrop-blur supports-[backdrop-filter]:bg-white/85 flex flex-col md:flex-row items-center justify-between gap-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
-            <div className="space-y-2 w-full md:w-auto">
-              <div className="flex gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => applySmartDraft('items')}
-                  className="rounded-md border-indigo-200 text-indigo-700 hover:bg-indigo-50 font-medium h-9 px-4 text-xs shadow-sm"
-                >
-                  <WandSparkles className="w-3.5 h-3.5 mr-1.5" />
-                  Smart Items
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => applySmartDraft('full')}
-                  className="rounded-md border-violet-200 text-violet-700 hover:bg-violet-50 font-medium h-9 px-4 text-xs shadow-sm"
-                >
-                  <WandSparkles className="w-3.5 h-3.5 mr-1.5" />
-                  Smart Full
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => toast.success('Link generated for WhatsApp message')}
-                  className="rounded-md border-emerald-200 text-emerald-700 hover:bg-emerald-50 font-medium h-9 px-4 text-xs shadow-sm"
-                >
-                  Share via WhatsApp
-                </Button>
-              </div>
-              {smartDraftMeta && (
-                <div className="text-[11px] text-indigo-600 bg-indigo-50 border border-indigo-100 rounded-md px-2.5 py-1.5">
-                  <span className="font-semibold text-indigo-800">Smart Draft:</span>{' '}
-                  {smartDraftMeta.scope === 'full'
-                    ? `Customer ${smartDraftMeta.customerLabel}`
-                    : (smartDraftMeta.customerMode === 'preserved' ? 'Customer preserved' : 'Customer unchanged')}; items {smartDraftMeta.productLabels.join(', ')}
-                </div>
-              )}
+        <div className={cn(MOBILE_FORM_FOOTER, 'shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]')}>
+          <div className="flex flex-col gap-3">
+            <div className="hidden gap-2 overflow-x-auto pb-0.5 scrollbar-none sm:flex sm:flex-wrap">
+              <Button type="button" variant="outline" onClick={() => applySmartDraft('items')} className="h-9 shrink-0 rounded-md border-indigo-200 px-3 text-xs font-medium text-indigo-700 shadow-sm hover:bg-indigo-50">
+                <WandSparkles className="mr-1.5 h-3.5 w-3.5" /> Smart Items
+              </Button>
+              <Button type="button" variant="outline" onClick={() => applySmartDraft('full')} className="h-9 shrink-0 rounded-md border-violet-200 px-3 text-xs font-medium text-violet-700 shadow-sm hover:bg-violet-50">
+                <WandSparkles className="mr-1.5 h-3.5 w-3.5" /> Smart Full
+              </Button>
+              <Button type="button" variant="outline" onClick={() => toast.success('Link generated for WhatsApp message')} className="h-9 shrink-0 rounded-md border-emerald-200 px-3 text-xs font-medium text-emerald-700 shadow-sm hover:bg-emerald-50">
+                WhatsApp
+              </Button>
             </div>
-
-            <div className="flex gap-3 w-full md:w-auto">
-              <Button type="button" variant="ghost" onClick={onClose} className="flex-1 md:flex-none font-medium text-slate-500 rounded-md px-6 h-9 text-sm hover:bg-slate-100">
+            {smartDraftMeta && (
+              <div className="hidden rounded-md border border-indigo-100 bg-indigo-50 px-2.5 py-1.5 text-[11px] text-indigo-600 sm:block">
+                <span className="font-semibold text-indigo-800">Smart Draft:</span>{' '}
+                {smartDraftMeta.scope === 'full' ? `Customer ${smartDraftMeta.customerLabel}` : (smartDraftMeta.customerMode === 'preserved' ? 'Customer preserved' : 'Customer unchanged')}; items {smartDraftMeta.productLabels.join(', ')}
+              </div>
+            )}
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" variant="ghost" onClick={onClose} className="h-9 flex-1 rounded-md px-4 text-sm font-medium text-slate-500 hover:bg-slate-100 sm:flex-none">
                 Cancel
               </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleExportPDF}
-                disabled={isSaving || isExporting}
-                className="flex-1 md:flex-none font-medium border-slate-200 text-slate-700 rounded-md h-9 px-4 text-sm shadow-sm"
-              >
-                {isExporting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Printer className="w-4 h-4 mr-2 text-slate-500" />}
-                Print {standards.taxLabel} Invoice
+              <Button type="button" variant="outline" onClick={handleExportPDF} disabled={isSaving || isExporting} className="hidden h-9 rounded-md border-slate-200 px-3 text-sm font-medium text-slate-700 shadow-sm sm:inline-flex">
+                {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Printer className="mr-2 h-4 w-4 text-slate-500" />}
+                Print
               </Button>
-              <Button
-                type="button"
-                disabled={isSaving}
-                onClick={handleSave}
-                className="flex-1 md:flex-none font-medium px-6 h-9 text-sm rounded-md shadow-sm transition-all bg-emerald-600 hover:bg-emerald-700 text-white"
-              >
-                {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
-                Save Draft
+              <Button type="button" disabled={isSaving} onClick={handleSave} className="h-9 flex-1 rounded-md bg-emerald-600 px-4 text-sm font-medium text-white shadow-sm hover:bg-emerald-700 sm:flex-none">
+                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                Save
               </Button>
-              <Button
-                type="button"
-                disabled={!canSubmitForApproval}
-                onClick={handleSaveAndSubmitForApproval}
-                className="flex-1 md:flex-none bg-blue-600 hover:bg-blue-700 text-white font-medium px-6 h-9 text-sm rounded-md shadow-sm transition-all disabled:opacity-60"
-              >
-                {(isSaving || isSubmittingApproval)
-                  ? <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                  : <Send className="w-4 h-4 mr-2" />}
-                Save & Submit
+              <Button type="button" disabled={!canSubmitForApproval} onClick={handleSaveAndSubmitForApproval} className="h-9 flex-1 rounded-md bg-blue-600 px-4 text-sm font-medium text-white shadow-sm hover:bg-blue-700 disabled:opacity-60 sm:flex-none">
+                {(isSaving || isSubmittingApproval) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                Submit
               </Button>
             </div>
           </div>
-        </CardContent>
+        </div>
       </Card>
     </div>
   );

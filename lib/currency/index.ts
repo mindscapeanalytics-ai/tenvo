@@ -70,6 +70,13 @@ export const CURRENCY_CONFIG = {
     locale: 'en-AU',
     name: 'Australian Dollar',
   },
+  CNY: {
+    code: 'CNY',
+    symbol: '¥',
+    decimal: 2,
+    locale: 'zh-CN',
+    name: 'Chinese Yuan',
+  },
 } as const;
 
 export type CurrencyCode = keyof typeof CURRENCY_CONFIG;

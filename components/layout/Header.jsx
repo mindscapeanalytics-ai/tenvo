@@ -59,6 +59,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
+import { MOBILE_TAB_LABELS, MOBILE_MINIMAL_HEADER_TABS } from '@/lib/utils/mobileLayout';
 
 export function Header({ onMenuClick }) {
     const { dateRange, setDateRange, searchQuery, setSearchQuery } = useFilters();
@@ -259,6 +260,10 @@ export function Header({ onMenuClick }) {
     };
 
     const activeTitle = labels[currentTab] || currentTab;
+    const mobileTitle = MOBILE_TAB_LABELS[currentTab] || activeTitle;
+    const minimalMobileHeader = MOBILE_MINIMAL_HEADER_TABS.has(currentTab);
+    const businessShortName =
+        business?.business_name || business?.name || business?.domain?.replace(/-/g, ' ') || 'Workspace';
     const dispatchHeaderEvent = (eventName, detail) => {
         window.dispatchEvent(new CustomEvent(eventName, detail ? { detail } : undefined));
     };
@@ -390,7 +395,162 @@ export function Header({ onMenuClick }) {
     };
 
     return (
-        <header className="h-14 bg-white/90 backdrop-blur-xl border-b border-gray-200/50 flex items-center px-4 lg:px-6 sticky top-0 z-40 shadow-sm">
+        <header className="sticky top-0 z-40 border-b border-gray-200/50 bg-white/90 shadow-sm backdrop-blur-xl">
+            {/* ── Mobile header — single compact row ── */}
+            <div className="lg:hidden">
+                <div className="flex h-10 items-center gap-1 px-2.5">
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 shrink-0 text-gray-500"
+                        onClick={onMenuClick}
+                        aria-label="Open menu"
+                    >
+                        <Menu className="h-4 w-4" />
+                    </Button>
+
+                    <div className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden leading-none">
+                        <span className="truncate text-[13px] font-bold tracking-tight text-gray-900">
+                            {mobileTitle}
+                        </span>
+                        <span className="hidden shrink-0 text-[10px] text-gray-300 min-[340px]:inline">·</span>
+                        <span className="hidden truncate text-[10px] font-semibold uppercase tracking-wide text-gray-400 min-[340px]:inline">
+                            {businessShortName}
+                        </span>
+                    </div>
+
+                    {!minimalMobileHeader && !isEasyMode && (
+                        <div className="flex shrink-0 items-center gap-0.5">
+                            <DateRangePicker
+                                minimal
+                                date={dateRange}
+                                onDateChange={(newRange) => {
+                                    if (newRange?.from && newRange?.to) {
+                                        setDateRange(newRange);
+                                    }
+                                }}
+                            />
+                            <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-7 w-7 shrink-0 text-gray-500"
+                                onClick={() => dispatchHeaderEvent('refresh-dashboard-data')}
+                                title="Refresh data"
+                                aria-label="Refresh data"
+                            >
+                                <RefreshCcw className="h-3.5 w-3.5" />
+                            </Button>
+                        </div>
+                    )}
+
+                    {!minimalMobileHeader && isEasyMode && (
+                        <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7 shrink-0 text-gray-500"
+                            onClick={() => dispatchHeaderEvent('refresh-dashboard-data')}
+                            title="Refresh data"
+                            aria-label="Refresh data"
+                        >
+                            <RefreshCcw className="h-3.5 w-3.5" />
+                        </Button>
+                    )}
+
+                    {!minimalMobileHeader && (
+                    <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-7 w-7 shrink-0 text-gray-500"
+                        onClick={() => {
+                            const input = searchRef.current?.querySelector('input');
+                            if (input) input.focus();
+                            else setIsSearchFocused(true);
+                        }}
+                        aria-label="Search"
+                    >
+                        <Search className="h-4 w-4" />
+                    </Button>
+                    )}
+
+                    {!minimalMobileHeader && (
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button
+                                size="icon"
+                                variant="outline"
+                                className="h-7 w-7 shrink-0 rounded-lg border-gray-200"
+                                aria-label="Quick add"
+                            >
+                                <Plus className="h-3.5 w-3.5" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-52 rounded-2xl p-2 shadow-xl">
+                            <DropdownMenuLabel className="px-3 py-2 text-[9px] font-black uppercase tracking-[0.2em] text-gray-400">
+                                Quick Actions
+                            </DropdownMenuLabel>
+                            <DropdownMenuItem onClick={() => window.dispatchEvent(new CustomEvent('open-modal', { detail: { modalId: 'invoice' } }))} className="cursor-pointer rounded-xl py-2.5">
+                                <Plus className="mr-3 h-4 w-4" />
+                                <span className="text-xs font-bold">New Invoice</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => window.dispatchEvent(new CustomEvent('open-modal', { detail: { modalId: 'product' } }))} className="cursor-pointer rounded-xl py-2.5">
+                                <PackageIcon className="mr-3 h-4 w-4 text-brand-primary" />
+                                <span className="text-xs font-bold">New Product</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => window.dispatchEvent(new CustomEvent('open-modal', { detail: { modalId: 'customer' } }))} className="cursor-pointer rounded-xl py-2.5">
+                                <UsersIcon className="mr-3 h-4 w-4 text-green-500" />
+                                <span className="text-xs font-bold">New Customer</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => window.dispatchEvent(new CustomEvent('open-modal', { detail: { modalId: 'purchase' } }))} className="cursor-pointer rounded-xl py-2.5">
+                                <ShoppingCart className="mr-3 h-4 w-4 text-brand-primary" />
+                                <span className="text-xs font-bold">New Purchase</span>
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                    )}
+
+                    <div className="shrink-0 scale-90">
+                        <NotificationBell />
+                    </div>
+                </div>
+
+                {/* Mobile search overlay */}
+                <AnimatePresence>
+                    {isSearchFocused && (
+                        <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            className="overflow-hidden border-t border-gray-100 px-3 pb-2"
+                            ref={searchRef}
+                        >
+                            <div className="relative pt-2">
+                                <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
+                                <Input
+                                    placeholder={t.search_placeholder}
+                                    className="h-9 rounded-xl border-gray-200 bg-gray-50 pl-9 text-xs"
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    onKeyDown={handleKeyDown}
+                                    autoFocus
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setIsSearchFocused(false);
+                                        setSearchQuery('');
+                                    }}
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1 hover:bg-gray-100"
+                                >
+                                    <X className="h-3.5 w-3.5 text-gray-400" />
+                                </button>
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+            </div>
+
+            {/* ── Desktop header ── */}
+            <div className="hidden h-14 items-center px-6 lg:flex">
             <div className="flex items-center justify-between w-full max-w-[1600px] mx-auto gap-3">
                 {/* Left: Mobile Menu & Module Breadcrumb */}
                 <div className="flex items-center gap-3 shrink-0">
@@ -611,6 +771,7 @@ export function Header({ onMenuClick }) {
 
                     <NotificationBell />
                 </div>
+            </div>
             </div>
         </header >
     );

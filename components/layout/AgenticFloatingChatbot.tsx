@@ -3,6 +3,9 @@
 import { useState, useRef, useEffect, memo } from 'react';
 import { Bot, Sparkles, Send, X, Trash2, Loader2, User, HelpCircle } from 'lucide-react';
 import { askBusinessAnalystAction } from '@/lib/actions/premium/ai/agentic';
+import { formatBusinessAnalystReply } from '@/lib/utils/formatBusinessAnalystReply';
+import { MOBILE_BOTTOM_NAV_CLASS, MOBILE_FLOATING_Z } from '@/lib/utils/mobileLayout';
+import { useBusiness } from '@/lib/context/BusinessContext';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -13,15 +16,13 @@ interface Message {
     timestamp: Date;
 }
 
-export const AgenticFloatingChatbot = memo(function AgenticFloatingChatbot({ 
-    businessId, 
-    businessName, 
-    businessCategory 
-}: { 
-    businessId: string; 
-    businessName?: string; 
-    businessCategory?: string; 
-}) {
+export const AgenticFloatingChatbot = memo(function AgenticFloatingChatbot() {
+    const { business } = useBusiness() as {
+        business?: { id?: string; business_name?: string; category?: string } | null;
+    };
+    const businessId = business?.id;
+    const businessName = business?.business_name;
+    const businessCategory = business?.category;
     const [isOpen, setIsOpen] = useState(false);
     const [messages, setMessages] = useState<Message[]>([
         { 
@@ -54,12 +55,9 @@ export const AgenticFloatingChatbot = memo(function AgenticFloatingChatbot({
 
         try {
             const res = await askBusinessAnalystAction(businessId, queryText);
-            if (res.success) {
-                setMessages(prev => [...prev, { role: 'assistant', content: (res as any).data as string, timestamp: new Date() }]);
-            } else {
-                setMessages(prev => [...prev, { role: 'assistant', content: "I encountered an error accessing your tenant database. Please try again.", timestamp: new Date() }]);
-            }
-        } catch (err) {
+            const reply = formatBusinessAnalystReply(res);
+            setMessages(prev => [...prev, { role: 'assistant', content: reply, timestamp: new Date() }]);
+        } catch {
             setMessages(prev => [...prev, { role: 'assistant', content: "Connection error. Make sure your local server is online.", timestamp: new Date() }]);
         } finally {
             setLoading(false);
@@ -73,7 +71,7 @@ export const AgenticFloatingChatbot = memo(function AgenticFloatingChatbot({
     ];
 
     return (
-        <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end">
+        <div className={cn('fixed right-4 flex flex-col items-end', MOBILE_BOTTOM_NAV_CLASS, MOBILE_FLOATING_Z, 'lg:right-6')}>
             <AnimatePresence>
                 {isOpen && (
                     <motion.div
@@ -81,7 +79,7 @@ export const AgenticFloatingChatbot = memo(function AgenticFloatingChatbot({
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 30, scale: 0.95 }}
                         transition={{ type: 'spring', duration: 0.4 }}
-                        className="mb-4 w-96 h-[520px] bg-white rounded-3xl border border-slate-100 shadow-2xl flex flex-col overflow-hidden"
+                        className="mb-4 w-[min(24rem,calc(100vw-3rem))] max-w-[calc(100vw-3rem)] h-[min(32rem,calc(100dvh-11rem))] max-h-[calc(100dvh-11rem)] lg:h-[min(32rem,calc(100dvh-8rem))] lg:max-h-[calc(100dvh-8rem)] bg-white rounded-3xl border border-slate-100 shadow-2xl flex flex-col overflow-hidden"
                     >
                         {/* Chat Header */}
                         <div className="bg-brand-primary p-4 text-white flex items-center justify-between shadow-sm relative overflow-hidden">
@@ -241,7 +239,8 @@ export const AgenticFloatingChatbot = memo(function AgenticFloatingChatbot({
                 whileHover={{ scale: 1.08 }}
                 whileTap={{ scale: 0.92 }}
                 className={cn(
-                    "w-14 h-14 rounded-full flex items-center justify-center shadow-2xl relative transition-all duration-300",
+                    "rounded-full flex items-center justify-center shadow-2xl relative transition-all duration-300",
+                    "w-12 h-12 lg:w-14 lg:h-14",
                     isOpen 
                         ? "bg-slate-900 text-white shadow-slate-950/20" 
                         : "bg-brand-primary text-white shadow-brand-primary/30 hover:shadow-brand-primary/45"

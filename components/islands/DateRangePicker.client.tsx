@@ -17,12 +17,18 @@ interface DateRangePickerProps {
     className?: string;
     date: DateRange | undefined;
     onDateChange: (date: DateRange | undefined) => void;
+    /** Shorter label + tighter trigger for mobile toolbars */
+    compact?: boolean;
+    /** Icon-only trigger for tight single-row headers */
+    minimal?: boolean;
 }
 
 export function DateRangePicker({
     className,
     date,
     onDateChange,
+    compact = false,
+    minimal = false,
 }: DateRangePickerProps) {
     const [open, setOpen] = useState(false);
     const [months, setMonths] = useState(2);
@@ -48,10 +54,17 @@ export function DateRangePicker({
     };
 
     const buttonLabel = useMemo(() => {
-        if (!date?.from) return 'Pick a date range';
-        if (!date?.to) return format(date.from, 'LLL dd, y');
+        if (!date?.from) return compact || minimal ? 'Dates' : 'Pick a date range';
+        if (!date?.to) return format(date.from, compact || minimal ? 'MMM d' : 'LLL dd, y');
+        if (compact || minimal) {
+            return `${format(date.from, 'MMM d')} – ${format(date.to, 'MMM d')}`;
+        }
         return `${format(date.from, 'LLL dd, y')} - ${format(date.to, 'LLL dd, y')}`;
-    }, [date]);
+    }, [date, compact, minimal]);
+
+    const triggerTitle = date?.from && date?.to
+        ? `${format(date.from, 'MMM d, yyyy')} – ${format(date.to, 'MMM d, yyyy')}`
+        : 'Select date range';
 
     return (
         <div className={cn('grid gap-1', className)}>
@@ -60,14 +73,29 @@ export function DateRangePicker({
                     <Button
                         id="date"
                         variant="outline"
+                        title={triggerTitle}
+                        aria-label={triggerTitle}
                         className={cn(
-                            'w-full justify-start text-left font-bold rounded-lg border-gray-200 h-8 px-2.5 shadow-sm bg-white hover:bg-white transition-colors text-[11px]',
+                            'font-bold rounded-lg border-gray-200 bg-white shadow-sm transition-colors hover:bg-white',
+                            minimal
+                                ? 'h-7 w-7 shrink-0 p-0'
+                                : cn(
+                                    'w-full justify-start text-left',
+                                    compact ? 'h-7 px-1.5 text-[10px]' : 'h-8 px-2.5 text-[11px]',
+                                ),
                             !date && 'text-muted-foreground'
                         )}
                     >
-                        <CalendarIcon className="mr-2 h-3.5 w-3.5 text-primary" />
-                        <span className="truncate">{buttonLabel}</span>
-                        <ChevronDown className="ml-auto h-3 w-3 text-gray-400" />
+                        <CalendarIcon className={cn(
+                            'shrink-0 text-primary',
+                            minimal ? 'h-3.5 w-3.5' : compact ? 'mr-1 h-3 w-3' : 'mr-2 h-3.5 w-3.5',
+                        )} />
+                        {!minimal && (
+                            <>
+                                <span className="truncate">{buttonLabel}</span>
+                                {!compact && <ChevronDown className="ml-auto h-3 w-3 text-gray-400" />}
+                            </>
+                        )}
                     </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-[min(760px,calc(100vw-24px))] p-0 rounded-xl shadow-xl border border-gray-100 flex bg-white overflow-hidden" align="end" sideOffset={8}>

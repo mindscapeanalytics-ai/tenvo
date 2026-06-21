@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 import type { Invoice } from '@/types';
 import { BulkImportModal } from '@/components/invoice/BulkImportModal';
 import { BulkDeleteConfirmModal } from '@/components/invoice/BulkDeleteConfirmModal';
+import { MobileTabHeader, MobileStatStrip } from '@/components/mobile/MobileTabHeader';
 
 interface InvoiceListProps {
     invoices: Invoice[];
@@ -240,9 +241,42 @@ export function InvoiceList({
     };
 
     return (
-        <div className="space-y-6">
-            {/* Header */}
-            <div className="flex items-center justify-between">
+        <div className="space-y-4 lg:space-y-6">
+            {/* Mobile — compact header + stat strip */}
+            <MobileTabHeader
+                icon={FileText}
+                iconClassName="bg-emerald-100 text-emerald-600"
+                title="Sales & Invoicing"
+                subtitle={`${stats.total} invoices · ${formatCurrency(stats.totalBalance, currency as any)} outstanding`}
+                primaryAction={{
+                    label: 'New',
+                    icon: Plus,
+                    className: 'bg-emerald-600 hover:bg-emerald-700 text-white',
+                    onClick: () => onAdd?.(),
+                }}
+                actions={[
+                    ...(onBulkImport
+                        ? [{ id: 'import', label: 'Import', icon: Upload, onClick: () => setShowImportModal(true) }]
+                        : []),
+                    ...(onExport
+                        ? [{ id: 'export', label: 'Export', icon: Download, onClick: () => handleExport() }]
+                        : []),
+                ]}
+            />
+
+            <MobileStatStrip
+                items={[
+                    { label: 'Total', value: stats.total, hint: formatCurrency(stats.totalAmount, currency as any) },
+                    { label: 'Paid', value: stats.paid, valueTone: 'text-green-600', hint: formatCurrency(stats.totalPaid, currency as any), hintTone: 'text-green-600' },
+                    { label: 'Partial', value: stats.partial, valueTone: 'text-blue-600', hint: `${stats.total > 0 ? Math.round((stats.partial / stats.total) * 100) : 0}%`, hintTone: 'text-blue-600' },
+                    { label: 'Unpaid', value: stats.unpaid, valueTone: 'text-amber-600', hint: formatCurrency(stats.totalBalance, currency as any), hintTone: 'text-amber-600' },
+                    { label: 'Overdue', value: stats.overdue, valueTone: 'text-red-600', alert: stats.overdue > 0, hint: formatCurrency(stats.aging1_30 + stats.aging31_60 + stats.aging61_90 + stats.agingOver90, currency as any), hintTone: 'text-red-600' },
+                    { label: 'Draft', value: stats.draft },
+                ]}
+            />
+
+            {/* Desktop header */}
+            <div className="hidden items-center justify-between lg:flex">
                 <div className="flex items-center gap-3">
                     <div className="p-2 bg-emerald-100 rounded-lg">
                         <FileText className="w-6 h-6 text-emerald-600" />
@@ -285,8 +319,8 @@ export function InvoiceList({
                 </div>
             </div>
 
-            {/* Stats Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
+            {/* Desktop stats */}
+            <div className="hidden grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-7 lg:grid">
                 <Card>
                     <CardHeader className="pb-2">
                         <CardTitle className="text-xs font-medium text-muted-foreground">Total</CardTitle>

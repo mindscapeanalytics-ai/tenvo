@@ -220,12 +220,12 @@ export function EntityDetailsDialog({ item: initialItem, type, open, onClose, ca
             <DialogContent className="max-w-2xl h-[85vh] max-h-[85vh] overflow-hidden flex flex-col p-0 gap-0 rounded-[2.5rem] border-none shadow-2xl bg-white/95 backdrop-blur-xl animate-in zoom-in-95 duration-300">
                 {renderHeader()}
                 <div className="flex-1 overflow-y-auto min-h-0 custom-scrollbar">
-                    <div className="p-8 pb-12">
+                    <div className="p-3 pb-6 sm:p-6 sm:pb-8">
                         {isEditing ? (
                             <div className="px-1">
                                 {type === 'invoice' && <EnhancedInvoiceBuilder initialData={item} category={category} onSave={handleUpdateSuccess} onClose={() => setIsEditing(false)} />}
-                                {type === 'customer' && <CustomerForm initialData={item} category={category} onSave={handleUpdateSuccess} onEntitlementError={() => setIsEditing(false)} onClose={() => setIsEditing(false)} />}
-                                {type === 'vendor' && <VendorForm initialData={item} category={category} onSave={handleUpdateSuccess} onEntitlementError={() => setIsEditing(false)} onClose={() => setIsEditing(false)} />}
+                                {type === 'customer' && <CustomerForm embedded initialData={item} category={category} onSave={handleUpdateSuccess} onEntitlementError={() => setIsEditing(false)} onClose={() => setIsEditing(false)} />}
+                                {type === 'vendor' && <VendorForm embedded initialData={item} category={category} onSave={handleUpdateSuccess} onEntitlementError={() => setIsEditing(false)} onClose={() => setIsEditing(false)} />}
                                 {(type !== 'invoice' && type !== 'customer' && type !== 'vendor') && (
                                     <div className="p-8 text-center bg-gray-50 rounded-3xl border-2 border-dashed border-gray-100">
                                         <AlertTriangle className="w-8 h-8 text-amber-500 mx-auto mb-2" />

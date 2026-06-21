@@ -40,6 +40,9 @@ import { getBusinessOrders, getOrderDetails, updateOrderStatus } from '@/lib/act
 import { updateOrderPaymentStatus, recordManualPayment } from '@/lib/actions/storefront/payments';
 import { cn } from '@/lib/utils';
 import toast from 'react-hot-toast';
+import { MobileTabHeader, MobileStatStrip } from '@/components/mobile/MobileTabHeader';
+import { useStorefrontEmbedded } from '@/lib/context/StorefrontMobileContext';
+import { MOBILE_INPUT_CLASS } from '@/lib/utils/formMobileStyles';
 
 const STATUS_CONFIG = {
   pending: { label: 'Pending', color: 'bg-yellow-100 text-yellow-800 border-yellow-200', icon: Clock },
@@ -275,20 +278,20 @@ export function OrdersManager({ business, category }) {
     }
   };
 
-  const getStatusBadge = (status) => {
+  const getStatusBadge = (status, compact = false) => {
     const config = STATUS_CONFIG[status] || STATUS_CONFIG.pending;
     return (
-      <Badge className={cn('border', config.color)}>
-        <config.icon className="w-3 h-3 mr-1" />
+      <Badge className={cn('border', config.color, compact && 'text-[10px] px-1.5 py-0 h-5')}>
+        <config.icon className={cn('mr-0.5', compact ? 'w-2.5 h-2.5' : 'w-3 h-3')} />
         {config.label}
       </Badge>
     );
   };
 
-  const getPaymentStatusBadge = (status) => {
+  const getPaymentStatusBadge = (status, compact = false) => {
     const config = PAYMENT_STATUS_CONFIG[status] || PAYMENT_STATUS_CONFIG.pending;
     return (
-      <Badge className={config.color}>
+      <Badge className={cn(config.color, compact && 'text-[10px] px-1.5 py-0 h-5')}>
         {config.label}
       </Badge>
     );
@@ -296,13 +299,41 @@ export function OrdersManager({ business, category }) {
 
   const totalPages = Math.ceil(totalOrders / limit);
 
+  const pendingCount = orders.filter((o) => o.status === 'pending').length;
+  const processingCount = orders.filter((o) => o.status === 'processing').length;
+  const revenueTotal = orders.reduce((sum, o) => sum + (parseFloat(o.total) || 0), 0);
+  const embeddedInStorefront = useStorefrontEmbedded();
+
+  const statItems = [
+    { label: 'Total', value: totalOrders },
+    { label: 'Pending', value: pendingCount, valueTone: 'text-amber-600', alert: pendingCount > 0 },
+    { label: 'Processing', value: processingCount, valueTone: 'text-blue-600' },
+    { label: 'Revenue', value: formatCurrency(revenueTotal, business.currency || 'PKR') },
+  ];
+
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div className="space-y-2 lg:space-y-6">
+      {!embeddedInStorefront && (
+        <MobileTabHeader
+          icon={Package}
+          iconClassName="bg-blue-100 text-blue-600"
+          title="Store Orders"
+          subtitle={`${totalOrders} orders`}
+          actions={[
+            { id: 'refresh', label: 'Refresh', icon: RefreshCw, onClick: loadOrders },
+          ]}
+        />
+      )}
+
+      <div className="lg:hidden">
+        <MobileStatStrip items={statItems} layout="grid" />
+      </div>
+
+      {/* Desktop header */}
+      <div className="hidden flex-col gap-4 sm:flex-row sm:items-center sm:justify-between lg:flex">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Orders</h2>
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="mt-1 text-sm text-gray-500">
             Manage and track customer orders from your storefront
           </p>
         </div>
@@ -313,14 +344,14 @@ export function OrdersManager({ business, category }) {
             onClick={loadOrders}
             disabled={loading}
           >
-            <RefreshCw className={cn("w-4 h-4 mr-2", loading && "animate-spin")} />
+            <RefreshCw className={cn('mr-2 h-4 w-4', loading && 'animate-spin')} />
             Refresh
           </Button>
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Desktop stats */}
+      <div className="hidden grid-cols-1 gap-4 sm:grid-cols-2 lg:grid lg:grid-cols-4">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
@@ -376,10 +407,62 @@ export function OrdersManager({ business, category }) {
         </Card>
       </div>
 
-      {/* Filters */}
-      <Card>
+      {/* Mobile filters — single compact block */}
+      <div className="space-y-1.5 lg:hidden">
+        <div className="flex gap-1.5">
+          <div className="relative min-w-0 flex-1">
+            <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
+            <Input
+              placeholder="Search order #, customer…"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className={cn(MOBILE_INPUT_CLASS, 'pl-8')}
+            />
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className="h-9 w-9 shrink-0"
+            onClick={loadOrders}
+            disabled={loading}
+            aria-label="Refresh orders"
+          >
+            <RefreshCw className={cn('h-3.5 w-3.5', loading && 'animate-spin')} />
+          </Button>
+        </div>
+        <div className="grid grid-cols-2 gap-1.5">
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className={cn(MOBILE_INPUT_CLASS, 'w-full')}>
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="pending">Pending</SelectItem>
+              <SelectItem value="processing">Processing</SelectItem>
+              <SelectItem value="shipped">Shipped</SelectItem>
+              <SelectItem value="delivered">Delivered</SelectItem>
+              <SelectItem value="cancelled">Cancelled</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={dateRange} onValueChange={setDateRange}>
+            <SelectTrigger className={cn(MOBILE_INPUT_CLASS, 'w-full')}>
+              <SelectValue placeholder="Period" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="today">Today</SelectItem>
+              <SelectItem value="7days">Last 7 days</SelectItem>
+              <SelectItem value="30days">Last 30 days</SelectItem>
+              <SelectItem value="all">All time</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {/* Desktop filters */}
+      <Card className="hidden lg:block">
         <CardContent className="p-4">
-          <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex flex-col gap-4 sm:flex-row">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <Input
@@ -419,8 +502,60 @@ export function OrdersManager({ business, category }) {
         </CardContent>
       </Card>
 
-      {/* Orders Table */}
-      <Card>
+      {/* Mobile order cards */}
+      <div className="space-y-2 lg:hidden">
+        {loading ? (
+          <div className="flex flex-col items-center justify-center rounded-xl border border-gray-100 bg-white py-12">
+            <RefreshCw className="h-6 w-6 animate-spin text-gray-400" />
+            <p className="mt-2 text-xs text-gray-500">Loading orders…</p>
+          </div>
+        ) : orders.length === 0 ? (
+          <div className="flex flex-col items-center justify-center rounded-xl border border-gray-100 bg-white py-12 text-center px-4">
+            <Package className="h-10 w-10 text-gray-300" />
+            <p className="mt-2 text-sm font-medium text-gray-600">No orders found</p>
+            <p className="text-xs text-gray-400">Storefront orders will appear here</p>
+          </div>
+        ) : (
+          orders.map((order) => (
+            <button
+              key={order.id}
+              type="button"
+              onClick={() => handleViewOrder(order)}
+              className="w-full rounded-xl border border-gray-100 bg-white p-3 text-left shadow-sm transition-colors active:bg-gray-50"
+            >
+              <div className="mb-2 flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-mono text-xs font-bold text-gray-900">{order.order_number}</p>
+                  <p className="mt-0.5 text-[10px] text-gray-400">{formatDate(order.created_at)}</p>
+                </div>
+                <p className="shrink-0 text-sm font-black text-gray-900">
+                  {formatCurrency(parseFloat(order.total), business.currency || 'PKR')}
+                </p>
+              </div>
+              <div className="mb-2 flex min-w-0 items-center gap-1.5">
+                <User className="h-3 w-3 shrink-0 text-gray-400" aria-hidden />
+                <div className="min-w-0">
+                  <p className="truncate text-xs font-semibold text-gray-800">{order.customer_name || 'Guest'}</p>
+                  {order.customer_email ? (
+                    <p className="truncate text-[10px] text-gray-400">{order.customer_email}</p>
+                  ) : null}
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-1.5">
+                {getStatusBadge(order.status, true)}
+                {getPaymentStatusBadge(order.payment_status, true)}
+                <span className="ml-auto text-[10px] font-medium text-gray-400">
+                  {order.items_count} {order.items_count === 1 ? 'item' : 'items'}
+                </span>
+                <Eye className="ml-1 h-3.5 w-3.5 text-gray-300" aria-hidden />
+              </div>
+            </button>
+          ))
+        )}
+      </div>
+
+      {/* Desktop orders table */}
+      <Card className="hidden lg:block">
         <CardContent className="p-0">
           <Table>
             <TableHeader>
@@ -492,26 +627,28 @@ export function OrdersManager({ business, category }) {
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-gray-500">
-            Showing {((currentPage - 1) * limit) + 1} to {Math.min(currentPage * limit, totalOrders)} of {totalOrders} orders
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-center text-xs text-gray-500 sm:text-left sm:text-sm">
+            {((currentPage - 1) * limit) + 1}–{Math.min(currentPage * limit, totalOrders)} of {totalOrders}
           </p>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center justify-center gap-2">
             <Button
               variant="outline"
               size="sm"
+              className="h-8 flex-1 sm:flex-none"
               onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
               disabled={currentPage === 1}
             >
               <ChevronLeft className="w-4 h-4 mr-1" />
-              Previous
+              Prev
             </Button>
-            <span className="text-sm text-gray-600">
-              Page {currentPage} of {totalPages}
+            <span className="text-xs text-gray-600 tabular-nums">
+              {currentPage}/{totalPages}
             </span>
             <Button
               variant="outline"
               size="sm"
+              className="h-8 flex-1 sm:flex-none"
               onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
               disabled={currentPage === totalPages}
             >
@@ -524,7 +661,7 @@ export function OrdersManager({ business, category }) {
 
       {/* Order Details Dialog */}
       <Dialog open={!!selectedOrder} onOpenChange={() => setSelectedOrder(null)}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto w-[calc(100vw-1.5rem)] sm:w-full">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <ArrowLeft 
@@ -608,7 +745,29 @@ export function OrdersManager({ business, category }) {
                   <CardTitle className="text-sm font-medium">Order Items</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <Table>
+                  <div className="space-y-2 lg:hidden">
+                    {orderDetails.items.map((item) => (
+                      <div key={item.id} className="flex gap-3 rounded-lg border border-gray-100 p-2.5">
+                        {item.product_image ? (
+                          <img
+                            src={item.product_image}
+                            alt={item.product_name}
+                            className="h-12 w-12 shrink-0 rounded-lg object-cover"
+                          />
+                        ) : null}
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-xs font-semibold text-gray-900">{item.product_name}</p>
+                          <p className="mt-1 text-[11px] text-gray-500">
+                            {item.quantity} × {formatCurrency(parseFloat(item.unit_price), business.currency || 'PKR')}
+                          </p>
+                        </div>
+                        <p className="shrink-0 text-xs font-bold text-gray-900">
+                          {formatCurrency(parseFloat(item.total_price), business.currency || 'PKR')}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                  <Table className="hidden lg:table">
                     <TableHeader>
                       <TableRow>
                         <TableHead>Product</TableHead>
@@ -645,8 +804,6 @@ export function OrdersManager({ business, category }) {
                   </Table>
                 </CardContent>
               </Card>
-
-              {/* Order Totals */}
               <Card>
                 <CardContent className="p-4">
                   <div className="space-y-2">

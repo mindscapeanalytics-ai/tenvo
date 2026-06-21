@@ -20,6 +20,7 @@ import { cn } from '@/lib/utils';
 import toast from 'react-hot-toast';
 import StakeholderLedger from './StakeholderLedger';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { MobileTabHeader, MobileStatStrip } from '@/components/mobile/MobileTabHeader';
 
 export function CustomerManager({ customers = [], onAdd, onUpdate, onDelete, category = 'retail-shop', businessId }) {
   const colors = getDomainColors(category);
@@ -120,11 +121,32 @@ export function CustomerManager({ customers = [], onAdd, onUpdate, onDelete, cat
 
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="space-y-4 lg:space-y-6">
+      <MobileTabHeader
+        icon={User}
+        iconClassName="bg-emerald-100 text-emerald-600"
+        title="Customer Database"
+        subtitle={`${customers.length} clients · ${knowledge?.name || 'Business'}`}
+        primaryAction={{
+          label: 'Add',
+          icon: Plus,
+          className: 'bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-lg',
+          onClick: () => onAdd?.(),
+        }}
+      />
+
+      <MobileStatStrip
+        items={[
+          { label: 'Total', value: customers.length },
+          { label: 'Reachable', value: customers.filter((c) => c.phone || c.email).length, valueTone: 'text-emerald-600' },
+          { label: 'With Email', value: customers.filter((c) => c.email).length },
+        ]}
+      />
+
+      <div className="hidden flex-col gap-4 md:flex-row md:items-center md:justify-between lg:flex">
         <div>
           <h2 className="text-xl font-bold text-gray-900">Customer Database</h2>
-          <p className="text-gray-500 font-medium">Manage and nurture your {knowledge?.name || 'Business'} clientele</p>
+          <p className="font-medium text-gray-500">Manage and nurture your {knowledge?.name || 'Business'} clientele</p>
         </div>
         <div className="flex gap-2">
           <ExportButton
@@ -133,8 +155,8 @@ export function CustomerManager({ customers = [], onAdd, onUpdate, onDelete, cat
             columns={columns}
             title="Customers Report"
           />
-          <Button onClick={onAdd} className="text-white font-bold shadow-lg rounded-xl h-10 px-6" style={{ backgroundColor: colors.primary, boxShadow: `0 8px 16px -4px ${colors.primary}40` }}>
-            <Plus className="w-4 h-4 mr-2" />
+          <Button onClick={onAdd} className="h-10 rounded-xl px-6 font-bold text-white shadow-lg" style={{ backgroundColor: colors.primary, boxShadow: `0 8px 16px -4px ${colors.primary}40` }}>
+            <Plus className="mr-2 h-4 w-4" />
             Add New Client
           </Button>
         </div>
@@ -162,7 +184,7 @@ export function CustomerManager({ customers = [], onAdd, onUpdate, onDelete, cat
 
       {/* View Customer Dialog */}
       <Dialog open={!!customerToView} onOpenChange={(open) => !open && setCustomerToView(null)}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md w-[calc(100vw-1.5rem)] sm:w-full max-h-[min(90vh,800px)] overflow-y-auto overscroll-contain">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <User className="w-5 h-5 text-gray-400" />
@@ -170,14 +192,14 @@ export function CustomerManager({ customers = [], onAdd, onUpdate, onDelete, cat
             </DialogTitle>
             <DialogDescription>Customer Profile</DialogDescription>
           </DialogHeader>
-          <Tabs defaultValue="profile" className="mt-4">
+            <Tabs defaultValue="profile" className="mt-4 min-h-0">
             <TabsList className="grid w-full grid-cols-2 mb-4 bg-gray-100/50 p-1 rounded-xl">
               <TabsTrigger value="profile" className="rounded-lg">Profile Info</TabsTrigger>
               <TabsTrigger value="ledger" className="rounded-lg">Ledger / History</TabsTrigger>
             </TabsList>
 
             <TabsContent value="profile" className="space-y-4 py-2 mt-0">
-              <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                 <div>
                   <label className="text-xs font-bold text-gray-400 block">Email</label>
                   <p className="font-medium">{customerToView?.email || 'N/A'}</p>

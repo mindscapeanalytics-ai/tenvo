@@ -12,14 +12,17 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
+import { printInvoicePdfFromRow, printInvoiceThermalFromRow } from '@/lib/print/clientInvoicePrint';
 
 interface RecentInvoicesProps {
     invoices: any[];
     currency: CurrencyCode;
+    business?: Record<string, unknown>;
+    category?: string;
     onViewInvoice?: (invoice: any) => void;
 }
 
-export function RecentInvoices({ invoices, currency, onViewInvoice }: RecentInvoicesProps) {
+export function RecentInvoices({ invoices, currency, business, category = 'retail-shop', onViewInvoice }: RecentInvoicesProps) {
     const getStatusColor = (status: string) => {
         switch (status?.toLowerCase()) {
             case 'paid':
@@ -95,18 +98,32 @@ export function RecentInvoices({ invoices, currency, onViewInvoice }: RecentInvo
 
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-8 w-8 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    onClick={(e) => e.stopPropagation()}
+                                                >
                                                     <MoreHorizontal className="h-4 w-4" />
                                                 </Button>
                                             </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end" className="w-32 rounded-xl p-1 shadow-xl">
-                                                <DropdownMenuItem className="rounded-lg gap-2 text-xs font-bold cursor-pointer">
+                                            <DropdownMenuContent align="end" className="w-36 rounded-xl p-1 shadow-xl">
+                                                <DropdownMenuItem
+                                                    className="rounded-lg gap-2 text-xs font-bold cursor-pointer"
+                                                    onSelect={() => onViewInvoice?.(invoice)}
+                                                >
                                                     <Eye className="w-3.5 h-3.5" /> View
                                                 </DropdownMenuItem>
-                                                <DropdownMenuItem className="rounded-lg gap-2 text-xs font-bold cursor-pointer">
-                                                    <Printer className="w-3.5 h-3.5" /> Print
+                                                <DropdownMenuItem
+                                                    className="rounded-lg gap-2 text-xs font-bold cursor-pointer"
+                                                    onSelect={() => printInvoiceThermalFromRow(invoice, business, category)}
+                                                >
+                                                    <Printer className="w-3.5 h-3.5" /> 58mm Print
                                                 </DropdownMenuItem>
-                                                <DropdownMenuItem className="rounded-lg gap-2 text-xs font-bold cursor-pointer">
+                                                <DropdownMenuItem
+                                                    className="rounded-lg gap-2 text-xs font-bold cursor-pointer"
+                                                    onSelect={() => printInvoicePdfFromRow(invoice, business, category)}
+                                                >
                                                     <Download className="w-3.5 h-3.5" /> PDF
                                                 </DropdownMenuItem>
                                             </DropdownMenuContent>

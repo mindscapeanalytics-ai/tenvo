@@ -39,7 +39,7 @@ Use this as a **gate**, not a one-time read.
 | Area | Minimum bar |
 |------|-------------|
 | **Auth** | Session boundaries, no sensitive data in client-only storage. |
-| **Billing** | Stripe / manual flows per `docs/SUBSCRIPTION_BILLING_FLOW.md`; env vars set in prod. |
+| **Billing** | Stripe / manual flows per `docs/SUBSCRIPTION_BILLING_FLOW.md`; env vars set in prod. Owner-only **custom module packaging** lives in Settings → Billing (see `updateOwnerBusinessPackagingAction`). |
 | **Database** | Migrations applied via `prisma/migrations`; backups and restore tested. |
 | **Observability** | Server errors logged; user-facing errors never leak stack traces. |
 | **Legal / marketing** | Privacy, terms, regional copy where you sell (see `docs/REGIONAL_STANDARDS.md` where relevant). |
@@ -52,6 +52,10 @@ Automated smoke (public + contact validation): **`docs/FLOW_E2E_TESTING.md`** �
 
 - **100% of forms** audited in one pass — new screens should follow the checklist in `DATA_INTEGRITY_AND_FORMS.md`.
 - **Instant load everywhere** — requires per-route tuning (`loading.js`, Suspense, caching, query shape); see same doc.
+
+## Enterprise parity (Zoho / Odoo / Busy-style)
+
+Ship discipline above covers **“does it work safely.”** For **competitive breadth** without architectural conflicts (one source of truth per concern, phased delivery), use **`docs/ENTERPRISE_READINESS_ROADMAP.md`**.
 
 ## Related files
 

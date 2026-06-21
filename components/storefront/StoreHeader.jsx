@@ -16,6 +16,7 @@ import { useWishlist } from '@/lib/hooks/storefront/useWishlist';
 import { SearchBar } from './SearchBar';
 import { MobileNav } from './MobileNav';
 import { getDomainConfig, getStoreAccentColor } from '@/lib/config/storefrontDomains';
+import { getStoreHomeCopy } from '@/lib/storefront/storeCopy';
 import { SmartProductImage } from '@/components/storefront/SmartProductImage';
 import { formatCurrency } from '@/lib/currency';
 
@@ -35,6 +36,7 @@ export function StoreHeader({ business, categories, settings }) {
   // Derive accent color — settings override > domain default
   const accent = getStoreAccentColor(settings, business?.category);
   const domainCfg = getDomainConfig(business?.category);
+  const storeCopy = getStoreHomeCopy(business, domainCfg);
 
   // Top bar settings
   const topBarEnabled = settings?.storefront?.showTopBar !== false;
@@ -75,7 +77,7 @@ export function StoreHeader({ business, categories, settings }) {
       {/* ── Announcement / Top Bar ─────────────────────────────────────── */}
       {topBarEnabled && (
         <div
-          className="text-white text-xs py-2 px-4"
+          className="hidden md:block text-white text-xs py-2 px-4"
           style={{ backgroundColor: accent }}
         >
           <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
@@ -123,10 +125,72 @@ export function StoreHeader({ business, categories, settings }) {
           isScrolled ? 'shadow-md' : 'shadow-none'
         )}
       >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+          {/* Mobile — single compact row (Daraz / Amazon style) */}
+          <div className="flex h-11 items-center gap-2 lg:hidden">
+            <Link
+              href={storeRoot}
+              className="flex shrink-0 items-center"
+              aria-label={business?.business_name || 'Store home'}
+            >
+              {business?.logo_url ? (
+                <SmartProductImage
+                  src={business.logo_url}
+                  alt={business.business_name}
+                  width={32}
+                  height={32}
+                  className="h-8 w-8 rounded-lg object-cover"
+                />
+              ) : (
+                <div
+                  className="flex h-8 w-8 items-center justify-center rounded-lg text-sm font-black text-white"
+                  style={{ backgroundColor: accent }}
+                >
+                  {business?.business_name?.charAt(0)?.toUpperCase()}
+                </div>
+              )}
+            </Link>
+
+            <button
+              type="button"
+              onClick={() => setIsSearchOpen(true)}
+              className="flex h-8 min-w-0 flex-1 items-center gap-2 rounded-full bg-gray-100 px-3 text-left text-xs text-gray-500"
+              aria-label={storeCopy.searchPlaceholder}
+            >
+              <Search className="h-3.5 w-3.5 shrink-0 text-gray-400" />
+              <span className="truncate">{storeCopy.searchPlaceholder}</span>
+            </button>
+
+            <Link
+              href={`/store/${businessDomain}/cart`}
+              className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-gray-700"
+              aria-label={`Cart (${cartItemCount} items)`}
+            >
+              <ShoppingBag className="h-[18px] w-[18px]" />
+              {cartItemCount > 0 && (
+                <span
+                  className="absolute -right-0.5 -top-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full px-0.5 text-[9px] font-black text-white"
+                  style={{ backgroundColor: accent }}
+                >
+                  {cartItemCount > 99 ? '99+' : cartItemCount}
+                </span>
+              )}
+            </Link>
+
+            <button
+              type="button"
+              onClick={() => setIsMobileMenuOpen(true)}
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-gray-700"
+              aria-label="Open menu"
+            >
+              <Menu className="h-[18px] w-[18px]" />
+            </button>
+          </div>
+
+          {/* Desktop */}
           <div
             className={cn(
-              'flex items-center justify-between gap-4 transition-all duration-200',
+              'hidden items-center justify-between gap-4 transition-all duration-200 lg:flex',
               isScrolled ? 'py-2.5' : 'py-4'
             )}
           >
@@ -159,7 +223,7 @@ export function StoreHeader({ business, categories, settings }) {
               )}
               <span
                 className={cn(
-                  'font-black text-gray-900 hidden sm:block transition-all duration-200 group-hover:opacity-80',
+                  'font-black text-gray-900 truncate transition-all duration-200 group-hover:opacity-80',
                   isScrolled ? 'text-base' : 'text-lg'
                 )}
               >
@@ -240,7 +304,7 @@ export function StoreHeader({ business, categories, settings }) {
               {/* Search */}
               <button
                 onClick={() => setIsSearchOpen(true)}
-                className="p-2 rounded-xl text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
+                className="hidden lg:flex p-2 rounded-xl text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
                 aria-label="Search"
               >
                 <Search className="w-5 h-5" />
@@ -288,15 +352,6 @@ export function StoreHeader({ business, categories, settings }) {
                   </span>
                 )}
               </Link>
-
-              {/* Mobile menu toggle */}
-              <button
-                onClick={() => setIsMobileMenuOpen(true)}
-                className="lg:hidden p-2 rounded-xl text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors ml-1"
-                aria-label="Open menu"
-              >
-                <Menu className="w-5 h-5" />
-              </button>
             </div>
           </div>
         </div>
@@ -365,10 +420,12 @@ export function StoreHeader({ business, categories, settings }) {
 
       {/* ── Search Overlay ─────────────────────────────────────────────── */}
       {isSearchOpen && (
-        <div className="fixed inset-0 z-[60] bg-black/40 backdrop-blur-sm flex items-start justify-center pt-20 px-4">
+        <div className="fixed inset-0 z-[60] bg-black/40 backdrop-blur-sm flex items-start justify-center pt-14 lg:pt-20 px-3 sm:px-4">
           <div className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl p-4">
             <div className="flex items-center gap-3 mb-3">
-              <h3 className="font-semibold text-gray-900 flex-1">Search Products</h3>
+              <h3 className="font-semibold text-gray-900 flex-1 text-sm sm:text-base">
+                {storeCopy.searchPlaceholder}
+              </h3>
               <button
                 onClick={() => setIsSearchOpen(false)}
                 className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"

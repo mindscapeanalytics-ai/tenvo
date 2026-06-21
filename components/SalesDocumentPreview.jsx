@@ -57,7 +57,7 @@ export function SalesDocumentPreview({
                             <Printer className="w-4 h-4 mr-2" />
                             Print
                         </Button>
-                        <Button variant="outline" size="sm" className="rounded-xl font-bold border-gray-100">
+                        <Button variant="outline" size="sm" onClick={handlePrint} className="rounded-xl font-bold border-gray-100" title="Use Print dialog → Save as PDF">
                             <Download className="w-4 h-4 mr-2" />
                             PDF
                         </Button>

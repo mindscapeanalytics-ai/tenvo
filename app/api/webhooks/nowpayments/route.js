@@ -1,11 +1,9 @@
 import { NextResponse } from 'next/server';
 import { verifyIPN, handleIPN } from '@/lib/payments/nowpayments';
+import { applyCryptoSubscriptionFromIPN } from '@/lib/billing/cryptoSubscription';
 
 /**
  * POST /api/webhooks/nowpayments — NOWPayments IPN callback.
- * Configure the same URL in NOWPayments dashboard (or set NOWPAYMENTS_IPN_CALLBACK_URL on create).
- *
- * Extend this handler to update your database when you persist crypto invoices.
  */
 export async function POST(request) {
   try {
@@ -27,9 +25,16 @@ export async function POST(request) {
     }
 
     const summary = await handleIPN(payload);
-    console.log('[NOWPayments IPN]', summary);
+    const applied = await applyCryptoSubscriptionFromIPN({
+      orderId: summary.orderId || payload.order_id,
+      paymentId: summary.paymentId || payload.payment_id,
+      status: summary.status || payload.payment_status,
+      amount: summary.amount ?? payload.actually_paid,
+    });
 
-    return NextResponse.json({ received: true });
+    console.log('[NOWPayments IPN]', { summary, applied });
+
+    return NextResponse.json({ received: true, applied });
   } catch (error) {
     console.error('[NOWPayments IPN] Error:', error);
     return NextResponse.json({ error: 'IPN handler failed' }, { status: 500 });

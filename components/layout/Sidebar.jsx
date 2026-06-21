@@ -203,7 +203,9 @@ const EASY_NAV_SECTIONS = [
   {
     label: 'MONEY',
     items: [
+      { key: 'finance', label: 'Finance Hub', icon: Landmark, alwaysShow: true },
       { key: 'payments', label: 'Payments', icon: CreditCard, alwaysShow: true },
+      { key: 'gst', label: 'Tax / GST', icon: BadgeDollarSign, alwaysShow: true },
       { key: 'reports', label: 'Reports', icon: BarChart3, alwaysShow: true },
       { key: 'settings', label: 'Settings', icon: Settings },
     ]

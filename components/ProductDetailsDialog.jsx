@@ -129,7 +129,7 @@ export function ProductDetailsDialog({
     return (
         <Dialog open={open} onOpenChange={onClose}>
             <DialogContent className="max-w-3xl h-[85vh] max-h-[85vh] overflow-hidden flex flex-col p-0 gap-0 rounded-[2.5rem] border-none shadow-2xl bg-white/95 backdrop-blur-xl animate-in zoom-in-95 duration-300">
-                <DialogHeader className="p-8 pb-6 border-b border-gray-100 bg-gray-50/50 relative shrink-0 overflow-hidden">
+                <DialogHeader className="relative shrink-0 overflow-hidden border-b border-gray-100 bg-gray-50/50 p-4 pb-4 sm:p-8 sm:pb-6">
                     {/* Background Glow */}
                     <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/5 blur-[100px] -mr-32 -mt-32 rounded-full" />
 
@@ -174,7 +174,7 @@ export function ProductDetailsDialog({
 
                 {/* SCROLLABLE VIEWPORT */}
                 <div className="flex-1 overflow-y-auto min-h-0 custom-scrollbar relative">
-                    <div className="p-8 pb-12">
+                    <div className="p-4 pb-12 sm:p-8">
                         {isEditing ? (
                             <div className="px-1">
                                 <ProductForm

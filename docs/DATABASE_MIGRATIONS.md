@@ -24,7 +24,13 @@ The Prisma schema in this repo must match your Postgres database. If you see err
 
 **`invoice_payments.deleted_by` type (UUID vs text):** If `20260604` created `deleted_by` as UUID on an older DB, apply **`20260608_invoice_payments_deleted_by_text`** (`bun run db:migrate`) so the column is **TEXT** and matches Better Auth user ids and Prisma `String`.
 
+**`inventory_reservations` missing `customer_id` / `notes` / `completed_at` / `cancelled_at`:** `lib/services/reservationManagement.js` expects these columns. Apply Prisma migration **`20260611_inventory_reservations_service_columns`** (`bun run db:migrate`) or run **`lib/db/migrations/041_inventory_reservations_service_columns.sql`** (idempotent).
+
 **Low-stock alerts (`42P01` / `low_stock_alerts` does not exist):** Apply Prisma migration **`20260514_inventory_reorder_cycle_counts`** via `bun run db:migrate`, or run the idempotent script **`lib/db/migrations/035_low_stock_alerts_reorder_points.sql`** in the SQL editor (creates `reorder_points` and `low_stock_alerts`).
+
+**Storefront `[getProducts] Storefront columns missing` / degraded catalog:** Apply Prisma migration **`20260617_storefront_product_columns`** (`bun run db:migrate`) or run **`lib/db/migrations/042_storefront_product_columns.sql`**. Adds `products.compare_price`, `is_featured`, `is_new`, `images`, `has_variants`, `rating`, `review_count`, `enable_reviews` (plus backfills `slug`, `stock_status`, `has_variants`) and creates `product_specifications` / `product_reviews` when missing. Aligns with `lib/actions/storefront/products.js` and `StorefrontSyncService`.
+
+**Invoice stock check (`inventory_stock` does not exist):** The app uses **`products.stock`** + **`inventory_reservations`** (not legacy `inventory_stock`). If you still see that error, pull latest `InvoiceService.js`; no migration required for `inventory_stock`.
 
 **Windows PowerShell:** use separate lines or `;` between commands — **`&&` is not valid** on older PowerShell. From repo root: `Set-Location E:\path\to\tenvo-main` then run the `bunx` / `bun` commands below.
 

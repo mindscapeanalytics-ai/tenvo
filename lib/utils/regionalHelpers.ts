@@ -4,8 +4,8 @@
  * REGIONAL_REGISTRY and ALIAS_TO_ISO only.
  */
 
-import type { CurrencyCode } from '../currency';
-import { CURRENCY_CONFIG } from '../currency';
+import type { CurrencyCode } from '../currency/index';
+import { CURRENCY_CONFIG } from '../currency/index';
 
 export type TaxStrategy = 'GST_PST' | 'VAT';
 
@@ -208,6 +208,19 @@ export const REGIONAL_REGISTRY: Record<string, RegionalStandards> = {
     defaultTaxRate: 10,
     locale: 'en-AU',
   },
+  CN: {
+    countryCode: 'CN',
+    countryName: 'China',
+    currency: 'CNY',
+    currencySymbol: '¥',
+    taxLabel: 'VAT',
+    taxStrategy: 'VAT',
+    taxIdLabel: 'USCC / Tax ID',
+    phoneCode: '+86',
+    timeZone: 'Asia/Shanghai',
+    defaultTaxRate: 13,
+    locale: 'zh-CN',
+  },
 };
 
 /** Default when no country is provided — Pakistan-first product heritage */
@@ -256,6 +269,11 @@ const ALIAS_TO_ISO: Record<string, keyof typeof REGIONAL_REGISTRY> = {
   CANADA: 'CA',
   AU: 'AU',
   AUSTRALIA: 'AU',
+  CN: 'CN',
+  CHINA: 'CN',
+  'PEOPLE\'S REPUBLIC OF CHINA': 'CN',
+  BEIJING: 'CN',
+  SHANGHAI: 'CN',
 };
 
 /**
@@ -325,6 +343,7 @@ const GLOBAL_TRADE_CURRENCIES: CurrencyCode[] = [
   'PKR',
   'CAD',
   'AUD',
+  'CNY',
 ];
 
 /**

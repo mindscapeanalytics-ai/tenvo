@@ -5,6 +5,8 @@ import Link from 'next/link';
 import * as LucideIcons from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { MARKETING_CONTAINER, MARKETING_SECTION } from '@/lib/utils/marketingLayout';
+import { cn } from '@/lib/utils';
 
 /**
  * DomainShowcase Component
@@ -92,15 +94,15 @@ export default function DomainShowcase({
   }, []);
 
   return (
-    <section className="py-16 lg:py-24 bg-white">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+    <section className={cn(MARKETING_SECTION, 'bg-white')}>
+      <div className={MARKETING_CONTAINER}>
         {/* Section header */}
-        <div className="max-w-3xl mx-auto text-center mb-12">
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-neutral-900 mb-4">
+        <div className="mx-auto mb-8 max-w-3xl text-center sm:mb-10 lg:mb-12">
+          <h2 className="mb-3 text-2xl font-bold text-neutral-900 sm:mb-4 sm:text-3xl lg:text-4xl xl:text-5xl">
             {title}
           </h2>
           {subtitle && (
-            <p className="text-lg sm:text-xl text-neutral-600 leading-relaxed">
+            <p className="text-base leading-relaxed text-neutral-600 sm:text-lg lg:text-xl">
               {subtitle}
             </p>
           )}
@@ -108,15 +110,15 @@ export default function DomainShowcase({
 
         {/* Search bar */}
         {showSearch && (
-          <div className="max-w-2xl mx-auto mb-8">
+          <div className="mx-auto mb-6 max-w-2xl sm:mb-8">
             <div className="relative">
-              <LucideIcons.Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
+              <LucideIcons.Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-neutral-400 sm:left-4" />
               <Input
                 type="text"
                 placeholder="Search industries (e.g., pharmacy, textile, restaurant)..."
                 value={searchQuery}
                 onChange={handleSearchChange}
-                className="pl-12 pr-4 py-6 text-lg rounded-xl border-2 border-neutral-200 focus:border-brand-primary"
+                className="rounded-xl border-2 border-neutral-200 py-4 pl-10 text-base focus:border-brand-primary sm:py-6 sm:pl-12 sm:text-lg"
               />
             </div>
           </div>

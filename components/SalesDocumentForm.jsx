@@ -23,6 +23,15 @@ import toast from 'react-hot-toast';
 import { showActionError, formatValidationErrors, isValidationError } from '@/lib/utils/formErrorHandler';
 import { useLanguage } from '@/lib/context/LanguageContext';
 import { translations } from '@/lib/translations';
+import { cn } from '@/lib/utils';
+import {
+    MOBILE_INPUT_CLASS,
+    MOBILE_LABEL_CLASS,
+    MOBILE_OVERLAY,
+    MOBILE_OVERLAY_CARD,
+    MOBILE_GRID_FIELDS,
+} from '@/lib/utils/formMobileStyles';
+import { MobileFormFooter, MobileFormActions, MobileLineTable } from '@/components/mobile/MobileFormShell';
 
 const TYPE_CONFIGS = {
     quotation: {
@@ -243,28 +252,28 @@ export function SalesDocumentForm({
     };
 
     return (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <Card className="w-full max-w-5xl max-h-[90vh] overflow-y-auto">
-                <CardHeader className="flex flex-row items-center justify-between border-b bg-wine-50/30">
-                    <div className="space-y-1">
-                        <CardTitle className="text-2xl font-black text-wine-600 tracking-tight">Generate {config.title}</CardTitle>
+        <div className={MOBILE_OVERLAY}>
+            <Card className={cn(MOBILE_OVERLAY_CARD, 'max-w-5xl')}>
+                <div className="flex shrink-0 items-start justify-between gap-2 border-b bg-wine-50/30 px-3 py-3 sm:px-5 sm:py-4">
+                    <div className="min-w-0 space-y-0.5">
+                        <CardTitle className="text-base font-bold text-wine-600 sm:text-xl">{config.title}</CardTitle>
                         {initialData && (
-                            <div className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest animate-in slide-in-from-left-2 duration-300">
-                                <Link className="w-3.5 h-3.5 text-wine-600" />
-                                <span>Derived from {initialData.quotation_number || initialData.order_number || initialData.challan_number || 'Source Document'}</span>
-                                <Badge className="bg-wine-600/10 text-wine-600 hover:bg-wine-600/20 border-none text-[9px] font-black h-4 px-1.5 uppercase">Linked</Badge>
+                            <div className="flex flex-wrap items-center gap-1.5 text-[10px] font-semibold text-gray-500">
+                                <Link className="h-3 w-3 shrink-0 text-wine-600" />
+                                <span className="truncate">From source document</span>
+                                <Badge className="h-4 border-none bg-wine-600/10 px-1.5 text-[9px] font-bold uppercase text-wine-600">Linked</Badge>
                             </div>
                         )}
                     </div>
-                    <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full hover:bg-wine/5">
-                        <X className="w-5 h-5 text-gray-400" />
+                    <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 shrink-0 rounded-lg">
+                        <X className="h-4 w-4 text-gray-400" />
                     </Button>
-                </CardHeader>
-                <CardContent className="space-y-6 pt-6">
-                    {/* Header Info */}
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <Label>Customer *</Label>
+                </div>
+
+                <CardContent className={cn('min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-3 sm:space-y-6 sm:p-6')}>
+                    <div className={MOBILE_GRID_FIELDS}>
+                        <div className="space-y-1.5 sm:col-span-2">
+                            <Label className={MOBILE_LABEL_CLASS}>Customer *</Label>
                             <Combobox
                                 options={customers.map(c => ({
                                     value: String(c.id),
@@ -277,36 +286,37 @@ export function SalesDocumentForm({
                                 emptyText="No customers found"
                             />
                         </div>
-                        <div className="grid grid-cols-2 gap-2">
-                            <div className="space-y-2">
-                                <Label>{config.dateLabel}</Label>
-                                <Input
-                                    type="date"
-                                    value={formData.date || ''}
-                                    onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))}
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label>{config.extraDateLabel}</Label>
-                                <Input
-                                    type="date"
-                                    value={formData[config.extraDateField] || ''}
-                                    onChange={(e) => setFormData(prev => ({ ...prev, [config.extraDateField]: e.target.value }))}
-                                />
-                            </div>
+                        <div className="space-y-1.5">
+                            <Label className={MOBILE_LABEL_CLASS}>{config.dateLabel}</Label>
+                            <Input
+                                type="date"
+                                className={MOBILE_INPUT_CLASS}
+                                value={formData.date || ''}
+                                onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))}
+                            />
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label className={MOBILE_LABEL_CLASS}>{config.extraDateLabel}</Label>
+                            <Input
+                                type="date"
+                                className={MOBILE_INPUT_CLASS}
+                                value={formData[config.extraDateField] || ''}
+                                onChange={(e) => setFormData(prev => ({ ...prev, [config.extraDateField]: e.target.value }))}
+                            />
                         </div>
                         {type === 'delivery_challan' && (
                             <>
-                                <div className="space-y-2 col-span-2">
-                                    <Label>Delivery Address</Label>
+                                <div className="col-span-full space-y-1.5">
+                                    <Label className={MOBILE_LABEL_CLASS}>Delivery Address</Label>
                                     <Input
+                                        className={MOBILE_INPUT_CLASS}
                                         value={formData.delivery_address || ''}
                                         onChange={(e) => setFormData(prev => ({ ...prev, delivery_address: e.target.value }))}
                                         placeholder="Enter physical delivery address..."
                                     />
                                 </div>
-                                <div className="space-y-2 col-span-2">
-                                    <Label>Warehouse *</Label>
+                                <div className="col-span-full space-y-1.5">
+                                    <Label className={MOBILE_LABEL_CLASS}>Warehouse *</Label>
                                     <Combobox
                                         options={warehouses.map(w => ({
                                             value: String(w.id),
@@ -318,23 +328,22 @@ export function SalesDocumentForm({
                                         placeholder="Select warehouse..."
                                         emptyText="No warehouses found"
                                     />
-                                    <p className="text-xs text-gray-500">Stock will be deducted from this warehouse</p>
                                 </div>
                             </>
                         )}
                     </div>
 
-                    {/* Items Table */}
-                    <div className="space-y-4">
-                        <div className="flex justify-between items-center">
-                            <Label className="text-lg font-bold">Items</Label>
-                            <Button size="sm" onClick={addItem} type="button">
-                                <Plus className="w-4 h-4 mr-2" />
-                                Add Item
+                    <div className="space-y-3">
+                        <div className="flex items-center justify-between gap-2">
+                            <Label className="text-sm font-bold">Items</Label>
+                            <Button size="sm" onClick={addItem} type="button" className="h-8 rounded-xl text-xs font-semibold">
+                                <Plus className="mr-1 h-3.5 w-3.5" />
+                                Add
                             </Button>
                         </div>
 
-                        <div className="border rounded-lg overflow-hidden">
+                        <MobileLineTable>
+                            <div className="min-w-[640px] rounded-lg border">
                             <table className="w-full text-sm">
                                 <thead className="bg-gray-50 border-b">
                                     <tr>
@@ -430,19 +439,19 @@ export function SalesDocumentForm({
                                                         ) : <span className="text-gray-400 text-xs">Select product first</span>}
                                                     </td>
                                                 )}
-                                                <td className="px-4 py-2">
+                                                <td className="px-2 py-2 sm:px-4">
                                                     <Input
                                                         type="number"
-                                                        className="text-right"
+                                                        className={cn(MOBILE_INPUT_CLASS, 'text-right w-20')}
                                                         value={item.quantity || 0}
                                                         onChange={(e) => updateItem(item.id, 'quantity', parseFloat(e.target.value) || 0)}
                                                         disabled={showSerial && item.serial_number} // Lock qty if serial selected
                                                     />
                                                 </td>
-                                                <td className="px-4 py-2">
+                                                <td className="px-2 py-2 sm:px-4">
                                                     <Input
                                                         type="number"
-                                                        className="text-right"
+                                                        className={cn(MOBILE_INPUT_CLASS, 'text-right w-20')}
                                                         value={item.unit_price || 0}
                                                         onChange={(e) => updateItem(item.id, 'unit_price', parseFloat(e.target.value) || 0)}
                                                     />
@@ -465,21 +474,21 @@ export function SalesDocumentForm({
                                     )}
                                 </tbody>
                             </table>
-                        </div>
+                            </div>
+                        </MobileLineTable>
                     </div>
 
-                    {/* Footer / Totals */}
-                    <div className="grid grid-cols-2 gap-8">
-                        <div className="space-y-2">
-                            <Label>Notes</Label>
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6">
+                        <div className="space-y-1.5">
+                            <Label className={MOBILE_LABEL_CLASS}>Notes</Label>
                             <textarea
-                                className="w-full p-2 border rounded-md h-24"
-                                placeholder="Additional notes or instructions..."
+                                className="w-full rounded-lg border border-gray-200 p-2.5 text-sm h-20 sm:h-24"
+                                placeholder="Additional notes..."
                                 value={formData.notes || ''}
                                 onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
                             />
                         </div>
-                        <div className="space-y-3 bg-gray-50 p-4 rounded-lg">
+                        <div className="space-y-2 rounded-xl bg-gray-50 p-3 sm:p-4">
                             <div className="flex justify-between text-sm">
                                 <span>Subtotal</span>
                                 <span>{formatCurrency(totals.subtotal, currency)}</span>
@@ -488,28 +497,23 @@ export function SalesDocumentForm({
                                 <span>Tax ({totals.taxRate}%)</span>
                                 <span>{formatCurrency(totals.tax_total, currency)}</span>
                             </div>
-                            <div className="flex justify-between text-lg font-bold border-t pt-2 mt-2">
+                            <div className="mt-1 flex justify-between border-t pt-2 text-base font-bold">
                                 <span>Total</span>
                                 <span className="text-wine">{formatCurrency(totals.total_amount, currency)}</span>
                             </div>
                         </div>
                     </div>
-
-                    {/* Actions */}
-                    <div className="flex justify-end gap-3 pt-6 border-t">
-                        <Button variant="outline" onClick={onClose} disabled={isSaving}>
-                            Cancel
-                        </Button>
-                        <Button
-                            disabled={isSaving}
-                            onClick={handleSave}
-                            className="hover:opacity-90 font-black px-8 h-12 rounded-xl transition-all active:scale-95 flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
-                        >
-                            {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                            Save {config.title}
-                        </Button>
-                    </div>
                 </CardContent>
+
+                <MobileFormFooter>
+                    <MobileFormActions
+                        onCancel={onClose}
+                        onSubmit={handleSave}
+                        submitLabel={`Save ${config.title}`}
+                        submitIcon={Save}
+                        isLoading={isSaving}
+                    />
+                </MobileFormFooter>
             </Card>
         </div>
     );

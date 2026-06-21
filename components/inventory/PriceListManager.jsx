@@ -27,6 +27,8 @@ export function PriceListManager({
   customers = [],
   onSave,
   currency = 'PKR',
+  /** When true, parent card already shows title — toolbar only, no duplicate heading */
+  embedInCard = false,
 }) {
   const [lists, setLists] = useState(priceLists);
   const [showForm, setShowForm] = useState(false);
@@ -108,16 +110,18 @@ export function PriceListManager({
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h3 className="text-base font-extrabold text-slate-900">Price Lists</h3>
-          <p className="text-xs text-slate-500">Manage multiple price lists for different scenarios</p>
-        </div>
+    <div className={embedInCard ? 'space-y-3' : 'space-y-4'}>
+      <div className={`flex flex-nowrap items-center gap-2 ${embedInCard ? 'justify-end' : 'flex-wrap items-start justify-between gap-3'}`}>
+        {!embedInCard && (
+          <div className="min-w-0">
+            <h3 className="text-base font-extrabold text-slate-900">Price Lists</h3>
+            <p className="text-xs text-slate-500">Manage multiple price lists for different scenarios</p>
+          </div>
+        )}
         <Dialog open={showForm} onOpenChange={setShowForm}>
           <DialogTrigger asChild>
-            <Button className="h-9" onClick={() => { resetForm(); setEditingList(null); }}>
-              <Plus className="w-4 h-4 mr-2" />
+            <Button className="h-9 shrink-0 whitespace-nowrap" onClick={() => { resetForm(); setEditingList(null); }}>
+              <Plus className="mr-2 h-4 w-4 shrink-0" />
               New Price List
             </Button>
           </DialogTrigger>
@@ -334,10 +338,12 @@ export function PriceListManager({
       </div>
 
       {lists.length === 0 && (
-        <div className="text-center py-10 text-slate-500 border border-dashed border-slate-300 rounded-xl bg-slate-50/40">
-          <DollarSign className="w-10 h-10 mx-auto mb-2 text-slate-400" />
-          <p className="font-medium">No price lists created yet.</p>
-          <p className="text-xs">Create your first price list to get started.</p>
+        <div
+          className={`rounded-xl border border-dashed border-slate-300 bg-slate-50/40 text-center text-slate-500 ${embedInCard ? 'py-6' : 'py-10'}`}
+        >
+          <DollarSign className={`mx-auto mb-2 text-slate-400 ${embedInCard ? 'h-8 w-8' : 'h-10 w-10'}`} />
+          <p className="text-sm font-medium">No price lists yet.</p>
+          <p className="mt-0.5 text-xs">Use New Price List to create one.</p>
         </div>
       )}
     </div>

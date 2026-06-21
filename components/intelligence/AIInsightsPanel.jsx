@@ -5,10 +5,11 @@ import { motion } from 'framer-motion';
 import {
     Brain, TrendingUp, BarChart3, PieChart, Package,
     AlertTriangle, Sparkles, Target, ShoppingCart, RefreshCcw,
-    Lightbulb, Activity, ArrowUpRight, ArrowDownRight
+    Lightbulb, Activity, ArrowUpRight, ArrowDownRight, AlertCircle, CircleDot,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useBusiness } from '@/lib/context/BusinessContext';
+import { getDomainKnowledge } from '@/lib/domainKnowledge';
 import {
     getAnalyticsBundleAction,
     getDemandForecastAction,
@@ -23,9 +24,7 @@ function buildDateFilter(dateRange) {
     return { from, to };
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// METRIC CARD
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// --- Metric card ---
 
 function MetricCard({ label, value, trend, trendValue, icon: Icon, color, hint }) {
     const colors = {
@@ -62,32 +61,36 @@ function MetricCard({ label, value, trend, trendValue, icon: Icon, color, hint }
     );
 }
 
-// FORECAST ITEM ROW
-
 function ForecastRow({ item }) {
+    const PriorityIcon = item.priority === 'high' ? AlertCircle : CircleDot;
     return (
         <div className={cn(
             'flex items-center gap-3 p-3 rounded-xl border transition-all',
             item.priority === 'high' ? 'border-red-200 bg-red-50' : 'border-gray-100 bg-gray-50'
         )}>
             <div className={cn(
-                'w-8 h-8 rounded-lg flex items-center justify-center text-xs font-black',
+                'w-8 h-8 rounded-lg flex items-center justify-center',
                 item.priority === 'high' ? 'bg-red-200 text-red-700' : 'bg-gray-200 text-gray-600'
             )}>
-                {item.priority === 'high' ? 'ðŸ”´' : 'ðŸŸ¡'}
+                <PriorityIcon className="w-4 h-4" aria-hidden />
             </div>
             <div className="flex-1 min-w-0">
                 <p className="text-sm font-bold text-gray-800 truncate">{item.name}</p>
                 <p className="text-[10px] text-gray-400">
-                    Stock: {item.current} â€¢ Forecast: {item.forecast}/mo â€¢ Recommended: {item.recommended}
+                    Stock: {item.current}
+                    {' · '}
+                    Forecast: {item.forecast}/mo
+                    {' · '}
+                    Recommended: {item.recommended}
                 </p>
             </div>
             <div className="text-right shrink-0">
                 <p className={cn(
-                    'text-xs font-black',
+                    'text-xs font-black flex items-center justify-end gap-0.5',
                     item.trend === 'up' ? 'text-emerald-600' : 'text-red-600'
                 )}>
-                    {item.trend === 'up' ? 'â†‘' : 'â†“'} {item.variance} units
+                    {item.trend === 'up' ? <ArrowUpRight className="w-3.5 h-3.5" /> : <ArrowDownRight className="w-3.5 h-3.5" />}
+                    {item.variance} units
                 </p>
                 {item.isAi && (
                     <span className="text-[8px] px-1 py-0.5 rounded bg-wine-100 text-wine-600 font-bold">AI</span>
@@ -97,9 +100,7 @@ function ForecastRow({ item }) {
     );
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// PROMOTION RECOMMENDATION CARD
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// --- Promotion card ---
 
 function PromoCard({ promo, currency }) {
     const strategyColors = {
@@ -122,9 +123,7 @@ function PromoCard({ promo, currency }) {
     );
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// MINI BAR CHART (CSS-only)
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// --- Mini bar chart (CSS) ---
 
 function MiniBarChart({ data, valueKey = 'revenue', labelKey = 'date' }) {
     if (!data || data.length === 0) return null;
@@ -150,11 +149,7 @@ function MiniBarChart({ data, valueKey = 'revenue', labelKey = 'date' }) {
     );
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// MAIN AI INSIGHTS PANEL
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-
-export function AIInsightsPanel({ businessId, dateRange }) {
+export function AIInsightsPanel({ businessId, category = 'retail-shop', dateRange }) {
     const { business, currencySymbol } = useBusiness();
     const effectiveBusinessId = businessId || business?.id;
     const currency = currencySymbol || 'Rs.';
@@ -167,6 +162,7 @@ export function AIInsightsPanel({ businessId, dateRange }) {
     const [expenseBreakdown, setExpenseBreakdown] = useState([]);
     const [promos, setPromos] = useState([]);
     const [restockSuggestions, setRestockSuggestions] = useState([]);
+    const [productCount, setProductCount] = useState(0);
     const [loading, setLoading] = useState(true);
 
     const loadAll = useCallback(async () => {
@@ -180,11 +176,13 @@ export function AIInsightsPanel({ businessId, dateRange }) {
         setExpenseBreakdown([]);
         setPromos([]);
         setRestockSuggestions([]);
+        setProductCount(0);
         try {
             const filter = buildDateFilter(dateRange);
+            const domainIntel = getDomainKnowledge(category)?.intelligence ?? {};
             const [bundleRes, forecastRes, promoRes, restockRes] = await Promise.allSettled([
                 getAnalyticsBundleAction(effectiveBusinessId, filter),
-                getDemandForecastAction(effectiveBusinessId, {}, true, filter),
+                getDemandForecastAction(effectiveBusinessId, domainIntel, true, filter),
                 getPromotionRecommendationsAction(effectiveBusinessId),
                 getAiRestockSuggestionsAction(effectiveBusinessId),
             ]);
@@ -196,6 +194,7 @@ export function AIInsightsPanel({ businessId, dateRange }) {
                 setCategories(d.categoryData || []);
                 setKpiData(d.kpi || null);
                 setExpenseBreakdown(d.expenseBreakdown || []);
+                setProductCount(typeof d.productCount === 'number' ? d.productCount : 0);
             }
             if (forecastRes.status === 'fulfilled' && forecastRes.value?.success) setForecastData(forecastRes.value.data || []);
             if (promoRes.status === 'fulfilled' && promoRes.value?.success) setPromos(promoRes.value.data?.recommendations || []);
@@ -205,7 +204,7 @@ export function AIInsightsPanel({ businessId, dateRange }) {
         } finally {
             setLoading(false);
         }
-    }, [effectiveBusinessId, dateRange]);
+    }, [effectiveBusinessId, dateRange, category]);
 
     useEffect(() => {
         void Promise.resolve().then(() => loadAll());
@@ -231,7 +230,7 @@ export function AIInsightsPanel({ businessId, dateRange }) {
                     </div>
                     <div>
                         <h2 className="text-lg font-black text-gray-900">AI Analytics & Insights</h2>
-                        <p className="text-xs text-gray-400">Predictive analytics Â· Anomaly detection Â· Smart recommendations</p>
+                        <p className="text-xs text-gray-400">Predictive analytics · Anomaly detection · Smart recommendations</p>
                     </div>
                 </div>
                 <button onClick={loadAll} className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors">
@@ -257,9 +256,23 @@ export function AIInsightsPanel({ businessId, dateRange }) {
                                 : undefined
                         }
                     />
-                    <MetricCard label="Products" value={topProducts.length || '0'} icon={ShoppingCart} color="purple" />
+                    <MetricCard
+                        label="Products"
+                        value={String(productCount)}
+                        icon={ShoppingCart}
+                        color="purple"
+                        hint={topProducts.length ? `${topProducts.length} top movers in selected range` : 'Active SKUs in catalog'}
+                    />
                     <MetricCard label="Categories" value={categories.length || '0'} icon={PieChart} color="blue" />
-                    <MetricCard label="Restock Alerts" value={restockSuggestions.length} trend={restockSuggestions.length > 0 ? 'down' : 'up'} trendValue={`${restockSuggestions.length}`} icon={AlertTriangle} color="rose" />
+                    <MetricCard
+                        label="Restock alerts"
+                        value={String(restockSuggestions.length)}
+                        trend={restockSuggestions.length > 0 ? 'down' : 'up'}
+                        trendValue={String(restockSuggestions.length)}
+                        icon={AlertTriangle}
+                        color="rose"
+                        hint="Based on stock-out movements vs AI forecast (see queue below)"
+                    />
                 </div>
             )}
 
@@ -311,18 +324,64 @@ export function AIInsightsPanel({ businessId, dateRange }) {
                 </div>
             </div>
 
-            {/* Demand Forecast */}
+            {/* Demand forecast (velocity model) */}
             {forecastData.length > 0 && (
                 <div className="bg-white rounded-xl border border-gray-100 p-4">
-                    <div className="flex items-center gap-2 mb-3">
+                    <div className="flex flex-wrap items-center gap-2 mb-2">
                         <Activity className="w-4 h-4 text-wine-500" />
-                        <h3 className="text-sm font-black text-gray-800">Demand Forecast & Restock Alerts</h3>
+                        <h3 className="text-sm font-black text-gray-800">Demand forecast & restock signals</h3>
                         <span className="text-[8px] px-1.5 py-0.5 bg-wine-100 text-wine-600 rounded-full font-bold">AI POWERED</span>
                     </div>
+                    <p className="text-[10px] text-gray-500 mb-3">
+                        Top items by demand vs stock using invoice and paid storefront history (up to 12). Different from the movement-based restock queue below.
+                    </p>
                     <div className="space-y-2">
-                        {forecastData.slice(0, 5).map(item => (
-                            <ForecastRow key={item.id} item={item} />
+                        {forecastData.slice(0, 12).map((item) => (
+                            <ForecastRow key={item.id || item.name} item={item} />
                         ))}
+                    </div>
+                </div>
+            )}
+
+            {restockSuggestions.length > 0 && (
+                <div className="bg-white rounded-xl border border-gray-100 p-4">
+                    <div className="flex flex-wrap items-center gap-2 mb-2">
+                        <Package className="w-4 h-4 text-rose-500" />
+                        <h3 className="text-sm font-black text-gray-800">Restock queue</h3>
+                        <span className="text-[9px] font-bold text-gray-500">({restockSuggestions.length} items)</span>
+                    </div>
+                    <p className="text-[10px] text-gray-500 mb-3">
+                        Matches the Restock alerts KPI: outbound stock movements vs AI forecasted monthly demand.
+                    </p>
+                    <div className="max-h-72 overflow-y-auto space-y-2 pr-1">
+                        {restockSuggestions.map((s) => {
+                            const fc =
+                                s.forecast?.forecastedQuantity ??
+                                s.forecast?.forecasted_quantity ??
+                                null;
+                            return (
+                                <div
+                                    key={s.id}
+                                    className="flex flex-wrap items-center gap-2 p-2 rounded-lg border border-gray-100 bg-gray-50 text-xs"
+                                >
+                                    <span className="font-bold text-gray-800 truncate flex-1 min-w-[120px]">{s.name}</span>
+                                    <span className="text-gray-600">
+                                        Stock: <b>{s.stock}</b>
+                                    </span>
+                                    <span className="text-gray-600">
+                                        Forecast: <b>{fc ?? '—'}</b>/mo
+                                    </span>
+                                    <span
+                                        className={cn(
+                                            'text-[9px] font-black uppercase px-1.5 py-0.5 rounded',
+                                            s.priority === 'High' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-800'
+                                        )}
+                                    >
+                                        {s.priority}
+                                    </span>
+                                </div>
+                            );
+                        })}
                     </div>
                 </div>
             )}

@@ -108,7 +108,14 @@ export default function MarketingAssistantWidget() {
   );
 
   return (
-    <div className="fixed bottom-[max(4.35rem,calc(env(safe-area-inset-bottom,0px)+3.85rem))] right-4 z-[60] flex translate-y-1 flex-col items-end sm:right-6 sm:translate-y-1.5">
+    <div
+      className={cn(
+        'fixed z-[60] flex translate-y-1 flex-col items-end',
+        /* Clear home sticky lead bar (~h-10 + padding) + FAB footprint; tighter on sm+ where bar has more horizontal room */
+        'bottom-[max(6.25rem,calc(env(safe-area-inset-bottom,0px)+5.75rem))] right-[max(0.75rem,env(safe-area-inset-right,0px))]',
+        'sm:bottom-[max(4.5rem,calc(env(safe-area-inset-bottom,0px)+4rem))] sm:right-6 sm:translate-y-1.5'
+      )}
+    >
       {open && (
         <div
           className="mb-3 flex w-[min(100vw-2rem,22rem)] flex-col overflow-hidden rounded-2xl border border-neutral-200/90 bg-white shadow-[0_24px_64px_-24px_rgba(15,23,42,0.35)] sm:w-[24rem]"

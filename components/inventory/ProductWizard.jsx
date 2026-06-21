@@ -618,13 +618,16 @@ export function ProductWizard({
                 wholesale_price: toNumber(formData.wholesale_price, 0),
                 domain_data: sanitizeDomainData(formData.domain_data || {}, category)
             };
+            delete payload.id;
+            delete payload._tempId;
+            if (product?.id) payload.id = product.id;
             await onSave?.(payload);
         } catch (err) {
             console.error('ProductWizard save error:', err);
         } finally {
             setIsSaving(false);
         }
-    }, [formData, onSave, isSaving]);
+    }, [formData, onSave, isSaving, product]);
 
     // --- Keyboard Navigation -------------------------------------------------
 
@@ -644,9 +647,9 @@ export function ProductWizard({
     const StepComponent = [StepBasics, StepPricing, StepInventory, StepAttributes, StepReview][currentStep];
 
     return (
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden max-w-3xl mx-auto">
+        <div className="mx-auto flex max-h-[min(85vh,820px)] max-w-3xl flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
             {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white">
+            <div className="flex shrink-0 items-center justify-between border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white px-4 py-4 sm:px-6">
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-200">
                         <Package className="w-5 h-5 text-white" />
@@ -666,7 +669,7 @@ export function ProductWizard({
             </div>
  
             {/* Step Progress */}
-            <div className="flex items-center px-6 py-3 bg-gray-50/50 border-b border-gray-100">
+            <div className="flex shrink-0 items-center overflow-x-auto border-b border-gray-100 bg-gray-50/50 px-4 py-3 sm:px-6">
                 {wizardSteps.map((step, idx) => {
                     const Icon = step.icon;
                     const isActive = idx === currentStep;
@@ -705,8 +708,8 @@ export function ProductWizard({
                 })}
             </div>
 
-            {/* Step Content */}
-            <div className="px-6 py-6 min-h-[400px]">
+            {/* Step Content — scrolls on short viewports */}
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-6 sm:py-6">
                 <AnimatePresence mode="wait">
                     <motion.div
                         key={currentStep}
@@ -727,7 +730,7 @@ export function ProductWizard({
             </div>
 
             {/* Footer Navigation */}
-            <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100 bg-gray-50/50">
+            <div className="flex shrink-0 items-center justify-between border-t border-gray-100 bg-gray-50/50 px-4 py-4 sm:px-6">
                 <Button
                     variant="outline"
                     onClick={currentStep === 0 ? onCancel : handleBack}

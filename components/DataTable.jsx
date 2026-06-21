@@ -112,7 +112,7 @@ export function DataTable({
     <div className="w-full relative">
       {/* Selection Action Bar (Floating Premium Bar) */}
       {hasSelection && (
-        <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-50 animate-in fade-in slide-in-from-bottom-4 duration-300">
+        <div className="fixed bottom-[calc(4.25rem+env(safe-area-inset-bottom))] left-1/2 z-50 w-[min(100vw-1.5rem,28rem)] -translate-x-1/2 animate-in fade-in slide-in-from-bottom-4 duration-300 lg:bottom-8">
           <div className="bg-slate-900 text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-6 border border-slate-700 backdrop-blur-md bg-opacity-95">
             <div className="flex items-center gap-2 border-r border-slate-700 pr-6">
               <span className="bg-blue-500 text-white w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black">

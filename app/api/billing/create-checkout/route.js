@@ -5,6 +5,7 @@ import { getSessionUser } from '@/lib/auth/session';
 import { assertUserHasBusinessAccess } from '@/lib/tenancy/businessAccess';
 import { isManualBillingMode } from '@/lib/config/billingMode';
 import { getPlanTierQuotaUpdateData, resolvePlanTier } from '@/lib/config/plans';
+import { businessHubUrl, stripeCheckoutSuccessUrl } from '@/lib/utils/billingReturnUrls';
 
 /**
  * POST /api/billing/create-checkout
@@ -123,8 +124,12 @@ export async function POST(request) {
       });
     }
 
-    const successUrl = `${returnUrl || process.env.NEXT_PUBLIC_APP_URL}/business/settings?payment=success&session_id={CHECKOUT_SESSION_ID}`;
-    const cancelUrl = `${returnUrl || process.env.NEXT_PUBLIC_APP_URL}/pricing?payment=cancelled`;
+    const base = (returnUrl || process.env.NEXT_PUBLIC_APP_URL || '').replace(/\/$/, '');
+    const domainSlug = String(business.domain || '').trim().toLowerCase();
+    const successUrl = stripeCheckoutSuccessUrl(base, domainSlug);
+    const cancelUrl = domainSlug
+      ? businessHubUrl(base, domainSlug, { tab: 'settings', billing: 'cancelled' })
+      : `${base}/pricing?billing=cancelled`;
 
     const checkoutResult = await createCheckoutSession({
       customerId,

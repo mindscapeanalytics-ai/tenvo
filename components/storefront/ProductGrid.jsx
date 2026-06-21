@@ -19,7 +19,7 @@ function ProductListItem({ product, businessDomain }) {
   const [isAdding, setIsAdding] = useState(false);
   const { addItem } = useCart();
   const { isInWishlist, toggleWishlist } = useWishlist();
-  const { currency, settings, business } = useStorefront();
+  const { currency, settings, business, businessId } = useStorefront();
   const accent = getStoreAccentColor(settings, business?.category);
   const inWishlist = isInWishlist(product.id);
   const listImage = getEffectiveProductImageUrl(product, business?.category);
@@ -32,7 +32,7 @@ function ProductListItem({ product, businessDomain }) {
     if (isOutOfStock) return;
     setIsAdding(true);
     try {
-      await addItem({ productId: product.id, quantity: 1, variantId: null });
+      await addItem({ productId: product.id, quantity: 1, variantId: null, businessId });
       toast.success('Added to cart', { icon: '🛒' });
       window.dispatchEvent(new Event('toggle-cart'));
     } catch (err) {
@@ -98,6 +98,7 @@ export function ProductGrid({
   hasMore = false,
   filters = {},
   view = 'grid',
+  showResultsCount = true,
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -136,9 +137,8 @@ export function ProductGrid({
   }
 
   return (
-    <div className="space-y-8">
-      {/* Results count */}
-      {total > 0 && (
+    <div className="space-y-4 sm:space-y-6">
+      {total > 0 && showResultsCount && (
         <p className="text-sm text-gray-500">
           Showing{' '}
           <span className="font-semibold text-gray-900">
@@ -156,7 +156,7 @@ export function ProductGrid({
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5">
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5 sm:gap-5">
           {products.map((product) => (
             <ProductCard key={product.id} product={product} businessDomain={businessDomain} />
           ))}

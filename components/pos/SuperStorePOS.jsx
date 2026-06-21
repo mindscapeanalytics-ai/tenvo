@@ -15,6 +15,12 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
+import { useBusiness } from '@/lib/context/BusinessContext';
+import { getDomainConfig } from '@/lib/config/domains';
+import { buildThermalReceiptHtml, printThermalReceiptHtml } from '@/lib/print/thermalReceipt';
+import { buildPosCheckoutPayload, getPosUiConfig } from '@/lib/utils/posHelpers';
+import { getEffectiveProductImageUrl } from '@/lib/storefront/productImageFallback';
+import { ProductThumbnail } from '@/components/product/ProductThumbnail';
 
 // --- Constants ----------------------------------------------------------------
 
@@ -139,7 +145,7 @@ function DepartmentBar({ activeDepartment, onDepartmentChange, productCounts }) 
 
 function ScannedItemsList({
     items, onQuantityChange, onRemoveItem, onWeightChange,
-    onPriceOverride, currency
+    onPriceOverride, currency, businessCategory,
 }) {
     return (
         <div className="flex-1 overflow-y-auto">
@@ -154,10 +160,16 @@ function ScannedItemsList({
                             transition={{ duration: 0.2, backgroundColor: { duration: 0.8 } }}
                             className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50/50 transition-colors group"
                         >
-                            {/* Line number */}
                             <span className="text-[10px] font-bold text-gray-300 w-5 text-right shrink-0">
                                 {idx + 1}
                             </span>
+
+                            <ProductThumbnail
+                                product={{ image_url: item.imageUrl, name: item.name, id: item.productId }}
+                                businessCategory={businessCategory}
+                                size="md"
+                                className="border border-gray-100"
+                            />
 
                             {/* Product info */}
                             <div className="flex-1 min-w-0">
@@ -425,6 +437,13 @@ export function SuperStorePOS({
     businessId, products = [], customers = [], onStartSession, 
     onCompleteSale, currency = 'Rs.', session, taxConfig 
 }) {
+    const { business } = useBusiness();
+    const category = business?.category || 'supermarket';
+    const posUi = getPosUiConfig(category, business);
+    const domainConfig = getDomainConfig(category);
+    const documentLabel = domainConfig?.label_overrides?.invoice || 'Receipt';
+    const currencyCode = business?.currency || 'PKR';
+    const effectiveTaxRate = taxConfig?.sales_tax_rate ?? posUi.defaultTaxRate;
     const [cart, setCart] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [activeDepartment, setActiveDepartment] = useState('all');
@@ -451,7 +470,7 @@ export function SuperStorePOS({
     const sessionStartedLabel = sessionStartedAt
         ? new Date(sessionStartedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         : null;
-    const terminalLabel = session?.terminalName || session?.terminal_name || 'Counter';
+    const terminalLabel = session?.terminalName || session?.terminal_name || posUi.terminalLabel;
 
     const heldOrdersStorageKey = useMemo(() => `fh:pos:held:${businessId || 'default'}`, [businessId]);
 
@@ -467,32 +486,16 @@ export function SuperStorePOS({
 
     const handlePrintReceipt = useCallback(() => {
         if (!lastSale) return;
-
-        const receiptLines = [
-            'TENVO SUPERSTORE RECEIPT',
-            '------------------------------',
-            `Sale: ${lastSale.transaction_number || lastSale.saleNumber || 'N/A'}`,
-            `Date: ${new Date().toLocaleString()}`,
-            `Customer: ${lastSale.customerName || 'Walk-in Customer'}`,
-            `Items: ${lastSale.items || 0}`,
-            `Payment: ${(lastSale.paymentMethod || paymentMethod || 'cash').toUpperCase()}`,
-            '------------------------------',
-            `TOTAL: ${currency}${Number(lastSale.total || 0).toLocaleString()}`,
-            '------------------------------',
-            'Thank you for shopping!',
-        ];
-
-        const win = window.open('', '_blank', 'width=420,height=640');
-        if (!win) return;
-
-        win.document.write(`<!doctype html><html><head><title>Receipt</title><style>
-            body { font-family: monospace; padding: 16px; }
-            pre { white-space: pre-wrap; font-size: 14px; line-height: 1.5; }
-        </style></head><body><pre>${receiptLines.join('\n')}</pre></body></html>`);
-        win.document.close();
-        win.focus();
-        win.print();
-    }, [currency, lastSale, paymentMethod]);
+        const html = buildThermalReceiptHtml({
+            business,
+            documentLabel,
+            category,
+            currencyCode,
+            sale: lastSale,
+            lineItems: lastSale.lineItems || [],
+        });
+        printThermalReceiptHtml(html);
+    }, [business, category, currencyCode, documentLabel, lastSale]);
 
     const handleStartSession = useCallback(async () => {
         if (!onStartSession || isStartingSession) return;
@@ -597,6 +600,7 @@ export function SuperStorePOS({
                 name: product.name,
                 sku: product.sku,
                 barcode: product.barcode,
+                imageUrl: getEffectiveProductImageUrl(product, category),
                 unitPrice: parseFloat(product.selling_price || product.price || 0),
                 quantity: isWeightItem ? 1.0 : 1,
                 taxPercent: parseFloat(product.tax_percent ?? product.taxPercent ?? 17),
@@ -607,7 +611,7 @@ export function SuperStorePOS({
 
         setLastScannedItem(product.name);
         setTimeout(() => setLastScannedItem(null), 1500);
-    }, []);
+    }, [category]);
 
     const handleBarcodeScan = useCallback((barcode) => {
         setIsScanning(true);
@@ -666,43 +670,47 @@ export function SuperStorePOS({
         if (cart.length === 0 || isProcessing) return;
         setIsProcessing(true);
         try {
-            const subtotal = cart.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0);
-            const totalTax = cart.reduce((sum, i) => {
-                const itemTax = (i.unitPrice * i.quantity) * ((i.taxPercent || 0) / 100);
-                return sum + itemTax;
-            }, 0);
-            const taxAmount = Math.round(totalTax * 100) / 100;
-            const total = subtotal + taxAmount - parseFloat(discount || 0);
-
-            const result = await onCompleteSale?.({
+            const payload = buildPosCheckoutPayload({
                 businessId,
                 sessionId: session?.id,
                 customerId: customer?.id || null,
-                items: cart.map(i => ({
-                    productId: i.productId,
-                    productName: i.name,
-                    quantity: i.quantity,
-                    unitPrice: i.unitPrice,
-                    taxAmount: Math.round(i.unitPrice * i.quantity * (i.taxPercent || 0)) / 100,
-                    isWeightItem: i.isWeightItem || false,
-                    unit: i.unit,
+                cart: cart.map((i) => ({
+                    ...i,
+                    taxPercent: i.taxPercent ?? effectiveTaxRate,
                 })),
-                payments: [{ method: paymentMethod, amount: total }],
-                metadata: {
-                    domain: 'supermarket',
-                    taxRate: effectiveTaxRate
-                }
+                discount,
+                discountType: 'fixed',
+                paymentMethod,
+            });
+
+            const result = await onCompleteSale?.({
+                ...payload,
+                metadata: { domain: category, taxRate: effectiveTaxRate },
             });
 
             if (result?.success) {
+                const lineItems = cart.map((i) => ({
+                    name: i.name,
+                    sku: i.sku,
+                    quantity: i.quantity,
+                    unitPrice: i.unitPrice,
+                    lineTotal: Math.round(i.unitPrice * i.quantity * (1 + (i.taxPercent || 0) / 100) * 100) / 100,
+                }));
                 setLastSale({
                     ...result.transaction,
                     saleNumber: result.transaction?.transaction_number || `SALE-${Date.now()}`,
-                    total,
+                    transaction_number: result.transaction?.transaction_number || result.transaction?.invoice_number,
+                    invoice_number: result.transaction?.invoice_number,
+                    total: payload.total,
+                    subtotal: payload.subtotal,
+                    taxAmount: payload.taxAmount,
+                    discountAmount: payload.discountAmount,
+                    lineItems,
                     items: cart.length,
                     customerName: customer?.name || null,
                     paymentMethod,
                     mode: result?.mode || (hasSession ? 'pos' : 'invoice-fallback'),
+                    date: new Date().toISOString(),
                 });
                 setShowSuccess(true);
                 setCart([]);
@@ -715,7 +723,7 @@ export function SuperStorePOS({
         } finally {
             setIsProcessing(false);
         }
-    }, [cart, businessId, session, customer, discount, paymentMethod, isProcessing, onCompleteSale, hasSession]);
+    }, [cart, businessId, session, customer, discount, paymentMethod, isProcessing, onCompleteSale, hasSession, effectiveTaxRate, category]);
 
     // --- Keyboard Shortcuts --------------------------------------------------
 
@@ -809,6 +817,7 @@ export function SuperStorePOS({
                         onRemoveItem={handleRemoveItem}
                         onWeightChange={handleWeightChange}
                         currency={currency}
+                        businessCategory={category}
                     />
                 ) : null}
 
@@ -836,7 +845,12 @@ export function SuperStorePOS({
                                             : "hover:bg-emerald-50/50"
                                     )}
                                 >
-                                    <Package className="w-4 h-4 text-gray-300 shrink-0" />
+                                    <ProductThumbnail
+                                        product={product}
+                                        businessCategory={category}
+                                        size="sm"
+                                        className="shrink-0 border border-gray-100"
+                                    />
                                     <div className="flex-1 min-w-0">
                                         <p className="text-xs font-bold text-gray-900 truncate">{product.name}</p>
                                         <p className="text-[10px] text-gray-400 font-mono">{product.sku || product.barcode || '--'}</p>

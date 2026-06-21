@@ -14,7 +14,9 @@ This repo wires **SaaS subscription billing** to **Stripe** (cards, Checkout, Cu
 
 Effect: `create-checkout`, `cancel`, and `update` subscription routes **only update Postgres** (`lib/config/billingMode.js`). Good for testing tiers without cards.
 
-Production: omit `BILLING_MODE` or set `stripe` (default).
+**NOWPayments (crypto)** is independent: `/api/billing/crypto/*` stays available whenever `NOWPAYMENTS_API_KEY` is set, regardless of `BILLING_MODE`.
+
+Production card billing: omit `BILLING_MODE` or set `stripe` (default in `getBillingMode()` when unset).
 
 ---
 
@@ -45,7 +47,7 @@ This app’s handler: `POST /api/webhooks/stripe` (`app/api/webhooks/stripe/rout
 
 ### Product / price IDs
 
-Create **Products** and recurring **Prices** in Stripe (Dashboard or API), then map each to `STRIPE_PRICE_<tier>_monthly_<pkr|usd>` so `getPriceIdForPlan()` resolves checkout and `/api/billing/update`.
+Create **Products** and recurring **Prices** in Stripe (Dashboard or API), then map each to `STRIPE_PRICE_<tier>_monthly_<pkr|usd>` so `getPriceIdForPlan()` resolves checkout and `/api/billing/update`. Tier keys match `lib/config/plans.js` (`free`, `starter`, `professional`, `business`, `enterprise`). Legacy env vars `STRIPE_PRICE_GROWTH_*` still map to the **professional** tier if `STRIPE_PRICE_PROFESSIONAL_*` is unset.
 
 ### Broader Stripe orientation
 
@@ -61,7 +63,9 @@ Create **Products** and recurring **Prices** in Stripe (Dashboard or API), then 
 | Variable | Purpose |
 |----------|---------|
 | `NOWPAYMENTS_API_KEY` | API key from NOWPayments dashboard |
-| `NOWPAYMENTS_IPN_SECRET` | Used to verify IPN callbacks (set when you enable IPN) |
+| `NOWPAYMENTS_IPN_SECRET` | IPN signing secret (primary name in code) |
+| `NOWPAYMENTS_SECRET` | **Alias** — same value if you already store the secret under this name |
+| `NOWPAYMENTS_IPN_SECRECT` | **Typo alias** — supported so a mis-typed `.env` key still works |
 | `NOWPAYMENTS_IPN_CALLBACK_URL` | Optional override for IPN URL sent on invoice create; default `NEXT_PUBLIC_APP_URL` + `/api/webhooks/nowpayments` |
 
 ### API reference

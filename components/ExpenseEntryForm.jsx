@@ -14,6 +14,8 @@ import { showActionError, formatValidationErrors, isValidationError } from '@/li
 import { useLanguage } from '@/lib/context/LanguageContext';
 import { translations } from '@/lib/translations';
 import { expenseSchema, validateWithSchema } from '@/lib/validation/schemas';
+import { cn } from '@/lib/utils';
+import { MOBILE_OVERLAY, MOBILE_OVERLAY_CARD, MOBILE_FORM_FOOTER, MOBILE_GRID_FIELDS } from '@/lib/utils/formMobileStyles';
 
 export function ExpenseEntryForm({
     onClose,
@@ -119,17 +121,17 @@ export function ExpenseEntryForm({
     ];
 
     return (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <Card className="w-full max-w-2xl max-h-[95vh] overflow-hidden flex flex-col shadow-2xl border-none">
-                <CardHeader className="flex flex-row items-center justify-between border-b p-6 bg-gradient-to-r from-red-900 to-red-800 text-white">
-                    <div className="flex items-center gap-4">
-                        <div className="p-3 rounded-2xl bg-white/10 text-white ring-1 ring-white/20">
-                            <DollarSign className="w-6 h-6" />
+        <div className={MOBILE_OVERLAY}>
+            <Card className={cn(MOBILE_OVERLAY_CARD, 'max-w-2xl')}>
+                <CardHeader className="flex shrink-0 flex-row items-center justify-between border-b bg-gradient-to-r from-red-900 to-red-800 px-3 py-3 text-white sm:p-6">
+                    <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+                        <div className="shrink-0 rounded-xl bg-white/10 p-2 text-white ring-1 ring-white/20 sm:rounded-2xl sm:p-3">
+                            <DollarSign className="h-5 w-5 sm:h-6 sm:w-6" />
                         </div>
-                        <div>
-                            <CardTitle className="text-2xl font-black uppercase tracking-tighter">Record Expense</CardTitle>
-                            <p className="text-xs font-bold text-red-200 uppercase tracking-widest mt-1">
-                                {business?.name} * Financial Transactions
+                        <div className="min-w-0">
+                            <CardTitle className="text-base font-black uppercase tracking-tighter sm:text-2xl">Record Expense</CardTitle>
+                            <p className="mt-0.5 hidden text-xs font-bold uppercase tracking-widest text-red-200 sm:block">
+                                {business?.name} · Financial Transactions
                             </p>
                         </div>
                     </div>
@@ -138,10 +140,9 @@ export function ExpenseEntryForm({
                     </Button>
                 </CardHeader>
 
-                <CardContent className="flex-1 overflow-y-auto p-8 space-y-8 bg-white">
-                    <form onSubmit={handleSave} className="space-y-6">
-                        {/* Essential Details Grid */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <CardContent className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-white p-3 sm:p-6">
+                    <form onSubmit={handleSave} className="space-y-4 sm:space-y-6">
+                        <div className={cn(MOBILE_GRID_FIELDS, 'sm:gap-6')}>
                             <div className="space-y-2">
                                 <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Expense Account (GL) *</Label>
                                 <Combobox
@@ -276,18 +277,20 @@ export function ExpenseEntryForm({
                     </form>
                 </CardContent>
 
-                <div className="p-6 bg-gray-50 border-t flex justify-between items-center">
-                    <Button variant="ghost" onClick={onClose} disabled={isSaving} className="font-black text-xs uppercase tracking-widest text-gray-400 hover:text-gray-900">
-                        Discard
-                    </Button>
-                    <Button
-                        disabled={isSaving}
-                        onClick={handleSave}
-                        className="h-12 px-10 rounded-xl font-black uppercase tracking-widest shadow-xl shadow-red-500/20 active:scale-95 transition-all flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
-                    >
-                        {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                        Record Expense
-                    </Button>
+                <div className={cn(MOBILE_FORM_FOOTER, 'bg-gray-50')}>
+                    <div className="flex items-center justify-between gap-2">
+                        <Button variant="ghost" onClick={onClose} disabled={isSaving} className="h-9 text-xs font-black uppercase tracking-widest text-gray-400 hover:text-gray-900">
+                            Discard
+                        </Button>
+                        <Button
+                            disabled={isSaving}
+                            onClick={handleSave}
+                            className="h-9 rounded-xl px-6 text-xs font-black uppercase tracking-widest shadow-xl shadow-red-500/20 active:scale-95 transition-all flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white sm:h-12 sm:px-10"
+                        >
+                            {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                            Record Expense
+                        </Button>
+                    </div>
                 </div>
             </Card>
         </div>

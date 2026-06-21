@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { UsersIcon, Loader2, Sparkles, Building2, Smartphone, Wallet, FileText, Globe } from 'lucide-react';
+import { UsersIcon, Loader2, Sparkles, Building2, Smartphone, Wallet, Globe, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { getDomainCustomerFields, normalizeKey } from '@/lib/utils/domainHelpers';
 import { DomainFieldRenderer } from './domain/DomainFieldRenderer';
@@ -21,6 +21,7 @@ import { FormError } from '@/components/ui/form-error';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { isEntitlementError, getEntitlementErrorMessage, isEntitlementErrorHandled } from '@/lib/utils/subscriptionErrors';
 import { showActionError, formatValidationErrors, isValidationError } from '@/lib/utils/formErrorHandler';
+import { MOBILE_FORM_BODY, MOBILE_FORM_FOOTER, MOBILE_INPUT_CLASS, MOBILE_LABEL_CLASS } from '@/lib/utils/formMobileStyles';
 
 const COUNTRY_CODES = [
     { code: '+92', label: 'PK (+92)' },
@@ -32,12 +33,16 @@ const COUNTRY_CODES = [
     { code: '+86', label: 'CN (+86)' },
 ];
 
+const inputClass = MOBILE_INPUT_CLASS;
+const labelClass = MOBILE_LABEL_CLASS;
+
 export function CustomerForm({
     onSave,
     onClose,
     onEntitlementError,
     initialData = null,
-    category = 'retail-shop'
+    category = 'retail-shop',
+    embedded = false,
 }) {
     const { business } = useBusiness();
     const { isEasyMode } = useAppMode();
@@ -56,7 +61,7 @@ export function CustomerForm({
         market_location: '',
         credit_limit: 0,
         opening_balance: 0,
-        filer_status: 'none', // none, active, inactive
+        filer_status: 'none',
         domain_data: initialData?.domain_data || {},
         ...initialData
     });
@@ -64,28 +69,22 @@ export function CustomerForm({
     const [countryCode, setCountryCode] = useState('+92');
     const [localPhone, setLocalPhone] = useState('');
 
-    // Initialize phone state from initialData or formData
     useEffect(() => {
         const phone = formData.phone || '';
         if (!phone) {
             setLocalPhone('');
             return;
         }
-
-        // Try to match existing prefix
         const matcheCode = COUNTRY_CODES.find(c => phone.startsWith(c.code));
         if (matcheCode) {
             setCountryCode(matcheCode.code);
             setLocalPhone(phone.slice(matcheCode.code.length).trim());
         } else {
-            // Default fallback if no match or manually entered differently
             setLocalPhone(phone);
         }
     }, [initialData]);
 
-    // Sync to formData when parts change
     useEffect(() => {
-        // Clean local phone of double spaces
         const cleanLocal = localPhone.replace(/\s+/g, ' ').trim();
         if (cleanLocal) {
             handleInputChange('phone', `${countryCode} ${cleanLocal}`);
@@ -93,12 +92,6 @@ export function CustomerForm({
             handleInputChange('phone', '');
         }
     }, [countryCode, localPhone]);
-
-    const handleLocalPhoneChange = (e) => {
-        // Allow digits, spaces, dashes
-        const val = e.target.value.replace(/[^\d\s-]/g, '');
-        setLocalPhone(val);
-    };
 
     const domainFields = getDomainCustomerFields(category);
 
@@ -114,28 +107,23 @@ export function CustomerForm({
         setFormData(prev => ({ ...prev, [field]: value }));
         if (errors[field]) {
             setErrors(prev => {
-                const newErrors = { ...prev };
-                delete newErrors[field];
-                return newErrors;
+                const next = { ...prev };
+                delete next[field];
+                return next;
             });
         }
     };
 
-    // Auto-formatters (removed handlePhoneChange as we use split input now)
-
     const handleCNICChange = (e) => {
-        let val = e.target.value.replace(/\D/g, ''); // Remove non-digits
-        // Format: 42201-1234567-1
+        let val = e.target.value.replace(/\D/g, '');
         if (val.length > 5) val = val.slice(0, 5) + '-' + val.slice(5);
         if (val.length > 13) val = val.slice(0, 13) + '-' + val.slice(13);
         if (val.length > 15) val = val.slice(0, 15);
-
         handleInputChange('cnic', val);
     };
 
     const handleNTNChange = (e) => {
-        const val = e.target.value;
-        handleInputChange('ntn', formatNTN(val));
+        handleInputChange('ntn', formatNTN(e.target.value));
     };
 
     const validateLocalInputs = () => {
@@ -143,32 +131,24 @@ export function CustomerForm({
             toast.error('Customer name is required');
             return false;
         }
-
-        // Lenient phone validation (just check minimum length)
         if (formData.phone && formData.phone.length < 8) {
             toast.error('Phone number seems too short');
             return false;
         }
-
-        // CNIC Validation
         if (formData.cnic && !isValidCNIC(formData.cnic)) {
             toast.error('Invalid CNIC format (e.g. 42201-1234567-1)');
             return false;
         }
-
         return true;
     };
 
     const handleSubmit = async () => {
-        // 1. Local basic checks
         if (!validateLocalInputs()) return;
 
-        // 2. Schema validation (Zod)
         const validation = validateForm(customerSchema, formData);
         if (!validation.isValid) {
             setErrors(validation.errors);
             toast.error('Please fix highlighted errors');
-            // If error is in tax fields but we are on basic tab, switch to tax tab
             if (activeTab === 'basic' && ['ntn', 'cnic', 'srn'].some(k => validation.errors[k])) {
                 setActiveTab('tax');
             }
@@ -177,7 +157,6 @@ export function CustomerForm({
 
         setIsLoading(true);
         try {
-            // Transform formData to match schema expectations
             const payload = {
                 ...formData,
                 credit_limit: Number(formData.credit_limit) || 0,
@@ -185,25 +164,21 @@ export function CustomerForm({
                 srn: formData.srn || null,
                 domain_data: formData.domain_data || {}
             };
-            
+
             const result = await onSave(payload);
-            
-            // Check if result indicates failure
+
             if (result && !result.success) {
-                // Handle validation errors separately
                 if (isValidationError(result)) {
-                    const fieldErrors = formatValidationErrors(result);
-                    setErrors(fieldErrors);
+                    setErrors(formatValidationErrors(result));
                     toast.error('Please fix highlighted errors');
                     return;
                 }
-                
-                // Show user-friendly error message
                 showActionError(result);
                 return;
             }
-            
+
             toast.success(`Customer ${initialData ? 'updated' : 'created'} successfully`);
+            onClose?.();
         } catch (error) {
             console.error('Customer save error:', error);
             if (isEntitlementError(error)) {
@@ -222,14 +197,14 @@ export function CustomerForm({
     const handleFillDemo = () => {
         const isTextile = category.includes('textile');
         const isPharmacy = category === 'pharmacy';
-
         const randomLocal = '3' + Math.floor(Math.random() * 90 + 10) + ' ' + Math.floor(Math.random() * 9000000 + 1000000);
 
-        const demoData = {
+        setCountryCode('+92');
+        setLocalPhone(randomLocal);
+        setFormData(prev => ({
+            ...prev,
             name: isTextile ? 'Zubair Fabrics & Sons' : (isPharmacy ? 'Al-Shifa Medicos' : 'Global Traders'),
-            // phone is now handled via state sync, but we set it here for completeness if needed, 
-            // though the effect will overwrite it based on countryCode/localPhone
-            email: 'contact@' + (isTextile ? 'zubairfabrics' : 'demo-client') + '.com',
+            email: 'contact@demo-client.com',
             ntn: Math.floor(Math.random() * 9000000 + 1000000) + '-' + Math.floor(Math.random() * 9),
             cnic: '42201-' + Math.floor(Math.random() * 9000000 + 1000000) + '-' + Math.floor(Math.random() * 9),
             address: isTextile ? 'Shop # 45, Jama Cloth Market' : 'Plot 123, Sector 5',
@@ -241,330 +216,204 @@ export function CustomerForm({
                 shopname: isTextile ? 'Zubair Fabrics' : '',
                 marketsegment: 'Wholesale',
             }
-        };
-
-        setCountryCode('+92');
-        setLocalPhone(randomLocal);
-        setFormData(prev => ({ ...prev, ...demoData }));
+        }));
         toast.success('Generated realistic demo data');
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in">
-            <Card className="w-full max-w-2xl border-wine/20 shadow-2xl animate-in slide-in-from-bottom-5 max-h-[90vh] overflow-y-auto">
-                <CardHeader className="bg-wine/5 border-b border-wine/10 sticky top-0 bg-white z-10 backdrop-blur-md bg-opacity-90">
-                    <div className="flex justify-between items-center">
-                        <CardTitle className="text-wine flex items-center gap-2">
-                            <UsersIcon className="w-5 h-5" />
+        <Card className={cn(
+            'flex w-full flex-col overflow-hidden border-wine/15 shadow-xl',
+            embedded ? 'border-none shadow-none rounded-none' : 'max-w-2xl rounded-2xl max-h-[min(88vh,820px)]'
+        )}>
+            <CardHeader className="shrink-0 space-y-1 border-b border-wine/10 bg-wine/[0.03] px-3 py-3 sm:px-5 sm:py-4">
+                <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 space-y-0.5">
+                        <CardTitle className="flex flex-wrap items-center gap-2 text-base font-bold text-wine">
+                            <UsersIcon className="h-4 w-4 shrink-0" />
                             {initialData ? 'Edit Customer' : 'Add New Customer'}
                             {!initialData && (
                                 <Button
+                                    type="button"
                                     variant="outline"
                                     size="sm"
                                     onClick={handleFillDemo}
-                                    className="ml-2 h-7 px-2 text-[10px] font-black uppercase tracking-tighter border-wine/20 text-wine hover:bg-wine/5 rounded-lg"
+                                    className="h-7 px-2 text-[10px] font-black uppercase tracking-tight border-wine/20 text-wine hover:bg-wine/5"
                                 >
-                                    <Sparkles className="w-3 h-3 mr-1" /> Magic Fill
+                                    <Sparkles className="mr-1 h-3 w-3" /> Magic Fill
                                 </Button>
                             )}
                         </CardTitle>
-                        <Button variant="ghost" size="icon" onClick={onClose} className="hover:bg-red-50 hover:text-red-500 rounded-full h-8 w-8">
-                            <span className="sr-only">Close</span>
-                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                        </Button>
+                        <CardDescription className="text-xs text-wine/60">
+                            Manage client details and tax information
+                        </CardDescription>
                     </div>
-                    <CardDescription className="text-wine/60 font-medium">
-                        Manage client details and tax information
-                    </CardDescription>
-                </CardHeader>
-                <CardContent className="pt-6">
-                    <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                        <TabsList className={cn("grid w-full mb-8 bg-gray-100/50 p-1 rounded-xl", isEasyMode ? "grid-cols-1" : "grid-cols-3")}>
-                            <TabsTrigger value="basic" className="relative rounded-lg data-[state=active]:bg-white data-[state=active]:text-slate-800 data-[state=active]:shadow-sm px-4 py-2 font-medium text-xs">
-                                Basic Details
-                                {['name', 'phone', 'city'].some(k => errors[k]) && (
-                                    <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                                )}
-                            </TabsTrigger>
-                            {!isEasyMode && (
-                                <>
-                                    <TabsTrigger value="tax" className="relative rounded-lg data-[state=active]:bg-white data-[state=active]:text-slate-800 data-[state=active]:shadow-sm px-4 py-2 font-medium text-xs">
-                                        Financial & Tax
-                                        {['ntn', 'cnic', 'srn', 'credit_limit'].some(k => errors[k]) && (
-                                            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                                        )}
-                                    </TabsTrigger>
-                                    <TabsTrigger value="domain" className="relative rounded-lg data-[state=active]:bg-white data-[state=active]:text-slate-800 data-[state=active]:shadow-sm px-4 py-2 font-medium text-xs text-xs">
-                                        Domain Expert Info
-                                    </TabsTrigger>
-                                </>
-                            )}
-                        </TabsList>
+                    {onClose && (
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={onClose}
+                            className="h-8 w-8 shrink-0 rounded-lg hover:bg-red-50 hover:text-red-500"
+                            aria-label="Close"
+                        >
+                            <X className="h-4 w-4" />
+                        </Button>
+                    )}
+                </div>
+            </CardHeader>
 
-                        <TabsContent value="basic" className="space-y-6 animate-in fade-in duration-300">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="space-y-2">
-                                    <Label className="text-[11px] font-semibold text-slate-600 after:content-['*'] after:ml-0.5 after:text-red-500">Customer Name</Label>
-                                    <Input
-                                        value={formData.name || ''}
-                                        onChange={(e) => handleInputChange('name', e.target.value)}
-                                        placeholder="Full Name / Company"
-                                        className="h-9 rounded-md"
-                                    />
-                                    {errors?.name && <FormError message={errors.name} />}
-                                </div>
-                                <div className="space-y-2">
-                                    <Label className="text-[11px] font-semibold text-slate-600 after:content-['*'] after:ml-0.5 after:text-red-500">Phone</Label>
-                                    <div className="flex gap-2">
-                                        <Select value={countryCode} onValueChange={setCountryCode}>
-                                            <SelectTrigger className="w-[110px] h-9 rounded-md bg-gray-50 border-gray-200">
-                                                <SelectValue placeholder="Code" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {COUNTRY_CODES.map((c) => (
-                                                    <SelectItem key={c.code} value={c.code}>
-                                                        {c.label}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                        <div className="relative flex-1">
-                                            <Smartphone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                                            <Input
-                                                value={localPhone}
-                                                onChange={handleLocalPhoneChange}
-                                                placeholder="300 1234567"
-                                                className="h-9 rounded-md pl-10"
-                                            />
-                                        </div>
+            <CardContent className={MOBILE_FORM_BODY}>
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                    <TabsList className={cn('mb-3 flex h-9 w-full gap-0.5 overflow-x-auto rounded-lg bg-gray-100/80 p-0.5 scrollbar-none sm:grid', isEasyMode ? 'grid-cols-1 sm:grid-cols-1' : 'sm:grid-cols-3')}>
+                        <TabsTrigger value="basic" className="relative rounded-md text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                            Basic Details
+                            {['name', 'phone', 'city'].some(k => errors[k]) && (
+                                <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-red-500" />
+                            )}
+                        </TabsTrigger>
+                        {!isEasyMode && (
+                            <>
+                                <TabsTrigger value="tax" className="relative rounded-md text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                                    Financial & Tax
+                                    {['ntn', 'cnic', 'srn', 'credit_limit'].some(k => errors[k]) && (
+                                        <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-red-500" />
+                                    )}
+                                </TabsTrigger>
+                                <TabsTrigger value="domain" className="relative rounded-md text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                                    Domain Info
+                                </TabsTrigger>
+                            </>
+                        )}
+                    </TabsList>
+
+                    <TabsContent value="basic" className="mt-0 space-y-4">
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                            <div className="space-y-1.5">
+                                <Label className={labelClass}>Customer Name *</Label>
+                                <Input value={formData.name || ''} onChange={(e) => handleInputChange('name', e.target.value)} placeholder="Full Name / Company" className={inputClass} />
+                                {errors?.name && <FormError message={errors.name} />}
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label className={labelClass}>Phone *</Label>
+                                <div className="flex gap-2">
+                                    <Select value={countryCode} onValueChange={setCountryCode}>
+                                        <SelectTrigger className="h-9 w-[100px] rounded-lg">
+                                            <SelectValue placeholder="Code" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {COUNTRY_CODES.map((c) => (
+                                                <SelectItem key={c.code} value={c.code}>{c.label}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <div className="relative flex-1">
+                                        <Smartphone className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                                        <Input value={localPhone} onChange={(e) => setLocalPhone(e.target.value.replace(/[^\d\s-]/g, ''))} placeholder="300 1234567" className={cn(inputClass, 'pl-9')} />
                                     </div>
-                                    {errors?.phone && <FormError message={errors.phone} />}
                                 </div>
-                                <div className="space-y-2">
-                                    <Label className="text-[11px] font-semibold text-slate-600">Email</Label>
-                                    <Input
-                                        value={formData.email || ''}
-                                        onChange={(e) => handleInputChange('email', e.target.value)}
-                                        placeholder="customer@example.com"
-                                        className="h-9 rounded-md"
-                                    />
-                                    {errors?.email && <FormError message={errors.email} />}
+                                {errors?.phone && <FormError message={errors.phone} />}
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label className={labelClass}>Email</Label>
+                                <Input value={formData.email || ''} onChange={(e) => handleInputChange('email', e.target.value)} placeholder="customer@example.com" className={inputClass} />
+                                {errors?.email && <FormError message={errors.email} />}
+                            </div>
+                            <div className="space-y-1.5">
+                                <CityAutocomplete value={formData.city} onChange={(val) => handleInputChange('city', val)} required />
+                                {errors?.city && <FormError message={errors.city} />}
+                            </div>
+                            <div className="space-y-1.5 md:col-span-2">
+                                <MarketLocationSelector value={formData.market_location} onChange={(val) => handleInputChange('market_location', val)} city={formData.city} required={false} language="en" />
+                            </div>
+                            <div className="space-y-1.5 md:col-span-2">
+                                <Label className={labelClass}>Billing Address</Label>
+                                <Input value={formData.address || ''} onChange={(e) => handleInputChange('address', e.target.value)} placeholder="Shop #, Market, Area" className={inputClass} />
+                            </div>
+                        </div>
+
+                        {isEasyMode && (
+                            <div className="grid grid-cols-1 gap-4 border-t border-gray-100 pt-4 md:grid-cols-2">
+                                <div className="space-y-1.5">
+                                    <Label className={labelClass}>Credit Limit (PKR)</Label>
+                                    <Input type="number" value={formData.credit_limit || ''} onChange={(e) => handleInputChange('credit_limit', e.target.value)} placeholder="0" className={inputClass} />
                                 </div>
-                                <div className="space-y-2">
-                                    <CityAutocomplete
-                                        value={formData.city}
-                                        onChange={(val) => handleInputChange('city', val)}
-                                        required={true}
-                                    />
-                                    {errors?.city && <FormError message={errors.city} />}
-                                </div>
-                                <div className="space-y-2">
-                                    <MarketLocationSelector
-                                        value={formData.market_location}
-                                        onChange={(val) => handleInputChange('market_location', val)}
-                                        city={formData.city}
-                                        required={false}
-                                        language="en"
-                                    />
-                                </div>
-                                <div className="col-span-1 md:col-span-2 space-y-2">
-                                    <Label className="text-[11px] font-semibold text-slate-600">Billing Address</Label>
-                                    <Input
-                                        value={formData.address || ''}
-                                        onChange={(e) => handleInputChange('address', e.target.value)}
-                                        placeholder="Complete Address (Shop #, Market, Area)"
-                                        className="h-9 rounded-md"
-                                    />
+                                <div className="space-y-1.5">
+                                    <Label className={labelClass}>Opening Balance (PKR)</Label>
+                                    <Input type="number" value={formData.opening_balance || ''} onChange={(e) => handleInputChange('opening_balance', e.target.value)} placeholder="0" className={inputClass} />
                                 </div>
                             </div>
-                            
-                            {isEasyMode && (
-                                <div className="mt-6 pt-6 border-t border-gray-100">
-                                    <h4 className="text-sm font-bold text-wine mb-4 flex items-center gap-2">
-                                        <Wallet className="w-4 h-4" />
-                                        Financial Settings
-                                    </h4>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                            <Label className="text-[11px] font-semibold text-slate-600">Credit Limit (PKR)</Label>
-                                            <div className="relative">
-                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-semibold text-xs">₨</span>
-                                                <Input
-                                                    type="number"
-                                                    value={formData.credit_limit || ''}
-                                                    onChange={(e) => handleInputChange('credit_limit', e.target.value)}
-                                                    placeholder="0"
-                                                    className="h-9 rounded-md pl-8"
-                                                />
-                                            </div>
-                                            {errors.credit_limit && <FormError message={errors.credit_limit} />}
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label className="text-[11px] font-semibold text-slate-600">Opening Balance (PKR)</Label>
-                                            <div className="relative">
-                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-semibold text-xs">₨</span>
-                                                <Input
-                                                    type="number"
-                                                    value={formData.opening_balance || ''}
-                                                    onChange={(e) => handleInputChange('opening_balance', e.target.value)}
-                                                    placeholder="0"
-                                                    className="h-9 rounded-md pl-8"
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-                        </TabsContent>
+                        )}
+                    </TabsContent>
 
-                        <TabsContent value="tax" className="space-y-6 animate-in fade-in duration-300">
-                            <div className="space-y-6">
-                                <div className="bg-gray-50/50 p-6 rounded-2xl border border-dashed border-gray-200">
-                                    <h4 className="text-sm font-bold text-gray-900 mb-4 flex items-center gap-2">
-                                        <Building2 className="w-4 h-4 text-wine" />
-                                        Tax Compliance
-                                    </h4>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                            <Label className="text-[11px] font-semibold text-slate-600">CNIC (Individuals)</Label>
-                                            <Input
-                                                value={formData.cnic || ''}
-                                                onChange={handleCNICChange}
-                                                placeholder="42201-1234567-1"
-                                                className="h-9 rounded-md font-mono text-sm"
-                                                maxLength={15}
-                                            />
-                                            {errors?.cnic && <FormError message={errors.cnic} />}
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label className="text-[11px] font-semibold text-slate-600">NTN (Business)</Label>
-                                            <Input
-                                                value={formData.ntn || ''}
-                                                onChange={handleNTNChange}
-                                                placeholder="1234567-8"
-                                                className="h-9 rounded-md font-mono text-sm"
-                                                maxLength={9}
-                                            />
-                                            {errors?.ntn && <FormError message={errors.ntn} />}
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label className="text-[11px] font-semibold text-slate-600">SRN (Services)</Label>
-                                            <Input
-                                                value={formData.srn || ''}
-                                                onChange={(e) => handleInputChange('srn', e.target.value)}
-                                                placeholder="12-34-5678-910-1"
-                                                className="h-9 rounded-md font-mono text-sm"
-                                            />
-                                            {errors?.srn && <FormError message={errors.srn} />}
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label className="text-[11px] font-semibold text-slate-600">FBR Filer Status</Label>
-                                            <select
-                                                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:ring-2 focus:ring-wine/20 font-bold"
-                                                value={formData.filer_status || 'none'}
-                                                onChange={(e) => handleInputChange('filer_status', e.target.value)}
-                                                style={{ color: formData.filer_status === 'active' ? '#16a34a' : (formData.filer_status === 'inactive' ? '#dc2626' : 'inherit') }}
-                                            >
-                                                <option value="none">Not Verified</option>
-                                                <option value="active">Active (Filer)</option>
-                                                <option value="inactive">Inactive (Non-Filer)</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="bg-wine/5 p-6 rounded-2xl border border-wine/10">
-                                    <h4 className="text-sm font-bold text-wine mb-4 flex items-center gap-2">
-                                        <Wallet className="w-4 h-4" />
-                                        Financial Settings
-                                    </h4>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                            <Label className="text-[11px] font-semibold text-slate-600">Credit Limit (PKR)</Label>
-                                            <div className="relative">
-                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-semibold text-xs">₨</span>
-                                                <Input
-                                                    type="number"
-                                                    value={formData.credit_limit || ''}
-                                                    onChange={(e) => handleInputChange('credit_limit', e.target.value)}
-                                                    placeholder="0"
-                                                    className="h-9 rounded-md pl-8"
-                                                />
-                                            </div>
-                                            {errors.credit_limit && <FormError message={errors.credit_limit} />}
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label className="text-[11px] font-semibold text-slate-600">Opening Balance (PKR)</Label>
-                                            <div className="relative">
-                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-semibold text-xs">₨</span>
-                                                <Input
-                                                    type="number"
-                                                    value={formData.opening_balance || ''}
-                                                    onChange={(e) => handleInputChange('opening_balance', e.target.value)}
-                                                    placeholder="0"
-                                                    className="h-9 rounded-md pl-8"
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+                    <TabsContent value="tax" className="mt-0 space-y-4">
+                        <div className="grid grid-cols-1 gap-4 rounded-xl border border-dashed border-gray-200 bg-gray-50/50 p-4 md:grid-cols-2">
+                            <div className="space-y-1.5">
+                                <Label className={labelClass}>CNIC</Label>
+                                <Input value={formData.cnic || ''} onChange={handleCNICChange} placeholder="42201-1234567-1" className={cn(inputClass, 'font-mono')} maxLength={15} />
+                                {errors?.cnic && <FormError message={errors.cnic} />}
                             </div>
-                        </TabsContent>
+                            <div className="space-y-1.5">
+                                <Label className={labelClass}>NTN</Label>
+                                <Input value={formData.ntn || ''} onChange={handleNTNChange} placeholder="1234567-8" className={cn(inputClass, 'font-mono')} maxLength={9} />
+                                {errors?.ntn && <FormError message={errors.ntn} />}
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label className={labelClass}>SRN</Label>
+                                <Input value={formData.srn || ''} onChange={(e) => handleInputChange('srn', e.target.value)} placeholder="12-34-5678-910-1" className={cn(inputClass, 'font-mono')} />
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label className={labelClass}>FBR Filer Status</Label>
+                                <select className={cn(inputClass, 'w-full border border-input bg-background px-3')} value={formData.filer_status || 'none'} onChange={(e) => handleInputChange('filer_status', e.target.value)}>
+                                    <option value="none">Not Verified</option>
+                                    <option value="active">Active (Filer)</option>
+                                    <option value="inactive">Inactive (Non-Filer)</option>
+                                </select>
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label className={labelClass}>Credit Limit (PKR)</Label>
+                                <Input type="number" value={formData.credit_limit || ''} onChange={(e) => handleInputChange('credit_limit', e.target.value)} placeholder="0" className={inputClass} />
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label className={labelClass}>Opening Balance (PKR)</Label>
+                                <Input type="number" value={formData.opening_balance || ''} onChange={(e) => handleInputChange('opening_balance', e.target.value)} placeholder="0" className={inputClass} />
+                            </div>
+                        </div>
+                    </TabsContent>
 
-                        <TabsContent value="domain" className="space-y-6 animate-in fade-in duration-300">
-                            {domainFields.length > 0 ? (
-                                <div className="space-y-6">
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-2.5 rounded-xl bg-wine/5 text-wine">
-                                            <Sparkles className="w-5 h-5" />
-                                        </div>
-                                        <div>
-                                            <h4 className="text-lg font-semibold text-gray-900 capitalize">
-                                                {category.replace(/-/g, ' ')} Specialist Data
-                                            </h4>
-                                            <p className="text-sm text-gray-500 font-medium">Domain-specific attributes for accurate profiling</p>
-                                        </div>
-                                    </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 rounded-2xl bg-gray-50/50 border border-gray-100">
-                                        {domainFields.map(field => {
-                                            const key = normalizeKey(field);
-                                            return (
-                                                <DomainFieldRenderer
-                                                    key={field}
-                                                    field={key}
-                                                    value={formData.domain_data?.[key] || ''}
-                                                    onChange={(val) => setFormData({
-                                                        ...formData,
-                                                        domain_data: {
-                                                            ...formData.domain_data,
-                                                            [key]: val
-                                                        }
-                                                    })}
-                                                    category={category}
-                                                />
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-                            ) : (
-                                <div className="text-center py-12 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-100">
-                                    <Globe className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                                    <p className="text-gray-500 font-medium">No domain-specific fields for {category.replace(/-/g, ' ')}</p>
-                                </div>
-                            )}
-                        </TabsContent>
-                    </Tabs>
+                    <TabsContent value="domain" className="mt-0 space-y-4">
+                        {domainFields.length > 0 ? (
+                            <div className="grid grid-cols-1 gap-4 rounded-xl border border-gray-100 bg-gray-50/50 p-4 md:grid-cols-2">
+                                {domainFields.map(field => {
+                                    const key = normalizeKey(field);
+                                    return (
+                                        <DomainFieldRenderer
+                                            key={field}
+                                            field={key}
+                                            value={formData.domain_data?.[key] || ''}
+                                            onChange={(val) => setFormData({
+                                                ...formData,
+                                                domain_data: { ...formData.domain_data, [key]: val }
+                                            })}
+                                            category={category}
+                                        />
+                                    );
+                                })}
+                            </div>
+                        ) : (
+                            <div className="rounded-xl border border-dashed border-gray-200 py-10 text-center text-sm text-gray-500">
+                                No domain-specific fields for this category
+                            </div>
+                        )}
+                    </TabsContent>
+                </Tabs>
+            </CardContent>
 
-                    <div className="flex justify-end gap-3 pt-6 border-t font-bold sticky bottom-0 bg-white pb-2 z-10">
-                        <Button variant="ghost" className="text-gray-400 hover:text-wine hover:bg-wine/5 rounded-xl px-6" onClick={onClose}>Cancel</Button>
-                        <Button onClick={handleSubmit} disabled={isLoading} className="px-10 rounded-xl shadow-lg shadow-wine/20 transition-all active:scale-95 bg-emerald-600 hover:bg-emerald-700 text-white">
-                            {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : (initialData ? 'Update Customer' : 'Confirm & Add Customer')}
-                        </Button>
-                    </div>
-                </CardContent>
-            </Card>
-        </div >
+            <div className={cn(MOBILE_FORM_FOOTER, 'flex items-center justify-end gap-2')}>
+                <Button type="button" variant="ghost" onClick={onClose} className="h-9 text-gray-500">Cancel</Button>
+                <Button type="button" onClick={handleSubmit} disabled={isLoading} className="h-9 bg-emerald-600 px-6 hover:bg-emerald-700">
+                    {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : (initialData ? 'Update Customer' : 'Add Customer')}
+                </Button>
+            </div>
+        </Card>
     );
 }

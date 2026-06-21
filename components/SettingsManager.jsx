@@ -8,46 +8,100 @@ import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Separator } from '@/components/ui/separator';
-import { authClient } from '@/lib/auth-client';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { authClient, useSession } from '@/lib/auth-client';
 import { productAPI, businessAPI } from '@/lib/api';
-import { getDomainKnowledge } from '@/lib/utils/domainHelpers';
+import { getDomainKnowledgeForBusiness } from '@/lib/utils/businessRegionalContext';
+import { seedRegistrationInventoryAction } from '@/lib/actions/basic/business';
 import { useBusiness } from '@/lib/context/BusinessContext';
-import { PLAN_TIERS } from '@/lib/config/plans';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { PLAN_TIERS, PLAN_FEATURE_TOGGLE_KEYS, resolvePlanTier, FEATURE_LABELS } from '@/lib/config/plans';
+import { getPackagingFromSettings } from '@/lib/subscription/effectivePlanAccess';
+import { updateOwnerBusinessPackagingAction } from '@/lib/actions/basic/business';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { CityAutocomplete } from './CityAutocomplete';
 import {
   Database, PlusCircle, LayoutGrid, ArrowLeftRight, Loader2, Sparkles, Trash2,
-  HardDriveDownload, Save, Building2, Shield, Globe, Zap, CreditCard, Users
+  HardDriveDownload, Save, Building2, Shield, Globe, Zap, CreditCard, Users, UserCog,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+
+function buildProfileFormData(b) {
+  if (!b?.id) {
+    return {
+      businessName: '',
+      ntn: '',
+      srn: '',
+      phone: '',
+      email: '',
+      address: '',
+      city: 'Karachi',
+    };
+  }
+  return {
+    businessName: b.business_name || '',
+    ntn: b.ntn || '',
+    srn: b.srn || '',
+    phone: b.phone || '',
+    email: b.email || '',
+    address: b.address || '',
+    city: b.city || 'Karachi',
+  };
+}
 
 /**
  * Settings Manager (Localized for Pakistan)
  * Manages Business Profile, Compliance, and System Preferences
  */
 export function SettingsManager({ category }) {
-  const { business, updateBusiness, role, isPlatformOwner, planTier } = useBusiness();
+  const { business, updateBusiness, role, isPlatformOwner, planTier, regionalStandards } = useBusiness();
+
   const [isSaving, setIsSaving] = useState(false);
-  const [formData, setFormData] = useState({
-    businessName: business?.business_name || '',
-    ntn: business?.ntn || '',
-    phone: business?.phone || '',
-    email: business?.email || '',
-    address: business?.address || '',
-    city: business?.city || 'Karachi',
-  });
+  const [formData, setFormData] = useState(() => buildProfileFormData(business));
+  const [formSyncedBusinessId, setFormSyncedBusinessId] = useState(() => business?.id ?? null);
+
   const [team, setTeam] = useState([]);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState('salesperson');
   const [teamBusy, setTeamBusy] = useState(false);
   const [planBusy, setPlanBusy] = useState(false);
+  const [packagingBusy, setPackagingBusy] = useState(false);
+  const [localPackagingMode, setLocalPackagingMode] = useState('tier');
+  const [localFeatureOverrides, setLocalFeatureOverrides] = useState(() => ({}));
+  const { data: sessionData, refetch: refetchSession } = useSession();
+  const twoFactorEnabled = !!sessionData?.user?.twoFactorEnabled;
+
+  const [pwdCurrent, setPwdCurrent] = useState('');
+  const [pwdNew, setPwdNew] = useState('');
+  const [pwdConfirm, setPwdConfirm] = useState('');
+  const [pwdBusy, setPwdBusy] = useState(false);
+
+  const [settingsPrefBusy, setSettingsPrefBusy] = useState(false);
+  const [tfDialogOpen, setTfDialogOpen] = useState(false);
+  const [tfStep, setTfStep] = useState('password');
+  const [tfPassword, setTfPassword] = useState('');
+  const [tfTotpUri, setTfTotpUri] = useState('');
+  const [tfBackupCodes, setTfBackupCodes] = useState([]);
+  const [tfVerifyCode, setTfVerifyCode] = useState('');
+  const [tfBusy, setTfBusy] = useState(false);
+  const [tfDisableOpen, setTfDisableOpen] = useState(false);
+  const [tfDisablePassword, setTfDisablePassword] = useState('');
+
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const [loadingTools, setLoadingTools] = useState(false);
   const normalizedRole = role || 'viewer';
   const canManageUsers = isPlatformOwner || ['owner', 'admin'].includes(normalizedRole);
   const canManageBilling = isPlatformOwner || normalizedRole === 'owner';
+  const canOwnerPackaging = isPlatformOwner || normalizedRole === 'owner';
   const canManageAdvancedTools = canManageUsers;
   const roleLabel = normalizedRole.replace(/_/g, ' ');
   const activeTeamCount = team.filter(member => member.status === 'active').length;
@@ -65,26 +119,55 @@ export function SettingsManager({ category }) {
     ].filter(section => section.visible);
   }, [canManageBilling, canManageUsers, canManageAdvancedTools]);
 
-  const [activeTab, setActiveTab] = useState('profile');
+  const automationPrefs = useMemo(() => {
+    const raw = business?.settings?.automation;
+    const obj = raw && typeof raw === 'object' ? raw : {};
+    return {
+      lowStockAlerts: obj.lowStockAlerts !== false,
+      invoiceSms: obj.invoiceSms === true,
+    };
+  }, [business?.settings?.automation]);
 
-  useEffect(() => {
-    const requestedSection = searchParams.get('section');
-    const availableSections = visibleSections.map(section => section.value);
+  const multiCurrencyEnabled = useMemo(() => {
+    const d = business?.settings?.domain_defaults;
+    return !!(d && typeof d === 'object' && d.multiCurrency);
+  }, [business?.settings?.domain_defaults]);
 
-    if (requestedSection && availableSections.includes(requestedSection)) {
-      setActiveTab(requestedSection);
-      return;
-    }
+  const availableSectionValues = useMemo(() => visibleSections.map(s => s.value), [visibleSections]);
 
-    if (!availableSections.includes(activeTab)) {
-      setActiveTab(availableSections[0] || 'profile');
-    }
-  }, [activeTab, searchParams, visibleSections]);
+  const sectionFromUrl = searchParams.get('section');
+  const urlDrivenTab = useMemo(() => {
+    if (sectionFromUrl && availableSectionValues.includes(sectionFromUrl)) return sectionFromUrl;
+    return null;
+  }, [sectionFromUrl, availableSectionValues]);
 
-  const fetchTeam = useCallback(async () => {
-    if (!business?.id) return;
+  const [userSelectedTab, setUserSelectedTab] = useState('profile');
+
+  const activeTab = useMemo(() => {
+    if (urlDrivenTab) return urlDrivenTab;
+    if (availableSectionValues.includes(userSelectedTab)) return userSelectedTab;
+    return availableSectionValues[0] || 'profile';
+  }, [urlDrivenTab, userSelectedTab, availableSectionValues]);
+
+  const setActiveTab = useCallback(
+    (tab) => {
+      if (!availableSectionValues.includes(tab)) return;
+      setUserSelectedTab(tab);
+      const params = new URLSearchParams(searchParams.toString());
+      params.set('section', tab);
+      const qs = params.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    },
+    [availableSectionValues, pathname, router, searchParams]
+  );
+
+  const businessId = business?.id;
+
+  const refreshTeam = useCallback(async () => {
+    const id = business?.id;
+    if (!id) return;
     try {
-      const members = await businessAPI.getUsers(business.id);
+      const members = await businessAPI.getUsers(id);
       setTeam(members || []);
     } catch (error) {
       console.error('Failed to fetch team:', error);
@@ -92,8 +175,25 @@ export function SettingsManager({ category }) {
   }, [business?.id]);
 
   useEffect(() => {
-    fetchTeam();
-  }, [fetchTeam]);
+    if (!businessId) {
+      queueMicrotask(() => {
+        setTeam([]);
+      });
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const members = await businessAPI.getUsers(businessId);
+        if (!cancelled) setTeam(members || []);
+      } catch (error) {
+        if (!cancelled) console.error('Failed to fetch team:', error);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [businessId]);
 
   const handleInviteMember = async () => {
     if (!inviteEmail.trim() || !business?.id) {
@@ -107,7 +207,7 @@ export function SettingsManager({ category }) {
       toast.success('Member added successfully');
       setInviteEmail('');
       setInviteRole('salesperson');
-      await fetchTeam();
+      await refreshTeam();
     } catch (error) {
       toast.error(error.message || 'Failed to add member');
     } finally {
@@ -121,7 +221,7 @@ export function SettingsManager({ category }) {
     try {
       await businessAPI.updateUserRole(member.user_id, business.id, nextRole);
       toast.success('Role updated');
-      await fetchTeam();
+      await refreshTeam();
     } catch (error) {
       toast.error(error.message || 'Failed to update role');
     } finally {
@@ -135,7 +235,7 @@ export function SettingsManager({ category }) {
     try {
       await businessAPI.removeMember(business.id, member.user_id);
       toast.success('Member removed');
-      await fetchTeam();
+      await refreshTeam();
     } catch (error) {
       toast.error(error.message || 'Failed to remove member');
     } finally {
@@ -143,8 +243,49 @@ export function SettingsManager({ category }) {
     }
   };
 
+  useEffect(() => {
+    const pkg = getPackagingFromSettings(business?.settings);
+    const mode = pkg?.mode === 'custom' ? 'custom' : 'tier';
+    queueMicrotask(() => {
+      setLocalPackagingMode(mode);
+      if (mode === 'custom' && pkg?.feature_overrides) {
+        setLocalFeatureOverrides({ ...pkg.feature_overrides });
+      } else {
+        setLocalFeatureOverrides({});
+      }
+    });
+  }, [business?.id, business?.settings]);
+
+  const handleSavePackaging = async () => {
+    if (!business?.id) return;
+    setPackagingBusy(true);
+    try {
+      const res = await updateOwnerBusinessPackagingAction({
+        businessId: business.id,
+        mode: localPackagingMode,
+        featureOverrides: localPackagingMode === 'custom' ? localFeatureOverrides : undefined,
+      });
+      if (!res.success) {
+        toast.error(res.error || 'Could not save module access');
+        return;
+      }
+      if (res.business) updateBusiness(res.business);
+      toast.success(
+        localPackagingMode === 'custom'
+          ? 'Custom module access saved for this business.'
+          : 'Module access now follows your subscription tier only.'
+      );
+    } catch (e) {
+      toast.error(e.message || 'Could not save module access');
+    } finally {
+      setPackagingBusy(false);
+    }
+  };
+
   const handlePlanUpdate = async (tier) => {
     if (!business?.id) return;
+    const currentTier = business.plan_tier || 'free';
+    if (currentTier === tier) return;
     setPlanBusy(true);
     try {
       const updated = await businessAPI.updatePlan(business.id, tier);
@@ -157,20 +298,78 @@ export function SettingsManager({ category }) {
     }
   };
 
+  const persistSettingsPatch = useCallback(
+    async (mutate) => {
+      if (!business?.id) return;
+      setSettingsPrefBusy(true);
+      try {
+        const base =
+          business.settings && typeof business.settings === 'object' && !Array.isArray(business.settings)
+            ? { ...business.settings }
+            : {};
+        mutate(base);
+        const updated = await businessAPI.update(business.id, { settings: base });
+        updateBusiness(updated);
+      } catch (error) {
+        toast.error(error.message || 'Could not save preferences');
+      } finally {
+        setSettingsPrefBusy(false);
+      }
+    },
+    [business, updateBusiness]
+  );
+
+  const setAutomationLowStock = (checked) => {
+    persistSettingsPatch((s) => {
+      s.automation = { ...(s.automation && typeof s.automation === 'object' ? s.automation : {}), lowStockAlerts: checked };
+    });
+  };
+
+  const setAutomationInvoiceSms = (checked) => {
+    persistSettingsPatch((s) => {
+      s.automation = { ...(s.automation && typeof s.automation === 'object' ? s.automation : {}), invoiceSms: checked };
+    });
+  };
+
+  const setMultiCurrencyPref = (checked) => {
+    persistSettingsPatch((s) => {
+      s.domain_defaults = {
+        ...(s.domain_defaults && typeof s.domain_defaults === 'object' ? s.domain_defaults : {}),
+        multiCurrency: checked,
+      };
+    });
+  };
+
   const handleProfileSave = async () => {
     setIsSaving(true);
     try {
       if (business?.id) {
+        const settingsPayload =
+          business?.settings && typeof business.settings === 'object' && !Array.isArray(business.settings)
+            ? { ...business.settings }
+            : {};
         const updated = await businessAPI.update(business.id, {
           business_name: formData.businessName,
           ntn: formData.ntn,
+          srn: formData.srn?.trim() ? formData.srn.trim() : null,
           phone: formData.phone,
           email: formData.email,
           address: formData.address,
           city: formData.city,
-          settings: business.settings // Include settings
+          settings: settingsPayload,
         });
         updateBusiness(updated);
+        if (updated) {
+          setFormData({
+            businessName: updated.business_name || '',
+            ntn: updated.ntn || '',
+            srn: updated.srn || '',
+            phone: updated.phone || '',
+            email: updated.email || '',
+            address: updated.address || '',
+            city: updated.city || 'Karachi',
+          });
+        }
         toast.success('Business profile updated successfully');
       }
     } catch (error) {
@@ -181,35 +380,158 @@ export function SettingsManager({ category }) {
     }
   };
 
+  const handlePasswordChange = async () => {
+    if (!pwdCurrent) {
+      toast.error('Enter your current password');
+      return;
+    }
+    if (!pwdNew || pwdNew.length < 8) {
+      toast.error('New password must be at least 8 characters');
+      return;
+    }
+    if (pwdNew !== pwdConfirm) {
+      toast.error('New password and confirmation do not match');
+      return;
+    }
+    setPwdBusy(true);
+    try {
+      const { error } = await authClient.changePassword({
+        currentPassword: pwdCurrent,
+        newPassword: pwdNew,
+        revokeOtherSessions: true,
+      });
+      if (error) toast.error(error.message || 'Could not update password');
+      else {
+        toast.success('Password updated');
+        setPwdCurrent('');
+        setPwdNew('');
+        setPwdConfirm('');
+      }
+    } catch (e) {
+      toast.error(e.message || 'Could not update password');
+    } finally {
+      setPwdBusy(false);
+    }
+  };
+
+  const openTwoFactorSetup = () => {
+    setTfStep('password');
+    setTfPassword('');
+    setTfTotpUri('');
+    setTfBackupCodes([]);
+    setTfVerifyCode('');
+    setTfDialogOpen(true);
+  };
+
+  const handleTwoFactorEnableRequest = async () => {
+    if (!tfPassword) {
+      toast.error('Enter your account password');
+      return;
+    }
+    setTfBusy(true);
+    try {
+      const { data, error } = await authClient.twoFactor.enable({
+        password: tfPassword,
+        issuer: 'Tenvo',
+      });
+      if (error) {
+        toast.error(error.message || 'Could not start 2FA setup');
+        return;
+      }
+      if (data?.totpURI) setTfTotpUri(data.totpURI);
+      if (Array.isArray(data?.backupCodes)) setTfBackupCodes(data.backupCodes);
+      setTfStep('verify');
+      toast.success('Add the key in your authenticator app, then enter a 6-digit code to finish.');
+    } catch (e) {
+      toast.error(e.message || 'Could not start 2FA setup');
+    } finally {
+      setTfBusy(false);
+    }
+  };
+
+  const handleTwoFactorVerifyComplete = async () => {
+    if (!tfVerifyCode || tfVerifyCode.trim().length < 6) {
+      toast.error('Enter the 6-digit code from your authenticator');
+      return;
+    }
+    setTfBusy(true);
+    try {
+      const { error } = await authClient.twoFactor.verifyTotp({
+        code: tfVerifyCode.trim(),
+        trustDevice: true,
+      });
+      if (error) toast.error(error.message || 'Invalid code');
+      else {
+        toast.success('Two-factor authentication is enabled');
+        setTfDialogOpen(false);
+        setTfPassword('');
+        setTfVerifyCode('');
+        if (typeof refetchSession === 'function') await refetchSession();
+      }
+    } catch (e) {
+      toast.error(e.message || 'Verification failed');
+    } finally {
+      setTfBusy(false);
+    }
+  };
+
+  const handleTwoFactorDisable = async () => {
+    if (!tfDisablePassword) {
+      toast.error('Enter your password to disable 2FA');
+      return;
+    }
+    setTfBusy(true);
+    try {
+      const { error } = await authClient.twoFactor.disable({ password: tfDisablePassword });
+      if (error) toast.error(error.message || 'Could not disable 2FA');
+      else {
+        toast.success('Two-factor authentication disabled');
+        setTfDisableOpen(false);
+        setTfDisablePassword('');
+        if (typeof refetchSession === 'function') await refetchSession();
+      }
+    } catch (e) {
+      toast.error(e.message || 'Could not disable 2FA');
+    } finally {
+      setTfBusy(false);
+    }
+  };
+
   const handleLoadTemplateData = async () => {
     if (!business?.id) return;
 
     setLoadingTools(true);
     try {
-      const knowledge = getDomainKnowledge(category);
+      const countryIso = regionalStandards?.countryCode || 'PK';
+      const knowledge = getDomainKnowledgeForBusiness(category, countryIso);
       const template = knowledge?.setupTemplate;
 
-      if (!template || !template.suggestedProducts || template.suggestedProducts.length === 0) {
+      if (!template?.suggestedProducts?.length && !template?.suggestedItems?.length) {
         toast.error('No template data available for this business category');
         return;
       }
 
-      let count = 0;
-      for (const p of template.suggestedProducts) {
-        await productAPI.create({
-          name: p.name,
-          unit: p.unit || 'pcs',
-          category: p.category || category,
-          stock: p.startingStock || 0,
-          price: p.defaultPrice || 0,
-          description: p.description || 'Template product',
-          business_id: business.id,
-          is_active: true
-        });
-        count++;
+      const result = await seedRegistrationInventoryAction({
+        businessId: business.id,
+        domainKey: category,
+        countryIso,
+        force: typeof window !== 'undefined' && window.confirm(
+          'Reload industry template products? This adds template items again and may create duplicates if you already have matching product names.'
+        ),
+      });
+
+      if (!result.success) {
+        throw new Error(result.error || 'Seed failed');
       }
 
-      toast.success(`Successfully loaded ${count} template products into your inventory`);
+      if (result.skipped) {
+        toast.success(result.message || 'Starter inventory is already loaded');
+        return;
+      }
+
+      toast.success(
+        `Loaded ${result.count || 0} products${result.categoryCount ? ` and ${result.categoryCount} categories` : ''} for ${regionalStandards?.countryName || countryIso}`
+      );
     } catch (error) {
       console.error('Template loading error:', error);
       toast.error('Failed to load template data');
@@ -218,94 +540,143 @@ export function SettingsManager({ category }) {
     }
   };
 
+  if (business?.id !== formSyncedBusinessId) {
+    setFormSyncedBusinessId(business?.id ?? null);
+    setFormData(buildProfileFormData(business));
+  }
+
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-bold text-gray-900">Enterprise Settings</h2>
-          <p className="text-gray-500 font-medium">Configure your cloud ERP and compliance mandates</p>
+    <div className="space-y-6 animate-in fade-in duration-500 max-w-[1400px] mx-auto">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between lg:gap-6">
+        <div className="min-w-0 flex-1">
+          <h2 className="text-2xl font-bold tracking-tight text-gray-900">Enterprise Settings</h2>
+          <p className="mt-1 text-sm text-gray-500 font-medium leading-snug">
+            Configure your cloud ERP, compliance, billing, and team — scoped to this business.
+          </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div
+          className="flex flex-row flex-nowrap items-stretch sm:items-center gap-2 overflow-x-auto pb-0.5 -mx-1 px-1 lg:mx-0 lg:px-0 lg:shrink-0 [scrollbar-width:thin]"
+          role="toolbar"
+          aria-label="Workspace actions"
+        >
           <Button
+            type="button"
             variant="outline"
             onClick={() => router.push('/multi-business')}
-            className="h-11 rounded-xl font-bold border-gray-200 hover:bg-gray-50 text-gray-700"
+            className="h-10 sm:h-11 shrink-0 rounded-xl font-semibold border-slate-200 bg-white hover:bg-slate-50 text-slate-800 px-3 sm:px-4"
           >
-            <ArrowLeftRight className="w-4 h-4 mr-2 text-wine" />
-            Switch Business
+            <ArrowLeftRight className="w-4 h-4 sm:mr-2 text-wine shrink-0" />
+            <span className="hidden sm:inline">Switch Business</span>
+            <span className="sm:hidden text-xs font-semibold">Switch</span>
           </Button>
 
           {canManageBilling && (
             <Button
+              type="button"
               variant="outline"
               onClick={() => router.push('/register')}
-              className="h-11 rounded-xl font-bold border-gray-200 hover:bg-gray-50 text-gray-700"
+              className="h-10 sm:h-11 shrink-0 rounded-xl font-semibold border-slate-200 bg-white hover:bg-slate-50 text-slate-800 px-3 sm:px-4"
             >
-              <PlusCircle className="w-4 h-4 mr-2 text-wine" />
-              Launch New Entity
+              <PlusCircle className="w-4 h-4 sm:mr-2 text-wine shrink-0" />
+              <span className="hidden sm:inline">Launch New Entity</span>
+              <span className="sm:hidden">New</span>
             </Button>
           )}
 
           <Button
+            type="button"
             onClick={handleProfileSave}
-            disabled={isSaving}
-            className="font-black shadow-lg shadow-wine/20 rounded-xl px-8 h-11 bg-emerald-600 hover:bg-emerald-700 text-white"
+            disabled={isSaving || !business?.id}
+            className="h-10 sm:h-11 shrink-0 font-semibold shadow-md shadow-emerald-900/10 rounded-xl px-4 sm:px-6 bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-60"
           >
-            <Save className="w-4 h-4 mr-2" />
-            Save Changes
+            {isSaving ? (
+              <Loader2 className="w-4 h-4 sm:mr-2 animate-spin shrink-0" />
+            ) : (
+              <Save className="w-4 h-4 sm:mr-2 shrink-0" />
+            )}
+            <span className="whitespace-nowrap">Save Changes</span>
           </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="border-none shadow-sm bg-white">
-          <CardContent className="pt-6">
-            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Access Level</p>
-            <p className="mt-2 text-lg font-black text-gray-900 capitalize">{roleLabel}</p>
-            <p className="mt-1 text-xs text-gray-500 font-medium">
-              {canManageBilling ? 'Full ownership controls including subscription, seats, and business expansion.' : 'Administrative controls for users, access, and operational settings.'}
-            </p>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
+        <Card className="rounded-xl border border-slate-200/90 bg-white shadow-sm hover:shadow-md transition-shadow">
+          <CardContent className="p-4 sm:p-5 flex gap-4">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-700 ring-1 ring-slate-200/80">
+              <UserCog className="w-5 h-5" aria-hidden />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Access level</p>
+              <p className="mt-1 text-lg font-bold text-slate-900 capitalize tabular-nums">{roleLabel}</p>
+              <p className="mt-1.5 text-xs text-slate-600 leading-snug">
+                {canManageBilling
+                  ? 'Owner controls subscription, seats, and entity expansion.'
+                  : 'Manage users, access, and operational settings within your role.'}
+              </p>
+            </div>
           </CardContent>
         </Card>
 
-        <Card className="border-none shadow-sm bg-white">
-          <CardContent className="pt-6">
-            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Current Plan</p>
-            <p className="mt-2 text-lg font-black text-gray-900">{PLAN_TIERS[planTier]?.name || 'Free'}</p>
-            <p className="mt-1 text-xs text-gray-500 font-medium">
-              {canManageBilling ? 'You can upgrade seats and modules directly from Billing.' : 'Billing changes are restricted to the business owner.'}
-            </p>
+        <Card className="rounded-xl border border-slate-200/90 bg-white shadow-sm hover:shadow-md transition-shadow">
+          <CardContent className="p-4 sm:p-5 flex gap-4">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-700 ring-1 ring-indigo-100">
+              <CreditCard className="w-5 h-5" aria-hidden />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Current plan</p>
+              <p className="mt-1 text-lg font-bold text-slate-900">{PLAN_TIERS[planTier]?.name || 'Free'}</p>
+              <p className="mt-1.5 text-xs text-slate-600 leading-snug">
+                {canManageBilling ? 'Upgrade seats and modules under the Billing tab.' : 'Billing is managed by the business owner.'}
+              </p>
+            </div>
           </CardContent>
         </Card>
 
-        <Card className="border-none shadow-sm bg-white">
-          <CardContent className="pt-6">
-            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Active Team</p>
-            <p className="mt-2 text-lg font-black text-gray-900">{activeTeamCount}</p>
-            <p className="mt-1 text-xs text-gray-500 font-medium">
-              {canManageUsers ? 'Review team roles, seat usage, and access control from the Team section.' : 'Team membership is visible only to business admins and owners.'}
-            </p>
+        <Card className="rounded-xl border border-slate-200/90 bg-white shadow-sm hover:shadow-md transition-shadow">
+          <CardContent className="p-4 sm:p-5 flex gap-4">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100">
+              <Users className="w-5 h-5" aria-hidden />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Active team</p>
+              <p className="mt-1 text-lg font-bold text-slate-900 tabular-nums">{activeTeamCount}</p>
+              <p className="mt-1.5 text-xs text-slate-600 leading-snug">
+                {canManageUsers ? 'Roles and seats are managed in the Team tab.' : 'Visible to admins and owners only.'}
+              </p>
+            </div>
           </CardContent>
         </Card>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="flex h-auto w-full flex-wrap justify-start gap-2 bg-gray-100/50 p-2 rounded-2xl">
+        <TabsList className="flex h-auto w-full flex-nowrap sm:flex-wrap justify-start gap-1 overflow-x-auto pb-1 bg-slate-100/90 p-1.5 sm:p-2 rounded-xl sm:rounded-2xl border border-slate-200/70 [scrollbar-width:thin]">
           {visibleSections.map(section => (
-            <TabsTrigger key={section.value} value={section.value} className="rounded-xl font-bold">
+            <TabsTrigger
+              key={section.value}
+              value={section.value}
+              className="shrink-0 rounded-full sm:rounded-xl font-semibold text-xs sm:text-sm px-3.5 py-2 text-slate-600 transition-all data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm data-[state=inactive]:bg-transparent data-[state=inactive]:shadow-none hover:text-slate-900"
+            >
               {section.label}
             </TabsTrigger>
           ))}
         </TabsList>
 
         <TabsContent value="profile" className="space-y-4 pt-4">
-          <Card className="border-wine/5 shadow-xl">
-            <CardHeader className="bg-wine/5 border-b border-wine/10">
-              <CardTitle className="text-wine flex items-center gap-3">
-                <Building2 className="w-5 h-5" />
-                Identity & Branding
-              </CardTitle>
-              <CardDescription className="text-wine/60 font-medium">Your primary business identification for invoices and reports</CardDescription>
+          <Card className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+            <CardHeader className="space-y-1 border-b border-slate-100 bg-gradient-to-r from-slate-50/90 to-white pb-4 pt-5">
+              <div className="flex items-start gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-wine/10 text-wine ring-1 ring-wine/15">
+                  <Building2 className="w-5 h-5" aria-hidden />
+                </div>
+                <div className="min-w-0 flex-1 space-y-1">
+                  <CardTitle className="text-base sm:text-lg font-bold tracking-tight text-slate-900">
+                    Identity &amp; branding
+                  </CardTitle>
+                  <CardDescription className="text-sm text-slate-600 font-medium leading-relaxed">
+                    Legal name, contact, and location used on invoices, emails, and regulatory filings.
+                  </CardDescription>
+                </div>
+              </div>
             </CardHeader>
             <CardContent className="pt-6 space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -354,35 +725,48 @@ export function SettingsManager({ category }) {
         </TabsContent>
 
         <TabsContent value="compliance" className="space-y-4 pt-4">
-          <Card className="border-blue-100 shadow-xl border-t-4 border-t-blue-500">
-            <CardHeader>
-              <CardTitle className="text-blue-900 flex items-center gap-2">
-                <Shield className="w-5 h-5 text-blue-600" />
-                FBR & Tax Integration
-              </CardTitle>
-              <CardDescription className="text-blue-700">Official tax identifiers for Pakistani compliance</CardDescription>
+          <Card className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+            <CardHeader className="space-y-1 border-b border-slate-100 bg-gradient-to-r from-sky-50/80 to-white pb-4 pt-5">
+              <div className="flex items-start gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-sky-100 text-sky-800 ring-1 ring-sky-200/80">
+                  <Shield className="w-5 h-5" aria-hidden />
+                </div>
+                <div className="min-w-0 flex-1 space-y-1">
+                  <CardTitle className="text-base sm:text-lg font-bold tracking-tight text-slate-900">FBR &amp; tax identifiers</CardTitle>
+                  <CardDescription className="text-sm text-slate-600 font-medium leading-relaxed">
+                    Official tax numbers used on invoices and compliance exports. Saved with <span className="font-semibold text-slate-800">Save Changes</span>.
+                  </CardDescription>
+                </div>
+              </div>
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent className="pt-6 space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">NTN Number (7+1 Digits)</Label>
+                  <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">NTN (7+1 digits)</Label>
                   <Input
                     value={formData.ntn}
                     onChange={e => setFormData({ ...formData, ntn: e.target.value })}
                     placeholder="1234567-8"
-                    className="h-11 rounded-xl border-blue-100"
+                    className="h-11 rounded-xl"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">STRN Number (Sales Tax)</Label>
-                  <Input placeholder="Enter STRN if applicable" className="h-11 rounded-xl border-blue-100" />
+                  <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">STRN / SRN (sales tax)</Label>
+                  <Input
+                    value={formData.srn}
+                    onChange={e => setFormData({ ...formData, srn: e.target.value })}
+                    placeholder="Enter STRN if applicable"
+                    className="h-11 rounded-xl"
+                  />
                 </div>
               </div>
-              <div className="p-4 bg-blue-50/50 rounded-2xl flex items-start gap-4">
-                <Globe className="w-5 h-5 text-blue-600 mt-1" />
+              <div className="p-4 bg-sky-50/60 rounded-2xl border border-sky-100 flex items-start gap-4">
+                <Globe className="w-5 h-5 text-sky-700 mt-0.5 shrink-0" aria-hidden />
                 <div>
-                  <h4 className="text-sm font-black text-blue-900 leading-none mb-2">POS Integration Status</h4>
-                  <p className="text-xs text-blue-700 font-medium">Your account is ready for FBR Tier-1 integration. Contact our support team for SRS configuration in your region.</p>
+                  <h4 className="text-sm font-bold text-slate-900 leading-snug mb-1">POS &amp; FBR integration</h4>
+                  <p className="text-xs text-slate-600 font-medium leading-relaxed">
+                    Your workspace can be connected for Tier-1 reporting. Contact support when you are ready to complete SRS configuration for your region.
+                  </p>
                 </div>
               </div>
             </CardContent>
@@ -390,104 +774,157 @@ export function SettingsManager({ category }) {
         </TabsContent>
 
         <TabsContent value="notifications" className="space-y-4 pt-4">
-          <Card className="border-none shadow-xl">
-            <CardHeader>
-              <CardTitle className="text-gray-900 font-black flex items-center gap-2">
-                <Zap className="w-5 h-5 text-orange-500" />
-                Workflow Automation
-              </CardTitle>
-              <CardDescription>Automate your business processes through smart triggers</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl">
-                <div>
-                  <Label className="font-black text-gray-900 leading-none">Low Stock Intelligent Alerts</Label>
-                  <p className="text-xs text-gray-500 font-medium mt-1">Predictive analysis for restocking based on 41 domain rules</p>
+          <Card className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+            <CardHeader className="space-y-1 border-b border-slate-100 bg-gradient-to-r from-amber-50/50 to-white pb-4 pt-5">
+              <div className="flex items-start gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-800 ring-1 ring-amber-200/80">
+                  <Zap className="w-5 h-5" aria-hidden />
                 </div>
-                <Switch checked={true} />
+                <div className="min-w-0 flex-1 space-y-1">
+                  <CardTitle className="text-base sm:text-lg font-bold tracking-tight text-slate-900">Workflow automation</CardTitle>
+                  <CardDescription className="text-sm text-slate-600 font-medium leading-relaxed">
+                    Preferences are saved to your business and applied where supported in the product.
+                  </CardDescription>
+                </div>
               </div>
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl">
-                <div>
-                  <Label className="font-black text-gray-900 leading-none">Automated Invoice SMS</Label>
-                  <p className="text-xs text-gray-500 font-medium mt-1">Send digital receipts via WhatsApp/SMS to customers</p>
+            </CardHeader>
+            <CardContent className="pt-6 space-y-4">
+              <div className="flex items-center justify-between gap-4 p-4 bg-slate-50/80 rounded-2xl border border-slate-100">
+                <div className="min-w-0">
+                  <Label className="font-semibold text-slate-900">Low stock alerts</Label>
+                  <p className="text-xs text-slate-500 font-medium mt-1 leading-relaxed">Highlight low inventory in dashboards and reminders where enabled.</p>
                 </div>
-                <Switch checked={false} />
+                <Switch
+                  checked={automationPrefs.lowStockAlerts}
+                  disabled={settingsPrefBusy}
+                  onCheckedChange={setAutomationLowStock}
+                />
+              </div>
+              <div className="flex items-center justify-between gap-4 p-4 bg-slate-50/80 rounded-2xl border border-slate-100">
+                <div className="min-w-0">
+                  <Label className="font-semibold text-slate-900">Invoice delivery (SMS / WhatsApp)</Label>
+                  <p className="text-xs text-slate-500 font-medium mt-1 leading-relaxed">When messaging integrations are available, use this preference to opt in.</p>
+                </div>
+                <Switch
+                  checked={automationPrefs.invoiceSms}
+                  disabled={settingsPrefBusy}
+                  onCheckedChange={setAutomationInvoiceSms}
+                />
               </div>
             </CardContent>
           </Card>
         </TabsContent>
 
         <TabsContent value="security" className="space-y-4 pt-4">
-          <Card className="border-none shadow-xl bg-gray-900 text-white">
-            <CardHeader>
-              <CardTitle className="text-white font-black flex items-center gap-2">
-                <Shield className="w-5 h-5 text-green-400" />
-                Security & Access
-              </CardTitle>
-              <CardDescription className="text-gray-400">Manage cloud security and two-factor authentication</CardDescription>
+          <Card className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+            <CardHeader className="space-y-1 border-b border-slate-100 bg-gradient-to-r from-slate-50/90 to-white pb-4 pt-5">
+              <div className="flex items-start gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-900 text-white ring-1 ring-slate-800">
+                  <Shield className="w-5 h-5" aria-hidden />
+                </div>
+                <div className="min-w-0 flex-1 space-y-1">
+                  <CardTitle className="text-base sm:text-lg font-bold tracking-tight text-slate-900">Security &amp; access</CardTitle>
+                  <CardDescription className="text-sm text-slate-600 font-medium leading-relaxed">
+                    Password and two-factor authentication for your sign-in (your user account, not per-business roles).
+                  </CardDescription>
+                </div>
+              </div>
             </CardHeader>
-            <CardContent className="space-y-6 pb-8 text-black">
-              <div className="p-4 bg-gray-800 rounded-xl space-y-4 border border-gray-700">
-                <h4 className="font-bold text-white border-b border-gray-700 pb-2">Change Password</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                  <div className="space-y-2">
-                    <Label className="text-gray-400">New Password</Label>
-                    <Input id="new-password" type="password" placeholder="********" className="rounded-xl h-11 bg-gray-700 border-gray-600 text-white" />
+            <CardContent className="pt-6 space-y-8">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50/40 p-5 space-y-4">
+                <h4 className="text-sm font-bold text-slate-900 border-b border-slate-200 pb-2">Change password</h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2 md:col-span-1">
+                    <Label className="text-xs font-semibold text-slate-600">Current password</Label>
+                    <Input
+                      type="password"
+                      autoComplete="current-password"
+                      value={pwdCurrent}
+                      onChange={e => setPwdCurrent(e.target.value)}
+                      placeholder="Current password"
+                      className="rounded-xl h-11 bg-white border-slate-200"
+                    />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-gray-400">Confirm Password</Label>
-                    <Input id="confirm-password" type="password" placeholder="********" className="rounded-xl h-11 bg-gray-700 border-gray-600 text-white" />
+                    <Label className="text-xs font-semibold text-slate-600">New password</Label>
+                    <Input
+                      type="password"
+                      autoComplete="new-password"
+                      value={pwdNew}
+                      onChange={e => setPwdNew(e.target.value)}
+                      placeholder="At least 8 characters"
+                      className="rounded-xl h-11 bg-white border-slate-200"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs font-semibold text-slate-600">Confirm new password</Label>
+                    <Input
+                      type="password"
+                      autoComplete="new-password"
+                      value={pwdConfirm}
+                      onChange={e => setPwdConfirm(e.target.value)}
+                      placeholder="Repeat new password"
+                      className="rounded-xl h-11 bg-white border-slate-200"
+                    />
                   </div>
                 </div>
                 <Button
-                  className="rounded-xl h-11 px-6 font-bold w-full md:w-auto bg-emerald-600 hover:bg-emerald-700 text-white"
-                  onClick={async () => {
-                    const newPassword = document.getElementById('new-password').value;
-                    const confirmPassword = document.getElementById('confirm-password').value;
-                    if (!newPassword || newPassword !== confirmPassword) {
-                      toast.error('Passwords do not match or are empty');
-                      return;
-                    }
-                    // Migrated to Better Auth
-                    const { error } = await authClient.changePassword({
-                      newPassword: newPassword,
-                      currentPassword: confirmPassword, // NOTE: Better Auth usually requires current password for security. 
-                      // For this migration, we assume user knows current or we add a field.
-                      // Since UI only has "Confirm", we might fail if current is needed.
-                      // Assuming this is a 'reset' flow or we update UI later.
-                      // For now, let's use the provided API.
-                      revokeOtherSessions: true
-                    });
-
-                    if (error) toast.error(error.message);
-                    else {
-                      toast.success('Password updated successfully');
-                      document.getElementById('new-password').value = '';
-                      document.getElementById('confirm-password').value = '';
-                    }
-                  }}
+                  type="button"
+                  className="rounded-xl h-11 px-6 font-semibold w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white"
+                  disabled={pwdBusy}
+                  onClick={handlePasswordChange}
                 >
-                  Update Credentials
+                  {pwdBusy ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                  Update password
                 </Button>
               </div>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-bold text-white">Two-Factor Authentication (2FA)</p>
-                  <p className="text-xs text-gray-400">Secure your business data with OTP</p>
+
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 rounded-2xl border border-slate-200 p-5">
+                <div className="min-w-0">
+                  <p className="font-semibold text-slate-900">Two-factor authentication (2FA)</p>
+                  <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                    Status:{' '}
+                    <span className="font-semibold text-slate-800">{twoFactorEnabled ? 'Enabled' : 'Not enabled'}</span>
+                    . Use an authenticator app for stronger sign-in.
+                  </p>
                 </div>
-                <Switch />
+                <div className="flex flex-wrap gap-2 shrink-0">
+                  {!twoFactorEnabled ? (
+                    <Button type="button" variant="default" className="rounded-xl font-semibold" onClick={openTwoFactorSetup}>
+                      Set up 2FA
+                    </Button>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="rounded-xl font-semibold border-slate-200"
+                      onClick={() => {
+                        setTfDisablePassword('');
+                        setTfDisableOpen(true);
+                      }}
+                    >
+                      Disable 2FA
+                    </Button>
+                  )}
+                </div>
               </div>
             </CardContent>
           </Card>
         </TabsContent>
         <TabsContent value="financials" className="space-y-4 pt-4">
-          <Card className="border-none shadow-xl">
-            <CardHeader className="bg-emerald-50/50 border-b border-emerald-100">
-              <CardTitle className="text-emerald-900 flex items-center gap-2">
-                <CreditCard className="w-5 h-5 text-emerald-600" />
-                Financial Configuration
-              </CardTitle>
-              <CardDescription>Manage Chart of Accounts and currency settings</CardDescription>
+          <Card className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+            <CardHeader className="space-y-1 border-b border-slate-100 bg-gradient-to-r from-emerald-50/50 to-white pb-4 pt-5">
+              <div className="flex items-start gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-800 ring-1 ring-emerald-200/80">
+                  <CreditCard className="w-5 h-5" aria-hidden />
+                </div>
+                <div className="min-w-0 flex-1 space-y-1">
+                  <CardTitle className="text-base sm:text-lg font-bold tracking-tight text-slate-900">Financial configuration</CardTitle>
+                  <CardDescription className="text-sm text-slate-600 font-medium leading-relaxed">
+                    Chart of accounts mapping and default currency for this business.
+                  </CardDescription>
+                </div>
+              </div>
             </CardHeader>
             <CardContent className="pt-6 space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -498,10 +935,13 @@ export function SettingsManager({ category }) {
                       <Label className="text-xs font-bold text-gray-600">Cash Account Code</Label>
                       <Input
                         value={business?.settings?.coa_mapping?.cash || '1001'}
+                        onBlur={(e) => {
+                          persistSettingsPatch((s) => {
+                            s.coa_mapping = { ...(s.coa_mapping || {}), cash: e.target.value };
+                          });
+                        }}
                         onChange={(e) => {
-                          const settings = { ...business.settings };
-                          settings.coa_mapping = { ...settings.coa_mapping, cash: e.target.value };
-                          updateBusiness({ settings });
+                          updateBusiness({ settings: { ...(business?.settings || {}), coa_mapping: { ...(business?.settings?.coa_mapping || {}), cash: e.target.value } } });
                         }}
                         className="w-24 h-8 text-center font-mono text-xs rounded-lg"
                       />
@@ -510,10 +950,13 @@ export function SettingsManager({ category }) {
                       <Label className="text-xs font-bold text-gray-600">Receivable Code</Label>
                       <Input
                         value={business?.settings?.coa_mapping?.ar || '1100'}
+                        onBlur={(e) => {
+                          persistSettingsPatch((s) => {
+                            s.coa_mapping = { ...(s.coa_mapping || {}), ar: e.target.value };
+                          });
+                        }}
                         onChange={(e) => {
-                          const settings = { ...business.settings };
-                          settings.coa_mapping = { ...settings.coa_mapping, ar: e.target.value };
-                          updateBusiness({ settings });
+                          updateBusiness({ settings: { ...(business?.settings || {}), coa_mapping: { ...(business?.settings?.coa_mapping || {}), ar: e.target.value } } });
                         }}
                         className="w-24 h-8 text-center font-mono text-xs rounded-lg"
                       />
@@ -522,10 +965,13 @@ export function SettingsManager({ category }) {
                       <Label className="text-xs font-bold text-gray-600">Sales Revenue Code</Label>
                       <Input
                         value={business?.settings?.coa_mapping?.revenue || '4000'}
+                        onBlur={(e) => {
+                          persistSettingsPatch((s) => {
+                            s.coa_mapping = { ...(s.coa_mapping || {}), revenue: e.target.value };
+                          });
+                        }}
                         onChange={(e) => {
-                          const settings = { ...business.settings };
-                          settings.coa_mapping = { ...settings.coa_mapping, revenue: e.target.value };
-                          updateBusiness({ settings });
+                          updateBusiness({ settings: { ...(business?.settings || {}), coa_mapping: { ...(business?.settings?.coa_mapping || {}), revenue: e.target.value } } });
                         }}
                         className="w-24 h-8 text-center font-mono text-xs rounded-lg"
                       />
@@ -539,11 +985,14 @@ export function SettingsManager({ category }) {
                     <div className="space-y-2">
                       <Label className="text-xs font-bold text-gray-600">Base Currency</Label>
                       <select
-                        value={business?.settings?.domain_defaults?.currency || 'PKR'}
+                        value={business?.settings?.financials?.currency || 'PKR'}
                         onChange={(e) => {
-                          const settings = { ...business.settings };
-                          settings.domain_defaults = { ...settings.domain_defaults, currency: e.target.value };
-                          updateBusiness({ settings });
+                          const CURRENCY_SYMBOLS = { PKR: '₨', USD: '$', SAR: '﷼', AED: 'د.إ' };
+                          const currency = e.target.value;
+                          const currencySymbol = CURRENCY_SYMBOLS[currency] || currency;
+                          persistSettingsPatch((s) => {
+                            s.financials = { ...(s.financials || {}), currency, currencySymbol };
+                          });
                         }}
                         className="w-full h-10 px-3 bg-white border border-gray-200 rounded-xl text-sm font-medium"
                       >
@@ -553,12 +1002,16 @@ export function SettingsManager({ category }) {
                         <option value="AED">UAE Dirham (AED)</option>
                       </select>
                     </div>
-                    <div className="flex items-center justify-between p-3 bg-emerald-50 rounded-xl">
-                      <div>
-                        <Label className="font-bold text-emerald-900 text-xs">Enable Multi-Currency</Label>
-                        <p className="text-[10px] text-emerald-700">Allow transactions in USD/AED</p>
+                    <div className="flex items-center justify-between gap-3 p-3 bg-emerald-50/80 rounded-xl border border-emerald-100">
+                      <div className="min-w-0">
+                        <Label className="font-semibold text-emerald-950 text-xs">Multi-currency</Label>
+                        <p className="text-[10px] text-emerald-800/90 leading-snug">Allow secondary currencies alongside your base currency where the product supports it.</p>
                       </div>
-                      <Switch />
+                      <Switch
+                        checked={multiCurrencyEnabled}
+                        disabled={settingsPrefBusy}
+                        onCheckedChange={setMultiCurrencyPref}
+                      />
                     </div>
                   </div>
                 </div>
@@ -568,13 +1021,19 @@ export function SettingsManager({ category }) {
         </TabsContent>
 
         <TabsContent value="team" className="space-y-4 pt-4">
-          <Card className="border-none shadow-xl">
-            <CardHeader className="bg-wine/5 border-b border-wine/10">
-              <CardTitle className="text-wine flex items-center gap-2">
-                <Users className="w-5 h-5" />
-                Team Management
-              </CardTitle>
-              <CardDescription>Manage user roles and permissions for your branch</CardDescription>
+          <Card className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+            <CardHeader className="space-y-1 border-b border-slate-100 bg-gradient-to-r from-slate-50/90 to-white pb-4 pt-5">
+              <div className="flex items-start gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-800 ring-1 ring-slate-200/80">
+                  <Users className="w-5 h-5" aria-hidden />
+                </div>
+                <div className="min-w-0 flex-1 space-y-1">
+                  <CardTitle className="text-base sm:text-lg font-bold tracking-tight text-slate-900">Team management</CardTitle>
+                  <CardDescription className="text-sm text-slate-600 font-medium leading-relaxed">
+                    Invite members, assign roles, and control who can administer this workspace.
+                  </CardDescription>
+                </div>
+              </div>
             </CardHeader>
             <CardContent className="pt-6">
               <div className="space-y-6">
@@ -694,8 +1153,8 @@ export function SettingsManager({ category }) {
               </CardTitle>
               <CardDescription>Select a plan based on seats and required capabilities</CardDescription>
             </CardHeader>
-            <CardContent className="pt-6 space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <CardContent className="pt-6 space-y-4 relative">
+              <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 ${planBusy ? 'pointer-events-none opacity-70' : ''}`}>
                 {Object.entries(PLAN_TIERS).map(([tier, config]) => {
                   const selected = (business?.plan_tier || 'free') === tier;
                   return (
@@ -704,11 +1163,15 @@ export function SettingsManager({ category }) {
                       type="button"
                       onClick={() => handlePlanUpdate(tier)}
                       disabled={planBusy}
-                      className={`text-left rounded-2xl border p-4 transition-all ${selected ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 bg-white hover:border-indigo-300'}`}
+                      className={`text-left rounded-2xl border p-4 transition-all ${selected ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-200' : 'border-gray-200 bg-white hover:border-indigo-300 hover:bg-slate-50/80'}`}
                     >
-                      <div className="flex items-center justify-between mb-1 bg-emerald-600 hover:bg-emerald-700 text-white">
-                        <span className="text-sm font-black text-gray-900">{config.name}</span>
-                        {selected && <span className="text-[10px] font-black uppercase text-indigo-600">Current</span>}
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <span className="text-sm font-bold text-gray-900">{config.name}</span>
+                        {selected && (
+                          <span className="text-[10px] font-bold uppercase tracking-wide text-indigo-700 bg-white/80 px-2 py-0.5 rounded-full border border-indigo-200">
+                            Current
+                          </span>
+                        )}
                       </div>
                       <p className="text-xs text-gray-500">{config.tagline}</p>
                       <p className="text-xs font-black text-indigo-700 mt-2">PKR {config.price_pkr}/mo</p>
@@ -717,11 +1180,106 @@ export function SettingsManager({ category }) {
                   );
                 })}
               </div>
+              {planBusy ? (
+                <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-white/60 backdrop-blur-[1px]">
+                  <Loader2 className="h-8 w-8 animate-spin text-indigo-600" aria-hidden />
+                </div>
+              ) : null}
               <div className="rounded-2xl border border-indigo-100 bg-indigo-50/60 px-4 py-3 text-sm font-medium text-indigo-900">
                 Owner control: subscription changes immediately update seats, product caps, and feature access for the whole business.
               </div>
             </CardContent>
           </Card>
+
+          {canOwnerPackaging ? (
+            <Card className="border-none shadow-xl">
+              <CardHeader className="bg-slate-50 border-b border-slate-100">
+                <CardTitle className="text-slate-900 flex items-center gap-2">
+                  <LayoutGrid className="w-5 h-5 text-slate-600" />
+                  Custom module access (owner)
+                </CardTitle>
+                <CardDescription>
+                  By default, hubs and server checks use your <strong>subscription tier</strong>. Turn on{' '}
+                  <strong>custom packaging</strong> only when you need to grant or hide specific modules for this
+                  workspace (for example a negotiated pilot). Seat and inventory limits still follow your plan tier.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="pt-6 space-y-4 relative">
+                <div className={`space-y-4 ${packagingBusy ? 'pointer-events-none opacity-70' : ''}`}>
+                  <div className="flex items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white px-4 py-3">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900">Custom module toggles</p>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Off = use plan tier only. On = per-feature switches below override tier defaults for this
+                        business.
+                      </p>
+                    </div>
+                    <Switch
+                      checked={localPackagingMode === 'custom'}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          const t = resolvePlanTier(business?.plan_tier || 'free');
+                          const base = { ...PLAN_TIERS[t].features };
+                          const existing = getPackagingFromSettings(business?.settings)?.feature_overrides;
+                          setLocalFeatureOverrides({ ...base, ...(existing || {}) });
+                          setLocalPackagingMode('custom');
+                        } else {
+                          setLocalPackagingMode('tier');
+                        }
+                      }}
+                      aria-label="Enable custom module packaging"
+                    />
+                  </div>
+
+                  {localPackagingMode === 'custom' ? (
+                    <div className="rounded-xl border border-slate-200 bg-slate-50/50 max-h-[22rem] overflow-y-auto pr-1">
+                      <div className="divide-y divide-slate-100">
+                        {PLAN_FEATURE_TOGGLE_KEYS.map((key) => {
+                          const label = FEATURE_LABELS[key] || key.replace(/_/g, ' ');
+                          const val = !!localFeatureOverrides[key];
+                          return (
+                            <div
+                              key={key}
+                              className="flex items-center justify-between gap-3 px-3 py-2.5 bg-white/80"
+                            >
+                              <span className="text-xs font-medium text-slate-800 capitalize">{label}</span>
+                              <Switch
+                                checked={val}
+                                onCheckedChange={(v) =>
+                                  setLocalFeatureOverrides((prev) => ({
+                                    ...prev,
+                                    [key]: v,
+                                  }))
+                                }
+                                aria-label={label}
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : null}
+
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      onClick={handleSavePackaging}
+                      disabled={packagingBusy}
+                      className="rounded-xl font-semibold"
+                    >
+                      {packagingBusy ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                      Save module access
+                    </Button>
+                  </div>
+                </div>
+                {packagingBusy ? (
+                  <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-white/50 backdrop-blur-[1px]">
+                    <Loader2 className="h-7 w-7 animate-spin text-slate-600" aria-hidden />
+                  </div>
+                ) : null}
+              </CardContent>
+            </Card>
+          ) : null}
         </TabsContent>
 
         <TabsContent value="tools" className="space-y-4 pt-4">
@@ -820,6 +1378,129 @@ export function SettingsManager({ category }) {
           </div>
         </TabsContent>
       </Tabs>
+
+      <Dialog
+        open={tfDialogOpen}
+        onOpenChange={(open) => {
+          setTfDialogOpen(open);
+          if (!open) {
+            setTfStep('password');
+            setTfPassword('');
+            setTfTotpUri('');
+            setTfBackupCodes([]);
+            setTfVerifyCode('');
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{tfStep === 'password' ? 'Enable two-factor authentication' : 'Verify authenticator'}</DialogTitle>
+            <DialogDescription>
+              {tfStep === 'password'
+                ? 'Enter your account password to generate a setup key and backup codes.'
+                : 'Add the key to your authenticator app, then enter the 6-digit code to finish.'}
+            </DialogDescription>
+          </DialogHeader>
+          {tfStep === 'password' ? (
+            <div className="space-y-4 py-2">
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold text-slate-700">Account password</Label>
+                <Input
+                  type="password"
+                  autoComplete="current-password"
+                  value={tfPassword}
+                  onChange={e => setTfPassword(e.target.value)}
+                  className="rounded-xl h-11"
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4 py-2 max-h-[70vh] overflow-y-auto">
+              {tfBackupCodes.length > 0 && (
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                  <p className="text-xs font-semibold text-slate-800 mb-2">Save these backup codes once</p>
+                  <ul className="text-xs font-mono text-slate-700 space-y-0.5 max-h-32 overflow-y-auto">
+                    {tfBackupCodes.map((c) => (
+                      <li key={c}>{c}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {tfTotpUri ? (
+                <div className="space-y-2">
+                  <Label className="text-xs font-semibold text-slate-700">Setup key (otpauth URI)</Label>
+                  <Textarea readOnly value={tfTotpUri} className="text-xs font-mono min-h-[80px] rounded-xl" />
+                </div>
+              ) : null}
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold text-slate-700">6-digit code</Label>
+                <Input
+                  value={tfVerifyCode}
+                  onChange={e => setTfVerifyCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  placeholder="000000"
+                  className="rounded-xl h-11 tracking-widest font-mono"
+                  maxLength={6}
+                  inputMode="numeric"
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter className="gap-2 sm:gap-0">
+            {tfStep === 'password' ? (
+              <>
+                <Button type="button" variant="outline" className="rounded-xl" onClick={() => setTfDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="button" className="rounded-xl" onClick={handleTwoFactorEnableRequest} disabled={tfBusy}>
+                  {tfBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Continue'}
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button type="button" variant="outline" className="rounded-xl" onClick={() => setTfStep('password')} disabled={tfBusy}>
+                  Back
+                </Button>
+                <Button type="button" className="rounded-xl" onClick={handleTwoFactorVerifyComplete} disabled={tfBusy}>
+                  {tfBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Verify & enable'}
+                </Button>
+              </>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={tfDisableOpen}
+        onOpenChange={(open) => {
+          setTfDisableOpen(open);
+          if (!open) setTfDisablePassword('');
+        }}
+      >
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Disable two-factor authentication</DialogTitle>
+            <DialogDescription>Enter your account password to turn off 2FA for this user.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            <Label className="text-xs font-semibold text-slate-700">Password</Label>
+            <Input
+              type="password"
+              autoComplete="current-password"
+              value={tfDisablePassword}
+              onChange={e => setTfDisablePassword(e.target.value)}
+              className="rounded-xl h-11"
+            />
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button type="button" variant="outline" className="rounded-xl" onClick={() => setTfDisableOpen(false)} disabled={tfBusy}>
+              Cancel
+            </Button>
+            <Button type="button" variant="destructive" className="rounded-xl" onClick={handleTwoFactorDisable} disabled={tfBusy}>
+              {tfBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Disable 2FA'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

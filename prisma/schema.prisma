@@ -266,6 +266,11 @@ model businesses {
   invoice_approvals       invoice_approvals[]
   invoice_templates       invoice_templates[]
   invoice_reminders       invoice_payment_reminders[]
+  reorder_points          reorder_points[]
+  low_stock_alerts        low_stock_alerts[]
+  inventory_abc_analysis  inventory_abc_analysis[]
+  cycle_counts            cycle_counts[]
+  bank_reconciliation_sessions bank_reconciliation_sessions[]
 }
 
 /// Append-only SaaS subscription / plan changes (not AR customer invoices).
@@ -336,6 +341,7 @@ model customers {
   pos_transactions     pos_transactions[]
   loyalty_transactions loyalty_transactions[]
   restaurant_orders    restaurant_orders[]
+  inventory_reservations inventory_reservations[]
 
   @@index([domain_data], map: "idx_customers_domain_data", type: Gin)
   @@index([business_id, email])
@@ -362,6 +368,7 @@ model gl_accounts {
   other_gl_accounts gl_accounts[] @relation("gl_accountsTogl_accounts")
   gl_entries        gl_entries[]
   expenses          expenses[]
+  bank_reconciliation_sessions bank_reconciliation_sessions[]
 
   @@unique([business_id, code])
 }
@@ -381,6 +388,8 @@ model gl_entries {
   gl_accounts      gl_accounts      @relation(fields: [account_id], references: [id], onUpdate: NoAction)
   businesses       businesses       @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   journal_entries  journal_entries? @relation(fields: [journal_id], references: [id], onUpdate: NoAction)
+
+  bank_statement_lines bank_statement_lines[]
 
   @@index([journal_id])
   @@index([business_id, account_id, transaction_date(sort: Desc)], name: "idx_gl_entries_business_account_date")
@@ -592,6 +601,18 @@ model product_variants {
   @@index([product_id], map: "idx_product_variants_product_id")
 }
 
+model product_specifications {
+  id              String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  product_id      String    @db.Uuid
+  attribute_name  String    @db.VarChar(255)
+  attribute_value String?
+  display_order   Int?      @default(0)
+  created_at      DateTime? @default(now()) @db.Timestamptz(6)
+  products        products  @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([product_id], map: "idx_product_specs_product_id")
+}
+
 model production_orders {
   id                  String               @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   business_id         String               @db.Uuid
@@ -625,9 +646,17 @@ model production_orders {
 }
 
 model products {
-  slug         String?
-  stock_status String?
-  sales_count  Int?     @default(0)
+  slug             String?
+  compare_price    Decimal?                  @db.Decimal(12, 2)
+  is_featured      Boolean?                  @default(false)
+  is_new           Boolean?                  @default(false)
+  stock_status     String?
+  sales_count      Int?                      @default(0)
+  images           Json?                     @default("[]")
+  has_variants     Boolean?                  @default(false)
+  rating           Decimal?                  @db.Decimal(3, 2)
+  review_count     Int?                      @default(0)
+  enable_reviews   Boolean?                  @default(true)
   id                      String                    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   business_id             String                    @db.Uuid
   sku                     String?
@@ -690,6 +719,12 @@ model products {
   purchase_return_items   purchase_return_items[]  // C16
   category_id             String?                  @db.Uuid
   catalog_category        product_categories?      @relation("ProductCatalogCategory", fields: [category_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  reorder_points          reorder_points[]
+  low_stock_alerts        low_stock_alerts[]
+  inventory_abc_analysis  inventory_abc_analysis[]
+  cycle_count_items       cycle_count_items[]
+  inventory_adjustments   inventory_adjustments[]
+  product_specifications  product_specifications[]
 
   @@index([business_id, sku])
   @@index([business_id, category])
@@ -866,6 +901,9 @@ model warehouse_locations {
   stock_transfers_to      stock_transfers[]         @relation("stock_transfers_to_location")
   pos_terminals           pos_terminals[]
   businesses              businesses                @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  reorder_points          reorder_points[]
+  low_stock_alerts        low_stock_alerts[]
+  cycle_counts            cycle_counts[]
 }
 
 model purchase_items {
@@ -1352,22 +1390,28 @@ model inventory_reservations {
   product_id     String     @db.Uuid
   batch_id       String?    @db.Uuid
   warehouse_id   String?    @db.Uuid
+  customer_id    String?    @db.Uuid
   quantity       Decimal    @db.Decimal(12, 2)
   expires_at     DateTime   @db.Timestamptz(6)
   status         String     @default("active") // active, completed, fulfilled, cancelled, expired
   reference      String?    // e.g. "quotation:uuid" or "order_123"
   reference_type String?    @db.VarChar(50) // invoice | quotation | sales_order | production
   reference_id   String?    @db.Uuid
+  notes          String?
+  completed_at   DateTime?  @db.Timestamptz(6)
+  cancelled_at   DateTime?  @db.Timestamptz(6)
   created_at     DateTime   @default(now()) @db.Timestamptz(6)
   updated_at     DateTime   @default(now()) @db.Timestamptz(6)
   businesses     businesses @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   products       products   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  customers      customers? @relation(fields: [customer_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
 
   @@index([business_id])
   @@index([product_id])
   @@index([expires_at])
   @@index([business_id, reference_type, reference_id])
   @@index([business_id, status])
+  @@index([customer_id], map: "idx_inventory_reservations_customer_id")
 }
 
 model supplier_quotes {
@@ -1430,6 +1474,7 @@ model journal_entries {
   description      String?
   reference_type   String?           @db.VarChar(50)
   reference_id     String?           @db.Uuid
+  reference_number String?           // free-text reference entered by users (e.g. cheque no., doc no.)
   is_reversed      Boolean           @default(false)
   reversed_by      String?           @db.Uuid
   created_by       String?           @db.VarChar(255)
@@ -1984,7 +2029,7 @@ model purchase_returns {
   notes               String?
   created_at          DateTime                 @default(now()) @db.Timestamptz(6)
   updated_at          DateTime                 @default(now()) @db.Timestamptz(6)
-  created_by          String?                  @db.Uuid
+  created_by          String?
   
   businesses          businesses               @relation(fields: [business_id], references: [id], onDelete: Cascade)
   vendors             vendors                  @relation(fields: [vendor_id], references: [id])
@@ -2047,7 +2092,7 @@ model document_sequences {
 model storefront_orders {
   id                 Int                      @id @default(autoincrement())
   business_id        String                   @db.Uuid
-  order_number       String                   @unique
+  order_number       String
   customer_email     String?
   customer_phone     String?
   customer_name      String?
@@ -2068,6 +2113,9 @@ model storefront_orders {
   updated_at         DateTime?                @default(now()) @db.Timestamptz(6)
   businesses         businesses               @relation(fields: [business_id], references: [id], onDelete: Cascade)
   items              storefront_order_items[]
+
+  @@unique([business_id, order_number])
+  @@index([business_id])
 }
 
 model storefront_order_items {
@@ -2083,6 +2131,8 @@ model storefront_order_items {
   total_price  Decimal?           @default(0) @db.Decimal(12, 2)
   metadata     Json?
   order        storefront_orders  @relation(fields: [order_id], references: [id], onDelete: Cascade)
+
+  @@index([order_id])
 }
 
 model store_payment_settings {
@@ -2175,6 +2225,10 @@ model payment_transactions {
   created_at               DateTime?  @default(now()) @db.Timestamptz(6)
   updated_at               DateTime?  @default(now()) @db.Timestamptz(6)
   businesses               businesses @relation(fields: [business_id], references: [id], onDelete: Cascade)
+
+  @@index([business_id])
+  @@index([order_id])
+  @@index([stripe_payment_intent_id])
 }
 
 model business_settings {
@@ -2224,7 +2278,7 @@ model platform_feature_flag_overrides {
   value                   Json
   expires_at              DateTime?            @db.Timestamptz(6)
   reason                  String?
-  created_by              String?              @db.Uuid
+  created_by              String?
   created_at              DateTime?            @default(now()) @db.Timestamptz(6)
   updated_at              DateTime?            @default(now()) @db.Timestamptz(6)
   platform_feature_flags  platform_feature_flags @relation(fields: [platform_feature_flag_id], references: [id], onDelete: Cascade)
@@ -2313,4 +2367,156 @@ model notifications {
 
   @@index([business_id, is_read])
   @@index([business_id, is_dismissed])
+}
+
+// ─── Inventory reorder & cycle-count tables ──────────────────────────────────
+// Tables created by prisma/migrations/20260514_inventory_reorder_cycle_counts
+
+model reorder_points {
+  id               String               @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  business_id      String               @db.Uuid
+  product_id       String               @db.Uuid
+  warehouse_id     String?              @db.Uuid
+  min_stock_level  Decimal              @db.Decimal(12, 2)
+  reorder_quantity Decimal              @db.Decimal(12, 2)
+  lead_time_days   Int                  @default(7)
+  enabled          Boolean              @default(true)
+  created_at       DateTime             @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime             @default(now()) @db.Timestamptz(6)
+  businesses       businesses           @relation(fields: [business_id], references: [id], onDelete: Cascade)
+  products         products             @relation(fields: [product_id], references: [id], onDelete: Cascade)
+  warehouse_locations warehouse_locations? @relation(fields: [warehouse_id], references: [id], onDelete: Cascade)
+
+  @@unique([business_id, product_id, warehouse_id], map: "idx_reorder_points_unique")
+  @@index([business_id, enabled], map: "idx_reorder_points_business_enabled")
+}
+
+model low_stock_alerts {
+  id              String               @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  business_id     String               @db.Uuid
+  product_id      String               @db.Uuid
+  warehouse_id    String?              @db.Uuid
+  current_stock   Decimal              @default(0) @db.Decimal(12, 2)
+  min_stock_level Decimal              @db.Decimal(12, 2)
+  status          String               @default("active") @db.VarChar(32)
+  created_at      DateTime             @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime             @default(now()) @db.Timestamptz(6)
+  businesses      businesses           @relation(fields: [business_id], references: [id], onDelete: Cascade)
+  products        products             @relation(fields: [product_id], references: [id], onDelete: Cascade)
+  warehouse_locations warehouse_locations? @relation(fields: [warehouse_id], references: [id], onDelete: Cascade)
+
+  @@unique([business_id, product_id, warehouse_id, status], map: "idx_low_stock_alerts_unique_status")
+  @@index([business_id, status, created_at(sort: Desc)], map: "idx_low_stock_alerts_business_status")
+}
+
+model inventory_abc_analysis {
+  id                  String     @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  business_id         String     @db.Uuid
+  product_id          String     @db.Uuid
+  abc_category        String     @db.VarChar(1)
+  period_days         Int        @default(90)
+  total_qty           Decimal    @default(0) @db.Decimal(12, 2)
+  total_value         Decimal    @default(0) @db.Decimal(14, 2)
+  pct_of_total_value  Decimal    @default(0) @db.Decimal(7, 4)
+  calculated_at       DateTime   @default(now()) @db.Timestamptz(6)
+  created_at          DateTime   @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime   @default(now()) @db.Timestamptz(6)
+  businesses          businesses @relation(fields: [business_id], references: [id], onDelete: Cascade)
+  products            products   @relation(fields: [product_id], references: [id], onDelete: Cascade)
+
+  @@unique([business_id, product_id, period_days], map: "idx_inventory_abc_business_product_period")
+  @@index([business_id, abc_category], map: "idx_inventory_abc_business_category")
+}
+
+model cycle_counts {
+  id              String               @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  business_id     String               @db.Uuid
+  name            String               @db.VarChar(255)
+  category        String               @default("manual") @db.VarChar(64)
+  warehouse_id    String?              @db.Uuid
+  status          String               @default("in-progress") @db.VarChar(32)
+  item_count      Int                  @default(0)
+  variance_count  Int                  @default(0)
+  scheduled_date  DateTime?            @db.Date
+  completed_at    DateTime?            @db.Timestamptz(6)
+  created_at      DateTime             @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime             @default(now()) @db.Timestamptz(6)
+  businesses      businesses           @relation(fields: [business_id], references: [id], onDelete: Cascade)
+  warehouse_locations warehouse_locations? @relation(fields: [warehouse_id], references: [id], onDelete: SetNull)
+  cycle_count_items cycle_count_items[]
+  inventory_adjustments inventory_adjustments[]
+
+  @@index([business_id, status, created_at(sort: Desc)], map: "idx_cycle_counts_business_status")
+}
+
+model cycle_count_items {
+  id               String        @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  cycle_count_id   String        @db.Uuid
+  product_id       String        @db.Uuid
+  sku              String?       @db.VarChar(120)
+  product_name     String        @db.VarChar(255)
+  system_quantity  Decimal       @default(0) @db.Decimal(12, 2)
+  counted_quantity Decimal?      @db.Decimal(12, 2)
+  unit_price       Decimal       @default(0) @db.Decimal(12, 2)
+  created_at       DateTime      @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime      @default(now()) @db.Timestamptz(6)
+  cycle_counts     cycle_counts  @relation(fields: [cycle_count_id], references: [id], onDelete: Cascade)
+  products         products      @relation(fields: [product_id], references: [id], onDelete: Cascade)
+
+  @@unique([cycle_count_id, product_id], map: "idx_cycle_count_items_unique_product")
+  @@index([cycle_count_id], map: "idx_cycle_count_items_count")
+}
+
+model inventory_adjustments {
+  id              String        @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  cycle_count_id  String?       @db.Uuid
+  product_id      String        @db.Uuid
+  adjustment_qty  Decimal       @db.Decimal(12, 2)
+  reason          String?
+  created_at      DateTime      @default(now()) @db.Timestamptz(6)
+  cycle_counts    cycle_counts? @relation(fields: [cycle_count_id], references: [id], onDelete: SetNull)
+  products        products      @relation(fields: [product_id], references: [id], onDelete: Cascade)
+
+  @@index([product_id, created_at(sort: Desc)], map: "idx_inventory_adjustments_product_date")
+}
+
+// ─── Bank reconciliation tables ───────────────────────────────────────────────
+// Tables created by prisma/migrations/20260514_bank_reconciliation
+
+model bank_reconciliation_sessions {
+  id                        String               @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  business_id               String               @db.Uuid
+  account_id                String               @db.Uuid
+  statement_date            DateTime             @db.Date
+  statement_closing_balance Decimal              @default(0) @db.Decimal(15, 2)
+  status                    String               @default("in_progress")
+  completed_at              DateTime?            @db.Timestamptz(6)
+  created_by                String?
+  created_at                DateTime             @default(now()) @db.Timestamptz(6)
+  updated_at                DateTime             @default(now()) @db.Timestamptz(6)
+  businesses                businesses           @relation(fields: [business_id], references: [id], onDelete: Cascade)
+  gl_accounts               gl_accounts          @relation(fields: [account_id], references: [id])
+  bank_statement_lines      bank_statement_lines[]
+
+  @@unique([business_id, account_id, statement_date], map: "uidx_bank_recon_sessions_unique")
+  @@index([business_id], map: "idx_bank_recon_sessions_business_id")
+  @@index([account_id, statement_date], map: "idx_bank_recon_sessions_account_date")
+}
+
+model bank_statement_lines {
+  id                          String                       @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  session_id                  String                       @db.Uuid
+  statement_date              DateTime                     @db.Date
+  description                 String?
+  debit                       Decimal                      @default(0) @db.Decimal(15, 2)
+  credit                      Decimal                      @default(0) @db.Decimal(15, 2)
+  matched                     Boolean                      @default(false)
+  gl_entry_id                 String?                      @db.Uuid
+  created_at                  DateTime                     @default(now()) @db.Timestamptz(6)
+  bank_reconciliation_sessions bank_reconciliation_sessions @relation(fields: [session_id], references: [id], onDelete: Cascade)
+  gl_entries                  gl_entries?                  @relation(fields: [gl_entry_id], references: [id], onDelete: SetNull)
+
+  @@index([session_id], map: "idx_bank_stmt_lines_session_id")
+  @@index([session_id, matched], map: "idx_bank_stmt_lines_matched")
+  @@index([gl_entry_id], map: "idx_bank_stmt_lines_gl_entry")
 }

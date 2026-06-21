@@ -27,6 +27,10 @@
     "path": "C:\\Users\\romio\\.cursor\\projects\\e-tenvo-main\\agent-transcripts\\29638632-e8d4-4ae4-a16d-21a0b80f63f6\\subagents\\6ed5c29c-c054-4be0-9ca0-7ada2ef51a03.jsonl",
     "mtimeMs": 1780943731352.4673
   },
+  "2aabd9c1-8750-4113-b59c-4ac5d5c23d40": {
+    "path": "C:\\Users\\romio\\.cursor\\projects\\e-tenvo-main\\agent-transcripts\\2aabd9c1-8750-4113-b59c-4ac5d5c23d40\\2aabd9c1-8750-4113-b59c-4ac5d5c23d40.jsonl",
+    "mtimeMs": 1781953628281.1702
+  },
   "2c7e5150-7ef7-40d5-855f-28f0da84f0f4": {
     "path": "C:\\Users\\romio\\.cursor\\projects\\e-tenvo-main\\agent-transcripts\\2c7e5150-7ef7-40d5-855f-28f0da84f0f4\\2c7e5150-7ef7-40d5-855f-28f0da84f0f4.jsonl",
     "mtimeMs": 1780142184328.6768
@@ -42,6 +46,10 @@
   "312d3237-5ef2-47c6-8c6b-bb68e32c92f9": {
     "path": "C:\\Users\\romio\\.cursor\\projects\\e-tenvo-main\\agent-transcripts\\312d3237-5ef2-47c6-8c6b-bb68e32c92f9\\312d3237-5ef2-47c6-8c6b-bb68e32c92f9.jsonl",
     "mtimeMs": 1781138626747.2837
+  },
+  "4ef241db-3252-4cd0-a774-2ea73a020d6c": {
+    "path": "C:\\Users\\romio\\.cursor\\projects\\e-tenvo-main\\agent-transcripts\\4ef241db-3252-4cd0-a774-2ea73a020d6c\\4ef241db-3252-4cd0-a774-2ea73a020d6c.jsonl",
+    "mtimeMs": 1781819899087.7063
   },
   "57452ef3-f833-4ee9-ba6e-5083a47e1308": {
     "path": "C:\\Users\\romio\\.cursor\\projects\\e-tenvo-main\\agent-transcripts\\57452ef3-f833-4ee9-ba6e-5083a47e1308\\57452ef3-f833-4ee9-ba6e-5083a47e1308.jsonl",
@@ -71,17 +79,145 @@
     "path": "C:\\Users\\romio\\.cursor\\projects\\e-tenvo-main\\agent-transcripts\\9634a061-cfed-4b9d-94e9-73a0a02a2edd\\9634a061-cfed-4b9d-94e9-73a0a02a2edd.jsonl",
     "mtimeMs": 1780230387618.6345
   },
+  "967e1c53-4b5d-490e-b744-b2e0363221c1": {
+    "path": "C:\\Users\\romio\\.cursor\\projects\\e-tenvo-main\\agent-transcripts\\967e1c53-4b5d-490e-b744-b2e0363221c1\\967e1c53-4b5d-490e-b744-b2e0363221c1.jsonl",
+    "mtimeMs": 1782043545648.4944
+  },
+  "967e1c53-4b5d-490e-b744-b2e0363221c1-sub-0af45289-726e-49bd-96a7-918f1ee9530b": {
+    "path": "C:\\Users\\romio\\.cursor\\projects\\e-tenvo-main\\agent-transcripts\\967e1c53-4b5d-490e-b744-b2e0363221c1\\subagents\\0af45289-726e-49bd-96a7-918f1ee9530b.jsonl",
+    "mtimeMs": 1782043262038.6567
+  },
+  "967e1c53-4b5d-490e-b744-b2e0363221c1-sub-0c533ac7-249c-4900-be25-b0eee41f720c": {
+    "path": "C:\\Users\\romio\\.cursor\\projects\\e-tenvo-main\\agent-transcripts\\967e1c53-4b5d-490e-b744-b2e0363221c1\\subagents\\0c533ac7-249c-4900-be25-b0eee41f720c.jsonl",
+    "mtimeMs": 1781820382211.3872
+  },
+  "967e1c53-4b5d-490e-b744-b2e0363221c1-sub-15920ce7-89a6-4bef-88e2-7fc9ab2adce0": {
+    "path": "C:\\Users\\romio\\.cursor\\projects\\e-tenvo-main\\agent-transcripts\\967e1c53-4b5d-490e-b744-b2e0363221c1\\subagents\\15920ce7-89a6-4bef-88e2-7fc9ab2adce0.jsonl",
+    "mtimeMs": 1782043230048.4531
+  },
+  "967e1c53-4b5d-490e-b744-b2e0363221c1-sub-181b141c-4a36-435f-9db6-e981d159ed0f": {
+    "path": "C:\\Users\\romio\\.cursor\\projects\\e-tenvo-main\\agent-transcripts\\967e1c53-4b5d-490e-b744-b2e0363221c1\\subagents\\181b141c-4a36-435f-9db6-e981d159ed0f.jsonl",
+    "mtimeMs": 1781949446707.1023
+  },
+  "967e1c53-4b5d-490e-b744-b2e0363221c1-sub-2aabd9c1-8750-4113-b59c-4ac5d5c23d40": {
+    "path": "C:\\Users\\romio\\.cursor\\projects\\e-tenvo-main\\agent-transcripts\\967e1c53-4b5d-490e-b744-b2e0363221c1\\subagents\\2aabd9c1-8750-4113-b59c-4ac5d5c23d40.jsonl",
+    "mtimeMs": 1781953621270.9136
+  },
+  "967e1c53-4b5d-490e-b744-b2e0363221c1-sub-3bcf7940-29f5-41c5-9523-d4203839e894": {
+    "path": "C:\\Users\\romio\\.cursor\\projects\\e-tenvo-main\\agent-transcripts\\967e1c53-4b5d-490e-b744-b2e0363221c1\\subagents\\3bcf7940-29f5-41c5-9523-d4203839e894.jsonl",
+    "mtimeMs": 1781775588160.7986
+  },
+  "967e1c53-4b5d-490e-b744-b2e0363221c1-sub-4b39aa0e-6f68-4f10-86ab-9c105015c8a9": {
+    "path": "C:\\Users\\romio\\.cursor\\projects\\e-tenvo-main\\agent-transcripts\\967e1c53-4b5d-490e-b744-b2e0363221c1\\subagents\\4b39aa0e-6f68-4f10-86ab-9c105015c8a9.jsonl",
+    "mtimeMs": 1781460323451.6013
+  },
+  "967e1c53-4b5d-490e-b744-b2e0363221c1-sub-4ef241db-3252-4cd0-a774-2ea73a020d6c": {
+    "path": "C:\\Users\\romio\\.cursor\\projects\\e-tenvo-main\\agent-transcripts\\967e1c53-4b5d-490e-b744-b2e0363221c1\\subagents\\4ef241db-3252-4cd0-a774-2ea73a020d6c.jsonl",
+    "mtimeMs": 1781819883296.9385
+  },
+  "967e1c53-4b5d-490e-b744-b2e0363221c1-sub-57aeda3e-eed0-4a64-8545-20ae639a37b3": {
+    "path": "C:\\Users\\romio\\.cursor\\projects\\e-tenvo-main\\agent-transcripts\\967e1c53-4b5d-490e-b744-b2e0363221c1\\subagents\\57aeda3e-eed0-4a64-8545-20ae639a37b3.jsonl",
+    "mtimeMs": 1781956655913.0933
+  },
+  "967e1c53-4b5d-490e-b744-b2e0363221c1-sub-5dfb53ba-a80f-45a2-b79a-5c020822be32": {
+    "path": "C:\\Users\\romio\\.cursor\\projects\\e-tenvo-main\\agent-transcripts\\967e1c53-4b5d-490e-b744-b2e0363221c1\\subagents\\5dfb53ba-a80f-45a2-b79a-5c020822be32.jsonl",
+    "mtimeMs": 1781948454202.8762
+  },
+  "967e1c53-4b5d-490e-b744-b2e0363221c1-sub-62ec8cc1-8d1f-443d-907d-e370b8c39c1e": {
+    "path": "C:\\Users\\romio\\.cursor\\projects\\e-tenvo-main\\agent-transcripts\\967e1c53-4b5d-490e-b744-b2e0363221c1\\subagents\\62ec8cc1-8d1f-443d-907d-e370b8c39c1e.jsonl",
+    "mtimeMs": 1782043294872.7258
+  },
+  "967e1c53-4b5d-490e-b744-b2e0363221c1-sub-772f4aa8-8043-4445-a2b0-39ec9809fbbb": {
+    "path": "C:\\Users\\romio\\.cursor\\projects\\e-tenvo-main\\agent-transcripts\\967e1c53-4b5d-490e-b744-b2e0363221c1\\subagents\\772f4aa8-8043-4445-a2b0-39ec9809fbbb.jsonl",
+    "mtimeMs": 1781986832860.2651
+  },
+  "967e1c53-4b5d-490e-b744-b2e0363221c1-sub-83faf7c2-74c7-44f2-becf-1329f4c17fa8": {
+    "path": "C:\\Users\\romio\\.cursor\\projects\\e-tenvo-main\\agent-transcripts\\967e1c53-4b5d-490e-b744-b2e0363221c1\\subagents\\83faf7c2-74c7-44f2-becf-1329f4c17fa8.jsonl",
+    "mtimeMs": 1781984667743.5935
+  },
+  "967e1c53-4b5d-490e-b744-b2e0363221c1-sub-917463c8-9d72-4ad1-ac8c-100b89e0199d": {
+    "path": "C:\\Users\\romio\\.cursor\\projects\\e-tenvo-main\\agent-transcripts\\967e1c53-4b5d-490e-b744-b2e0363221c1\\subagents\\917463c8-9d72-4ad1-ac8c-100b89e0199d.jsonl",
+    "mtimeMs": 1781942804729.6726
+  },
+  "967e1c53-4b5d-490e-b744-b2e0363221c1-sub-b52d7855-edf4-421b-a485-bed58647c766": {
+    "path": "C:\\Users\\romio\\.cursor\\projects\\e-tenvo-main\\agent-transcripts\\967e1c53-4b5d-490e-b744-b2e0363221c1\\subagents\\b52d7855-edf4-421b-a485-bed58647c766.jsonl",
+    "mtimeMs": 1781469313749.3765
+  },
+  "967e1c53-4b5d-490e-b744-b2e0363221c1-sub-b59627b2-5cc8-4209-9e31-9610b6ec64fa": {
+    "path": "C:\\Users\\romio\\.cursor\\projects\\e-tenvo-main\\agent-transcripts\\967e1c53-4b5d-490e-b744-b2e0363221c1\\subagents\\b59627b2-5cc8-4209-9e31-9610b6ec64fa.jsonl",
+    "mtimeMs": 1782043353433.469
+  },
+  "967e1c53-4b5d-490e-b744-b2e0363221c1-sub-d27a7538-4e4b-40c7-8bf1-2a24c5d10c44": {
+    "path": "C:\\Users\\romio\\.cursor\\projects\\e-tenvo-main\\agent-transcripts\\967e1c53-4b5d-490e-b744-b2e0363221c1\\subagents\\d27a7538-4e4b-40c7-8bf1-2a24c5d10c44.jsonl",
+    "mtimeMs": 1782032924340.613
+  },
+  "967e1c53-4b5d-490e-b744-b2e0363221c1-sub-e3267eac-95f3-457d-935d-5fc7cf31cf9a": {
+    "path": "C:\\Users\\romio\\.cursor\\projects\\e-tenvo-main\\agent-transcripts\\967e1c53-4b5d-490e-b744-b2e0363221c1\\subagents\\e3267eac-95f3-457d-935d-5fc7cf31cf9a.jsonl",
+    "mtimeMs": 1782043572238.7583
+  },
+  "967e1c53-4b5d-490e-b744-b2e0363221c1-sub-eb2d52e0-b94a-4c1d-a4db-04b53c93a581": {
+    "path": "C:\\Users\\romio\\.cursor\\projects\\e-tenvo-main\\agent-transcripts\\967e1c53-4b5d-490e-b744-b2e0363221c1\\subagents\\eb2d52e0-b94a-4c1d-a4db-04b53c93a581.jsonl",
+    "mtimeMs": 1781449786236.2324
+  },
+  "967e1c53-4b5d-490e-b744-b2e0363221c1-sub-f01ee0b1-1723-443d-ab4d-c365dcf04450": {
+    "path": "C:\\Users\\romio\\.cursor\\projects\\e-tenvo-main\\agent-transcripts\\967e1c53-4b5d-490e-b744-b2e0363221c1\\subagents\\f01ee0b1-1723-443d-ab4d-c365dcf04450.jsonl",
+    "mtimeMs": 1781948451157.3792
+  },
+  "967e1c53-4b5d-490e-b744-b2e0363221c1-sub-f63ad378-ce0a-4946-afe5-e6022e5faa47": {
+    "path": "C:\\Users\\romio\\.cursor\\projects\\e-tenvo-main\\agent-transcripts\\967e1c53-4b5d-490e-b744-b2e0363221c1\\subagents\\f63ad378-ce0a-4946-afe5-e6022e5faa47.jsonl",
+    "mtimeMs": 1781948474146.5864
+  },
+  "967e1c53-4b5d-490e-b744-b2e0363221c1-sub-f9f13cb2-1d38-4486-8597-eb1cc4d3978c": {
+    "path": "C:\\Users\\romio\\.cursor\\projects\\e-tenvo-main\\agent-transcripts\\967e1c53-4b5d-490e-b744-b2e0363221c1\\subagents\\f9f13cb2-1d38-4486-8597-eb1cc4d3978c.jsonl",
+    "mtimeMs": 1781952557394.874
+  },
   "a662063c-1a55-4d01-b5b2-3905b34553c4": {
     "path": "C:\\Users\\romio\\.cursor\\projects\\e-tenvo-main\\agent-transcripts\\a662063c-1a55-4d01-b5b2-3905b34553c4\\a662063c-1a55-4d01-b5b2-3905b34553c4.jsonl",
-    "mtimeMs": 1781303698490.7815
+    "mtimeMs": 1781396901367.0505
+  },
+  "a662063c-1a55-4d01-b5b2-3905b34553c4-sub-193790ba-1d53-4464-8ad9-0d6c36c1e387": {
+    "path": "C:\\Users\\romio\\.cursor\\projects\\e-tenvo-main\\agent-transcripts\\a662063c-1a55-4d01-b5b2-3905b34553c4\\subagents\\193790ba-1d53-4464-8ad9-0d6c36c1e387.jsonl",
+    "mtimeMs": 1781394328661.6187
+  },
+  "a662063c-1a55-4d01-b5b2-3905b34553c4-sub-2c87f2df-56b7-47b9-8257-3781a8a16040": {
+    "path": "C:\\Users\\romio\\.cursor\\projects\\e-tenvo-main\\agent-transcripts\\a662063c-1a55-4d01-b5b2-3905b34553c4\\subagents\\2c87f2df-56b7-47b9-8257-3781a8a16040.jsonl",
+    "mtimeMs": 1781393116009.8862
+  },
+  "a662063c-1a55-4d01-b5b2-3905b34553c4-sub-38d02d93-57a0-404b-b353-380a89afd0d7": {
+    "path": "C:\\Users\\romio\\.cursor\\projects\\e-tenvo-main\\agent-transcripts\\a662063c-1a55-4d01-b5b2-3905b34553c4\\subagents\\38d02d93-57a0-404b-b353-380a89afd0d7.jsonl",
+    "mtimeMs": 1781394329809.92
+  },
+  "a662063c-1a55-4d01-b5b2-3905b34553c4-sub-6cb170fa-b569-4450-bed2-12264c14d61e": {
+    "path": "C:\\Users\\romio\\.cursor\\projects\\e-tenvo-main\\agent-transcripts\\a662063c-1a55-4d01-b5b2-3905b34553c4\\subagents\\6cb170fa-b569-4450-bed2-12264c14d61e.jsonl",
+    "mtimeMs": 1781393080802.5557
+  },
+  "a662063c-1a55-4d01-b5b2-3905b34553c4-sub-e0480c5d-573c-4cbd-a1ee-bc1b4d1fb553": {
+    "path": "C:\\Users\\romio\\.cursor\\projects\\e-tenvo-main\\agent-transcripts\\a662063c-1a55-4d01-b5b2-3905b34553c4\\subagents\\e0480c5d-573c-4cbd-a1ee-bc1b4d1fb553.jsonl",
+    "mtimeMs": 1781392468597.1885
+  },
+  "a662063c-1a55-4d01-b5b2-3905b34553c4-sub-e0d8f5f2-5faf-4e24-b12b-8d106cbe6d23": {
+    "path": "C:\\Users\\romio\\.cursor\\projects\\e-tenvo-main\\agent-transcripts\\a662063c-1a55-4d01-b5b2-3905b34553c4\\subagents\\e0d8f5f2-5faf-4e24-b12b-8d106cbe6d23.jsonl",
+    "mtimeMs": 1781358213165.2534
+  },
+  "a662063c-1a55-4d01-b5b2-3905b34553c4-sub-f1d4e459-1231-481c-b460-3cfd06850234": {
+    "path": "C:\\Users\\romio\\.cursor\\projects\\e-tenvo-main\\agent-transcripts\\a662063c-1a55-4d01-b5b2-3905b34553c4\\subagents\\f1d4e459-1231-481c-b460-3cfd06850234.jsonl",
+    "mtimeMs": 1781393036462.5923
   },
   "a662063c-1a55-4d01-b5b2-3905b34553c4-sub-f5291316-df77-4eed-886f-945708136189": {
     "path": "C:\\Users\\romio\\.cursor\\projects\\e-tenvo-main\\agent-transcripts\\a662063c-1a55-4d01-b5b2-3905b34553c4\\subagents\\f5291316-df77-4eed-886f-945708136189.jsonl",
-    "mtimeMs": 1781303731840.3933
+    "mtimeMs": 1781303909880.7627
+  },
+  "a662063c-1a55-4d01-b5b2-3905b34553c4-sub-ff5d712e-0db1-44ff-a654-6f69b3297a1f": {
+    "path": "C:\\Users\\romio\\.cursor\\projects\\e-tenvo-main\\agent-transcripts\\a662063c-1a55-4d01-b5b2-3905b34553c4\\subagents\\ff5d712e-0db1-44ff-a654-6f69b3297a1f.jsonl",
+    "mtimeMs": 1781392560941.1826
   },
   "ab270be8-7675-442d-846d-f9c44c565554": {
     "path": "C:\\Users\\romio\\.cursor\\projects\\e-tenvo-main\\agent-transcripts\\ab270be8-7675-442d-846d-f9c44c565554\\ab270be8-7675-442d-846d-f9c44c565554.jsonl",
     "mtimeMs": 1780133085857.49
+  },
+  "b52d7855-edf4-421b-a485-bed58647c766": {
+    "path": "C:\\Users\\romio\\.cursor\\projects\\e-tenvo-main\\agent-transcripts\\b52d7855-edf4-421b-a485-bed58647c766\\b52d7855-edf4-421b-a485-bed58647c766.jsonl",
+    "mtimeMs": 1781469356681.9277
   },
   "c492320a-1fdc-404f-8996-d2e458b24939": {
     "path": "C:\\Users\\romio\\.cursor\\projects\\e-tenvo-main\\agent-transcripts\\c492320a-1fdc-404f-8996-d2e458b24939\\c492320a-1fdc-404f-8996-d2e458b24939.jsonl",
@@ -110,6 +246,10 @@
   "ca727d15-15e3-449e-932c-66d6ef103d02-sub-c492320a-1fdc-404f-8996-d2e458b24939": {
     "path": "C:\\Users\\romio\\.cursor\\projects\\e-tenvo-main\\agent-transcripts\\ca727d15-15e3-449e-932c-66d6ef103d02\\subagents\\c492320a-1fdc-404f-8996-d2e458b24939.jsonl",
     "mtimeMs": 1780249769268.07
+  },
+  "d27a7538-4e4b-40c7-8bf1-2a24c5d10c44": {
+    "path": "C:\\Users\\romio\\.cursor\\projects\\e-tenvo-main\\agent-transcripts\\d27a7538-4e4b-40c7-8bf1-2a24c5d10c44\\d27a7538-4e4b-40c7-8bf1-2a24c5d10c44.jsonl",
+    "mtimeMs": 1782032941817.5664
   },
   "d7c80605-7fda-4844-a991-5fd7ad3a9cdd": {
     "path": "C:\\Users\\romio\\.cursor\\projects\\e-tenvo-main\\agent-transcripts\\d7c80605-7fda-4844-a991-5fd7ad3a9cdd\\d7c80605-7fda-4844-a991-5fd7ad3a9cdd.jsonl",

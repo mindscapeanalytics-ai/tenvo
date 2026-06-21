@@ -48,87 +48,99 @@ export default function FeaturesPage() {
       <CommerceAndIntelligenceSection variant="compact" />
 
       {/* Advanced Features */}
-      <section className="py-24 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12">
-          <div className="text-center max-w-3xl mx-auto mb-16 space-y-4">
-            <h2 className="text-[11px] font-black text-brand-primary uppercase tracking-[0.3em]">Advanced Features</h2>
-            <h3 className="text-4xl md:text-5xl font-black text-gray-900 tracking-tighter">Built for Scale</h3>
-            <p className="text-lg text-gray-500 font-medium">
+      <section className="bg-white py-10 sm:py-16 lg:py-24">
+        <div className="mx-auto max-w-7xl px-4 min-[380px]:px-5 sm:px-6 lg:px-12">
+          <div className="mx-auto mb-8 max-w-3xl space-y-3 text-center sm:mb-12 sm:space-y-4">
+            <h2 className="text-[10px] font-black uppercase tracking-[0.22em] text-brand-primary sm:text-[11px] sm:tracking-[0.3em]">Advanced Features</h2>
+            <h3 className="text-2xl font-black tracking-tighter text-gray-900 sm:text-4xl md:text-5xl">Built for Scale</h3>
+            <p className="text-base font-medium text-gray-500 sm:text-lg">
               Enterprise-grade features that grow with your business
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-8">
+          <div className="grid gap-6 md:grid-cols-2 md:gap-8">
             <FeatureDetail
               id="inventory"
-              title="Multi-Warehouse Management"
-              description="Manage inventory across unlimited locations with real-time synchronization, inter-warehouse transfers, and location-specific pricing."
+              title="Inventory & warehouses"
+              description="Core stock control with adjustments, reservations on key flows, and multi-warehouse support on Professional+. Batch and serial tracking when your plan and domain enable them."
               features={[
-                'Unlimited warehouse locations',
-                'Real-time stock synchronization',
+                'Product catalog with images & Excel import',
+                'Multi-warehouse (plan limits apply)',
                 'Inter-warehouse transfers',
-                'Location-specific pricing',
-                'Warehouse performance analytics'
+                'Batch & serial tracking (Professional+)',
+                'Low-stock alerts & smart restock signals',
               ]}
             />
             <FeatureDetail
-              id="multi-location"
+              id="manufacturing"
               title="Manufacturing & BOM"
-              description="Complete manufacturing management with Bill of Materials, work orders, production planning, and shop floor control."
+              description="Bill of materials and production orders with material reservations through InventoryService. Advanced shop-floor MES features are on the roadmap."
               features={[
-                'Multi-level Bill of Materials',
-                'Work order management',
-                'Production planning & scheduling',
-                'Shop floor control',
-                'Manufacturing cost tracking'
+                'Multi-level BOM (Business+)',
+                'Production / work orders',
+                'Material reservation on start',
+                'Manufacturing cost tracking (basic)',
+                'Shop-floor scheduling (roadmap)',
               ]}
             />
             <FeatureDetail
               id="accounting"
-              title="Advanced Accounting"
-              description="Full double-entry accounting with chart of accounts, journal entries, financial statements, and multi-currency support."
+              title="Finance & general ledger"
+              description="Journal entries, chart of accounts, and finance hub with posting hooks from invoices and POS. Fiscal periods unlock on Professional+."
               features={[
-                'Double-entry bookkeeping',
-                'Customizable chart of accounts',
-                'Multi-currency support',
-                'Financial statements (P&L, Balance Sheet, Cash Flow)',
-                'Bank reconciliation'
+                'Double-entry journal entries',
+                'Chart of accounts & GL hub',
+                'Fiscal periods (Professional+)',
+                'Multi-currency manual rates (Business+)',
+                'Bank reconciliation UI (manual)',
               ]}
             />
             <FeatureDetail
               id="compliance"
-              title="Tax Compliance"
-              description="Automated tax calculations and reporting for FBR, SRB, and PRA with built-in compliance rules for Pakistan."
+              title="Pakistan tax & compliance"
+              description="Configure GST/sales tax, use Pakistani tax tools, and export audit-friendly summaries. Live FBR IRIS transmission is not yet wired — we prepare accurate records for your filing workflow."
               features={[
-                'FBR Tier-1 compliant',
-                'Automated GST/Sales Tax',
-                'Withholding tax calculations',
-                'Tax return generation',
-                'Audit trail for tax authorities'
+                'GST / sales tax configuration',
+                'Provincial rate support in config',
+                'Tax summaries & export-oriented reports',
+                'Audit trail on financial documents',
+                'FBR IRIS live sync (roadmap)',
               ]}
             />
             <FeatureDetail
               id="storefront"
               title="Branded storefront & checkout"
-              description="Launch a customer-facing shop that reflects your brand, with catalog, cart, checkout, and post-purchase pages aligned to your live stock and fulfilment rules."
+              description="Launch a customer-facing shop under your business domain with catalog, cart, checkout, and an order hub in the same workspace as inventory and POS."
               features={[
-                'Domain-ready brand presence',
-                'Same stock as POS and wholesale',
-                'Order flow into one operations hub',
-                'Customer-friendly policies & FAQs',
-                'Designed for Pakistan-first journeys'
+                'Public catalog & product pages',
+                'Cart & checkout (COD + Stripe when configured)',
+                'Storefront order queue in the hub',
+                'Shared product catalog with POS',
+                'Policies, FAQs, and contact pages',
               ]}
             />
             <FeatureDetail
               id="pos-hospitality"
               title="POS, tables & kitchen coordination"
-              description="Serve walk-in retail alongside cafés and dining - roles, permissions, and selling surfaces tuned for how mixed-format businesses actually operate."
+              description="Retail POS with sessions, terminals, product images, and receipt printing. Restaurant flows and kitchen display on supported plans and domains."
               features={[
-                'Fast in-store checkout',
-                'Table-service and hospitality roles',
-                'Kitchen and service handoffs',
-                'Returns and voids with audit context',
-                'Offline-friendly retail patterns'
+                'Retail POS checkout (Starter+)',
+                'Barcode / SKU lookup at counter',
+                'Restaurant table-service POS',
+                'Kitchen display (Business+, KDS flag)',
+                'Browser thermal receipts (not ESC/POS hardware)',
+              ]}
+            />
+            <FeatureDetail
+              id="analytics"
+              title="Analytics & AI"
+              description="Operational dashboards, custom report layouts, demand forecasting signals, and AI Business Analyst when your plan and AI keys are enabled."
+              features={[
+                'Domain dashboards & KPI portlets',
+                'Report builder & standard reports',
+                'Demand forecast & smart restock (Business+)',
+                'AI Business Analyst chat (env + plan)',
+                'Guided automation with human approval (expanding)',
               ]}
             />
           </div>

@@ -10,6 +10,8 @@ import { cn } from '@/lib/utils';
 import { useBusiness } from '@/lib/context/BusinessContext';
 import { getLoyaltyProgramsAction, createLoyaltyProgramAction } from '@/lib/actions/standard/loyalty';
 import toast from 'react-hot-toast';
+import { MobileTabHeader, MobileStatStrip } from '@/components/mobile/MobileTabHeader';
+import { useStorefrontEmbedded } from '@/lib/context/StorefrontMobileContext';
 
 // LOYALTY KPI CARDS
 
@@ -244,10 +246,52 @@ export function LoyaltyManager({ businessId }) {
     const totalMembers = programs.reduce((sum, p) => sum + (p.member_count || 0), 0);
     const activePrograms = programs.filter(p => p.is_active).length;
 
+    const embeddedInStorefront = useStorefrontEmbedded();
+
     return (
-        <div className="space-y-4">
-            {/* Header */}
-            <div className="flex items-center justify-between">
+        <div className="space-y-2 lg:space-y-4">
+            {!embeddedInStorefront && (
+                <MobileTabHeader
+                    icon={Crown}
+                    iconClassName="bg-amber-100 text-amber-600"
+                    title="Loyalty & Rewards"
+                    subtitle={`${programs.length} programs · ${totalMembers} members`}
+                    primaryAction={
+                        !showCreate
+                            ? {
+                                label: 'New',
+                                icon: Plus,
+                                className: 'bg-amber-500 hover:bg-amber-600 text-white',
+                                onClick: () => setShowCreate(true),
+                            }
+                            : undefined
+                    }
+                />
+            )}
+
+            <div className="lg:hidden">
+                <MobileStatStrip
+                    items={[
+                        { label: 'Active', value: activePrograms, valueTone: 'text-emerald-600' },
+                        { label: 'Members', value: totalMembers },
+                        { label: 'Programs', value: programs.length },
+                    ]}
+                />
+                {embeddedInStorefront && !showCreate && (
+                    <div className="mt-1.5 flex justify-end">
+                        <button
+                            type="button"
+                            onClick={() => setShowCreate(true)}
+                            className="inline-flex items-center gap-1 rounded-lg bg-amber-500 px-2.5 py-1 text-[10px] font-bold text-white"
+                        >
+                            <Plus className="h-3 w-3" /> New program
+                        </button>
+                    </div>
+                )}
+            </div>
+
+            {/* Desktop header */}
+            <div className="hidden items-center justify-between lg:flex">
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
                         <Crown className="w-5 h-5 text-white" />
@@ -268,8 +312,8 @@ export function LoyaltyManager({ businessId }) {
                 )}
             </div>
 
-            {/* KPIs */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {/* Desktop KPIs */}
+            <div className="hidden grid-cols-2 gap-3 md:grid-cols-4 lg:grid">
                 <LoyaltyKPI label="Active Programs" value={activePrograms} icon={Star} color="gold" />
                 <LoyaltyKPI label="Total Members" value={totalMembers} icon={Users} color="purple" />
                 <LoyaltyKPI label="Programs" value={programs.length} icon={Gift} color="emerald" />

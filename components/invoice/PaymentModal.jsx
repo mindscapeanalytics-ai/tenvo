@@ -19,7 +19,9 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { formatCurrency } from '@/lib/currency';
-import toast from 'react-hot-toast';
+import { cn } from '@/lib/utils';
+import { MOBILE_DIALOG_SHELL, MOBILE_INPUT_CLASS, MOBILE_LABEL_CLASS } from '@/lib/utils/formMobileStyles';
+import { MobileFormFooter } from '@/components/mobile/MobileFormShell';
 
 const PAYMENT_METHODS = [
     { id: 'cash', label: 'Cash', icon: Banknote },
@@ -146,15 +148,16 @@ export function PaymentModal({
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="sm:max-w-md">
-                <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2">
-                        <CreditCard className="w-5 h-5" />
+            <DialogContent className={cn(MOBILE_DIALOG_SHELL, 'sm:max-w-md')}>
+                <DialogHeader className="shrink-0 px-3 pt-3 sm:px-5 sm:pt-4">
+                    <DialogTitle className="flex items-center gap-2 text-base">
+                        <CreditCard className="h-4 w-4" />
                         Record Payment
                     </DialogTitle>
                 </DialogHeader>
 
-                <div className="space-y-4">
+                <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 sm:px-5">
+                    <form id="payment-form" onSubmit={handleSubmit} className="space-y-3 pb-2">
                     {/* Invoice Summary */}
                     <div className="bg-gray-50 rounded-lg p-4 space-y-2">
                         <div className="flex justify-between text-sm">
@@ -194,10 +197,8 @@ export function PaymentModal({
                         </div>
                     </div>
 
-                    <form onSubmit={handleSubmit} className="space-y-4">
-                        {/* Amount Input */}
-                        <div className="space-y-2">
-                            <Label htmlFor="amount">Payment Amount *</Label>
+                        <div className="space-y-1.5">
+                            <Label htmlFor="amount" className={MOBILE_LABEL_CLASS}>Payment Amount *</Label>
                             <div className="relative">
                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium">
                                     {currency === 'PKR' ? '₨' : '$'}
@@ -210,7 +211,7 @@ export function PaymentModal({
                                     max={balance}
                                     value={amount}
                                     onChange={(e) => handleAmountChange(e.target.value)}
-                                    className="pl-10"
+                                    className={cn(MOBILE_INPUT_CLASS, 'pl-10')}
                                     placeholder="Enter amount"
                                     disabled={isLoading}
                                 />
@@ -251,15 +252,14 @@ export function PaymentModal({
                             </div>
                         </div>
 
-                        {/* Payment Method */}
-                        <div className="space-y-2">
-                            <Label htmlFor="paymentMethod">Payment Method *</Label>
+                        <div className="space-y-1.5">
+                            <Label htmlFor="paymentMethod" className={MOBILE_LABEL_CLASS}>Payment Method *</Label>
                             <Select
                                 value={paymentMethod}
                                 onValueChange={setPaymentMethod}
                                 disabled={isLoading}
                             >
-                                <SelectTrigger id="paymentMethod">
+                                <SelectTrigger id="paymentMethod" className={MOBILE_INPUT_CLASS}>
                                     <SelectValue placeholder="Select payment method" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -275,14 +275,14 @@ export function PaymentModal({
                             </Select>
                         </div>
 
-                        {/* Reference Number */}
-                        <div className="space-y-2">
-                            <Label htmlFor="referenceNumber">
-                                Reference / Check / Transaction #
-                                <span className="text-gray-400 font-normal"> (Optional)</span>
+                        <div className="space-y-1.5">
+                            <Label htmlFor="referenceNumber" className={MOBILE_LABEL_CLASS}>
+                                Reference #
+                                <span className="font-normal text-gray-400"> (Optional)</span>
                             </Label>
                             <Input
                                 id="referenceNumber"
+                                className={MOBILE_INPUT_CLASS}
                                 value={referenceNumber}
                                 onChange={(e) => setReferenceNumber(e.target.value)}
                                 placeholder="e.g., CHK-001234, TXN-56789"
@@ -290,52 +290,48 @@ export function PaymentModal({
                             />
                         </div>
 
-                        {/* Notes */}
-                        <div className="space-y-2">
-                            <Label htmlFor="notes">
+                        <div className="space-y-1.5">
+                            <Label htmlFor="notes" className={MOBILE_LABEL_CLASS}>
                                 Notes
-                                <span className="text-gray-400 font-normal"> (Optional)</span>
+                                <span className="font-normal text-gray-400"> (Optional)</span>
                             </Label>
                             <Input
                                 id="notes"
+                                className={MOBILE_INPUT_CLASS}
                                 value={notes}
                                 onChange={(e) => setNotes(e.target.value)}
                                 placeholder="Any additional notes..."
                                 disabled={isLoading}
                             />
                         </div>
-
-                        {/* Action Buttons */}
-                        <div className="flex gap-3 pt-4">
-                            <Button
-                                type="button"
-                                variant="outline"
-                                onClick={onClose}
-                                className="flex-1"
-                                disabled={isLoading}
-                            >
-                                Cancel
-                            </Button>
-                            <Button
-                                type="submit"
-                                className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
-                                disabled={isLoading || !amount || !paymentMethod}
-                            >
-                                {isLoading ? (
-                                    <>
-                                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                        Recording...
-                                    </>
-                                ) : (
-                                    <>
-                                        <CheckCircle2 className="w-4 h-4 mr-2" />
-                                        Record Payment
-                                    </>
-                                )}
-                            </Button>
-                        </div>
                     </form>
                 </div>
+
+                <MobileFormFooter>
+                    <div className="flex gap-2">
+                        <Button type="button" variant="outline" onClick={onClose} className="h-9 flex-1 rounded-xl text-xs" disabled={isLoading}>
+                            Cancel
+                        </Button>
+                        <Button
+                            type="submit"
+                            form="payment-form"
+                            className="h-9 flex-1 rounded-xl bg-emerald-600 text-xs font-bold text-white hover:bg-emerald-700"
+                            disabled={isLoading || !amount || !paymentMethod}
+                        >
+                            {isLoading ? (
+                                <>
+                                    <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                                    Recording…
+                                </>
+                            ) : (
+                                <>
+                                    <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" />
+                                    Record
+                                </>
+                            )}
+                        </Button>
+                    </div>
+                </MobileFormFooter>
             </DialogContent>
         </Dialog>
     );

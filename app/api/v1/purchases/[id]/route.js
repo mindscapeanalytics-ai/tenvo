@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+import { PURCHASE_STATUS_VALUES } from '@/lib/constants/purchaseStatus';
 import pool from '@/lib/db';
 import { withApiAuth } from '@/lib/api/_shared/middleware';
 import { apiSuccess, apiError } from '@/lib/api/_shared/response';
@@ -113,8 +114,8 @@ export const GET = withApiAuth(async (request, { businessId, routeParams }) => {
 // Zod schema for purchase status update
 const updatePurchaseStatusSchema = z.object({
     business_id: z.string().uuid('Business ID is required'),
-    status: z.enum(['draft', 'received', 'cancelled'], {
-        errorMap: () => ({ message: 'Status must be one of: draft, received, cancelled' })
+    status: z.enum(PURCHASE_STATUS_VALUES, {
+        errorMap: () => ({ message: `Status must be one of: ${PURCHASE_STATUS_VALUES.join(', ')}` })
     })
 });
 

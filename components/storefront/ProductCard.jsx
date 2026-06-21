@@ -21,7 +21,7 @@ export function ProductCard({ product, businessDomain, variant = 'default' }) {
 
   const { addItem } = useCart();
   const { isInWishlist, toggleWishlist } = useWishlist();
-  const { currency, settings, business } = useStorefront();
+  const { currency, settings, business, businessId } = useStorefront();
 
   const accent = getStoreAccentColor(settings, business?.category);
   const displayImage = getEffectiveProductImageUrl(product, business?.category);
@@ -47,6 +47,7 @@ export function ProductCard({ product, businessDomain, variant = 'default' }) {
         productId: product.id,
         quantity: 1,
         variantId: product.default_variant_id || null,
+        businessId,
       });
       toast.success(`Added to cart`, { icon: '🛒' });
       // Open cart drawer
@@ -73,9 +74,9 @@ export function ProductCard({ product, businessDomain, variant = 'default' }) {
       whileHover={{ y: -3 }}
       transition={{ duration: 0.2 }}
       className={cn(
-        'group relative bg-white rounded-2xl overflow-hidden border border-gray-100',
+        'group relative bg-white rounded-xl sm:rounded-2xl overflow-hidden border border-gray-100',
         'transition-shadow duration-300 hover:shadow-xl',
-        variant === 'compact' ? 'p-3' : 'p-0'
+        variant === 'compact' ? 'p-2 sm:p-3' : 'p-0'
       )}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
@@ -84,7 +85,7 @@ export function ProductCard({ product, businessDomain, variant = 'default' }) {
       <div
         className={cn(
           'relative overflow-hidden bg-gray-50',
-          variant === 'compact' ? 'aspect-square rounded-xl' : 'aspect-[4/5]'
+          variant === 'compact' ? 'aspect-square rounded-lg sm:rounded-xl' : 'aspect-square sm:aspect-[4/5]'
         )}
       >
         {/* Clickable image */}
@@ -130,8 +131,9 @@ export function ProductCard({ product, businessDomain, variant = 'default' }) {
         {/* Quick action buttons — wishlist + quick-view */}
         <div
           className={cn(
-            'absolute top-2.5 right-2.5 flex flex-col gap-1.5 z-10 transition-all duration-200',
-            isHovered ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-3'
+            'absolute top-2 right-2 flex flex-col gap-1.5 z-10 transition-all duration-200',
+            'max-sm:opacity-100 max-sm:translate-x-0',
+            isHovered ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-3 max-sm:opacity-100 max-sm:translate-x-0'
           )}
         >
           <button
@@ -167,17 +169,18 @@ export function ProductCard({ product, businessDomain, variant = 'default' }) {
         {!isOutOfStock && variant !== 'compact' && (
           <div
             className={cn(
-              'absolute bottom-0 left-0 right-0 p-3 transition-all duration-300 z-10',
-              isHovered ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0'
+              'absolute bottom-0 left-0 right-0 p-2 sm:p-3 z-10 transition-all duration-300',
+              'translate-y-0 opacity-100',
+              'sm:translate-y-full sm:opacity-0 sm:group-hover:translate-y-0 sm:group-hover:opacity-100'
             )}
           >
             <button
               onClick={handleAddToCart}
               disabled={isAdding}
-              className="w-full py-2.5 rounded-xl text-sm font-bold text-white shadow-lg transition-all active:scale-95 disabled:opacity-70 flex items-center justify-center gap-2"
+              className="w-full py-2 sm:py-2.5 rounded-lg sm:rounded-xl text-xs sm:text-sm font-bold text-white shadow-lg transition-all active:scale-95 disabled:opacity-70 flex items-center justify-center gap-2"
               style={{ backgroundColor: accent }}
             >
-              <ShoppingBag className="w-4 h-4" />
+              <ShoppingBag className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               {isAdding ? 'Adding…' : 'Add to Cart'}
             </button>
           </div>
@@ -185,7 +188,7 @@ export function ProductCard({ product, businessDomain, variant = 'default' }) {
       </div>
 
       {/* ── Info ───────────────────────────────────────────────────────── */}
-      <div className={cn('space-y-1.5', variant === 'compact' ? 'mt-2.5' : 'p-3.5')}>
+      <div className={cn('space-y-1', variant === 'compact' ? 'mt-2' : 'p-2.5 sm:p-3.5')}>
         {/* Category */}
         {product.category_name && (
           <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider truncate">
@@ -196,7 +199,7 @@ export function ProductCard({ product, businessDomain, variant = 'default' }) {
         {/* Name */}
         <Link href={productHref}>
           <h3
-            className="text-sm font-semibold text-gray-900 line-clamp-2 leading-snug transition-colors"
+            className="text-xs sm:text-sm font-semibold text-gray-900 line-clamp-2 leading-snug transition-colors"
             style={{ '--hover-color': accent }}
           >
             {product.name}
@@ -218,7 +221,7 @@ export function ProductCard({ product, businessDomain, variant = 'default' }) {
 
         {/* Price row */}
         <div className="flex items-center gap-2 pt-0.5">
-          <span className="text-base font-black text-gray-900">
+          <span className="text-sm sm:text-base font-black text-gray-900">
             {formatCurrency(product.price, currency)}
           </span>
           {discount > 0 && (

@@ -6,7 +6,7 @@ import {
     CreditCard, Clock,
     Zap, ArrowUpRight, ArrowDownRight,
     Boxes, Warehouse, RotateCcw, BadgeDollarSign,
-    Package, FileText, BarChart3, Plus, CheckCircle2
+    Package, FileText, BarChart3, Plus, CheckCircle2, AlertTriangle
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,7 @@ import { useBusiness } from '@/lib/context/BusinessContext';
 import { useAppMode } from '@/lib/context/BusyModeContext';
 import { getDomainColors } from '@/lib/domainColors';
 import { isCampaignRelevant } from '@/lib/config/domains';
+import { getDomainKnowledge } from '@/lib/domainKnowledge';
 import { KPIMeter } from '../islands/portlets/KPIMeter.client';
 import { QuickActionTiles } from '../islands/portlets/QuickActionTiles.client';
 import { RemindersPortlet } from '../islands/portlets/RemindersPortlet.client';
@@ -23,6 +24,7 @@ import { AnalyticsDashboard } from '../islands/AnalyticsDashboard.client';
 import { PredictivePlanningPortlet } from '../islands/portlets/PredictivePlanningPortlet.client';
 import { AgenticAuditPortlet } from '../islands/portlets/AgenticAuditPortlet.client';
 import NetsuiteDashboard from '../islands/NetsuiteDashboard.client';
+import { DashboardMobileHub } from '@/components/dashboard/mobile/DashboardMobileHub';
 
 // ===============================================================
 // TYPES & INTERFACES
@@ -39,6 +41,7 @@ interface DomainDashboardProps {
     onQuickAction?: (actionId: string) => void;
     onDateRangePresetChange?: (preset: 'today' | '7d' | '30d' | '90d' | 'mtd' | 'last_month' | 'ytd') => void;
     dashboardMetrics?: DashboardMetrics | null;
+    chartData?: Array<Record<string, unknown>>;
     accountingSummary?: AccountingSummaryLike | null;
     expenseBreakdown?: ExpenseBreakdownItem[];
     expenses?: ExpenseLike[];
@@ -178,6 +181,7 @@ export function DomainDashboard({
     onQuickAction,
     onDateRangePresetChange,
     dashboardMetrics,
+    chartData = [],
     accountingSummary,
     expenseBreakdown = [],
     expenses = [],
@@ -185,7 +189,9 @@ export function DomainDashboard({
     isLoading = false,
     user
 }: DomainDashboardProps) {
-    const { business } = useBusiness() as { business?: { id?: string } | null };
+    const { business } = useBusiness() as {
+        business?: { id?: string; name?: string; country?: string; city?: string } | null;
+    };
     const { isEasyMode } = useAppMode();
     const activeBusinessId = businessId || business?.id;
     const colors = getDomainColors(category) as Record<string, unknown>;
@@ -400,15 +406,16 @@ export function DomainDashboard({
 
     const inventoryValue = useMemo(() => {
         const summaryInventory = Number(accountingSummary?.inventoryValue);
-        if (Number.isFinite(summaryInventory) && summaryInventory !== 0) {
-            return summaryInventory;
-        }
-
-        return products.reduce((sum: number, product: ProductLike) => {
+        const catalogValue = products.reduce((sum: number, product: ProductLike) => {
             const stock = Number(product?.stock) || 0;
             const unitCost = Number(product?.cost_price) || Number(product?.purchase_price) || Number(product?.price) || 0;
-            return sum + (Math.max(stock, 0) * unitCost);
+            return sum + Math.max(0, stock) * Math.max(0, unitCost);
         }, 0);
+        // Prefer positive GL/summary figures only; negative or zero summary falls back to catalog at cost (never show negative asset for this tile).
+        if (Number.isFinite(summaryInventory) && summaryInventory > 0) {
+            return summaryInventory;
+        }
+        return Math.max(0, catalogValue);
     }, [products, accountingSummary?.inventoryValue]);
 
     const inStockUnits = useMemo(() => {
@@ -778,9 +785,9 @@ export function DomainDashboard({
                 trend: Number(ordersTrend.toFixed(1)),
             },
             {
-                label: 'Inventory Value',
+                label: 'Inventory value',
                 value: formatCurrencyCompact(inventoryValue),
-                subValue: `${inStockUnits.toLocaleString()} units on hand`,
+                subValue: `${inStockUnits.toLocaleString()} units on hand · valued at cost`,
                 icon: Boxes,
                 color: 'bg-brand-primary-dark',
                 trend: undefined,
@@ -901,24 +908,85 @@ export function DomainDashboard({
         const custDelta = deltaVisual(Number(customerTrend), 'growth');
         const expDelta = deltaVisual(Number(expenseTrend), 'expense');
 
+        const domainVerticalLabel = getDomainKnowledge(category).name;
+
         return (
-            <div className="space-y-4 w-full text-slate-700 bg-[#f4f7f9] p-1">
-                <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 xl:items-stretch">
+            <div className="space-y-3 lg:space-y-4 w-full text-slate-700 bg-[#f4f7f9] p-0 lg:p-1">
+                <DashboardMobileHub
+                    mode="easy"
+                    greeting={greeting}
+                    userName={userName}
+                    businessName={business?.name}
+                    periodLabel={periodLabel}
+                    presetOptions={easyPresetOptions}
+                    activePreset={activePreset === 'custom' || activePreset === '90d' || activePreset === 'last_month' || activePreset === 'ytd' ? '30d' : activePreset}
+                    onDateRangePresetChange={(preset) =>
+                        onDateRangePresetChange?.(preset as 'today' | '7d' | '30d' | '90d' | 'mtd' | 'last_month' | 'ytd')
+                    }
+                    kpiStrip={easyCommandStrip.map((item) => ({
+                        label: item.label.replace(' invoices', '').replace('Invoices', 'Invoices'),
+                        value: item.value,
+                        alert: item.tone.includes('rose') || item.tone.includes('amber'),
+                        tone: item.tone,
+                    }))}
+                    quickActions={easyActions.map((action) => ({
+                        id: action.id,
+                        label: action.label,
+                        sublabel: action.desc,
+                        icon: action.icon,
+                    }))}
+                    onQuickAction={onQuickAction}
+                    healthPanels={easyHealthPanels}
+                    reminders={remindersData}
+                    hasCoreData={hasCoreData}
+                    quickSetupSteps={quickSetupSteps}
+                />
+
+                <div className="hidden lg:grid grid-cols-1 xl:grid-cols-12 gap-4 xl:items-stretch">
                     <Card className="xl:col-span-8 border border-slate-200 bg-white shadow-sm rounded-lg overflow-hidden h-full flex flex-col">
                         <CardContent className="p-4 sm:p-5 flex flex-col flex-1">
-                            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-4">
+                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 pb-3 border-b border-slate-100">
+                                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 shrink-0">Registered business</span>
+                                <span className="text-sm font-extrabold text-slate-900 truncate max-w-[min(100%,16rem)] sm:max-w-[20rem]" title={business?.name || undefined}>
+                                    {business?.name?.trim() || 'Your workspace'}
+                                </span>
+                                <span className="hidden sm:inline text-slate-300 select-none" aria-hidden>
+                                    |
+                                </span>
+                                <span className="text-xs font-semibold text-slate-600">{domainVerticalLabel}</span>
+                                <span className="hidden sm:inline text-slate-300 select-none" aria-hidden>
+                                    |
+                                </span>
+                                <span className="text-xs font-semibold text-slate-500 tabular-nums">Reporting · {currency}</span>
+                                {business?.country ? (
+                                    <>
+                                        <span className="hidden md:inline text-slate-300 select-none" aria-hidden>
+                                            |
+                                        </span>
+                                        <span className="text-[11px] font-medium text-slate-500">{business.country}</span>
+                                    </>
+                                ) : null}
+                            </div>
+
+                            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mt-4 pb-4 border-b border-slate-100">
                                 <div>
                                     <div className="flex items-center gap-1.5">
-                                        <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Easy Mode Command Board</p>
+                                        <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Easy mode command board</p>
                                     </div>
-                                    <h1 className="mt-1 text-xl font-bold tracking-tight text-slate-900">{greeting}, {userName}.</h1>
-                                    <p className="text-xs text-slate-500">Revenue, orders, stock, and cash in one view — aligned to <span className="font-semibold text-slate-600">{periodLabel}</span>.</p>
+                                    <h1 className="mt-1 text-xl font-bold tracking-tight text-slate-900">
+                                        {greeting}, {userName}.
+                                    </h1>
+                                    <p className="text-xs text-slate-500">
+                                        Revenue, orders, stock, and receivables in one view — period:{' '}
+                                        <span className="font-semibold text-slate-600">{periodLabel}</span>.
+                                    </p>
                                 </div>
-                                <div className="flex flex-wrap gap-1.5 bg-slate-100 p-1 rounded border border-slate-200">
+                                <div className="flex flex-wrap gap-1.5 bg-slate-100 p-1 rounded border border-slate-200 shrink-0">
                                     {easyPresetOptions.map((preset) => (
                                         <button
                                             key={preset.id}
+                                            type="button"
                                             onClick={() => onDateRangePresetChange?.(preset.id)}
                                             className={cn(
                                                 'rounded px-3 py-1 text-[11px] font-bold uppercase tracking-wider transition-all',
@@ -933,7 +1001,42 @@ export function DomainDashboard({
                                 </div>
                             </div>
 
-                            <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-2.5">
+                            <div className="mt-4">
+                                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">Quick actions</p>
+                                <div
+                                    role="toolbar"
+                                    aria-label="Common business tasks"
+                                    className="flex gap-2 overflow-x-auto pb-1 pt-0.5 scroll-smooth [scrollbar-width:thin]"
+                                >
+                                    {easyActions.map((action) => {
+                                        const ActionIcon = action.icon;
+                                        return (
+                                            <button
+                                                key={action.id}
+                                                type="button"
+                                                onClick={() => onQuickAction?.(action.id)}
+                                                className={cn(
+                                                    'shrink-0 flex items-center gap-2.5 rounded-xl border border-slate-200/80 px-3 py-2.5 min-w-[10.25rem] sm:min-w-[11rem] text-left shadow-sm transition-all hover:shadow-md active:scale-[0.99]',
+                                                    action.color
+                                                )}
+                                            >
+                                                <span className="rounded-lg bg-white/70 p-1.5 border border-slate-200/60 text-slate-700">
+                                                    <ActionIcon className="w-4 h-4 shrink-0" aria-hidden />
+                                                </span>
+                                                <span className="min-w-0 flex-1">
+                                                    <span className="block text-xs font-extrabold leading-tight">{action.label}</span>
+                                                    <span className="block text-[10px] opacity-80 font-semibold leading-snug mt-0.5 line-clamp-2">
+                                                        {action.desc}
+                                                    </span>
+                                                </span>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            <p className="mt-5 text-[10px] font-bold uppercase tracking-wider text-slate-500">Today at a glance</p>
+                            <div className="mt-2 grid grid-cols-2 md:grid-cols-4 gap-2.5">
                                 {easyCommandStrip.map((item) => {
                                     const Hi = item.icon;
                                     return (
@@ -984,7 +1087,7 @@ export function DomainDashboard({
                 </div>
 
                 {!hasCoreData && (
-                    <Card className="border border-cyan-100 bg-cyan-50/40 shadow-sm rounded-lg">
+                    <Card className="hidden lg:block border border-cyan-100 bg-cyan-50/40 shadow-sm rounded-lg">
                         <CardContent className="p-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                             <div>
                                 <p className="text-[10px] font-bold uppercase tracking-widest text-cyan-700">Quick Setup</p>
@@ -1002,7 +1105,7 @@ export function DomainDashboard({
                 )}
 
                 {/* 6 Key KPIs - Left Accent Border Style */}
-                <div className="grid grid-cols-2 xl:grid-cols-6 gap-3">
+                <div className="hidden lg:grid grid-cols-2 xl:grid-cols-6 gap-3">
                     {easyKpis.map(kpi => {
                         const borderColors: Record<string, string> = {
                             'bg-emerald-500': 'border-l-4 border-l-emerald-500',
@@ -1061,7 +1164,7 @@ export function DomainDashboard({
                     role="region"
                     aria-label={`Change versus prior period ${priorWindowLabel}`}
                     title={`Compared to the previous window of equal length ending just before your range: ${priorWindowLabel}`}
-                    className="rounded-lg border border-slate-200 bg-white shadow-sm px-3 py-2.5 sm:px-4"
+                    className="hidden lg:block rounded-lg border border-slate-200 bg-white shadow-sm px-3 py-2.5 sm:px-4"
                 >
                     <div className="flex flex-col gap-2.5">
                         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
@@ -1104,47 +1207,45 @@ export function DomainDashboard({
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 xl:items-stretch">
-                    {/* Quick Actions — balanced height with insights column */}
-                    <Card className="xl:col-span-7 border border-slate-200 shadow-sm bg-white rounded-lg h-full min-h-[280px] flex flex-col">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <Card className="border border-slate-200 shadow-sm bg-white rounded-lg flex flex-col min-h-0">
                         <CardContent className="p-4 flex flex-col flex-1">
-                            <div className="flex items-center justify-between border-b border-slate-100 pb-2.5 mb-3 shrink-0">
+                            <div className="flex items-center gap-2 border-b border-slate-100 pb-2.5 mb-3 shrink-0">
+                                <BarChart3 className="w-4 h-4 text-brand-primary shrink-0" />
                                 <div>
-                                    <h2 className="text-[10px] font-bold text-slate-700 uppercase tracking-wider">Quick actions</h2>
-                                    <p className="text-[10px] text-slate-400 mt-0.5">Most-used tasks — same paths as advanced mode.</p>
+                                    <h2 className="text-[10px] font-bold text-slate-700 uppercase tracking-wider">Smart insights</h2>
+                                    <p className="text-[10px] text-slate-400 mt-0.5">Guided next steps from your live data for this period.</p>
                                 </div>
                             </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2.5 flex-1 content-start">
-                                {easyActions.map(action => {
-                                    const actionColors: Record<string, { border: string, bg: string, text: string, hoverBg: string }> = {
-                                        'new-invoice': { border: 'border-l-emerald-500', bg: 'bg-emerald-500/5', text: 'text-emerald-600', hoverBg: 'hover:bg-emerald-50' },
-                                        'add-product': { border: 'border-l-indigo-500', bg: 'bg-indigo-500/5', text: 'text-indigo-600', hoverBg: 'hover:bg-indigo-50' },
-                                        'add-customer': { border: 'border-l-blue-500', bg: 'bg-blue-50/5', text: 'text-blue-600', hoverBg: 'hover:bg-blue-50' },
-                                        'inventory': { border: 'border-l-amber-500', bg: 'bg-amber-500/5', text: 'text-amber-600', hoverBg: 'hover:bg-amber-50' },
-                                        'reports': { border: 'border-l-orange-500', bg: 'bg-orange-500/5', text: 'text-orange-600', hoverBg: 'hover:bg-orange-50' },
+                            <div className="space-y-2 flex-1 min-h-0">
+                                {easyInsightsToRender.map((insight, idx) => {
+                                    const defaultStyle = { border: 'border-l-slate-400', bg: 'bg-slate-50/40', text: 'text-slate-700' };
+                                    const toneColors: Record<string, { border: string; bg: string; text: string }> = {
+                                        indigo: { border: 'border-l-indigo-500', bg: 'bg-indigo-50/40', text: 'text-indigo-700' },
+                                        emerald: { border: 'border-l-emerald-500', bg: 'bg-emerald-50/40', text: 'text-emerald-700' },
+                                        amber: { border: 'border-l-amber-500', bg: 'bg-amber-50/40', text: 'text-amber-700' },
+                                        rose: { border: 'border-l-rose-500', bg: 'bg-rose-50/40', text: 'text-rose-700' },
+                                        slate: defaultStyle,
                                     };
-
-                                    const style = actionColors[action.id] || { border: 'border-l-slate-400', bg: 'bg-slate-50', text: 'text-slate-700', hoverBg: 'hover:bg-slate-100' };
+                                    const style = toneColors[insight.tone] || defaultStyle;
 
                                     return (
                                         <button
-                                            key={action.id}
-                                            onClick={() => onQuickAction?.(action.id)}
+                                            key={`${insight.title}-${idx}`}
+                                            type="button"
+                                            onClick={() => onQuickAction?.(insight.actionTab)}
                                             className={cn(
-                                                'rounded-lg p-3 text-left transition-all active:scale-[0.99] border border-slate-200 border-l-4 bg-white hover:shadow-sm min-h-[4.5rem]',
+                                                'w-full rounded-lg border border-slate-200 border-l-4 p-2.5 text-left transition-all hover:shadow-sm bg-slate-50/50',
                                                 style.border,
-                                                style.hoverBg
+                                                insight.tone === 'indigo' && 'hover:bg-indigo-50',
+                                                insight.tone === 'emerald' && 'hover:bg-emerald-50',
+                                                insight.tone === 'amber' && 'hover:bg-amber-50',
+                                                insight.tone === 'rose' && 'hover:bg-rose-50',
+                                                insight.tone === 'slate' && 'hover:bg-slate-100/50'
                                             )}
                                         >
-                                            <div className="flex items-start justify-between gap-3">
-                                                <div>
-                                                    <p className="text-xs font-bold text-slate-800">{action.label}</p>
-                                                    <p className="mt-0.5 text-[10px] text-slate-400 font-semibold">{action.desc}</p>
-                                                </div>
-                                                <div className={cn("p-1.5 rounded bg-slate-50 border border-slate-100", style.text)}>
-                                                    <action.icon className="w-3.5 h-3.5 shrink-0" />
-                                                </div>
-                                            </div>
+                                            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{insight.title}</p>
+                                            <p className="mt-1 text-xs font-semibold text-slate-700 leading-snug">{insight.text}</p>
                                         </button>
                                     );
                                 })}
@@ -1152,91 +1253,54 @@ export function DomainDashboard({
                         </CardContent>
                     </Card>
 
-                    <div className="xl:col-span-5 flex flex-col gap-3 min-h-[280px]">
-                        <Card className="border border-slate-200 shadow-sm bg-white rounded-lg flex-1 flex flex-col min-h-0">
-                            <CardContent className="p-4 flex flex-col flex-1">
-                                <div className="flex items-center gap-2 border-b border-slate-100 pb-2.5 mb-3 shrink-0">
-                                    <BarChart3 className="w-4 h-4 text-brand-primary shrink-0" />
-                                    <div>
-                                        <h2 className="text-[10px] font-bold text-slate-700 uppercase tracking-wider">Smart insights</h2>
-                                        <p className="text-[10px] text-slate-400 mt-0.5">Guided next steps from your live data.</p>
-                                    </div>
+                    <Card className="border border-slate-200 shadow-sm bg-white rounded-lg shrink-0 flex flex-col">
+                        <CardContent className="p-4 flex flex-col flex-1">
+                            <div className="flex items-center gap-2 border-b border-slate-100 pb-2.5 mb-3">
+                                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" aria-hidden />
+                                <div>
+                                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Needs attention</p>
+                                    <p className="text-[10px] text-slate-400 mt-0.5">Stock and collections items that may need action.</p>
                                 </div>
-                                <div className="space-y-2 flex-1 min-h-0">
-                                    {easyInsightsToRender.map((insight, idx) => {
-                                        const defaultStyle = { border: 'border-l-slate-400', bg: 'bg-slate-50/40', text: 'text-slate-700' };
-                                        const toneColors: Record<string, { border: string, bg: string, text: string }> = {
-                                            indigo: { border: 'border-l-indigo-500', bg: 'bg-indigo-50/40', text: 'text-indigo-700' },
-                                            emerald: { border: 'border-l-emerald-500', bg: 'bg-emerald-50/40', text: 'text-emerald-700' },
-                                            amber: { border: 'border-l-amber-500', bg: 'bg-amber-50/40', text: 'text-amber-700' },
-                                            rose: { border: 'border-l-rose-500', bg: 'bg-rose-50/40', text: 'text-rose-700' },
-                                            slate: defaultStyle,
-                                        };
-                                        const style = toneColors[insight.tone] || defaultStyle;
-
-                                        return (
-                                            <button
-                                                key={`${insight.title}-${idx}`}
-                                                onClick={() => onQuickAction?.(insight.actionTab)}
-                                                className={cn(
-                                                    'w-full rounded-lg border border-slate-200 border-l-4 p-2.5 text-left transition-all hover:shadow-sm bg-slate-50/50',
-                                                    style.border,
-                                                    insight.tone === 'indigo' && 'hover:bg-indigo-50',
-                                                    insight.tone === 'emerald' && 'hover:bg-emerald-50',
-                                                    insight.tone === 'amber' && 'hover:bg-amber-50',
-                                                    insight.tone === 'rose' && 'hover:bg-rose-50',
-                                                    insight.tone === 'slate' && 'hover:bg-slate-100/50'
-                                                )}
-                                            >
-                                                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{insight.title}</p>
-                                                <p className="mt-1 text-xs font-semibold text-slate-700 leading-snug">{insight.text}</p>
-                                            </button>
-                                        );
-                                    })}
+                            </div>
+                            {remindersData.lowStock === 0 && remindersData.overdueInvoices === 0 ? (
+                                <div className="flex items-center gap-2 text-emerald-700">
+                                    <CheckCircle2 className="w-4 h-4 shrink-0" aria-hidden />
+                                    <span className="text-xs font-semibold leading-snug">
+                                        No urgent stock or overdue invoice issues for this period.
+                                    </span>
                                 </div>
-                            </CardContent>
-                        </Card>
-
-                        {/* Single health strip — avoids repeating the same counts as KPI row + insights */}
-                        <Card className="border border-slate-200 shadow-sm bg-white rounded-lg shrink-0">
-                            <CardContent className="p-3.5">
-                                <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-2">Needs attention</p>
-                                {remindersData.lowStock === 0 && remindersData.overdueInvoices === 0 ? (
-                                    <div className="flex items-center gap-2 text-emerald-700">
-                                        <CheckCircle2 className="w-4 h-4 shrink-0" aria-hidden />
-                                        <span className="text-xs font-semibold leading-snug">No urgent stock or overdue invoice issues for this period.</span>
-                                    </div>
-                                ) : (
-                                    <div className="flex flex-col gap-2">
-                                        {remindersData.lowStock > 0 && (
-                                            <button
-                                                type="button"
-                                                onClick={() => onQuickAction?.('inventory')}
-                                                className="flex items-center justify-between gap-2 rounded-lg border border-amber-100 bg-amber-50/60 px-3 py-2 text-left hover:bg-amber-50 transition-colors"
-                                            >
-                                                <span className="text-xs font-semibold text-amber-900">
-                                                    <span className="font-extrabold tabular-nums">{remindersData.lowStock}</span> SKU{remindersData.lowStock === 1 ? '' : 's'} below safety stock
-                                                </span>
-                                                <span className="text-[10px] font-bold text-amber-700 uppercase shrink-0">Restock →</span>
-                                            </button>
-                                        )}
-                                        {remindersData.overdueInvoices > 0 && (
-                                            <button
-                                                type="button"
-                                                onClick={() => onQuickAction?.('invoices')}
-                                                className="flex items-center justify-between gap-2 rounded-lg border border-rose-100 bg-rose-50/60 px-3 py-2 text-left hover:bg-rose-50 transition-colors"
-                                            >
-                                                <span className="text-xs font-semibold text-rose-900">
-                                                    <span className="font-extrabold tabular-nums">{remindersData.overdueInvoices}</span> overdue invoice{remindersData.overdueInvoices === 1 ? '' : 's'}
-                                                </span>
-                                                <span className="text-[10px] font-bold text-rose-700 uppercase shrink-0">Collect →</span>
-                                            </button>
-                                        )}
-                                    </div>
-                                )}
-                            </CardContent>
-                        </Card>
-                    </div>
+                            ) : (
+                                <div className="flex flex-col gap-2">
+                                    {remindersData.lowStock > 0 && (
+                                        <button
+                                            type="button"
+                                            onClick={() => onQuickAction?.('inventory')}
+                                            className="flex items-center justify-between gap-2 rounded-lg border border-amber-100 bg-amber-50/60 px-3 py-2 text-left hover:bg-amber-50 transition-colors"
+                                        >
+                                            <span className="text-xs font-semibold text-amber-900">
+                                                <span className="font-extrabold tabular-nums">{remindersData.lowStock}</span> SKU
+                                                {remindersData.lowStock === 1 ? '' : 's'} below safety stock
+                                            </span>
+                                            <span className="text-[10px] font-bold text-amber-700 uppercase shrink-0">Restock →</span>
+                                        </button>
+                                    )}
+                                    {remindersData.overdueInvoices > 0 && (
+                                        <button
+                                            type="button"
+                                            onClick={() => onQuickAction?.('invoices')}
+                                            className="flex items-center justify-between gap-2 rounded-lg border border-rose-100 bg-rose-50/60 px-3 py-2 text-left hover:bg-rose-50 transition-colors"
+                                        >
+                                            <span className="text-xs font-semibold text-rose-900">
+                                                <span className="font-extrabold tabular-nums">{remindersData.overdueInvoices}</span>{' '}
+                                                overdue invoice{remindersData.overdueInvoices === 1 ? '' : 's'}
+                                            </span>
+                                            <span className="text-[10px] font-bold text-rose-700 uppercase shrink-0">Collect →</span>
+                                        </button>
+                                    )}
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
                 </div>
 
                 <div className="grid grid-cols-1 xl:grid-cols-12 gap-4">
@@ -1315,7 +1379,12 @@ export function DomainDashboard({
                             <CardContent className="p-5">
                                 <div className="flex items-center gap-2 border-b border-slate-100 pb-3 mb-4">
                                     <BarChart3 className="w-4 h-4 text-brand-primary shrink-0" />
-                                    <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Business Snapshot</h2>
+                                    <div className="min-w-0">
+                                        <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Business snapshot</h2>
+                                        <p className="text-[10px] text-slate-400 font-medium mt-0.5 truncate" title={business?.name || undefined}>
+                                            {business?.name?.trim() || 'Workspace'} · {domainVerticalLabel}
+                                        </p>
+                                    </div>
                                 </div>
                                 <div className="space-y-2.5">
                                     <div className="flex items-center justify-between py-2 border-b border-slate-50 hover:bg-slate-50/50 transition-colors px-1">
@@ -1354,10 +1423,90 @@ export function DomainDashboard({
     // ADVANCED MODE DASHBOARD -- Full power view
     // ===============================================================
 
+    const advancedUserName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'there';
+    const advancedGreeting = new Date().getHours() < 12 ? 'Good morning' : new Date().getHours() < 17 ? 'Good afternoon' : 'Good evening';
+    const advancedPresetOptions: Array<{ id: 'today' | '7d' | '30d' | 'mtd'; label: string }> = [
+        { id: 'today', label: 'Today' },
+        { id: '7d', label: '7 Days' },
+        { id: '30d', label: '30 Days' },
+        { id: 'mtd', label: 'MTD' },
+    ];
+    const advancedQuickActions = [
+        { id: 'new-invoice', label: 'New Invoice', sublabel: 'Direct sale', icon: FileText },
+        {
+            id: multiLocationEnabled ? 'warehouses' : 'purchases',
+            label: multiLocationEnabled ? 'Transfer' : 'Purchase',
+            sublabel: multiLocationEnabled ? 'Inter-branch' : 'Procurement',
+            icon: Warehouse,
+        },
+        { id: 'inventory', label: 'Adjust', sublabel: 'Stock fix', icon: Package },
+        { id: 'new-customer', label: 'Customer', sublabel: 'CRM', icon: Users },
+        { id: 'new-product', label: 'Product', sublabel: 'Catalog', icon: Plus },
+        campaignEnabled
+            ? { id: 'campaigns', label: 'Campaigns', sublabel: 'Marketing', icon: Zap }
+            : { id: 'reports', label: 'Analytics', sublabel: 'Insights', icon: BarChart3 },
+    ];
+
     return (
+        <>
+            <DashboardMobileHub
+                mode="advanced"
+                greeting={advancedGreeting}
+                userName={advancedUserName}
+                businessName={business?.name}
+                periodLabel={periodLabel}
+                presetOptions={advancedPresetOptions}
+                activePreset={
+                    activePreset === 'custom' || activePreset === '90d' || activePreset === 'last_month' || activePreset === 'ytd'
+                        ? '30d'
+                        : activePreset
+                }
+                onDateRangePresetChange={(preset) =>
+                    onDateRangePresetChange?.(preset as 'today' | '7d' | '30d' | '90d' | 'mtd' | 'last_month' | 'ytd')
+                }
+                kpiStrip={dashboardHeaderHighlights.map((item) => ({
+                    label: item.label.replace(' Invoices', '').replace(' Orders', ''),
+                    value: item.value,
+                    alert: item.tone.includes('rose') || item.tone.includes('amber'),
+                    tone: item.tone,
+                }))}
+                quickActions={advancedQuickActions}
+                onQuickAction={onQuickAction}
+                healthPanels={[
+                    {
+                        label: 'Revenue',
+                        value: formatCurrencyCompact(periodMetrics.currentRevenue),
+                        tone: 'text-emerald-600',
+                    },
+                    {
+                        label: 'Orders',
+                        value: periodMetrics.currentOrders,
+                        tone: 'text-slate-900',
+                    },
+                    {
+                        label: 'Efficiency',
+                        value: `${domainEfficiency}%`,
+                        tone: domainEfficiency >= 85 ? 'text-emerald-600' : 'text-amber-600',
+                    },
+                    {
+                        label: 'Low stock',
+                        value: remindersData.lowStock,
+                        tone: remindersData.lowStock > 0 ? 'text-amber-600' : 'text-emerald-600',
+                    },
+                ]}
+                reminders={remindersData}
+                hasCoreData={hasCoreData}
+                quickSetupSteps={[
+                    { id: 'add-product', label: 'Add product' },
+                    { id: 'add-customer', label: 'Add customer' },
+                    { id: 'new-invoice', label: 'New invoice' },
+                ]}
+            />
+
         <NetsuiteDashboard>
             {/* Main Area (9/12) */}
             <div className="space-y-3 order-1 lg:order-1 lg:col-span-9">
+                <div className="hidden lg:block space-y-3">
                 <QuickActionTiles
                     layout="toolbar"
                     onAction={onQuickAction}
@@ -1416,7 +1565,7 @@ export function DomainDashboard({
                                     <h2 className="text-lg font-black tracking-tight text-slate-900 md:text-xl">Business overview</h2>
                                     <p className="mt-1 text-[11px] leading-snug text-slate-600">
                                         <span className="font-semibold tabular-nums text-slate-800">
-                                            {new Date(dateRange.from).toLocaleDateString()} —{' '}
+                                            {new Date(dateRange.from).toLocaleDateString()} -{' '}
                                             {new Date(dateRange.to).toLocaleDateString()}
                                         </span>
                                         <span className="text-slate-300"> · </span>
@@ -1536,61 +1685,18 @@ export function DomainDashboard({
                     />
                 </div>
 
-                {/* Analytics Section */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-2.5 lg:items-stretch">
-                    <div className="lg:col-span-7 min-h-0">
-                        <AnalyticsDashboard
-                            businessId={activeBusinessId}
-                            category={category}
-                            chartData={dashboardMetrics?.timeline || []}
-                            invoices={invoices}
-                            products={products}
-                            colors={colors}
-                            dateRange={dateRange}
-                            onQuickAction={onQuickAction}
-                        />
-                    </div>
-                    <div className="lg:col-span-5 flex flex-col gap-2.5 min-h-0">
-                        <div className="shrink-0">
-                        <KPIMeter
-                            title="Domain Efficiency"
-                            value={domainEfficiency}
-                            target={95}
-                            suffix="%"
-                            trendValue={Number(revenueTrendSigned.toFixed(1))}
-                            trendLabel="vs previous period"
-                        />
-                        </div>
-
-                        <Card className="border border-slate-200 shadow-sm bg-white flex-1 min-h-[7.5rem]">
-                            <CardContent className="p-3 h-full flex flex-col justify-center">
-                                <div className="grid grid-cols-2 gap-2">
-                                    <div className="rounded-lg border border-slate-100 bg-slate-50/80 p-2.5 flex gap-2 items-start">
-                                        <div className="rounded-md bg-white p-1 border border-slate-100 text-slate-500">
-                                            <Users className="w-3.5 h-3.5" aria-hidden />
-                                        </div>
-                                        <div>
-                                            <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Active Customers</p>
-                                            <p className="text-base font-black text-slate-900 mt-0.5 tabular-nums">
-                                                {dashboardMetrics?.customers?.active ?? 0}
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <div className="rounded-lg border border-slate-100 bg-slate-50/80 p-2.5 flex gap-2 items-start">
-                                        <div className="rounded-md bg-white p-1 border border-slate-100 text-slate-500">
-                                            <BadgeDollarSign className="w-3.5 h-3.5" aria-hidden />
-                                        </div>
-                                        <div>
-                                            <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Cash Flow</p>
-                                            <p className="text-base font-black text-slate-900 mt-0.5 tabular-nums">
-                                                {formatCurrencyCompact(dashboardMetrics?.cashFlow?.current || 0)}
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    </div>
+                {/* Analytics — full main width; Domain Efficiency lives in sidebar under Recent Activity */}
+                <div className="min-h-0">
+                    <AnalyticsDashboard
+                        businessId={activeBusinessId}
+                        category={category}
+                        chartData={chartData}
+                        invoices={invoices}
+                        products={products}
+                        colors={colors}
+                        dateRange={dateRange}
+                        onQuickAction={onQuickAction}
+                    />
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-2.5 lg:items-stretch">
@@ -1605,18 +1711,49 @@ export function DomainDashboard({
                         <AgenticAuditPortlet businessId={activeBusinessId} />
                     </div>
                 </div>
+                </div>
+
+                {/* Mobile-only portlets — compact reminders, insights, activity */}
+                <div className="space-y-3 lg:hidden">
+                    <RemindersPortlet data={remindersData} onItemClick={onQuickAction} />
+
+                    <div className="rounded-2xl border border-gray-100 bg-white p-3 shadow-sm">
+                        <div className="mb-2 flex items-center gap-2">
+                            <Zap className="h-4 w-4 text-amber-500 fill-amber-500" />
+                            <h3 className="text-sm font-black text-gray-900">Intelligent Insights</h3>
+                        </div>
+                        <div className="space-y-2">
+                            {intelligentInsights.slice(0, 3).map((insight, idx) => (
+                                <button
+                                    key={`mobile-${insight.title}-${idx}`}
+                                    onClick={() => onQuickAction?.(insight.actionTab)}
+                                    className="w-full rounded-xl border border-gray-100 bg-gray-50/80 p-2.5 text-left active:bg-gray-100"
+                                >
+                                    <p className="text-[10px] font-bold text-slate-700">{insight.title}</p>
+                                    <p className="mt-0.5 text-[10px] text-slate-600 leading-snug line-clamp-2">{insight.text}</p>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <RecentActivityFeed
+                        businessId={activeBusinessId}
+                        onViewAll={() => onQuickAction?.('reports')}
+                        feedLimit={15}
+                    />
+                </div>
             </div>
 
-            {/* Sidebar Column (3/12) */}
-            <div className="space-y-4 order-2 lg:order-2 lg:col-span-3">
+            {/* Sidebar Column (3/12) — desktop only */}
+            <div className="hidden lg:flex flex-col gap-2.5 order-2 lg:order-2 lg:col-span-3 min-h-0">
                 <RemindersPortlet data={remindersData} onItemClick={onQuickAction} />
 
-                <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
-                    <div className="flex items-center gap-2 mb-4">
+                <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm shrink-0">
+                    <div className="flex items-center gap-2 mb-3">
                         <Zap className="w-5 h-5 text-amber-500 fill-amber-500" />
                         <h3 className="text-sm font-black text-gray-900">Intelligent Insights</h3>
                     </div>
-                    <div className="space-y-3 max-h-72 overflow-y-auto overscroll-y-contain pr-0.5">
+                    <div className="space-y-2.5 max-h-72 overflow-y-auto overscroll-y-contain pr-0.5">
                         {intelligentInsights.map((insight, idx) => (
                             <button
                                 key={`${insight.title}-${idx}`}
@@ -1638,8 +1775,57 @@ export function DomainDashboard({
                     </div>
                 </div>
 
-                <RecentActivityFeed businessId={activeBusinessId} onViewAll={() => onQuickAction?.('reports')} />
+                <div className="flex min-h-0 flex-col gap-2.5">
+                    <RecentActivityFeed
+                        businessId={activeBusinessId}
+                        onViewAll={() => onQuickAction?.('reports')}
+                        feedLimit={40}
+                    />
+                    <div className="shrink-0">
+                        <KPIMeter
+                            title="Domain Efficiency"
+                            value={domainEfficiency}
+                            target={95}
+                            suffix="%"
+                            trendValue={Number(revenueTrendSigned.toFixed(1))}
+                            trendLabel="vs previous period"
+                        />
+                    </div>
+                    <Card className="border border-slate-200 shadow-sm bg-white shrink-0">
+                        <CardContent className="p-3 flex flex-col justify-center">
+                            <div className="flex flex-col gap-2">
+                                <div className="rounded-lg border border-slate-100 bg-slate-50/80 px-2.5 py-2 flex items-center justify-between gap-3">
+                                    <div className="flex items-center gap-2 min-w-0">
+                                        <div className="rounded-md bg-white p-1 border border-slate-100 text-slate-500 shrink-0">
+                                            <Users className="w-3.5 h-3.5" aria-hidden />
+                                        </div>
+                                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 truncate">
+                                            Active Customers
+                                        </p>
+                                    </div>
+                                    <p className="text-base font-black text-slate-900 tabular-nums shrink-0 whitespace-nowrap">
+                                        {(dashboardMetrics?.customers?.active ?? 0).toLocaleString()}
+                                    </p>
+                                </div>
+                                <div className="rounded-lg border border-slate-100 bg-slate-50/80 px-2.5 py-2 flex items-center justify-between gap-3">
+                                    <div className="flex items-center gap-2 min-w-0">
+                                        <div className="rounded-md bg-white p-1 border border-slate-100 text-slate-500 shrink-0">
+                                            <BadgeDollarSign className="w-3.5 h-3.5" aria-hidden />
+                                        </div>
+                                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 truncate">
+                                            Cash Flow
+                                        </p>
+                                    </div>
+                                    <p className="text-sm font-black text-slate-900 tabular-nums shrink-0 whitespace-nowrap">
+                                        {formatCurrencyCompact(dashboardMetrics?.cashFlow?.current || 0)}
+                                    </p>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
             </div>
         </NetsuiteDashboard>
+        </>
     );
 }

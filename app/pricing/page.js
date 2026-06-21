@@ -24,6 +24,7 @@ import {
 } from '@/lib/config/plans';
 import { formatCurrency } from '@/lib/currency';
 import { cn } from '@/lib/utils';
+import { MARKETING_CONTAINER } from '@/lib/utils/marketingLayout';
 
 const TIER_KEYS = getOrderedPlanTierKeys();
 
@@ -138,22 +139,22 @@ export default function PricingPage() {
 
   return (
     <MarketingLayout transparentNav={false}>
-      <section className="bg-white py-16 border-b border-neutral-200/80">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 text-center space-y-6">
-          <div className="inline-flex items-center gap-2 rounded-full border border-brand-100 bg-brand-50 px-4 py-2 text-[11px] font-black uppercase tracking-[0.25em] text-brand-primary">
-            <ShieldCheck className="h-4 w-4" />
+      <section className="border-b border-neutral-200/80 bg-white py-10 sm:py-14 lg:py-16">
+        <div className="mx-auto max-w-7xl px-4 min-[380px]:px-5 sm:px-6 lg:px-12 text-center space-y-4 sm:space-y-6">
+          <div className="inline-flex max-w-full flex-wrap items-center justify-center gap-2 rounded-full border border-brand-100 bg-brand-50 px-3 py-2 text-[10px] font-black uppercase tracking-[0.18em] text-brand-primary sm:px-4 sm:text-[11px] sm:tracking-[0.25em]">
+            <ShieldCheck className="h-4 w-4 shrink-0" />
             Plans aligned with the product
           </div>
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-neutral-900 leading-tight max-w-4xl mx-auto">
+          <h1 className="mx-auto max-w-4xl text-balance text-3xl font-extrabold leading-tight tracking-tight text-neutral-900 min-[400px]:text-4xl sm:text-5xl lg:text-6xl">
             Same packages everywhere — <br className="hidden sm:inline" />
             register, billing, and checkout.
           </h1>
-          <p className="max-w-2xl mx-auto text-lg text-neutral-500 font-medium leading-relaxed">
+          <p className="mx-auto max-w-2xl text-pretty text-base font-medium leading-relaxed text-neutral-500 sm:text-lg">
             Prices and limits come directly from <strong className="text-neutral-800">PLAN_TIERS</strong> (Free, Starter,
             Professional, Business, Enterprise). Pay online with Stripe, offline by agreement, or start with a demo.
           </p>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-6 pt-6">
+          <div className="flex flex-col items-stretch justify-center gap-4 pt-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-6 sm:pt-4">
             <div className="bg-neutral-100 border border-neutral-200 p-1 rounded-2xl flex items-center shadow-sm">
               <button
                 type="button"
@@ -196,8 +197,8 @@ export default function PricingPage() {
       </section>
 
       {/* Payment rails — Stripe, offline, demo + manual admin */}
-      <section className="bg-neutral-50 py-12 border-b border-neutral-200/80">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12">
+      <section className="bg-neutral-50 py-10 sm:py-12 border-b border-neutral-200/80">
+        <div className={MARKETING_CONTAINER}>
           <p className="text-center text-[11px] font-black uppercase tracking-[0.2em] text-neutral-400 mb-8">
             How you can pay
           </p>
@@ -239,10 +240,9 @@ export default function PricingPage() {
         </div>
       </section>
 
-      <section className="bg-neutral-50 py-16 lg:py-24 border-b border-neutral-200/80">
-        {/* Wider than max-w-7xl so five columns stay one row from lg (1024px) without wrapping */}
-        <div className="w-full max-w-[min(100%,92rem)] mx-auto px-4 sm:px-5 lg:px-8 xl:px-10">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 items-stretch gap-3 sm:gap-4">
+      <section className="bg-neutral-50 py-10 sm:py-14 lg:py-16 border-b border-neutral-200/80">
+        <div className="w-full max-w-[min(100%,92rem)] mx-auto px-4 min-[380px]:px-5 sm:px-6 lg:px-8 xl:px-10">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-4 lg:grid-cols-5 lg:items-stretch">
             {TIER_KEYS.map((tierKey) => {
               const tier = PLAN_TIERS[tierKey];
               const prices = getPlanListPrice(tierKey, { interval: billingInterval });
@@ -358,7 +358,7 @@ export default function PricingPage() {
         </div>
       </section>
 
-      <section className="bg-white py-20 lg:py-28 border-b border-neutral-200/80">
+      <section className="bg-white py-10 sm:py-16 lg:py-28 border-b border-neutral-200/80">
         <div className="max-w-4xl mx-auto px-4 sm:px-6">
           <div className="bg-neutral-50 border-2 border-neutral-200/90 rounded-[2.5rem] p-8 sm:p-12 shadow-sm space-y-10">
             <div className="text-center space-y-3">
@@ -431,7 +431,7 @@ export default function PricingPage() {
         </div>
       </section>
 
-      <section className="bg-neutral-50 py-20 lg:py-28 border-b border-neutral-200/80">
+      <section className="bg-neutral-50 py-10 sm:py-16 lg:py-28 border-b border-neutral-200/80">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 space-y-8">
           <div className="text-center max-w-3xl mx-auto space-y-4">
             <h3 className="text-2xl sm:text-3xl font-black text-neutral-900">Feature matrix by tier</h3>
@@ -480,7 +480,7 @@ export default function PricingPage() {
         </div>
       </section>
 
-      <section className="bg-white py-20 lg:py-28 border-b border-neutral-200/80">
+      <section className="bg-white py-10 sm:py-16 lg:py-28 border-b border-neutral-200/80">
         <div className="max-w-4xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-16 space-y-4">
             <h2 className="text-[11px] font-black text-brand-primary uppercase tracking-[0.25em]">Billing & payments FAQ</h2>
@@ -514,7 +514,7 @@ export default function PricingPage() {
             <Building2 className="w-10 h-10 text-brand-primary mx-auto" />
             <h3 className="text-3xl sm:text-5xl font-black text-neutral-900 tracking-tight max-w-4xl mx-auto">Ready when you are</h3>
             <p className="max-w-2xl mx-auto text-sm sm:text-base text-neutral-600 font-medium leading-relaxed">
-              Create a workspace, or talk to us first—we will match you to the right tier and payment method.
+              Create a workspace, or talk to us first - we will match you to the right tier and payment method.
             </p>
             <div className="pt-4 flex flex-col sm:flex-row justify-center gap-4">
               <Button asChild size="lg" className="h-14 rounded-xl bg-brand-primary hover:bg-brand-primary-dark text-white px-8 text-base font-black uppercase tracking-[0.12em] shadow-md">

@@ -1,182 +1,97 @@
 'use client';
 
 import Link from 'next/link';
-import { 
-  ShoppingCart, 
-  Store, 
-  MessageSquare, 
-  Globe, 
-  FileText, 
+import {
   ArrowRight,
   CheckCircle2,
   Zap,
+  Plug,
+  CreditCard,
+  Mail,
   ShieldCheck,
+  MessageSquare,
+  ShoppingCart,
+  Store,
+  Globe,
   Building2,
-  Plug
+  Code2,
 } from 'lucide-react';
 import MarketingLayout from '@/components/marketing/layout/MarketingLayout';
+import { MARKETING_CONTAINER, MARKETING_SECTION_LOOSE } from '@/lib/utils/marketingLayout';
+import { cn } from '@/lib/utils';
 import Hero from '@/components/marketing/sections/Hero';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/context/AuthContext';
+import {
+  INTEGRATIONS_CATALOG,
+  CAPABILITY_STATUS_LABEL,
+  CAPABILITY_STATUS_STYLE,
+  MARKETING_DISCLAIMERS,
+} from '@/lib/marketing/capabilities';
 
-const integrations = [
-  {
-    name: 'FBR POS / Tax Sync',
-    category: 'Compliance',
-    icon: ShieldCheck,
-    color: 'text-brand-primary',
-    bg: 'bg-brand-50',
-    border: 'border-brand-200',
-    description: 'Direct Tier-1 integration with Federal Board of Revenue. Automatically transmit invoices in real-time to generate FBR invoices with QR codes.',
-    status: 'Live',
-    features: ['Real-time Invoice Sync', 'SRB / PRA Support', 'Automated Daily Summaries']
-  },
-  {
-    name: 'Shopify',
-    category: 'E-Commerce',
-    icon: ShoppingCart,
-    color: 'text-emerald-600',
-    bg: 'bg-emerald-50',
-    border: 'border-emerald-200',
-    description: 'Keep your Shopify storefront perfectly synced with your warehouse. Push price updates and pull orders automatically.',
-    status: 'Live',
-    features: ['Bi-directional Stock Sync', 'Order Import', 'Price List Mapping']
-  },
-  {
-    name: 'Daraz',
-    category: 'Marketplace',
-    icon: Store,
-    color: 'text-orange-600',
-    bg: 'bg-orange-50',
-    border: 'border-orange-200',
-    description: 'Manage Daraz orders directly inside Tenvo. Avoid stockouts and penalizations by updating your Daraz inventory instantly.',
-    status: 'Live',
-    features: ['Automated Inventory Sync', 'Order Processing', 'RTS Label Generation']
-  },
-  {
-    name: 'WooCommerce',
-    category: 'E-Commerce',
-    icon: Globe,
-    color: 'text-indigo-600',
-    bg: 'bg-indigo-50',
-    border: 'border-indigo-200',
-    description: 'Connect your self-hosted WordPress store. Manage products in Tenvo and publish them directly to WooCommerce.',
-    status: 'Live',
-    features: ['Catalog Sync', 'Variant Mapping', 'Real-time Stock Updates']
-  },
-  {
-    name: 'WhatsApp Business',
-    category: 'Communication',
-    icon: MessageSquare,
-    color: 'text-green-600',
-    bg: 'bg-green-50',
-    border: 'border-green-200',
-    description: 'Send invoices, payment links, and delivery updates directly to your customers via WhatsApp automatically.',
-    status: 'Beta',
-    features: ['PDF Invoice Delivery', 'Payment Reminders', 'Order Status Alerts']
-  },
-  {
-    name: 'Bank Feeds',
-    category: 'Finance',
-    icon: Building2,
-    color: 'text-blue-600',
-    bg: 'bg-blue-50',
-    border: 'border-blue-200',
-    description: 'Connect your corporate bank accounts via API to pull daily statements and automate the reconciliation process.',
-    status: 'Coming Q3',
-    features: ['Statement Parsing', 'Auto-Reconciliation', 'Transaction Matching']
-  }
-];
+const ICON_BY_NAME = {
+  Stripe: CreditCard,
+  NOWPayments: CreditCard,
+  Resend: Mail,
+  'Pakistani tax configuration': ShieldCheck,
+  'JazzCash & EasyPaisa': CreditCard,
+  WhatsApp: MessageSquare,
+  Shopify: ShoppingCart,
+  Daraz: Store,
+  WooCommerce: Globe,
+  'REST API & webhooks': Code2,
+  'Bank feeds': Building2,
+};
 
 export default function IntegrationsPage() {
   const { user } = useAuth();
   const primaryHref = user ? '/multi-business' : '/register';
   const primaryText = user ? 'GO TO DASHBOARD' : 'START FREE TRIAL';
 
+  const shipped = INTEGRATIONS_CATALOG.filter((i) => i.status === 'shipped');
+  const partial = INTEGRATIONS_CATALOG.filter((i) => i.status === 'partial');
+  const roadmap = INTEGRATIONS_CATALOG.filter((i) => i.status === 'roadmap');
+
   return (
     <MarketingLayout transparentNav={false}>
-      
-      {/* Hero Section */}
-      <Hero 
+      <Hero
         variant="centered"
-        badge={{ text: 'Ecosystem Connectivity', icon: 'Plug' }}
+        badge={{ text: 'Honest integration map', icon: 'Plug' }}
         title={
           <>
-            Connect Tenvo to your <span className="text-brand-primary">entire stack</span>
+            What connects to TENVO <span className="text-brand-primary">today</span>
           </>
         }
-        subtitle="Automate your operations by connecting your e-commerce stores, marketplaces, and compliance agencies directly to your ERP core."
+        subtitle="We label each integration Available, Partial, or Roadmap so your team knows what ships in the product versus what requires configuration or is still in development."
       />
 
-      {/* Grid Section */}
-      <section className="bg-neutral-50 py-20 lg:py-28">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12">
-          
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {integrations.map((integration, idx) => (
-              <div key={idx} className="bg-white border border-neutral-200/80 rounded-3xl p-8 hover:border-brand-primary hover:shadow-xl transition-all duration-300 group flex flex-col h-full">
-                
-                {/* Header */}
-                <div className="flex justify-between items-start mb-6">
-                  <div className={`w-14 h-14 rounded-2xl ${integration.bg} ${integration.border} border flex items-center justify-center`}>
-                    <integration.icon className={`w-7 h-7 ${integration.color}`} />
-                  </div>
-                  <span className={`text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full ${
-                    integration.status === 'Live' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
-                    integration.status === 'Beta' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
-                    'bg-neutral-100 text-neutral-600 border border-neutral-200'
-                  }`}>
-                    {integration.status}
-                  </span>
-                </div>
-
-                {/* Content */}
-                <div className="flex-1 space-y-4">
-                  <div>
-                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-neutral-400 mb-1">{integration.category}</p>
-                    <h3 className="text-2xl font-black text-neutral-900">{integration.name}</h3>
-                  </div>
-                  <p className="text-sm font-medium text-neutral-600 leading-relaxed">
-                    {integration.description}
-                  </p>
-                </div>
-
-                {/* Features List */}
-                <div className="mt-8 pt-6 border-t border-neutral-100 space-y-3">
-                  {integration.features.map((feature, fIdx) => (
-                    <div key={fIdx} className="flex items-center gap-3">
-                      <CheckCircle2 className="w-4 h-4 text-brand-primary flex-shrink-0" />
-                      <span className="text-sm font-semibold text-neutral-700">{feature}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-
+      <section className={cn(MARKETING_SECTION_LOOSE, 'border-b border-neutral-200/80 bg-white')}>
+        <div className={MARKETING_CONTAINER}>
+          <p className="mx-auto max-w-3xl text-center text-sm font-medium leading-relaxed text-neutral-600">
+            {MARKETING_DISCLAIMERS.fbr} Prefer TENVO&apos;s built-in storefront and POS when external marketplace connectors are on the roadmap.
+          </p>
         </div>
       </section>
 
-      {/* Developer API CTA */}
-      <section className="bg-white border-b border-neutral-200/80 py-20 lg:py-28">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-12">
-          <div className="bg-neutral-900 rounded-[3rem] p-8 sm:p-12 lg:p-16 text-center space-y-6 relative overflow-hidden shadow-2xl">
-            {/* Background decoration */}
-            <div className="absolute top-0 right-0 w-64 h-64 bg-brand-primary rounded-full blur-[100px] opacity-20 -translate-y-1/2 translate-x-1/2" />
-            <div className="absolute bottom-0 left-0 w-64 h-64 bg-indigo-500 rounded-full blur-[100px] opacity-20 translate-y-1/2 -translate-x-1/2" />
-            
+      <IntegrationSection title="Available now" items={shipped} />
+      <IntegrationSection title="Partial — configure or scope with us" items={partial} muted />
+      <IntegrationSection title="Roadmap" items={roadmap} muted />
+
+      <section className={cn(MARKETING_SECTION_LOOSE, 'border-b border-neutral-200/80 bg-white')}>
+        <div className={`${MARKETING_CONTAINER} max-w-5xl`}>
+          <div className="relative space-y-5 overflow-hidden rounded-2xl bg-neutral-900 p-6 text-center shadow-2xl sm:space-y-6 sm:rounded-[3rem] sm:p-10 lg:p-16">
+            <div className="absolute top-0 right-0 h-64 w-64 translate-x-1/2 -translate-y-1/2 rounded-full bg-brand-primary opacity-20 blur-[100px]" />
             <div className="relative z-10 space-y-6">
-              <Zap className="w-12 h-12 text-amber-400 mx-auto" />
-              <h2 className="text-3xl sm:text-5xl font-black text-white tracking-tight">Need a custom integration?</h2>
-              <p className="max-w-2xl mx-auto text-sm sm:text-base text-neutral-300 font-medium leading-relaxed">
-                Our RESTful API and Webhooks allow your development team to connect Tenvo with any proprietary software or legacy system. We also offer dedicated MCP Servers for AI agent access.
+              <Zap className="mx-auto h-12 w-12 text-amber-400" />
+              <h2 className="text-3xl font-black tracking-tight text-white sm:text-5xl">Need a custom integration?</h2>
+              <p className="mx-auto max-w-2xl text-sm font-medium leading-relaxed text-neutral-300 sm:text-base">
+                Business+ includes API access and webhook flags in the product. Talk to sales for bespoke connectors, legacy ERP bridges, or pilot marketplace sync.
               </p>
-              
-              <div className="pt-4 flex flex-col sm:flex-row justify-center gap-4">
-                <Button asChild size="lg" className="h-14 rounded-xl bg-brand-primary hover:bg-brand-primary-dark text-white px-8 text-base font-black uppercase tracking-[0.15em] shadow-md transition-all border-none">
+              <div className="flex flex-col justify-center gap-4 pt-4 sm:flex-row">
+                <Button asChild size="lg" className="h-14 rounded-xl border-none bg-brand-primary px-8 text-base font-black uppercase tracking-[0.15em] text-white shadow-md transition-all hover:bg-brand-primary-dark">
                   <Link href={primaryHref}>{primaryText}</Link>
                 </Button>
-                <Button asChild size="lg" variant="outline" className="h-14 rounded-xl border-2 border-neutral-700 bg-transparent hover:bg-neutral-800 text-white hover:text-white px-8 text-base font-black uppercase tracking-[0.15em] transition-all">
+                <Button asChild size="lg" variant="outline" className="h-14 rounded-xl border-2 border-neutral-700 bg-transparent px-8 text-base font-black uppercase tracking-[0.15em] text-white transition-all hover:bg-neutral-800 hover:text-white">
                   <Link href="/contact">TALK TO SALES</Link>
                 </Button>
               </div>
@@ -184,7 +99,58 @@ export default function IntegrationsPage() {
           </div>
         </div>
       </section>
-
     </MarketingLayout>
+  );
+}
+
+function IntegrationSection({ title, items, muted = false }) {
+  if (!items.length) return null;
+
+  return (
+    <section className={cn(MARKETING_SECTION_LOOSE, muted ? 'bg-neutral-50' : 'bg-white')}>
+      <div className={MARKETING_CONTAINER}>
+        <h2 className="mb-6 text-[10px] font-black uppercase tracking-[0.28em] text-brand-primary sm:mb-8">{title}</h2>
+        <div className="grid gap-5 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3 lg:gap-8">
+          {items.map((integration) => {
+            const Icon = ICON_BY_NAME[integration.name] || Plug;
+            return (
+              <article
+                key={integration.name}
+                className="group flex h-full flex-col rounded-2xl border border-neutral-200/80 bg-white p-5 transition-all duration-300 hover:border-brand-primary hover:shadow-xl sm:rounded-3xl sm:p-6 lg:p-8"
+              >
+                <div className="mb-6 flex items-start justify-between">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-neutral-200 bg-neutral-50">
+                    <Icon className="h-7 w-7 text-brand-primary" />
+                  </div>
+                  <span
+                    className={cn(
+                      'rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wider',
+                      CAPABILITY_STATUS_STYLE[integration.status]
+                    )}
+                  >
+                    {CAPABILITY_STATUS_LABEL[integration.status]}
+                  </span>
+                </div>
+                <div className="flex-1 space-y-4">
+                  <div>
+                    <p className="mb-1 text-[10px] font-black uppercase tracking-[0.2em] text-neutral-400">{integration.category}</p>
+                    <h3 className="text-2xl font-black text-neutral-900">{integration.name}</h3>
+                  </div>
+                  <p className="text-sm font-medium leading-relaxed text-neutral-600">{integration.description}</p>
+                </div>
+                <ul className="mt-8 space-y-3 border-t border-neutral-100 pt-6">
+                  {integration.features.map((feature) => (
+                    <li key={feature} className="flex items-center gap-3">
+                      <CheckCircle2 className="h-4 w-4 shrink-0 text-brand-primary" />
+                      <span className="text-sm font-semibold text-neutral-700">{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+              </article>
+            );
+          })}
+        </div>
+      </div>
+    </section>
   );
 }

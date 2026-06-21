@@ -18,10 +18,8 @@ export function AddToCartSection({ product, businessDomain, selectedVariant = nu
   const [isAdding, setIsAdding] = useState(false);
   const { addItem } = useCart();
   const { isInWishlist, addToWishlist, removeFromWishlist } = useWishlist();
-  const { currency } = useStorefront();
+  const { currency, businessId } = useStorefront();
   const isWishlisted = isInWishlist(product.id);
-  
-  // Determine price and stock
   const price = selectedVariant?.price || product.price;
   const stock = selectedVariant?.stock !== undefined 
     ? selectedVariant.stock 
@@ -77,6 +75,7 @@ export function AddToCartSection({ product, businessDomain, selectedVariant = nu
         productId: product.id,
         quantity,
         variantId: selectedVariant?.id || null,
+        businessId,
       });
       
       toast.success(

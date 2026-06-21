@@ -3,6 +3,14 @@
 import { useState, useEffect, useMemo } from 'react';
 import * as LucideIcons from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
+import {
+  MARKETING_CONTAINER,
+  MARKETING_CONTAINER_NARROW,
+  MARKETING_H2,
+  MARKETING_LEAD,
+  MARKETING_SECTION,
+} from '@/lib/utils/marketingLayout';
 
 /**
  * FAQSection Component
@@ -66,39 +74,30 @@ export default function FAQSection({
   };
 
   return (
-    <section className="py-16 lg:py-24 bg-white">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Section header */}
-        <div className="max-w-3xl mx-auto text-center mb-12">
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-neutral-900 mb-4">
-            {title}
-          </h2>
-          {subtitle && (
-            <p className="text-lg sm:text-xl text-neutral-600 leading-relaxed">
-              {subtitle}
-            </p>
-          )}
+    <section className={cn(MARKETING_SECTION, 'bg-white')}>
+      <div className={MARKETING_CONTAINER}>
+        <div className="mx-auto mb-8 max-w-3xl text-center sm:mb-12">
+          <h2 className={cn(MARKETING_H2, 'mb-3 sm:mb-4')}>{title}</h2>
+          {subtitle ? <p className={MARKETING_LEAD}>{subtitle}</p> : null}
         </div>
 
-        {/* Search bar */}
-        {showSearch && (
-          <div className="max-w-2xl mx-auto mb-8">
+        {showSearch ? (
+          <div className="mx-auto mb-6 max-w-2xl sm:mb-8">
             <div className="relative">
-              <LucideIcons.Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
+              <LucideIcons.Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400 sm:left-4 sm:h-5 sm:w-5" />
               <Input
                 type="text"
                 placeholder="Search FAQs..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-12 pr-4 py-6 text-lg rounded-xl border-2 border-neutral-200 focus:border-brand-primary"
+                className="rounded-xl border-2 border-neutral-200 py-3 pl-10 text-base focus:border-brand-primary sm:py-4 sm:pl-12 sm:text-lg"
               />
             </div>
           </div>
-        )}
+        ) : null}
 
-        {/* Category filters */}
-        {showCategories && categories.length > 0 && (
-          <div className="flex flex-wrap justify-center gap-3 mb-12">
+        {showCategories && categories.length > 0 ? (
+          <div className="mb-8 flex flex-wrap justify-center gap-2 sm:mb-12 sm:gap-3">
             <button
               onClick={() => setSelectedCategory(null)}
               className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 ${

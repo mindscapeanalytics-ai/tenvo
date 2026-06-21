@@ -6,6 +6,7 @@ import { withApiAuth } from '@/lib/api/_shared/middleware';
 import { apiSuccess, apiError } from '@/lib/api/_shared/response';
 import { parsePagination, buildPaginationMeta } from '@/lib/api/_shared/pagination';
 import { createPurchaseAction } from '@/lib/actions/standard/purchase';
+import { PURCHASE_STATUS_VALUES } from '@/lib/constants/purchaseStatus';
 
 /**
  * Purchase API Routes
@@ -216,7 +217,7 @@ const createPurchaseSchema = z.object({
     warehouse_id: z.string().uuid().optional().nullable(),
     purchase_number: z.string().min(1, 'Purchase number is required'),
     date: z.string().optional(),
-    status: z.enum(['draft', 'received', 'cancelled']).optional().default('received'),
+    status: z.enum(PURCHASE_STATUS_VALUES).optional().default('draft'),
     notes: z.string().optional().nullable(),
     subtotal: z.number().min(0).default(0),
     tax_total: z.number().min(0).default(0),

@@ -1,6 +1,7 @@
 /**
  * Sanity-check: every domainKnowledge key has a getDomainConfig row and icon.
  * Run: node scripts/verify-domain-wiring.mjs
+ * Expect count to match DOMAIN_KNOWLEDGE_KEYS (60+ verticals).
  */
 import { domainKnowledge, DOMAIN_KNOWLEDGE_KEYS } from '../lib/domainKnowledge.js';
 import { getDomainConfig, suggestPlanTier } from '../lib/config/domains.js';

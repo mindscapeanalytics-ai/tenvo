@@ -23,6 +23,7 @@
  * See also: **`docs/DATA_INTEGRITY_AND_FORMS.md`** (tenant + mutations) and **`docs/MARKET_READINESS.md`** (launch checklist + form wiring expectations).
  */
 
+import notify from '@/lib/utils/appToast';
 import toast from 'react-hot-toast';
 
 /**
@@ -241,10 +242,11 @@ export function showActionError(result, options = {}) {
   // Show toast with appropriate styling based on error type
   const toastOptions = {
     duration: type === 'upgrade' ? 6000 : 4000,
+    id: options.id || `tenvo-action-error:${type || 'generic'}`,
     ...options,
   };
 
-  toast.error(fullMessage, toastOptions);
+  notify.error(fullMessage, toastOptions);
 }
 
 /**

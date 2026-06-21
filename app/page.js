@@ -43,11 +43,16 @@ import {
   Star,
 } from 'lucide-react';
 import MarketingLayout from '@/components/marketing/layout/MarketingLayout';
+import {
+  MARKETING_CONTAINER,
+  MARKETING_MAIN_BOTTOM_STICKY,
+} from '@/lib/utils/marketingLayout';
 import { TenvoTextLogo } from '@/components/branding/TenvoTextLogo';
 import CommerceAndIntelligenceSection from '@/components/marketing/sections/CommerceAndIntelligenceSection';
 import CompetitorComparisonSection from '@/components/marketing/sections/CompetitorComparisonSection';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/context/AuthContext';
+import { trackEvent, EVENTS } from '@/lib/analytics/tracking';
 
 // Marketing highlights (avoid unverifiable user counts on the public site).
 const trustStats = [
@@ -80,10 +85,58 @@ const partners = [
   { name: 'Zapier', category: 'Automation' },
 ];
 
+/** Mobile hero: compact icon row (floating cards are hidden below md so the portrait stays clear). */
+const HERO_MOBILE_LIVE_OPS = [
+  {
+    key: 'sales-order',
+    label: 'Sales order SO-00208 — tax calculated, reconciled, ready to ship.',
+    Icon: FileSpreadsheet,
+    iconClass: 'text-brand-primary',
+    iconBg: 'bg-brand-primary/10',
+  },
+  {
+    key: 'omnichannel',
+    label: 'Omnichannel sync — PKR 142.5k sales, channels connected.',
+    Icon: Sparkles,
+    iconClass: 'text-red-600',
+    iconBg: 'bg-red-50',
+  },
+  {
+    key: 'ai-reorder',
+    label: 'AI auto-reorder — triggered with two days lead time.',
+    Icon: Cpu,
+    iconClass: 'text-brand-primary',
+    iconBg: 'bg-brand-primary/10',
+  },
+  {
+    key: 'dispatch',
+    label: 'TCS dispatched — AWB 72918231.',
+    Icon: Truck,
+    iconClass: 'text-blue-600',
+    iconBg: 'bg-blue-50',
+  },
+  {
+    key: 'audit',
+    label: 'Agentic audit OK — zero anomalies detected.',
+    Icon: ShieldCheck,
+    iconClass: 'text-green-600',
+    iconBg: 'bg-green-50',
+  },
+];
+
 export default function Home() {
   const { user } = useAuth();
-  const primaryHref = user ? '/multi-business' : '/register';
-  const primaryText = user ? 'Open Workspace' : 'SIGN UP - IT\'S FREE';
+  const workspaceHref = user ? '/multi-business' : '/register';
+  const workspaceCtaMobile = user ? 'Open workspace' : 'Start free';
+  const workspaceCtaDesktop = user ? 'OPEN WORKSPACE' : 'START FREE';
+
+  const trackHeroCta = (kind, href) => {
+    trackEvent(EVENTS.HERO_CTA_CLICK, {
+      cta_location: 'home_hero',
+      cta_kind: kind,
+      cta_destination: href,
+    });
+  };
 
   // --- STATE FOR INTERACTIVE COMPONENTS ---
   const [activeFeatureTab, setActiveFeatureTab] = useState('inventory');
@@ -202,14 +255,14 @@ export default function Home() {
   };
 
   return (
-    <MarketingLayout transparentNav={true}>
+    <MarketingLayout transparentNav={true} mainBottomClass={MARKETING_MAIN_BOTTOM_STICKY}>
 
-      {/* STICKY CTA — compact strip; dismiss (session); pr reserves assistant FAB */}
+      {/* STICKY CTA — mobile: 3-col grid (Book | Trial | Close) + generous pr for assistant FAB; sm+: strip layout */}
       <div
         className={`fixed bottom-0 left-0 right-0 z-50 border-t border-neutral-200 bg-white shadow-[0_-3px_16px_-6px_rgba(0,0,0,0.08)] transition-transform duration-300 ease-out ${showStickyCta ? 'translate-y-0' : 'translate-y-full'}`}
         style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
       >
-        <div className="mx-auto flex max-w-7xl items-center gap-2 py-2 pl-4 pr-14 sm:gap-4 sm:px-5 sm:py-2.5 sm:pl-8 sm:pr-32 md:pl-10 lg:px-12 lg:pr-40">
+        <div className="mx-auto grid min-w-0 max-w-7xl grid-cols-1 items-center gap-y-2 px-[max(1rem,env(safe-area-inset-left))] py-2 pr-[calc(5rem+env(safe-area-inset-right,0px))] sm:flex sm:flex-row sm:gap-4 sm:py-2.5 sm:pl-8 sm:pr-[calc(8rem+env(safe-area-inset-right,0px))] md:pl-10 lg:px-12 lg:pr-[calc(10rem+env(safe-area-inset-right,0px))]">
           <div className="hidden min-w-0 flex-1 items-center gap-2.5 sm:flex sm:gap-3">
             <div className="shrink-0 translate-y-px">
               <TenvoTextLogo compact iconClassName="border border-neutral-200/90 shadow-sm" />
@@ -222,26 +275,36 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-2 sm:flex-none sm:flex-nowrap sm:gap-2.5">
+          <div className="grid w-full min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-center gap-2 sm:flex sm:w-auto sm:flex-1 sm:justify-end sm:gap-2.5">
             <Button
               asChild
               variant="outline"
-              className="h-9 shrink-0 rounded-lg border-neutral-300 px-3 text-xs font-bold sm:px-4 sm:text-sm"
+              className="h-10 min-w-0 shrink rounded-lg border-neutral-300 px-2 text-[11px] font-bold leading-tight sm:h-9 sm:px-4 sm:text-sm"
             >
-              <Link href="/demo">Book Demo</Link>
+              <Link
+                href="/demo#demo-form"
+                className="block truncate text-center"
+                onClick={() => trackHeroCta('sticky_book_demo', '/demo#demo-form')}
+              >
+                Book Demo
+              </Link>
             </Button>
             <Button
               asChild
-              className="h-9 min-w-0 max-w-[10.5rem] shrink rounded-lg bg-brand-primary px-3 text-[11px] font-black uppercase tracking-wide text-white hover:bg-brand-primary-dark sm:max-w-[13rem] sm:px-4 sm:text-xs"
+              className="h-10 min-w-0 shrink rounded-lg bg-brand-primary px-2 text-[10px] font-black uppercase leading-tight tracking-wide text-white hover:bg-brand-primary-dark sm:h-9 sm:max-w-[13rem] sm:px-4 sm:text-xs"
             >
-              <Link href={primaryHref} className="block truncate text-center">
-                Start Free Trial
+              <Link
+                href={workspaceHref}
+                className="block truncate text-center"
+                onClick={() => trackHeroCta('sticky_workspace', workspaceHref)}
+              >
+                {user ? 'Workspace' : 'Start free'}
               </Link>
             </Button>
             <button
               type="button"
               onClick={dismissStickyCta}
-              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-neutral-200/90 text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/40"
+              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-neutral-200/90 text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/40 sm:h-9 sm:w-9"
               aria-label="Close promotion bar"
             >
               <X className="h-4 w-4" aria-hidden />
@@ -272,150 +335,213 @@ export default function Home() {
       )}
 
       {/* 1. HERO: value prop & social proof visuals */}
-      <section className="bg-brand-50 pt-16 pb-12 lg:pt-20 lg:pb-16 overflow-hidden relative border-b border-neutral-200/60">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 relative z-10">
-          <div className="grid lg:grid-cols-12 gap-12 items-center">
+      <section className="relative overflow-x-clip border-b border-neutral-200/60 bg-brand-50 pb-10 pt-[calc(4.5rem+env(safe-area-inset-top,0px))] lg:pb-16 lg:pt-[calc(5rem+env(safe-area-inset-top,0px))]">
+        <div className="relative z-10 mx-auto min-w-0 max-w-7xl px-4 min-[380px]:px-5 sm:px-6 lg:px-12">
+          <div className="grid min-w-0 grid-cols-1 items-center gap-8 max-md:gap-5 lg:grid-cols-12 lg:gap-12">
 
-            {/* Left Content Column */}
-            <div className="lg:col-span-6 space-y-6 lg:space-y-8 max-w-2xl">
-              <div className="inline-flex items-center gap-2 rounded-full border border-brand-100 bg-brand-50 px-4 py-2 text-[10px] sm:text-[11px] font-black uppercase tracking-[0.25em] text-brand-primary">
-                <ShieldCheck className="h-4 w-4" />
-                Pakistan-Ready Enterprise Operations
+            {/* Left Content Column — desktop: original headline, badge, CTAs; mobile: compact copy + softer CTAs */}
+            <div className="col-span-1 min-w-0 max-w-full space-y-5 max-md:space-y-5 sm:space-y-6 lg:col-span-6 lg:max-w-2xl lg:space-y-8">
+              <div className="inline-flex max-w-full flex-wrap items-center gap-2 rounded-full border border-neutral-200/90 bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-brand-primary shadow-[0_1px_0_rgba(15,23,42,0.04),0_8px_24px_-12px_rgba(15,23,42,0.12)] sm:px-4 sm:py-2 sm:text-[11px] sm:tracking-[0.22em] md:tracking-[0.25em]">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-primary text-white shadow-inner ring-1 ring-black/5" aria-hidden>
+                  <ShieldCheck className="h-3.5 w-3.5" strokeWidth={2.5} />
+                </span>
+                <span className="min-w-0 text-balance leading-snug">Pakistan-Ready Enterprise Operations</span>
               </div>
 
-              <div className="space-y-4">
-                <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-[4rem] font-extrabold tracking-tight text-neutral-900 leading-[1.1]">
-                  Run Your Entire Business From One <span className="text-brand-primary">Intelligent Dashboard</span>
+              <div className="space-y-3.5 max-md:space-y-3 sm:space-y-4">
+                <h1 className="text-balance text-4xl font-extrabold tracking-tight text-neutral-900 leading-[1.1] max-md:text-[clamp(1.875rem,5.2vw+0.65rem,2.625rem)] max-md:leading-[1.06] max-md:tracking-[-0.035em] max-md:max-w-[22ch] sm:text-5xl lg:text-6xl xl:text-[4rem]">
+                  Run Your Entire Business From One{' '}
+                  <span className="text-brand-primary max-md:bg-gradient-to-r max-md:from-brand-primary max-md:to-brand-primary-dark max-md:bg-clip-text max-md:text-transparent">
+                    Intelligent Dashboard
+                  </span>
                 </h1>
-                <p className="max-w-xl text-lg sm:text-xl font-medium leading-relaxed text-neutral-600">
-                  Run your brand store, checkout floors, warehouses, and books in one place. TENVO keeps stock, orders, and tax aligned - so you are not stitching spreadsheets, plugins, and separate apps the way generic global platforms expect you to.
+                <p className="max-w-xl text-pretty font-medium text-neutral-600 antialiased max-md:text-[0.9375rem] max-md:leading-[1.65] md:text-lg md:leading-relaxed lg:text-xl">
+                  <span className="md:hidden">
+                    Storefront, POS, inventory, and books in one stack. Stock, orders, and tax stay aligned, without duct-taping spreadsheets and plugins like generic platforms make you do.
+                  </span>
+                  <span className="hidden md:inline">
+                    Run your brand store, checkout floors, warehouses, and books in one place. TENVO keeps stock, orders, and tax aligned - so you are not stitching spreadsheets, plugins, and separate apps the way generic global platforms expect you to.
+                  </span>
                 </p>
               </div>
 
-              {/* Zoho Style Premium Gold/White Call to Action Buttons */}
-              <div className="flex flex-col sm:flex-row gap-4 pt-4">
-                <Button asChild size="lg" className="h-14 rounded-xl bg-brand-primary hover:bg-brand-primary-dark text-white px-8 text-sm sm:text-base font-black uppercase tracking-[0.12em] shadow-md transition-all active:scale-[0.98] w-full sm:w-auto">
-                  <Link href="/demo">BOOK A DEMO</Link>
+              <div className="flex w-full min-w-0 flex-col gap-3 pt-1 md:flex-row md:items-stretch md:gap-4 md:pt-4">
+                <Button
+                  asChild
+                  size="lg"
+                  className="hero-cta-primary group relative h-12 min-h-[48px] w-full min-w-0 overflow-hidden rounded-xl border border-black/[0.06] bg-brand-primary px-5 text-[0.9375rem] font-semibold tracking-tight text-white shadow-[0_1px_0_rgba(255,255,255,0.12)_inset,0_12px_32px_-8px_rgba(227,66,66,0.45)] transition-[transform,box-shadow,background-color] duration-200 hover:bg-brand-primary-dark hover:shadow-[0_1px_0_rgba(255,255,255,0.1)_inset,0_16px_40px_-8px_rgba(227,66,66,0.4)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2 active:scale-[0.99] motion-safe:md:hover:-translate-y-px md:h-[3.25rem] md:w-auto md:min-w-[12.5rem] md:px-8 md:text-sm md:font-black md:uppercase md:tracking-[0.14em]"
+                >
+                  <Link
+                    href="/demo#demo-form"
+                    className="relative z-[1] inline-flex w-full items-center justify-center gap-2 text-center"
+                    onClick={() => trackHeroCta('book_demo', '/demo#demo-form')}
+                  >
+                    <span className="md:hidden">Book a demo</span>
+                    <span className="hidden md:inline">BOOK A DEMO</span>
+                    <ArrowRight
+                      className="hidden h-4 w-4 shrink-0 opacity-90 transition-transform duration-200 motion-safe:md:group-hover:translate-x-0.5 md:inline"
+                      aria-hidden
+                    />
+                  </Link>
                 </Button>
-                <Button asChild size="lg" variant="outline" className="h-14 rounded-xl border-2 border-neutral-300 bg-white hover:border-brand-primary hover:text-brand-primary px-8 text-sm sm:text-base font-black uppercase tracking-[0.12em] transition-all w-full sm:w-auto">
-                  <Link href={primaryHref}>{primaryText}</Link>
+                <Button
+                  asChild
+                  size="lg"
+                  variant="outline"
+                  className="hero-cta-secondary group relative h-12 min-h-[48px] w-full min-w-0 rounded-xl border border-neutral-200 bg-white px-5 text-[0.9375rem] font-semibold tracking-tight text-neutral-900 shadow-[0_1px_0_rgba(255,255,255,1)_inset,0_6px_20px_-8px_rgba(15,23,42,0.08)] backdrop-blur-sm transition-[transform,box-shadow,border-color,color] duration-200 hover:border-neutral-300 hover:bg-neutral-50/90 hover:text-neutral-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400/80 focus-visible:ring-offset-2 active:scale-[0.99] motion-safe:md:hover:-translate-y-px md:h-[3.25rem] md:w-auto md:min-w-[12.5rem] md:border-neutral-200 md:px-8 md:text-sm md:font-black md:uppercase md:tracking-[0.12em]"
+                >
+                  <Link
+                    href={workspaceHref}
+                    className="inline-flex w-full items-center justify-center gap-2 text-center"
+                    onClick={() => trackHeroCta('workspace', workspaceHref)}
+                  >
+                    <span className="md:hidden">{workspaceCtaMobile}</span>
+                    <span className="hidden md:inline">{workspaceCtaDesktop}</span>
+                  </Link>
                 </Button>
               </div>
             </div>
 
-            {/* Right Column: Zoho Clone Masterpiece Visual (Zeeshan Keerio + Stacked CSS Boxes + 5 Floating Cards) */}
-            <div className="lg:col-span-6 relative h-[450px] sm:h-[550px] lg:h-[600px] w-full flex items-end justify-center mt-12 lg:mt-0">
-
-              {/* STACKED CARDBOARD BOXES (Minimalist CSS Shapes replicating stacked boxes in photo) */}
-              <div className="absolute inset-0 z-0 pointer-events-none">
-                {/* Large Background Box Right */}
-                <div className="absolute right-[5%] bottom-[12%] w-[180px] h-[240px] bg-[#EED4C5] border border-[#DCBBA9] rounded-lg shadow-sm transform rotate-3" />
-                {/* Large Background Box Left */}
-                <div className="absolute left-[8%] bottom-[8%] w-[190px] h-[210px] bg-[#E7C7B5] border border-[#D5B3A1] rounded-lg shadow-sm transform -rotate-6" />
-                {/* Middle Supporting Box */}
-                <div className="absolute left-[30%] bottom-[20%] w-[160px] h-[160px] bg-[#DEC0AE] border border-[#CBAAA0] rounded-lg shadow-sm transform rotate-12" />
-                {/* High Top Stacked Box */}
-                <div className="absolute right-[22%] bottom-[35%] w-[150px] h-[150px] bg-[#E5C3B0] border border-[#D1AD9B] rounded-lg shadow-sm transform -rotate-12" />
-              </div>
-
-              {/* MAIN OPERATOR IMAGE (Zeeshan Keerio - public/zeeshan-keerio.png) */}
-              <div className="relative w-[400px] sm:w-[450px] aspect-[4/5] z-10 bottom-0 overflow-visible flex items-end">
-                <Image
-                  src="/zeeshan-keerio.png"
-                  alt="Zeeshan Keerio, Founder, CEO, and Lead AI Engineer behind TENVO"
-                  width={450}
-                  height={562}
-                  priority
-                  className="h-auto w-full max-w-[450px] object-contain drop-shadow-[0_15px_30px_rgba(0,0,0,0.15)]"
-                  style={{ width: 'auto', height: 'auto' }}
-                />
-              </div>
-
-              {/* ================= FLOATING WIDGETS CLONE ================= */}
-
-              {/* Widget 1: Sales Order Table with Auto-FBR Verification (Upper Left) */}
-              <div className="absolute left-[-2%] top-[2%] z-20 bg-white border border-neutral-200/80 rounded-2xl p-4 shadow-[0_20px_40px_-15px_rgba(0,0,0,0.12)] w-[220px] transform hover:-translate-y-1 transition-all duration-300">
-                <div className="border-b border-neutral-100 pb-2 mb-2 flex justify-between items-start">
-                  <div>
-                    <h5 className="font-extrabold text-[11px] text-neutral-900">Sales Order</h5>
-                    <p className="text-[9px] font-bold text-neutral-400">SO-00208</p>
+            {/* Right Column: mobile = portrait + icon strip; md+ = original fixed-height stage + outer-anchored widgets */}
+            <div className="relative col-span-1 mt-8 min-w-0 w-full max-w-full lg:col-span-6 lg:mt-0">
+              <div className="flex min-h-0 flex-col items-center justify-start overflow-x-clip md:hidden">
+                <div className="relative z-10 mx-auto w-full max-w-[min(20rem,calc(100vw-2rem))] sm:max-w-[min(24rem,calc(100vw-2.5rem))]">
+                  <div className="relative w-full max-md:aspect-auto">
+                    <Image
+                      src="/zeeshan-keerio.png"
+                      alt="Zeeshan Keerio, Founder, CEO, and Lead AI Engineer behind TENVO"
+                      width={450}
+                      height={562}
+                      priority
+                      className="h-auto w-full max-md:max-h-[min(32rem,78svh)] object-contain object-bottom drop-shadow-[0_15px_30px_rgba(0,0,0,0.15)]"
+                      sizes="(max-width: 640px) min(320px, 100vw), (max-width: 1024px) 400px, 450px"
+                    />
                   </div>
-                  <span className="inline-flex items-center gap-1 rounded bg-green-50 px-1.5 py-0.5 text-[8px] font-black uppercase text-green-700">
-                    <Check className="h-2 w-2" /> FBR Signed
-                  </span>
                 </div>
-                <div className="grid grid-cols-4 text-[8px] font-black uppercase text-neutral-400 pb-1 mb-1 border-b border-neutral-50">
-                  <span>Item</span>
-                  <span className="text-center">Qty</span>
-                  <span className="text-center">Tax</span>
-                  <span className="text-right">Amt</span>
-                </div>
-                <div className="grid grid-cols-4 items-center text-[9px] font-bold text-neutral-700">
-                  <span className="truncate font-black">Cotton Shirt</span>
-                  <span className="text-center">8</span>
-                  <span className="text-center text-green-600 font-extrabold">GST 18%</span>
-                  <span className="text-right text-brand-primary">PKR 76k</span>
-                </div>
-                <div className="flex justify-between border-t border-neutral-100 pt-2 mt-2 text-[10px] font-black">
-                  <span className="text-neutral-500">Auto-Reconciled</span>
-                  <span className="text-green-600 flex items-center gap-0.5"><CheckCircle2 className="w-3 h-3" /> Ready</span>
-                </div>
+                <nav
+                  className="mt-1.5 flex w-full max-w-[min(20rem,calc(100vw-2rem))] flex-wrap items-center justify-center gap-2 px-1 sm:max-w-[min(24rem,calc(100vw-2.5rem))]"
+                  aria-label="Sample in-app highlights"
+                >
+                  {HERO_MOBILE_LIVE_OPS.map(({ key, label, Icon, iconClass, iconBg }) => (
+                    <button
+                      key={key}
+                      type="button"
+                      title={label}
+                      aria-label={label}
+                      className="flex h-11 min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-2xl border border-neutral-200/90 bg-white/95 shadow-sm ring-1 ring-black/[0.04] transition active:scale-[0.98]"
+                    >
+                      <span className={`flex h-9 w-9 items-center justify-center rounded-xl ${iconBg}`}>
+                        <Icon className={`h-[18px] w-[18px] shrink-0 ${iconClass}`} aria-hidden />
+                      </span>
+                    </button>
+                  ))}
+                </nav>
               </div>
 
-              {/* Widget 2: Total Sales & Sync ring (Upper Right) */}
-              <div className="absolute right-[-2%] top-[6%] z-20 bg-white border border-neutral-200/80 rounded-2xl p-4 shadow-[0_20px_40px_-15px_rgba(0,0,0,0.12)] w-[160px] transform hover:-translate-y-1 transition-all duration-300 text-center">
-                <h5 className="font-extrabold text-[10px] text-neutral-400 uppercase tracking-wider mb-2">Omnichannel Sync</h5>
+              <div className="relative mt-12 hidden h-[450px] w-full items-end justify-center sm:h-[550px] md:flex lg:mt-0 lg:h-[600px]">
+                <div className="pointer-events-none absolute inset-0 z-0">
+                  <div className="absolute bottom-[12%] right-[5%] h-[240px] w-[180px] rotate-3 rounded-lg border border-[#DCBBA9] bg-[#EED4C5] shadow-sm" />
+                  <div className="absolute bottom-[8%] left-[8%] h-[210px] w-[190px] -rotate-6 rounded-lg border border-[#D5B3A1] bg-[#E7C7B5] shadow-sm" />
+                  <div className="absolute bottom-[20%] left-[30%] h-[160px] w-[160px] rotate-12 rounded-lg border border-[#CBAAA0] bg-[#DEC0AE] shadow-sm" />
+                  <div className="absolute bottom-[35%] right-[22%] h-[150px] w-[150px] -rotate-12 rounded-lg border border-[#D1AD9B] bg-[#E5C3B0] shadow-sm" />
+                </div>
 
-                {/* Visual Sync Ring */}
-                <div className="relative w-16 h-16 mx-auto mb-2 flex items-center justify-center">
-                  <div className="absolute inset-0 rounded-full border-4 border-dashed border-brand-primary/40 animate-spin duration-10000" />
-                  <div className="absolute inset-2 rounded-full border-4 border-solid border-neutral-100" />
-                  <div className="absolute h-8 w-8 bg-brand-primary rounded-full flex items-center justify-center text-white font-black text-[10px] shadow-sm">
-                    T
+                <div className="relative bottom-0 z-10 flex aspect-[4/5] w-[400px] max-w-full shrink-0 items-end overflow-visible sm:w-[450px]">
+                  <Image
+                    src="/zeeshan-keerio.png"
+                    alt="Zeeshan Keerio, Founder, CEO, and Lead AI Engineer behind TENVO"
+                    width={450}
+                    height={562}
+                    priority
+                    className="h-auto w-full max-w-[450px] object-contain drop-shadow-[0_15px_30px_rgba(0,0,0,0.15)]"
+                    style={{ width: 'auto', height: 'auto' }}
+                    sizes="(max-width: 1024px) 400px, 450px"
+                  />
+                </div>
+
+                <div className="pointer-events-none absolute inset-0 z-20">
+                  <div className="pointer-events-auto absolute left-[-2%] top-[2%] z-20 w-[220px] transform rounded-2xl border border-neutral-200/80 bg-white p-4 shadow-[0_20px_40px_-15px_rgba(0,0,0,0.12)] transition-all duration-300 hover:-translate-y-1">
+                    <div className="mb-2 flex items-start justify-between border-b border-neutral-100 pb-2">
+                      <div>
+                        <h5 className="text-[11px] font-extrabold text-neutral-900">Sales Order</h5>
+                        <p className="text-[9px] font-bold text-neutral-400">SO-00208</p>
+                      </div>
+                      <span className="inline-flex items-center gap-1 rounded bg-green-50 px-1.5 py-0.5 text-[8px] font-black uppercase text-green-700">
+                        <Check className="h-2 w-2 shrink-0" aria-hidden /> GST applied
+                      </span>
+                    </div>
+                    <div className="mb-1 grid grid-cols-4 border-b border-neutral-50 pb-1 text-[8px] font-black uppercase text-neutral-400">
+                      <span>Item</span>
+                      <span className="text-center">Qty</span>
+                      <span className="text-center">Tax</span>
+                      <span className="text-right">Amt</span>
+                    </div>
+                    <div className="grid grid-cols-4 items-center text-[9px] font-bold text-neutral-700">
+                      <span className="truncate font-black">Cotton Shirt</span>
+                      <span className="text-center">8</span>
+                      <span className="text-center font-extrabold text-green-600">GST 18%</span>
+                      <span className="text-right text-brand-primary">PKR 76k</span>
+                    </div>
+                    <div className="mt-2 flex justify-between border-t border-neutral-100 pt-2 text-[10px] font-black">
+                      <span className="text-neutral-500">Auto-Reconciled</span>
+                      <span className="flex items-center gap-0.5 text-green-600">
+                        <CheckCircle2 className="h-3 w-3 shrink-0" aria-hidden /> Ready
+                      </span>
+                    </div>
                   </div>
-                  {/* Channels Small Icons */}
-                  <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-[#10B981] flex items-center justify-center text-[7px] font-black text-white shadow-sm">S</span>
-                  <span className="absolute -bottom-1 -left-1 h-5 w-5 rounded-full bg-[#8B5CF6] flex items-center justify-center text-[7px] font-black text-white shadow-sm">D</span>
-                </div>
-                <p className="text-xs font-black text-neutral-800">PKR 142.5k Sales</p>
-                <p className="text-[8px] text-[#10B981] font-black uppercase tracking-wider mt-0.5 flex items-center justify-center gap-0.5">
-                  <Sparkles className="w-2.5 h-2.5" /> 100% Synced
-                </p>
-              </div>
 
-              {/* Widget 3: AI Auto-Reorder Procurement (Mid-Left) */}
-              <div className="absolute left-[-6%] bottom-[32%] z-20 bg-white border border-neutral-200/80 rounded-xl p-3 shadow-md flex items-center gap-3 w-[170px] transform hover:-translate-y-1 transition-all duration-300">
-                <div className="h-9 w-9 bg-brand-primary/10 rounded-lg flex items-center justify-center text-brand-primary flex-shrink-0">
-                  <Cpu className="w-5 h-5" />
-                </div>
-                <div>
-                  <p className="text-xs font-black text-neutral-900">AI AUTO-REORDER</p>
-                  <p className="text-[9px] text-[#c49c3b] font-black uppercase tracking-wider">Triggered (2 Days Lead)</p>
+                  <div className="pointer-events-auto absolute right-[-2%] top-[6%] z-20 w-[160px] transform rounded-2xl border border-neutral-200/80 bg-white p-4 text-center shadow-[0_20px_40px_-15px_rgba(0,0,0,0.12)] transition-all duration-300 hover:-translate-y-1">
+                    <h5 className="mb-2 text-[10px] font-extrabold uppercase tracking-wider text-neutral-400">Omnichannel Sync</h5>
+                    <div className="relative mx-auto mb-2 flex h-16 w-16 items-center justify-center">
+                      <div className="absolute inset-0 animate-spin rounded-full border-4 border-dashed border-brand-primary/40 duration-10000" />
+                      <div className="absolute inset-2 rounded-full border-4 border-solid border-neutral-100" />
+                      <div className="absolute flex h-8 w-8 items-center justify-center rounded-full bg-brand-primary text-[10px] font-black text-white shadow-sm">
+                        T
+                      </div>
+                      <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-[#10B981] text-[7px] font-black text-white shadow-sm">
+                        S
+                      </span>
+                      <span className="absolute -bottom-1 -left-1 flex h-5 w-5 items-center justify-center rounded-full bg-[#8B5CF6] text-[7px] font-black text-white shadow-sm">
+                        D
+                      </span>
+                    </div>
+                    <p className="text-xs font-black text-neutral-800">PKR 142.5k Sales</p>
+                    <p className="mt-0.5 flex items-center justify-center gap-0.5 text-[8px] font-black uppercase tracking-wider text-[#10B981]">
+                      <Sparkles className="h-2.5 w-2.5 shrink-0" aria-hidden /> 100% Synced
+                    </p>
+                  </div>
+
+                  <div className="pointer-events-auto absolute bottom-[32%] left-[-6%] z-20 flex w-[170px] transform items-center gap-3 rounded-xl border border-neutral-200/80 bg-white p-3 shadow-md transition-all duration-300 hover:-translate-y-1">
+                    <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-brand-primary/10 text-brand-primary">
+                      <Cpu className="h-5 w-5 shrink-0" aria-hidden />
+                    </div>
+                    <div className="min-w-0 text-left">
+                      <p className="text-xs font-black text-neutral-900">AI AUTO-REORDER</p>
+                      <p className="text-[9px] font-black uppercase tracking-wider text-[#c49c3b]">Triggered (2 Days Lead)</p>
+                    </div>
+                  </div>
+
+                  <div className="pointer-events-auto absolute bottom-[34%] right-[-4%] z-20 flex w-[170px] transform items-center gap-3 rounded-xl border border-neutral-200/80 bg-white p-3 shadow-md transition-all duration-300 hover:-translate-y-1">
+                    <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+                      <Truck className="h-5 w-5 shrink-0" aria-hidden />
+                    </div>
+                    <div className="min-w-0 text-left">
+                      <p className="text-xs font-black text-neutral-900">TCS DISPATCHED</p>
+                      <p className="text-[9px] font-bold uppercase tracking-wider text-blue-500">AWB #72918231</p>
+                    </div>
+                  </div>
+
+                  <div className="pointer-events-auto absolute bottom-[14%] right-[2%] z-20 flex w-[180px] transform items-center gap-3 rounded-xl border border-neutral-200/80 bg-white p-3 shadow-md transition-all duration-300 hover:-translate-y-1">
+                    <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-green-50 text-green-600">
+                      <ShieldCheck className="h-5 w-5 shrink-0" aria-hidden />
+                    </div>
+                    <div className="min-w-0 text-left">
+                      <p className="text-xs font-black text-neutral-900">AGENTIC AUDIT OK</p>
+                      <p className="text-[9px] font-bold uppercase tracking-wider text-green-600">0 anomalies detected</p>
+                    </div>
+                  </div>
                 </div>
               </div>
-
-              {/* Widget 4: Courier / Shipment Dispatch (Mid-Right) */}
-              <div className="absolute right-[-4%] bottom-[34%] z-20 bg-white border border-neutral-200/80 rounded-xl p-3 shadow-md flex items-center gap-3 w-[170px] transform hover:-translate-y-1 transition-all duration-300">
-                <div className="h-9 w-9 bg-blue-50 rounded-lg flex items-center justify-center text-blue-600 flex-shrink-0">
-                  <Truck className="w-5 h-5" />
-                </div>
-                <div>
-                  <p className="text-xs font-black text-neutral-900">TCS DISPATCHED</p>
-                  <p className="text-[9px] text-blue-500 font-bold uppercase tracking-wider">AWB #72918231</p>
-                </div>
-              </div>
-
-              {/* Widget 5: Agentic Audit integrity (Bottom-Right) */}
-              <div className="absolute right-[2%] bottom-[14%] z-20 bg-white border border-neutral-200/80 rounded-xl p-3 shadow-md flex items-center gap-3 w-[180px] transform hover:-translate-y-1 transition-all duration-300">
-                <div className="h-9 w-9 bg-green-50 rounded-lg flex items-center justify-center text-green-600 flex-shrink-0">
-                  <ShieldCheck className="w-5 h-5" />
-                </div>
-                <div>
-                  <p className="text-xs font-black text-neutral-900">AGENTIC AUDIT OK</p>
-                  <p className="text-[9px] text-green-600 font-bold uppercase tracking-wider">0 anomalies detected</p>
-                </div>
-              </div>
-
             </div>
 
           </div>
@@ -424,7 +550,7 @@ export default function Home() {
 
       {/* 2.5 CUSTOMER LOGO CAROUSEL - Social Proof Marquee */}
       <section className="bg-white border-b border-neutral-200/80 py-12 lg:py-16 overflow-hidden">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12">
+        <div className={MARKETING_CONTAINER}>
           <p className="text-center text-xs font-black uppercase tracking-[0.25em] text-neutral-400 mb-8">
             Trusted by 450+ Businesses Across Pakistan
           </p>
@@ -450,8 +576,8 @@ export default function Home() {
       </section>
 
       {/* 2.6 VIDEO SECTION - Product Demo */}
-      <section className="bg-neutral-50 border-b border-neutral-200/80 py-20 lg:py-28">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12">
+      <section className="bg-neutral-50 border-b border-neutral-200/80 py-10 sm:py-16 lg:py-28">
+        <div className={MARKETING_CONTAINER}>
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             {/* Left: Video Thumbnail */}
             <div className="relative group cursor-pointer" onClick={() => setShowVideoModal(true)}>
@@ -493,13 +619,13 @@ export default function Home() {
                 See how businesses save 12+ hours every week.
               </h3>
               <p className="text-base text-neutral-600 font-medium leading-relaxed">
-                Watch a 2-minute walkthrough of how TENVO transforms chaotic spreadsheets into streamlined operations. From Excel import to FBR-compliant invoicing, see it all in action.
+                Watch a 2-minute walkthrough of how TENVO transforms chaotic spreadsheets into streamlined operations. From Excel import to GST-aware invoicing, see it in action.
               </p>
               <ul className="space-y-3">
                 {[
                   'Zero-downtime migration from Excel',
                   'Real-time multi-warehouse sync',
-                  'Automated FBR tax calculations',
+                  'GST / sales tax calculations on invoices',
                   'AI-powered restock alerts'
                 ].map((item, idx) => (
                   <li key={idx} className="flex items-center gap-3 text-sm font-semibold text-neutral-700">
@@ -525,8 +651,8 @@ export default function Home() {
       <CompetitorComparisonSection />
 
       {/* 3. INTERACTIVE MODULE HUB (ZOHO INVENTORY CORE CLONE) */}
-      <section className="bg-white py-20 lg:py-28 border-b border-neutral-200/80">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12">
+      <section className="bg-white py-10 sm:py-16 lg:py-28 border-b border-neutral-200/80">
+        <div className={MARKETING_CONTAINER}>
           <div className="text-center max-w-3xl mx-auto mb-16 space-y-4">
             <h2 className="text-[11px] font-black text-brand-primary uppercase tracking-[0.25em]">Your Complete Toolkit</h2>
             <h3 className="text-3xl sm:text-4xl md:text-5xl font-black text-neutral-900 tracking-tight">
@@ -618,7 +744,7 @@ export default function Home() {
                 </div>
                 <div>
                   <h4 className="font-black text-base text-neutral-900">Accounting & Tax Filing</h4>
-                  <p className="text-xs text-neutral-500 mt-1 font-semibold">Generate invoices and automate your FBR tax filings easily.</p>
+                  <p className="text-xs text-neutral-500 mt-1 font-semibold">Generate invoices with configured GST and export-friendly tax summaries.</p>
                 </div>
               </button>
             </div>
@@ -753,7 +879,7 @@ export default function Home() {
                     <Check className="w-4 h-4" /> Pakistan Localized Tax Accounting
                   </div>
                   <h3 className="text-2xl lg:text-3xl font-black text-neutral-900">
-                    Audit-ready ledgers & FBR compliant invoicing.
+                    Audit-ready ledgers & GST-aware invoicing.
                   </h3>
                   <p className="text-sm text-neutral-600 font-medium leading-relaxed">
                     Say goodbye to disconnected billing. Generate sales invoices, track customer aging balances, record payments received, and manage double-entry accounting files automatically. Complete with integrated GST/tax calculators tuned for Pakistani filings.
@@ -762,8 +888,8 @@ export default function Home() {
                     <div className="flex items-start gap-3">
                       <CheckCircle2 className="w-5 h-5 text-brand-primary flex-shrink-0 mt-0.5" />
                       <div>
-                        <p className="text-sm font-bold text-neutral-800">FBR Compliance Safeguards</p>
-                        <p className="text-xs text-neutral-500">Automatic compliance with local Tier-1 retailer reporting standards.</p>
+                        <p className="text-sm font-bold text-neutral-800">Tax configuration safeguards</p>
+                        <p className="text-xs text-neutral-500">Sales tax rules, audit logs, and export-oriented summaries for Pakistan.</p>
                       </div>
                     </div>
                     <div className="flex items-start gap-3">
@@ -860,7 +986,7 @@ export default function Home() {
                 {activeFeatureTab === 'accounting' && (
                   <div className="space-y-2.5 font-mono text-xs text-neutral-700">
                     <div className="flex justify-between border-b border-neutral-50 pb-1">
-                      <span>FBR TIER-1 INVOICE RECORD</span>
+                      <span>GST INVOICE PREVIEW</span>
                       <span className="text-brand-primary font-bold">UUID: 2026-TX-10023</span>
                     </div>
                     <div className="flex justify-between border-b border-neutral-50 pb-1">
@@ -882,10 +1008,10 @@ export default function Home() {
       </section>
 
       {/* 4. EXCEL-FIRST & SPREADSHEET POWER SIMULATOR */}
-      <section className="bg-neutral-50 border-b border-neutral-200/80 py-20 lg:py-28">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12">
+      <section className="bg-neutral-50 border-b border-neutral-200/80 py-10 sm:py-16 lg:py-28">
+        <div className={MARKETING_CONTAINER}>
 
-          <div className="grid lg:grid-cols-12 gap-12 items-center">
+          <div className="grid items-center gap-8 lg:grid-cols-12 lg:gap-12">
 
             {/* Left Content column */}
             <div className="lg:col-span-5 space-y-6">
@@ -921,12 +1047,12 @@ export default function Home() {
                 </li>
               </ul>
 
-              <div className="pt-4">
-                <Button onClick={runExcelSimulation} disabled={simulationStatus === 'processing'} className="bg-brand-primary hover:bg-brand-primary-dark text-white font-black rounded-2xl h-12 px-6 uppercase tracking-wider">
+              <div className="flex flex-wrap items-center gap-2 pt-4">
+                <Button onClick={runExcelSimulation} disabled={simulationStatus === 'processing'} className="h-11 rounded-xl bg-brand-primary px-5 font-black uppercase tracking-wider text-white hover:bg-brand-primary-dark sm:h-12 sm:rounded-2xl sm:px-6">
                   {simulationStatus === 'processing' ? 'Validating Sheet...' : 'Simulate Excel Upload'}
                 </Button>
                 {simulationStatus !== 'idle' && (
-                  <Button onClick={resetExcelSimulation} variant="ghost" className="text-neutral-500 font-bold ml-2">
+                  <Button onClick={resetExcelSimulation} variant="ghost" className="ml-0 font-bold text-neutral-500 sm:ml-2">
                     Reset
                   </Button>
                 )}
@@ -934,28 +1060,65 @@ export default function Home() {
             </div>
 
             {/* Right Simulator column */}
-            <div className="lg:col-span-7 bg-white border border-neutral-200/80 rounded-[2.5rem] p-6 shadow-sm">
-              <div className="flex items-center justify-between border-b border-neutral-200 pb-4 mb-4">
-                <div>
-                  <h4 className="font-black text-neutral-900 text-lg">Spreadsheet Import Preview</h4>
-                  <p className="text-xs text-neutral-500 font-semibold mt-0.5">Validating 4 lines of imported products</p>
+            <div className="min-w-0 rounded-2xl border border-neutral-200/80 bg-white p-4 shadow-sm sm:p-6 lg:col-span-7 lg:rounded-[2.5rem]">
+              <div className="mb-4 flex flex-col gap-3 border-b border-neutral-200 pb-4 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0">
+                  <h4 className="text-base font-black text-neutral-900 sm:text-lg">Spreadsheet Import Preview</h4>
+                  <p className="mt-0.5 text-[11px] font-semibold text-neutral-500 sm:text-xs">Validating 4 lines of imported products</p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex shrink-0 items-center gap-2 self-start sm:self-center">
                   <span className={`h-2.5 w-2.5 rounded-full ${simulationStatus === 'idle' ? 'bg-neutral-300' :
                     simulationStatus === 'processing' ? 'bg-amber-400 animate-pulse' : 'bg-emerald-500'
                     }`} />
-                  <span className="text-xs font-bold uppercase tracking-wider text-neutral-500">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 sm:text-xs">
                     {simulationStatus === 'idle' ? 'Ready to parse' :
                       simulationStatus === 'processing' ? 'Validating FBR & SKU' : 'Partial Import Available'}
                   </span>
                 </div>
               </div>
 
-              {/* Grid Simulator */}
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse min-w-[500px]">
+              {/* Mobile: card list */}
+              <div className="space-y-2.5 lg:hidden">
+                {excelRows.map((row, idx) => (
+                  <div
+                    key={idx}
+                    className={`rounded-xl border p-3 ${
+                      row.status === 'failed'
+                        ? 'border-red-200 bg-red-50/40'
+                        : row.status === 'success'
+                          ? 'border-emerald-200/80 bg-emerald-50/30'
+                          : 'border-neutral-100 bg-neutral-50/60'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="font-mono text-[11px] font-bold text-neutral-900">{row.sku}</span>
+                      {row.status === 'pending' && (
+                        <span className="shrink-0 rounded bg-neutral-100 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-neutral-400">Pending</span>
+                      )}
+                      {row.status === 'success' && (
+                        <span className="shrink-0 rounded bg-emerald-50 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-emerald-700">Ready</span>
+                      )}
+                      {row.status === 'failed' && (
+                        <span className="shrink-0 rounded bg-red-50 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-red-700">Error</span>
+                      )}
+                    </div>
+                    <p className="mt-1.5 text-sm font-medium leading-snug text-neutral-800">{row.name}</p>
+                    <div className="mt-2 flex items-center justify-between text-xs">
+                      <span className="font-semibold uppercase tracking-wide text-neutral-400">Initial stock</span>
+                      <span className="font-bold tabular-nums text-neutral-900">{row.stock}</span>
+                    </div>
+                    {row.error ? (
+                      <p className="mt-2 text-[10px] font-semibold leading-relaxed text-red-700">{row.error}</p>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+
+              {/* Desktop: table */}
+              <div className="hidden overflow-x-auto lg:block">
+                <table className="w-full min-w-0 border-collapse text-left">
                   <thead>
-                    <tr className="bg-neutral-50 text-neutral-400 font-black text-[10px] uppercase tracking-wider border-b border-neutral-200">
+                    <tr className="border-b border-neutral-200 bg-neutral-50 text-[10px] font-black uppercase tracking-wider text-neutral-400">
                       <th className="p-3">SKU Code</th>
                       <th className="p-3">Item Name</th>
                       <th className="p-3">Initial Stock</th>
@@ -970,13 +1133,13 @@ export default function Home() {
                         <td className="p-3 font-bold">{row.stock}</td>
                         <td className="p-3">
                           {row.status === 'pending' && (
-                            <span className="text-neutral-400 font-semibold uppercase tracking-wider text-[9px] px-2 py-0.5 bg-neutral-100 rounded">Pending</span>
+                            <span className="rounded bg-neutral-100 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-neutral-400">Pending</span>
                           )}
                           {row.status === 'success' && (
-                            <span className="text-emerald-700 font-black uppercase tracking-wider text-[9px] px-2 py-0.5 bg-emerald-50 rounded">Ready</span>
+                            <span className="rounded bg-emerald-50 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-emerald-700">Ready</span>
                           )}
                           {row.status === 'failed' && (
-                            <span className="text-red-700 font-black uppercase tracking-wider text-[9px] px-2 py-0.5 bg-red-50 rounded">Error</span>
+                            <span className="rounded bg-red-50 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-red-700">Error</span>
                           )}
                         </td>
                       </tr>
@@ -987,11 +1150,11 @@ export default function Home() {
 
               {/* Error Box representation if validation finished */}
               {simulationStatus === 'done' && (
-                <div className="mt-4 p-4 border border-red-200 bg-red-50 rounded-2xl flex items-start gap-3">
-                  <Info className="w-5 h-5 text-red-700 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <h5 className="font-bold text-red-900 text-sm">SKU Duplication Error found (Row 3)</h5>
-                    <p className="text-xs text-red-700 mt-1 leading-relaxed font-semibold">
+                <div className="mt-4 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-3 sm:rounded-2xl sm:p-4">
+                  <Info className="mt-0.5 h-5 w-5 shrink-0 text-red-700" />
+                  <div className="min-w-0">
+                    <h5 className="text-sm font-bold text-red-900">SKU Duplication Error found (Row 3)</h5>
+                    <p className="mt-1 text-xs font-semibold leading-relaxed text-red-700">
                       TENVO caught a critical SKU collision. Traditional ERPs would fail the whole import. TENVO allows you to **import only the 3 valid rows** and provides a fixed Excel sheet with highlighted columns to resolve.
                     </p>
                   </div>
@@ -1005,8 +1168,8 @@ export default function Home() {
       </section>
 
       {/* 5. INTERACTIVE MARGIN-FIRST PRICING CALCULATOR */}
-      <section className="bg-white border-b border-neutral-200/80 py-20 lg:py-28">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12">
+      <section className="bg-white border-b border-neutral-200/80 py-10 sm:py-16 lg:py-28">
+        <div className={MARKETING_CONTAINER}>
 
           <div className="grid lg:grid-cols-12 gap-12 items-center">
 
@@ -1135,8 +1298,8 @@ export default function Home() {
       </section>
 
       {/* 5.5 LIVE WAREHOUSE OPERATIONAL SIMULATOR (NEW ADVANCED FEATURE) */}
-      <section className="bg-white border-b border-neutral-200/80 py-20 lg:py-28">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12">
+      <section className="bg-white border-b border-neutral-200/80 py-10 sm:py-16 lg:py-28">
+        <div className={MARKETING_CONTAINER}>
 
           <div className="text-center max-w-3xl mx-auto mb-16 space-y-4">
             <div className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-neutral-50 px-4 py-2 text-[11px] font-black uppercase tracking-[0.25em] text-neutral-800">
@@ -1146,7 +1309,7 @@ export default function Home() {
               Test drive the TENVO operating system.
             </h3>
             <p className="text-lg text-neutral-500 font-medium">
-              We built an advanced operations engine. Interact with the live terminal below to see barcode stocktakes, automated purchase orders, and localized FBR billing sync in action.
+              We built an advanced operations engine. Interact with the demo terminal below to see Excel import, replenishment drafts, and GST invoice previews.
             </p>
           </div>
 
@@ -1198,8 +1361,8 @@ export default function Home() {
                   <Receipt className="w-5 h-5" />
                 </div>
                 <div>
-                  <h4 className="font-black text-base text-neutral-900">3. FBR Invoice Printing</h4>
-                  <p className="text-xs text-neutral-500 mt-1 font-semibold">Generate certified Tier-1 receipts with standard GST calculations.</p>
+                  <h4 className="font-black text-base text-neutral-900">3. GST invoice preview</h4>
+                  <p className="text-xs text-neutral-500 mt-1 font-semibold">Receipt-style preview with standard 18% GST math on live invoices.</p>
                 </div>
               </button>
 
@@ -1389,10 +1552,10 @@ export default function Home() {
               {activeTerminalTab === 'fbr' && (
                 <div className="space-y-6 flex-1 flex flex-col justify-between">
                   <div className="space-y-4">
-                    <span className="text-xs font-black text-brand-primary uppercase tracking-widest block">FBR Tier-1 Invoicing</span>
-                    <h4 className="font-black text-2xl text-neutral-900">Seamless sales billing & local tax integration.</h4>
+                    <span className="text-xs font-black text-brand-primary uppercase tracking-widest block">Pakistani GST invoicing (demo)</span>
+                    <h4 className="font-black text-2xl text-neutral-900">Sales billing with local tax calculations.</h4>
                     <p className="text-sm text-neutral-600 font-medium leading-relaxed">
-                      Every trade sale is automatically reported to FBR servers. Slide receipt value below to verify instant local 18% Standard GST tax audit calculations:
+                      Illustrative receipt with standard 18% GST math. TENVO calculates tax on live invoices and POS sales; FBR IRIS live transmission is on the roadmap.
                     </p>
                   </div>
 
@@ -1419,11 +1582,11 @@ export default function Home() {
                     {/* Tax Invoicing Preview Card */}
                     <div className="border border-neutral-200 rounded-2xl p-4 font-mono text-xs text-neutral-800 space-y-2 bg-neutral-50 relative overflow-hidden">
                       <div className="absolute right-3 top-3 h-10 w-10 border border-emerald-500 text-emerald-600 rounded flex items-center justify-center font-bold text-[8px] uppercase tracking-wider rotate-12">
-                        FBR Cert
+                        GST calc
                       </div>
                       <div className="border-b border-neutral-200 pb-2">
                         <p className="font-bold text-neutral-900">TENVO OPERATIVE BILLING</p>
-                        <p className="text-[10px] text-neutral-400">UUID: 2026-FBR-TX-9903A</p>
+                        <p className="text-[10px] text-neutral-400">Sample invoice preview</p>
                       </div>
                       <div className="space-y-1">
                         <div className="flex justify-between">
@@ -1440,7 +1603,7 @@ export default function Home() {
                         </div>
                       </div>
                       <p className="text-[8px] text-neutral-400 font-semibold leading-relaxed border-t border-neutral-200 pt-2 font-sans">
-                        FBR server response: **ACKNOWLEDGED**. Invoice hash generated. Ledger double-entries balanced.
+                        Demo only — production invoices use your configured tax rules and audit trail.
                       </p>
                     </div>
 
@@ -1518,8 +1681,8 @@ export default function Home() {
       </section>
 
       {/* 6. WHO BENEFITS (AUDIENCE VERTICALS) - Pure Light Theme */}
-      <section className="bg-neutral-50 border-b border-neutral-200/80 py-20 lg:py-28">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12">
+      <section className="bg-neutral-50 border-b border-neutral-200/80 py-10 sm:py-16 lg:py-28">
+        <div className={MARKETING_CONTAINER}>
 
           <div className="text-center max-w-3xl mx-auto mb-16 space-y-4">
             <h2 className="text-[11px] font-black text-brand-primary uppercase tracking-[0.25em]">Industry Specific Solutions</h2>
@@ -1602,8 +1765,8 @@ export default function Home() {
       </section>
 
       {/* 7. UNIQUE BENEFITS & COMPETITIVE ANALYSIS - Pure Light Theme */}
-      <section className="bg-white border-b border-neutral-200/80 py-20 lg:py-28">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12">
+      <section className="bg-white border-b border-neutral-200/80 py-10 sm:py-16 lg:py-28">
+        <div className={MARKETING_CONTAINER}>
 
           <div className="text-center max-w-3xl mx-auto mb-16 space-y-4">
             <h2 className="text-[11px] font-black text-brand-primary uppercase tracking-[0.25em]">Why Choose Tenvo</h2>
@@ -1694,7 +1857,7 @@ export default function Home() {
                 </tr>
 
                 <tr className="border-b border-neutral-100 text-xs font-semibold text-neutral-700">
-                  <td className="p-4 font-bold text-neutral-900">FBR Compliance</td>
+                  <td className="p-4 font-bold text-neutral-900">Pakistan tax setup</td>
                   <td className="p-4 text-neutral-400">Custom expensive wrappers</td>
                   <td className="p-4 text-neutral-400">Impossible</td>
                   <td className="p-4 text-brand-primary font-bold">Compliant & Automatic</td>
@@ -1722,8 +1885,8 @@ export default function Home() {
       </section>
 
       {/* 8. STEP-BY-STEP ADOPTION PATHWAY - Pure Light Theme */}
-      <section className="bg-neutral-50 border-b border-neutral-200/80 py-20 lg:py-28">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12">
+      <section className="bg-neutral-50 border-b border-neutral-200/80 py-10 sm:py-16 lg:py-28">
+        <div className={MARKETING_CONTAINER}>
 
           <div className="text-center max-w-3xl mx-auto mb-16 space-y-4">
             <h2 className="text-[11px] font-black text-brand-primary uppercase tracking-[0.25em]">Simple Onboarding</h2>
@@ -1784,8 +1947,8 @@ export default function Home() {
       </section>
 
       {/* 8.5 SECURITY & COMPLIANCE BADGES */}
-      <section className="bg-neutral-50 border-b border-neutral-200/80 py-16 lg:py-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12">
+      <section className="bg-neutral-50 border-b border-neutral-200/80 py-10 sm:py-14 lg:py-20">
+        <div className={MARKETING_CONTAINER}>
           <div className="text-center mb-12 space-y-3">
             <h2 className="text-[11px] font-black text-brand-primary uppercase tracking-[0.25em]">Enterprise-Grade Security</h2>
             <h3 className="text-2xl sm:text-3xl font-black text-neutral-900 tracking-tight">
@@ -1795,7 +1958,7 @@ export default function Home() {
           
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             {[
-              { icon: Shield, title: 'FBR Certified', desc: 'Tax compliant' },
+              { icon: Shield, title: 'Tax-ready', desc: 'GST configuration' },
               { icon: Lock, title: 'SSL Encryption', desc: '256-bit secure' },
               { icon: Server, title: 'Cloud Secured', desc: 'AWS hosting' },
               { icon: BadgeCheck, title: 'PSEB Registered', desc: 'Govt verified' },
@@ -1868,7 +2031,7 @@ export default function Home() {
       </section>
 
       {/* 10. EXPANDABLE COMPREHENSIVE FAQ - Pure Light Theme */}
-      <section className="bg-neutral-50 border-b border-neutral-200/80 py-20 lg:py-28">
+      <section className="bg-neutral-50 border-b border-neutral-200/80 py-10 sm:py-16 lg:py-28">
         <div className="max-w-4xl mx-auto px-4 sm:px-6">
 
           <div className="text-center mb-16 space-y-4">
@@ -1913,7 +2076,7 @@ export default function Home() {
               {expandedFaq === 1 && (
                 <div className="p-6 pt-0 border-t border-neutral-100">
                   <p className="text-xs text-neutral-500 leading-relaxed font-semibold">
-                    Absolutely. TENVO features a localized tax compliance ledger that automatically calculates standard 18% GST (or custom provincial sales tax rates like SRB and PRA) per invoice line. We provide audit-ready transaction logs and automated monthly tax report exports, completely compliant with local retailer reporting standards.
+                    TENVO features a localized tax ledger that calculates standard 18% GST (and configurable provincial rates) per invoice line. We provide audit-ready logs and export-oriented summaries for your filing workflow. Live FBR IRIS sync is on the roadmap.
                   </p>
                 </div>
               )}
@@ -1931,7 +2094,7 @@ export default function Home() {
               {expandedFaq === 2 && (
                 <div className="p-6 pt-0 border-t border-neutral-100">
                   <p className="text-xs text-neutral-500 leading-relaxed font-semibold">
-                    We realize that while office operations use English, floor loaders and pickers in local warehouses prefer Urdu. TENVO features a simple Urdu toggle button in the dashboard, translating core inventory actions, SKU searches, barcode scanning confirmations, and warehouse transfer inputs into clean, simple Urdu instructions.
+                    We realize warehouse teams may prefer Urdu for floor tasks. TENVO includes a language toggle with growing Urdu strings for core hub actions — full product localization is expanding release by release.
                   </p>
                 </div>
               )}
@@ -1961,8 +2124,8 @@ export default function Home() {
       </section>
 
       {/* 11. HIGH IMPACT CALL-TO-ACTION (CTA) - Pure Light Theme */}
-      <section className="bg-white py-16 lg:py-24">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12">
+      <section className="bg-white py-10 sm:py-14 lg:py-24">
+        <div className={MARKETING_CONTAINER}>
 
           <div className="bg-neutral-50 border border-neutral-200/80 rounded-[3rem] p-8 sm:p-12 lg:p-16 text-center space-y-6 relative overflow-hidden shadow-sm">
             <h2 className="text-[11px] font-black text-brand-primary uppercase tracking-[0.32em]">Ready to take command?</h2>
@@ -1970,12 +2133,17 @@ export default function Home() {
               Unify your warehouse, sales, and accounts today.
             </h3>
             <p className="max-w-2xl mx-auto text-sm sm:text-base text-neutral-600 font-medium leading-relaxed">
-              Join serious operational teams switching from fragmented spreadsheets to Pakistan&apos;s first unified, FBR-compliant, Excel-first operating system. Start your free trial today.
+              Join operational teams moving from spreadsheets to one connected workspace — inventory, storefront, POS, and finance with Pakistan-first tax configuration. Start free today.
             </p>
 
             <div className="pt-4 flex flex-col sm:flex-row justify-center gap-4">
               <Button asChild size="lg" className="h-14 rounded-xl bg-brand-primary hover:bg-brand-primary-dark text-white px-8 text-base font-black uppercase tracking-[0.15em] shadow-md transition-all">
-                <Link href={primaryHref}>{primaryText}</Link>
+                <Link
+                  href={workspaceHref}
+                  onClick={() => trackHeroCta('footer_workspace', workspaceHref)}
+                >
+                  {workspaceCtaDesktop}
+                </Link>
               </Button>
               <Button asChild size="lg" variant="outline" className="h-14 rounded-xl border-neutral-300 bg-white hover:border-brand-primary hover:text-brand-primary px-8 text-base font-black uppercase tracking-[0.15em] transition-all">
                 <Link href="/pricing">View Pricing Plans</Link>

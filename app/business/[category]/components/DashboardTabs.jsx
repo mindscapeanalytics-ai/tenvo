@@ -49,6 +49,7 @@ const AIInsightsPanel = dynamic(() => import('@/components/intelligence/AIInsigh
 const ReportBuilder = dynamic(() => import('@/components/reports/ReportBuilder').then(mod => mod.ReportBuilder));
 const StoreSettingsManager = dynamic(() => import('@/components/StoreSettingsManager').then(mod => mod.StoreSettingsManager));
 const OrdersManager = dynamic(() => import('@/components/orders/OrdersManager').then(mod => mod.OrdersManager));
+const StorefrontTabShell = dynamic(() => import('@/components/storefront/mobile/StorefrontTabShell').then(mod => mod.StorefrontTabShell));
 const TabGuard = dynamic(() => import('@/components/guards/TabGuard').then(mod => mod.TabGuard));
 const ResourceLimitBanner = dynamic(() => import('@/components/ui/ResourceLimitBanner').then(mod => mod.ResourceLimitBanner));
 const NotificationBell = dynamic(() => import('@/components/notifications/NotificationBell').then(mod => mod.NotificationBell));
@@ -84,7 +85,9 @@ export function DashboardTabs({
     domainKnowledge,
     handlers,
     isLoading = false,
-    user // Add user prop for role-based dashboards
+    user,
+    financeInitialTab = null,
+    onFinanceInitialTabConsumed,
 }) {
     const posRelevant = isPosRelevant(category, domainKnowledge);
     const hospitalityDomain = isHospitality(category);
@@ -225,6 +228,7 @@ export function DashboardTabs({
         setEditingVendor,
         setShowPOBuilder,
         formatCurrency,
+        openFinanceSubTab,
         // POS & Restaurant
         posSession,
         handleStartPosSession,
@@ -270,6 +274,7 @@ export function DashboardTabs({
                             onQuickAction={handlers.handleQuickAction}
                             onDateRangePresetChange={handleDateRangePreset}
                             dashboardMetrics={dashboardMetrics}
+                            chartData={dashboardChartData}
                             accountingSummary={accountingSummary}
                             expenseBreakdown={expenseBreakdown}
                             expenses={expenses}
@@ -348,9 +353,10 @@ export function DashboardTabs({
                                     setShowProductForm(true);
                                 }}
                                 onUpdate={async (product) => {
-                                    // Busy grid: avoid refreshAllData — it races the grid's optimistic row and can
-                                    // briefly restore stale server rows after Enter/blur.
-                                    const fullProduct = products.find(p => p.id === product.id);
+                                    // Busy grid + Excel bulk: same composite upsert as the form. Supports creates
+                                    // when `product.id` is missing (Excel new rows). Avoid hardcoding isUpdate.
+                                    const persisted = Boolean(product?.id);
+                                    const fullProduct = persisted ? products.find((p) => p.id === product.id) : null;
 
                                     await handleSaveProduct(
                                         {
@@ -363,10 +369,8 @@ export function DashboardTabs({
                                                 product.serial_numbers ||
                                                 [],
                                             business_id: business.id,
-                                            isUpdate: true,
-                                            productId: product.id,
                                         },
-                                        { skipFullWorkspaceRefresh: true }
+                                        { skipFullWorkspaceRefresh: true, silentToast: true }
                                     );
                                 }}
                                 onLocationAdd={handleLocationAdd}
@@ -449,6 +453,7 @@ export function DashboardTabs({
                 <TabsContent value="sales" className="space-y-6 outline-none">
                     {wrapTab(
                         <TabGuard tabKey="sales" role={role} planTier={planTier} featureName="Sales" onUpgrade={() => handleTabChange('settings')}>
+                            <StorefrontTabShell activeTab="sales">
                             <SalesManager
                                 invoices={invoices}
                                 customers={customers}
@@ -457,6 +462,7 @@ export function DashboardTabs({
                                 businessId={business?.id}
                                 currency={currency}
                             />
+                            </StorefrontTabShell>
                         </TabGuard>
                     )}
                 </TabsContent>
@@ -501,6 +507,7 @@ export function DashboardTabs({
                 <TabsContent value="quotations" className="space-y-6 outline-none">
                     {wrapTab(
                         <TabGuard tabKey="quotations" role={role} planTier={planTier} featureName="Quotations" onUpgrade={() => handleTabChange('settings')}>
+                            <StorefrontTabShell activeTab="quotations">
                             <QuotationOrderChallanManager
                                 quotations={filteredQuotations}
                                 salesOrders={filteredSalesOrders}
@@ -514,6 +521,7 @@ export function DashboardTabs({
                                     setShowInvoiceBuilder(true);
                                 }}
                             />
+                            </StorefrontTabShell>
                         </TabGuard>
                     )}
                 </TabsContent>
@@ -653,6 +661,7 @@ export function DashboardTabs({
                                     currency={currency}
                                     role={role}
                                     onTabChange={handleTabChange}
+                                    onFinanceSubTab={openFinanceSubTab}
                                 />
                             </>
                         </TabGuard>
@@ -662,7 +671,12 @@ export function DashboardTabs({
                 <TabsContent value="finance" className="space-y-6 outline-none">
                     {wrapTab(
                         <TabGuard tabKey="finance" role={role} planTier={planTier} featureName="Finance" onUpgrade={() => handleTabChange('settings')}>
-                            <FinanceHub businessId={business?.id} businessCategory={category} />
+                            <FinanceHub
+                                businessId={business?.id}
+                                businessCategory={category}
+                                initialTab={financeInitialTab || undefined}
+                                onInitialTabConsumed={onFinanceInitialTabConsumed}
+                            />
                         </TabGuard>
                     )}
                 </TabsContent>
@@ -692,7 +706,7 @@ export function DashboardTabs({
                                 </div>
                                 {reportsView === 'analytics' && <AdvancedAnalytics businessId={business?.id} category={category} currency={currency} dateRange={dateRange} />}
                                 {reportsView === 'forecast' && <DemandForecast businessId={business?.id} category={category} products={products} invoices={invoices} domainKnowledge={domainKnowledge} dateRange={dateRange} />}
-                                {reportsView === 'ai' && <AIInsightsPanel businessId={business?.id} dateRange={dateRange} />}
+                                {reportsView === 'ai' && <AIInsightsPanel businessId={business?.id} category={category} dateRange={dateRange} />}
                                 {reportsView === 'builder' && <ReportBuilder businessId={business?.id} currency={currency} dateRange={dateRange} />}
                             </div>
                         </TabGuard>
@@ -719,7 +733,7 @@ export function DashboardTabs({
                         <TabGuard tabKey="gst" role={role} planTier={planTier} featureName="Tax & GST" onUpgrade={() => handleTabChange('settings')}>
                             <TaxComplianceManager
                                 invoices={filteredInvoices}
-                                purchaseOrders={purchaseOrders}
+                                purchaseOrders={filteredPurchaseOrders}
                                 business={business}
                             />
                         </TabGuard>
@@ -740,6 +754,7 @@ export function DashboardTabs({
                             featureName="Point of Sale"
                             onUpgrade={() => handleTabChange('settings')}
                         >
+                            <StorefrontTabShell activeTab="pos">
                             {category === 'restaurant-cafe' ? (
                                 <RestaurantPOS
                                     businessId={business?.id}
@@ -764,6 +779,7 @@ export function DashboardTabs({
                             ) : (
                                 <PosTerminal
                                     businessId={business?.id}
+                                    category={category}
                                     products={filteredProducts}
                                     customers={filteredCustomers}
                                     onStartSession={handleStartPosSession}
@@ -772,6 +788,7 @@ export function DashboardTabs({
                                     session={posSession}
                                 />
                             )}
+                            </StorefrontTabShell>
                         </TabGuard>
                     )}
                 </TabsContent>
@@ -786,10 +803,12 @@ export function DashboardTabs({
                             featureName="Orders Management"
                             onUpgrade={() => handleTabChange('settings')}
                         >
+                            <StorefrontTabShell activeTab="orders">
                             <OrdersManager
                                 business={business}
                                 category={category}
                             />
+                            </StorefrontTabShell>
                         </TabGuard>
                     )}
                 </TabsContent>
@@ -807,10 +826,11 @@ export function DashboardTabs({
                             featureName="Restaurant Operations"
                             onUpgrade={() => handleTabChange('settings')}
                         >
-                            <div className="space-y-6">
-                                <div className="flex items-center justify-between">
-                                    <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight">Restaurant Operations</h2>
-                                    <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1">
+                            <StorefrontTabShell activeTab="restaurant">
+                            <div className="space-y-4 lg:space-y-6">
+                                <div className="hidden items-center justify-between lg:flex">
+                                    <h2 className="text-xl font-black uppercase tracking-tight text-gray-900">Restaurant Operations</h2>
+                                    <div className="flex items-center gap-1 rounded-xl bg-gray-100 p-1">
                                         {[
                                             { key: 'manager', label: 'Manager' },
                                             { key: 'floorplan', label: 'Floor Plan' },
@@ -826,6 +846,23 @@ export function DashboardTabs({
                                             </button>
                                         ))}
                                     </div>
+                                </div>
+
+                                <div className="flex gap-1 overflow-x-auto rounded-lg bg-gray-100/80 p-0.5 scrollbar-none lg:hidden">
+                                    {[
+                                        { key: 'manager', label: 'Manager' },
+                                        { key: 'floorplan', label: 'Floor' },
+                                        { key: 'reservations', label: 'Bookings' },
+                                    ].map((v) => (
+                                        <button
+                                            key={v.key}
+                                            type="button"
+                                            onClick={() => setRestaurantView(v.key)}
+                                            className={`shrink-0 rounded-md px-3 py-1.5 text-[10px] font-bold uppercase tracking-wide transition-all ${restaurantView === v.key ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}`}
+                                        >
+                                            {v.label}
+                                        </button>
+                                    ))}
                                 </div>
 
                                 {restaurantView === 'floorplan' && (
@@ -866,6 +903,7 @@ export function DashboardTabs({
                                     </>
                                 )}
                             </div>
+                            </StorefrontTabShell>
                         </TabGuard>
                     )}
                 </TabsContent>
@@ -1005,15 +1043,17 @@ export function DashboardTabs({
                 <TabsContent value="loyalty" className="space-y-6 outline-none">
                     {wrapTab(
                         <TabGuard tabKey="loyalty" role={role} planTier={planTier} domainCheck={posRelevant} domainTitle="Loyalty & CRM not relevant for this domain" domainMessage="Loyalty and POS CRM are available for customer-facing retail and hospitality domains." requiredPlan="starter" featureName="Loyalty & CRM" onUpgrade={() => handleTabChange('settings')}>
-                            <div className="space-y-8">
+                            <StorefrontTabShell activeTab="loyalty">
+                            <div className="space-y-6 lg:space-y-8">
                                 <CustomerLoyaltyPortal businessId={business?.id} currency={currency} />
-                                <div className="border-t border-gray-100 pt-8">
+                                <div className="border-t border-gray-100 pt-6 lg:pt-8">
                                     <PromotionEngine businessId={business?.id} currency={currency} />
                                 </div>
-                                <div className="border-t border-gray-100 pt-8">
+                                <div className="border-t border-gray-100 pt-6 lg:pt-8">
                                     <LoyaltyManager businessId={business?.id} />
                                 </div>
                             </div>
+                            </StorefrontTabShell>
                         </TabGuard>
                     )}
                 </TabsContent>
@@ -1021,7 +1061,9 @@ export function DashboardTabs({
                 <TabsContent value="refunds" className="space-y-6 outline-none">
                     {wrapTab(
                         <TabGuard tabKey="refunds" role={role} planTier={planTier} domainCheck={posRelevant} domainTitle="Refunds & Returns not relevant for this domain" domainMessage="Refund workflows are available only for POS-enabled domains." requiredPlan="starter" featureName="POS & Refunds" onUpgrade={() => handleTabChange('settings')}>
+                            <StorefrontTabShell activeTab="refunds">
                             <PosRefundPanel businessId={business?.id} />
+                            </StorefrontTabShell>
                         </TabGuard>
                     )}
                 </TabsContent>
@@ -1046,7 +1088,9 @@ export function DashboardTabs({
                 <TabsContent value="store-settings" className="space-y-6 outline-none">
                     {wrapTab(
                         <TabGuard tabKey="store-settings" role={role} planTier={planTier} featureName="Store Settings" onUpgrade={() => handleTabChange('settings')}>
+                            <StorefrontTabShell activeTab="store-settings">
                             <StoreSettingsManager business={business} category={category} />
+                            </StorefrontTabShell>
                         </TabGuard>
                     )}
                 </TabsContent>

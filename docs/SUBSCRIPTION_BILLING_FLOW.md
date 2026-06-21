@@ -7,7 +7,8 @@ This document describes how **Tenvo SaaS billing** (your merchants’ subscripti
 | Field | Role |
 |--------|------|
 | `businesses.plan_tier` | Feature tier (`free`, `starter`, …). Drives `planGuard` / RBAC limits. |
-| `businesses.settings.packaging` | Optional **modular packaging**: `mode: 'tier' \| 'custom'` and `feature_overrides` (per-feature booleans). When `custom`, `planHasFeatureWithPackaging` (`lib/subscription/effectivePlanAccess.js`) overrides tier flags for nav, tabs, and server guards. Platform admin can **reset to tier** via `updateBusinessPackaging`. |
+| `businesses.settings.packaging` | Optional **modular packaging**: `mode: 'tier' \| 'custom'` and `feature_overrides` (per-feature booleans). When `custom`, `planHasFeatureWithPackaging` (`lib/subscription/effectivePlanAccess.js`) overrides tier flags for nav, tabs, and server guards. **Business owner** can edit this in **Settings → Billing → Custom module access** via `updateOwnerBusinessPackagingAction`. Platform admin can reset via `updateBusinessPackaging`. |
+| `feature_flags` (per-business table) | Present in Prisma for legacy / future use; **product access today** uses `plan_tier` + `settings.packaging`, not this table. Do not confuse with **`platform_feature_flags`** (rollout for the whole platform). |
 | `businesses.plan_expires_at` | Optional hard end for trial or **term-based manual billing**. When in the past, guards treat the tenant as **free** (unless you rely only on Stripe with no expiry). |
 | `businesses.stripe_customer_id` / `stripe_subscription_id` | Stripe Billing linkage. |
 | `businesses.stripe_subscription_status` | Mirror of Stripe status + app-specific values (`manual_dev`, `manual_payment_active`). |
@@ -19,13 +20,15 @@ Customer **AR invoices** (invoices you issue to *your* customers) are separate f
 
 ### 1. Stripe (production default)
 
-1. **Checkout** — `POST /api/billing/create-checkout` → `lib/payments/stripe.js` `createCheckoutSession` with `metadata.businessId`, `planTier`.
+1. **Checkout** — `POST /api/billing/create-checkout` → `lib/payments/stripe.js` `createCheckoutSession` with `metadata.businessId`, `planTier`. Success/cancel URLs return to **`/business/{domain}?tab=settings&…`** (see `lib/utils/billingReturnUrls.js`).
 2. **Webhook** — `POST /api/webhooks/stripe` (uses **`prismaBase`**, not tenant `db` — see `AGENTS.md`).
-   - `checkout.session.completed` → sets `plan_tier`, `stripe_subscription_*`, `stripe_subscription_status: active`, clears `plan_expires_at`, writes `subscription_history`.
-   - `invoice.payment_succeeded` → sets status **active** (renewal).
-   - `invoice.payment_failed` → sets **past_due**, sends email.
-   - `customer.subscription.updated` → syncs status (and plan from metadata when present).
+   - `checkout.session.completed` → sets `plan_tier`, `stripe_subscription_*`, **`stripe_subscription_status`** from the live Stripe subscription (e.g. **`trialing`**), sets **`plan_expires_at`** from **`trial_end`** while trialing (clears when **active**), writes `subscription_history` with the same status.
+   - `invoice.payment_succeeded` → sets status **active**, clears **`plan_expires_at`** (paid period).
+   - `invoice.payment_failed` → sets **past_due**, clears **`plan_expires_at`** (avoid stale trial expiry downgrading access), sends email.
+   - `customer.subscription.updated` → syncs status and **`plan_expires_at`** (trial end while **trialing**; cleared otherwise).
    - `customer.subscription.deleted` → downgrades to **free**, clears Stripe ids, history row.
+
+**Trial length:** in-app signup trial and Stripe **`trial_period_days`** both follow **`TRIAL_CONFIG.durationDays`** in `lib/config/platform.js` (currently **14**).
 
 ### 2. `BILLING_MODE=manual` (dev / UAT only)
 
@@ -49,6 +52,17 @@ UI: **Platform Admin → Businesses → Details** includes a short form to recor
 
 So: **grace = continue access + show “fix payment”**, not silent hard lock on first failed charge (unless you later add `billing_suspended_at` or similar).
 
+## Roles, billing, and owner-only controls
+
+| Area | Who |
+|------|-----|
+| **Plan tier & Stripe checkout** | **Owner** (and platform owner bypass). Billing tab in Settings. |
+| **Team invites & roles (except owner)** | **Admin** or **owner** (`settings.manage_users`). Changing **owner** membership / **roles** matrix is **owner**-only where noted in UI. |
+| **Custom module packaging** (`settings.packaging`) | **Owner** only — permission `settings.packaging` (`lib/rbac/permissions.js`). Server: `updateOwnerBusinessPackagingAction` in `lib/actions/basic/business.js`. |
+| **Platform-wide feature rollout** | **Platform admin** — `platform_feature_flags` / `FeatureFlagManager`, not per-tenant business owners. |
+
+Limits (**seats**, **max_products**, **max_warehouses**) always follow **`plan_tier`** (and column overrides from checkout/admin). Packaging overrides **named feature modules** only (see `PLAN_FEATURE_TOGGLE_KEYS` in `lib/config/plans.js`).
+
 ## Gaps & follow-ups (professional roadmap)
 
 | Topic | Today | Suggested next step |
@@ -64,7 +78,10 @@ So: **grace = continue access + show “fix payment”**, not silent hard lock o
 - `app/api/billing/create-checkout/route.js`, `app/api/billing/update/route.js`, `cancel/route.js`, `portal/route.js`, `subscription/route.js`
 - `lib/payments/stripe.js`, `lib/hooks/useSubscription.js`
 - `lib/actions/admin/platform.js` — `updateBusinessPlan`, `recordManualSubscriptionPayment`, `extendTrial`, `updateBusinessPackaging`
+- `lib/actions/basic/business.js` — `createBusiness`, `updateOwnerBusinessPackagingAction`
+- `lib/utils/businessPackagingSettings.js` — shared merge for `settings.packaging`
 - `lib/subscription/effectivePlanAccess.js` — `planHasFeatureWithPackaging`, `getPackagingFromSettings`
+- `components/SettingsManager.jsx` — Billing + owner **Custom module access** UI
 - `components/billing/SubscriptionBillingBanner.jsx` — billing reminders
 - `docs/PAYMENTS_ENV_AND_SETUP.md` — env vars, manual vs Stripe, NOWPayments, official doc links
 - `docs/subscription-analysis.md` — packaging / tiers vs Zoho (separate from payment rails)

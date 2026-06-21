@@ -3,6 +3,13 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import * as LucideIcons from 'lucide-react';
+import { cn } from '@/lib/utils';
+import {
+  MARKETING_CONTAINER,
+  MARKETING_H2,
+  MARKETING_LEAD,
+  MARKETING_SECTION,
+} from '@/lib/utils/marketingLayout';
 
 /**
  * FeaturesGrid Component
@@ -43,22 +50,14 @@ export default function FeaturesGrid({
   // Card variant ('grid' is treated as the same responsive card grid)
   if (variant === 'cards' || variant === 'grid') {
     return (
-      <section className="py-16 lg:py-24 bg-neutral-50">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Section header */}
-          <div className="max-w-3xl mx-auto text-center mb-16">
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-neutral-900 mb-4">
-              {title}
-            </h2>
-            {subtitle && (
-              <p className="text-lg sm:text-xl text-neutral-600 leading-relaxed">
-                {subtitle}
-              </p>
-            )}
+      <section className={cn(MARKETING_SECTION, 'bg-neutral-50')}>
+        <div className={MARKETING_CONTAINER}>
+          <div className="mx-auto mb-8 max-w-3xl text-center sm:mb-12 lg:mb-16">
+            <h2 className={cn(MARKETING_H2, 'mb-3 sm:mb-4')}>{title}</h2>
+            {subtitle ? <p className={MARKETING_LEAD}>{subtitle}</p> : null}
           </div>
 
-          {/* Features grid */}
-          <div className={`grid grid-cols-1 ${getGridClass()} gap-8`}>
+          <div className={`grid grid-cols-1 gap-4 sm:gap-6 lg:gap-8 ${getGridClass()}`}>
             {features.map((feature, index) => {
               const FeatureIcon = feature.icon ? LucideIcons[feature.icon] : null;
               const gridOnlyAnchor = ['analytics', 'security', 'cloud', 'growth-crm', 'order-hub'].includes(
@@ -69,7 +68,7 @@ export default function FeaturesGrid({
                 <div
                   key={feature.id}
                   id={gridOnlyAnchor ? feature.id : undefined}
-                  className={`group relative scroll-mt-28 bg-white rounded-2xl p-8 border border-neutral-200 hover:border-brand-300 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 ${
+                  className={`group relative scroll-mt-28 rounded-2xl border border-neutral-200 bg-white p-5 transition-all duration-300 hover:-translate-y-1 hover:border-brand-300 hover:shadow-xl sm:p-6 lg:p-8 ${
                     mounted ? 'animate-fade-in-up' : 'opacity-0'
                   }`}
                   style={{ animationDelay: `${index * 100}ms` }}

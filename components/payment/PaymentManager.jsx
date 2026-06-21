@@ -20,12 +20,16 @@ import {
 import { Badge } from "@/components/ui/badge";
 import {
     Plus, Receipt, CreditCard, History, Search, Download, Trash2, Calendar,
-    ArrowUpRight, ArrowDownLeft, Filter, RefreshCcw
+    ArrowUpRight, ArrowDownLeft, Filter, RefreshCcw, Wallet
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import { MobileTabHeader, MobileStatStrip } from '@/components/mobile/MobileTabHeader';
+import { MOBILE_DIALOG_SHELL } from '@/lib/utils/formMobileStyles';
+import { cn } from '@/lib/utils';
 import { DataTable } from "@/components/DataTable";
 import { paymentAPI } from "@/lib/api/payments";
 import { formatCurrency } from "@/lib/currency";
+import { isReceiptType, getPaymentTypeLabel } from '@/lib/utils/paymentTypes';
 
 export default function PaymentManager({
     businessId,
@@ -60,7 +64,7 @@ export default function PaymentManager({
     const fetchPayments = useCallback(async () => {
         setIsLoading(true);
         try {
-            const result = await paymentAPI.getAll(businessId);
+            const result = await paymentAPI.getRegister(businessId, { limit: 300 });
             if (result.success) {
                 setPayments(result.payments);
             } else {
@@ -146,7 +150,7 @@ export default function PaymentManager({
         if (!confirm("Are you sure you want to delete this payment record? This will reverse the balance updates.")) return;
 
         try {
-            const result = await paymentAPI.delete(id);
+            const result = await paymentAPI.delete(businessId, id);
             if (result.success) {
                 toast.success("Payment deleted and balances adjusted");
                 fetchPayments();
@@ -166,8 +170,46 @@ export default function PaymentManager({
         : purchases.filter(p => p.vendor_id === formData.vendorId && p.status !== 'paid');
 
     return (
-        <div className="space-y-6">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="space-y-4 lg:space-y-6">
+            <MobileTabHeader
+                icon={Wallet}
+                iconClassName="bg-wine/10 text-wine"
+                title="Finance & Payments"
+                subtitle={`${payments.length} transactions`}
+                primaryAction={{
+                    label: 'Record',
+                    icon: Plus,
+                    className: 'bg-wine hover:bg-wine/90 text-white font-bold',
+                    onClick: () => setShowPaymentDialog(true),
+                }}
+                actions={[
+                    { id: 'refresh', label: 'Refresh', icon: RefreshCcw, onClick: fetchPayments },
+                ]}
+            />
+
+            <MobileStatStrip
+                items={[
+                    {
+                        label: 'Receipts',
+                        value: formatCurrency(
+                            payments.filter((p) => isReceiptType(p.payment_type)).reduce((sum, p) => sum + Number(p.amount), 0),
+                            currency
+                        ),
+                        valueTone: 'text-emerald-600',
+                    },
+                    {
+                        label: 'Payments',
+                        value: formatCurrency(
+                            payments.filter((p) => !isReceiptType(p.payment_type)).reduce((sum, p) => sum + Number(p.amount), 0),
+                            currency
+                        ),
+                        valueTone: 'text-red-600',
+                    },
+                    { label: 'Count', value: payments.length },
+                ]}
+            />
+
+            <div className="hidden flex-col gap-4 md:flex-row md:items-center md:justify-between lg:flex">
                 <div>
                     <h2 className="text-2xl font-bold tracking-tight">Finance & Payments</h2>
                     <p className="text-muted-foreground">Manage customer receipts, vendor payments and financial history.</p>
@@ -175,26 +217,26 @@ export default function PaymentManager({
 
                 <div className="flex items-center gap-2">
                     <Button variant="outline" onClick={fetchPayments}>
-                        <RefreshCcw className="w-4 h-4 mr-2" />
+                        <RefreshCcw className="mr-2 h-4 w-4" />
                         Refresh
                     </Button>
 
                     <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
                         <DialogTrigger asChild>
-                            <Button className="bg-wine hover:bg-wine/90 text-white font-bold shadow-lg shadow-wine/20">
-                                <Plus className="w-4 h-4 mr-2" />
+                            <Button className="bg-wine font-bold text-white shadow-lg shadow-wine/20 hover:bg-wine/90">
+                                <Plus className="mr-2 h-4 w-4" />
                                 Record Transaction
                             </Button>
                         </DialogTrigger>
-                        <DialogContent className="max-w-2xl">
-                            <DialogHeader>
+                        <DialogContent className={cn(MOBILE_DIALOG_SHELL, 'max-w-2xl')}>
+                            <DialogHeader className="shrink-0 px-6 pt-6 pb-2">
                                 <DialogTitle>New Financial Transaction</DialogTitle>
                                 <DialogDescription>
                                     Record a customer receipt or vendor payment.
                                 </DialogDescription>
                             </DialogHeader>
 
-                            <div className="grid gap-6 py-4">
+                            <div className="grid gap-6 py-4 px-6 pb-6 overflow-y-auto min-h-0 flex-1">
                                 <div className="flex p-1 bg-gray-100 rounded-xl">
                                     <button
                                         className={`flex-1 py-2 px-4 rounded-lg flex items-center justify-center gap-2 font-medium transition-all ${paymentType === 'receipt' ? 'bg-white shadow-sm text-wine' : 'text-gray-500 hover:text-gray-700'}`}
@@ -218,7 +260,7 @@ export default function PaymentManager({
                                     </button>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <Label>{paymentType === 'receipt' ? 'Customer' : 'Vendor'}</Label>
                                         <Combobox
@@ -247,7 +289,7 @@ export default function PaymentManager({
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <Label>Amount ({currency})</Label>
                                         <Input
@@ -296,7 +338,7 @@ export default function PaymentManager({
                                 </div>
 
                                 {(formData.paymentMode === 'bank' || formData.paymentMode === 'cheque') && (
-                                    <div className="grid grid-cols-2 gap-4">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         <div className="space-y-2">
                                             <Label>Bank Name</Label>
                                             <Input
@@ -346,7 +388,7 @@ export default function PaymentManager({
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-in fade-in slide-in-from-top-2 duration-500">
+            <div className="hidden grid-cols-1 gap-6 duration-500 animate-in fade-in slide-in-from-top-2 md:grid-cols-3 lg:grid">
                 <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100/50 border-emerald-100 shadow-sm hover:shadow-md transition-all">
                     <CardHeader className="pb-2 flex flex-row items-center justify-between">
                         <CardTitle className="text-xs font-black text-emerald-700 uppercase tracking-widest">Total Receipts</CardTitle>
@@ -357,7 +399,7 @@ export default function PaymentManager({
                     <CardContent>
                         <div className="text-3xl font-black text-emerald-700 tracking-tight">
                             {formatCurrency(
-                                payments.filter(p => p.payment_type === 'receipt').reduce((sum, p) => sum + Number(p.amount), 0),
+                                payments.filter(p => isReceiptType(p.payment_type)).reduce((sum, p) => sum + Number(p.amount), 0),
                                 currency
                             )}
                         </div>
@@ -374,7 +416,7 @@ export default function PaymentManager({
                     <CardContent>
                         <div className="text-3xl font-black text-red-700 tracking-tight">
                             {formatCurrency(
-                                payments.filter(p => p.payment_type === 'payment').reduce((sum, p) => sum + Number(p.amount), 0),
+                                payments.filter(p => !isReceiptType(p.payment_type)).reduce((sum, p) => sum + Number(p.amount), 0),
                                 currency
                             )}
                         </div>
@@ -391,7 +433,7 @@ export default function PaymentManager({
                     <CardContent>
                         <div className="text-3xl font-black text-brand-primary tracking-tight">
                             {formatCurrency(
-                                payments.reduce((sum, p) => sum + (p.payment_type === 'receipt' ? Number(p.amount) : -Number(p.amount)), 0),
+                                payments.reduce((sum, p) => sum + (isReceiptType(p.payment_type) ? Number(p.amount) : -Number(p.amount)), 0),
                                 currency
                             )}
                         </div>
@@ -431,7 +473,11 @@ export default function PaymentManager({
                             }).map(p => ({
                                 ...p,
                                 formatted_amount: formatCurrency(p.amount, currency),
-                                entity: p.payment_type === 'receipt' ? (p.customer?.name || 'Customer') : (p.vendor?.name || 'Vendor'),
+                                entity: p.party_name
+                                    || (isReceiptType(p.payment_type)
+                                        ? (p.customer_name || p.customers?.name || 'Customer')
+                                        : (p.vendor_name || p.vendors?.name || 'Vendor')),
+                                source: p.source || 'legacy',
                                 date_formatted: new Date(p.payment_date).toLocaleDateString()
                             }))}
                             columns={[
@@ -444,8 +490,8 @@ export default function PaymentManager({
                                     accessorKey: 'payment_type',
                                     header: 'Type',
                                     cell: ({ row }) => (
-                                        <Badge className={row.original.payment_type === 'receipt' ? 'bg-emerald-100 text-emerald-700 border-emerald-200 font-bold' : 'bg-red-100 text-red-700 border-red-200 font-bold'}>
-                                            {row.original.payment_type === 'receipt' ? 'Receipt' : 'Payment'}
+                                        <Badge className={isReceiptType(row.original.payment_type) ? 'bg-emerald-100 text-emerald-700 border-emerald-200 font-bold' : 'bg-red-100 text-red-700 border-red-200 font-bold'}>
+                                            {getPaymentTypeLabel(row.original.payment_type)}
                                         </Badge>
                                     )
                                 },
@@ -463,7 +509,7 @@ export default function PaymentManager({
                                     accessorKey: 'formatted_amount',
                                     header: 'Amount',
                                     cell: ({ row }) => (
-                                        <span className={`font-black ${row.original.payment_type === 'receipt' ? 'text-emerald-600' : 'text-red-600'}`}>
+                                        <span className={`font-black ${isReceiptType(row.original.payment_type) ? 'text-emerald-600' : 'text-red-600'}`}>
                                             {row.original.formatted_amount}
                                         </span>
                                     )
@@ -477,6 +523,9 @@ export default function PaymentManager({
                                     accessorKey: 'actions',
                                     header: 'Actions',
                                     cell: ({ row }) => (
+                                        row.original.source === 'invoice_payment' ? (
+                                            <span className="text-[10px] text-gray-400 font-medium">Invoice pay</span>
+                                        ) : (
                                         <Button
                                             variant="ghost"
                                             size="icon"
@@ -485,6 +534,7 @@ export default function PaymentManager({
                                         >
                                             <Trash2 className="w-4 h-4" />
                                         </Button>
+                                        )
                                     )
                                 }
                             ]}

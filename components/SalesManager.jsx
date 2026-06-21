@@ -1,3 +1,5 @@
+'use client';
+
 import { useState, useMemo } from 'react';
 import {
     TrendingUp, DollarSign, ShoppingCart, Users,
@@ -8,6 +10,8 @@ import { formatCurrency } from '@/lib/currency';
 import { getDomainColors } from '@/lib/domainColors';
 import { SalesChart, RevenueBarChart } from './AdvancedCharts';
 import { aggregateMonthlyData, getTopCatalysts } from '@/lib/utils/analytics';
+import { MobileTabHeader, MobileStatStrip } from '@/components/mobile/MobileTabHeader';
+import { useStorefrontEmbedded } from '@/lib/context/StorefrontMobileContext';
 
 // ── Trend Badge ──────────────────────────────────────────────────────────────
 function TrendBadge({ value }) {
@@ -136,10 +140,55 @@ export function SalesManager({
         return 'bg-gray-100 text-gray-500';
     };
 
+    const embeddedInStorefront = useStorefrontEmbedded();
+
     return (
-        <div className="space-y-5">
-            {/* ── Page Header ─────────────────────────────────────────────── */}
-            <div className="flex items-center justify-between">
+        <div className="space-y-2 lg:space-y-5">
+            {!embeddedInStorefront && (
+                <MobileTabHeader
+                    icon={BarChart2}
+                    iconClassName="bg-indigo-100 text-indigo-600"
+                    title="Sales Performance"
+                    subtitle={`${metrics.countFmt} orders this month`}
+                    actions={[
+                        {
+                            id: 'monthly',
+                            label: timeframe === 'monthly' ? 'Monthly' : 'Quarterly',
+                            onClick: () => setTimeframe(timeframe === 'monthly' ? 'quarterly' : 'monthly'),
+                        },
+                    ]}
+                />
+            )}
+
+            <div className="lg:hidden">
+                <MobileStatStrip
+                    items={[
+                        { label: 'Revenue', value: metrics.totalFmt, valueTone: 'text-emerald-600' },
+                        { label: 'Orders', value: metrics.countFmt },
+                        { label: 'AOV', value: metrics.avgFmt },
+                        { label: 'Outstanding', value: metrics.outstandingFmt, valueTone: 'text-red-600' },
+                    ]}
+                />
+                {embeddedInStorefront && (
+                    <div className="mt-1.5 flex justify-end">
+                        <div className="inline-flex rounded-lg bg-gray-100 p-0.5">
+                            {['monthly', 'quarterly'].map((t) => (
+                                <button
+                                    key={t}
+                                    type="button"
+                                    onClick={() => setTimeframe(t)}
+                                    className={`rounded-md px-2.5 py-1 text-[10px] font-bold capitalize ${timeframe === t ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500'}`}
+                                >
+                                    {t}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {/* Desktop header */}
+            <div className="hidden items-center justify-between lg:flex">
                 <div>
                     <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
                         <BarChart2 className="w-5 h-5" style={{ color: primaryColor }} />
@@ -163,7 +212,7 @@ export function SalesManager({
             </div>
 
             {/* ── KPI Row 1 ───────────────────────────────────────────────── */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="hidden grid-cols-2 gap-4 lg:grid lg:grid-cols-4">
                 <KpiCard label="Gross Revenue" value={metrics.totalFmt} sub="This month" icon={DollarSign} growth={metrics.growth.revenue} color={primaryColor} />
                 <KpiCard label="Orders" value={metrics.countFmt} sub="Completed deals" icon={ShoppingCart} growth={metrics.growth.count} color="#8b5cf6" />
                 <KpiCard label="Avg Order Value" value={metrics.avgFmt} sub="Basket size" icon={Target} growth={metrics.growth.avg} color="#f59e0b" />
@@ -171,7 +220,7 @@ export function SalesManager({
             </div>
 
             {/* ── KPI Row 2 ───────────────────────────────────────────────── */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="hidden grid-cols-2 gap-4 lg:grid lg:grid-cols-4">
                 <KpiCard label="Est. Gross Profit" value={metrics.profitFmt} sub="~40% margin est." icon={TrendingUp} growth={metrics.growth.profit} color="#6366f1" />
                 <KpiCard label="Amount Collected" value={metrics.paidFmt} sub="Paid invoices" icon={CreditCard} growth={0} color="#0ea5e9" />
                 <KpiCard label="Outstanding" value={metrics.outstandingFmt} sub="Unpaid balance" icon={Receipt} growth={0} color="#ef4444" />

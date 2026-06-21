@@ -15,15 +15,16 @@ export function FinancialOverview({
     chartData,
     currency,
     role = 'owner',
-    onTabChange
+    onTabChange,
+    onFinanceSubTab,
 }) {
     const router = useRouter();
 
     const quickActions = [
         { label: 'View Invoices', icon: Receipt, tab: 'invoices' },
         { label: 'Purchase Orders', icon: Truck, tab: 'purchases' },
-        { label: 'General Ledger', icon: FileText, route: `/business/${category}/finance?view=ledger` }, // Fixed route to match tab structure
-        { label: 'Financial Reports', icon: BarChart3, tab: 'reports', role: ['owner', 'admin', 'accountant'] }
+        { label: 'General Ledger', icon: FileText, tab: 'finance', financeSubTab: 'general-ledger' },
+        { label: 'Financial Reports', icon: BarChart3, tab: 'finance', financeSubTab: 'statements', role: ['owner', 'admin', 'accountant'] }
     ];
 
     const filteredActions = quickActions.filter(item => !item.role || item.role.includes(role));
@@ -46,7 +47,16 @@ export function FinancialOverview({
                                 key={idx}
                                 variant="outline"
                                 className="h-20 flex flex-col items-center justify-center gap-2 rounded-xl hover:bg-wine/5 hover:border-wine/20 border-gray-200 group transition-all"
-                                onClick={() => item.tab ? onTabChange(item.tab) : router.push(item.route)}
+                                onClick={() => {
+                                    if (item.tab) {
+                                        onTabChange(item.tab);
+                                        if (item.financeSubTab && onFinanceSubTab) {
+                                            onFinanceSubTab(item.financeSubTab);
+                                        }
+                                    } else if (item.route) {
+                                        router.push(item.route);
+                                    }
+                                }}
                             >
                                 <item.icon className="w-5 h-5 text-gray-500 group-hover:text-wine group-hover:scale-110 transition-all duration-300" />
                                 <span className="font-semibold text-xs text-gray-700 group-hover:text-wine">{item.label}</span>

@@ -105,7 +105,8 @@ DropdownMenuContent.displayName = DropdownMenuPrimitive.Content.displayName;
  * @property {string} [className]
  * @property {boolean} [inset]
  * @property {React.ReactNode} [children]
- * @property {() => void} [onClick]
+ * @property {import('react').MouseEventHandler<HTMLDivElement>} [onClick]
+ * @property {(event: Event) => void} [onSelect]
  * @property {React.CSSProperties} [style]
  */
 /** @type {React.ForwardRefExoticComponent<DropdownMenuItemProps & React.RefAttributes<HTMLDivElement>>} */

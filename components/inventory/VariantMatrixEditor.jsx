@@ -411,15 +411,15 @@ export function VariantMatrixEditor({
 
       {/* Create Matrix Dialog */}
       <Dialog open={showCreateMatrix} onOpenChange={setShowCreateMatrix}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
+        <DialogContent className="max-w-2xl w-[calc(100vw-1.5rem)] sm:w-full max-h-[min(92vh,900px)] flex flex-col gap-0 overflow-hidden p-0">
+          <DialogHeader className="shrink-0 px-6 pt-6 pb-2">
             <DialogTitle>Create Variant Matrix</DialogTitle>
             <DialogDescription>
               Generate a grid of product variants based on size and color combinations.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4">
+          <div className="space-y-4 px-6 pb-6 overflow-y-auto min-h-0 flex-1">
             <div>
               <Label htmlFor="sizes">Sizes (comma-separated)</Label>
               <Input
@@ -446,7 +446,7 @@ export function VariantMatrixEditor({
               </p>
             </div>
 
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <Label htmlFor="basePrice">Base Price</Label>
                 <Input
@@ -507,8 +507,8 @@ export function VariantMatrixEditor({
 
       {/* Edit Variant Dialog */}
       <Dialog open={!!editingVariant} onOpenChange={() => setEditingVariant(null)}>
-        <DialogContent>
-          <DialogHeader>
+        <DialogContent className="max-w-lg w-[calc(100vw-1.5rem)] sm:w-full max-h-[min(90vh,800px)] flex flex-col gap-0 overflow-hidden p-0">
+          <DialogHeader className="shrink-0 px-6 pt-6 pb-2">
             <DialogTitle>
               Edit Variant: {editingVariant?.size} - {editingVariant?.color}
             </DialogTitle>
@@ -517,7 +517,7 @@ export function VariantMatrixEditor({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4">
+          <div className="space-y-4 px-6 pb-6 overflow-y-auto min-h-0 flex-1">
             <div>
               <Label htmlFor="variantStock">Stock</Label>
               <Input
@@ -530,7 +530,7 @@ export function VariantMatrixEditor({
               />
             </div>
 
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <Label htmlFor="variantPrice">Price</Label>
                 <Input

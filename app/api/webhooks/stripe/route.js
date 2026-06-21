@@ -16,8 +16,11 @@ const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
  */
 export async function POST(request) {
   if (!stripe || !webhookSecret) {
-    console.log('[Stripe Webhook] Not configured');
-    return NextResponse.json({ received: true }, { status: 200 });
+    console.error('[Stripe Webhook] Not configured — set STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET');
+    return NextResponse.json(
+      { error: 'Stripe webhook not configured' },
+      { status: 503 }
+    );
   }
 
   const payload = await request.text();
@@ -153,6 +156,23 @@ async function handleCheckoutSessionCompletedTx(tx, session) {
       ? session.amount_total
       : null;
 
+  let stripeSub = null;
+  if (stripe && subscriptionId) {
+    try {
+      stripeSub = await stripe.subscriptions.retrieve(subscriptionId);
+    } catch (e) {
+      console.error('[Stripe Webhook] Could not retrieve subscription for checkout:', e?.message || e);
+    }
+  }
+
+  let stripeStatus = stripeSub?.status || 'active';
+  let planExpiresAt = null;
+  if (stripeSub?.status === 'trialing' && stripeSub.trial_end) {
+    planExpiresAt = new Date(stripeSub.trial_end * 1000);
+  }
+
+  const historyStatus = stripeStatus;
+
   const quota = getPlanTierQuotaUpdateData(planTier);
   if (!quota) {
     console.error('[Stripe Webhook] Invalid plan tier in checkout metadata:', planTier);
@@ -165,8 +185,8 @@ async function handleCheckoutSessionCompletedTx(tx, session) {
       ...quota,
       stripe_subscription_id: subscriptionId,
       ...(customerId ? { stripe_customer_id: customerId } : {}),
-      stripe_subscription_status: 'active',
-      plan_expires_at: null,
+      stripe_subscription_status: stripeStatus,
+      plan_expires_at: planExpiresAt,
       updated_at: new Date(),
     },
   });
@@ -175,13 +195,14 @@ async function handleCheckoutSessionCompletedTx(tx, session) {
     data: {
       business_id: businessId,
       plan_tier: quota.plan_tier,
-      status: 'active',
+      status: historyStatus,
       stripe_subscription_id: subscriptionId,
       amount_minor: amountMinor,
       currency: session.currency || null,
       metadata: {
         checkout_session_id: session.id,
         customer: customerId,
+        stripe_subscription_status: stripeStatus,
       },
     },
   });
@@ -204,6 +225,7 @@ async function handleInvoicePaymentSucceededTx(tx, invoice) {
     where: { stripe_subscription_id: subscriptionId },
     data: {
       stripe_subscription_status: 'active',
+      plan_expires_at: null,
       updated_at: new Date(),
     },
   });
@@ -226,6 +248,7 @@ async function handleInvoicePaymentFailedTx(tx, invoice) {
     where: { stripe_subscription_id: subscriptionId },
     data: {
       stripe_subscription_status: 'past_due',
+      plan_expires_at: null,
       updated_at: new Date(),
     },
   });
@@ -265,6 +288,9 @@ async function handleSubscriptionCreatedTx(tx, subscription) {
     data: {
       stripe_subscription_id: subscription.id,
       stripe_subscription_status: subscription.status,
+      ...(subscription.status === 'trialing' && subscription.trial_end
+        ? { plan_expires_at: new Date(subscription.trial_end * 1000) }
+        : { plan_expires_at: null }),
       updated_at: new Date(),
     },
   });
@@ -282,6 +308,11 @@ async function handleSubscriptionUpdatedTx(tx, subscription) {
     stripe_subscription_status: subscription.status,
     updated_at: new Date(),
   };
+  if (subscription.status === 'trialing' && subscription.trial_end) {
+    data.plan_expires_at = new Date(subscription.trial_end * 1000);
+  } else {
+    data.plan_expires_at = null;
+  }
   if (quotaPatch) {
     Object.assign(data, quotaPatch);
   } else if (planFromMeta && typeof planFromMeta === 'string') {
@@ -299,6 +330,11 @@ async function handleSubscriptionUpdatedTx(tx, subscription) {
       stripe_subscription_status: subscription.status,
       updated_at: new Date(),
     };
+    if (subscription.status === 'trialing' && subscription.trial_end) {
+      fallbackData.plan_expires_at = new Date(subscription.trial_end * 1000);
+    } else {
+      fallbackData.plan_expires_at = null;
+    }
     if (quotaPatch) {
       Object.assign(fallbackData, quotaPatch);
     } else if (planFromMeta && typeof planFromMeta === 'string') {

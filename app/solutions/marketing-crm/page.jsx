@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import { Megaphone, Heart, Brain, TrendingUp, ClipboardList, CheckSquare, Users, BarChart3 } from 'lucide-react';
 import MarketingLayout from '@/components/marketing/layout/MarketingLayout';
+import { MARKETING_CONTAINER, MARKETING_SECTION } from '@/lib/utils/marketingLayout';
+import { cn } from '@/lib/utils';
 import Hero from '@/components/marketing/sections/Hero';
 import CTASection from '@/components/marketing/sections/CTASection';
 import { Button } from '@/components/ui/button';
@@ -14,7 +16,7 @@ const PILLARS = [
     title: 'Campaigns & marketing',
     body:
       'Run promotions and customer journeys without exporting lists to a separate email tool. Segments and offers stay tied to real purchase history, storefront activity, and POS - closer to how Zoho Campaigns or Shopify Email sit on top of real commerce data.',
-    bullets: ['Promotion windows and messaging hooks', 'Plan-gated on Professional+ where enabled', 'Same customer record as invoices & POS'],
+    bullets: ['Promotion windows and outreach hooks', 'Business+ when campaigns flag is enabled', 'Same customer record as invoices & POS'],
   },
   {
     id: 'crm',
@@ -65,11 +67,11 @@ export default function MarketingCrmSolutionsPage() {
         secondaryCTA={{ text: 'Compare positioning', href: '/why-tenvo' }}
       />
 
-      <section className="border-b border-neutral-200/80 bg-white py-16 lg:py-22">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-12">
-          <div className="mx-auto mb-14 max-w-3xl text-center">
-            <p className="mb-3 text-[11px] font-black uppercase tracking-[0.28em] text-brand-primary">Why this page exists</p>
-            <h2 className="text-3xl font-black tracking-tight text-neutral-900 md:text-4xl">
+      <section className={cn(MARKETING_SECTION, 'border-b border-neutral-200/80 bg-white')}>
+        <div className={MARKETING_CONTAINER}>
+          <div className="mx-auto mb-8 max-w-3xl text-center sm:mb-10 lg:mb-14">
+            <p className="mb-3 text-[10px] font-black uppercase tracking-[0.22em] text-brand-primary sm:text-[11px] sm:tracking-[0.28em]">Why this page exists</p>
+            <h2 className="text-2xl font-black tracking-tight text-neutral-900 sm:text-3xl lg:text-4xl">
               Subscribers choose suites that cover operations and growth
             </h2>
             <p className="mt-4 text-lg font-medium text-neutral-600">
@@ -80,12 +82,12 @@ export default function MarketingCrmSolutionsPage() {
             </p>
           </div>
 
-          <div className="grid gap-8 md:grid-cols-3">
+          <div className="grid gap-5 sm:grid-cols-2 md:grid-cols-3 sm:gap-6 md:gap-8">
             {PILLARS.map(({ id, icon: Icon, title, body, bullets }) => (
               <article
                 key={id}
                 id={id}
-                className="scroll-mt-28 rounded-3xl border border-neutral-200/90 bg-neutral-50/60 p-8 shadow-sm transition-shadow hover:shadow-md"
+                className="scroll-mt-28 rounded-2xl border border-neutral-200/90 bg-neutral-50/60 p-5 shadow-sm transition-shadow hover:shadow-md sm:rounded-3xl sm:p-6 lg:p-8"
               >
                 <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-primary text-white">
                   <Icon className="h-6 w-6" aria-hidden />
@@ -106,21 +108,21 @@ export default function MarketingCrmSolutionsPage() {
         </div>
       </section>
 
-      <section id="sales-suite" className="scroll-mt-28 border-b border-neutral-200/80 bg-neutral-50 py-16 lg:py-22">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-12">
-          <div className="mx-auto mb-12 max-w-3xl text-center">
-            <p className="mb-3 text-[11px] font-black uppercase tracking-[0.28em] text-brand-primary">Sales & operations</p>
-            <h2 className="text-3xl font-black tracking-tight text-neutral-900 md:text-4xl">What else sits next to campaigns</h2>
+      <section id="sales-suite" className={cn(MARKETING_SECTION, 'scroll-mt-28 border-b border-neutral-200/80 bg-neutral-50')}>
+        <div className={MARKETING_CONTAINER}>
+          <div className="mx-auto mb-8 max-w-3xl text-center sm:mb-10 lg:mb-12">
+            <p className="mb-3 text-[10px] font-black uppercase tracking-[0.22em] text-brand-primary sm:text-[11px] sm:tracking-[0.28em]">Sales & operations</p>
+            <h2 className="text-2xl font-black tracking-tight text-neutral-900 sm:text-3xl lg:text-4xl">What else sits next to campaigns</h2>
             <p className="mt-4 text-lg font-medium text-neutral-600">
               These modules mirror what power users see in the Enterprise Hub sidebar - so marketing promises match the
               product surface.
             </p>
           </div>
-          <div className="grid gap-8 md:grid-cols-2">
+          <div className="grid gap-5 sm:grid-cols-2 sm:gap-6 md:gap-8">
             {SALES_OPS.map(({ icon: Icon, title, body }) => (
               <article
                 key={title}
-                className="rounded-3xl border border-neutral-200 bg-white p-8 shadow-sm"
+                className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm sm:rounded-3xl sm:p-6 lg:p-8"
               >
                 <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-neutral-900 text-white">
                   <Icon className="h-5 w-5" aria-hidden />
@@ -131,7 +133,7 @@ export default function MarketingCrmSolutionsPage() {
             ))}
           </div>
 
-          <div className="mt-12 grid gap-6 rounded-3xl border border-neutral-200 bg-white p-8 md:grid-cols-2 md:p-10">
+          <div className="mt-8 grid gap-5 rounded-2xl border border-neutral-200 bg-white p-5 sm:mt-10 sm:gap-6 sm:rounded-3xl sm:p-6 md:grid-cols-2 md:p-8 lg:p-10">
             <div className="flex gap-4">
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-primary">
                 <Users className="h-5 w-5" aria-hidden />
@@ -139,8 +141,7 @@ export default function MarketingCrmSolutionsPage() {
               <div>
                 <h3 className="text-base font-black text-neutral-900">Payroll & HR</h3>
                 <p className="mt-1 text-sm font-medium text-neutral-600">
-                  People, shifts, and pay runs stay in the same permissioned workspace as operations - important for
-                  chains that promote staff between outlets and still need clean audit trails.
+                  Payroll runs on Business+. Attendance and shift scheduling surfaces are early — confirm HR depth on a demo before buying for workforce management.
                 </p>
               </div>
             </div>
@@ -151,8 +152,8 @@ export default function MarketingCrmSolutionsPage() {
               <div>
                 <h3 className="text-base font-black text-neutral-900">Audit trail</h3>
                 <p className="mt-1 text-sm font-medium text-neutral-600">
-                  Who changed prices, approved a refund, or edited tax settings - surfaced for finance and compliance
-                  reviewers alongside FBR-facing workflows.
+                  Who changed prices, approved a refund, or edited tax settings — audit logs on Business+ alongside
+                  export-oriented tax summaries.
                 </p>
               </div>
             </div>
@@ -169,8 +170,8 @@ export default function MarketingCrmSolutionsPage() {
         </div>
       </section>
 
-      <section className="bg-white py-14">
-        <div className="mx-auto max-w-3xl px-4 text-center sm:px-6">
+      <section className="bg-white py-10 sm:py-12 lg:py-14">
+        <div className="mx-auto max-w-3xl px-4 text-center min-[380px]:px-5 sm:px-6">
           <ClipboardList className="mx-auto mb-4 h-10 w-10 text-brand-primary" aria-hidden />
           <h2 className="text-2xl font-black text-neutral-900">Plans & domain fit</h2>
           <p className="mt-3 text-sm font-medium leading-relaxed text-neutral-600">

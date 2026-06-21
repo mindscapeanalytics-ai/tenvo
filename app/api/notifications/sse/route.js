@@ -1,8 +1,21 @@
-import pool from '@/lib/db';
+import { prismaBase } from '@/lib/db';
 import { headers } from 'next/headers';
 import { auth } from '@/lib/auth';
+import { verifyBusinessAccess } from '@/lib/auth/access';
 
-// SSE endpoint for real-time notifications
+const POLL_MS = 5000;
+
+function isMissingNotificationsTable(error) {
+  const code = error?.code;
+  const message = String(error?.message || '');
+  return (
+    code === 'P2021' ||
+    code === '42P01' ||
+    /relation "notifications" does not exist/i.test(message)
+  );
+}
+
+/** SSE endpoint for real-time notifications (poll fallback). */
 export async function GET(request) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session?.user) {
@@ -16,11 +29,17 @@ export async function GET(request) {
     return new Response('Business ID required', { status: 400 });
   }
 
+  try {
+    await verifyBusinessAccess(session.user.id, businessId, [], null, session.user);
+  } catch {
+    return new Response('Forbidden', { status: 403 });
+  }
+
   const encoder = new TextEncoder();
   let lastCheck = new Date();
   let isActive = true;
+  let consecutiveErrors = 0;
 
-  /** Avoid ERR_INVALID_STATE when the client disconnects and the controller is already closed. */
   function safeEnqueue(controllerRef, text) {
     try {
       controllerRef.enqueue(encoder.encode(text));
@@ -32,13 +51,11 @@ export async function GET(request) {
 
   const stream = new ReadableStream({
     start(controller) {
-      // Send initial connection message
       if (!safeEnqueue(controller, 'data: {"type":"connected"}\n\n')) {
         isActive = false;
         return;
       }
 
-      // Check for new notifications every 3 seconds (SSE fallback)
       const interval = setInterval(async () => {
         if (!isActive) {
           clearInterval(interval);
@@ -46,63 +63,78 @@ export async function GET(request) {
         }
 
         try {
-          const client = await pool.connect();
-          
-          try {
-            // Get new notifications since last check
-            const result = await client.query(
-              `SELECT 
-                id, type, title, message, metadata, action_url, created_at
-              FROM notifications 
-              WHERE business_id = $1 
-                AND created_at > $2 
-                AND is_dismissed = false
-              ORDER BY created_at DESC`,
-              [businessId, lastCheck]
-            );
+          const rows = await prismaBase.notifications.findMany({
+            where: {
+              business_id: businessId,
+              is_dismissed: false,
+              created_at: { gt: lastCheck },
+            },
+            orderBy: { created_at: 'desc' },
+            select: {
+              id: true,
+              type: true,
+              title: true,
+              message: true,
+              metadata: true,
+              action_url: true,
+              created_at: true,
+              is_read: true,
+            },
+          });
 
-            if (result.rows.length > 0) {
-              // Update last check time
-              lastCheck = new Date();
-              
-              // Send notifications to client
-              for (const notification of result.rows) {
-                if (
-                  !safeEnqueue(
-                    controller,
-                    `data: ${JSON.stringify({ type: 'notification', data: notification })}\n\n`
-                  )
-                ) {
-                  isActive = false;
-                  clearInterval(interval);
-                  return;
-                }
+          consecutiveErrors = 0;
+
+          if (rows.length > 0) {
+            lastCheck = new Date();
+            for (const notification of rows) {
+              if (
+                !safeEnqueue(
+                  controller,
+                  `data: ${JSON.stringify({ type: 'notification', data: notification })}\n\n`
+                )
+              ) {
+                isActive = false;
+                clearInterval(interval);
+                return;
               }
             }
-
-            if (!safeEnqueue(controller, 'data: {"type":"heartbeat"}\n\n')) {
-              isActive = false;
-              clearInterval(interval);
-            }
-            
-          } finally {
-            client.release();
           }
-        } catch (error) {
-          console.error('SSE error:', error);
-          if (
-            !safeEnqueue(
-              controller,
-              `data: {"type":"error","message":"${String(error?.message || 'error').replace(/"/g, "'")}"}\n\n`
-            )
-          ) {
+
+          if (!safeEnqueue(controller, 'data: {"type":"heartbeat"}\n\n')) {
             isActive = false;
             clearInterval(interval);
           }
-        }
-      }, 3000);
+        } catch (error) {
+          consecutiveErrors += 1;
+          const fatal = isMissingNotificationsTable(error);
+          const message = fatal
+            ? 'Notifications table is not available on this database'
+            : (error?.message || 'Notification stream unavailable');
 
-      // Clean up on close
+          console.error('[Notifications SSE]', message);
+
+          safeEnqueue(
+            controller,
+            `data: ${JSON.stringify({
+              type: 'error',
+              message,
+              fatal,
+              retryable: !fatal && consecutiveErrors < 3,
+            })}\n\n`
+          );
+
+          if (fatal || consecutiveErrors >= 5) {
+            isActive = false;
+            clearInterval(interval);
+            try {
+              controller.close();
+            } catch {
+              // already closed
+            }
+          }
+        }
+      }, POLL_MS);
+
       request.signal.addEventListener('abort', () => {
         isActive = false;
         clearInterval(interval);
@@ -118,8 +150,8 @@ export async function GET(request) {
   return new Response(stream, {
     headers: {
       'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive',
+      'Cache-Control': 'no-cache, no-transform',
+      Connection: 'keep-alive',
     },
   });
 }

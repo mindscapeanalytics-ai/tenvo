@@ -28,7 +28,7 @@ import {
     setPlatformRole,
 } from '@/lib/actions/admin/platform';
 import { PLAN_TIERS } from '@/lib/config/plans';
-import { ROLE_DESCRIPTIONS } from '@/lib/config/platform';
+import { ROLE_DESCRIPTIONS, TRIAL_CONFIG } from '@/lib/config/platform';
 import { FeatureFlagManager } from './FeatureFlagManager';
 import { UserManagement } from './UserManagement';
 import toast from 'react-hot-toast';
@@ -195,9 +195,9 @@ function BusinessesPanel() {
     };
 
     const handleExtendTrial = async (bizId) => {
-        const res = await extendTrial(bizId, 7);
+        const res = await extendTrial(bizId, TRIAL_CONFIG.durationDays);
         if (res.success) {
-            toast.success(`Trial extended by 7 days`);
+            toast.success(`Trial extended by ${TRIAL_CONFIG.durationDays} days`);
             fetchBusinesses();
         } else {
             toast.error(res.error);
@@ -307,7 +307,7 @@ function BusinessesPanel() {
                                                     </Button>
                                                     {(isExpired || isTrialing) && (
                                                         <Button size="sm" variant="outline" className="text-xs h-7 text-amber-700 border-amber-200" onClick={() => handleExtendTrial(biz.id)}>
-                                                            <Clock className="w-3 h-3 mr-1" /> +7 days
+                                                            <Clock className="w-3 h-3 mr-1" /> +{TRIAL_CONFIG.durationDays} days
                                                         </Button>
                                                     )}
                                                 </>
@@ -827,7 +827,7 @@ function RolesPanel() {
                     <p><strong>Business Owner</strong> = the person who registered a business (has &quot;owner&quot; role in business_users). They manage their team&apos;s roles.</p>
                     <p><strong>Admin</strong> = business-level admin, can manage team members, settings, and most operations.</p>
                     <p><strong>Team Members</strong> (manager → viewer) have progressively restricted access based on their role and the business&apos;s subscription plan.</p>
-                    <p className="pt-2 text-xs text-gray-400">All new businesses get a <strong>7-day Starter trial</strong>. After expiry, they downgrade to Free unless they subscribe.</p>
+                    <p className="pt-2 text-xs text-gray-400">New free signups get a <strong>{TRIAL_CONFIG.durationDays}-day Starter trial</strong> (aligned with Stripe checkout trial). After expiry, they downgrade to Free unless they subscribe.</p>
                 </CardContent>
             </Card>
         </div>

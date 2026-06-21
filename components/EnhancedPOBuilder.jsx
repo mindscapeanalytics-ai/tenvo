@@ -20,6 +20,7 @@ import { QuickVendorForm } from '@/components/QuickVendorForm';
 import { QuickWarehouseForm } from '@/components/QuickWarehouseForm';
 import toast from 'react-hot-toast';
 import { purchaseSchema, validateWithSchema } from '@/lib/validation/schemas';
+import { PURCHASE_STATUSES } from '@/lib/constants/purchaseStatus';
 import { cn } from '@/lib/utils';
 
 export default function EnhancedPOBuilder({ businessId, onSuccess, onCancel, category = 'retail-shop', colors }) {
@@ -131,27 +132,36 @@ export default function EnhancedPOBuilder({ businessId, onSuccess, onCancel, cat
         };
     }, [items]);
 
+    const mapItemForApi = (item) => ({
+        product_id: item.productId,
+        description: item.description || 'Item',
+        quantity: Number(item.quantity || 0),
+        unit_cost: Number(item.unitCost || 0),
+        tax_rate: Number(item.taxRate || 0),
+        tax_amount: parseFloat(((Number(item.quantity || 0) * Number(item.unitCost || 0)) * Number(item.taxRate || 0) / 100).toFixed(2)),
+        batch_number: item.batchNumber || null,
+        expiry_date: item.expiryDate || null,
+        total_amount: Number(item.total || 0),
+    });
+
     const handleSubmit = async () => {
         const validItems = items.filter(i => i.productId && Number(i.unitCost || 0) > 0 && Number(i.quantity || 0) > 0);
         if (validItems.length === 0) {
             toast.error('Add at least one item with a product, quantity, and cost');
             return;
         }
+        if (!header.vendorId) return toast.error('Please select a vendor');
+        if (!header.warehouseId) return toast.error('Please select a warehouse');
+
+        const mappedItems = validItems.map(mapItemForApi);
         const validation = validateWithSchema(purchaseSchema, {
             business_id: businessId,
-            vendor_id: header.vendorId || undefined,
+            vendor_id: header.vendorId,
             purchase_number: header.purchaseNumber,
             date: header.date,
-            warehouse_id: header.warehouseId || undefined,
+            warehouse_id: header.warehouseId,
             status: header.status,
-            items: items.map(i => ({
-                product_id: i.productId || undefined,
-                name: i.description || 'Item',
-                quantity: Number(i.quantity || 0),
-                unit_cost: Number(i.unitCost || 0),
-                tax_rate: Number(i.taxRate || 0),
-                total_amount: Number(i.total || 0),
-            })),
+            items: mappedItems,
             subtotal: totals.subtotal,
             tax_total: totals.taxTotal,
             total_amount: totals.total,
@@ -161,8 +171,6 @@ export default function EnhancedPOBuilder({ businessId, onSuccess, onCancel, cat
             toast.error(Object.values(validation.errors)[0] || 'Please fix validation errors');
             return;
         }
-        if (!header.vendorId) return toast.error('Please select a vendor');
-        if (!header.warehouseId) return toast.error('Please select a warehouse');
 
         try {
             setIsSubmitting(true);
@@ -177,20 +185,13 @@ export default function EnhancedPOBuilder({ businessId, onSuccess, onCancel, cat
                 subtotal: totals.subtotal,
                 tax_total: totals.taxTotal,
                 total_amount: totals.total,
-                items: items.map(i => ({
-                    product_id: i.productId || undefined,
-                    name: i.description || 'Item',
-                    description: i.description,
-                    quantity: Number(i.quantity || 0),
-                    unit_cost: Number(i.unitCost || 0),
-                    tax_rate: Number(i.taxRate || 0),
-                    tax_amount: parseFloat(((Number(i.quantity || 0) * Number(i.unitCost || 0)) * Number(i.taxRate || 0) / 100).toFixed(2)),
-                    batch_number: i.batchNumber || null,
-                    expiry_date: i.expiryDate || null,
-                    total_amount: Number(i.total || 0),
-                })),
+                items: mappedItems,
             });
-            toast.success('Purchase Order created successfully');
+            toast.success(
+                header.status === PURCHASE_STATUSES.RECEIVED
+                    ? 'Purchase received and stock updated'
+                    : 'Purchase order saved successfully'
+            );
             onSuccess?.();
         } catch (error) {
             toast.error(error.message || 'Failed to create purchase order');
@@ -275,6 +276,11 @@ export default function EnhancedPOBuilder({ businessId, onSuccess, onCancel, cat
                             {selectedVendor?.phone && (
                                 <p className="text-[10px] text-slate-400 pl-0.5">{selectedVendor.phone}</p>
                             )}
+                            {(selectedVendor?.address || selectedVendor?.city) && (
+                                <p className="text-[10px] text-slate-400 pl-0.5 truncate">
+                                    {[selectedVendor.address, selectedVendor.city].filter(Boolean).join(', ')}
+                                </p>
+                            )}
                         </div>
 
                         {/* Warehouse */}
@@ -332,7 +338,7 @@ export default function EnhancedPOBuilder({ businessId, onSuccess, onCancel, cat
                         <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Inventory Mode:</span>
                         <div className="flex bg-slate-100 rounded-lg p-0.5 gap-0.5">
                             <button
-                                onClick={() => setHeader(p => ({ ...p, status: 'draft' }))}
+                                onClick={() => setHeader(p => ({ ...p, status: PURCHASE_STATUSES.DRAFT }))}
                                 className={cn(
                                     'px-3 py-1.5 rounded-md text-[11px] font-bold uppercase tracking-wide transition-all',
                                     isDraft
@@ -342,7 +348,7 @@ export default function EnhancedPOBuilder({ businessId, onSuccess, onCancel, cat
                                 Draft PO
                             </button>
                             <button
-                                onClick={() => setHeader(p => ({ ...p, status: 'received' }))}
+                                onClick={() => setHeader(p => ({ ...p, status: PURCHASE_STATUSES.RECEIVED }))}
                                 className={cn(
                                     'px-3 py-1.5 rounded-md text-[11px] font-bold uppercase tracking-wide transition-all',
                                     !isDraft
@@ -373,7 +379,8 @@ export default function EnhancedPOBuilder({ businessId, onSuccess, onCancel, cat
                         </Button>
                     </div>
 
-                    <div className="rounded-xl border border-slate-100 overflow-hidden shadow-sm">
+                    <div className="-mx-1 overflow-x-auto px-1 sm:mx-0 sm:px-0">
+                    <div className="min-w-[520px] rounded-xl border border-slate-100 overflow-hidden shadow-sm">
                         {/* Table Header */}
                         <div className="grid bg-slate-50 border-b border-slate-100 text-[10px] font-bold uppercase tracking-widest text-slate-400"
                             style={{ gridTemplateColumns: '1fr 72px 100px 72px 100px 36px' }}>
@@ -470,10 +477,11 @@ export default function EnhancedPOBuilder({ businessId, onSuccess, onCancel, cat
                             </div>
                         )}
                     </div>
+                    </div>
                 </div>
 
                 {/* ── Section 3: Notes + Totals ─────────────────────── */}
-                <div className="px-6 pb-4 grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div className="grid grid-cols-1 gap-4 px-3 pb-4 sm:px-6 md:grid-cols-2 md:gap-5">
 
                     {/* Notes */}
                     <div className="space-y-1.5">
@@ -553,7 +561,7 @@ export default function EnhancedPOBuilder({ businessId, onSuccess, onCancel, cat
 
             {/* ── Quick-add Dialogs ─────────────────────────────────── */}
             <Dialog open={showVendorForm} onOpenChange={setShowVendorForm}>
-                <DialogContent className="max-w-lg">
+                <DialogContent className="max-w-lg w-[calc(100vw-1.5rem)] sm:w-full max-h-[min(90vh,800px)] overflow-y-auto overscroll-contain">
                     <div className="sr-only"><DialogTitle>Add New Vendor</DialogTitle></div>
                     <QuickVendorForm
                         onSave={(v) => {
@@ -567,7 +575,7 @@ export default function EnhancedPOBuilder({ businessId, onSuccess, onCancel, cat
             </Dialog>
 
             <Dialog open={showWarehouseForm} onOpenChange={setShowWarehouseForm}>
-                <DialogContent className="max-w-lg">
+                <DialogContent className="max-w-lg w-[calc(100vw-1.5rem)] sm:w-full max-h-[min(90vh,800px)] overflow-y-auto overscroll-contain">
                     <div className="sr-only"><DialogTitle>Add Storage Location</DialogTitle></div>
                     <QuickWarehouseForm
                         onSave={(w) => {

@@ -1,13 +1,30 @@
 import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
+import { resolveStorefrontBusiness } from '@/lib/tenancy/resolveStorefrontBusiness';
 
 /**
  * GET  /api/storefront/[businessDomain]/products/[productId]/reviews
  * POST /api/storefront/[businessDomain]/products/[productId]/reviews
  */
 
+async function assertProductInStore(businessId, productId, client) {
+  const res = await client.query(
+    `SELECT id FROM products
+     WHERE id = $1::uuid AND business_id = $2::uuid
+       AND is_active = true AND COALESCE(is_deleted, false) = false`,
+    [productId, businessId]
+  );
+  return res.rows.length > 0;
+}
+
 export async function GET(request, { params }) {
-  const { productId } = await params;
+  const { businessDomain, productId } = await params;
+  const business = await resolveStorefrontBusiness(businessDomain);
+
+  if (!business) {
+    return NextResponse.json({ reviews: [], total: 0, page: 1, hasMore: false }, { status: 404 });
+  }
+
   const { searchParams } = new URL(request.url);
   const page = parseInt(searchParams.get('page') || '1');
   const limit = 10;
@@ -15,27 +32,34 @@ export async function GET(request, { params }) {
 
   const client = await pool.connect();
   try {
-    // Try product_reviews table; gracefully return empty if it doesn't exist
+    const belongs = await assertProductInStore(business.id, productId, client);
+    if (!belongs) {
+      return NextResponse.json({ reviews: [], total: 0, page, hasMore: false }, { status: 404 });
+    }
+
     let rows = [];
     let total = 0;
     try {
       const countRes = await client.query(
-        `SELECT COUNT(*) FROM product_reviews WHERE product_id = $1 AND is_approved = true`,
-        [productId]
+        `SELECT COUNT(*) FROM product_reviews pr
+         JOIN products p ON p.id = pr.product_id
+         WHERE pr.product_id = $1::uuid AND p.business_id = $2::uuid AND pr.is_approved = true`,
+        [productId, business.id]
       );
       total = parseInt(countRes.rows[0].count);
 
       const res = await client.query(
-        `SELECT id, reviewer_name, rating, title, body, helpful_count, created_at
-         FROM product_reviews
-         WHERE product_id = $1 AND is_approved = true
-         ORDER BY helpful_count DESC, created_at DESC
-         LIMIT $2 OFFSET $3`,
-        [productId, limit, offset]
+        `SELECT pr.id, pr.reviewer_name, pr.rating, pr.title, pr.body, pr.helpful_count, pr.created_at
+         FROM product_reviews pr
+         JOIN products p ON p.id = pr.product_id
+         WHERE pr.product_id = $1::uuid AND p.business_id = $2::uuid AND pr.is_approved = true
+         ORDER BY pr.helpful_count DESC, pr.created_at DESC
+         LIMIT $3 OFFSET $4`,
+        [productId, business.id, limit, offset]
       );
       rows = res.rows;
     } catch (e) {
-      if (e.code !== '42P01') throw e; // ignore "table does not exist"
+      if (e.code !== '42P01') throw e;
     }
 
     return NextResponse.json({ reviews: rows, total, page, hasMore: total > page * limit });
@@ -48,7 +72,13 @@ export async function GET(request, { params }) {
 }
 
 export async function POST(request, { params }) {
-  const { productId } = await params;
+  const { businessDomain, productId } = await params;
+  const business = await resolveStorefrontBusiness(businessDomain);
+
+  if (!business) {
+    return NextResponse.json({ error: 'Store not found' }, { status: 404 });
+  }
+
   const body = await request.json().catch(() => ({}));
   const { reviewerName, reviewerEmail, rating, title, body: reviewBody } = body;
 
@@ -61,6 +91,11 @@ export async function POST(request, { params }) {
 
   const client = await pool.connect();
   try {
+    const belongs = await assertProductInStore(business.id, productId, client);
+    if (!belongs) {
+      return NextResponse.json({ error: 'Product not found' }, { status: 404 });
+    }
+
     try {
       await client.query(
         `INSERT INTO product_reviews
@@ -70,7 +105,6 @@ export async function POST(request, { params }) {
       );
     } catch (e) {
       if (e.code !== '42P01') throw e;
-      // Table doesn't exist — silently succeed
     }
 
     return NextResponse.json({ success: true, message: 'Review submitted for moderation' });

@@ -5,26 +5,23 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Info } from 'lucide-react';
 import { getDomainKnowledge } from '@/lib/domainKnowledge';
+import { getRegionalStandards } from '@/lib/utils/regionalHelpers';
 
 /**
- * TaxCategorySelector Component
- * Domain-aware tax category selector with Pakistani and Indian tax categories
- * 
- * @param {string} category - Domain category (e.g., 'textile-wholesale', 'pharmacy')
- * @param {string} value - Currently selected tax category
- * @param {function} onChange - Callback when tax category changes
- * @param {string} className - Additional CSS classes
+ * TaxCategorySelector — domain + country-aware tax categories.
  */
 export function TaxCategorySelector({
     category = 'retail-shop',
+    countryIso = 'PK',
     value = '',
     onChange,
     className = '',
 }) {
-    const domainKnowledge = getDomainKnowledge(category);
-    const taxCategories = domainKnowledge?.taxCategories || ['Sales Tax 17%'];
-    const defaultTax = domainKnowledge?.defaultTax || 17;
-    const isPakistaniDomain = domainKnowledge?.pakistaniFeatures || false;
+    const domainKnowledge = getDomainKnowledge(category, { countryIso });
+    const regional = getRegionalStandards(countryIso);
+    const taxCategories = domainKnowledge?.taxCategories || [`${regional.taxLabel} ${regional.defaultTaxRate}%`];
+    const defaultTax = domainKnowledge?.defaultTax ?? regional.defaultTaxRate ?? 0;
+    const isPkMarket = String(countryIso || domainKnowledge?.countryIso || 'PK').toUpperCase() === 'PK';
 
     // Parse tax percentage from category string
     const parseTaxPercent = (taxCategory) => {
@@ -123,10 +120,16 @@ export function TaxCategorySelector({
                     <Info className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
                     <div className="text-xs text-blue-700">
                         <p className="font-semibold">{selectedTaxInfo.description}</p>
-                        {isPakistaniDomain && (
+                        {isPkMarket ? (
                             <p className="text-blue-600 mt-1">
                                 {selectedTaxInfo.rate > 0
                                     ? `FBR-compliant tax rate: ${selectedTaxInfo.rate}%`
+                                    : 'No tax applicable for this category'}
+                            </p>
+                        ) : (
+                            <p className="text-blue-600 mt-1">
+                                {selectedTaxInfo.rate > 0
+                                    ? `${regional.taxLabel} reference rate: ${selectedTaxInfo.rate}%`
                                     : 'No tax applicable for this category'}
                             </p>
                         )}
@@ -135,22 +138,22 @@ export function TaxCategorySelector({
             )}
 
             {/* Domain-specific tax notes */}
-            {category === 'pharmacy' && (
+            {isPkMarket && category === 'pharmacy' && (
                 <p className="text-xs text-gray-500 italic">
                     Most pharmaceutical products are exempt or taxed at 5%
                 </p>
             )}
-            {category === 'textile-wholesale' && (
+            {isPkMarket && category === 'textile-wholesale' && (
                 <p className="text-xs text-gray-500 italic">
                     Export sales are zero-rated. Further tax applies for unregistered buyers.
                 </p>
             )}
-            {category === 'grocery' && (
+            {isPkMarket && category === 'grocery' && (
                 <p className="text-xs text-gray-500 italic">
                     Most grocery items are exempt or zero-rated
                 </p>
             )}
-            {['garments', 'boutique-fashion'].includes(category) && (
+            {isPkMarket && ['garments', 'boutique-fashion'].includes(category) && (
                 <p className="text-xs text-gray-500 italic">
                     Unregistered buyers attract 3% Further Tax (Section 3(1A) Sales Tax Act 1990).
                 </p>

@@ -179,21 +179,46 @@ export function PurchaseDocumentForm({
     };
 
     const handleSave = async () => {
+        const validItems = formData.items.filter(
+            (item) => item.product_id && Number(item.quantity) > 0
+        );
+        if (validItems.length === 0) {
+            toast.error('Add at least one product line');
+            return;
+        }
+        if (!formData.vendor_id) {
+            toast.error('Please select a vendor');
+            return;
+        }
+
+        const mappedItems = validItems.map((item) => {
+            const quantity = parseFloat(item.quantity) || 0;
+            const unitCost = parseFloat(item.unit_cost) || 0;
+            const taxRate = parseFloat(item.tax_rate) || 0;
+            const lineBase = quantity * unitCost;
+            const taxAmount = lineBase * taxRate / 100;
+            return {
+                product_id: item.product_id,
+                name: item.name,
+                description: item.name || 'Item',
+                quantity,
+                unit_cost: unitCost,
+                tax_rate: taxRate,
+                total_amount: lineBase + taxAmount,
+                batch_number: item.batch_number || null,
+                expiry_date: item.expiry_date || null,
+            };
+        });
+
         // Zod schema validation
         const validation = validateWithSchema(purchaseSchema, {
             business_id: business?.id,
-            vendor_id: formData.vendor_id || null,
+            vendor_id: formData.vendor_id,
             purchase_number: `${config.prefix}-${Date.now()}`,
             date: formData.date,
             warehouse_id: formData.warehouse_id || null,
             status: config.status,
-            items: formData.items.map(item => ({
-                product_id: item.product_id || undefined,
-                name: item.name,
-                quantity: parseFloat(item.quantity) || 0,
-                unit_cost: parseFloat(item.unit_cost) || 0,
-                tax_rate: parseFloat(item.tax_rate) || 0,
-            })),
+            items: mappedItems,
             subtotal: totals.subtotal,
             tax_total: totals.tax_total,
             total_amount: totals.total_amount,
@@ -205,19 +230,20 @@ export function PurchaseDocumentForm({
             return;
         }
 
-        if (!formData.vendor_id) {
-            toast.error('Please select a vendor');
-            return;
-        }
-
         setIsSaving(true);
         try {
             const documentData = {
-                ...formData,
-                ...totals,
                 business_id: business?.id,
+                vendor_id: formData.vendor_id,
+                warehouse_id: formData.warehouse_id || null,
+                date: formData.date,
+                notes: formData.notes || null,
                 status: config.status,
-                purchase_number: `${config.prefix}-${Date.now()}`
+                purchase_number: `${config.prefix}-${Date.now()}`,
+                subtotal: totals.subtotal,
+                tax_total: totals.tax_total,
+                total_amount: totals.total_amount,
+                items: mappedItems,
             };
 
             const result = await createPurchaseAction(documentData);
@@ -268,7 +294,7 @@ export function PurchaseDocumentForm({
                     </Button>
                 </CardHeader>
 
-                <CardContent className="flex-1 overflow-y-auto p-8 space-y-8 bg-gray-50/50">
+                <CardContent className="flex-1 overflow-y-auto bg-gray-50/50 p-3 space-y-4 sm:p-6 sm:space-y-6">
                     {/* Header Info Grid */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div className="space-y-2">

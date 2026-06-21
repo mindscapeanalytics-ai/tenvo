@@ -14,8 +14,21 @@ import toast from 'react-hot-toast';
  * Quick Add Templates Component
  * Allows users to quickly add pre-configured products
  */
-export function QuickAddTemplates({ domain, onAddProduct, currency = 'PKR' }) {
-    const [open, setOpen] = useState(false);
+export function QuickAddTemplates({
+    domain,
+    onAddProduct,
+    currency = 'PKR',
+    open: controlledOpen,
+    onOpenChange: controlledOnOpenChange,
+    hideTrigger = false,
+}) {
+    const [internalOpen, setInternalOpen] = useState(false);
+    const isControlled = controlledOpen !== undefined;
+    const open = isControlled ? controlledOpen : internalOpen;
+    const setOpen = (next) => {
+        if (!isControlled) setInternalOpen(next);
+        controlledOnOpenChange?.(next);
+    };
     const templates = getTemplatesForDomain(domain);
 
     if (templates.length === 0) {
@@ -38,12 +51,14 @@ export function QuickAddTemplates({ domain, onAddProduct, currency = 'PKR' }) {
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-                <Button variant="outline" className="gap-2">
-                    <Sparkles className="h-4 w-4" />
-                    Quick Add Products
-                </Button>
-            </DialogTrigger>
+            {!hideTrigger && (
+                <DialogTrigger asChild>
+                    <Button variant="outline" className="gap-2">
+                        <Sparkles className="h-4 w-4" />
+                        Quick Add Products
+                    </Button>
+                </DialogTrigger>
+            )}
 
             <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
                 <DialogHeader>

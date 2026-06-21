@@ -136,13 +136,20 @@ export function ActionModals({
 
             {/* Product Form Modal -- Wizard for new, Full form for edit */}
             <Dialog open={showProductForm} onOpenChange={setShowProductForm}>
-                <DialogContent className={editingProduct ? "max-w-4xl max-h-[90vh] overflow-y-auto" : "max-w-3xl p-0 border-none bg-transparent shadow-none"}>
+                <DialogContent
+                    className={
+                        editingProduct
+                            ? 'flex max-h-[min(92vh,900px)] w-[calc(100vw-1.5rem)] max-w-4xl flex-col gap-0 overflow-hidden p-0 sm:w-full'
+                            : 'flex max-h-[min(92vh,900px)] w-[calc(100vw-1.5rem)] max-w-3xl flex-col gap-0 overflow-hidden border-none bg-transparent p-2 shadow-none sm:w-full'
+                    }
+                >
                     <DialogHeader className="sr-only">
                         <DialogTitle>{editingProduct ? 'Edit Product' : 'Add New Product'}</DialogTitle>
                         <DialogDescription>
                             {editingProduct ? 'Modify the details of the selected product.' : 'Add a new product using the guided wizard.'}
                         </DialogDescription>
                     </DialogHeader>
+                    <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
                     {editingProduct ? (
                         <ProductForm
                             product={editingProduct}
@@ -168,12 +175,13 @@ export function ActionModals({
                             currency={currency}
                         />
                     )}
+                    </div>
                 </DialogContent>
             </Dialog>
 
             {/* Quick Action Modal */}
             <Dialog open={showQuickAction} onOpenChange={setShowQuickAction}>
-                <DialogContent className="max-w-xl p-8 rounded-3xl border-none shadow-2xl">
+                <DialogContent className="max-w-xl rounded-2xl border-none p-4 shadow-2xl sm:p-6">
                     <DialogHeader>
                         <DialogTitle className="text-2xl font-black flex items-center gap-2">
                             <span className="p-2 rounded-xl" style={{ backgroundColor: `${colors.primary}15`, color: colors.primary }}>
@@ -215,7 +223,7 @@ export function ActionModals({
                 setShowCustomerForm(open);
                 if (!open) setEditingCustomer(null);
             }}>
-                <DialogContent className="p-0 border-none max-w-2xl bg-transparent shadow-none">
+                <DialogContent hideCloseButton className="flex max-h-[min(92vh,860px)] w-[calc(100vw-1.5rem)] max-w-2xl flex-col overflow-hidden border-none bg-transparent p-0 shadow-none sm:w-full">
                     <DialogHeader className="sr-only">
                         <DialogTitle>Customer Form</DialogTitle>
                     </DialogHeader>
@@ -267,7 +275,7 @@ export function ActionModals({
                 setShowVendorForm(open);
                 if (!open) setEditingVendor(null);
             }}>
-                <DialogContent className="p-0 border-none max-w-2xl bg-transparent shadow-none">
+                <DialogContent hideCloseButton className="flex max-h-[min(92vh,860px)] w-[calc(100vw-1.5rem)] max-w-2xl flex-col overflow-hidden border-none bg-transparent p-0 shadow-none sm:w-full">
                     <DialogHeader className="sr-only">
                         <DialogTitle>Vendor Form</DialogTitle>
                     </DialogHeader>

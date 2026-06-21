@@ -21,6 +21,7 @@ import { CityAutocomplete } from '@/components/CityAutocomplete';
 import { validateNTN, formatNTN } from '@/lib/tax/pakistaniTax';
 import { formatPakistaniPhone, isValidPakistaniPhone, vendorSchema, validateForm } from '@/lib/validation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { MobileTabHeader, MobileStatStrip } from '@/components/mobile/MobileTabHeader';
 import { FileUpload } from './FileUpload';
 import { useBusiness } from '@/lib/context/BusinessContext';
 import { Badge } from '@/components/ui/badge';
@@ -143,18 +144,42 @@ export function VendorManager({ vendors = [], onAdd, onUpdate, onDelete, categor
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="space-y-4 lg:space-y-6">
+      <MobileTabHeader
+        icon={Building2}
+        iconClassName="bg-blue-100 text-blue-600"
+        title="Vendor Network"
+        subtitle={`${vendors.length} suppliers · supply chain`}
+        primaryAction={{
+          label: 'Add',
+          icon: Plus,
+          className: 'bg-emerald-600 hover:bg-emerald-700 text-white',
+          onClick: handleOpenAdd,
+        }}
+      />
+
+      <MobileStatStrip
+        items={[
+          { label: 'Vendors', value: vendors.length },
+          {
+            label: 'Payables',
+            value: formatCurrency(vendors.reduce((s, v) => s + (Number(v.outstanding_balance) || 0), 0), 'PKR'),
+            valueTone: 'text-red-600',
+          },
+        ]}
+      />
+
+      <div className="hidden flex-col gap-4 md:flex-row md:items-center md:justify-between lg:flex">
         <div>
           <h2 className="text-xl font-bold text-gray-900">Vendor Network</h2>
-          <p className="text-gray-500 font-medium">Manage your supply chain and trade credit</p>
+          <p className="font-medium text-gray-500">Manage your supply chain and trade credit</p>
         </div>
         <div className="flex gap-2">
           <Button
             onClick={handleOpenAdd}
-            className="rounded-xl font-bold h-10 px-5 bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
+            className="h-10 rounded-xl px-5 font-bold bg-emerald-600 text-white shadow-sm hover:bg-emerald-700"
           >
-            <Plus className="w-4 h-4 mr-2" />
+            <Plus className="mr-2 h-4 w-4" />
             Add Vendor
           </Button>
           <ExportButton
@@ -166,7 +191,7 @@ export function VendorManager({ vendors = [], onAdd, onUpdate, onDelete, categor
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="hidden grid-cols-1 gap-4 md:grid-cols-4 lg:grid">
         <Card className="border-none shadow-md bg-white">
           <CardContent className="pt-6">
             <p className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Active Vendors</p>

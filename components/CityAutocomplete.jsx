@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Check, ChevronsUpDown, MapPin, Search, Plus } from 'lucide-react';
+import { Check, ChevronsUpDown, MapPin, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
@@ -20,38 +20,53 @@ import {
 import { Label } from '@/components/ui/label';
 import { allCities, majorCities } from '@/lib/data/pakistaniLocations';
 
-export function CityAutocomplete({ value, onChange, required = false }) {
+export function CityAutocomplete({ value, onChange, required = false, className }) {
     const [open, setOpen] = React.useState(false);
     const [searchQuery, setSearchQuery] = React.useState('');
 
     const filteredCities = React.useMemo(() => {
         if (!searchQuery) return majorCities;
-        return allCities.filter((city) =>
-            city.toLowerCase().includes(searchQuery.toLowerCase())
-        ).slice(0, 10);
+        return allCities
+            .filter((city) => city.toLowerCase().includes(searchQuery.toLowerCase()))
+            .slice(0, 10);
     }, [searchQuery]);
 
+    const selectCity = React.useCallback(
+        (city) => {
+            onChange(city === value ? '' : city);
+            setOpen(false);
+            setSearchQuery('');
+        },
+        [onChange, value]
+    );
+
     return (
-        <div className="space-y-2">
-            <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest after:content-['*'] after:ml-0.5 after:text-red-500 after:hidden">
-                City Selection {required && <span className="text-red-500 ml-0.5">*</span>}
+        <div className={cn('space-y-2', className)}>
+            <Label className="text-[11px] font-semibold text-slate-600">
+                City {required && <span className="text-red-500">*</span>}
             </Label>
-            <Popover open={open} onOpenChange={setOpen} modal={true}>
+            <Popover open={open} onOpenChange={setOpen}>
                 <PopoverTrigger asChild>
                     <Button
+                        type="button"
                         variant="outline"
                         role="combobox"
                         aria-expanded={open}
-                        className="w-full justify-between h-11 rounded-xl border-gray-200 bg-white font-bold text-gray-900 overflow-hidden"
+                        className="h-9 w-full justify-between rounded-lg border-gray-200 bg-white text-sm font-medium"
                     >
-                        <div className="flex items-center gap-2 truncate">
+                        <div className="flex items-center gap-2 truncate min-w-0">
                             <MapPin className="w-4 h-4 text-wine shrink-0" />
-                            {value ? value : "Select city..."}
+                            <span className="truncate">{value ? value : 'Select city...'}</span>
                         </div>
                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                     </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 rounded-2xl border-wine/10 shadow-2xl overflow-hidden z-[200]" align="start">
+                <PopoverContent
+                    className="w-[var(--radix-popover-trigger-width)] min-w-[min(100%,16rem)] max-w-[min(calc(100vw-1.5rem),var(--radix-popover-trigger-width))] p-0 rounded-2xl border-wine/10 shadow-2xl overflow-hidden"
+                    align="start"
+                    sideOffset={4}
+                    collisionPadding={12}
+                >
                     <Command className="rounded-none" shouldFilter={false}>
                         <CommandInput
                             placeholder="Search major cities..."
@@ -59,7 +74,7 @@ export function CityAutocomplete({ value, onChange, required = false }) {
                             onValueChange={setSearchQuery}
                             className="h-12 border-none focus:ring-0 font-medium"
                         />
-                        <CommandList className="max-h-[300px]">
+                        <CommandList className="max-h-[min(300px,50vh)] overscroll-contain">
                             <CommandEmpty className="py-6 text-center text-sm text-gray-500 font-medium">
                                 No city found.
                             </CommandEmpty>
@@ -67,18 +82,16 @@ export function CityAutocomplete({ value, onChange, required = false }) {
                                 {searchQuery && !filteredCities.includes(searchQuery) && (
                                     <CommandItem
                                         value={searchQuery}
-                                        onSelect={() => {
-                                            onChange(searchQuery);
-                                            setOpen(false);
-                                            setSearchQuery('');
-                                        }}
+                                        onSelect={() => selectCity(searchQuery)}
                                         className="flex items-center justify-between py-3 px-4 cursor-pointer hover:bg-wine/5 aria-selected:bg-wine/10 transition-colors rounded-xl mx-1 my-0.5"
                                     >
-                                        <div className="flex items-center gap-3">
-                                            <div className="p-1.5 rounded-lg bg-wine/5 text-wine">
+                                        <div className="flex items-center gap-3 min-w-0 pointer-events-none">
+                                            <div className="p-1.5 rounded-lg bg-wine/5 text-wine shrink-0">
                                                 <Plus className="w-3.5 h-3.5" />
                                             </div>
-                                            <span className="font-bold text-gray-800 italic">Use &quot;{searchQuery}&quot;</span>
+                                            <span className="font-bold text-gray-800 italic truncate">
+                                                Use &quot;{searchQuery}&quot;
+                                            </span>
                                         </div>
                                     </CommandItem>
                                 )}
@@ -86,23 +99,19 @@ export function CityAutocomplete({ value, onChange, required = false }) {
                                     <CommandItem
                                         key={city}
                                         value={city}
-                                        onSelect={() => {
-                                            onChange(city === value ? "" : city);
-                                            setOpen(false);
-                                            setSearchQuery('');
-                                        }}
+                                        onSelect={() => selectCity(city)}
                                         className="flex items-center justify-between py-3 px-4 cursor-pointer hover:bg-wine/5 aria-selected:bg-wine/10 transition-colors rounded-xl mx-1 my-0.5"
                                     >
-                                        <div className="flex items-center gap-3">
-                                            <div className="p-1.5 rounded-lg bg-gray-50 text-gray-400">
+                                        <div className="flex items-center gap-3 min-w-0 pointer-events-none">
+                                            <div className="p-1.5 rounded-lg bg-gray-50 text-gray-400 shrink-0">
                                                 <MapPin className="w-3.5 h-3.5" />
                                             </div>
-                                            <span className="font-bold text-gray-800">{city}</span>
+                                            <span className="font-bold text-gray-800 truncate">{city}</span>
                                         </div>
                                         <Check
                                             className={cn(
-                                                "h-4 w-4 text-wine",
-                                                value === city ? "opacity-100" : "opacity-0"
+                                                'h-4 w-4 shrink-0 text-wine pointer-events-none',
+                                                value === city ? 'opacity-100' : 'opacity-0'
                                             )}
                                         />
                                     </CommandItem>

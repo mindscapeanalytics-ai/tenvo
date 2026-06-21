@@ -1,6 +1,7 @@
+'use client';
+
 /**
- * Customers Tab - Server Component
- * Displays customer list and management
+ * Customers Tab - Client wrapper for interactive list + mobile header
  */
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Users, Phone, MapPin, Pencil, Trash2, Plus } from 'lucide-react';
 import { DataTable } from '@/components/DataTable';
 import { ExportButton } from '@/components/ExportButton';
+import { MobileTabHeader, MobileStatStrip } from '@/components/mobile/MobileTabHeader';
 import type { Customer } from '@/types';
 
 interface CustomersTabProps {
@@ -31,10 +33,33 @@ export function CustomersTab({
     // though not currently used in this presentational component. Container handles data fetching.
     businessId
 }: CustomersTabProps) {
+    const reachableCount = customers.filter((c) => c.phone || c.email).length;
+
     return (
-        <div className="space-y-6">
-            {/* Header */}
-            <div className="flex items-center justify-between">
+        <div className="space-y-4 lg:space-y-6">
+            <MobileTabHeader
+                icon={Users}
+                iconClassName="bg-emerald-100 text-emerald-600"
+                title="Customers"
+                subtitle={`${customers.length} in database`}
+                primaryAction={{
+                    label: 'Add',
+                    icon: Plus,
+                    className: 'bg-emerald-600 hover:bg-emerald-700 text-white',
+                    onClick: () => onAdd?.(),
+                }}
+            />
+
+            <MobileStatStrip
+                items={[
+                    { label: 'Total', value: customers.length },
+                    { label: 'Reachable', value: reachableCount, valueTone: 'text-emerald-600' },
+                    { label: 'Cities', value: new Set(customers.map((c) => c.city).filter(Boolean)).size },
+                ]}
+            />
+
+            {/* Desktop header */}
+            <div className="hidden items-center justify-between lg:flex">
                 <div>
                     <h2 className="text-2xl font-bold">Customers</h2>
                     <p className="text-muted-foreground">
@@ -55,16 +80,16 @@ export function CustomersTab({
                     />
                     <Button
                         onClick={() => onAdd?.()}
-                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl h-10 px-5 shadow-sm"
+                        className="h-10 rounded-xl bg-emerald-600 px-5 font-bold text-white shadow-sm hover:bg-emerald-700"
                     >
-                        <Plus className="w-4 h-4 mr-2" />
+                        <Plus className="mr-2 h-4 w-4" />
                         Add Customer
                     </Button>
                 </div>
             </div>
 
-            {/* Customer Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Customer Stats — desktop cards */}
+            <div className="hidden grid-cols-1 gap-4 md:grid-cols-3 lg:grid">
                 <Card>
                     <CardHeader className="pb-2">
                         <CardDescription>Total Customers</CardDescription>

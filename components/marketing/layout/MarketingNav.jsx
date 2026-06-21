@@ -3,13 +3,14 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Menu, X, ChevronDown, Package, Receipt, Briefcase, Store, Factory, Globe, ShoppingBag, UtensilsCrossed, Megaphone, Heart, Brain, TrendingUp } from 'lucide-react';
+import { Menu, X, ChevronDown, Package, Receipt, Briefcase, Store, Factory, Globe, ShoppingBag, UtensilsCrossed, Megaphone, Heart, Brain } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { trackNavMenuOpen, trackCTAClick } from '@/lib/analytics/tracking';
 import { useAuth } from '@/lib/context/AuthContext';
 import { TenvoTextLogo } from '@/components/branding/TenvoTextLogo';
-import { SupportWhatsAppLink } from '@/components/marketing/SupportWhatsAppLink';
 import { cn } from '@/lib/utils';
+import { MARKETING_NAV_HEIGHT } from '@/lib/utils/marketingLayout';
+import { modulesForNav } from '@/lib/marketing/capabilities';
 
 /**
  * MarketingNav Component
@@ -64,28 +65,55 @@ export default function MarketingNav({
       : 'bg-white/90 backdrop-blur-2xl border-b border-neutral-200/50 shadow-[0_4px_24px_-12px_rgba(0,0,0,0.1)]'
     }`;
 
-  const [currency, setCurrency] = useState('PKR');
-
   const navItemClass =
-    'inline-flex h-10 shrink-0 items-center whitespace-nowrap rounded-md px-1.5 text-[13px] font-semibold text-neutral-800 transition-colors hover:bg-neutral-100/90 hover:text-brand-primary-dark xl:px-2 xl:text-sm';
+    'inline-flex h-10 shrink-0 items-center whitespace-nowrap rounded-lg px-2.5 text-[13px] font-semibold text-neutral-800 transition-colors hover:bg-neutral-100/90 hover:text-brand-primary-dark lg:px-2 lg:text-[12.5px] xl:px-2.5 xl:text-[13px] 2xl:px-3 2xl:text-sm';
+
+  const enterpriseCore = modulesForNav('enterpriseCore');
+  const verticals = modulesForNav('verticals');
+  const growth = modulesForNav('growth');
+
+  const navIcons = {
+    inventory: Package,
+    compliance: Receipt,
+    accounting: Briefcase,
+    pos: Store,
+    manufacturing: Factory,
+    'sales-pipeline': Globe,
+    storefront: ShoppingBag,
+    restaurant: UtensilsCrossed,
+    campaigns: Megaphone,
+    crm: Heart,
+    analytics: Brain,
+  };
+
+  const verticalHrefs = {
+    pos: '/features#pos-hospitality',
+    manufacturing: '/features#manufacturing',
+    'sales-pipeline': '/register?domain=wholesale-distribution',
+    storefront: '/features#storefront',
+    restaurant: '/features#pos-hospitality',
+  };
 
   return (
     <nav className={navClasses} aria-label="Primary marketing">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 xl:px-12">
-        <div className="flex h-[4.5rem] min-h-[4.5rem] items-center justify-between gap-3 sm:gap-4 lg:gap-5">
-          {/* Logo */}
+      <div className="mx-auto max-w-[1440px] pl-[max(1.25rem,env(safe-area-inset-left))] pr-[max(1.25rem,env(safe-area-inset-right))] pt-[max(0.25rem,env(safe-area-inset-top))] sm:pl-7 sm:pr-7 lg:pl-10 lg:pr-10 xl:pl-14 xl:pr-14 2xl:pl-16 2xl:pr-16">
+        <div className={cn('flex items-center justify-between gap-3 sm:gap-6 lg:grid lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:items-center lg:justify-items-stretch lg:gap-x-8 xl:gap-x-10', MARKETING_NAV_HEIGHT)}>
+          {/* Logo — keep a hard gutter so the first nav control never overlaps the wordmark */}
           <Link
             href="/"
-            className="flex min-w-0 shrink-0 items-center gap-3 rounded-lg outline-none ring-brand-primary/30 transition-all hover:opacity-95 focus-visible:ring-2"
+            className="flex min-w-0 max-w-[min(100%,14rem)] shrink-0 items-center gap-3 rounded-lg outline-none ring-brand-primary/30 transition-all hover:opacity-95 focus-visible:ring-2 sm:max-w-none"
           >
             <TenvoTextLogo />
           </Link>
 
-          {/* Desktop: primary links (single row, scroll if viewport is tight) + utilities (never wraps) */}
-          <div className="hidden min-w-0 flex-1 items-center justify-end gap-2 lg:flex lg:gap-3">
-            <div className="min-w-0 flex-1" role="navigation" aria-label="Product pages">
-              <div className="flex flex-nowrap items-center justify-end gap-x-0.5 sm:gap-x-1 md:gap-x-1.5 lg:gap-x-2">
-              {/* Solutions Dropdown */}
+          {/* Desktop: primary links in the middle column (minmax(0,1fr) allows shrink without colliding into logo) */}
+          <div
+            className="hidden min-w-0 justify-self-stretch overflow-visible lg:flex lg:items-center lg:justify-center lg:pl-2 xl:pl-4 2xl:pl-6"
+            role="navigation"
+            aria-label="Product pages"
+          >
+            <div className="flex min-w-0 max-w-full flex-nowrap items-center justify-center gap-x-0.5 sm:gap-x-1 lg:gap-x-1 xl:gap-x-1.5 2xl:gap-x-2">
+              {/* Solutions mega-menu */}
               <NavDropdown
                 label="Solutions"
                 isOpen={expandedMenu === 'solutions'}
@@ -95,91 +123,52 @@ export default function MarketingNav({
                 <div className="grid w-[min(96vw,56rem)] grid-cols-1 gap-6 p-6 sm:p-8 lg:grid-cols-3 lg:gap-8">
                   <div>
                     <h4 className="text-[10px] font-black text-gray-400 mb-6 uppercase tracking-widest">Enterprise Core</h4>
-                    <DropdownLink
-                      href="/features#inventory"
-                      icon={<Package className="w-5 h-5" />}
-                      title="Inventory Engine"
-                      desc="Precision stock control with batch & serial tracking."
-                    />
-                    <DropdownLink
-                      href="/features#compliance"
-                      icon={<Receipt className="w-5 h-5" />}
-                      title="Tax Compliance"
-                      desc="FBR-aligned sales tax and provincial workflows for Pakistan."
-                    />
-                    <DropdownLink
-                      href="/features#accounting"
-                      icon={<Briefcase className="w-5 h-5" />}
-                      title="General Ledger"
-                      desc="Double-entry accounting for professionals."
-                    />
+                    {enterpriseCore.map((mod) => {
+                      const Icon = navIcons[mod.id] || Package;
+                      return (
+                        <DropdownLink
+                          key={mod.id}
+                          href={mod.href}
+                          icon={<Icon className="w-5 h-5" />}
+                          title={mod.title}
+                          desc={mod.shortDescription || mod.description}
+                        />
+                      );
+                    })}
                   </div>
                   <div>
                     <h4 className="text-[10px] font-black text-gray-400 mb-6 uppercase tracking-widest">Verticals</h4>
-                    <DropdownLink
-                      href="/register?domain=retail-shop"
-                      icon={<Store className="w-5 h-5" />}
-                      title="POS Terminal"
-                      desc="High-speed retail checkout workflows."
-                    />
-                    <DropdownLink
-                      href="/register?domain=industrial-manufacturing"
-                      icon={<Factory className="w-5 h-5" />}
-                      title="Manufacturing"
-                      desc="BOM, Work Orders, and shop floor control."
-                    />
-                    <DropdownLink
-                      href="/register?domain=wholesale-distribution"
-                      icon={<Globe className="w-5 h-5" />}
-                      title="B2B Supply Chain"
-                      desc="Wholesale and distribution management."
-                    />
-                    <DropdownLink
-                      href="/features#storefront"
-                      icon={<ShoppingBag className="w-5 h-5" />}
-                      title="Branded online store"
-                      desc="Public storefront in sync with stock & POS."
-                    />
-                    <DropdownLink
-                      href="/features#pos-hospitality"
-                      icon={<UtensilsCrossed className="w-5 h-5" />}
-                      title="Cafés & restaurants"
-                      desc="Tables, service, and kitchen-aware selling."
-                    />
+                    {verticals.map((mod) => {
+                      const Icon = navIcons[mod.id] || Store;
+                      return (
+                        <DropdownLink
+                          key={mod.id}
+                          href={verticalHrefs[mod.id] || mod.href}
+                          icon={<Icon className="w-5 h-5" />}
+                          title={mod.title}
+                          desc={mod.shortDescription || mod.description}
+                        />
+                      );
+                    })}
                   </div>
                   <div>
                     <h4 className="text-[10px] font-black text-gray-400 mb-6 uppercase tracking-widest">Growth & customers</h4>
-                    <DropdownLink
-                      href="/solutions/marketing-crm#campaigns"
-                      icon={<Megaphone className="w-5 h-5" />}
-                      title="Campaigns & marketing"
-                      desc="Promotions and segments tied to real orders - not a siloed list tool."
-                    />
-                    <DropdownLink
-                      href="/solutions/marketing-crm#crm"
-                      icon={<Heart className="w-5 h-5" />}
-                      title="Loyalty & CRM"
-                      desc="Rewards and customer context next to POS and web sales."
-                    />
-                    <DropdownLink
-                      href="/features#analytics"
-                      icon={<Brain className="w-5 h-5" />}
-                      title="Analytics & AI"
-                      desc="Dashboards and reporting from one operational ledger."
-                    />
-                    <DropdownLink
-                      href="/solutions/marketing-crm#sales-suite"
-                      icon={<TrendingUp className="w-5 h-5" />}
-                      title="Quotations & sales pipeline"
-                      desc="B2B quotes and follow-ups with live stock awareness."
-                    />
+                    {growth.map((mod) => {
+                      const Icon = navIcons[mod.id] || Megaphone;
+                      return (
+                        <DropdownLink
+                          key={mod.id}
+                          href={mod.href}
+                          icon={<Icon className="w-5 h-5" />}
+                          title={mod.title}
+                          desc={mod.shortDescription || mod.description}
+                        />
+                      );
+                    })}
                   </div>
                 </div>
               </NavDropdown>
 
-              <button type="button" className={navItemClass} onClick={() => router.push('/why-tenvo')}>
-                Why TENVO
-              </button>
               <button type="button" className={navItemClass} onClick={() => router.push('/features')}>
                 Features
               </button>
@@ -189,161 +178,153 @@ export default function MarketingNav({
               <button type="button" className={navItemClass} onClick={() => router.push('/industries')}>
                 Industries
               </button>
-              <button type="button" className={navItemClass} onClick={() => router.push('/integrations')}>
+              <Link href="/integrations" className={navItemClass}>
                 Integrations
-              </button>
-              <Link href="/about" className={navItemClass}>
-                About
               </Link>
-              <Link href="/demo" className={navItemClass}>
-                Demo
-              </Link>
+              <NavDropdown
+                label="Company"
+                isOpen={expandedMenu === 'company'}
+                onToggle={() => toggleMenu('company')}
+                triggerClassName={navItemClass}
+              >
+                <div className="min-w-[14rem] space-y-1 p-3">
+                  <Link
+                    href="/why-tenvo"
+                    className="block rounded-xl px-4 py-3 text-left text-sm font-semibold text-neutral-800 transition-colors hover:bg-neutral-50"
+                    onClick={() => setExpandedMenu(null)}
+                  >
+                    Why TENVO
+                  </Link>
+                  <Link
+                    href="/about"
+                    className="block rounded-xl px-4 py-3 text-left text-sm font-semibold text-neutral-800 transition-colors hover:bg-neutral-50"
+                    onClick={() => setExpandedMenu(null)}
+                  >
+                    About
+                  </Link>
+                  <Link
+                    href="/demo"
+                    className="block rounded-xl px-4 py-3 text-left text-sm font-semibold text-neutral-800 transition-colors hover:bg-neutral-50"
+                    onClick={() => setExpandedMenu(null)}
+                  >
+                    Book a demo
+                  </Link>
+                </div>
+              </NavDropdown>
               <Link href="/contact" className={navItemClass}>
                 Contact
               </Link>
-              </div>
-            </div>
-
-            {/* Utilities + auth: fixed cluster so links never push CTAs to a new row */}
-            <div className="flex shrink-0 items-center gap-2 border-l border-neutral-200/90 pl-3 sm:gap-3 sm:pl-4 xl:pl-5">
-              <SupportWhatsAppLink
-                variant="light"
-                className="hidden h-10 items-center lg:inline-flex shrink-0 px-1.5 text-[11px] xl:px-2"
-                iconClassName="h-3.5 w-3.5"
-              />
-              <div className="relative group">
-                <button
-                  type="button"
-                  className="inline-flex h-10 items-center gap-1 rounded-lg px-2 text-xs font-semibold uppercase tracking-wider text-neutral-800 transition-colors hover:bg-neutral-100 hover:text-neutral-900"
-                  aria-haspopup="listbox"
-                  aria-expanded="false"
-                  aria-label={`Display currency: ${currency}`}
-                >
-                  {currency}
-                  <ChevronDown className="h-3 w-3 opacity-50" aria-hidden />
-                </button>
-                <div className="absolute top-[calc(100%+0.5rem)] right-0 z-50 w-24 overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-lg opacity-0 transition-all duration-200 invisible group-hover:visible group-hover:opacity-100">
-                  {['PKR', 'USD', 'AED', 'INR'].map((c) => (
-                    <button
-                      key={c}
-                      type="button"
-                      onClick={() => setCurrency(c)}
-                      className={`w-full px-4 py-2 text-left text-xs font-bold transition-colors ${currency === c ? 'bg-brand-50 text-brand-primary' : 'text-neutral-600 hover:bg-neutral-50'}`}
-                    >
-                      {c}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {showAuthButtons && (
-                <div className="flex items-center gap-2">
-                  {user ? (
-                    <Button
-                      onClick={() => handleCTAClick('nav', 'Enter Dashboard', '/multi-business')}
-                      className="h-10 shrink-0 rounded-xl bg-brand-primary px-5 font-black text-white shadow-[0_8px_20px_-8px_rgba(227,66,66,0.6)] transition-all hover:bg-brand-primary-dark active:scale-[0.98]"
-                    >
-                      Enter Dashboard
-                    </Button>
-                  ) : (
-                    <>
-                      <Button
-                        variant="ghost"
-                        className="h-10 shrink-0 rounded-xl px-4 font-semibold text-neutral-700 hover:bg-neutral-100"
-                        onClick={() => handleCTAClick('nav', 'Log in', '/login')}
-                      >
-                        Log in
-                      </Button>
-                      <Button
-                        onClick={() => handleCTAClick('nav', 'Start your journey', '/register')}
-                        className="h-10 shrink-0 rounded-xl bg-brand-primary px-5 font-black text-white shadow-[0_8px_20px_-8px_rgba(227,66,66,0.6)] transition-all hover:bg-brand-primary-dark active:scale-[0.98]"
-                      >
-                        Start your journey
-                      </Button>
-                    </>
-                  )}
-                </div>
-              )}
             </div>
           </div>
 
-          {/* Mobile Menu Toggle */}
-          <button
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="lg:hidden p-2 text-gray-600 hover:bg-gray-100 rounded-xl transition-colors"
-            aria-label="Toggle menu"
-            aria-expanded={mobileMenuOpen}
-          >
-            {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-          </button>
+          {/* Right: auth (desktop) + menu toggle (mobile). WhatsApp / currency live in footer & contact. */}
+          <div className="flex min-w-0 shrink-0 items-center justify-end gap-2 sm:gap-3">
+            {showAuthButtons ? (
+              <div className="hidden items-center gap-2 border-l border-neutral-200/80 pl-3 sm:gap-2.5 sm:pl-4 lg:flex xl:gap-3 xl:pl-5">
+                {user ? (
+                  <Button
+                    onClick={() => handleCTAClick('nav', 'Enter Dashboard', '/multi-business')}
+                    className="h-10 shrink-0 rounded-full bg-brand-primary px-4 font-black text-white shadow-[0_8px_20px_-8px_rgba(227,66,66,0.6)] transition-all hover:bg-brand-primary-dark active:scale-[0.98] xl:px-5"
+                  >
+                    Enter Dashboard
+                  </Button>
+                ) : (
+                  <>
+                    <Button
+                      variant="ghost"
+                      className="h-10 shrink-0 rounded-lg px-2.5 font-semibold text-neutral-700 hover:bg-neutral-100 sm:px-3 xl:px-4"
+                      onClick={() => handleCTAClick('nav', 'Log in', '/login')}
+                    >
+                      Log in
+                    </Button>
+                    <Button
+                      onClick={() => handleCTAClick('nav', 'Start your journey', '/register')}
+                      className="h-10 shrink-0 rounded-full bg-brand-primary px-3.5 font-black text-white shadow-[0_8px_20px_-8px_rgba(227,66,66,0.6)] transition-all hover:bg-brand-primary-dark active:scale-[0.98] sm:px-4 xl:px-5"
+                    >
+                      <span className="hidden xl:inline">Start your journey</span>
+                      <span className="xl:hidden">Get started</span>
+                    </Button>
+                  </>
+                )}
+              </div>
+            ) : null}
+
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="rounded-xl p-2 text-gray-600 transition-colors hover:bg-gray-100 lg:hidden"
+              aria-label="Toggle menu"
+              aria-expanded={mobileMenuOpen}
+            >
+              {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Mobile Menu */}
       {mobileMenuOpen && (
-        <div className="lg:hidden border-t border-gray-100 bg-white p-6 space-y-6 animate-in slide-in-from-top-4 duration-300">
-          <div className="space-y-4">
+        <div className="lg:hidden border-t border-gray-100 bg-white animate-in slide-in-from-top-4 duration-300 max-h-[calc(100dvh-3.5rem-env(safe-area-inset-top))] overflow-y-auto overscroll-contain">
+          <div className="space-y-1 p-4 pb-6">
             <button
-              className="w-full text-left font-bold text-gray-700 px-2 py-2 hover:text-brand-primary-dark transition-colors"
-              onClick={() => router.push('/why-tenvo')}
-            >
-              Why TENVO
-            </button>
-            <button
-              className="w-full text-left font-bold text-gray-700 px-2 py-2 hover:text-brand-primary-dark transition-colors"
+              className="w-full rounded-xl px-3 py-3 text-left text-sm font-bold text-gray-700 transition-colors hover:bg-neutral-50 hover:text-brand-primary-dark"
               onClick={() => router.push('/features')}
             >
               Features
             </button>
             <button
-              className="w-full text-left font-bold text-gray-700 px-2 py-2 hover:text-brand-primary-dark transition-colors"
+              className="w-full rounded-xl px-3 py-3 text-left text-sm font-bold text-gray-700 transition-colors hover:bg-neutral-50 hover:text-brand-primary-dark"
               onClick={() => router.push('/pricing')}
             >
               Pricing
             </button>
             <button
-              className="w-full text-left font-bold text-gray-700 px-2 py-2 hover:text-brand-primary-dark transition-colors"
+              className="w-full rounded-xl px-3 py-3 text-left text-sm font-bold text-gray-700 transition-colors hover:bg-neutral-50 hover:text-brand-primary-dark"
               onClick={() => router.push('/solutions/marketing-crm')}
             >
               Marketing &amp; CRM
             </button>
             <button
-              className="w-full text-left font-bold text-gray-700 px-2 py-2 hover:text-brand-primary-dark transition-colors"
+              className="w-full rounded-xl px-3 py-3 text-left text-sm font-bold text-gray-700 transition-colors hover:bg-neutral-50 hover:text-brand-primary-dark"
               onClick={() => router.push('/industries')}
             >
               Industries
             </button>
             <button
-              className="w-full text-left font-bold text-gray-700 px-2 py-2 hover:text-brand-primary-dark transition-colors"
+              className="w-full rounded-xl px-3 py-3 text-left text-sm font-bold text-gray-700 transition-colors hover:bg-neutral-50 hover:text-brand-primary-dark"
               onClick={() => router.push('/integrations')}
             >
               Integrations
             </button>
+            <p className="px-3 pt-3 text-[10px] font-black uppercase tracking-widest text-neutral-400">Company</p>
             <button
-              className="w-full text-left font-bold text-gray-700 px-2 py-2 hover:text-brand-primary-dark transition-colors"
+              className="w-full rounded-xl px-3 py-3 text-left text-sm font-bold text-gray-700 transition-colors hover:bg-neutral-50 hover:text-brand-primary-dark"
+              onClick={() => router.push('/why-tenvo')}
+            >
+              Why TENVO
+            </button>
+            <button
+              className="w-full rounded-xl px-3 py-3 text-left text-sm font-bold text-gray-700 transition-colors hover:bg-neutral-50 hover:text-brand-primary-dark"
               onClick={() => router.push('/about')}
             >
               About
             </button>
             <button
-              className="w-full text-left font-bold text-gray-700 px-2 py-2 hover:text-brand-primary-dark transition-colors"
+              className="w-full rounded-xl px-3 py-3 text-left text-sm font-bold text-gray-700 transition-colors hover:bg-neutral-50 hover:text-brand-primary-dark"
               onClick={() => router.push('/demo')}
             >
-              Demo
+              Book a demo
             </button>
             <button
-              className="w-full text-left font-bold text-gray-700 px-2 py-2 hover:text-brand-primary-dark transition-colors"
+              className="w-full rounded-xl px-3 py-3 text-left text-sm font-bold text-gray-700 transition-colors hover:bg-neutral-50 hover:text-brand-primary-dark"
               onClick={() => router.push('/contact')}
             >
               Contact
             </button>
-            <div className="px-2 py-2">
-              <SupportWhatsAppLink variant="light" className="text-sm" iconClassName="h-4 w-4" />
-            </div>
           </div>
 
           {showAuthButtons && (
-            <div className="flex flex-col gap-3 pt-4 border-t border-neutral-100">
+            <div className="flex flex-col gap-2 border-t border-neutral-100 px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3">
               {user ? (
                 <Button
                   className="w-full h-12 bg-brand-primary font-black text-white rounded-xl shadow-[0_8px_20px_-8px_rgba(227,66,66,0.6)]"
@@ -383,7 +364,7 @@ function NavDropdown({ label, isOpen, onToggle, children, triggerClassName }) {
       <button
         type="button"
         className={cn(
-          'gap-1 font-semibold transition-colors',
+          'inline-flex items-center gap-1.5 font-semibold transition-colors',
           triggerClassName,
           isOpen ? 'text-brand-primary-dark' : undefined
         )}
@@ -392,7 +373,7 @@ function NavDropdown({ label, isOpen, onToggle, children, triggerClassName }) {
         aria-haspopup="true"
       >
         {label}
-        <ChevronDown className={`w-3.5 h-3.5 shrink-0 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} aria-hidden />
+        <ChevronDown className={`h-4 w-4 shrink-0 opacity-70 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} aria-hidden />
       </button>
       {isOpen && (
         <div className="absolute top-[calc(100%+12px)] left-0 mt-2 bg-white/96 backdrop-blur-xl border border-slate-200/80 rounded-[32px] shadow-[0_30px_80px_-24px_rgba(15,23,42,0.28)] z-50 animate-in fade-in zoom-in-95 duration-300 p-2 min-w-[200px]">
@@ -417,7 +398,7 @@ function DropdownLink({ icon, title, desc, href = "#" }) {
       </div>
       <div>
         <div className="font-bold text-gray-900 group-hover:text-brand-primary-dark transition-colors text-sm">{title}</div>
-        <div className="text-xs text-gray-400 font-medium mt-0.5">{desc}</div>
+        <div className="text-xs text-gray-400 font-medium mt-0.5 line-clamp-2">{desc}</div>
       </div>
     </button>
   );

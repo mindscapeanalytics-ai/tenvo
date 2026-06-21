@@ -42,8 +42,8 @@ export default function AuthConfirmedPage() {
         // Safety timeout
         const timer = setTimeout(() => {
             if (status === 'verifying') {
-                setStatus('success'); // Assume success if we got here via middleware/auth
-                router.push('/');
+                setStatus('success');
+                router.push('/register?step=3');
             }
         }, 8000);
 

@@ -28,15 +28,18 @@ import { getCustomersAction } from '@/lib/actions/basic/customer';
 import { getVendorsAction } from '@/lib/actions/basic/vendor';
 import { getInvoicesAction } from '@/lib/actions/basic/invoice';
 import { paymentAPI } from '@/lib/api/payments';
+import { isReceiptType, getPaymentTypeLabel } from '@/lib/utils/paymentTypes';
 import { toast } from 'react-hot-toast';
 import FinancialReports from '@/components/FinancialReports';
 import TrialBalanceView from '@/components/TrialBalanceView';
+import { GeneralLedgerReport } from '@/components/reports/GeneralLedgerReport';
 
 // --- Sub-Tab Definitions -----------------------------------------------------
 
 const FINANCE_TABS = [
     { key: 'overview', label: 'Overview', icon: BarChart3, permission: 'finance.view_reports', feature: null },
     { key: 'statements', label: 'Statements', icon: FileText, permission: 'finance.view_reports', feature: 'basic_reports' },
+    { key: 'general-ledger', label: 'General Ledger', icon: BookOpen, permission: 'finance.view_gl', feature: 'basic_accounting' },
     { key: 'trial-balance', label: 'Trial Balance', icon: Scale, permission: 'finance.view_reports', feature: 'basic_reports' },
     { key: 'accounts', label: 'Chart of Accounts', icon: BookOpen, permission: 'finance.view_gl', feature: 'basic_accounting' },
     { key: 'journal', label: 'Journal Entries', icon: Landmark, permission: 'finance.view_gl', feature: 'basic_accounting' },
@@ -452,7 +455,7 @@ function FinanceOverview({ accounts, expenses, creditNotes, currency, loading })
     const totalCreditNotes = useMemo(() =>
         creditNotes.reduce((sum, c) => sum + Number(c.total_amount || 0), 0), [creditNotes]
     );
-    const activeAccounts = accounts.filter(a => !a.is_deleted).length;
+    const activeAccounts = accounts.filter(a => a.is_active !== false).length;
     const thisMonthExpenses = useMemo(() => {
         const now = new Date();
         const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -488,7 +491,7 @@ function FinanceOverview({ accounts, expenses, creditNotes, currency, loading })
                 <div className="bg-white rounded-xl border border-gray-100 p-4">
                     <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Account Categories</h4>
                     {['asset', 'liability', 'equity', 'income', 'expense'].map(type => {
-                        const count = accounts.filter(a => a.type === type && !a.is_deleted).length;
+                        const count = accounts.filter(a => a.type === type && a.is_active !== false).length;
                         return (
                             <div key={type} className="flex items-center justify-between py-1.5 text-sm">
                                 <span className="text-gray-600 capitalize">{type}s</span>
@@ -506,7 +509,7 @@ function FinanceOverview({ accounts, expenses, creditNotes, currency, loading })
 // MAIN FINANCE HUB
 // ===============================================================================
 
-export default function FinanceHub({ businessId, initialTab, businessCategory = 'retail-shop' }) {
+export default function FinanceHub({ businessId, initialTab, businessCategory = 'retail-shop', onInitialTabConsumed }) {
     const { business, currency, currencySymbol } = useBusiness();
     const { can, planCan } = usePermissions();
     const [activeTab, setActiveTab] = useState(initialTab || 'overview');
@@ -539,7 +542,7 @@ export default function FinanceHub({ businessId, initialTab, businessCategory = 
                 getCreditNotesAction(effectiveBusinessId),
                 getFiscalPeriodsAction(effectiveBusinessId),
                 getExchangeRatesAction(effectiveBusinessId, currency || 'PKR'),
-                paymentAPI.getAll(effectiveBusinessId)
+                paymentAPI.getRegister(effectiveBusinessId, { limit: 50 })
             ]);
 
             if (accRes.status === 'fulfilled' && accRes.value.success) setAccounts(accRes.value.accounts || []);
@@ -582,9 +585,12 @@ export default function FinanceHub({ businessId, initialTab, businessCategory = 
 
     useEffect(() => {
         if (initialTab != null && initialTab !== '') {
-            queueMicrotask(() => setActiveTab(initialTab));
+            queueMicrotask(() => {
+                setActiveTab(initialTab);
+                onInitialTabConsumed?.();
+            });
         }
-    }, [initialTab]);
+    }, [initialTab, onInitialTabConsumed]);
 
     useEffect(() => {
         if (visibleTabKeys.length === 0) return;
@@ -601,6 +607,12 @@ export default function FinanceHub({ businessId, initialTab, businessCategory = 
                 return (
                     <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
                         <FinancialReports businessId={effectiveBusinessId} category={businessCategory} />
+                    </div>
+                );
+            case 'general-ledger':
+                return (
+                    <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
+                        <GeneralLedgerReport businessId={effectiveBusinessId} />
                     </div>
                 );
             case 'trial-balance':
@@ -646,7 +658,7 @@ export default function FinanceHub({ businessId, initialTab, businessCategory = 
                         <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
                             <div className="p-4 border-b border-gray-50 flex items-center justify-between">
                                 <h4 className="text-sm font-bold text-gray-800">Recent Transactions</h4>
-                                <span className="text-xs text-gray-400 font-medium">Last 5 payments</span>
+                                <span className="text-xs text-gray-400 font-medium">All receipts & payments</span>
                             </div>
                             <div className="divide-y divide-gray-50">
                                 {payments.length === 0 ? (
@@ -655,20 +667,28 @@ export default function FinanceHub({ businessId, initialTab, businessCategory = 
                                         <p className="text-sm font-semibold">No transactions recorded</p>
                                     </div>
                                 ) : (
-                                    payments.slice(0, 5).map(p => (
+                                    payments.slice(0, 5).map(p => {
+                                        const receipt = isReceiptType(p.payment_type);
+                                        return (
                                         <div key={p.id} className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors">
                                             <div className={cn(
                                                 "w-10 h-10 rounded-xl flex items-center justify-center shrink-0",
-                                                p.payment_type === 'receipt' ? "bg-emerald-100 text-emerald-600" : "bg-red-100 text-red-600"
+                                                receipt ? "bg-emerald-100 text-emerald-600" : "bg-red-100 text-red-600"
                                             )}>
-                                                {p.payment_type === 'receipt' ? <DollarSign className="w-5 h-5" /> : <CreditCard className="w-5 h-5" />}
+                                                {receipt ? <DollarSign className="w-5 h-5" /> : <CreditCard className="w-5 h-5" />}
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <p className="text-sm font-bold text-gray-900 truncate">
-                                                    {p.payment_type === 'receipt' ? (p.customer?.name || 'Customer') : (p.vendor?.name || 'Vendor')}
+                                                    {p.party_name || (receipt ? (p.customer_name || 'Customer') : (p.vendor_name || 'Vendor'))}
                                                 </p>
                                                 <div className="flex items-center gap-2 mt-0.5">
                                                     <span className="text-xs text-gray-500 capitalize">{p.payment_mode}</span>
+                                                    {p.reference_label && (
+                                                        <>
+                                                            <span className="text-gray-300">•</span>
+                                                            <span className="text-xs text-gray-500 font-mono">{p.reference_label}</span>
+                                                        </>
+                                                    )}
                                                     <span className="text-gray-300">•</span>
                                                     <span className="text-xs text-gray-500">{new Date(p.payment_date).toLocaleDateString()}</span>
                                                 </div>
@@ -676,19 +696,20 @@ export default function FinanceHub({ businessId, initialTab, businessCategory = 
                                             <div className="text-right shrink-0">
                                                 <p className={cn(
                                                     "text-sm font-black",
-                                                    p.payment_type === 'receipt' ? "text-emerald-600" : "text-red-600"
+                                                    receipt ? "text-emerald-600" : "text-red-600"
                                                 )}>
-                                                    {p.payment_type === 'receipt' ? '+' : '-'}{effectiveCurrency} {Number(p.amount).toLocaleString()}
+                                                    {receipt ? '+' : '-'}{effectiveCurrency} {Number(p.amount).toLocaleString()}
                                                 </p>
                                                 <span className={cn(
                                                     "text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider",
-                                                    p.payment_type === 'receipt' ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"
+                                                    receipt ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"
                                                 )}>
-                                                    {p.payment_type}
+                                                    {getPaymentTypeLabel(p.payment_type)}
                                                 </span>
                                             </div>
                                         </div>
-                                    ))
+                                        );
+                                    })
                                 )}
                             </div>
                         </div>

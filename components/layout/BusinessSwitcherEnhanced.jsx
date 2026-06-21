@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import toast from 'react-hot-toast';
+import notify, { TOAST_IDS } from '@/lib/utils/appToast';
 import {
     Building2, ChevronDown, Check, Plus, Loader2, Search, Star, Clock,
     Store, UtensilsCrossed, Factory, Truck, ShoppingCart, X
@@ -82,7 +82,7 @@ export function BusinessSwitcherEnhanced({ isCollapsed = false }) {
             }
         } catch (err) {
             console.error('Failed to fetch businesses:', err);
-            toast.error('Could not refresh business list');
+                notify.error('Could not refresh business list');
         } finally {
             setLoading(false);
         }
@@ -103,10 +103,12 @@ export function BusinessSwitcherEnhanced({ isCollapsed = false }) {
         try {
             const result = await switchBusinessByDomain(biz.domain);
             if (result.success) {
-                toast.success(`Switched to ${biz.name}`);
+                notify.success(`Switched to ${biz.name}`, {
+                    id: `${TOAST_IDS.BUSINESS_SWITCH}:${biz.domain}`,
+                });
                 router.push(`/business/${biz.domain}?tab=dashboard`);
             } else {
-                toast.error(result.error || 'Unable to switch business');
+                notify.error(result.error || 'Unable to switch business');
             }
         } finally {
             setSwitching(null);

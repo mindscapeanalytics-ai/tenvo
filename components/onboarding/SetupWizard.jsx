@@ -1,35 +1,39 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useBusiness } from '@/lib/context/BusinessContext';
 import { getDomainKnowledge } from '@/lib/domainKnowledge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { CheckCircle2, Package, ArrowRight, Sparkles, Loader2 } from 'lucide-react';
-import { getDomainTheme, getDomainDefaults } from '@/lib/utils/domainHelpers';
 import { getDomainColors } from '@/lib/domainColors';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import toast from 'react-hot-toast';
-import { seedBusinessProductsAction } from '@/lib/actions/standard/inventory/product';
+import { seedRegistrationInventoryAction } from '@/lib/actions/basic/business';
+import { formatCurrency } from '@/lib/currency';
 
 /**
  * SetupWizard Component
  * Onboarding wizard to help users populate their inventory with domain-specific templates
  */
 export function SetupWizard({ onComplete, category = 'retail-shop' }) {
-    const { business } = useBusiness();
+    const { business, regionalStandards } = useBusiness();
     const colors = getDomainColors(category);
-    const domainKnowledge = getDomainKnowledge(category);
+    const countryIso = regionalStandards?.countryCode || 'PK';
+    const domainKnowledge = useMemo(
+        () => getDomainKnowledge(category, { countryIso }),
+        [category, countryIso]
+    );
 
-    const [step, setStep] = useState('welcome'); // welcome, verify, seed, finish
+    const [step, setStep] = useState('welcome');
     const [loading, setLoading] = useState(false);
     const [seedingSelection, setSeedingSelection] = useState([]);
 
     const setupTemplate = domainKnowledge?.setupTemplate || {};
     const suggestedProducts = setupTemplate.suggestedProducts || setupTemplate.suggestedItems || [];
+    const taxLabel = regionalStandards?.taxLabel || 'Tax';
 
-    // Auto-select all suggested products initially
     useEffect(() => {
         if (suggestedProducts.length > 0) {
             setSeedingSelection(suggestedProducts.map(p => p.name));
@@ -47,19 +51,12 @@ export function SetupWizard({ onComplete, category = 'retail-shop' }) {
     const handleSeed = async () => {
         setLoading(true);
         try {
-            const productsToCreate = suggestedProducts
-                .filter(p => seedingSelection.includes(p.name))
-                .map(p => ({
-                    ...p,
-                    ...getDomainDefaults(category),
-                    business_id: business?.id,
-                    // Map template fields to standard schema
-                    stock: p.startingStock || 10,
-                    price: p.defaultPrice || 0,
-                    category: p.category || 'General',
-                }));
-
-            const result = await seedBusinessProductsAction(business?.id, productsToCreate);
+            const result = await seedRegistrationInventoryAction({
+                businessId: business?.id,
+                domainKey: category,
+                countryIso,
+                itemNames: seedingSelection,
+            });
 
             if (result.success) {
                 toast.success(`Successfully initialized ${result.count} products!`);
@@ -86,28 +83,28 @@ export function SetupWizard({ onComplete, category = 'retail-shop' }) {
                         <Sparkles className="w-10 h-10" />
                     </div>
                     <h2 className="text-3xl font-black text-gray-900 tracking-tight">
-                        Welcome to {business?.name || 'Your Business'}
+                        Welcome to {business?.business_name || business?.name || 'Your Business'}
                     </h2>
                     <p className="text-gray-500 text-lg max-w-md mx-auto">
-                        We've detected you're running a <span className="font-bold" style={{ color: colors.primary }}>{category.replace('-', ' ')}</span> business.
-                        Let's set up your workspace with industry-standard configurations data.
+                        We&apos;ve calibrated your <span className="font-bold" style={{ color: colors.primary }}>{category.replace(/-/g, ' ')}</span> workspace for{' '}
+                        <span className="font-bold">{regionalStandards?.countryName || countryIso}</span> — {taxLabel}, local brands, and starter SKUs.
                     </p>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-left mt-8">
                         <div className="p-4 rounded-xl border transition-all hover:shadow-md" style={{ backgroundColor: `${colors.primary}05`, borderColor: `${colors.primary}20` }}>
                             <CheckCircle2 className="w-5 h-5 mb-2" style={{ color: colors.primary }} />
                             <h3 className="font-bold text-sm">Smart Config</h3>
-                            <p className="text-xs text-gray-500">Auto-configured fields for {category}</p>
+                            <p className="text-xs text-gray-500">Fields tuned for {category.replace(/-/g, ' ')}</p>
                         </div>
                         <div className="p-4 rounded-xl border transition-all hover:shadow-md" style={{ backgroundColor: `${colors.primary}05`, borderColor: `${colors.primary}20` }}>
                             <CheckCircle2 className="w-5 h-5 mb-2" style={{ color: colors.primary }} />
                             <h3 className="font-bold text-sm">Tax Compliance</h3>
-                            <p className="text-xs text-gray-500">Pakistani FBR tax rules applied</p>
+                            <p className="text-xs text-gray-500">{taxLabel} defaults for {regionalStandards?.countryName || countryIso}</p>
                         </div>
                         <div className="p-4 rounded-xl border transition-all hover:shadow-md" style={{ backgroundColor: `${colors.primary}05`, borderColor: `${colors.primary}20` }}>
                             <CheckCircle2 className="w-5 h-5 mb-2" style={{ color: colors.primary }} />
                             <h3 className="font-bold text-sm">Starter Inventory</h3>
-                            <p className="text-xs text-gray-500">Ready-made templates</p>
+                            <p className="text-xs text-gray-500">{suggestedProducts.length} market-aware templates</p>
                         </div>
                     </div>
 
@@ -137,7 +134,9 @@ export function SetupWizard({ onComplete, category = 'retail-shop' }) {
             <Card className="max-w-3xl mx-auto border-none shadow-2xl bg-white/90 backdrop-blur-xl">
                 <CardHeader>
                     <CardTitle className="text-2xl font-black">Quick Start Inventory</CardTitle>
-                    <CardDescription>Select standard items to pre-load into your inventory</CardDescription>
+                    <CardDescription>
+                        Select standard items for {regionalStandards?.countryName || countryIso} — prices and tax use your registration defaults
+                    </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
                     {suggestedProducts.length === 0 ? (
@@ -174,9 +173,9 @@ export function SetupWizard({ onComplete, category = 'retail-shop' }) {
                                     <div>
                                         <h4 className="font-bold text-sm text-gray-900">{product.name}</h4>
                                         <p className="text-xs text-gray-500 line-clamp-2">{product.description}</p>
-                                        {product.defaultPrice && (
+                                        {product.defaultPrice != null && (
                                             <Badge variant="secondary" className="mt-2 text-[10px] font-bold">
-                                                ₨ {product.defaultPrice}
+                                                {formatCurrency(product.defaultPrice, regionalStandards?.currency || 'PKR')}
                                             </Badge>
                                         )}
                                     </div>
@@ -216,7 +215,7 @@ export function SetupWizard({ onComplete, category = 'retail-shop' }) {
                 <div>
                     <h2 className="text-2xl font-black text-gray-900">Setup Complete!</h2>
                     <p className="text-gray-500 mt-2">
-                        Your {category.replace('-', ' ')} workspace is ready for action.
+                        Your {category.replace(/-/g, ' ')} workspace is ready for action.
                     </p>
                 </div>
                 <Button

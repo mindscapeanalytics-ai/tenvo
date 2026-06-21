@@ -16,6 +16,8 @@ import {
     getRecentPosTransactionsForRefundAction,
 } from '@/lib/actions/standard/posRefund';
 import toast from 'react-hot-toast';
+import { MobileTabHeader, MobileStatStrip } from '@/components/mobile/MobileTabHeader';
+import { useStorefrontEmbedded } from '@/lib/context/StorefrontMobileContext';
 
 // ===============================================================
 // REASON CODES
@@ -273,10 +275,75 @@ export function PosRefundPanel({ businessId }) {
         }
     };
 
+    const embeddedInStorefront = useStorefrontEmbedded();
+
     return (
-        <div className="space-y-4">
-            {/* Header */}
-            <div className="flex items-center justify-between">
+        <div className="space-y-2 lg:space-y-4">
+            {!embeddedInStorefront && (
+                <MobileTabHeader
+                    icon={RotateCcw}
+                    iconClassName="bg-red-100 text-red-600"
+                    title="Refunds & Returns"
+                    subtitle={`${kpi.count} processed`}
+                    primaryAction={
+                        view === 'history'
+                            ? {
+                                label: 'New',
+                                icon: RotateCcw,
+                                className: 'bg-red-500 hover:bg-red-600 text-white',
+                                onClick: () => {
+                                    setTransactionId('');
+                                    setLookupAttempted(false);
+                                    setView('lookup');
+                                },
+                            }
+                            : undefined
+                    }
+                    actions={
+                        view !== 'history'
+                            ? [{ id: 'history', label: 'History', onClick: () => setView('history') }]
+                            : []
+                    }
+                />
+            )}
+
+            <div className="lg:hidden">
+                <MobileStatStrip
+                    items={[
+                        { label: 'Refunds', value: loading ? '…' : kpi.count },
+                        { label: 'Total', value: loading ? '…' : `${currency} ${kpi.totalRefunded.toLocaleString(undefined, { maximumFractionDigits: 0 })}`, valueTone: 'text-red-600' },
+                        { label: 'Partial', value: loading ? '…' : kpi.partialCount, valueTone: 'text-amber-600' },
+                    ]}
+                />
+                {embeddedInStorefront && (
+                    <div className="mt-1.5 flex justify-end gap-1">
+                        {view === 'history' ? (
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setTransactionId('');
+                                    setLookupAttempted(false);
+                                    setView('lookup');
+                                }}
+                                className="rounded-lg bg-red-500 px-2.5 py-1 text-[10px] font-bold text-white"
+                            >
+                                New refund
+                            </button>
+                        ) : (
+                            <button
+                                type="button"
+                                onClick={() => setView('history')}
+                                className="rounded-lg border border-gray-200 px-2.5 py-1 text-[10px] font-bold text-gray-600"
+                            >
+                                History
+                            </button>
+                        )}
+                    </div>
+                )}
+            </div>
+
+            {/* Desktop header */}
+            <div className="hidden items-center justify-between lg:flex">
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-red-500 to-rose-600 flex items-center justify-center">
                         <RotateCcw className="w-5 h-5 text-white" />
@@ -317,8 +384,8 @@ export function PosRefundPanel({ businessId }) {
                 )}
             </div>
 
-            {/* KPIs */}
-            <div className="grid grid-cols-3 gap-3">
+            {/* Desktop KPIs */}
+            <div className="hidden grid-cols-3 gap-3 lg:grid">
                 <div className="bg-red-50 border border-red-100 rounded-xl p-3">
                     <RotateCcw className="w-4 h-4 text-red-400 mb-1" />
                     <p className="text-xl font-black text-red-600">{loading ? '…' : kpi.count}</p>

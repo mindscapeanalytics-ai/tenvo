@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
+import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { getMarketsForCity, getAllMarkets } from '@/lib/domainData/pakistaniMarkets';
@@ -42,8 +43,8 @@ export function MarketLocationSelector({
     const displayPlaceholder = placeholder || (language === 'ur' ? 'مارکیٹ منتخب کریں یا ٹائپ کریں...' : 'Select or type market location...');
 
     return (
-        <div className={`space-y-2 ${className}`}>
-            <Label htmlFor="market-location-selector" className="text-[10px] font-black uppercase text-gray-400 tracking-widest">
+        <div className={cn('space-y-1.5', className)}>
+            <Label htmlFor="market-location-selector" className="text-[11px] font-semibold text-slate-600">
                 {displayLabel}
                 {required && <span className="text-red-500 ml-1">*</span>}
             </Label>
@@ -54,7 +55,7 @@ export function MarketLocationSelector({
                 value={value || ''}
                 onChange={handleChange}
                 placeholder={displayPlaceholder}
-                className="h-11 rounded-xl"
+                className="h-9 rounded-lg border-gray-200 text-sm"
                 required={required}
                 dir={language === 'ur' ? 'rtl' : 'ltr'}
             />

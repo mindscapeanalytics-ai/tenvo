@@ -16,8 +16,10 @@ const FOOTER_LINK = 'text-sm font-medium text-neutral-400 transition-colors hove
 function FooterColumn({ title, children }) {
   return (
     <div className="min-w-0">
-      <h4 className="mb-5 text-[11px] font-black uppercase tracking-[0.22em] text-neutral-500">{title}</h4>
-      <ul className="space-y-3.5">{children}</ul>
+      <h4 className="mb-3 text-[10px] font-black uppercase tracking-[0.18em] text-neutral-500 sm:mb-5 sm:text-[11px] sm:tracking-[0.22em]">
+        {title}
+      </h4>
+      <ul className="space-y-2.5 sm:space-y-3.5">{children}</ul>
     </div>
   );
 }
@@ -94,14 +96,14 @@ export default function MarketingFooter({ variant = 'default' }) {
   }
 
   return (
-    <footer className="relative border-t border-brand-primary/20 bg-neutral-900 text-neutral-300">
+    <footer className="relative overflow-x-clip border-t border-brand-primary/20 bg-neutral-900 text-neutral-300">
       <div className="pointer-events-none absolute inset-0 overflow-hidden opacity-[0.07]">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.35),transparent_55%)]" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_90%,rgba(227,66,66,0.25),transparent_45%)]" />
       </div>
 
-      <div className="relative z-10 mx-auto max-w-7xl px-4 pb-10 pt-16 sm:px-6 lg:px-12 lg:pb-12 lg:pt-20">
-        <div className="grid gap-12 lg:grid-cols-12 lg:gap-x-10 lg:gap-y-4">
+      <div className="relative z-10 mx-auto max-w-[1440px] px-4 pb-8 pt-10 sm:px-7 sm:pb-10 sm:pt-14 lg:px-10 lg:pb-12 lg:pt-16 xl:px-14 2xl:px-16">
+        <div className="grid gap-8 lg:grid-cols-12 lg:gap-x-12 lg:gap-y-6">
           {/* Brand */}
           <div className="lg:col-span-4">
             <Link href="/" className="inline-block rounded-lg outline-none ring-brand-primary/30 focus-visible:ring-2">
@@ -121,7 +123,7 @@ export default function MarketingFooter({ variant = 'default' }) {
             <div className="mt-8 flex flex-wrap gap-2.5">
               <span className="inline-flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-emerald-200/95">
                 <Shield className="h-3.5 w-3.5 text-emerald-400" aria-hidden />
-                FBR Tier-1 positioning
+                PK tax configuration
               </span>
               <span className="inline-flex items-center gap-2 rounded-xl border border-amber-500/20 bg-amber-500/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-amber-100/95">
                 <CheckCircle2 className="h-3.5 w-3.5 text-amber-400" aria-hidden />
@@ -132,7 +134,7 @@ export default function MarketingFooter({ variant = 'default' }) {
 
           {/* Link columns — aligned grid */}
           <nav
-            className="grid min-w-0 gap-10 sm:grid-cols-3 lg:col-span-5 lg:gap-8"
+            className="grid min-w-0 grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-3 lg:col-span-5 lg:gap-x-10 lg:gap-y-8"
             aria-label="Site footer"
           >
             <FooterColumn title="Platform">
@@ -171,9 +173,14 @@ export default function MarketingFooter({ variant = 'default' }) {
                   Industries
                 </Link>
               </li>
+              <li>
+                <Link href="/login" className={FOOTER_LINK}>
+                  Log in
+                </Link>
+              </li>
             </FooterColumn>
 
-            <FooterColumn title="Product depth">
+            <FooterColumn title="Product">
               <li>
                 <Link href="/features#storefront" className={FOOTER_LINK}>
                   Storefront &amp; checkout
@@ -197,11 +204,6 @@ export default function MarketingFooter({ variant = 'default' }) {
               <li>
                 <Link href="/register" className={FOOTER_LINK}>
                   Start free trial
-                </Link>
-              </li>
-              <li>
-                <Link href="/login" className={FOOTER_LINK}>
-                  Log in
                 </Link>
               </li>
             </FooterColumn>
@@ -233,12 +235,6 @@ export default function MarketingFooter({ variant = 'default' }) {
                 </Link>
               </li>
               <li>
-                <SupportWhatsAppLink
-                  variant="dark"
-                  className="text-sm font-medium text-neutral-400 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-900 rounded-sm"
-                />
-              </li>
-              <li>
                 <Link href="/help" className={FOOTER_LINK}>
                   Help center
                 </Link>
@@ -266,10 +262,10 @@ export default function MarketingFooter({ variant = 'default' }) {
             </FooterColumn>
           </nav>
 
-          {/* Newsletter */}
-          <div className="flex flex-col lg:col-span-3">
-            <h4 className="mb-3 text-[11px] font-black uppercase tracking-[0.22em] text-neutral-500">Stay updated</h4>
-            <p className="mb-6 text-sm font-medium leading-relaxed text-neutral-400">
+          {/* Newsletter — aligned with link columns; avoid mt-auto so the form sits under the intro copy */}
+          <div className="flex min-w-0 flex-col lg:col-span-3">
+            <h4 className="mb-5 text-[11px] font-black uppercase tracking-[0.22em] text-neutral-500">Stay updated</h4>
+            <p className="mb-5 text-sm font-medium leading-relaxed text-neutral-400">
               Product updates, compliance notes, and launch news, no spam.
             </p>
 
@@ -279,7 +275,7 @@ export default function MarketingFooter({ variant = 'default' }) {
                 <span>Thanks for subscribing.</span>
               </div>
             ) : (
-              <form onSubmit={handleNewsletterSubmit} className="mt-auto space-y-3">
+              <form onSubmit={handleNewsletterSubmit} className="space-y-3">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-stretch">
                   <div className="relative min-w-0 flex-1">
                     <Mail

@@ -5,6 +5,14 @@
 
 import { getDomainKnowledge } from '../domainKnowledge';
 export { getDomainKnowledge };
+
+export type DomainKnowledgeOptions = { countryIso?: string };
+
+function resolveKnowledge(category: string, options?: DomainKnowledgeOptions) {
+  return options?.countryIso
+    ? getDomainKnowledge(category, { countryIso: options.countryIso })
+    : getDomainKnowledge(category);
+}
 import { Product } from '../types/domainTypes';
 
 /**
@@ -43,8 +51,8 @@ export function getDomainVendorFields(category: string): string[] {
  * @param category - Business category
  * @returns Array of tax category strings
  */
-export function getDomainTaxCategories(category: string): string[] {
-  const knowledge: any = getDomainKnowledge(category);
+export function getDomainTaxCategories(category: string, options?: DomainKnowledgeOptions): string[] {
+  const knowledge: any = resolveKnowledge(category, options);
   return knowledge?.taxCategories || [];
 }
 
@@ -65,8 +73,8 @@ export function getDomainUnits(category: string): string[] {
  * @param category - Business category
  * @returns Default tax percentage
  */
-export function getDomainDefaultTax(category: string): number {
-  const knowledge: any = getDomainKnowledge(category);
+export function getDomainDefaultTax(category: string, options?: DomainKnowledgeOptions): number {
+  const knowledge: any = resolveKnowledge(category, options);
   return knowledge?.defaultTax || 0;
 }
 

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ShoppingCart, Plus, CheckCircle2, Clock, Package, Search, ExternalLink, Printer, FileText } from 'lucide-react';
+import { ShoppingCart, Plus, CheckCircle2, Clock, Package, Search, ExternalLink, Printer, FileText, Send } from 'lucide-react';
 import { DataTable } from './DataTable';
 import { ExportButton } from './ExportButton';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -14,6 +14,14 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import GRNView from './GRNView';
 import { useBusiness } from '@/lib/context/BusinessContext';
+import {
+  getPurchaseStatusBadgeClass,
+  getPurchaseStatusLabel,
+  isOpenPurchaseStatus,
+  isReceivablePurchaseStatus,
+  normalizePurchaseStatus,
+  PURCHASE_STATUSES,
+} from '@/lib/constants/purchaseStatus';
 
 /**
  * Purchase Order Manager
@@ -32,15 +40,7 @@ export function PurchaseOrderManager({ purchaseOrders = [], onCreate, onUpdateSt
   const [searchTerm, setSearchTerm] = useState('');
   const [poToView, setPoToView] = useState(null);
 
-  const getStatusBadge = (status) => {
-    const styles = {
-      draft: 'bg-gray-100 text-gray-700 border-gray-200',
-      sent: 'bg-blue-100 text-blue-700 border-blue-200',
-      received: 'bg-green-100 text-green-700 border-green-200',
-      cancelled: 'bg-red-100 text-red-700 border-red-200',
-    };
-    return styles[status] || styles.draft;
-  };
+  const getStatusBadge = (status) => getPurchaseStatusBadgeClass(status);
 
   const columns = [
     {
@@ -79,20 +79,36 @@ export function PurchaseOrderManager({ purchaseOrders = [], onCreate, onUpdateSt
       header: 'Status',
       cell: ({ row }) => (
         <Badge variant="outline" className={`font-black uppercase text-[10px] px-2 py-0.5 rounded-full ${getStatusBadge(row.original.status)}`}>
-          {row.original.status}
+          {getPurchaseStatusLabel(row.original.status)}
         </Badge>
       ),
     },
     {
       id: 'actions',
-      cell: ({ row }) => (
+      cell: ({ row }) => {
+        const status = normalizePurchaseStatus(row.original.status);
+        const canMarkSent = status === PURCHASE_STATUSES.DRAFT;
+        const canReceive = isReceivablePurchaseStatus(row.original.status);
+
+        return (
         <div className="flex justify-end gap-2">
-          {row.original.status !== 'received' && (
+          {canMarkSent && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 border-blue-200 text-blue-700 hover:bg-blue-50 font-bold px-3 rounded-lg"
+              onClick={() => onUpdateStatus?.(row.original.id, PURCHASE_STATUSES.ORDERED)}
+            >
+              <Send className="w-3 h-3 mr-1" />
+              Mark Sent
+            </Button>
+          )}
+          {canReceive && (
             <Button
               variant="outline"
               size="sm"
               className="h-8 border-green-200 text-green-700 hover:bg-green-50 font-bold px-3 rounded-lg"
-              onClick={() => onUpdateStatus?.(row.original.id, 'received')}
+              onClick={() => onUpdateStatus?.(row.original.id, PURCHASE_STATUSES.RECEIVED)}
             >
               <CheckCircle2 className="w-3 h-3 mr-1" />
               Received
@@ -108,7 +124,8 @@ export function PurchaseOrderManager({ purchaseOrders = [], onCreate, onUpdateSt
             <ExternalLink className="w-4 h-4" />
           </Button>
         </div>
-      )
+        );
+      }
     }
   ];
 
@@ -118,10 +135,10 @@ export function PurchaseOrderManager({ purchaseOrders = [], onCreate, onUpdateSt
     (o.vendor_name && o.vendor_name.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
-  const openOrdersCount = purchaseOrders.filter(p => ['draft', 'sent'].includes(p.status)).length;
+  const openOrdersCount = purchaseOrders.filter(p => isOpenPurchaseStatus(p.status)).length;
   const procurementValue = purchaseOrders.reduce((sum, order) => sum + (Number(order.total_amount) || 0), 0);
-  const pendingReceiptCount = purchaseOrders.filter(p => p.status === 'sent').length;
-  const receivedCount = purchaseOrders.filter(p => p.status === 'received').length;
+  const pendingReceiptCount = purchaseOrders.filter(p => normalizePurchaseStatus(p.status) === PURCHASE_STATUSES.ORDERED).length;
+  const receivedCount = purchaseOrders.filter(p => normalizePurchaseStatus(p.status) === PURCHASE_STATUSES.RECEIVED).length;
 
   return (
     <div className="space-y-6 animate-in slide-in-from-right-5 duration-500">
@@ -214,7 +231,7 @@ export function PurchaseOrderManager({ purchaseOrders = [], onCreate, onUpdateSt
             <DialogTitle className="flex items-center justify-between gap-2">
               <span className="flex items-center gap-2">
                 <FileText className="w-5 h-5 text-blue-500" />
-                {poToView?.status === 'received' ? 'Good Receipt Note (GRN)' : 'Purchase Order Detail'}
+                {normalizePurchaseStatus(poToView?.status) === PURCHASE_STATUSES.RECEIVED ? 'Good Receipt Note (GRN)' : 'Purchase Order Detail'}
               </span>
               <Button
                 type="button"

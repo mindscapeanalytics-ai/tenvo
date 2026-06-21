@@ -5,6 +5,14 @@ import Link from 'next/link';
 import * as LucideIcons from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { trackEvent, EVENTS } from '@/lib/analytics/tracking';
+import { cn } from '@/lib/utils';
+import {
+  MARKETING_CONTAINER,
+  MARKETING_H2,
+  MARKETING_LEAD,
+  MARKETING_SECTION,
+  MARKETING_SECTION_LOOSE,
+} from '@/lib/utils/marketingLayout';
 
 /**
  * CTASection Component
@@ -55,17 +63,17 @@ export default function CTASection({
 
   if (variant === 'gradient') {
     return (
-      <section className="py-16 lg:py-24 bg-brand-primary text-white relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-white/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 left-0 w-96 h-96 bg-white/10 rounded-full blur-3xl" />
+      <section className={cn(MARKETING_SECTION_LOOSE, 'relative overflow-hidden bg-brand-primary text-white')}>
+        <div className="pointer-events-none absolute top-0 right-0 hidden h-96 w-96 rounded-full bg-white/10 blur-3xl sm:block" />
+        <div className="pointer-events-none absolute bottom-0 left-0 hidden h-96 w-96 rounded-full bg-white/10 blur-3xl sm:block" />
 
-        <div className="relative container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className={`max-w-4xl mx-auto ${mounted ? 'animate-fade-in-up' : 'opacity-0'}`}>
-            <div className={`flex flex-col gap-6 ${alignmentClasses[alignment]}`}>
-              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold">{title}</h2>
-              {subtitle && <p className="text-lg sm:text-xl text-brand-100 leading-relaxed max-w-2xl">{subtitle}</p>}
+        <div className={MARKETING_CONTAINER}>
+          <div className={`mx-auto max-w-4xl ${mounted ? 'animate-fade-in-up' : 'opacity-0'}`}>
+            <div className={`flex flex-col gap-4 sm:gap-6 ${alignmentClasses[alignment]}`}>
+              <h2 className={cn(MARKETING_H2, 'text-white')}>{title}</h2>
+              {subtitle ? <p className={cn(MARKETING_LEAD, 'max-w-2xl text-brand-100')}>{subtitle}</p> : null}
 
-              <div className={`flex flex-col sm:flex-row gap-4 ${buttonAlignment[alignment]}`}>
+              <div className={`flex w-full min-w-0 flex-col gap-3 sm:flex-row sm:gap-4 ${buttonAlignment[alignment]}`}>
                 {primaryCTA && (
                   <Button asChild size="lg" className="bg-white hover:bg-neutral-100 text-brand-primary px-8 py-6 text-lg font-semibold rounded-xl" onClick={() => handleCTAClick('primary', primaryCTA.href)}>
                     <Link href={primaryCTA.href}>{primaryCTA.text}</Link>
@@ -85,14 +93,14 @@ export default function CTASection({
   }
 
   return (
-    <section className="py-16 lg:py-24 bg-neutral-50">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className={`max-w-4xl mx-auto bg-white rounded-2xl border-2 border-neutral-200 p-12 ${mounted ? 'animate-fade-in-up' : 'opacity-0'}`}>
-          <div className={`flex flex-col gap-6 ${alignmentClasses[alignment]}`}>
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-neutral-900">{title}</h2>
-            {subtitle && <p className="text-lg sm:text-xl text-neutral-600 leading-relaxed max-w-2xl">{subtitle}</p>}
+    <section className={cn(MARKETING_SECTION_LOOSE, 'bg-neutral-50')}>
+      <div className={MARKETING_CONTAINER}>
+        <div className={`mx-auto max-w-4xl rounded-2xl border-2 border-neutral-200 bg-white p-6 sm:p-8 lg:p-12 ${mounted ? 'animate-fade-in-up' : 'opacity-0'}`}>
+          <div className={`flex flex-col gap-4 sm:gap-6 ${alignmentClasses[alignment]}`}>
+            <h2 className={MARKETING_H2}>{title}</h2>
+            {subtitle ? <p className={cn(MARKETING_LEAD, 'max-w-2xl')}>{subtitle}</p> : null}
 
-            <div className={`flex flex-col sm:flex-row gap-4 ${buttonAlignment[alignment]}`}>
+            <div className={`flex w-full min-w-0 flex-col gap-3 sm:flex-row sm:gap-4 ${buttonAlignment[alignment]}`}>
               {primaryCTA && (
                 <Button asChild size="lg" className="bg-brand-primary hover:bg-brand-primary-dark text-white px-8 py-6 text-lg font-semibold rounded-xl" onClick={() => handleCTAClick('primary', primaryCTA.href)}>
                   <Link href={primaryCTA.href}>{primaryCTA.text}</Link>

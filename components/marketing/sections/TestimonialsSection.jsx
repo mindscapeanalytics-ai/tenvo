@@ -2,42 +2,143 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import * as LucideIcons from 'lucide-react';
+import { Star, Quote, ChevronLeft, ChevronRight } from 'lucide-react';
 import { testimonials as defaultTestimonials } from '@/lib/marketing/testimonials';
+import { cn } from '@/lib/utils';
 
 /**
- * TestimonialsSection Component
- * 
- * Displays customer testimonials with social proof.
- * Supports grid, carousel, and featured layouts.
- * 
- * @param {Object} props
- * @param {string} props.title - Section title
- * @param {string} props.subtitle - Section subtitle
- * @param {Array} props.testimonials - Array of testimonial objects (optional, uses default if not provided)
- * @param {string} props.layout - Layout variant: 'grid' | 'carousel' | 'featured'
- * @param {boolean} props.showRatings - Show star ratings
- * @param {boolean} props.showIndustry - Show industry badges
+ * Resolves layout from `layout` or legacy `variant` prop (e.g. industries page used variant="grid").
+ */
+function resolveLayout(layout, variant) {
+  const candidates = [layout, variant].filter(Boolean);
+  for (const c of candidates) {
+    if (c === 'carousel' || c === 'featured' || c === 'grid') return c;
+  }
+  return 'grid';
+}
+
+function StarRating({ rating, className }) {
+  const n = Math.min(5, Math.max(0, Math.round(Number(rating)) || 0));
+  return (
+    <div className={cn('flex items-center gap-0.5', className)} aria-label={`${n} out of 5 stars`}>
+      {[0, 1, 2, 3, 4].map((i) => (
+        <Star
+          key={i}
+          className={cn(
+            'h-4 w-4 sm:h-[1.125rem] sm:w-[1.125rem]',
+            i < n ? 'fill-amber-400 text-amber-400' : 'fill-neutral-200 text-neutral-200'
+          )}
+          aria-hidden="true"
+        />
+      ))}
+    </div>
+  );
+}
+
+function TestimonialCard({
+  testimonial,
+  showRatings,
+  showIndustry,
+  isLarge = false,
+}) {
+  const rating =
+    typeof testimonial.rating === 'number' && testimonial.rating > 0 ? testimonial.rating : showRatings ? 5 : 0;
+
+  return (
+    <article
+      className={cn(
+        'group relative flex h-full flex-col overflow-hidden rounded-2xl border border-neutral-200/90 bg-white p-6 shadow-sm transition-all duration-300',
+        'hover:border-brand-200 hover:shadow-md sm:p-7',
+        isLarge && 'sm:p-10 lg:p-12'
+      )}
+    >
+      {/* Top bar: stars + decorative quote — same for every card */}
+      <header className="relative z-10 mb-4 flex min-h-[1.75rem] items-start justify-between gap-3 sm:mb-5">
+        <div className="min-w-0 flex-1 pt-0.5">
+          {showRatings && rating > 0 ? <StarRating rating={rating} /> : null}
+        </div>
+        <Quote
+          className="h-9 w-9 shrink-0 text-brand-primary/[0.12] sm:h-11 sm:w-11"
+          strokeWidth={1.25}
+          aria-hidden="true"
+        />
+      </header>
+
+      <blockquote
+        className={cn(
+          'relative z-10 mb-6 min-h-0 flex-1 text-pretty font-medium italic leading-relaxed text-neutral-700',
+          isLarge ? 'text-lg sm:text-xl' : 'text-base sm:text-[1.0625rem]'
+        )}
+      >
+        <span className="text-neutral-400 not-italic" aria-hidden="true">
+          &ldquo;
+        </span>
+        {testimonial.quote}
+        <span className="text-neutral-400 not-italic" aria-hidden="true">
+          &rdquo;
+        </span>
+      </blockquote>
+
+      <footer className="mt-auto border-t border-neutral-100 pt-4 sm:pt-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+          <div className="flex min-w-0 items-center gap-3">
+            {testimonial.avatar ? (
+              <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-full bg-neutral-100 ring-2 ring-white">
+                <Image
+                  src={testimonial.avatar}
+                  alt=""
+                  fill
+                  className="object-cover"
+                  sizes="44px"
+                />
+              </div>
+            ) : null}
+            <div className="min-w-0">
+              <p className="truncate text-sm font-bold tracking-tight text-neutral-900 sm:text-base">{testimonial.author}</p>
+              <p className="truncate text-xs font-medium leading-snug text-neutral-600 sm:text-sm">
+                <span className="text-neutral-500">{testimonial.role}</span>
+                <span className="text-neutral-400"> · </span>
+                <span>{testimonial.company}</span>
+              </p>
+            </div>
+          </div>
+
+          {showIndustry && testimonial.industry ? (
+            <div className="flex shrink-0 sm:items-center sm:justify-end">
+              <span
+                className="inline-block max-w-full truncate rounded-full bg-brand-50 px-3 py-1 text-left text-[11px] font-semibold uppercase tracking-wide text-brand-primary-dark ring-1 ring-brand-primary/10 sm:max-w-[12.5rem] sm:text-xs sm:normal-case sm:tracking-normal"
+                title={testimonial.industry}
+              >
+                {testimonial.industry}
+              </span>
+            </div>
+          ) : null}
+        </div>
+      </footer>
+    </article>
+  );
+}
+
+/**
+ * TestimonialsSection — grid, carousel, or featured layouts.
+ *
+ * @param {'grid'|'carousel'|'featured'} [layout] — primary layout prop
+ * @param {'grid'|'carousel'|'featured'} [variant] — legacy alias (e.g. variant="grid")
  */
 export default function TestimonialsSection({
   title,
   subtitle,
   testimonials,
-  layout = 'grid',
+  layout: layoutProp = 'grid',
+  variant,
   showRatings = true,
-  showIndustry = true
+  showIndustry = true,
 }) {
-  const [mounted, setMounted] = useState(false);
+  const layout = resolveLayout(layoutProp, variant);
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  // Use provided testimonials or default ones
   const testimonialsData = testimonials || defaultTestimonials;
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  // Auto-rotate carousel
   useEffect(() => {
     if (layout === 'carousel' && testimonialsData.length > 1) {
       const interval = setInterval(() => {
@@ -45,176 +146,97 @@ export default function TestimonialsSection({
       }, 5000);
       return () => clearInterval(interval);
     }
+    return undefined;
   }, [layout, testimonialsData.length]);
 
-  // Render star rating
-  const renderRating = (rating) => {
-    if (!showRatings || !rating) return null;
-    
-    return (
-      <div className="flex gap-1 mb-4">
-        {[...Array(5)].map((_, i) => (
-          <LucideIcons.Star
-            key={i}
-            className={`w-5 h-5 ${
-              i < rating
-                ? 'fill-yellow-400 text-yellow-400'
-                : 'text-neutral-300'
-            }`}
-          />
-        ))}
-      </div>
-    );
-  };
-
-  // Render testimonial card
-  const renderTestimonialCard = (testimonial, index, variant = 'default') => {
-    const isLarge = variant === 'large';
-    
-    return (
-      <div
-        key={testimonial.id}
-        className={`group relative bg-white rounded-2xl p-8 border-2 border-neutral-200 hover:border-brand-300 hover:shadow-xl transition-all duration-300 ${
-          isLarge ? 'lg:p-12' : ''
-        } ${mounted ? 'animate-fade-in-up' : 'opacity-0'}`}
-        style={{ animationDelay: `${index * 150}ms` }}
-      >
-        {/* Quote icon */}
-        <div className="absolute top-6 right-6 opacity-10">
-          <LucideIcons.Quote className="w-16 h-16 text-brand-primary" />
-        </div>
-
-        {/* Rating */}
-        {renderRating(testimonial.rating)}
-
-        {/* Quote */}
-        <blockquote className={`relative z-10 ${isLarge ? 'text-xl' : 'text-lg'} text-neutral-700 italic leading-relaxed mb-6`}>
-          "{testimonial.quote}"
-        </blockquote>
-
-        {/* Author info */}
-        <div className="flex items-center gap-4">
-          {/* Avatar */}
-          {testimonial.avatar && (
-            <div className="relative w-12 h-12 rounded-full overflow-hidden bg-neutral-200 flex-shrink-0">
-              <Image
-                src={testimonial.avatar}
-                alt={testimonial.author}
-                fill
-                className="object-cover"
-                sizes="48px"
-              />
-            </div>
-          )}
-
-          <div className="flex-1">
-            {/* Name */}
-            <div className="font-bold text-neutral-900">
-              {testimonial.author}
-            </div>
-            
-            {/* Role and Company */}
-            <div className="text-sm text-neutral-600">
-              {testimonial.role} at {testimonial.company}
-            </div>
-          </div>
-
-          {/* Industry badge */}
-          {showIndustry && testimonial.industry && (
-            <div className="flex-shrink-0 px-3 py-1 bg-brand-50 text-brand-primary-dark text-xs font-medium rounded-full">
-              {testimonial.industry}
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  };
-
-  // Grid layout
   if (layout === 'grid') {
     return (
-      <section className="py-16 lg:py-24 bg-neutral-50">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Section header */}
-          <div className="max-w-3xl mx-auto text-center mb-16">
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-neutral-900 mb-4">
+      <section className="bg-neutral-50 py-14 sm:py-16 lg:py-24">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-10">
+          <div className="mx-auto mb-10 max-w-3xl text-center sm:mb-14 lg:mb-16">
+            <h2 className="text-balance text-3xl font-bold tracking-tight text-neutral-900 sm:text-4xl lg:text-5xl">
               {title}
             </h2>
-            {subtitle && (
-              <p className="text-lg sm:text-xl text-neutral-600 leading-relaxed">
+            {subtitle ? (
+              <p className="mt-3 text-pretty text-base font-medium leading-relaxed text-neutral-600 sm:mt-4 sm:text-lg">
                 {subtitle}
               </p>
-            )}
+            ) : null}
           </div>
 
-          {/* Testimonials grid */}
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
-            {testimonialsData.map((testimonial, index) =>
-              renderTestimonialCard(testimonial, index)
-            )}
-          </div>
+          <ul className="grid grid-cols-1 gap-6 sm:grid-cols-2 sm:gap-7 lg:grid-cols-3 lg:gap-8 xl:gap-10">
+            {testimonialsData.map((testimonial) => (
+              <li key={testimonial.id} className="flex min-h-0">
+                <TestimonialCard testimonial={testimonial} showRatings={showRatings} showIndustry={showIndustry} />
+              </li>
+            ))}
+          </ul>
         </div>
       </section>
     );
   }
 
-  // Carousel layout
   if (layout === 'carousel') {
     const currentTestimonial = testimonialsData[currentIndex];
-    
+
     return (
-      <section className="py-16 lg:py-24 bg-brand-50">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Section header */}
-          <div className="max-w-3xl mx-auto text-center mb-16">
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-neutral-900 mb-4">
+      <section className="bg-brand-50 py-14 sm:py-16 lg:py-24">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-10">
+          <div className="mx-auto mb-10 max-w-3xl text-center sm:mb-14 lg:mb-16">
+            <h2 className="text-balance text-3xl font-bold tracking-tight text-neutral-900 sm:text-4xl lg:text-5xl">
               {title}
             </h2>
-            {subtitle && (
-              <p className="text-lg sm:text-xl text-neutral-600 leading-relaxed">
+            {subtitle ? (
+              <p className="mt-3 text-pretty text-base font-medium leading-relaxed text-neutral-600 sm:mt-4 sm:text-lg">
                 {subtitle}
               </p>
-            )}
+            ) : null}
           </div>
 
-          {/* Carousel */}
-          <div className="max-w-4xl mx-auto">
-            {currentTestimonial && renderTestimonialCard(currentTestimonial, 0, 'large')}
+          <div className="mx-auto max-w-4xl">
+            {currentTestimonial ? (
+              <TestimonialCard
+                testimonial={currentTestimonial}
+                showRatings={showRatings}
+                showIndustry={showIndustry}
+                isLarge
+              />
+            ) : null}
 
-            {/* Navigation */}
-            <div className="flex items-center justify-center gap-4 mt-8">
-              {/* Previous button */}
+            <div className="mt-8 flex items-center justify-center gap-4">
               <button
-                onClick={() => setCurrentIndex((prev) => (prev - 1 + testimonialsData.length) % testimonialsData.length)}
-                className="w-12 h-12 rounded-full bg-white border-2 border-neutral-200 hover:border-brand-primary hover:bg-brand-50 flex items-center justify-center transition-all duration-300"
+                type="button"
+                onClick={() =>
+                  setCurrentIndex((prev) => (prev - 1 + testimonialsData.length) % testimonialsData.length)
+                }
+                className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-neutral-200 bg-white transition-all hover:border-brand-primary hover:bg-brand-50"
                 aria-label="Previous testimonial"
               >
-                <LucideIcons.ChevronLeft className="w-6 h-6 text-neutral-600" />
+                <ChevronLeft className="h-6 w-6 text-neutral-600" aria-hidden />
               </button>
 
-              {/* Dots */}
               <div className="flex gap-2">
                 {testimonialsData.map((_, index) => (
                   <button
                     key={index}
+                    type="button"
                     onClick={() => setCurrentIndex(index)}
-                    className={`w-2 h-2 rounded-full transition-all duration-300 ${
-                      index === currentIndex
-                        ? 'w-8 bg-brand-primary'
-                        : 'bg-neutral-300 hover:bg-neutral-400'
-                    }`}
+                    className={cn(
+                      'h-2 rounded-full transition-all',
+                      index === currentIndex ? 'w-8 bg-brand-primary' : 'w-2 bg-neutral-300 hover:bg-neutral-400'
+                    )}
                     aria-label={`Go to testimonial ${index + 1}`}
                   />
                 ))}
               </div>
 
-              {/* Next button */}
               <button
+                type="button"
                 onClick={() => setCurrentIndex((prev) => (prev + 1) % testimonialsData.length)}
-                className="w-12 h-12 rounded-full bg-white border-2 border-neutral-200 hover:border-brand-primary hover:bg-brand-50 flex items-center justify-center transition-all duration-300"
+                className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-neutral-200 bg-white transition-all hover:border-brand-primary hover:bg-brand-50"
                 aria-label="Next testimonial"
               >
-                <LucideIcons.ChevronRight className="w-6 h-6 text-neutral-600" />
+                <ChevronRight className="h-6 w-6 text-neutral-600" aria-hidden />
               </button>
             </div>
           </div>
@@ -223,40 +245,38 @@ export default function TestimonialsSection({
     );
   }
 
-  // Featured layout - One large testimonial with smaller ones below
   if (layout === 'featured') {
     const [featured, ...others] = testimonialsData;
-    
+
     return (
-      <section className="py-16 lg:py-24 bg-white">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Section header */}
-          <div className="max-w-3xl mx-auto text-center mb-16">
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-neutral-900 mb-4">
+      <section className="bg-white py-14 sm:py-16 lg:py-24">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-10">
+          <div className="mx-auto mb-10 max-w-3xl text-center sm:mb-14 lg:mb-16">
+            <h2 className="text-balance text-3xl font-bold tracking-tight text-neutral-900 sm:text-4xl lg:text-5xl">
               {title}
             </h2>
-            {subtitle && (
-              <p className="text-lg sm:text-xl text-neutral-600 leading-relaxed">
+            {subtitle ? (
+              <p className="mt-3 text-pretty text-base font-medium leading-relaxed text-neutral-600 sm:mt-4 sm:text-lg">
                 {subtitle}
               </p>
-            )}
+            ) : null}
           </div>
 
-          {/* Featured testimonial */}
-          {featured && (
-            <div className="max-w-4xl mx-auto mb-12">
-              {renderTestimonialCard(featured, 0, 'large')}
+          {featured ? (
+            <div className="mx-auto mb-10 max-w-4xl sm:mb-12">
+              <TestimonialCard testimonial={featured} showRatings={showRatings} showIndustry={showIndustry} isLarge />
             </div>
-          )}
+          ) : null}
 
-          {/* Other testimonials */}
-          {others.length > 0 && (
-            <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
-              {others.map((testimonial, index) =>
-                renderTestimonialCard(testimonial, index + 1)
-              )}
-            </div>
-          )}
+          {others.length > 0 ? (
+            <ul className="mx-auto grid max-w-5xl grid-cols-1 gap-6 sm:grid-cols-2 sm:gap-8">
+              {others.map((testimonial) => (
+                <li key={testimonial.id} className="flex min-h-0">
+                  <TestimonialCard testimonial={testimonial} showRatings={showRatings} showIndustry={showIndustry} />
+                </li>
+              ))}
+            </ul>
+          ) : null}
         </div>
       </section>
     );

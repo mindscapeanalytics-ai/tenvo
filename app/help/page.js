@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import MarketingLayout from '@/components/marketing/layout/MarketingLayout';
+import { MarketingPageHeader, MarketingSection } from '@/components/marketing/layout/MarketingSection';
 
 export const metadata = {
   title: 'Help Center',
@@ -18,31 +19,34 @@ export default function HelpPage() {
 
   return (
     <MarketingLayout>
-      <div className="border-b border-neutral-200/80 bg-white py-14 lg:py-20">
-        <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
-          <h1 className="text-3xl font-black tracking-tight text-neutral-900">Help Center</h1>
-          <p className="mt-4 text-sm font-medium text-neutral-600">
+      <MarketingPageHeader
+        title="Help Center"
+        description={
+          <>
             Signed-in product help lives inside your workspace after you{' '}
             <Link href="/register" className="font-bold text-brand-primary underline-offset-2 hover:underline">
               register
             </Link>
             . Start here on the public site:
-          </p>
-          <ul className="mt-10 space-y-4">
-            {items.map((item) => (
-              <li key={item.href}>
-                <Link
-                  href={item.href}
-                  className="block rounded-2xl border border-neutral-200 bg-neutral-50/80 p-5 transition-colors hover:border-brand-primary/40 hover:bg-white"
-                >
-                  <span className="font-black text-neutral-900">{item.label}</span>
-                  <p className="mt-1 text-sm text-neutral-600">{item.desc}</p>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </div>
+          </>
+        }
+      />
+
+      <MarketingSection className="bg-neutral-50/50" padding="default" width="narrow">
+        <ul className="space-y-3 sm:space-y-4">
+          {items.map((item) => (
+            <li key={item.href}>
+              <Link
+                href={item.href}
+                className="block rounded-2xl border border-neutral-200 bg-white p-4 transition-colors hover:border-brand-primary/40 sm:p-5"
+              >
+                <span className="font-black text-neutral-900">{item.label}</span>
+                <p className="mt-1 text-sm leading-relaxed text-neutral-600">{item.desc}</p>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </MarketingSection>
     </MarketingLayout>
   );
 }

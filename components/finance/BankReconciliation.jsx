@@ -11,6 +11,13 @@ import { Badge } from '@/components/ui/badge';
 import { formatCurrency } from '@/lib/currency';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
+import { ACCOUNT_CODES } from '@/lib/config/accounting';
+
+const BANK_ACCOUNT_CODES = new Set([
+    ACCOUNT_CODES.CASH_ON_HAND,
+    ACCOUNT_CODES.PETTY_CASH,
+    ACCOUNT_CODES.BANK_ACCOUNTS,
+]);
 
 /**
  * BankReconciliation
@@ -48,9 +55,14 @@ export function BankReconciliation({ businessId, currency, accounts = [] }) {
     const [saving, setSaving] = useState(false);
 
     // Only show bank/cash type accounts
-    const bankAccounts = accounts.filter(a =>
-        ['asset', 'bank', 'cash'].includes((a.type || '').toLowerCase())
-    );
+    const bankAccounts = accounts.filter((a) => {
+        if (a.is_active === false) return false;
+        const code = String(a.code || '');
+        if (BANK_ACCOUNT_CODES.has(code)) return true;
+        const name = String(a.name || '').toLowerCase();
+        const subType = String(a.sub_type || '').toLowerCase();
+        return subType === 'current_asset' && (name.includes('bank') || name.includes('cash'));
+    });
 
     // -- Load sessions ----------------------------------------------------------
 

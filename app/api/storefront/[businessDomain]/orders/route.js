@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import { generateOrderNumber } from '@/lib/utils/order';
 import { sendOrderConfirmationEmail } from '@/lib/email/resend';
-import { resolveBusinessFromStorefrontDomain } from '@/lib/tenancy/businessAccess';
+import { resolveStorefrontBusiness } from '@/lib/tenancy/resolveStorefrontBusiness';
+import { lookupPublicStorefrontOrders } from '@/lib/storefront/publicOrderLookup';
 
 function roundMoney(n) {
   return Math.round(Number(n) * 100) / 100;
@@ -26,7 +27,7 @@ function formatAddressBlock(addr) {
  */
 export async function POST(request, { params }) {
   const { businessDomain } = params;
-  const business = await resolveBusinessFromStorefrontDomain(businessDomain);
+  const business = await resolveStorefrontBusiness(businessDomain);
 
   if (!business) {
     return NextResponse.json(
@@ -216,8 +217,8 @@ export async function POST(request, { params }) {
       await client.query(
         `UPDATE customers 
          SET name = $1, phone = $2, updated_at = NOW()
-         WHERE id = $3::uuid`,
-        [customerName, customer.phone, customerId]
+         WHERE id = $3::uuid AND business_id = $4::uuid`,
+        [customerName, customer.phone, customerId, business.id]
       );
     } else {
       const newCustomer = await client.query(
@@ -419,11 +420,36 @@ export async function POST(request, { params }) {
 }
 
 /**
- * GET /api/storefront/[businessDomain]/orders
+ * GET /api/storefront/[businessDomain]/orders?email=&orderNumber=
+ * Public buyer order tracking — email required; optional order number filter.
  */
-export async function GET() {
-  return NextResponse.json(
-    { success: false, error: 'Authentication required' },
-    { status: 401 }
-  );
+export async function GET(request, { params }) {
+  const { businessDomain } = await params;
+  const business = await resolveStorefrontBusiness(businessDomain);
+
+  if (!business) {
+    return NextResponse.json(
+      { success: false, error: 'Business not found' },
+      { status: 404 }
+    );
+  }
+
+  const { searchParams } = new URL(request.url);
+  const email = searchParams.get('email')?.trim() || '';
+  const orderNumber = searchParams.get('orderNumber')?.trim() || '';
+
+  const result = await lookupPublicStorefrontOrders(business.id, {
+    customerEmail: email,
+    orderNumber: orderNumber || undefined,
+    limit: 50,
+  });
+
+  if (!result.success) {
+    return NextResponse.json(
+      { success: false, error: result.error },
+      { status: result.status || 400 }
+    );
+  }
+
+  return NextResponse.json({ success: true, orders: result.orders });
 }

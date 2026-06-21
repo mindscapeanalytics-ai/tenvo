@@ -9,6 +9,12 @@ import { Printer, CheckCircle2, Package, Loader2, FileText, Building2, MapPin } 
 import { formatCurrency } from '@/lib/currency';
 import { purchaseAPI } from '@/lib/api/purchases';
 import toast from 'react-hot-toast';
+import {
+  getPurchaseStatusLabel,
+  isReceivablePurchaseStatus,
+  normalizePurchaseStatus,
+  PURCHASE_STATUSES,
+} from '@/lib/constants/purchaseStatus';
 
 export default function GRNView({ poId, businessId, business, onUpdateStatus, colors }) {
     const [purchase, setPurchase] = useState(null);
@@ -34,7 +40,9 @@ export default function GRNView({ poId, businessId, business, onUpdateStatus, co
     if (loading) return <div className="flex h-64 items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-gray-400" /></div>;
     if (!purchase) return <div className="p-8 text-center text-gray-400 font-medium">Document not found</div>;
 
-    const isReceived = purchase.status === 'received';
+    const isReceived = normalizePurchaseStatus(purchase.status) === PURCHASE_STATUSES.RECEIVED;
+    const canReceive = isReceivablePurchaseStatus(purchase.status);
+    const vendorAddress = [purchase.vendor_address, purchase.vendor_city].filter(Boolean).join(', ');
 
     return (
         <div id="printable-grn" className="space-y-8 animate-in fade-in duration-500 bg-white p-1">
@@ -65,6 +73,9 @@ export default function GRNView({ poId, businessId, business, onUpdateStatus, co
                                 <p className="font-black text-gray-800 text-lg">{purchase.vendor_name}</p>
                                 <p className="text-sm text-gray-500">{purchase.vendor_email}</p>
                                 <p className="text-sm text-gray-500">{purchase.vendor_phone}</p>
+                                {vendorAddress && (
+                                    <p className="text-sm text-gray-500">{vendorAddress}</p>
+                                )}
                             </div>
                         </div>
                         <div className="space-y-4">
@@ -89,7 +100,7 @@ export default function GRNView({ poId, businessId, business, onUpdateStatus, co
                         <Label className="text-[10px] font-black uppercase text-gray-500">Status</Label>
                         <div>
                             <span className="inline-block px-3 py-1 border-2 border-gray-900 text-gray-900 font-bold uppercase text-[10px] rounded-md">
-                                {purchase.status}
+                                {getPurchaseStatusLabel(purchase.status)}
                             </span>
                         </div>
                     </div>
@@ -174,11 +185,11 @@ export default function GRNView({ poId, businessId, business, onUpdateStatus, co
                 <Button variant="outline" className="rounded-xl h-11 px-6 font-bold" onClick={() => window.print()}>
                     <Printer className="w-4 h-4 mr-2" /> Print Document
                 </Button>
-                {!isReceived && (
+                {canReceive && (
                     <Button
                         className="rounded-xl h-11 px-8 font-black shadow-lg shadow-emerald-200 transition-all hover:scale-105 active:scale-95 bg-emerald-600 hover:bg-emerald-700 text-white"
                         style={{ backgroundColor: '#059669' }}
-                        onClick={() => onUpdateStatus?.(purchase.id, 'received')}
+                        onClick={() => onUpdateStatus?.(purchase.id, PURCHASE_STATUSES.RECEIVED)}
                     >
                         <CheckCircle2 className="w-4 h-4 mr-2" /> Mark as Received
                     </Button>

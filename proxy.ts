@@ -2,10 +2,10 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 /**
- * Edge middleware: security headers and lightweight request metadata.
+ * Network proxy (Next.js 16+): security headers and lightweight request metadata.
  * Tenant/business resolution stays in Node route handlers (Prisma/pg).
  */
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const res = NextResponse.next();
 
   res.headers.set('X-Frame-Options', 'SAMEORIGIN');

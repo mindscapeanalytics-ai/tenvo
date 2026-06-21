@@ -4,6 +4,8 @@ import { useState, useRef, useEffect, memo } from 'react';
 import { Portlet } from '@/components/ui/portlet';
 import { Send, Sparkles, User, Bot, Loader2, Maximize2, Minimize2, Trash2 } from 'lucide-react';
 import { askBusinessAnalystAction } from '@/lib/actions/premium/ai/agentic';
+import { useBusiness } from '@/lib/context/BusinessContext';
+import { formatBusinessAnalystReply } from '@/lib/utils/formatBusinessAnalystReply';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 
@@ -13,7 +15,11 @@ interface Message {
     timestamp: Date;
 }
 
-export const AgenticAnalystChat = memo(function AgenticAnalystChat({ businessId }: { businessId: string }) {
+export const AgenticAnalystChat = memo(function AgenticAnalystChat({ businessId: businessIdProp }: { businessId?: string }) {
+    const { business } = useBusiness() as {
+        business?: { id?: string; business_name?: string; category?: string } | null;
+    };
+    const businessId = business?.id;
     const [messages, setMessages] = useState<Message[]>([
         { role: 'assistant', content: "Hello! I'm your Agentic AI Analyst. Ask me anything about your inventory, sales trends, or financial health.", timestamp: new Date() }
     ]);
@@ -28,6 +34,8 @@ export const AgenticAnalystChat = memo(function AgenticAnalystChat({ businessId 
         }
     }, [messages, loading]);
 
+    if (!businessId || (businessIdProp && businessIdProp !== businessId)) return null;
+
     const handleSend = async () => {
         if (!input.trim() || loading) return;
 
@@ -38,12 +46,9 @@ export const AgenticAnalystChat = memo(function AgenticAnalystChat({ businessId 
 
         try {
             const res = await askBusinessAnalystAction(businessId, userMsg);
-            if (res.success) {
-                setMessages(prev => [...prev, { role: 'assistant', content: (res as any).data as string, timestamp: new Date() }]);
-            } else {
-                setMessages(prev => [...prev, { role: 'assistant', content: "I encountered an error while processing your request. Please try again.", timestamp: new Date() }]);
-            }
-        } catch (err) {
+            const reply = formatBusinessAnalystReply(res);
+            setMessages(prev => [...prev, { role: 'assistant', content: reply, timestamp: new Date() }]);
+        } catch {
             setMessages(prev => [...prev, { role: 'assistant', content: "Network error. Please check your connection.", timestamp: new Date() }]);
         } finally {
             setLoading(false);

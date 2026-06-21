@@ -76,13 +76,18 @@ const CommandSeparator = React.forwardRef(({ className, ...props }, ref) => (
 ))
 CommandSeparator.displayName = CommandPrimitive.Separator.displayName
 
-const CommandItem = React.forwardRef(({ className, ...props }, ref) => (
+const CommandItem = React.forwardRef(({ className, onMouseDown, ...props }, ref) => (
   <CommandPrimitive.Item
     ref={ref}
     className={cn(
-      "relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none aria-selected:bg-accent aria-selected:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none aria-selected:bg-accent aria-selected:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
       className
     )}
+    onMouseDown={(e) => {
+      // Keep focus inside cmdk so pointer clicks fire onSelect (popover/modal safe).
+      e.preventDefault();
+      onMouseDown?.(e);
+    }}
     {...props}
   />
 ))

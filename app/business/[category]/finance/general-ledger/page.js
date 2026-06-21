@@ -1,33 +1,23 @@
 'use client';
 
-import { useBusiness } from '@/lib/context/BusinessContext';
-import { GeneralLedgerReport } from '@/components/reports/GeneralLedgerReport';
-import { Card, CardContent } from '@/components/ui/card';
+import { useEffect } from 'react';
+import { useRouter, useParams } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 
+/** Deep-link compatibility: route legacy GL URL into Finance Hub sub-tab. */
 export default function GeneralLedgerPage() {
-    const { business, isLoading } = useBusiness();
+    const router = useRouter();
+    const params = useParams();
+    const category = params?.category;
 
-    if (isLoading) {
-        return (
-            <div className="flex items-center justify-center p-12">
-                <Loader2 className="w-8 h-8 animate-spin text-wine" />
-            </div>
-        );
-    }
-
-    if (!business) {
-        return <div className="p-8 text-center text-gray-500">Please select a business first.</div>;
-    }
+    useEffect(() => {
+        if (!category) return;
+        router.replace(`/business/${category}?tab=finance&financeView=general-ledger`);
+    }, [router, category]);
 
     return (
-        <div className="container mx-auto py-8 space-y-8">
-            <div className="flex flex-col gap-2">
-                <h1 className="text-3xl font-black text-wine">Financial Reports</h1>
-                <p className="text-gray-500">Audit-ready financial statements and ledgers</p>
-            </div>
-
-            <GeneralLedgerReport businessId={business.id} />
+        <div className="flex items-center justify-center p-12">
+            <Loader2 className="w-8 h-8 animate-spin text-wine" />
         </div>
     );
 }
