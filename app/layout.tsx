@@ -21,7 +21,7 @@ export const metadata: Metadata = {
     default: 'TENVO: Inventory, POS, storefront, and accounting in one platform',
     template: '%s | TENVO',
   },
-  description: 'Complete business operations platform for inventory management, point of sale, online storefront, and accounting. Start free at tanvo.store - trusted by growing businesses.',
+  description: 'Complete business operations platform for inventory management, point of sale, online storefront, and accounting. Start free at tenvo.store - trusted by growing businesses.',
   keywords: [
     'business management software',
     'inventory management system',
@@ -33,7 +33,7 @@ export const metadata: Metadata = {
     'ERP system',
     'business operations software',
     'retail management',
-    'tanvo',
+    'tenvo',
     'tanvo.store',
   ],
   manifest: '/manifest.webmanifest',

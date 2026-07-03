@@ -40,7 +40,7 @@ export function FitnessBookingStrip({
       <div className="relative mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-8">
         <div className="mb-8 text-center">
           <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-rose-400">Book your slot</p>
-          <h2 className="mt-2 text-xl font-semibold tracking-tight text-white sm:text-2xl">
+          <h2 className="fitness-heading-gradient mt-2 text-xl font-semibold tracking-tight text-white sm:text-2xl">
             Train with a coach or plan your visit
           </h2>
           <p className="mx-auto mt-2 max-w-lg text-sm text-white/60">

@@ -20,6 +20,7 @@ import {
 import { MembershipService } from '@/lib/services/MembershipService';
 import { MEMBERSHIP_SOURCE } from '@/lib/memberships/membershipConstants';
 import { notifyStorefrontOrder, notifyLowStock } from '@/lib/notifications/notificationHelpers';
+import { isStorefrontProductUuid } from '@/lib/utils/storefrontProductRef';
 
 /**
  * Storefront checkout decrements stock via direct SQL (bypassing InventoryService),
@@ -155,6 +156,39 @@ export async function POST(request, { params }) {
       { success: false, error: 'Order must contain at least one item' },
       { status: 400 }
     );
+  }
+
+  // Fail fast on non-purchasable refs (e.g. demo/preview catalog rows whose id is a
+  // SKU/slug, not a tenant product UUID). Without this, the ::uuid casts below would
+  // throw and surface as an opaque 500 instead of a clean, actionable message.
+  for (const item of items) {
+    if (!isStorefrontProductUuid(item?.productId)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            'One or more items are preview-only and can’t be ordered. Please add products from the store catalog and try again.',
+        },
+        { status: 400 }
+      );
+    }
+    if (
+      item?.variantId != null &&
+      item.variantId !== '' &&
+      !isStorefrontProductUuid(item.variantId)
+    ) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid product option selected.' },
+        { status: 400 }
+      );
+    }
+    const itemQty = Number(item?.quantity);
+    if (!Number.isFinite(itemQty) || itemQty <= 0) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid quantity for one or more items.' },
+        { status: 400 }
+      );
+    }
   }
 
   const shippingRaw = Number(shipping);

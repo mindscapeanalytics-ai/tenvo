@@ -205,7 +205,7 @@ export function FitnessMembershipPackages({
           <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-rose-400">
             Membership packages
           </p>
-          <h2 className="mt-1.5 text-xl font-semibold text-white sm:mt-2 sm:text-3xl">
+          <h2 className="fitness-heading-gradient mt-1.5 text-xl font-semibold text-white sm:mt-2 sm:text-3xl">
             {normalizeProseCopy(sectionCopy.title)}
           </h2>
           <p className="mt-2 text-sm leading-relaxed text-white/55 sm:mt-3 sm:text-base sm:text-white/60">

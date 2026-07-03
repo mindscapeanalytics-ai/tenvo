@@ -61,12 +61,20 @@ export function ProductCard({ product, businessDomain, variant = 'default' }) {
     ? [product.domain_data?.vehiclemake, product.domain_data?.vehiclemodel].filter(Boolean).join(' ')
     : '';
 
+  // Preview/seed rows and any non-UUID ref are not real DB products: they can't be
+  // added to cart or opened at /products/{slug} (would 404). Route them to a real
+  // search results page instead.
+  const isPreviewProduct = product.catalog_preview || !isStorefrontProductUuid(product.id);
+  const productHref = isPreviewProduct
+    ? `/store/${businessDomain}/products?search=${encodeURIComponent(product.name || '')}`
+    : `/store/${businessDomain}/products/${product.slug || product.id}`;
+
   const handleAddToCart = async (e) => {
     e.preventDefault();
     e.stopPropagation();
     if (isOutOfStock) return;
 
-    if (product.catalog_preview || !isStorefrontProductUuid(product.id)) {
+    if (isPreviewProduct) {
       window.location.href = productHref;
       return;
     }
@@ -93,8 +101,6 @@ export function ProductCard({ product, businessDomain, variant = 'default' }) {
     e.stopPropagation();
     toggleWishlist(product);
   };
-
-  const productHref = `/store/${businessDomain}/products/${product.slug || product.id}`;
 
   return (
     <motion.article

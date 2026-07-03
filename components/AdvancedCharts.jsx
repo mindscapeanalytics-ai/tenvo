@@ -32,9 +32,9 @@ const COLORS = CHART_PALETTE;
  * @param {string} [props.currency]
  */
 export function SalesChart({ data = [], colors, currency = 'PKR' }) {
-  const primary = colors?.primary || BRAND_PRIMARY;
-  const profitColor = CHART_PALETTE[3] || '#10B981';
-  const volumeStroke = '#64748b';
+  const primary = colors?.primary || '#3b82f6'; // Blue
+  const profitColor = '#10b981'; // Emerald green
+  const volumeStroke = '#8b5cf6'; // Purple
 
   const volumeKey = (() => {
     if (!data.length) return null;
@@ -49,63 +49,96 @@ export function SalesChart({ data = [], colors, currency = 'PKR' }) {
   const moneyTick = (v) => formatCurrency(Number(v) || 0, currency, { maximumFractionDigits: 0 });
 
   return (
-    <ResponsiveContainer width="100%" height={300}>
-      <LineChart data={data} margin={{ top: 8, right: volumeKey ? 16 : 8, left: 0, bottom: 0 }}>
-        <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey="date" tick={{ fontSize: 11 }} />
-        <YAxis yAxisId="left" tickFormatter={moneyTick} width={56} tick={{ fontSize: 10 }} />
+    <ResponsiveContainer width="100%" height="100%">
+      <LineChart data={data} margin={{ top: 10, right: volumeKey ? 20 : 10, left: 10, bottom: 5 }}>
+        <defs>
+          <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="5%" stopColor={primary} stopOpacity={0.15} />
+            <stop offset="95%" stopColor={primary} stopOpacity={0} />
+          </linearGradient>
+          <linearGradient id="colorProfit" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="5%" stopColor={profitColor} stopOpacity={0.15} />
+            <stop offset="95%" stopColor={profitColor} stopOpacity={0} />
+          </linearGradient>
+        </defs>
+        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" strokeOpacity={0.5} />
+        <XAxis 
+          dataKey="date" 
+          tick={{ fontSize: 11, fill: '#6b7280' }} 
+          tickLine={{ stroke: '#e5e7eb' }}
+          axisLine={{ stroke: '#e5e7eb' }}
+        />
+        <YAxis 
+          yAxisId="left" 
+          tickFormatter={moneyTick} 
+          width={70} 
+          tick={{ fontSize: 11, fill: '#6b7280' }}
+          tickLine={{ stroke: '#e5e7eb' }}
+          axisLine={{ stroke: '#e5e7eb' }}
+        />
         {volumeKey ? (
           <YAxis
             yAxisId="right"
             orientation="right"
             allowDecimals={false}
-            width={36}
-            tick={{ fontSize: 10 }}
-            label={{ value: 'Invoices', angle: -90, position: 'insideRight', offset: 10, style: { fontSize: 10, fill: '#94a3b8' } }}
+            width={45}
+            tick={{ fontSize: 11, fill: '#6b7280' }}
+            tickLine={{ stroke: '#e5e7eb' }}
+            axisLine={{ stroke: '#e5e7eb' }}
           />
         ) : null}
         <Tooltip
-          contentStyle={{ borderRadius: '12px', borderColor: '#f0f0f0' }}
+          contentStyle={{ 
+            borderRadius: '8px', 
+            border: 'none',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+            fontSize: '12px'
+          }}
           formatter={(value, name) => {
-            if (name === 'Invoice revenue' || name === 'GL profit (net)') {
+            if (name === 'Revenue' || name === 'Profit') {
               return [formatCurrency(Number(value) || 0, currency), name];
             }
-            if (name === 'Invoice count') return [value, name];
+            if (name === 'Orders') return [value, name];
             return [value, name];
           }}
         />
-        <Legend wrapperStyle={{ fontSize: 12 }} />
+        <Legend 
+          wrapperStyle={{ fontSize: 12, paddingTop: 10 }} 
+          iconType="circle"
+        />
         <Line
           yAxisId="left"
           type="monotone"
           dataKey="revenue"
-          name="Invoice revenue"
+          name="Revenue"
           stroke={primary}
-          strokeWidth={2}
-          dot={{ r: 3 }}
-          activeDot={{ r: 6 }}
+          strokeWidth={3}
+          dot={{ r: 4, fill: primary, strokeWidth: 2, stroke: '#fff' }}
+          activeDot={{ r: 6, fill: primary, strokeWidth: 2, stroke: '#fff' }}
+          fill="url(#colorRevenue)"
         />
         <Line
           yAxisId="left"
           type="monotone"
           dataKey="profit"
-          name="GL profit (net)"
+          name="Profit"
           stroke={profitColor}
-          strokeWidth={2}
+          strokeWidth={3}
           strokeDasharray="6 4"
-          dot={{ r: 3 }}
-          activeDot={{ r: 6 }}
+          dot={{ r: 4, fill: profitColor, strokeWidth: 2, stroke: '#fff' }}
+          activeDot={{ r: 6, fill: profitColor, strokeWidth: 2, stroke: '#fff' }}
+          fill="url(#colorProfit)"
         />
         {volumeKey ? (
           <Line
             yAxisId="right"
             type="monotone"
             dataKey={volumeKey}
-            name="Invoice count"
+            name="Orders"
             stroke={volumeStroke}
             strokeWidth={2}
             strokeDasharray="4 4"
-            dot={{ r: 2 }}
+            dot={{ r: 3, fill: volumeStroke }}
           />
         ) : null}
       </LineChart>
@@ -120,22 +153,56 @@ export function SalesChart({ data = [], colors, currency = 'PKR' }) {
  * @param {string} [props.currency]
  */
 export function RevenueBarChart({ data = [], colors, currency = 'PKR' }) {
-  const primary = colors?.primary || BRAND_PRIMARY;
-  const secondary = colors?.primaryLight || '#c49c3b';
+  const primary = colors?.primary || '#3b82f6'; // Blue
+  const secondary = '#8b5cf6'; // Purple
   const xKey = data[0] && Object.prototype.hasOwnProperty.call(data[0], 'date') ? 'date' : 'name';
 
   return (
-    <ResponsiveContainer width="100%" height={300}>
-      <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 4 }}>
-        <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey={xKey} tick={{ fontSize: 11 }} />
-        <YAxis tickFormatter={(v) => formatCurrency(Number(v) || 0, currency, { maximumFractionDigits: 0 })} width={56} tick={{ fontSize: 10 }} />
-        <Tooltip
-          formatter={(value, name) => [formatCurrency(Number(value) || 0, currency), name === 'revenue' ? 'Invoice revenue' : name === 'profit' ? 'GL profit (net)' : name]}
+    <ResponsiveContainer width="100%" height="100%">
+      <BarChart data={data} margin={{ top: 10, right: 10, left: 10, bottom: 5 }}>
+        <defs>
+          <linearGradient id="barRevenue" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={primary} stopOpacity={0.9} />
+            <stop offset="100%" stopColor={primary} stopOpacity={0.7} />
+          </linearGradient>
+          <linearGradient id="barProfit" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={secondary} stopOpacity={0.9} />
+            <stop offset="100%" stopColor={secondary} stopOpacity={0.7} />
+          </linearGradient>
+        </defs>
+        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" strokeOpacity={0.5} />
+        <XAxis 
+          dataKey={xKey} 
+          tick={{ fontSize: 11, fill: '#6b7280' }}
+          tickLine={{ stroke: '#e5e7eb' }}
+          axisLine={{ stroke: '#e5e7eb' }}
         />
-        <Legend formatter={(value) => (value === 'revenue' ? 'Invoice revenue' : value === 'profit' ? 'GL profit (net)' : value)} />
-        <Bar dataKey="revenue" name="revenue" fill={primary} radius={[4, 4, 0, 0]} />
-        <Bar dataKey="profit" name="profit" fill={secondary} radius={[4, 4, 0, 0]} />
+        <YAxis 
+          tickFormatter={(v) => formatCurrency(Number(v) || 0, currency, { maximumFractionDigits: 0 })} 
+          width={70} 
+          tick={{ fontSize: 11, fill: '#6b7280' }}
+          tickLine={{ stroke: '#e5e7eb' }}
+          axisLine={{ stroke: '#e5e7eb' }}
+        />
+        <Tooltip
+          contentStyle={{ 
+            borderRadius: '8px', 
+            border: 'none',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+            fontSize: '12px'
+          }}
+          formatter={(value, name) => [
+            formatCurrency(Number(value) || 0, currency), 
+            name === 'revenue' ? 'Revenue' : name === 'profit' ? 'Profit' : name
+          ]}
+        />
+        <Legend 
+          formatter={(value) => (value === 'revenue' ? 'Revenue' : value === 'profit' ? 'Profit' : value)}
+          wrapperStyle={{ fontSize: 12, paddingTop: 10 }}
+          iconType="circle"
+        />
+        <Bar dataKey="revenue" name="revenue" fill="url(#barRevenue)" radius={[8, 8, 0, 0]} />
+        <Bar dataKey="profit" name="profit" fill="url(#barProfit)" radius={[8, 8, 0, 0]} />
       </BarChart>
     </ResponsiveContainer>
   );
@@ -146,24 +213,55 @@ export function RevenueBarChart({ data = [], colors, currency = 'PKR' }) {
  * @param {any[]} props.data
  */
 export function CategoryPieChart({ data }) {
+  // Enhanced color palette matching the inspiring dashboards
+  const ENHANCED_COLORS = [
+    '#3b82f6', // Blue
+    '#8b5cf6', // Purple
+    '#10b981', // Emerald
+    '#f59e0b', // Amber
+    '#ef4444', // Red
+    '#06b6d4', // Cyan
+    '#ec4899', // Pink
+    '#14b8a6', // Teal
+    '#f97316', // Orange
+    '#6366f1', // Indigo
+  ];
+
   return (
-    <ResponsiveContainer width="100%" height={300}>
+    <ResponsiveContainer width="100%" height="100%">
       <PieChart>
         <Pie
           data={data}
           cx="50%"
           cy="50%"
-          labelLine={false}
+          labelLine={{
+            stroke: '#9ca3af',
+            strokeWidth: 1
+          }}
           label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-          outerRadius={80}
-          fill={BRAND_PRIMARY}
+          outerRadius={90}
+          innerRadius={50}
+          fill="#3b82f6"
           dataKey="value"
+          paddingAngle={2}
         >
           {data.map((entry, index) => (
-            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+            <Cell 
+              key={`cell-${index}`} 
+              fill={ENHANCED_COLORS[index % ENHANCED_COLORS.length]}
+              stroke="#fff"
+              strokeWidth={2}
+            />
           ))}
         </Pie>
-        <Tooltip />
+        <Tooltip
+          contentStyle={{
+            borderRadius: '8px',
+            border: 'none',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+            fontSize: '12px'
+          }}
+        />
       </PieChart>
     </ResponsiveContainer>
   );
@@ -209,30 +307,55 @@ export function RevenueAreaChart({ data, colors }) {
  * @param {any} [props.colors]
  */
 export function TopProductsChart({ data, colors, currency = 'PKR' }) {
-  const primary = colors?.primary || BRAND_PRIMARY;
+  const primary = colors?.primary || '#3b82f6';
 
   return (
-    <ResponsiveContainer width="100%" height={300}>
-      <BarChart data={data} layout="vertical" margin={{ left: 4, right: 16 }}>
-        <CartesianGrid strokeDasharray="3 3" />
-        <XAxis type="number" tickFormatter={(v) => formatCurrency(Number(v) || 0, currency, { maximumFractionDigits: 0 })} tick={{ fontSize: 10 }} />
-        <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 10 }} />
+    <ResponsiveContainer width="100%" height="100%">
+      <BarChart data={data} layout="vertical" margin={{ left: 10, right: 20, top: 5, bottom: 5 }}>
+        <defs>
+          <linearGradient id="barTopProduct" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor={primary} stopOpacity={0.7} />
+            <stop offset="100%" stopColor={primary} stopOpacity={0.9} />
+          </linearGradient>
+        </defs>
+        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" strokeOpacity={0.5} horizontal={true} vertical={false} />
+        <XAxis 
+          type="number" 
+          tickFormatter={(v) => formatCurrency(Number(v) || 0, currency, { maximumFractionDigits: 0 })} 
+          tick={{ fontSize: 11, fill: '#6b7280' }}
+          tickLine={{ stroke: '#e5e7eb' }}
+          axisLine={{ stroke: '#e5e7eb' }}
+        />
+        <YAxis 
+          dataKey="name" 
+          type="category" 
+          width={110} 
+          tick={{ fontSize: 11, fill: '#374151', fontWeight: 500 }}
+          tickLine={false}
+          axisLine={false}
+        />
         <Tooltip
           content={({ active, payload }) => {
             if (!active || !payload?.length) return null;
             const row = payload[0].payload;
             return (
-              <div className="rounded-lg border border-border bg-card px-2 py-1.5 text-xs shadow-md">
-                <div className="font-semibold text-foreground">{row.name}</div>
-                <div className="text-foreground">{formatCurrency(Number(row.value) || 0, currency)}</div>
+              <div className="rounded-lg border-0 bg-white px-3 py-2 text-xs shadow-xl">
+                <div className="font-bold text-gray-900 mb-1">{row.name}</div>
+                <div className="text-blue-600 font-semibold">{formatCurrency(Number(row.value) || 0, currency)}</div>
                 {row.volume != null && (
-                  <div className="text-muted-foreground mt-0.5">{Number(row.volume).toLocaleString()} units</div>
+                  <div className="text-gray-600 mt-1">{Number(row.volume).toLocaleString()} units sold</div>
                 )}
               </div>
             );
           }}
         />
-        <Bar dataKey="value" name="Revenue" fill={primary} radius={[0, 4, 4, 0]} />
+        <Bar 
+          dataKey="value" 
+          name="Revenue" 
+          fill="url(#barTopProduct)" 
+          radius={[0, 8, 8, 0]}
+          barSize={20}
+        />
       </BarChart>
     </ResponsiveContainer>
   );

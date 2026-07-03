@@ -49,11 +49,49 @@ export function StoreThemeStyles({ business, settings }) {
           [data-store-fitness] .fitness-hero .store-heading--inverse {
             text-shadow: 0 2px 28px rgba(0, 0, 0, 0.4);
           }
+          [data-store-fitness] .fitness-hero .fitness-hero-title {
+            background-image: linear-gradient(
+              176deg,
+              #ffffff 0%,
+              #ffe4e6 24%,
+              #fb7185 52%,
+              #e11d48 72%,
+              #9f1239 100%
+            );
+            background-size: 100% 220%;
+            background-position: 50% 20%;
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            color: transparent;
+            text-shadow: none;
+            filter:
+              drop-shadow(0 6px 22px rgba(159, 18, 57, 0.5))
+              drop-shadow(0 2px 6px rgba(0, 0, 0, 0.55));
+            animation: fitness-hero-title-sheen 7s ease-in-out infinite;
+          }
+          @keyframes fitness-hero-title-sheen {
+            0%, 100% { background-position: 50% 16%; }
+            50% { background-position: 50% 84%; }
+          }
+          /* Reusable static wine→white gradient for fitness section headings.
+             No animation (motion is reserved for the hero focal title). */
+          [data-store-fitness] .fitness-heading-gradient {
+            background-image: linear-gradient(
+              92deg,
+              #ffffff 0%,
+              #ffe4e6 46%,
+              #fb7185 78%,
+              #e11d48 100%
+            );
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            color: transparent;
+            filter: drop-shadow(0 2px 10px rgba(159, 18, 57, 0.28));
+          }
           @media (max-width: 1023px) {
             [data-store-fitness] .fitness-hero .fitness-hero-title {
-              text-shadow:
-                0 2px 20px rgba(225, 29, 72, 0.28),
-                0 4px 32px rgba(0, 0, 0, 0.65);
               letter-spacing: -0.03em;
             }
             [data-store-fitness] .fitness-hero .fitness-hero-subtitle {
@@ -128,6 +166,7 @@ export function StoreThemeStyles({ business, settings }) {
             animation-play-state: paused;
           }
           @media (prefers-reduced-motion: reduce) {
+            [data-store-fitness] .fitness-hero .fitness-hero-title,
             [data-store-fitness] .fitness-hero .fitness-hero-glow,
             [data-store-fitness] .fitness-hero .fitness-hero-flare,
             [data-store-fitness] .fitness-hero .fitness-hero-spark,

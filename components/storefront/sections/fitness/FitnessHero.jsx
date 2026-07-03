@@ -115,7 +115,7 @@ function FitnessHeroBackdrop({ accent }) {
 function FitnessAthleteVisual({ brandAccent, heroImageSrc, className, compact = false }) {
   const ringBottom = compact
     ? 'bottom-[8%]'
-    : 'bottom-[14%] sm:bottom-[15%] lg:bottom-[16%]';
+    : 'bottom-[10%] sm:bottom-[12%] lg:bottom-[13%]';
 
   return (
     <div className={cn('relative h-full w-full', className)}>
@@ -124,7 +124,7 @@ function FitnessAthleteVisual({ brandAccent, heroImageSrc, className, compact = 
           'fitness-hero-glow pointer-events-none absolute left-1/2 z-0 aspect-square -translate-x-1/2 rounded-full blur-[48px] motion-reduce:opacity-80',
           compact
             ? 'w-[min(115%,360px)] opacity-90'
-            : 'w-[min(104%,480px)] sm:w-[min(108%,520px)] lg:w-[min(122%,600px)]',
+            : 'w-[min(108%,520px)] sm:w-[min(112%,580px)] lg:w-[min(126%,700px)]',
           ringBottom
         )}
         style={{
@@ -138,7 +138,7 @@ function FitnessAthleteVisual({ brandAccent, heroImageSrc, className, compact = 
           'pointer-events-none absolute left-1/2 z-[1] aspect-square -translate-x-1/2',
           compact
             ? 'w-[min(98%,300px)]'
-            : 'w-[min(102%,460px)] sm:w-[min(112%,500px)] lg:w-[min(128%,580px)]',
+            : 'w-[min(106%,500px)] sm:w-[min(116%,560px)] lg:w-[min(132%,680px)]',
           ringBottom
         )}
       >
@@ -155,7 +155,7 @@ function FitnessAthleteVisual({ brandAccent, heroImageSrc, className, compact = 
       <div
         className={cn(
           'pointer-events-none absolute left-1/2 z-[1] aspect-square -translate-x-1/2',
-          compact ? 'w-[min(82%,240px)]' : 'w-[min(86%,380px)] sm:w-[min(94%,420px)] lg:w-[min(108%,500px)]',
+          compact ? 'w-[min(82%,240px)]' : 'w-[min(90%,420px)] sm:w-[min(98%,470px)] lg:w-[min(112%,580px)]',
           ringBottom
         )}
       >
@@ -191,12 +191,12 @@ function FitnessAthleteVisual({ brandAccent, heroImageSrc, className, compact = 
           className={cn(
             'h-auto w-auto max-w-full object-contain object-bottom',
             compact
-              ? 'max-h-[min(52vw,240px)] -translate-y-0 drop-shadow-[0_16px_48px_rgba(225,29,72,0.55)]'
+              ? 'max-h-[min(62vw,300px)] -translate-y-0 drop-shadow-[0_18px_52px_rgba(225,29,72,0.6)]'
               : cn(
-                  '-translate-y-1 object-contain sm:-translate-y-2 lg:-translate-y-3',
-                  'max-h-[min(44svh,340px)] sm:max-h-[min(46svh,380px)]',
-                  'md:max-h-[min(80svh,660px)] lg:max-h-[min(88svh,740px)]',
-                  'drop-shadow-[0_24px_64px_rgba(225,29,72,0.5)]'
+                  '-translate-y-1 object-contain sm:-translate-y-2 lg:-translate-y-4',
+                  'max-h-[min(50svh,380px)] sm:max-h-[min(56svh,440px)]',
+                  'md:max-h-[min(90svh,760px)] lg:max-h-[min(99svh,920px)] xl:max-h-[min(100svh,1000px)]',
+                  'drop-shadow-[0_28px_72px_rgba(225,29,72,0.55)]'
                 )
           )}
         />
@@ -284,10 +284,10 @@ export function FitnessHero({
             <div className="space-y-2 sm:space-y-2.5">
               <h1
                 className={cn(
-                  'fitness-hero-title store-heading store-heading--inverse font-sans text-balance font-bold tracking-tight text-white',
-                  'text-[clamp(2rem,7.5vw+0.65rem,2.875rem)] leading-[1.04]',
-                  'sm:text-[clamp(2.125rem,4.8vw+0.4rem,3.5rem)] sm:leading-[1.05]',
-                  'xl:text-[clamp(2.5rem,3.5vw+0.5rem,3.75rem)]'
+                  'fitness-hero-title store-heading store-heading--inverse font-sans text-balance font-black tracking-tight text-white',
+                  'text-[clamp(2.5rem,9vw+0.5rem,3.5rem)] leading-[0.98]',
+                  'sm:text-[clamp(3rem,5.6vw+0.4rem,4.5rem)] sm:leading-[1.0]',
+                  'xl:text-[clamp(3.5rem,4vw+0.6rem,5.25rem)]'
                 )}
               >
                 {title}
@@ -301,7 +301,7 @@ export function FitnessHero({
             </div>
 
             {/* Mobile athlete — between headline and actions */}
-            <div className="relative mx-auto h-[min(52vw,260px)] w-full max-w-[340px] shrink-0 lg:hidden">
+            <div className="relative mx-auto h-[min(64vw,320px)] w-full max-w-[380px] shrink-0 lg:hidden">
               <FitnessAthleteVisual
                 brandAccent={brandAccent}
                 heroImageSrc={heroImageSrc}

@@ -153,6 +153,21 @@ export function FitnessHomeSections({
     : null;
   const bookingItems = resolveFitnessBookingItems(settings, storeBase, businessDomain);
 
+  // Keep the desktop programs grid balanced for 4/8 items instead of a lopsided
+  // last row on the hard-coded 3-column layout.
+  const programsGridCols =
+    programs.length % 4 === 0 ? 'lg:grid-cols-4' : 'lg:grid-cols-3';
+
+  // Classification is keyword/category based, so a live catalog can have products
+  // that match no rail. Surface a catch-all grid so real inventory is never hidden.
+  const hasClassifiedRail =
+    supplements.length > 0 ||
+    services.length > 0 ||
+    topPicks.length >= 2 ||
+    deals.length >= 2;
+  const catchAllProducts =
+    !hasClassifiedRail && products.length > 0 ? products.slice(0, 12) : [];
+
   return (
     <>
       {/* Shop by category — from inventory categories or store settings */}
@@ -163,7 +178,7 @@ export function FitnessHomeSections({
             <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-rose-400/90">
               Gym store
             </p>
-            <h2 className="mt-1 text-lg font-semibold text-white sm:text-2xl">Shop supplements & gear</h2>
+            <h2 className="fitness-heading-gradient mt-1 text-lg font-semibold text-white sm:text-2xl">Shop supplements & gear</h2>
           </div>
           {/* Mobile: horizontal snap rail */}
           <div className="fitness-mobile-scroll -mx-4 flex gap-3 overflow-x-auto px-4 pb-1 snap-x snap-mandatory lg:hidden">
@@ -336,7 +351,12 @@ export function FitnessHomeSections({
               )}
             />
 
-            <div className="hidden lg:grid lg:grid-cols-3 lg:gap-8 xl:gap-10">
+            <div
+              className={cn(
+                'hidden lg:grid lg:gap-8 xl:gap-10',
+                programsGridCols
+              )}
+            >
               {programs.map((program) => (
                 <ProgramCard
                   key={program.id}
@@ -382,7 +402,7 @@ export function FitnessHomeSections({
           <div className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-8">
             <div className="mb-5 flex items-end justify-between gap-3 sm:mb-6">
               <div className="min-w-0">
-                <h2 className="text-xl font-semibold text-white sm:text-2xl">{supplementTitle}</h2>
+                <h2 className="fitness-heading-gradient text-xl font-semibold text-white sm:text-2xl">{supplementTitle}</h2>
                 <p className="mt-1 text-sm text-white/50">
                   Protein, recovery, and performance nutrition
                 </p>
@@ -404,13 +424,13 @@ export function FitnessHomeSections({
         </section>
       )}
 
-      {/* Top picks — supplements only */}
+      {/* Meet the coaches — trainer roster */}
       {trainers.length > 0 && (
         <section className="border-t border-white/5 bg-black py-12 sm:py-16">
           <div className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-8">
             <div className="mb-8 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <h2 className="text-xl font-semibold text-white sm:text-2xl">Meet the coaches</h2>
+                <h2 className="fitness-heading-gradient text-xl font-semibold text-white sm:text-2xl">Meet the coaches</h2>
                 <p className="mt-1 text-sm text-white/50">Strength, mobility, HIIT, and nutrition specialists</p>
               </div>
               {tenantMeetingUrl ? (
@@ -490,6 +510,25 @@ export function FitnessHomeSections({
         </section>
       )}
 
+      {/* Catch-all — ensures live products that match no themed rail still appear */}
+      {catchAllProducts.length > 0 && (
+        <section className="border-t border-white/5 bg-black py-10 sm:py-14" id="shop">
+          <div className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-8">
+            <StoreSectionHeader
+              title="Shop the store"
+              subtitle={`Everything from ${displayName}`}
+              href={productsUrl}
+              accent={accent}
+            />
+            <ProductGrid
+              products={catchAllProducts}
+              businessDomain={businessDomain}
+              {...FITNESS_GRID_PROPS}
+            />
+          </div>
+        </section>
+      )}
+
       {/* Booking — bottom of page, before footer */}
       {config.showBookingStrip && bookingItems.length > 0 ? (
         <FitnessBookingStrip
@@ -504,7 +543,7 @@ export function FitnessHomeSections({
       {config.showBenefits && benefits.length > 0 && (
         <section className="border-t border-white/5 bg-black py-12 sm:py-16">
           <div className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-8">
-            <h2 className="text-center text-xl font-semibold text-white sm:text-2xl">Extra Benefits</h2>
+            <h2 className="fitness-heading-gradient text-center text-xl font-semibold text-white sm:text-2xl">Extra Benefits</h2>
             <p className="mx-auto mt-3 max-w-2xl text-center text-sm text-white/60 sm:text-base">
               Effective workouts plus membership perks that keep training stress-free.
             </p>
@@ -541,7 +580,7 @@ function StoreSectionHeader({ title, subtitle, href, accent }) {
   return (
     <div className="mb-5 flex items-end justify-between gap-3">
       <div className="min-w-0">
-        <h2 className="text-xl font-semibold text-white sm:text-2xl">{title}</h2>
+        <h2 className="fitness-heading-gradient text-xl font-semibold text-white sm:text-2xl">{title}</h2>
         {subtitle ? <p className="mt-1 text-sm text-white/50">{subtitle}</p> : null}
       </div>
       {href ? (
