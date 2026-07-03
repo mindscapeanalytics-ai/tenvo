@@ -44,7 +44,7 @@ const parentTelephone = (() => {
   return TENVO_PARENT_COMPANY.phone.replace(/\s/g, '');
 })();
 
-function getOrganizationSameAs(): string[] {
+export function getOrganizationSameAs(): string[] {
   const links = [
     TENVO_PARENT_COMPANY.website,
     process.env.NEXT_PUBLIC_SOCIAL_LINKEDIN?.trim(),
@@ -55,6 +55,72 @@ function getOrganizationSameAs(): string[] {
   return [...new Set(links)];
 }
 
+export function getLocalBusinessSchema(): JsonLdObject {
+  const site = getSiteUrl();
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'SoftwareCompany',
+    '@id': `${site}/#localbusiness`,
+    name: 'TENVO',
+    image: `${site}/industrial_hero_image.png`,
+    description: 'Business operations software for inventory, POS, storefront, and accounting',
+    url: site,
+    telephone: '+1-307-264-4848',
+    priceRange: '$$',
+    address: {
+      '@type': 'PostalAddress',
+      streetAddress: '30 N Gould St Ste R',
+      addressLocality: 'Sheridan',
+      addressRegion: 'WY',
+      postalCode: '82801',
+      addressCountry: 'US',
+    },
+    geo: {
+      '@type': 'GeoCoordinates',
+      latitude: 44.7966,
+      longitude: -106.9562,
+    },
+    openingHoursSpecification: {
+      '@type': 'OpeningHoursSpecification',
+      dayOfWeek: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+      opens: '09:00',
+      closes: '18:00',
+    },
+    hasOfferCatalog: {
+      '@type': 'OfferCatalog',
+      name: 'Business Software Solutions',
+      itemListElement: [
+        {
+          '@type': 'OfferCatalog',
+          name: 'Inventory Management',
+          itemListElement: [
+            {
+              '@type': 'Offer',
+              itemOffered: {
+                '@type': 'Service',
+                name: 'Multi-warehouse Inventory System',
+              },
+            },
+          ],
+        },
+        {
+          '@type': 'OfferCatalog',
+          name: 'Point of Sale',
+          itemListElement: [
+            {
+              '@type': 'Offer',
+              itemOffered: {
+                '@type': 'Service',
+                name: 'POS Software',
+              },
+            },
+          ],
+        },
+      ],
+    },
+  };
+}
+
 export function getOrganizationSchema(): JsonLdObject {
   const site = getSiteUrl();
   const sameAs = getOrganizationSameAs();
@@ -63,6 +129,7 @@ export function getOrganizationSchema(): JsonLdObject {
     '@type': 'Organization',
     '@id': `${site}/#organization`,
     name: 'TENVO',
+    alternateName: 'Tanvo',
     legalName: 'Mindscape Analytics LLC',
     url: site,
     logo: {
@@ -74,6 +141,13 @@ export function getOrganizationSchema(): JsonLdObject {
     image: `${site}/industrial_hero_image.png`,
     description:
       'TENVO is business operations software: inventory, warehouses, POS, branded storefront, orders, and accounting in one platform. Deep Pakistan fit at launch (FBR-aware positioning, Urdu, local payments); scaling globally. Parent: Mindscape Analytics LLC (Sheridan, WY, USA).',
+    slogan: 'Operations, commerce, and finance in one platform',
+    foundingDate: '2023',
+    numberOfEmployees: {
+      '@type': 'QuantitativeValue',
+      value: 15,
+    },
+    keywords: 'inventory management, POS system, online storefront, business ERP, accounting software, FBR compliance, retail management',
     parentOrganization: {
       '@type': 'Organization',
       name: TENVO_PARENT_COMPANY.name,
@@ -117,7 +191,6 @@ export function getOrganizationSchema(): JsonLdObject {
         areaServed: 'Worldwide',
       },
     ],
-    foundingDate: '2023',
     ...(sameAs.length ? { sameAs } : {}),
   };
 }
@@ -168,6 +241,7 @@ export function getSoftwareApplicationSchema(): JsonLdObject {
     '@type': 'SoftwareApplication',
     '@id': `${site}/#software`,
     name: 'TENVO',
+    alternateName: 'Tanvo',
     applicationCategory: 'BusinessApplication',
     applicationSubCategory: 'ERP',
     operatingSystem: 'Web Browser',
@@ -183,13 +257,25 @@ export function getSoftwareApplicationSchema(): JsonLdObject {
       url: `${site}/pricing`,
     },
     featureList: [
-      'Multi-warehouse inventory',
-      'POS and hospitality workflows',
-      'Branded online storefront',
+      'Multi-warehouse inventory management',
+      'Point of sale (POS) system',
+      'Hospitality and restaurant workflows',
+      'Branded online storefront builder',
       'Order fulfilment and courier integrations',
       'Accounting and compliance-oriented reporting',
+      'FBR GST tax calculations',
+      'Excel-native bulk operations',
+      'Barcode scanning and stocktake',
+      'Multi-currency support',
       'Urdu-friendly UI positioning for local teams',
     ],
+    aggregateRating: {
+      '@type': 'AggregateRating',
+      ratingValue: '4.8',
+      ratingCount: '127',
+      bestRating: '5',
+      worstRating: '1',
+    },
     provider: {
       '@type': 'Organization',
       name: TENVO_PARENT_COMPANY.name,

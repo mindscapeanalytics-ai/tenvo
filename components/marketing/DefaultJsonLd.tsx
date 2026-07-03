@@ -1,5 +1,6 @@
 import {
   getOrganizationSchema,
+  getLocalBusinessSchema,
   getSoftwareApplicationSchema,
   getWebSiteSchema,
   type JsonLdObject,
@@ -9,10 +10,11 @@ function jsonLdKey(schema: JsonLdObject, index: number): string {
   return schema['@id'] || schema['@type'] || String(index);
 }
 
-/** Global JSON-LD: Organization + WebSite + SoftwareApplication (every public page). */
+/** Global JSON-LD: Organization + LocalBusiness + WebSite + SoftwareApplication (every public page). */
 export function DefaultJsonLd() {
   const schemas: JsonLdObject[] = [
     getOrganizationSchema(),
+    getLocalBusinessSchema(),
     getWebSiteSchema(),
     getSoftwareApplicationSchema(),
   ];

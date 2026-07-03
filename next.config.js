@@ -8,6 +8,49 @@ const nextConfig = {
       { source: '/favicon.ico', destination: '/tenvo.svg', permanent: false },
     ];
   },
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          {
+            key: 'X-DNS-Prefetch-Control',
+            value: 'on',
+          },
+          {
+            key: 'X-Frame-Options',
+            value: 'SAMEORIGIN',
+          },
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'Referrer-Policy',
+            value: 'origin-when-cross-origin',
+          },
+        ],
+      },
+      {
+        source: '/llms.txt',
+        headers: [
+          {
+            key: 'Content-Type',
+            value: 'text/plain; charset=utf-8',
+          },
+        ],
+      },
+      {
+        source: '/humans.txt',
+        headers: [
+          {
+            key: 'Content-Type',
+            value: 'text/plain; charset=utf-8',
+          },
+        ],
+      },
+    ];
+  },
   images: {
     // Allow Next.js Image optimization with a domain allowlist
     remotePatterns: [
@@ -35,6 +78,8 @@ const nextConfig = {
   turbopack: {
     root: path.resolve(__dirname),
   },
+  compress: true,
+  poweredByHeader: false,
 };
 
 module.exports = nextConfig;

@@ -21,6 +21,21 @@ export const metadata: Metadata = {
     default: 'TENVO: Inventory, POS, storefront, and accounting in one platform',
     template: '%s | TENVO',
   },
+  description: 'Complete business operations platform for inventory management, point of sale, online storefront, and accounting. Start free at tanvo.store - trusted by growing businesses.',
+  keywords: [
+    'business management software',
+    'inventory management system',
+    'POS software',
+    'point of sale system',
+    'online storefront builder',
+    'e-commerce platform',
+    'accounting software',
+    'ERP system',
+    'business operations software',
+    'retail management',
+    'tanvo',
+    'tanvo.store',
+  ],
   manifest: '/manifest.webmanifest',
   icons: {
     icon: [
@@ -29,6 +44,10 @@ export const metadata: Metadata = {
     ],
     shortcut: ['/tenvo.svg'],
     apple: [{ url: '/tenvo.svg', type: 'image/svg+xml' }],
+  },
+  other: {
+    'msapplication-TileColor': '#0f766e',
+    'theme-color': '#0f766e',
   },
 }
 
