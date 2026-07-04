@@ -924,7 +924,7 @@ export function StoreHeader({ business, categories, settings }) {
 
       {marketplaceNav && showServiceStrip && (
         <div className="hidden md:block border-b border-neutral-100 bg-white">
-          <div className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-8 py-2">
+          <div className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-8 py-1.5">
             <nav
               className="flex flex-wrap items-center justify-center gap-x-5 gap-y-1.5 text-[11px] sm:text-xs font-semibold text-neutral-600"
               aria-label="Motoring services"

@@ -46,13 +46,14 @@ export function FashionCircleShowcase({
   variant = 'muted',
   animate = true,
   accent = '#1c1917',
+  manualScroll = false,
 }) {
   const trackRef = useRef(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
   const [overflowing, setOverflowing] = useState(circles.length > 5);
 
-  const useMarquee = animate && circles.length >= 4;
+  const useMarquee = animate && !manualScroll && circles.length >= 4;
   const fadeFrom = variant === 'muted' ? 'muted' : 'white';
 
   const updateScroll = useCallback(() => {
@@ -128,13 +129,15 @@ export function FashionCircleShowcase({
               ref={trackRef}
               className={cn(
                 'flex gap-5 pb-1 sm:gap-8',
-                'overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
+                'overflow-x-auto snap-x snap-mandatory [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
                 !overflowing && 'justify-center',
-                animate && 'sf-stagger'
+                animate && !manualScroll && 'sf-stagger'
               )}
             >
               {circles.map((item) => (
-                <CircleTile key={item.id} item={item} accent={accent} />
+                <div key={item.id} className="snap-start">
+                  <CircleTile item={item} accent={accent} />
+                </div>
               ))}
             </div>
           )}

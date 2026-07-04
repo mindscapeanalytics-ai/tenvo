@@ -58,6 +58,7 @@ export function FashionDepartmentSections({
             showDivider={!editorialSpotlight}
             variant="white"
             animate={animations}
+            manualScroll
             accent={accent}
           />
         </StoreReveal>
@@ -72,6 +73,7 @@ export function FashionDepartmentSections({
             showDivider
             variant="muted"
             animate={animations}
+            manualScroll
             accent={accent}
           />
         </StoreReveal>

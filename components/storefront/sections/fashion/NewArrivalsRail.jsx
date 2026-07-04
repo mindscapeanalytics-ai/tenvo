@@ -15,6 +15,8 @@ import { cn } from '@/lib/utils';
 import { toast } from 'react-hot-toast';
 import {
   STORE_PRODUCT_RAIL_ITEM_CLASS,
+  STORE_PRODUCT_RAIL_MARQUEE_SLIDE_CLASS,
+  STORE_PRODUCT_RAIL_TRACK_CLASS,
   ensureRailProducts,
   resolveRailProductId,
 } from '@/lib/utils/storefrontProductRail';
@@ -87,18 +89,25 @@ function NewArrivalCard({ product, businessDomain, businessCategory, currency, v
   const onSale = discount > 0;
 
   return (
-    <article data-new-arrival-card className={STORE_PRODUCT_RAIL_ITEM_CLASS}>
-      <Link href={href} className="group relative block">
-        <div className="relative aspect-[3/4] overflow-hidden bg-stone-100">
+    <article
+      data-new-arrival-card
+      className={cn(STORE_PRODUCT_RAIL_ITEM_CLASS, 'flex h-full w-full flex-col')}
+    >
+      <Link href={href} className="group relative block w-full">
+        <div className="relative aspect-[3/4] w-full overflow-hidden bg-stone-100">
           {image ? (
             <SmartProductImage
               src={image}
               alt={product.name}
               fill
-              className="object-cover transition duration-500 group-hover:scale-[1.02]"
-              sizes="180px"
+              className="object-cover object-center transition duration-500 group-hover:scale-[1.02]"
+              sizes="210px"
             />
-          ) : null}
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center bg-stone-100 text-stone-300">
+              <ShoppingBag className="h-8 w-8" />
+            </div>
+          )}
           {onSale ? (
             <span className="absolute left-2 top-2 z-10 rounded-sm bg-rose-600 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow-sm">
               -{discount}%
@@ -111,20 +120,22 @@ function NewArrivalCard({ product, businessDomain, businessCategory, currency, v
           <QuickAddButton product={product} businessDomain={businessDomain} />
         </div>
       </Link>
-      <Link href={href} className="mt-2 block">
-        <p className="line-clamp-2 text-xs text-stone-800 underline-offset-2 hover:underline sm:text-sm">
-          {product.name}
-        </p>
-      </Link>
-      <div className="mt-1 flex items-baseline gap-2">
-        <p className={cn('text-sm font-bold', onSale ? 'text-rose-600' : 'text-stone-900')}>
-          {formatCurrency(product.price, currency)}
-        </p>
-        {onSale ? (
-          <p className="text-xs text-stone-400 line-through">
-            {formatCurrency(product.compare_price, currency)}
+      <div className="mt-2 flex flex-1 flex-col">
+        <Link href={href} className="block flex-1">
+          <p className="line-clamp-2 min-h-[2.5rem] text-xs leading-snug text-stone-800 underline-offset-2 hover:underline sm:min-h-[2.75rem] sm:text-sm">
+            {product.name}
           </p>
-        ) : null}
+        </Link>
+        <div className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+          <p className={cn('text-sm font-bold tabular-nums', onSale ? 'text-rose-600' : 'text-stone-900')}>
+            {formatCurrency(product.price, currency)}
+          </p>
+          {onSale ? (
+            <p className="text-xs tabular-nums text-stone-400 line-through">
+              {formatCurrency(product.compare_price, currency)}
+            </p>
+          ) : null}
+        </div>
       </div>
     </article>
   );
@@ -143,6 +154,7 @@ export function NewArrivalsRail({
   animate = true,
   variant = 'default',
   accent = '#1c1917',
+  reverseMarquee = false,
 }) {
   const trackRef = useRef(null);
   const { currency, business } = useStorefront();
@@ -155,6 +167,7 @@ export function NewArrivalsRail({
   );
 
   const useMarquee = animate && railProducts.length >= 4;
+  const marqueeReverse = reverseMarquee || variant === 'offers';
 
   const updateScroll = useCallback(() => {
     const el = trackRef.current;
@@ -229,20 +242,17 @@ export function NewArrivalsRail({
               enabled={animate}
               fadeFrom="white"
               durationSec={44}
+              reverse={marqueeReverse}
+              slideClassName={STORE_PRODUCT_RAIL_MARQUEE_SLIDE_CLASS}
               gapClassName="gap-3 pr-3 sm:gap-4 sm:pr-4"
               renderItem={(product) => renderCard(product)}
             />
           ) : (
-            <div
-              ref={trackRef}
-              className={cn(
-                'flex gap-3 overflow-x-auto pb-1 sm:gap-4',
-                '[-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
-                animate && 'sf-stagger'
-              )}
-            >
+            <div ref={trackRef} className={STORE_PRODUCT_RAIL_TRACK_CLASS}>
               {railProducts.map((product) => (
-                <div key={resolveRailProductId(product)}>{renderCard(product)}</div>
+                <div key={resolveRailProductId(product)} className={STORE_PRODUCT_RAIL_ITEM_CLASS}>
+                  {renderCard(product)}
+                </div>
               ))}
             </div>
           )}

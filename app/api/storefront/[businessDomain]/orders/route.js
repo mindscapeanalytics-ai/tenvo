@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
-import { generateOrderNumber } from '@/lib/utils/order';
+import { generateOrderNumber, isStorefrontOrderNumberConflict } from '@/lib/utils/order';
 import { sendOrderConfirmationEmail, sendNewOrderMerchantEmail } from '@/lib/email/resend';
 import { resolveStorefrontBusiness } from '@/lib/tenancy/resolveStorefrontBusiness';
 import { lookupPublicStorefrontOrders } from '@/lib/storefront/publicOrderLookup';
@@ -687,6 +687,18 @@ export async function POST(request, { params }) {
   } catch (error) {
     await client.query('ROLLBACK');
     console.error('[Create Order] Error:', error);
+
+    if (isStorefrontOrderNumberConflict(error)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            'Checkout is busy right now. Please wait a moment and try again — your cart is still saved.',
+          retryable: true,
+        },
+        { status: 409 }
+      );
+    }
 
     return NextResponse.json(
       {

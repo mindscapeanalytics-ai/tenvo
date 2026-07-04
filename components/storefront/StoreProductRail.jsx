@@ -29,6 +29,7 @@ export function StoreProductRail({
   id,
   minItems = 6,
   maxItems = 12,
+  accentColor,
 }) {
   const trackRef = useRef(null);
   const [canLeft, setCanLeft] = useState(false);
@@ -77,7 +78,14 @@ export function StoreProductRail({
           </div>
           <div className="flex shrink-0 items-center gap-2">
             {href ? (
-              <Link href={href} className="mr-2 hidden items-center gap-1 text-sm font-semibold text-emerald-700 sm:inline-flex">
+              <Link
+                href={href}
+                className={cn(
+                  'mr-2 hidden items-center gap-1 text-sm font-semibold sm:inline-flex',
+                  !accentColor && 'text-emerald-700'
+                )}
+                style={accentColor ? { color: accentColor } : undefined}
+              >
                 {linkLabel}
                 <ArrowRight className="h-4 w-4" />
               </Link>

@@ -34,8 +34,10 @@ import { isRestaurantElevatedStore } from '@/lib/storefront/restaurantStorefront
 import { isPharmacyElevatedStore } from '@/lib/storefront/pharmacyStorefront';
 import { isFurnitureElevatedStore } from '@/lib/storefront/furnitureStorefront';
 import { isFitnessElevatedStore } from '@/lib/storefront/fitnessStorefront';
+import { isSupermarketElevatedStore } from '@/lib/storefront/supermarketStorefront';
 import { isFashionEditorialStore } from '@/lib/storefront/fashionEditorial';
 import { HeroCarouselSlidesEditor } from '@/components/storefront/admin/HeroCarouselSlidesEditor';
+import { SupermarketCatalogEditor } from '@/components/storefront/admin/SupermarketCatalogEditor';
 import { getDefaultHeroSlidesTemplate } from '@/lib/storefront/heroPresets';
 import { uploadOptimizedImage } from '@/lib/utils/optimizeImageClient';
 import { canConfigureTenantMeetingUrl, normalizeTenantMeetingUrl } from '@/lib/storefront/storefrontBooking';
@@ -233,6 +235,23 @@ export function StoreSettingsManager({ business, category }) {
       membershipSectionTitle: '',
       membershipSectionSubtitle: '',
     },
+    supermarket: {
+      showAisleCarousel: true,
+      showFreshRail: true,
+      showDealsRail: true,
+      showTopSellersRail: true,
+      showBrandsRow: true,
+      showTrustStrip: true,
+      showPromoBanners: true,
+      showDeliveryBanner: true,
+      showWeeklyEssentials: false,
+      locationLabel: 'Deliver to',
+      defaultLocation: '',
+      searchPlaceholder: '',
+      featuredRailTitle: '',
+      dealsRailTitle: '',
+      freshRailTitle: '',
+    },
     booking: {
       meetingUrl: '',
     },
@@ -262,6 +281,7 @@ export function StoreSettingsManager({ business, category }) {
   const pharmacyStore = isPharmacyElevatedStore(category || business?.category);
   const furnitureStore = isFurnitureElevatedStore(category || business?.category);
   const fitnessStore = isFitnessElevatedStore(category || business?.category);
+  const supermarketStore = isSupermarketElevatedStore(category || business?.category);
   const fashionStore = isFashionEditorialStore(category || business?.category);
   const defaultHeroSlides = useMemo(() => {
     const domain = settings.storeDomain || business?.domain || 'preview';
@@ -352,6 +372,11 @@ export function StoreSettingsManager({ business, category }) {
     setSettings((prev) => ({
       ...prev,
       fitness: { ...(prev.fitness || {}), [key]: val },
+    }));
+  const setSupermarket = (key, val) =>
+    setSettings((prev) => ({
+      ...prev,
+      supermarket: { ...(prev.supermarket || {}), [key]: val },
     }));
   const setBooking = (key, val) =>
     setSettings((prev) => ({
@@ -1167,6 +1192,27 @@ export function StoreSettingsManager({ business, category }) {
             </Card>
           ) : null}
 
+
+          {supermarketStore ? (
+            <Card>
+              <CardHeader className="pb-4">
+                <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                  <Megaphone className="w-4 h-4" /> Supermarket storefront
+                </CardTitle>
+                <CardDescription>
+                  Manage every homepage section: categories, brands, banners, product rails, trust
+                  bars, and header links. Hero carousel slides are under Branding.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <SupermarketCatalogEditor
+                  supermarket={settings.supermarket || {}}
+                  businessId={business?.id}
+                  onChange={(next) => setSettings((prev) => ({ ...prev, supermarket: next }))}
+                />
+              </CardContent>
+            </Card>
+          ) : null}
 
           {pharmacyStore ? (
             <Card>

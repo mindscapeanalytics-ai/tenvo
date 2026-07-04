@@ -19,6 +19,13 @@ import { isAutoDealershipStore, getDealershipFooterColumns } from '@/lib/storefr
 import { isAutoMarketplaceStore, getMarketplaceFooterColumns } from '@/lib/storefront/autoMarketplace';
 import { isPharmacyElevatedStore, getPharmacyFooterColumns, formatPharmacyStoreName } from '@/lib/storefront/pharmacyStorefront';
 import { isFitnessElevatedStore, getFitnessFooterColumns, formatFitnessStoreName } from '@/lib/storefront/fitnessStorefront';
+import {
+  isSupermarketElevatedStore,
+  getSupermarketFooterColumns,
+  formatSupermarketStoreName,
+  getSupermarketConfig,
+} from '@/lib/storefront/supermarketStorefront';
+import { SupermarketFooterTrustStrip } from '@/components/storefront/supermarket/SupermarketFooterTrustStrip';
 import { getTenantMeetingUrl, shouldOfferTenantMeetingLink } from '@/lib/storefront/storefrontBooking';
 import { resolveStorefrontLogo } from '@/lib/storefront/resolveStorefrontLogo';
 
@@ -80,6 +87,8 @@ export function StoreFooter({ business, settings }) {
   const marketplaceFooter = isAutoMarketplaceStore(business?.category);
   const pharmacyFooter = isPharmacyElevatedStore(business?.category);
   const fitnessFooter = isFitnessElevatedStore(business?.category);
+  const supermarketFooter = isSupermarketElevatedStore(business?.category);
+  const supermarketConfig = supermarketFooter ? getSupermarketConfig(settings, businessDomain, business?.category) : null;
   const fitnessMeetingUrl =
     fitnessFooter && shouldOfferTenantMeetingLink(business, business?.category, settings)
       ? getTenantMeetingUrl(business, settings)
@@ -96,7 +105,10 @@ export function StoreFooter({ business, settings }) {
   const fitnessColumns = fitnessFooter
     ? getFitnessFooterColumns(`/store/${businessDomain}`, categories || [])
     : [];
-  const darkPortalFooter = dealershipFooter || marketplaceFooter || fitnessFooter;
+  const supermarketColumns = supermarketFooter
+    ? getSupermarketFooterColumns(`/store/${businessDomain}`)
+    : [];
+  const darkPortalFooter = dealershipFooter || marketplaceFooter || fitnessFooter || supermarketFooter;
   // Generic trust badges (Fast delivery, secure payment, etc.) removed from all storefront footers.
   const skipFooterTrustStrip = true;
   const portalColumns = dealershipFooter
@@ -105,12 +117,16 @@ export function StoreFooter({ business, settings }) {
       ? marketplaceColumns
       : fitnessFooter
         ? fitnessColumns
-        : pharmacyColumns;
+        : supermarketFooter
+          ? supermarketColumns
+          : pharmacyColumns;
   const displayStoreName = pharmacyFooter
     ? formatPharmacyStoreName(storeName)
     : fitnessFooter
       ? formatFitnessStoreName(storeName)
-      : storeName;
+      : supermarketFooter
+        ? formatSupermarketStoreName(storeName)
+        : storeName;
   const storeLogoUrl = resolveStorefrontLogo(business, settings);
 
   const handleNewsletter = async (e) => {
@@ -173,11 +189,15 @@ export function StoreFooter({ business, settings }) {
       className={cn(
         'pb-[calc(3.5rem+env(safe-area-inset-bottom))] lg:pb-0',
         fitnessFooter && 'border-t border-white/10 bg-black text-neutral-300',
-        darkPortalFooter && !fitnessFooter && 'border-t border-neutral-800 bg-neutral-950 text-neutral-300',
-        pharmacyFooter && !fitnessFooter && 'border-t border-emerald-100 bg-white text-slate-600',
-        !darkPortalFooter && !pharmacyFooter && !fitnessFooter && 'border-t border-[var(--store-footer-border)] bg-[var(--store-footer-bg)] text-slate-600'
+        supermarketFooter && 'border-t border-slate-800 bg-slate-900 text-slate-300',
+        darkPortalFooter && !fitnessFooter && !supermarketFooter && 'border-t border-neutral-800 bg-neutral-950 text-neutral-300',
+        pharmacyFooter && !fitnessFooter && !supermarketFooter && 'border-t border-emerald-100 bg-white text-slate-600',
+        !darkPortalFooter && !pharmacyFooter && !fitnessFooter && !supermarketFooter && 'border-t border-[var(--store-footer-border)] bg-[var(--store-footer-bg)] text-slate-600'
       )}
     >
+      {supermarketFooter && supermarketConfig?.showFooterTrustStrip !== false ? (
+        <SupermarketFooterTrustStrip settings={settings} accent={accent} className="border-slate-800 bg-white" />
+      ) : null}
       {fitnessFooter ? (
         <div className="border-b border-white/10 bg-black">
           <div className="mx-auto max-w-[1400px] px-4 py-10 sm:px-6 sm:py-12 lg:px-8">
@@ -449,8 +469,21 @@ export function StoreFooter({ business, settings }) {
 
           {(darkPortalFooter || pharmacyFooter) ? (
             portalColumns.map((col) => (
-              <div key={col.title} className={cn('self-start', pharmacyFooter ? 'col-span-1 lg:col-span-2' : fitnessFooter ? 'col-span-1 lg:col-span-2' : 'lg:col-span-2')}>
-                <FooterLinkColumn title={col.title} links={col.links} dark={darkPortalFooter} compact={pharmacyFooter || fitnessFooter} />
+              <div
+                key={col.title}
+                className={cn(
+                  'self-start',
+                  pharmacyFooter || fitnessFooter || supermarketFooter
+                    ? 'col-span-1 lg:col-span-2'
+                    : 'lg:col-span-2'
+                )}
+              >
+                <FooterLinkColumn
+                  title={col.title}
+                  links={col.links}
+                  dark={darkPortalFooter}
+                  compact={pharmacyFooter || fitnessFooter || supermarketFooter}
+                />
               </div>
             ))
           ) : (
@@ -472,7 +505,7 @@ export function StoreFooter({ business, settings }) {
           ) : null}
 
           {/* Newsletter, dealership & pharmacy portal includes signup; marketplace omits */}
-          {(!darkPortalFooter || dealershipFooter || pharmacyFooter) && !fitnessFooter ? (
+          {(!darkPortalFooter || dealershipFooter || pharmacyFooter || supermarketFooter) && !fitnessFooter ? (
           <div className={cn('col-span-2', pharmacyFooter ? 'lg:col-span-3' : 'lg:col-span-2')}>
             <h4 className={cn(
               'mb-2 text-xs font-semibold uppercase tracking-wider',

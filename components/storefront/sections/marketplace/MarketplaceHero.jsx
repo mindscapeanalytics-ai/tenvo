@@ -21,8 +21,12 @@ const SEARCH_TABS = [
   { id: 'all', label: 'All', condition: '' },
 ];
 
+/** Dark gradient overlay — keeps hero copy readable on any photo. */
+const HERO_OVERLAY =
+  'bg-gradient-to-t from-black/95 via-black/60 to-black/35';
+
 /**
- * Light-theme marketplace hero with centered copy and floating search widget.
+ * Marketplace hero — dark cinematic slides, centered copy, floating search widget.
  */
 export function MarketplaceHero({ preset, accent, accentDark, settings = {} }) {
   const router = useRouter();
@@ -48,7 +52,6 @@ export function MarketplaceHero({ preset, accent, accentDark, settings = {} }) {
   }, [count, next]);
 
   const slide = slides[index] || slides[0];
-  const cinematicSlide = slide?.cinematic || index === 1;
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -64,11 +67,9 @@ export function MarketplaceHero({ preset, accent, accentDark, settings = {} }) {
   };
 
   return (
-    <section className="store-hero relative border-b border-neutral-100 bg-neutral-50">
-      <div className="relative min-h-[300px] sm:min-h-[360px] lg:min-h-[400px]">
-        {slides.map((s, i) => {
-          const cinematic = s.cinematic || i === 1;
-          return (
+    <section className="store-hero relative border-b border-neutral-800 bg-neutral-950">
+      <div className="relative min-h-[340px] sm:min-h-[400px] lg:min-h-[440px]">
+        {slides.map((s, i) => (
           <div
             key={`${s.image}-${i}`}
             className={cn(
@@ -80,54 +81,32 @@ export function MarketplaceHero({ preset, accent, accentDark, settings = {} }) {
               src={s.image}
               alt=""
               fill
-              className="object-cover"
+              className="object-cover brightness-[0.55] saturate-[1.05]"
               priority={i === 0}
               fallbackSrc={resolveAutomotiveTileImage(s.title || String(i))}
             />
-            <div
-              className={cn(
-                'absolute inset-0',
-                cinematic
-                  ? 'bg-gradient-to-t from-black/85 via-black/50 to-black/25'
-                  : 'bg-gradient-to-b from-white/92 via-white/78 to-white/95'
-              )}
-            />
+            <div className={cn('absolute inset-0', HERO_OVERLAY)} aria-hidden />
           </div>
-        );})}
+        ))}
 
-        <div className="relative z-10 mx-auto flex h-full min-h-[inherit] max-w-[1400px] flex-col items-center justify-center px-4 py-14 text-center sm:px-6 lg:px-8 lg:py-16">
+        <div className="relative z-10 mx-auto flex h-full min-h-[inherit] max-w-[1400px] flex-col items-center justify-center px-4 py-10 text-center sm:px-6 sm:py-12 lg:px-8 lg:py-14">
           {slide ? (
-            <div className="max-w-2xl">
-              <p
-                className={cn(
-                  'mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] sm:text-xs',
-                  cinematicSlide ? 'text-white/80' : 'text-neutral-500'
-                )}
-              >
+            <div className="max-w-3xl">
+              <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-white/75 sm:text-xs">
                 {slide.eyebrow}
               </p>
-              <h1
-                className={cn(
-                  'store-heading text-2xl font-semibold leading-tight sm:text-4xl lg:text-5xl',
-                  cinematicSlide ? 'text-white' : 'text-neutral-900'
-                )}
-              >
+              <h1 className="store-heading text-2xl font-semibold leading-tight text-white drop-shadow-[0_2px_12px_rgba(0,0,0,0.45)] sm:text-4xl lg:text-[2.75rem] lg:leading-[1.12]">
                 {slide.title}
               </h1>
               {slide.subtitle ? (
-                <p
-                  className={cn(
-                    'store-hero-subtitle mx-auto mt-3 max-w-xl text-sm sm:text-base',
-                    cinematicSlide ? 'text-white/85' : 'text-neutral-600'
-                  )}
-                >
+                <p className="store-hero-subtitle mx-auto mt-3 max-w-2xl text-sm leading-relaxed text-white/85 sm:text-base">
                   {slide.subtitle}
                 </p>
               ) : null}
               <button
                 type="button"
                 onClick={() => router.push(slide.ctaHref || productsUrl)}
-                className="mt-6 inline-flex items-center gap-2 rounded-full px-8 py-3 text-sm font-semibold text-white shadow-md transition hover:opacity-95 hover:shadow-lg"
+                className="mt-5 inline-flex items-center gap-2 rounded-full px-8 py-3 text-sm font-semibold text-white shadow-lg shadow-black/30 transition hover:scale-[1.02] hover:opacity-95 sm:mt-6"
                 style={{ backgroundColor: accent || '#E30613' }}
               >
                 {slide.ctaLabel || 'Explore deals'}
@@ -137,7 +116,7 @@ export function MarketplaceHero({ preset, accent, accentDark, settings = {} }) {
           ) : null}
 
           {count > 1 ? (
-            <div className="mt-8 flex justify-center gap-2">
+            <div className="mt-6 flex justify-center gap-2 sm:mt-8">
               {slides.map((_, i) => (
                 <button
                   key={i}
@@ -145,9 +124,7 @@ export function MarketplaceHero({ preset, accent, accentDark, settings = {} }) {
                   onClick={() => setIndex(i)}
                   className={cn(
                     'h-1.5 rounded-full transition-all',
-                    i === index
-                      ? cn('w-8', cinematicSlide ? 'bg-white' : 'bg-neutral-900')
-                      : cn('w-4', cinematicSlide ? 'bg-white/40 hover:bg-white/60' : 'bg-neutral-300 hover:bg-neutral-400')
+                    i === index ? 'w-8 bg-white' : 'w-4 bg-white/35 hover:bg-white/55'
                   )}
                   aria-label={`Slide ${i + 1}`}
                 />
@@ -158,17 +135,17 @@ export function MarketplaceHero({ preset, accent, accentDark, settings = {} }) {
       </div>
 
       {cfg.coeTicker?.value ? (
-        <div className="border-t border-neutral-200 bg-white px-4 py-2 text-center text-xs text-neutral-600 sm:text-sm">
-          <span className="font-semibold text-neutral-800">{cfg.coeTicker.label}:</span>{' '}
-          <span className="font-semibold tabular-nums text-neutral-900">{cfg.coeTicker.value}</span>{' '}
-          <span className="text-emerald-600">{cfg.coeTicker.change}</span>
+        <div className="relative z-10 border-t border-white/10 bg-neutral-950/90 px-4 py-2.5 text-center text-xs text-white/80 backdrop-blur-sm sm:text-sm">
+          <span className="font-semibold text-white">{cfg.coeTicker.label}:</span>{' '}
+          <span className="font-semibold tabular-nums text-white">{cfg.coeTicker.value}</span>{' '}
+          <span className="text-emerald-400">{cfg.coeTicker.change}</span>
         </div>
       ) : null}
 
-      <div className="relative z-20 mx-auto max-w-[1400px] px-4 pb-8 sm:px-6 lg:-mt-6 lg:px-8">
+      <div className="relative z-20 mx-auto max-w-[1400px] px-4 pb-6 sm:px-6 lg:-mt-8 lg:px-8 lg:pb-8">
         <form
           onSubmit={handleSearch}
-          className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-lg shadow-neutral-200/60 sm:p-5"
+          className="rounded-2xl border border-neutral-200/80 bg-white p-4 shadow-xl shadow-black/10 sm:p-5"
         >
           <div className="mb-4 flex flex-wrap justify-center gap-1 border-b border-neutral-100 pb-3 sm:justify-start">
             {SEARCH_TABS.map((tab) => (

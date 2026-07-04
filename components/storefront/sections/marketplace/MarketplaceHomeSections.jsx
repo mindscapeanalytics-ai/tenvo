@@ -5,6 +5,7 @@ import Link from 'next/link';
 import {
   ChevronLeft, ChevronRight, ArrowRight, Shield, Percent, Calendar,
   Gauge, Circle, Sparkles, Battery, Droplet, MessageSquare, Newspaper,
+  Star, Truck, Clock,
 } from 'lucide-react';
 import { SmartProductImage } from '@/components/storefront/SmartProductImage';
 import { ProductGrid } from '@/components/storefront/ProductGrid';
@@ -229,8 +230,31 @@ export function MarketplaceHomeSections({
           accent={accent}
           secondary={secondary}
           overlap
-          className="-mt-10 sm:-mt-14"
+          className="-mt-4 sm:-mt-6"
         />
+      ) : null}
+
+      {cfg.showTrustStrip !== false ? (
+        <section className="border-b border-neutral-100 bg-white">
+          <div className="mx-auto flex max-w-[1400px] flex-wrap items-center justify-center gap-x-5 gap-y-2 px-4 py-3 text-[11px] text-neutral-600 sm:gap-x-8 sm:text-xs">
+            <span className="inline-flex items-center gap-1.5">
+              <Clock className="h-3.5 w-3.5 text-neutral-400" aria-hidden />
+              Mon – Sun, 8 am – 10 pm
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <Shield className="h-3.5 w-3.5" style={{ color: accent }} aria-hidden />
+              Verified listings
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <Truck className="h-3.5 w-3.5 text-neutral-400" aria-hidden />
+              Nationwide delivery
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" aria-hidden />
+              4.8+ buyer ratings
+            </span>
+          </div>
+        </section>
       ) : null}
 
       {/* Explore Car Brands */}

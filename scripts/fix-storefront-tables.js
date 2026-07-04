@@ -39,6 +39,16 @@ const STMTS = [
     updated_at        TIMESTAMPTZ DEFAULT NOW()
   )`,
   `CREATE UNIQUE INDEX IF NOT EXISTS idx_storefront_orders_number ON storefront_orders(business_id, order_number)`,
+  // Drop legacy global unique on order_number (cross-tenant collisions)
+  `DO $$ BEGIN
+    IF EXISTS (
+      SELECT 1 FROM pg_constraint
+      WHERE conname = 'storefront_orders_order_number_key'
+        AND conrelid = 'storefront_orders'::regclass
+    ) THEN
+      ALTER TABLE storefront_orders DROP CONSTRAINT storefront_orders_order_number_key;
+    END IF;
+  END $$`,
   `CREATE INDEX IF NOT EXISTS idx_storefront_orders_business    ON storefront_orders(business_id)`,
   `CREATE INDEX IF NOT EXISTS idx_storefront_orders_email       ON storefront_orders(customer_email)`,
   `CREATE INDEX IF NOT EXISTS idx_storefront_orders_status      ON storefront_orders(business_id, status)`,
