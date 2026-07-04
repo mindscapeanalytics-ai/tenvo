@@ -932,41 +932,99 @@ export default function Home() {
           </div>
 
           <ScrollReveal direction="up" threshold={0.1}>
-            <div className="bg-white border border-neutral-200/80 rounded-[2.5rem] p-6 lg:p-10 overflow-x-auto shadow-sm">
-              <h4 className="font-semibold text-neutral-900 text-xl mb-2">Operating model comparison</h4>
-              <p className="text-xs text-neutral-500 font-semibold mb-6 max-w-2xl">
+            <div className="overflow-hidden rounded-2xl border border-neutral-200/80 bg-white p-4 shadow-sm sm:rounded-3xl sm:p-6 lg:rounded-[2.5rem] lg:p-10">
+              <h4 className="mb-1 text-lg font-semibold text-neutral-900 sm:text-xl">Operating model comparison</h4>
+              <p className="mb-4 max-w-2xl text-[11px] font-semibold text-neutral-500 sm:mb-6 sm:text-xs">
                 For a buyer-style view versus typical storefront-first or multi-app suites, see{' '}
-                <Link href="/why-tenvo" className="text-brand-primary font-semibold hover:underline">Why TENVO</Link>.
+                <Link href="/why-tenvo" className="font-semibold text-brand-primary hover:underline">Why TENVO</Link>.
               </p>
-              <table className="w-full text-left border-collapse min-w-[700px]">
-                <thead>
-                  <tr className="border-b border-neutral-200 font-semibold text-[10px] uppercase tracking-wider text-neutral-400">
-                    <th className="p-4">Key Capabilities</th>
-                    <th className="p-4">Traditional ERPs</th>
-                    <th className="p-4">Spreadsheets</th>
-                    <th className="p-4 text-brand-primary">TENVO Inventory Engine</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {[
-                    ['Branded store + POS + warehouse in one rhythm', 'Heavy customization', 'Manual links', 'Designed together'],
-                    ['Web orders in the same queue as counter & B2B', 'Often separate modules', 'Fragmented tabs', 'Single order hub'],
-                    ['Implementation Time', '6 - 12 Months', 'Manual Setup (Days)', 'Go live in 4 Days'],
-                    ['Excel Paste & Import', 'Partial / Strict formatting', 'Native', 'Native (with cell validation)'],
-                    ['Batch & Expiry Warning', 'Complex add-on module', 'Manual tracking / Missing', 'Built-in (with expiry alerts)'],
-                    ['Pakistan tax setup', 'Custom expensive wrappers', 'Impossible', 'Compliant & Automatic'],
-                    ['Multichannel Sell Sync', 'Rigid API integrations', 'Manual entry drift', 'Daraz & Shopify native API'],
-                    ['Upfront Licensing Cost', 'PKR 500,000+', 'PKR 0', 'Free Trial, scale from PKR 4,500/mo'],
-                  ].map(([feature, erp, sheet, tenvo], i) => (
-                    <tr key={i} className="border-b border-neutral-100 text-xs font-semibold text-neutral-700 hover:bg-neutral-50/80 transition-colors duration-150">
-                      <td className="p-4 font-bold text-neutral-900">{feature}</td>
-                      <td className="p-4 text-neutral-400">{erp}</td>
-                      <td className="p-4 text-neutral-400">{sheet}</td>
-                      <td className="p-4 text-brand-primary font-bold">{tenvo}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+
+              {(() => {
+                const operatingModelRows = [
+                  ['Branded store + POS + warehouse in one rhythm', 'Heavy customization', 'Manual links', 'Designed together'],
+                  ['Web orders in the same queue as counter & B2B', 'Often separate modules', 'Fragmented tabs', 'Single order hub'],
+                  ['Implementation Time', '6 - 12 Months', 'Manual Setup (Days)', 'Go live in 4 Days'],
+                  ['Excel Paste & Import', 'Partial / Strict formatting', 'Native', 'Native (with cell validation)'],
+                  ['Batch & Expiry Warning', 'Complex add-on module', 'Manual tracking / Missing', 'Built-in (with expiry alerts)'],
+                  ['Pakistan tax setup', 'Custom expensive wrappers', 'Impossible', 'Compliant & Automatic'],
+                  ['Multichannel Sell Sync', 'Rigid API integrations', 'Manual entry drift', 'Daraz & Shopify native API'],
+                  ['Upfront Licensing Cost', 'PKR 500,000+', 'PKR 0', 'Free Trial, scale from PKR 4,500/mo'],
+                ];
+
+                return (
+                  <>
+                    {/* Mobile — stacked cards (no horizontal scroll) */}
+                    <div className="divide-y divide-neutral-100 lg:hidden">
+                      {operatingModelRows.map(([feature, erp, sheet, tenvo]) => (
+                        <div key={feature} className="space-y-2.5 py-4 first:pt-0 last:pb-0">
+                          <p className="text-sm font-bold leading-snug text-neutral-900">{feature}</p>
+                          <div className="space-y-2">
+                            {[
+                              { label: 'Traditional ERPs', value: erp, highlight: false },
+                              { label: 'Spreadsheets', value: sheet, highlight: false },
+                              { label: 'TENVO Inventory Engine', value: tenvo, highlight: true },
+                            ].map((col) => (
+                              <div
+                                key={col.label}
+                                className={cn(
+                                  'rounded-xl border px-3 py-2.5',
+                                  col.highlight
+                                    ? 'border-brand-200 bg-brand-50/70'
+                                    : 'border-neutral-100 bg-neutral-50/60'
+                                )}
+                              >
+                                <p
+                                  className={cn(
+                                    'text-[10px] font-semibold uppercase tracking-wide',
+                                    col.highlight ? 'text-brand-primary' : 'text-neutral-400'
+                                  )}
+                                >
+                                  {col.label}
+                                </p>
+                                <p
+                                  className={cn(
+                                    'mt-0.5 text-xs font-semibold leading-snug',
+                                    col.highlight ? 'text-brand-primary' : 'text-neutral-600'
+                                  )}
+                                >
+                                  {col.value}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Desktop — comparison table */}
+                    <div className="hidden overflow-x-auto lg:block">
+                      <table className="w-full min-w-[700px] border-collapse text-left">
+                        <thead>
+                          <tr className="border-b border-neutral-200 text-[10px] font-semibold uppercase tracking-wider text-neutral-400">
+                            <th className="p-4">Key Capabilities</th>
+                            <th className="p-4">Traditional ERPs</th>
+                            <th className="p-4">Spreadsheets</th>
+                            <th className="p-4 text-brand-primary">TENVO Inventory Engine</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {operatingModelRows.map(([feature, erp, sheet, tenvo]) => (
+                            <tr
+                              key={feature}
+                              className="border-b border-neutral-100 text-xs font-semibold text-neutral-700 transition-colors duration-150 hover:bg-neutral-50/80"
+                            >
+                              <td className="p-4 font-bold text-neutral-900">{feature}</td>
+                              <td className="p-4 text-neutral-400">{erp}</td>
+                              <td className="p-4 text-neutral-400">{sheet}</td>
+                              <td className="p-4 font-bold text-brand-primary">{tenvo}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
+                );
+              })()}
             </div>
           </ScrollReveal>
 

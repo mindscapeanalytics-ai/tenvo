@@ -457,8 +457,11 @@ function BusinessDashboardContent() {
 
   const dashboardTabLoading =
     activeTab === 'dashboard' &&
-    !dashboardMetrics &&
-    Boolean(loadingModules.analytics);
+    (
+      (!dashboardMetrics && Boolean(loadingModules.analytics)) ||
+      (!moduleReady.sales && Boolean(loadingModules.sales)) ||
+      (!moduleReady.finance && Boolean(loadingModules.finance))
+    );
 
   useEffect(() => {
     const onRefreshDashboardData = async () => {
@@ -516,6 +519,12 @@ function BusinessDashboardContent() {
     if (activeTab === 'dashboard') {
       if (!dashboardMetrics && !loadingModules.analytics && !moduleReady.analytics) {
         fetchAnalytics();
+      }
+      if (!moduleReady.sales && !loadingModules.sales) {
+        fetchSales();
+      }
+      if (!moduleReady.finance && !loadingModules.finance) {
+        fetchFinance();
       }
       return;
     }

@@ -314,13 +314,29 @@ export function DomainDashboard({
         expenseBreakdown.reduce((sum, exp) => sum + (exp.value || 0), 0)
         , [expenseBreakdown]);
 
-    const revenueTrendSigned = dashboardMetrics?.growth?.trend === 'down'
-        ? -(dashboardMetrics?.growth?.percentage || 0)
-        : (dashboardMetrics?.growth?.percentage ?? calcGrowth(periodMetrics.currentRevenue, periodMetrics.previousRevenue));
+    const revenueTrendSigned = calcGrowth(periodMetrics.currentRevenue, periodMetrics.previousRevenue);
 
     const ordersTrend = calcGrowth(periodMetrics.currentOrders, periodMetrics.previousOrders);
     const expenseTrend = calcGrowth(periodMetrics.currentExpenses, periodMetrics.previousExpenses);
-    const customerTrend = dashboardMetrics?.customers?.growth ?? calcGrowth(periodMetrics.currentCustomers, periodMetrics.previousCustomers);
+    const customerTrend = calcGrowth(periodMetrics.currentCustomers, periodMetrics.previousCustomers);
+
+    /** Date-range-aligned cash flow (shared by Easy + Advanced). Prefer GL snapshot, else operational period net. */
+    const periodCashFlow = useMemo(() => {
+        const snapshotFlow = Number(advancedDashboardSnapshot?.finance?.netCashFlow);
+        if (Number.isFinite(snapshotFlow) && advancedDashboardSnapshot?.finance) {
+            return snapshotFlow;
+        }
+        return periodMetrics.currentRevenue - periodMetrics.currentExpenses;
+    }, [advancedDashboardSnapshot, periodMetrics.currentRevenue, periodMetrics.currentExpenses]);
+
+    const periodCashFlowGrowth = useMemo(
+        () =>
+            calcGrowth(
+                periodCashFlow,
+                periodMetrics.previousRevenue - periodMetrics.previousExpenses
+            ),
+        [periodCashFlow, periodMetrics.previousRevenue, periodMetrics.previousExpenses]
+    );
 
     const lowStockFallback = useMemo(() => {
         return products.filter((product: ProductLike) => {
@@ -356,7 +372,7 @@ export function DomainDashboard({
     const remindersData = useMemo(() => ({
         lowStock: Math.max(lowStockFallback, dashboardMetrics?.alerts?.lowStock ?? 0),
         overdueInvoices: Math.max(overdueInvoicesFallback, dashboardMetrics?.alerts?.overdueInvoices ?? 0),
-        pendingOrders: Math.max(pendingOrdersFallback, dashboardMetrics?.orders?.pending ?? 0),
+        pendingOrders: pendingOrdersFallback,
     }), [dashboardMetrics, lowStockFallback, overdueInvoicesFallback, pendingOrdersFallback]);
 
     const domainEfficiency = useMemo(() => {
@@ -443,22 +459,24 @@ export function DomainDashboard({
     );
 
     const paidOrderRate = useMemo(() => {
-        const totalFromMetrics = Number(dashboardMetrics?.orders?.total) || 0;
-        const paidFromMetrics = Number(dashboardMetrics?.orders?.paid) || 0;
-        if (totalFromMetrics > 0) {
-            return clamp((paidFromMetrics / totalFromMetrics) * 100, 0, 100);
-        }
+        const currentFrom = new Date(dateRange.from);
+        const currentTo = new Date(dateRange.to);
 
         const eligibleInvoices = invoices.filter((invoice: InvoiceLike) => {
             const status = String(invoice?.status || '').toLowerCase();
-            return !['draft', 'cancelled'].includes(status);
+            if (['draft', 'cancelled'].includes(status)) return false;
+            const parsed = invoice?.date ? new Date(invoice.date) : null;
+            if (!parsed || Number.isNaN(parsed.getTime())) return false;
+            return parsed >= currentFrom && parsed <= currentTo;
         });
 
         if (eligibleInvoices.length === 0) return null;
 
-        const paidInvoices = eligibleInvoices.filter((invoice: InvoiceLike) => String(invoice?.status || '').toLowerCase() === 'paid').length;
+        const paidInvoices = eligibleInvoices.filter(
+            (invoice: InvoiceLike) => String(invoice?.status || '').toLowerCase() === 'paid'
+        ).length;
         return clamp((paidInvoices / eligibleInvoices.length) * 100, 0, 100);
-    }, [dashboardMetrics?.orders?.total, dashboardMetrics?.orders?.paid, invoices]);
+    }, [invoices, dateRange.from, dateRange.to]);
 
     const warehouseUtilization = useMemo(() => {
         const capacityFromConfiguredProducts = products.reduce((sum: number, product: ProductLike) => {
@@ -540,7 +558,7 @@ export function DomainDashboard({
             },
             {
                 label: 'Active Customers',
-                value: (dashboardMetrics?.customers?.active ?? periodMetrics.currentCustomers).toLocaleString(),
+                value: periodMetrics.currentCustomers.toLocaleString(),
                 tone: 'text-slate-900',
                 icon: Users,
                 actionId: metricActionId('active_customers'),
@@ -585,7 +603,6 @@ export function DomainDashboard({
             coverageDays,
             inStockUnits,
             totalExpenses,
-            dashboardMetrics?.customers?.active,
             formatCurrencyCompact,
             avgOrderValue,
             returnRate,
@@ -614,8 +631,8 @@ export function DomainDashboard({
             },
             {
                 label: 'Cash Flow',
-                value: formatCurrencyCompact(dashboardMetrics?.cashFlow?.current || 0),
-                tone: 'text-emerald-700',
+                value: formatCurrencyCompact(periodCashFlow),
+                tone: periodCashFlow >= 0 ? 'text-emerald-700' : 'text-rose-700',
                 icon: BadgeDollarSign,
                 actionId: metricActionId('cash_flow'),
             },
@@ -632,7 +649,7 @@ export function DomainDashboard({
             warehouseUtilizationDisplay,
             warehouseUtilizationValue,
             formatCurrencyCompact,
-            dashboardMetrics?.cashFlow?.current,
+            periodCashFlow,
             domainEfficiency,
         ]
     );
@@ -877,7 +894,7 @@ export function DomainDashboard({
         return insights;
     }, [remindersData, campaignEnabled, revenueTrendSigned, periodMetrics.currentExpenses, expenseTrend, domainKnowledge?.intelligence]);
 
-    const metricsPending = isLoading && !dashboardMetrics;
+    const metricsPending = isLoading;
 
     // ===============================================================
     // EASY MODE DASHBOARD -- Clean, beginner-friendly view
@@ -1017,8 +1034,8 @@ export function DomainDashboard({
                 returnRate={returnRate}
                 paidOrderRateDisplay={paidOrderRateDisplay}
                 paidOrderRate={paidOrderRate}
-                cashFlowCurrent={Number(dashboardMetrics?.cashFlow?.current || 0)}
-                cashFlowGrowth={Number(dashboardMetrics?.cashFlow?.growth || 0)}
+                cashFlowCurrent={periodCashFlow}
+                cashFlowGrowth={periodCashFlowGrowth}
                 campaignEnabled={campaignEnabled}
                 multiLocationEnabled={multiLocationEnabled}
                 warehouseUtilizationDisplay={warehouseUtilizationDisplay}

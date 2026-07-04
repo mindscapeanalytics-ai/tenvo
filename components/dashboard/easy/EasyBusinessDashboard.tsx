@@ -1208,7 +1208,7 @@ export function EasyBusinessDashboard(props: EasyBusinessDashboardProps) {
                 <EasyStatTile label="Period revenue" value={formatCurrencyCompact(periodMetrics.currentRevenue)} hint={periodLabel} trend={Number(revenueTrend.toFixed(1))} />
                 <EasyStatTile label="Period spend" value={formatCurrencyCompact(periodMetrics.currentExpenses)} hint="Operating costs" trend={Number(expenseTrend.toFixed(1))} />
                 <EasyStatTile label="Net margin" value={`${netMarginPct.toFixed(1)}%`} hint="Revenue minus spend" />
-                <EasyStatTile label="Cash flow" value={formatCurrencyCompact(cashFlowCurrent)} hint="MTD ledger" trend={Number(cashFlowGrowth.toFixed(1))} />
+                <EasyStatTile label="Cash flow" value={formatCurrencyCompact(cashFlowCurrent)} hint={periodLabel} trend={Number(cashFlowGrowth.toFixed(1))} />
               </div>
 
               <div className="grid gap-4 lg:grid-cols-12">
@@ -1449,10 +1449,7 @@ export function EasyBusinessDashboard(props: EasyBusinessDashboardProps) {
               <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
                 <EasyStatTile
                   label="Active in period"
-                  value={
-                    Number((dashboardMetrics?.customers as { active?: number } | undefined)?.active) ||
-                    periodMetrics.currentCustomers
-                  }
+                  value={periodMetrics.currentCustomers}
                   hint="Bought in selected range"
                   trend={Number(customerTrend.toFixed(1))}
                 />
