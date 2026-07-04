@@ -32,11 +32,11 @@ export default function FeaturesPage() {
         }
         subtitle="Storefront, POS, warehouses, accounting, and Pakistan-ready compliance in one platform - so operators are not paying for a patchwork of global apps that were never designed together."
         primaryCTA={{
-          text: 'Start Free Trial',
+          text: 'Start free',
           href: '/register',
         }}
         secondaryCTA={{
-          text: 'Why TENVO vs others',
+          text: 'Why TENVO',
           href: '/why-tenvo',
         }}
       />
@@ -96,11 +96,11 @@ export default function FeaturesPage() {
         title="Ready to Transform Your Business?"
         subtitle="Join growing teams using TENVO to streamline inventory, sales, and finance in one workspace."
         primaryCTA={{
-          text: 'Start Free Trial',
+          text: 'Start free',
           href: '/register',
         }}
         secondaryCTA={{
-          text: 'View Pricing',
+          text: 'View pricing',
           href: '/pricing',
         }}
       />

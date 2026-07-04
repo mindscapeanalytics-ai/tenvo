@@ -31,7 +31,7 @@ export default function IndustriesPage() {
         }
         subtitle="Each vertical configures dashboards, units, seed templates, and intelligence defaults - not a separate product fork. Pick your category at registration and refine in the hub."
         primaryCTA={{
-          text: 'Find Your Industry',
+          text: 'Find your industry',
           href: '#domains',
         }}
         secondaryCTA={{
@@ -87,7 +87,7 @@ export default function IndustriesPage() {
         title="Ready to Get Started?"
         subtitle="Choose your industry and start your free trial today. No credit card required."
         primaryCTA={{
-          text: 'Start Free Trial',
+          text: 'Start free',
           href: '/register',
         }}
         secondaryCTA={{

@@ -421,9 +421,11 @@ export default function PricingPage() {
               <div className="bg-white border border-neutral-200 rounded-2xl p-6 text-center space-y-4 shadow-sm flex flex-col justify-center">
                 <p className="text-xs font-semibold uppercase tracking-widest text-neutral-400">Monthly savings estimate</p>
                 <div className="text-3xl sm:text-4xl font-semibold text-emerald-600">
-                {formatCurrency(totalMonthlyROI, 'PKR')}
-              </div>
-              <p className="text-[10px] text-neutral-400">Estimate shown in PKR (illustrative).</p>
+                  {formatCurrency(totalMonthlyROI, 'PKR')}
+                </div>
+                <p className="text-[10px] text-neutral-400">
+                  Estimate shown in PKR (illustrative). Use pricing page for USD calculations.
+                </p>
                 <p className="text-[11px] text-neutral-500 leading-relaxed font-semibold">
                   Based on time saved, partial leakage recovery, and optional compliance factor. Not a guarantee.
                 </p>

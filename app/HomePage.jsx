@@ -28,12 +28,14 @@ import CommerceAndIntelligenceSection from '@/components/marketing/sections/Comm
 import CompetitorComparisonSection from '@/components/marketing/sections/CompetitorComparisonSection';
 import HomeHero from '@/components/marketing/sections/HomeHero';
 import HomeTrustStrip from '@/components/marketing/sections/HomeTrustStrip';
+import CustomerLogoStrip from '@/components/marketing/CustomerLogoStrip';
 import HomeProductDemoSection from '@/components/marketing/sections/HomeProductDemoSection';
 import HomeIntegrationMarquee from '@/components/marketing/sections/HomeIntegrationMarquee';
 import HomeToolkitSection from '@/components/marketing/sections/HomeToolkitSection';
 import HomeIndustrySolutionsSection from '@/components/marketing/sections/HomeIndustrySolutionsSection';
 import HomeOnboardingPathSection from '@/components/marketing/sections/HomeOnboardingPathSection';
 import HomeSecurityTrustSection from '@/components/marketing/sections/HomeSecurityTrustSection';
+import TestimonialCarousel from '@/components/marketing/TestimonialCarousel';
 import { DemoStoreGallery } from '@/components/marketing/sections/DemoStoreGallery';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/context/AuthContext';
@@ -258,6 +260,10 @@ export default function Home() {
 
       <ScrollReveal direction="fade" threshold={0.3}>
         <HomeTrustStrip />
+      </ScrollReveal>
+
+      <ScrollReveal direction="fade" threshold={0.3}>
+        <CustomerLogoStrip variant="default" />
       </ScrollReveal>
 
       <ScrollReveal direction="up" threshold={0.2}>
@@ -974,6 +980,10 @@ export default function Home() {
 
       <ScrollReveal direction="up" threshold={0.2}>
         <HomeOnboardingPathSection />
+      </ScrollReveal>
+
+      <ScrollReveal direction="up" threshold={0.2}>
+        <TestimonialCarousel variant="featured" />
       </ScrollReveal>
 
       <ScrollReveal direction="up" threshold={0.2}>
