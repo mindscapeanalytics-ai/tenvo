@@ -64,9 +64,10 @@ export async function POST(request) {
       );
     }
 
-    if (file.size > (purpose === 'hero' ? 8 : 5) * 1024 * 1024) {
+    const isWideBanner = purpose === 'hero' || purpose === 'banner';
+    if (file.size > (isWideBanner ? 8 : 5) * 1024 * 1024) {
       return NextResponse.json(
-        { error: `File too large. Maximum upload size is ${purpose === 'hero' ? '8' : '5'}MB.` },
+        { error: `File too large. Maximum upload size is ${isWideBanner ? '8' : '5'}MB.` },
         { status: 400 }
       );
     }
@@ -99,7 +100,7 @@ export async function POST(request) {
     }
 
     const uniqueName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
-    const folder = purpose === 'hero' ? 'storefront-hero' : 'images';
+    const folder = isWideBanner ? 'storefront-hero' : 'images';
     const filePath = `${folder}/${tenantSegment}/${uniqueName}`;
 
     const { error: uploadError } = await supabase.storage

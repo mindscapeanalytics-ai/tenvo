@@ -1,24 +1,49 @@
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
-import { getActivePageSections, getSectionBackgroundStyle } from '@/lib/storefront/storePageSections';
+import { SmartProductImage } from '@/components/storefront/SmartProductImage';
+import { cn } from '@/lib/utils';
+import {
+  filterPageSectionsByPlacement,
+  getActivePageSections,
+  getSectionBackgroundStyle,
+  isImageOnlyBanner,
+} from '@/lib/storefront/storePageSections';
 
 /**
  * Owner-configured marketing blocks on the public store homepage.
+ *
+ * @param {{
+ *   sections?: unknown;
+ *   businessDomain: string;
+ *   accent?: string;
+ *   placement?: 'after-hero' | 'mid-page' | 'before-footer';
+ *   className?: string;
+ * }} props
  */
-export function StoreMarketingSections({ sections, businessDomain, accent = '#2563eb' }) {
-  const active = getActivePageSections(sections);
+export function StoreMarketingSections({
+  sections,
+  businessDomain,
+  accent = '#2563eb',
+  placement,
+  className,
+}) {
+  const active = placement
+    ? filterPageSectionsByPlacement(sections, placement)
+    : getActivePageSections(sections);
   if (!active.length) return null;
 
   const base = `/store/${businessDomain}`;
+  const isAfterHero = placement === 'after-hero';
 
   return (
-    <div className="space-y-0">
+    <div className={cn('space-y-0', className)}>
       {active.map((section) => {
         const href = section.ctaHref.startsWith('/')
           ? `${base}${section.ctaHref === '/' ? '' : section.ctaHref}`
           : section.ctaHref;
         const style = getSectionBackgroundStyle(section, accent);
         const textStyle = { color: section.textColor || '#ffffff' };
+        const linkable = !!(section.ctaLabel || (isImageOnlyBanner(section) && section.ctaHref));
 
         if (section.type === 'promo-strip') {
           const inner = (
@@ -35,7 +60,10 @@ export function StoreMarketingSections({ sections, businessDomain, accent = '#25
                 </p>
               ) : null}
               {section.ctaLabel ? (
-                <span className="inline-flex items-center gap-1 text-xs font-bold underline sm:ml-2 sm:text-sm" style={textStyle}>
+                <span
+                  className="inline-flex items-center gap-1 text-xs font-bold underline sm:ml-2 sm:text-sm"
+                  style={textStyle}
+                >
                   {section.ctaLabel}
                   <ArrowRight className="h-3.5 w-3.5" />
                 </span>
@@ -54,6 +82,55 @@ export function StoreMarketingSections({ sections, businessDomain, accent = '#25
             <div key={section.id} className="border-b border-white/10">
               {inner}
             </div>
+          );
+        }
+
+        if (isImageOnlyBanner(section)) {
+          const imageBlock = (
+            <div
+              className={cn(
+                'relative w-full overflow-hidden bg-slate-100',
+                isAfterHero
+                  ? 'aspect-[21/9] min-h-[120px] sm:min-h-[160px] lg:min-h-[200px]'
+                  : 'aspect-[21/9] min-h-[140px] rounded-2xl sm:min-h-[180px] sm:rounded-3xl'
+              )}
+            >
+              <SmartProductImage
+                src={section.imageUrl}
+                alt={section.title || 'Store promotion'}
+                fill
+                className="object-cover"
+                sizes="(max-width: 768px) 100vw, 1400px"
+              />
+            </div>
+          );
+
+          const wrapped = linkable ? (
+            <Link
+              href={href}
+              className="block transition hover:opacity-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+              aria-label={section.title || section.ctaLabel || 'View promotion'}
+            >
+              {imageBlock}
+            </Link>
+          ) : (
+            imageBlock
+          );
+
+          return (
+            <section
+              key={section.id}
+              className={cn(
+                'border-b border-slate-200/60',
+                isAfterHero ? 'py-0' : 'py-4 sm:py-6'
+              )}
+            >
+              {isAfterHero ? (
+                wrapped
+              ) : (
+                <div className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-8">{wrapped}</div>
+              )}
+            </section>
           );
         }
 

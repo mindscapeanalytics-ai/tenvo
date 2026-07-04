@@ -482,6 +482,12 @@ export default async function StoreHomePage({ params }) {
             accent={accent}
             accentDark={accentDark}
           />
+          <StoreMarketingSections
+            sections={settings?.pageSections}
+            businessDomain={businessDomain}
+            accent={accent}
+            placement="after-hero"
+          />
           <SupermarketHomeSections
             businessDomain={businessDomain}
             businessCategory={business.category}
@@ -496,12 +502,20 @@ export default async function StoreHomePage({ params }) {
           />
         </SupermarketFeedLayout>
       ) : immersiveHero ? (
+        <>
         <DomainHeroRouter
           preset={{ ...immersiveHeroPreset, contactCity: contact.city || settings?.contact?.city || business.city }}
           businessDomain={businessDomain}
           accent={accent}
           accentDark={accentDark}
         />
+        <StoreMarketingSections
+          sections={settings?.pageSections}
+          businessDomain={businessDomain}
+          accent={accent}
+          placement="after-hero"
+        />
+        </>
       ) : (
       /* ── Hero Section (general retail) ─────────────────────────────────── */
       <section className="relative overflow-hidden min-h-[240px] sm:min-h-[380px] lg:min-h-[520px] store-hero">
@@ -625,6 +639,15 @@ export default async function StoreHomePage({ params }) {
         )}
       </section>
       )}
+
+      {!immersiveHero && !supermarketElevatedHero ? (
+        <StoreMarketingSections
+          sections={settings?.pageSections}
+          businessDomain={businessDomain}
+          accent={accent}
+          placement="after-hero"
+        />
+      ) : null}
 
       {dealershipHero && dealershipCatalogResult.success && (
         <DealershipHomeSections
@@ -805,13 +828,12 @@ export default async function StoreHomePage({ params }) {
         <DomainDealStrip dealStrip={landing.dealStrip} accent={accent} accentDark={accentDark} />
       )}
 
-      {!editorialHero && !dealershipHero && !marketplaceHero && !pharmacyElevatedHero && !furnitureElevatedHero && !restaurantElevatedHero && !fitnessElevatedHero && !supermarketElevatedHero && !autoPartsHero && (
-        <StoreMarketingSections
-          sections={settings?.pageSections}
-          businessDomain={businessDomain}
-          accent={accent}
-        />
-      )}
+      <StoreMarketingSections
+        sections={settings?.pageSections}
+        businessDomain={businessDomain}
+        accent={accent}
+        placement="mid-page"
+      />
 
       {/* ── Category Cards Grid (tablet+) ─────────────────────────────────── */}
       {categories.length >= 3 && !skipHomeNavSections && (
@@ -976,13 +998,12 @@ export default async function StoreHomePage({ params }) {
       </section>
       )}
 
-      {editorialHero && (
-        <StoreMarketingSections
-          sections={settings?.pageSections}
-          businessDomain={businessDomain}
-          accent={accent}
-        />
-      )}
+      <StoreMarketingSections
+        sections={settings?.pageSections}
+        businessDomain={businessDomain}
+        accent={accent}
+        placement="before-footer"
+      />
 
       {/* ── Shop by category (Ready to Wear) — anchored just before the footer ─ */}
       {editorialHero && fashionDepartments?.readyToWear?.show && fashionDepartments.readyToWear.circles?.length > 0 && (

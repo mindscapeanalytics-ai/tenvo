@@ -1615,7 +1615,7 @@ export function StoreSettingsManager({ business, category }) {
                 <Megaphone className="w-4 h-4" /> Homepage marketing sections
               </CardTitle>
               <CardDescription>
-                Add promotional banners between your hero and product rows. Upload a photo or design with your brand colors.
+                Upload full marketing banners (like supermarket promos) or promo strips. Choose placement on your homepage — after hero, mid-page, or before footer. Works on all store templates.
               </CardDescription>
             </CardHeader>
             <CardContent>
