@@ -377,6 +377,7 @@ export function RevenueAreaChart({ data, colors }) {
  * @param {Object} props
  * @param {any[]} props.data
  * @param {any} [props.colors]
+ * @param {string} [props.currency]
  */
 export function TopProductsChart({ data, colors, currency = 'PKR' }) {
   const primary = colors?.primary || '#3b82f6';

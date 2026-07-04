@@ -16,6 +16,7 @@ export function FashionDepartmentSections({
   editorialSpotlight,
   accent,
   accentDark,
+  canonical,
   animations = true,
   renderReadyToWear = true,
 }) {
@@ -42,6 +43,7 @@ export function FashionDepartmentSections({
             accent={accent}
             accentDark={accentDark}
             businessDomain={businessDomain}
+            canonical={canonical}
             variant="editorial"
           />
         </StoreReveal>

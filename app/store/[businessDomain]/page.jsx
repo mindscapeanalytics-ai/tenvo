@@ -676,6 +676,7 @@ export default async function StoreHomePage({ params }) {
           editorialSpotlight={fashionConfig?.showEditorialSpotlight ? landing.spotlights?.[0] : null}
           accent={accent}
           accentDark={accentDark}
+          canonical={landing.canonical}
           animations={fashionConfig ? fashionConfig.animations : true}
           renderReadyToWear={false}
         />
@@ -815,6 +816,7 @@ export default async function StoreHomePage({ params }) {
           accent={accent}
           accentDark={accentDark}
           businessDomain={businessDomain}
+          canonical={landing.canonical}
           variant={editorialHero ? 'editorial' : 'default'}
         />
       )}
