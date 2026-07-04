@@ -26,7 +26,16 @@ export function VariantMatrixEditor({
   const [matrixData, setMatrixData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [showCreateMatrix, setShowCreateMatrix] = useState(false);
+  const [showAddVariant, setShowAddVariant] = useState(false);
   const [editingVariant, setEditingVariant] = useState(null);
+  const [singleVariantForm, setSingleVariantForm] = useState({
+    size: '',
+    color: '',
+    stock: '0',
+    price: '',
+    costPrice: '',
+    mrp: '',
+  });
 
   // Matrix creation form
   const [matrixForm, setMatrixForm] = useState({
@@ -55,10 +64,10 @@ export function VariantMatrixEditor({
   const loadVariants = async () => {
     try {
       setLoading(true);
-      const data = await variantAPI.getByProduct(product.id);
+      const bizId = businessId || product?.business_id;
+      const data = await variantAPI.getByProduct(product.id, bizId);
       setVariants(data || []);
 
-      // Load matrix structure
       const matrix = await variantAPI.getMatrix(product.id);
       setMatrixData(matrix);
     } catch (error) {
@@ -148,6 +157,52 @@ export function VariantMatrixEditor({
     }
   };
 
+  const handleAddSingleVariant = async () => {
+    if (!singleVariantForm.size.trim() || !singleVariantForm.color.trim()) {
+      toast.error('Size and color are required');
+      return;
+    }
+    try {
+      setLoading(true);
+      await variantAPI.createSingle({
+        business_id: businessId || product.business_id,
+        product_id: product.id,
+        base_sku: product.sku,
+        size: singleVariantForm.size.trim(),
+        color: singleVariantForm.color.trim(),
+        stock: parseFloat(singleVariantForm.stock) || 0,
+        price: singleVariantForm.price !== '' ? parseFloat(singleVariantForm.price) : product.price,
+        cost_price: singleVariantForm.costPrice !== '' ? parseFloat(singleVariantForm.costPrice) : product.cost_price,
+        mrp: singleVariantForm.mrp !== '' ? parseFloat(singleVariantForm.mrp) : product.mrp,
+      });
+      toast.success('Variant added');
+      setShowAddVariant(false);
+      setSingleVariantForm({ size: '', color: '', stock: '0', price: '', costPrice: '', mrp: '' });
+      loadVariants();
+      onVariantsUpdated?.();
+    } catch (error) {
+      toast.error(error.message || 'Failed to add variant');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleMatrixStockBlur = async (variantId, newStock) => {
+    const fullVariant = variants.find(v => v.id === variantId);
+    if (!fullVariant) return;
+    const stockNum = Number(newStock);
+    if (!Number.isFinite(stockNum) || stockNum < 0) return;
+    if (Number(fullVariant.stock) === stockNum) return;
+
+    try {
+      await variantAPI.update(fullVariant.id, businessId || product?.business_id, { stock: stockNum });
+      loadVariants();
+      onVariantsUpdated?.();
+    } catch (error) {
+      toast.error('Failed to update stock');
+    }
+  };
+
   const openEditDialog = (variant) => {
     setEditingVariant(variant);
     setVariantForm({
@@ -198,22 +253,26 @@ export function VariantMatrixEditor({
                   return (
                     <td
                       key={color}
-                      className={`border p-2 cursor-pointer hover:bg-gray-50 transition ${isLowStock ? 'bg-red-50' : ''}`}
-                      onClick={() => {
-                        const fullVariant = variants.find(v => v.id === variant.id);
-                        if (fullVariant) openEditDialog(fullVariant);
-                      }}
+                      className={`border p-1 ${isLowStock ? 'bg-red-50' : ''}`}
                     >
-                      <div className="text-center">
-                        <div className={`text-lg font-semibold ${isLowStock ? 'text-red-600' : 'text-gray-900'}`}>
-                          {variant.stock}
-                        </div>
-                        <div className="text-xs text-gray-600">
+                      <div className="text-center space-y-1">
+                        <input
+                          type="number"
+                          min="0"
+                          defaultValue={variant.stock}
+                          className={`w-full h-8 text-center text-sm font-semibold border rounded ${isLowStock ? 'text-red-600 border-red-200' : 'text-gray-900 border-gray-200'}`}
+                          onBlur={(e) => handleMatrixStockBlur(variant.id, e.target.value)}
+                        />
+                        <button
+                          type="button"
+                          className="text-xs text-gray-600 hover:text-wine w-full"
+                          onClick={() => {
+                            const fullVariant = variants.find(v => v.id === variant.id);
+                            if (fullVariant) openEditDialog(fullVariant);
+                          }}
+                        >
                           {formatCurrency(variant.price || 0, 'PKR')}
-                        </div>
-                        <div className="text-xs text-gray-500 font-mono">
-                          {variant.sku.split('-').pop()}
-                        </div>
+                        </button>
                       </div>
                     </td>
                   );
@@ -223,7 +282,7 @@ export function VariantMatrixEditor({
           </tbody>
         </table>
         <p className="text-xs text-gray-500 mt-2">
-          Click on any cell to edit variant details
+          Edit stock directly in cells, or click price to open full variant editor
         </p>
       </div>
     );
@@ -246,6 +305,26 @@ export function VariantMatrixEditor({
             <Grid3x3 className="w-4 h-4 mr-2" />
             Create Matrix
           </Button>
+        )}
+        {variants.length > 0 && (
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setShowAddVariant(true)}
+              disabled={!product?.id}
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Add Variant
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setShowCreateMatrix(true)}
+              disabled={!product?.id}
+            >
+              <Grid3x3 className="w-4 h-4 mr-2" />
+              Extend Matrix
+            </Button>
+          </div>
         )}
       </div>
 
@@ -499,6 +578,44 @@ export function VariantMatrixEditor({
               </Button>
               <Button onClick={handleCreateMatrix} disabled={loading} className=" bg-emerald-600 hover:bg-emerald-700 text-white">
                 {loading ? 'Creating...' : 'Create Matrix'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Single Variant Dialog */}
+      <Dialog open={showAddVariant} onOpenChange={setShowAddVariant}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add Variant</DialogTitle>
+            <DialogDescription>Add a single size/color combination</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="svSize">Size</Label>
+                <Input id="svSize" value={singleVariantForm.size} onChange={(e) => setSingleVariantForm({ ...singleVariantForm, size: e.target.value })} placeholder="M" />
+              </div>
+              <div>
+                <Label htmlFor="svColor">Color</Label>
+                <Input id="svColor" value={singleVariantForm.color} onChange={(e) => setSingleVariantForm({ ...singleVariantForm, color: e.target.value })} placeholder="Red" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="svStock">Stock</Label>
+                <Input id="svStock" type="number" min="0" value={singleVariantForm.stock} onChange={(e) => setSingleVariantForm({ ...singleVariantForm, stock: e.target.value })} />
+              </div>
+              <div>
+                <Label htmlFor="svPrice">Price</Label>
+                <Input id="svPrice" type="number" step="0.01" value={singleVariantForm.price} onChange={(e) => setSingleVariantForm({ ...singleVariantForm, price: e.target.value })} placeholder={String(product?.price || '')} />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowAddVariant(false)}>Cancel</Button>
+              <Button onClick={handleAddSingleVariant} disabled={loading} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+                {loading ? 'Adding...' : 'Add Variant'}
               </Button>
             </div>
           </div>

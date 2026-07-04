@@ -61,6 +61,8 @@ import { getRegionalStandards } from '@/lib/utils/regionalHelpers';
 import { getCurrentSeason, getSeasonalDiscount, applySeasonalPricing } from '@/lib/domainData/pakistaniSeasons';
 import { hasSeasonalPricing } from '@/lib/utils/pakistaniFeatures';
 import { pakistaniSizes, pakistaniColors } from '@/lib/domainData/pakistaniRetailData';
+import { VariantManager } from '@/components/domain/VariantManager';
+import { buildVariantsFromForm, dbVariantsToFormState, totalVariantStock } from '@/lib/utils/variantSync';
 
 function slugifyProductName(name) {
     return String(name || '')
@@ -202,6 +204,7 @@ export function ProductForm({
             batches: product.batches || [],
             serialNumbers: product.serial_numbers || [],
             customParameters: product.customParameters || product.domain_data?.custom_parameters || [],
+            ...dbVariantsToFormState(product),
         } : {};
 
         // Merge with priority: existingData > domainDefaults > smartDefaults
@@ -229,6 +232,9 @@ export function ProductForm({
     const vehicleCategories = vehicleListing ? getVehicleListingCategories(category) : [];
     const hasBatchTracking = isBatchTrackingEnabled(category);
     const hasSerialTracking = isSerialTrackingEnabled(category);
+    const hasVariantMatrix = isSizeColorMatrixEnabled(category);
+    const variantStockTotal = totalVariantStock(buildVariantsFromForm(formData, product || {}));
+    const hasVariantStock = variantStockTotal > 0;
 
     // Pakistani Seasonal Pricing
     const seasonalPricingEnabled = hasSeasonalPricing(category);
@@ -548,6 +554,12 @@ export function ProductForm({
             }
             if (formData.serialNumbers && formData.serialNumbers.length > 0) {
                 payload.serialNumbers = formData.serialNumbers;
+            }
+
+            const variantRows = buildVariantsFromForm(formData, { sku: payload.sku, ...payload });
+            if (variantRows.length > 0) {
+                payload.variants = variantRows;
+                payload.stock = totalVariantStock(variantRows);
             }
 
             if (product?.id) {
@@ -1000,15 +1012,16 @@ export function ProductForm({
                                 </div>
 
                                 {/* Size-Color Matrix -- for garments, boutique-fashion, leather-footwear */}
-                                {isSizeColorMatrixEnabled(category) && (
-                                    <div className="mb-6 p-5 bg-white/70 rounded-2xl border border-dashed border-gray-300">
+                                {hasVariantMatrix && (
+                                    <div className="mb-6 space-y-6">
+                                        <div className="p-5 bg-white/70 rounded-2xl border border-dashed border-gray-300">
                                         <div className="flex items-center gap-2 mb-4">
                                             <Layers className="w-4 h-4 text-wine" />
                                             <span className="text-xs font-semibold uppercase text-wine tracking-widest">Size / Color Matrix</span>
-                                            <Badge variant="outline" className="text-[10px] ml-auto">Variant Stock Entry</Badge>
+                                            <Badge variant="outline" className="text-[10px] ml-auto">Quick Stock Entry</Badge>
                                         </div>
                                         <p className="text-xs text-gray-500 mb-4">
-                                            Enter quantity per size and color. Each cell represents stock for that variant.
+                                            Enter quantity per size and color. Variants are saved to inventory automatically when you save the product.
                                         </p>
                                         {(() => {
                                             // Determine size set based on domain
@@ -1017,7 +1030,6 @@ export function ProductForm({
                                                 ? pakistaniSizes.footwear.men.slice(0, 10)
                                                 : pakistaniSizes.clothing.men;
                                             const colors = pakistaniColors.slice(0, 8).map(c => c.en);
-                                            // matrix stored as domain_data.size_color_matrix
                                             const matrix = formData.sizeColorMatrix || {};
                                             const updateMatrix = (size, color, qty) => {
                                                 const updated = {
@@ -1026,7 +1038,15 @@ export function ProductForm({
                                                 };
                                                 updateField('sizeColorMatrix', updated);
                                             };
+                                            const filledCells = Object.values(matrix).filter(v => Number(v) > 0).length;
                                             return (
+                                                <>
+                                                <div className="flex items-center justify-between mb-3 text-xs text-gray-500">
+                                                    <span>{filledCells} variant{filledCells === 1 ? '' : 's'} with stock</span>
+                                                    {variantStockTotal > 0 && (
+                                                        <span className="font-semibold text-wine">Total: {variantStockTotal} units</span>
+                                                    )}
+                                                </div>
                                                 <div className="overflow-x-auto">
                                                     <table className="w-full text-xs border-collapse">
                                                         <thead>
@@ -1061,8 +1081,17 @@ export function ProductForm({
                                                         </tbody>
                                                     </table>
                                                 </div>
+                                                </>
                                             );
                                         })()}
+                                        </div>
+
+                                        <VariantManager
+                                            value={formData.variants || []}
+                                            onChange={(next) => updateField('variants', next)}
+                                            product={{ sku: formData.sku, price: formData.price, name: formData.name }}
+                                            category={category}
+                                        />
                                     </div>
                                 )}
 
@@ -1122,11 +1151,11 @@ export function ProductForm({
                                         <Package className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                                         <Input
                                             type="number"
-                                            value={formData.stock ?? 0}
+                                            value={hasVariantStock ? variantStockTotal : (formData.stock ?? 0)}
                                             onChange={(e) => updateField('stock', parseInt(e.target.value) || 0)}
                                             className="h-11 pl-10 rounded-xl font-bold text-gray-900"
-                                            disabled={hasBatchTracking || hasSerialTracking}
-                                            placeholder={hasBatchTracking || hasSerialTracking ? "Calculated automatically" : "0"}
+                                            disabled={hasBatchTracking || hasSerialTracking || hasVariantStock}
+                                            placeholder={hasBatchTracking || hasSerialTracking || hasVariantStock ? "Calculated from variants" : "0"}
                                             selectOnFocus
                                         />
                                     </div>

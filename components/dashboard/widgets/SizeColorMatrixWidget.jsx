@@ -1,28 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Loader2, Package, AlertCircle } from 'lucide-react';
-import { createClient } from '@/lib/supabase/client';
+import { variantAPI } from '@/lib/api/variant';
 import { pakistaniSizes, pakistaniColors } from '@/lib/domainData/pakistaniRetailData';
 
 /**
- * SizeColorMatrixWidget Component
- * 
- * Displays interactive size-color grid for garment inventory.
- * Shows stock status with color-coded cells.
- * 
- * Features:
- * - Interactive size-color grid
- * - Color-coded cells: green (in stock), yellow (low), red (out of stock)
- * - Quantity display in each cell
- * - Quick action: Manage Variants
- * 
- * @param {Object} props
- * @param {string} props.businessId - Business ID
- * @param {string} props.category - Business category
- * @param {Function} [props.onViewDetails] - Callback for view details action
+ * SizeColorMatrixWidget — aggregate variant stock across all products for a business.
  */
 export function SizeColorMatrixWidget({ businessId, category, onViewDetails }) {
   const [loading, setLoading] = useState(true);
@@ -33,27 +19,14 @@ export function SizeColorMatrixWidget({ businessId, category, onViewDetails }) {
   const sizes = isFootwear ? pakistaniSizes.footwear.men.slice(0, 10) : pakistaniSizes.clothing.men;
   const colors = pakistaniColors.slice(0, 8).map(c => c.en);
 
-  useEffect(() => {
-    fetchMatrixData();
-  }, [businessId]);
-
-  const fetchMatrixData = async () => {
+  const fetchMatrixData = useCallback(async () => {
+    if (!businessId) return;
     try {
       setLoading(true);
-      const supabase = createClient();
+      setError(null);
 
-      // Fetch products with size and color variants
-      const { data: products, error: productsError } = await supabase
-        .from('products')
-        .select('id, name, size, color, quantity, reorder_point')
-        .eq('business_id', businessId)
-        .not('size', 'is', null)
-        .not('color', 'is', null)
-        .limit(100);
+      const variants = await variantAPI.search(businessId, {});
 
-      if (productsError) throw productsError;
-
-      // Build matrix
       const matrix = {};
       let totalInStock = 0;
       let totalLowStock = 0;
@@ -66,28 +39,31 @@ export function SizeColorMatrixWidget({ businessId, category, onViewDetails }) {
         });
       });
 
-      products?.forEach(product => {
-        const size = product.size?.toUpperCase();
-        const color = product.color;
-        
-        if (size && color && matrix[size] && matrix[size][color]) {
-          matrix[size][color].quantity += product.quantity || 0;
-          
-          // Determine status
-          const qty = matrix[size][color].quantity;
-          const reorderPoint = product.reorder_point || 10;
-          
-          if (qty === 0) {
-            matrix[size][color].status = 'out';
-            totalOutOfStock++;
-          } else if (qty <= reorderPoint) {
-            matrix[size][color].status = 'low';
-            totalLowStock++;
-          } else {
-            matrix[size][color].status = 'in';
-            totalInStock++;
-          }
+      variants?.forEach(variant => {
+        const size = String(variant.size || '').toUpperCase();
+        const color = variant.color;
+        if (!size || !color || !matrix[size]?.[color]) return;
+
+        const qty = Number(variant.stock) || 0;
+        matrix[size][color].quantity += qty;
+
+        const reorderPoint = Number(variant.min_stock) || 10;
+        if (qty === 0) {
+          matrix[size][color].status = 'out';
+        } else if (qty <= reorderPoint) {
+          matrix[size][color].status = 'low';
+        } else {
+          matrix[size][color].status = 'in';
         }
+      });
+
+      sizes.forEach(size => {
+        colors.forEach(color => {
+          const cell = matrix[size][color];
+          if (cell.status === 'in') totalInStock++;
+          else if (cell.status === 'low') totalLowStock++;
+          else totalOutOfStock++;
+        });
       });
 
       setMatrixData({
@@ -96,8 +72,8 @@ export function SizeColorMatrixWidget({ businessId, category, onViewDetails }) {
           inStock: totalInStock,
           lowStock: totalLowStock,
           outOfStock: totalOutOfStock,
-          total: totalInStock + totalLowStock + totalOutOfStock
-        }
+          total: totalInStock + totalLowStock + totalOutOfStock,
+        },
       });
     } catch (err) {
       console.error('Error fetching size-color matrix:', err);
@@ -105,7 +81,11 @@ export function SizeColorMatrixWidget({ businessId, category, onViewDetails }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [businessId, sizes, colors]);
+
+  useEffect(() => {
+    fetchMatrixData();
+  }, [fetchMatrixData]);
 
   const getCellColor = (status) => {
     switch (status) {
@@ -117,9 +97,7 @@ export function SizeColorMatrixWidget({ businessId, category, onViewDetails }) {
   };
 
   const handleManageVariants = () => {
-    if (onViewDetails) {
-      onViewDetails('variants');
-    }
+    onViewDetails?.('variants');
   };
 
   if (loading) {
@@ -167,8 +145,8 @@ export function SizeColorMatrixWidget({ businessId, category, onViewDetails }) {
             <Package className="h-5 w-5" />
             Size-Color Matrix
           </div>
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             size="sm"
             onClick={handleManageVariants}
             className="text-wine hover:bg-wine hover:text-white"
@@ -178,7 +156,6 @@ export function SizeColorMatrixWidget({ businessId, category, onViewDetails }) {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        {/* Summary Stats */}
         <div className="grid grid-cols-3 gap-4 mb-4">
           <div className="text-center p-2 bg-green-50 rounded-lg border border-green-200">
             <div className="text-2xl font-bold text-green-700">{matrixData?.summary.inStock || 0}</div>
@@ -194,7 +171,6 @@ export function SizeColorMatrixWidget({ businessId, category, onViewDetails }) {
           </div>
         </div>
 
-        {/* Matrix Grid */}
         <div className="overflow-x-auto">
           <table className="w-full border-collapse">
             <thead>
@@ -216,7 +192,7 @@ export function SizeColorMatrixWidget({ businessId, category, onViewDetails }) {
                   {colors.map(color => {
                     const cell = matrixData?.matrix[size]?.[color] || { quantity: 0, status: 'out' };
                     return (
-                      <td 
+                      <td
                         key={`${size}-${color}`}
                         className={`border p-2 text-center text-xs font-medium ${getCellColor(cell.status)}`}
                       >
@@ -230,7 +206,6 @@ export function SizeColorMatrixWidget({ businessId, category, onViewDetails }) {
           </table>
         </div>
 
-        {/* Legend */}
         <div className="flex items-center justify-center gap-4 mt-4 text-xs">
           <div className="flex items-center gap-1">
             <div className="w-3 h-3 bg-green-100 border border-green-300 rounded"></div>

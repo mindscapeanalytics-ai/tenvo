@@ -820,11 +820,7 @@ export function InventoryManager({
   const isExpiryEnabled = domainKnowledge?.expiryTrackingEnabled;
   const isMultiLocationEnabled = domainKnowledge?.multiLocationEnabled;
   const isManufacturingEnabled = domainKnowledge?.manufacturingEnabled;
-  const isVariantEnabled = domainKnowledge?.productFields?.some(f =>
-    f.toLowerCase().includes('size') ||
-    f.toLowerCase().includes('color') ||
-    f.toLowerCase().includes('matrix')
-  );
+  const isVariantEnabled = isSizeColorMatrixEnabled(category) || Boolean(domainKnowledge?.sizeColorMatrixEnabled);
 
   const countryIso = regionalPack?.countryIso || standards.countryCode || 'PK';
 
