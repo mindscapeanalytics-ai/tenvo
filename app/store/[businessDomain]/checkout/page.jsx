@@ -7,7 +7,7 @@ import { SmartProductImage } from '@/components/storefront/SmartProductImage';
 import {
   CreditCard, Truck, MapPin, Check, ChevronRight,
   Shield, Lock, AlertCircle, Wallet, Banknote,
-  Smartphone, Building2, Loader2, Package, ArrowLeft, Download
+  Smartphone, Building2, Loader2, Package, ArrowLeft, Download, Bitcoin
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -24,11 +24,12 @@ import { getStoreAccentColor } from '@/lib/config/storefrontDomains';
 import { toast } from 'react-hot-toast';
 import { getAvailablePaymentMethods } from '@/lib/actions/storefront/payments';
 import { downloadStorefrontOrderReceipt } from '@/lib/storefront/storefrontReceiptDownload';
+import { CryptoCheckoutPanel } from '@/components/storefront/CryptoCheckoutPanel';
 
 const PAYMENT_ICONS = {
   stripe: CreditCard, cod: Banknote, easypaisa: Smartphone,
   jazzcash: Smartphone, bank_transfer: Building2, paypal: Wallet,
-  card: CreditCard, wallet: Wallet,
+  card: CreditCard, wallet: Wallet, crypto: Bitcoin,
 };
 
 const STEPS = [
@@ -63,6 +64,14 @@ export default function CheckoutPage({ params }) {
   const [paymentMethods, setPaymentMethods] = useState([]);
   const [loadingPM, setLoadingPM] = useState(true);
   const [downloadingReceipt, setDownloadingReceipt] = useState(false);
+  const [cryptoCheckout, setCryptoCheckout] = useState(null);
+
+  const isDigitalCart =
+    cart.items.length > 0 && cart.items.every((i) => i.fulfillmentType === 'digital');
+
+  const activeSteps = isDigitalCart
+    ? STEPS.filter((s) => s.id !== 'shipping')
+    : STEPS;
 
   const [form, setForm] = useState({
     email: '', firstName: '', lastName: '', phone: '',
@@ -78,9 +87,15 @@ export default function CheckoutPage({ params }) {
         (adjustments.promoDiscount || 0) + (adjustments.memberDiscount || 0)
       )
     : 0;
-  const shippingCost = form.shippingMethod === 'express' ? 300
-    : form.shippingMethod === 'pickup' ? 0
-    : subtotal >= freeShippingThreshold ? 0 : 150;
+  const shippingCost = isDigitalCart
+    ? 0
+    : form.shippingMethod === 'express'
+      ? 300
+      : form.shippingMethod === 'pickup'
+        ? 0
+        : subtotal >= freeShippingThreshold
+          ? 0
+          : 150;
   // Match the server's per-product tax: use each item's tax_percent (captured at
   // add-to-cart), falling back to the store default only for legacy cart items.
   const tax = cart.items.reduce((sum, i) => {
@@ -129,7 +144,8 @@ export default function CheckoutPage({ params }) {
   const set = (field, value) => setForm(f => ({ ...f, [field]: value }));
 
   const validate = (s) => {
-    if (s === 0) {
+    const stepId = activeSteps[s]?.id;
+    if (stepId === 'information') {
       if (!form.email || !form.firstName || !form.lastName || !form.phone) {
         toast.error('Please fill in all required fields'); return false;
       }
@@ -137,19 +153,21 @@ export default function CheckoutPage({ params }) {
         toast.error('Please enter a valid email'); return false;
       }
     }
-    if (s === 1) {
+    if (stepId === 'shipping') {
       if (!form.address || !form.city || !form.postalCode) {
         toast.error('Please enter your shipping address'); return false;
       }
     }
-    if (s === 2 && !form.paymentMethod) {
+    if (stepId === 'payment' && !form.paymentMethod) {
       toast.error('Please select a payment method'); return false;
     }
     return true;
   };
 
-  const next = () => { if (validate(step)) setStep(s => Math.min(s + 1, 3)); };
-  const back = () => setStep(s => Math.max(s - 1, 0));
+  const next = () => {
+    if (validate(step)) setStep((s) => Math.min(s + 1, activeSteps.length - 1));
+  };
+  const back = () => setStep((s) => Math.max(s - 1, 0));
 
   const placeOrder = async () => {
     if (!businessId) { toast.error('Store not ready'); return; }
@@ -169,12 +187,19 @@ export default function CheckoutPage({ params }) {
             lastName: form.lastName,
             phone: form.phone,
           },
-          shippingAddress: {
-            address: form.address,
-            city: form.city,
-            postalCode: form.postalCode,
-            country: form.country,
-          },
+          shippingAddress: isDigitalCart
+            ? {
+                address: 'Digital delivery',
+                city: 'Digital',
+                postalCode: '00000',
+                country: form.country,
+              }
+            : {
+                address: form.address,
+                city: form.city,
+                postalCode: form.postalCode,
+                country: form.country,
+              },
           billingAddress: {
             address: form.address,
             city: form.city,
@@ -227,6 +252,17 @@ export default function CheckoutPage({ params }) {
         })),
       });
       setOrderNumber(result.order.orderNumber);
+
+      if (form.paymentMethod === 'crypto') {
+        setCryptoCheckout({
+          orderNumber: result.order.orderNumber,
+          email: form.email,
+        });
+        clearCart();
+        toast.success('Order created — complete crypto payment below');
+        return;
+      }
+
       setOrderDone(true);
       clearCart();
       toast.success(`Order ${result.order.orderNumber} placed!`);
@@ -273,6 +309,27 @@ export default function CheckoutPage({ params }) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+      </div>
+    );
+  }
+
+  // ── Crypto payment screen (after order created)
+  if (cryptoCheckout && !orderDone) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-10 px-4">
+        <div className="max-w-lg mx-auto bg-white rounded-3xl shadow-xl p-6 sm:p-8">
+          <CryptoCheckoutPanel
+            businessDomain={businessDomain}
+            orderNumber={cryptoCheckout.orderNumber}
+            customerEmail={cryptoCheckout.email}
+            accent={accent}
+            onPaid={() => {
+              setOrderDone(true);
+              setCryptoCheckout(null);
+            }}
+            onCancel={() => router.push(`/store/${businessDomain}/cart`)}
+          />
+        </div>
       </div>
     );
   }
@@ -460,7 +517,7 @@ export default function CheckoutPage({ params }) {
 
         {/* Step indicator */}
         <div className="flex items-center gap-2 mb-8 overflow-x-auto pb-1">
-          {STEPS.map((s, i) => (
+          {activeSteps.map((s, i) => (
             <div key={s.id} className="flex items-center gap-2 flex-shrink-0">
               <div
                 className={cn(
@@ -474,7 +531,7 @@ export default function CheckoutPage({ params }) {
               <span className={cn('text-sm font-medium hidden sm:block', i <= step ? 'text-gray-900' : 'text-gray-400')}>
                 {s.label}
               </span>
-              {i < STEPS.length - 1 && (
+              {i < activeSteps.length - 1 && (
                 <ChevronRight className="w-4 h-4 text-gray-300 flex-shrink-0" />
               )}
             </div>
@@ -487,8 +544,8 @@ export default function CheckoutPage({ params }) {
             <Card className="rounded-2xl shadow-sm border-0">
               <CardContent className="p-6 sm:p-8">
 
-                {/* Step 0, Contact */}
-                {step === 0 && (
+                {/* Step — dynamic by activeSteps[step].id */}
+                {activeSteps[step]?.id === 'information' && (
                   <div className="space-y-5">
                     <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
                       <MapPin className="w-5 h-5" style={{ color: accent }} />
@@ -523,8 +580,7 @@ export default function CheckoutPage({ params }) {
                   </div>
                 )}
 
-                {/* Step 1, Shipping */}
-                {step === 1 && (
+                {activeSteps[step]?.id === 'shipping' && (
                   <div className="space-y-5">
                     <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
                       <Truck className="w-5 h-5" style={{ color: accent }} />
@@ -584,8 +640,7 @@ export default function CheckoutPage({ params }) {
                   </div>
                 )}
 
-                {/* Step 2, Payment */}
-                {step === 2 && (
+                {activeSteps[step]?.id === 'payment' && (
                   <div className="space-y-5">
                     <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
                       <CreditCard className="w-5 h-5" style={{ color: accent }} />
@@ -645,6 +700,8 @@ export default function CheckoutPage({ params }) {
                             ? 'Pay in cash when your order is delivered. Please keep exact change ready.'
                             : form.paymentMethod === 'stripe'
                             ? 'Your card details are encrypted and processed securely by Stripe.'
+                            : form.paymentMethod === 'crypto'
+                            ? 'You will receive a wallet address after placing the order. Digital products deliver after confirmation.'
                             : 'Your payment will be processed securely.'}
                         </span>
                       </div>
@@ -652,8 +709,7 @@ export default function CheckoutPage({ params }) {
                   </div>
                 )}
 
-                {/* Step 3, Review */}
-                {step === 3 && (
+                {activeSteps[step]?.id === 'review' && (
                   <div className="space-y-5">
                     <h2 className="text-lg font-bold text-gray-900">Review Your Order</h2>
 
@@ -685,10 +741,21 @@ export default function CheckoutPage({ params }) {
                     {/* Delivery & payment summary */}
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       <div>
-                        <p className="text-xs font-semibold text-gray-400 uppercase mb-1">Ship to</p>
-                        <p className="text-gray-700">{form.firstName} {form.lastName}</p>
-                        <p className="text-gray-500">{form.address}</p>
-                        <p className="text-gray-500">{form.city}, {form.postalCode}</p>
+                        <p className="text-xs font-semibold text-gray-400 uppercase mb-1">
+                          {isDigitalCart ? 'Delivery' : 'Ship to'}
+                        </p>
+                        {isDigitalCart ? (
+                          <>
+                            <p className="text-gray-700">Digital delivery</p>
+                            <p className="text-gray-500">{form.email}</p>
+                          </>
+                        ) : (
+                          <>
+                            <p className="text-gray-700">{form.firstName} {form.lastName}</p>
+                            <p className="text-gray-500">{form.address}</p>
+                            <p className="text-gray-500">{form.city}, {form.postalCode}</p>
+                          </>
+                        )}
                       </div>
                       <div>
                         <p className="text-xs font-semibold text-gray-400 uppercase mb-1">Payment</p>
@@ -706,7 +773,7 @@ export default function CheckoutPage({ params }) {
                   <Button variant="outline" onClick={back} disabled={step === 0} className="rounded-xl gap-2">
                     <ArrowLeft className="w-4 h-4" /> Back
                   </Button>
-                  {step < 3 ? (
+                  {step < activeSteps.length - 1 ? (
                     <Button onClick={next} className="rounded-xl gap-2 font-bold"
                       style={{ backgroundColor: accent }}>
                       Continue <ChevronRight className="w-4 h-4" />

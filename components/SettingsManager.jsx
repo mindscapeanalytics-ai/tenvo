@@ -47,6 +47,7 @@ import {
 import toast from 'react-hot-toast';
 import { getBookMeetingHref } from '@/lib/marketing/salesLinks';
 import ManualPaymentRequestPanel from '@/components/billing/ManualPaymentRequestPanel';
+import CryptoBillingPanel from '@/components/billing/CryptoBillingPanel';
 import DomainPackageBillingCards from '@/components/billing/DomainPackageBillingCards';
 import { PosSettingsPanel } from '@/components/pos/PosSettingsPanel';
 import { isPosRelevant } from '@/lib/config/domains';
@@ -1546,6 +1547,8 @@ export function SettingsManager({ category }) {
               <CardDescription>Offline wallets, bank transfer, and sales-assisted billing</CardDescription>
             </CardHeader>
             <CardContent className="pt-6 space-y-4">
+              <CryptoBillingPanel onActivated={() => void fetchSubscription()} />
+
               {business?.id ? (
                 <div ref={manualPaymentRef}>
                   <ManualPaymentRequestPanel

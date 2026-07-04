@@ -1,6 +1,25 @@
 import { NextResponse } from 'next/server';
 import { verifyIPN, handleIPN } from '@/lib/payments/nowpayments';
+import { applyStorefrontCryptoFromIPN } from '@/lib/storefront/cryptoOrderFulfillment';
 import { applyCryptoSubscriptionFromIPN } from '@/lib/billing/cryptoSubscription';
+
+async function dispatchNowPaymentsIPN(summary) {
+  const orderId = summary.orderId || summary.raw?.order_id;
+  if (orderId && String(orderId).startsWith('store-')) {
+    return applyStorefrontCryptoFromIPN({
+      orderId,
+      paymentId: summary.paymentId,
+      status: summary.status,
+      amount: summary.amount,
+    });
+  }
+  return applyCryptoSubscriptionFromIPN({
+    orderId,
+    paymentId: summary.paymentId,
+    status: summary.status,
+    amount: summary.amount,
+  });
+}
 
 function resolveIpnSecret() {
   const raw =
@@ -52,12 +71,7 @@ export async function POST(request) {
     }
 
     const summary = await handleIPN(payload);
-    const applied = await applyCryptoSubscriptionFromIPN({
-      orderId: summary.orderId || payload.order_id,
-      paymentId: summary.paymentId || payload.payment_id,
-      status: summary.status || payload.payment_status,
-      amount: summary.amount ?? payload.actually_paid,
-    });
+    const applied = await dispatchNowPaymentsIPN(summary);
 
     console.log('[NOWPayments IPN]', { summary, applied });
 

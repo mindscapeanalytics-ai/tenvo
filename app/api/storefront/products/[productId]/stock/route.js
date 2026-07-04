@@ -3,6 +3,8 @@ import { checkProductStock } from '@/lib/actions/storefront/products';
 import pool from '@/lib/db';
 import { resolveStorefrontProductId } from '@/lib/utils/storefrontProductRef';
 
+import { isDigitalFulfillment } from '@/lib/storefront/digitalProducts';
+
 /**
  * POST /api/storefront/products/[productId]/stock
  * Check stock availability before adding to cart (tenant-scoped).
@@ -52,7 +54,7 @@ export async function POST(request, { params }) {
       let productRow;
       if (variantId) {
         const res = await client.query(
-          `SELECT p.id, p.name, p.business_id, p.slug, p.tax_percent,
+          `SELECT p.id, p.name, p.business_id, p.slug, p.tax_percent, p.domain_data,
                   COALESCE(pv.price, p.price) as price,
                   COALESCE(pv.image_url, p.image_url) as image_url,
                   pv.variant_name, pv.size, pv.color, pv.material
@@ -71,11 +73,12 @@ export async function POST(request, { params }) {
             price: parseFloat(productRow.price),
             taxPercent: parseFloat(productRow.tax_percent || 0),
             variantName: productRow.variant_name || variantParts || null,
+            fulfillmentType: isDigitalFulfillment(productRow.domain_data) ? 'digital' : 'physical',
           };
         }
       } else {
         const res = await client.query(
-          `SELECT id, name, business_id, slug, price, image_url, tax_percent
+          `SELECT id, name, business_id, slug, price, image_url, tax_percent, domain_data
            FROM products
            WHERE id = $1::uuid AND business_id = $2::uuid
              AND COALESCE(is_deleted, false) = false AND is_active = true`,
@@ -87,6 +90,7 @@ export async function POST(request, { params }) {
             ...productRow,
             price: parseFloat(productRow.price),
             taxPercent: parseFloat(productRow.tax_percent || 0),
+            fulfillmentType: isDigitalFulfillment(productRow.domain_data) ? 'digital' : 'physical',
           };
         }
       }

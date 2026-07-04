@@ -15,6 +15,10 @@
                                                  "mtimeMs":  1783152528668,
                                                  "path":  "C:\\Users\\romio\\.cursor\\projects\\e-tenvo-main\\agent-transcripts\\f4325977-2470-4f3c-afa8-aaffeb0af336\\f4325977-2470-4f3c-afa8-aaffeb0af336.jsonl"
                                              },
+    "5be5a12d-03db-4ad3-b128-f71753f2957e":  {
+                                                 "mtimeMs":  1783170093891,
+                                                 "path":  "C:\\Users\\romio\\.cursor\\projects\\e-tenvo-main\\agent-transcripts\\d803b244-5ed6-40cd-bec2-426391e9d66c\\subagents\\5be5a12d-03db-4ad3-b128-f71753f2957e.jsonl"
+                                             },
     "a8ebd456-1c0f-4048-9ea5-f7bc1946ce77":  {
                                                  "mtimeMs":  1783066280600,
                                                  "path":  "C:\\Users\\romio\\.cursor\\projects\\e-tenvo-main\\agent-transcripts\\33077ab4-9341-4cb8-98dd-7cd69f4d78c8\\subagents\\a8ebd456-1c0f-4048-9ea5-f7bc1946ce77.jsonl"
@@ -42,6 +46,10 @@
     "2ba35bf3-fc94-471c-af08-d2c0c9ff2836":  {
                                                  "mtimeMs":  1780442300898,
                                                  "path":  "C:\\Users\\romio\\.cursor\\projects\\e-tenvo-main\\agent-transcripts\\ca727d15-15e3-449e-932c-66d6ef103d02\\subagents\\2ba35bf3-fc94-471c-af08-d2c0c9ff2836.jsonl"
+                                             },
+    "9edfc758-ab01-416f-aa3f-e0c9c09be326":  {
+                                                 "mtimeMs":  1783168104238,
+                                                 "path":  "C:\\Users\\romio\\.cursor\\projects\\e-tenvo-main\\agent-transcripts\\d803b244-5ed6-40cd-bec2-426391e9d66c\\subagents\\9edfc758-ab01-416f-aa3f-e0c9c09be326.jsonl"
                                              },
     "80007374-58a2-4902-bb35-c3e6746971fe":  {
                                                  "mtimeMs":  1782479193804,
@@ -271,6 +279,10 @@
                                                  "mtimeMs":  1781460323452,
                                                  "path":  "C:\\Users\\romio\\.cursor\\projects\\e-tenvo-main\\agent-transcripts\\967e1c53-4b5d-490e-b744-b2e0363221c1\\subagents\\4b39aa0e-6f68-4f10-86ab-9c105015c8a9.jsonl"
                                              },
+    "dd4a3478-d505-4f84-a17a-162284f10519":  {
+                                                 "mtimeMs":  1783173181002,
+                                                 "path":  "C:\\Users\\romio\\.cursor\\projects\\e-tenvo-main\\agent-transcripts\\dd4a3478-d505-4f84-a17a-162284f10519\\dd4a3478-d505-4f84-a17a-162284f10519.jsonl"
+                                             },
     "b52d7855-edf4-421b-a485-bed58647c766":  {
                                                  "mtimeMs":  1781469356682,
                                                  "path":  "C:\\Users\\romio\\.cursor\\projects\\e-tenvo-main\\agent-transcripts\\b52d7855-edf4-421b-a485-bed58647c766\\b52d7855-edf4-421b-a485-bed58647c766.jsonl"
@@ -290,6 +302,10 @@
     "e0480c5d-573c-4cbd-a1ee-bc1b4d1fb553":  {
                                                  "mtimeMs":  1781392468597,
                                                  "path":  "C:\\Users\\romio\\.cursor\\projects\\e-tenvo-main\\agent-transcripts\\a662063c-1a55-4d01-b5b2-3905b34553c4\\subagents\\e0480c5d-573c-4cbd-a1ee-bc1b4d1fb553.jsonl"
+                                             },
+    "6d0350f8-4eb5-4020-8dd9-77cc6269a7a6":  {
+                                                 "mtimeMs":  1782046946158,
+                                                 "path":  "C:\\Users\\romio\\.cursor\\projects\\e-tenvo-main\\agent-transcripts\\967e1c53-4b5d-490e-b744-b2e0363221c1\\subagents\\6d0350f8-4eb5-4020-8dd9-77cc6269a7a6.jsonl"
                                              },
     "ca727d15-15e3-449e-932c-66d6ef103d02":  {
                                                  "mtimeMs":  1780833042487,
@@ -332,7 +348,7 @@
                                                  "path":  "C:\\Users\\romio\\.cursor\\projects\\e-tenvo-main\\agent-transcripts\\c0ac84ca-832b-42bb-95ae-1a3a9c850cae\\c0ac84ca-832b-42bb-95ae-1a3a9c850cae.jsonl"
                                              },
     "ec368078-e784-4468-93e5-9385c3407bfa":  {
-                                                 "mtimeMs":  1783164500666,
+                                                 "mtimeMs":  1783164625352,
                                                  "path":  "C:\\Users\\romio\\.cursor\\projects\\e-tenvo-main\\agent-transcripts\\f075e38a-1bee-465f-80f3-e086a2602a00\\subagents\\ec368078-e784-4468-93e5-9385c3407bfa.jsonl"
                                              },
     "1e99ba6d-ddf0-4b0e-adcd-a91e76bbfd1c":  {
@@ -374,6 +390,10 @@
     "2cbd3417-c59d-4fd7-8a02-4f52898e0f61":  {
                                                  "mtimeMs":  1782077745920,
                                                  "path":  "C:\\Users\\romio\\.cursor\\projects\\e-tenvo-main\\agent-transcripts\\967e1c53-4b5d-490e-b744-b2e0363221c1\\subagents\\2cbd3417-c59d-4fd7-8a02-4f52898e0f61.jsonl"
+                                             },
+    "d803b244-5ed6-40cd-bec2-426391e9d66c":  {
+                                                 "mtimeMs":  1783170848002,
+                                                 "path":  "C:\\Users\\romio\\.cursor\\projects\\e-tenvo-main\\agent-transcripts\\d803b244-5ed6-40cd-bec2-426391e9d66c\\d803b244-5ed6-40cd-bec2-426391e9d66c.jsonl"
                                              },
     "c16dbeb3-25cf-4dcf-ab53-086951e369fc":  {
                                                  "mtimeMs":  1783018939480,
@@ -587,6 +607,10 @@
                                                  "mtimeMs":  1782556207073,
                                                  "path":  "C:\\Users\\romio\\.cursor\\projects\\e-tenvo-main\\agent-transcripts\\964817f2-f3e2-4084-a8d2-424776b4f112\\subagents\\4c34539e-b705-47f9-b093-ab0fc751ef56.jsonl"
                                              },
+    "7353a221-9ef6-436c-ba8d-b0e76140d0f1":  {
+                                                 "mtimeMs":  1783173210798,
+                                                 "path":  "C:\\Users\\romio\\.cursor\\projects\\e-tenvo-main\\agent-transcripts\\dd4a3478-d505-4f84-a17a-162284f10519\\subagents\\7353a221-9ef6-436c-ba8d-b0e76140d0f1.jsonl"
+                                             },
     "559cbfd8-7477-4991-a78e-a5d2bb5e1d67":  {
                                                  "mtimeMs":  1782651551701,
                                                  "path":  "C:\\Users\\romio\\.cursor\\projects\\e-tenvo-main\\agent-transcripts\\559cbfd8-7477-4991-a78e-a5d2bb5e1d67\\559cbfd8-7477-4991-a78e-a5d2bb5e1d67.jsonl"
@@ -703,9 +727,9 @@
                                                  "mtimeMs":  1782043230048,
                                                  "path":  "C:\\Users\\romio\\.cursor\\projects\\e-tenvo-main\\agent-transcripts\\967e1c53-4b5d-490e-b744-b2e0363221c1\\subagents\\15920ce7-89a6-4bef-88e2-7fc9ab2adce0.jsonl"
                                              },
-    "6d0350f8-4eb5-4020-8dd9-77cc6269a7a6":  {
-                                                 "mtimeMs":  1782046946158,
-                                                 "path":  "C:\\Users\\romio\\.cursor\\projects\\e-tenvo-main\\agent-transcripts\\967e1c53-4b5d-490e-b744-b2e0363221c1\\subagents\\6d0350f8-4eb5-4020-8dd9-77cc6269a7a6.jsonl"
+    "5a4f2ea2-85f0-4f87-8bb5-e245dcaad459":  {
+                                                 "mtimeMs":  1783172270470,
+                                                 "path":  "C:\\Users\\romio\\.cursor\\projects\\e-tenvo-main\\agent-transcripts\\5a4f2ea2-85f0-4f87-8bb5-e245dcaad459\\5a4f2ea2-85f0-4f87-8bb5-e245dcaad459.jsonl"
                                              },
     "e3f02bcf-e53c-4335-a84b-c7611b9dfdc5":  {
                                                  "mtimeMs":  1782641829335,
@@ -724,7 +748,7 @@
                                                  "path":  "C:\\Users\\romio\\.cursor\\projects\\e-tenvo-main\\agent-transcripts\\addc72f8-1564-45f3-ab74-98362db27005\\subagents\\5fea5dfc-251e-450e-b3ab-1ecf38496699.jsonl"
                                              },
     "f075e38a-1bee-465f-80f3-e086a2602a00":  {
-                                                 "mtimeMs":  1783164439720,
+                                                 "mtimeMs":  1783166901062,
                                                  "path":  "C:\\Users\\romio\\.cursor\\projects\\e-tenvo-main\\agent-transcripts\\f075e38a-1bee-465f-80f3-e086a2602a00\\f075e38a-1bee-465f-80f3-e086a2602a00.jsonl"
                                              },
     "f0587a11-10ac-4496-bcf2-bbdc18346d61":  {
@@ -762,6 +786,10 @@
     "0e360a60-4788-44d4-83af-7f9e9791511b":  {
                                                  "mtimeMs":  1782768164825,
                                                  "path":  "C:\\Users\\romio\\.cursor\\projects\\e-tenvo-main\\agent-transcripts\\8537f176-9db6-4186-a9f6-5fdea9f58063\\subagents\\0e360a60-4788-44d4-83af-7f9e9791511b.jsonl"
+                                             },
+    "931f1d53-355b-4867-86e9-611b561ffda5":  {
+                                                 "mtimeMs":  1783167222603,
+                                                 "path":  "C:\\Users\\romio\\.cursor\\projects\\e-tenvo-main\\agent-transcripts\\d803b244-5ed6-40cd-bec2-426391e9d66c\\subagents\\931f1d53-355b-4867-86e9-611b561ffda5.jsonl"
                                              },
     "c492320a-1fdc-404f-8996-d2e458b24939":  {
                                                  "mtimeMs":  1780249769268,
@@ -838,6 +866,10 @@
     "ee180683-226b-4354-80e0-94741b338a60":  {
                                                  "mtimeMs":  1780216880035,
                                                  "path":  "C:\\Users\\romio\\.cursor\\projects\\e-tenvo-main\\agent-transcripts\\ee180683-226b-4354-80e0-94741b338a60\\ee180683-226b-4354-80e0-94741b338a60.jsonl"
+                                             },
+    "fd4d400b-268d-4c79-8c08-f01636c8be16":  {
+                                                 "mtimeMs":  1783167161771,
+                                                 "path":  "C:\\Users\\romio\\.cursor\\projects\\e-tenvo-main\\agent-transcripts\\d803b244-5ed6-40cd-bec2-426391e9d66c\\subagents\\fd4d400b-268d-4c79-8c08-f01636c8be16.jsonl"
                                              },
     "a48e7ce6-24ff-46b4-9810-a60e37515c81":  {
                                                  "mtimeMs":  1782987666585,

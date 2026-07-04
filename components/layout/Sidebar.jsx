@@ -242,6 +242,10 @@ export function Sidebar({ isOpen, onClose, isSidebarCollapsed, setIsSidebarColla
     : 'free';
   const planName = safeIsPlatformOwner ? 'Platform Owner' : (PLAN_TIERS[planTier]?.name || 'Free');
   const navAccessReady = hasHydrated && hubReady;
+  const accountRoleLabel =
+    !hasHydrated || !hubReady
+      ? 'Loading…'
+      : (effectiveRole || 'User').charAt(0).toUpperCase() + (effectiveRole || 'User').slice(1);
 
   const [collapsedSections, setCollapsedSections] = useState({});
 
@@ -576,7 +580,7 @@ export function Sidebar({ isOpen, onClose, isSidebarCollapsed, setIsSidebarColla
                     {user?.user_metadata?.full_name || 'My Account'}
                   </p>
                   <p className="text-[10px] text-gray-400 truncate">
-                    {(effectiveRole || 'User').charAt(0).toUpperCase() + (effectiveRole || 'User').slice(1)} · {user?.email}
+                    {accountRoleLabel} · {user?.email}
                   </p>
                 </div>
               )}

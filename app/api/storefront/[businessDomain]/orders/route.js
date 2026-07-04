@@ -22,6 +22,7 @@ import { MEMBERSHIP_SOURCE } from '@/lib/memberships/membershipConstants';
 import { notifyStorefrontOrder, notifyLowStock } from '@/lib/notifications/notificationHelpers';
 import { isStorefrontProductUuid } from '@/lib/utils/storefrontProductRef';
 import { queryStorefrontVariantRequirement } from '@/lib/storefront/storefrontProductVariants';
+import { areAllLinesDigital, digitalShippingAddress } from '@/lib/storefront/digitalProducts';
 
 /**
  * Storefront checkout decrements stock via direct SQL (bypassing InventoryService),
@@ -145,12 +146,35 @@ export async function POST(request, { params }) {
     );
   }
 
-  if (!shippingAddress?.address || !shippingAddress?.city) {
+  const precheckClient = await pool.connect();
+  let digitalOnlyOrder = false;
+
+  try {
+    // Pre-check digital fulfillment from product refs (before full pricing txn)
+    if (items?.length) {
+      const lineRefs = items
+        .filter((i) => isStorefrontProductUuid(i?.productId))
+        .map((i) => ({ productId: i.productId }));
+      if (lineRefs.length === items.length) {
+        digitalOnlyOrder = await areAllLinesDigital(precheckClient, business.id, lineRefs);
+      }
+    }
+  } catch (digitalErr) {
+    console.warn('[Create Order] digital pre-check skipped:', digitalErr?.message);
+  } finally {
+    precheckClient.release();
+  }
+
+  if (!digitalOnlyOrder && (!shippingAddress?.address || !shippingAddress?.city)) {
     return NextResponse.json(
       { success: false, error: 'Shipping address is required' },
       { status: 400 }
     );
   }
+
+  const effectiveShippingAddress = digitalOnlyOrder
+    ? digitalShippingAddress(customer)
+    : shippingAddress;
 
   if (!items || !Array.isArray(items) || items.length === 0) {
     return NextResponse.json(
@@ -193,8 +217,9 @@ export async function POST(request, { params }) {
   }
 
   const shippingRaw = Number(shipping);
-  const shippingAmount =
-    Number.isFinite(shippingRaw) && shippingRaw >= 0
+  const shippingAmount = digitalOnlyOrder
+    ? 0
+    : Number.isFinite(shippingRaw) && shippingRaw >= 0
       ? roundMoney(Math.min(shippingRaw, 9_999_999))
       : 0;
 
@@ -428,19 +453,24 @@ export async function POST(request, { params }) {
       customerId = newCustomer.rows[0].id;
     }
 
-    const shipBlock = formatAddressBlock(shippingAddress);
+    const shipBlock = formatAddressBlock(effectiveShippingAddress);
     const billBlock = billingAddress
       ? formatAddressBlock(billingAddress)
       : shipBlock;
 
     const currency = business.currency || 'PKR';
     const paymentStatus =
-      paymentMethod === 'cod' ? 'pending' : 'awaiting_payment';
+      paymentMethod === 'cod'
+        ? 'pending'
+        : paymentMethod === 'crypto'
+          ? 'awaiting_payment'
+          : 'awaiting_payment';
 
     const orderMeta = {
       source: 'storefront',
       customer_id: customerId,
       payment_method: paymentMethod || 'cod',
+      digital_only: digitalOnlyOrder,
       clientDeclaredShipping: shipping,
       serverShipping: shippingAmount,
       discounts: discountMeta,
@@ -476,7 +506,7 @@ export async function POST(request, { params }) {
         currency,
         'pending',
         paymentStatus,
-        'unfulfilled',
+        digitalOnlyOrder ? 'digital_pending' : 'unfulfilled',
         notes || null,
         JSON.stringify(orderMeta),
       ]

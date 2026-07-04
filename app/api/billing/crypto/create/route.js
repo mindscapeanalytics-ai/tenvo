@@ -7,6 +7,7 @@ import { assertUserHasBusinessAccess } from '@/lib/tenancy/businessAccess';
 import { createPayment } from '@/lib/payments/nowpayments';
 import { businessHubUrl } from '@/lib/utils/billingReturnUrls';
 import { registerPendingCryptoCheckout } from '@/lib/billing/cryptoSubscription';
+import { resolveBillableSku } from '@/lib/payments/billingSku';
 
 function appBaseUrl() {
   const explicit = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '');
@@ -38,9 +39,12 @@ export async function POST(request) {
       businessId: businessIdCamel,
       planTier,
       plan_tier: planTierSnake,
+      domainPackageKey,
+      domain_package_key: domainPackageKeySnake,
     } = body;
     const businessId = businessIdSnake || businessIdCamel;
     const resolvedPlanTier = planTier || planTierSnake || null;
+    const resolvedPackageKey = domainPackageKey || domainPackageKeySnake || null;
 
     if (!businessId) {
       return NextResponse.json(
@@ -49,7 +53,24 @@ export async function POST(request) {
       );
     }
 
-    const numAmount = typeof amount === 'string' ? parseFloat(amount) : Number(amount);
+    const numAmountRaw = typeof amount === 'string' ? parseFloat(amount) : Number(amount);
+    let numAmount = numAmountRaw;
+    let currencyResolved = String(currency).toLowerCase();
+
+    const billable =
+      resolvedPlanTier || resolvedPackageKey
+        ? resolveBillableSku({
+            planTier: resolvedPlanTier,
+            domainPackageKey: resolvedPackageKey,
+            currency: currencyResolved,
+          })
+        : null;
+
+    if (billable) {
+      numAmount = billable.amountMajor;
+      currencyResolved = billable.currency;
+    }
+
     if (!Number.isFinite(numAmount) || numAmount <= 0) {
       return NextResponse.json(
         { error: 'amount must be a positive number', code: 'INVALID_AMOUNT' },
@@ -103,10 +124,12 @@ export async function POST(request) {
 
     const created = await createPayment({
       priceAmount: numAmount,
-      priceCurrency: String(currency).toLowerCase(),
+      priceCurrency: currencyResolved,
       payCurrency: String(cryptoCurrency).toLowerCase(),
       orderId,
-      orderDescription: `Tenvo, ${business.business_name || 'Business'} (${businessId.slice(0, 8)}…)`,
+      orderDescription: billable?.catalog?.productName
+        ? `Tenvo — ${billable.catalog.productName}`
+        : `Tenvo, ${business.business_name || 'Business'} (${businessId.slice(0, 8)}…)`,
       customerEmail: business.email || undefined,
       customerName: business.business_name || undefined,
       callbackUrl: ipnCallbackUrl,
@@ -126,9 +149,9 @@ export async function POST(request) {
         businessId,
         orderId: created.orderId || orderId,
         paymentId: created.paymentId,
-        planTier: resolvedPlanTier,
+        planTier: resolvedPlanTier || billable?.activation?.planTier,
         amountMinor: Math.round(numAmount * 100),
-        currency: String(currency).toUpperCase(),
+        currency: String(currencyResolved).toUpperCase(),
       });
     } catch (regErr) {
       console.warn('[Crypto create] Could not register pending subscription row:', regErr);
