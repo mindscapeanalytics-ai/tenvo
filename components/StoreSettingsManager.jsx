@@ -35,10 +35,13 @@ import { isPharmacyElevatedStore } from '@/lib/storefront/pharmacyStorefront';
 import { isFurnitureElevatedStore } from '@/lib/storefront/furnitureStorefront';
 import { isFitnessElevatedStore } from '@/lib/storefront/fitnessStorefront';
 import { isFashionEditorialStore } from '@/lib/storefront/fashionEditorial';
+import { HeroCarouselSlidesEditor } from '@/components/storefront/admin/HeroCarouselSlidesEditor';
+import { getDefaultHeroSlidesTemplate } from '@/lib/storefront/heroPresets';
+import { uploadOptimizedImage } from '@/lib/utils/optimizeImageClient';
 import { canConfigureTenantMeetingUrl, normalizeTenantMeetingUrl } from '@/lib/storefront/storefrontBooking';
 
 // ── Image Upload Field ────────────────────────────────────────────────────────
-function ImageUploadField({ label, hint, value, onChange, businessId }) {
+function ImageUploadField({ label, hint, value, onChange, businessId, purpose = 'product' }) {
   const inputRef = useRef(null);
   const [uploading, setUploading] = useState(false);
 
@@ -51,21 +54,14 @@ function ImageUploadField({ label, hint, value, onChange, businessId }) {
     }
     setUploading(true);
     try {
-      const fd = new FormData();
-      fd.append('file', file);
-      fd.append('businessId', businessId);
-      const res = await fetch('/api/upload/product-image', { method: 'POST', body: fd });
-      const data = await res.json();
-      if (data.success) {
-        onChange(data.url);
-        toast.success('Image uploaded');
-      } else {
-        toast.error(data.error || 'Upload failed');
-      }
-    } catch {
-      toast.error('Upload failed');
+      const url = await uploadOptimizedImage(file, businessId, purpose);
+      onChange(url);
+      toast.success('Image uploaded');
+    } catch (err) {
+      toast.error(err?.message || 'Upload failed');
     } finally {
       setUploading(false);
+      if (inputRef.current) inputRef.current.value = '';
     }
   };
 
@@ -132,6 +128,7 @@ export function StoreSettingsManager({ business, category }) {
     returnPolicyDays: 7,
     heroTitle: '',
     heroSubtitle: '',
+    heroSlides: [],
     announcement: '',
     pageSections: [],
     brand: { primaryColor: '' },
@@ -266,6 +263,12 @@ export function StoreSettingsManager({ business, category }) {
   const furnitureStore = isFurnitureElevatedStore(category || business?.category);
   const fitnessStore = isFitnessElevatedStore(category || business?.category);
   const fashionStore = isFashionEditorialStore(category || business?.category);
+  const defaultHeroSlides = useMemo(() => {
+    const domain = settings.storeDomain || business?.domain || 'preview';
+    return getDefaultHeroSlidesTemplate(category || business?.category, domain, {});
+  }, [settings.storeDomain, business?.domain, category, business?.category]);
+  const heroMinSlides = Math.min(4, Math.max(1, defaultHeroSlides.length || 4));
+  const heroMaxSlides = Math.max(heroMinSlides, defaultHeroSlides.length || 6, 6);
   const businessForBookingGate = useMemo(
     () => ({
       ...business,
@@ -587,19 +590,39 @@ export function StoreSettingsManager({ business, category }) {
             <CardContent className="space-y-6">
               <ImageUploadField
                 label="Store Logo"
-                hint="Shown in header and emails. Recommended: 200×200px square."
+                hint="Shown in header and emails. Recommended: 200×200px square. Converted to WebP on upload."
                 value={settings.logoUrl}
                 onChange={(v) => set('logoUrl', v)}
                 businessId={business?.id}
+                purpose="logo"
               />
               <Separator />
               <ImageUploadField
                 label="Hero / Cover Image"
-                hint="Full-width banner on your store homepage. Recommended: 1440×500px."
+                hint="Used on slide 1 when you have not uploaded custom hero carousel images. Recommended: 1920×1080. Converted to WebP on upload."
                 value={settings.coverImageUrl}
                 onChange={(v) => set('coverImageUrl', v)}
                 businessId={business?.id}
+                purpose="hero"
               />
+              <Separator />
+              <div className="space-y-3">
+                <div>
+                  <p className="text-sm font-medium text-gray-900">Hero carousel</p>
+                  <p className="text-xs text-gray-500">
+                    Upload wide banner images for your homepage hero. Empty slots keep template
+                    defaults for your store type. Images are converted to WebP before upload.
+                  </p>
+                </div>
+                <HeroCarouselSlidesEditor
+                  slides={settings.heroSlides || []}
+                  defaultSlides={defaultHeroSlides}
+                  onChange={(slides) => set('heroSlides', slides)}
+                  businessId={business?.id}
+                  maxSlides={heroMaxSlides}
+                  minSlides={heroMinSlides}
+                />
+              </div>
             </CardContent>
           </Card>
 
@@ -1443,9 +1466,8 @@ export function StoreSettingsManager({ business, category }) {
                   </div>
                 </div>
                 <p className="text-xs text-gray-500">
-                  Hero slides and department imagery adapt to your store type (boutique, textile,
-                  leather, jewellery) and use your category and product photos. Set your accent color
-                  under Branding and the top announcement strip under Content.
+                  Department rows use your category and product photos. Set your accent color under
+                  Branding and the top announcement strip under Content.
                 </p>
               </CardContent>
             </Card>

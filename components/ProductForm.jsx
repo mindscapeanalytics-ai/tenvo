@@ -63,6 +63,12 @@ import { hasSeasonalPricing } from '@/lib/utils/pakistaniFeatures';
 import { pakistaniSizes, pakistaniColors } from '@/lib/domainData/pakistaniRetailData';
 import { VariantManager } from '@/components/domain/VariantManager';
 import { buildVariantsFromForm, dbVariantsToFormState, totalVariantStock } from '@/lib/utils/variantSync';
+import {
+  isMultiProductImagesEnabled,
+  normalizeProductImageUrls,
+  productImagesFromUrls,
+  MAX_PRODUCT_IMAGES,
+} from '@/lib/utils/productImages';
 
 function slugifyProductName(name) {
     return String(name || '')
@@ -199,6 +205,7 @@ export function ProductForm({
             sacCode: product.sac_code || '',
             taxPercent: product.tax_percent || getDomainDefaultTax(category, domainTaxOptions),
             image_url: product.image_url || '',
+            productImageUrls: normalizeProductImageUrls(product),
             isActive: product.is_active !== false,
             slug: product.slug || '',
             batches: product.batches || [],
@@ -235,6 +242,8 @@ export function ProductForm({
     const hasVariantMatrix = isSizeColorMatrixEnabled(category);
     const variantStockTotal = totalVariantStock(buildVariantsFromForm(formData, product || {}));
     const hasVariantStock = variantStockTotal > 0;
+    const multiProductImages = isMultiProductImagesEnabled(category);
+    const productImageLimit = multiProductImages ? MAX_PRODUCT_IMAGES : 1;
 
     // Pakistani Seasonal Pricing
     const seasonalPricingEnabled = hasSeasonalPricing(category);
@@ -392,6 +401,7 @@ export function ProductForm({
             sacCode: '',
             taxPercent: getDomainDefaultTax(category, domainTaxOptions),
             image_url: '',
+            productImageUrls: [],
             isActive: true,
             slug: '',
             ...getDomainDefaults(category),
@@ -505,6 +515,15 @@ export function ProductForm({
                 formData.brand ||
                 (vehicleListing && domainData.vehiclemake ? String(domainData.vehiclemake) : null);
 
+            const imagePack = productImagesFromUrls(
+                formData.productImageUrls?.length
+                    ? formData.productImageUrls
+                    : formData.image_url
+                      ? [formData.image_url]
+                      : [],
+                formData.name
+            );
+
             const payload = {
                 name: formData.name,
                 sku: formData.sku || (() => {
@@ -530,7 +549,8 @@ export function ProductForm({
                 hsn_code: formData.hsnCode || null,
                 sac_code: formData.sacCode || null,
                 tax_percent: Number(formData.taxPercent) || 0,
-                image_url: formData.image_url || null,
+                image_url: imagePack.image_url,
+                images: imagePack.images,
                 is_active: formData.isActive !== false,
                 slug:
                     formData.slug && String(formData.slug).trim()
@@ -956,14 +976,23 @@ export function ProductForm({
                                             <ImagePlus className="w-5 h-5" />
                                         </div>
                                         <div>
-                                            <h3 className="text-lg font-semibold text-gray-900">Product Image</h3>
-                                            <p className="text-sm text-gray-500">Upload your own or auto-fetch from the internet. Images are auto-resized to 800×800 WebP.</p>
+                                            <h3 className="text-lg font-semibold text-gray-900">
+                                                {multiProductImages ? 'Product Images' : 'Product Image'}
+                                            </h3>
+                                            <p className="text-sm text-gray-500">
+                                                {multiProductImages
+                                                    ? `Upload up to ${MAX_PRODUCT_IMAGES} photos. Images are optimized to WebP (~800×800) before upload.`
+                                                    : 'Upload your own or auto-fetch from the internet. Images are optimized to WebP (~800×800) before upload.'}
+                                            </p>
                                         </div>
                                     </div>
 
                                     <ProductImageManager
+                                        values={formData.productImageUrls || []}
                                         value={formData.image_url || ''}
                                         onChange={(url) => updateField('image_url', url)}
+                                        onChangeImages={(urls) => updateField('productImageUrls', urls)}
+                                        maxImages={productImageLimit}
                                         productName={formData.name || ''}
                                         category={category}
                                         businessId={product?.business_id || smartDefaults?.businessId || business?.id || ''}

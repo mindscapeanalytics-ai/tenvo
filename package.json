@@ -30,6 +30,7 @@
     "verify:regional-market": "bun scripts/verify-regional-market.mjs",
     "verify:registration-flow": "npx tsx scripts/verify-registration-flow.mjs",
     "verify:storefront-tenancy": "node scripts/verify-storefront-tenancy.mjs",
+    "verify:storefront-domains": "bun scripts/verify-storefront-domains.mjs",
     "verify:campaigns-hub": "node scripts/verify-campaigns-hub.mjs",
     "verify:domain-packages": "node scripts/verify-domain-packages.mjs",
     "verify:stripe-billing-catalog": "node scripts/verify-stripe-billing-catalog.mjs",

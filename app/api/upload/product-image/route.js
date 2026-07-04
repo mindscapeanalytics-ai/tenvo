@@ -33,6 +33,7 @@ export async function POST(request) {
 
     const formData = await request.formData();
     const file = formData.get('file');
+    const purpose = formData.get('purpose')?.toString() || 'product';
     const businessId =
       formData.get('businessId')?.toString() ||
       formData.get('business_id')?.toString() ||
@@ -63,9 +64,9 @@ export async function POST(request) {
       );
     }
 
-    if (file.size > 5 * 1024 * 1024) {
+    if (file.size > (purpose === 'hero' ? 8 : 5) * 1024 * 1024) {
       return NextResponse.json(
-        { error: 'File too large. Maximum upload size is 5MB.' },
+        { error: `File too large. Maximum upload size is ${purpose === 'hero' ? '8' : '5'}MB.` },
         { status: 400 }
       );
     }
@@ -98,7 +99,8 @@ export async function POST(request) {
     }
 
     const uniqueName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
-    const filePath = `images/${tenantSegment}/${uniqueName}`;
+    const folder = purpose === 'hero' ? 'storefront-hero' : 'images';
+    const filePath = `${folder}/${tenantSegment}/${uniqueName}`;
 
     const { error: uploadError } = await supabase.storage
       .from('products')
