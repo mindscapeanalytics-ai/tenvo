@@ -48,7 +48,7 @@ export function AdvancedSearch({
   const activeFilterCount = Object.keys(activeFilters).filter(key => activeFilters[key]).length;
 
   return (
-    <div className="w-full space-y-4">
+    <div className="w-full space-y-4 max-lg:space-y-3">
       <div className="flex items-center gap-3">
         {!hideSearch && (
           <div className="relative flex-1 group min-w-0">

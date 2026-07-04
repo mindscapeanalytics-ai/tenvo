@@ -22,7 +22,7 @@ import { FormError } from '@/components/ui/form-error';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { isEntitlementError, getEntitlementErrorMessage, isEntitlementErrorHandled } from '@/lib/utils/subscriptionErrors';
 import { showActionError, formatValidationErrors, isValidationError } from '@/lib/utils/formErrorHandler';
-import { MOBILE_FORM_BODY, MOBILE_FORM_FOOTER, MOBILE_INPUT_CLASS, MOBILE_LABEL_CLASS } from '@/lib/utils/formMobileStyles';
+import { MOBILE_FORM_BODY, MOBILE_FORM_FOOTER, MOBILE_INPUT_CLASS, MOBILE_LABEL_CLASS, MOBILE_TAB_LIST } from '@/lib/utils/formMobileStyles';
 
 const PHONE_COUNTRY_CODES = getPhoneCountryCodeOptions();
 
@@ -264,7 +264,7 @@ export function CustomerForm({
 
             <CardContent className={MOBILE_FORM_BODY}>
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                    <TabsList className={cn('mb-3 flex h-9 w-full gap-0.5 overflow-x-auto rounded-lg bg-gray-100/80 p-0.5 scrollbar-none sm:grid', isEasyMode ? 'grid-cols-1 sm:grid-cols-1' : 'sm:grid-cols-3')}>
+                    <TabsList className={cn(MOBILE_TAB_LIST, isEasyMode ? 'sm:grid-cols-1' : 'sm:grid-cols-3')}>
                         <TabsTrigger value="basic" className="relative rounded-md text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm">
                             Basic Details
                             {['name', 'phone', 'city'].some(k => errors[k]) && (

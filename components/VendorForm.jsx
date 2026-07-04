@@ -21,9 +21,10 @@ import toast from 'react-hot-toast';
 import { isEntitlementError, getEntitlementErrorMessage, isEntitlementErrorHandled } from '@/lib/utils/subscriptionErrors';
 import { useFormRegionalContext } from '@/lib/hooks/useFormRegionalContext';
 import { showActionError, formatValidationErrors, isValidationError } from '@/lib/utils/formErrorHandler';
+import { MOBILE_INPUT_CLASS, MOBILE_LABEL_CLASS, MOBILE_FORM_BODY, MOBILE_FORM_FOOTER, MOBILE_TAB_LIST } from '@/lib/utils/formMobileStyles';
 
-const inputClass = 'h-9 rounded-lg border-gray-200 text-sm';
-const labelClass = 'text-[11px] font-semibold text-slate-600';
+const inputClass = MOBILE_INPUT_CLASS;
+const labelClass = MOBILE_LABEL_CLASS;
 
 export function VendorForm({
     initialData = null,
@@ -210,7 +211,7 @@ export function VendorForm({
 
             <CardContent className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-3 sm:px-5 sm:py-4">
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                    <TabsList className={cn('mb-4 grid h-9 w-full bg-gray-100/80 p-0.5', isEasyMode ? 'grid-cols-1' : 'grid-cols-4')}>
+                    <TabsList className={cn(MOBILE_TAB_LIST, isEasyMode ? 'sm:grid-cols-1' : 'sm:grid-cols-4')}>
                         <TabsTrigger value="identity" className="relative rounded-md text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm">
                             Identity
                             {['name', 'phone', 'email'].some(k => errors[k]) && (

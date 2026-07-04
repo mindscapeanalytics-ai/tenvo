@@ -97,7 +97,7 @@ export function MobileFormActions({
           variant="outline"
           onClick={onCancel}
           disabled={isLoading}
-          className="h-9 rounded-xl px-3 text-xs font-semibold sm:h-10"
+          className="h-10 rounded-xl px-3 text-sm font-semibold sm:h-10"
         >
           {cancelLabel}
         </Button>
@@ -107,7 +107,7 @@ export function MobileFormActions({
           type="button"
           onClick={onSubmit}
           disabled={isLoading}
-          className="h-9 rounded-xl bg-emerald-600 px-4 text-xs font-bold text-white hover:bg-emerald-700 sm:h-10 sm:text-sm"
+          className="h-10 rounded-xl bg-emerald-600 px-4 text-sm font-bold text-white hover:bg-emerald-700 sm:h-10"
         >
           {isLoading ? (
             <span className="inline-flex items-center gap-1.5">Saving…</span>

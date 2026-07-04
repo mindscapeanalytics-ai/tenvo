@@ -158,7 +158,10 @@ export function ProductCardGrid({
               </div>
 
               <div
-                className="absolute right-1.5 top-1.5 z-20 hidden flex-col gap-1 group-hover:flex"
+                className={cn(
+                  'absolute right-1.5 top-1.5 z-20 flex flex-col gap-1',
+                  'max-lg:flex lg:hidden lg:group-hover:flex'
+                )}
                 onClick={(e) => e.stopPropagation()}
               >
                 <button

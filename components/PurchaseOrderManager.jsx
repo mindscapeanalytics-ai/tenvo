@@ -12,6 +12,8 @@ import { formatCurrency } from '@/lib/currency';
 import { getDomainColors } from '@/lib/domainColors';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { hubDialogContentClass } from '@/lib/utils/formMobileStyles';
+import { cn } from '@/lib/utils';
 import GRNView from './GRNView';
 import { useBusiness } from '@/lib/context/BusinessContext';
 import {
@@ -226,7 +228,7 @@ export function PurchaseOrderManager({ purchaseOrders = [], onCreate, onUpdateSt
         </CardContent>
       </Card>
       <Dialog open={!!poToView} onOpenChange={(open) => !open && setPoToView(null)}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className={hubDialogContentClass({ wide: true, maxWidth: 'lg:max-w-4xl' })}>
           <DialogHeader>
             <DialogTitle className="flex items-center justify-between gap-2">
               <span className="flex items-center gap-2">

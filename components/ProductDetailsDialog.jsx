@@ -36,6 +36,7 @@ import { getDomainDefaults } from '@/lib/domainKnowledge';
 import { ProductForm } from './ProductForm';
 import { updateProductAction } from '@/lib/actions/standard/inventory/product';
 import toast from 'react-hot-toast';
+import { HUB_ENTITY_DIALOG } from '@/lib/utils/formMobileStyles';
 
 const DetailSection = ({ title, icon: Icon, children }) => (
     <div className="space-y-4">
@@ -128,7 +129,7 @@ export function ProductDetailsDialog({
 
     return (
         <Dialog open={open} onOpenChange={onClose}>
-            <DialogContent className="max-w-3xl h-[85vh] max-h-[85vh] overflow-hidden flex flex-col p-0 gap-0 rounded-[2.5rem] border-none shadow-2xl bg-white/95 backdrop-blur-xl animate-in zoom-in-95 duration-300">
+            <DialogContent className={HUB_ENTITY_DIALOG}>
                 <DialogHeader className="relative shrink-0 overflow-hidden border-b border-gray-100 bg-gray-50/50 p-4 pb-4 sm:p-8 sm:pb-6">
                     {/* Background Glow */}
                     <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/5 blur-[100px] -mr-32 -mt-32 rounded-full" />

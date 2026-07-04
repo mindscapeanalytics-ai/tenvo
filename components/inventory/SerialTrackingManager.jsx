@@ -5,6 +5,7 @@ import { Scan, Check, X, AlertCircle, Package, Shield, Calendar, Plus, Search } 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { hubDialogContentClass } from '@/lib/utils/formMobileStyles';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
@@ -384,7 +385,7 @@ export function SerialTrackingManager({ businessId, productId, warehouseId, prod
 
             {/* Add Serial Dialog */}
             <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-                <DialogContent>
+                <DialogContent className={hubDialogContentClass({ maxWidth: 'lg:max-w-lg' })}>
                     <DialogHeader>
                         <DialogTitle>Register New Serial</DialogTitle>
                         <DialogDescription>
@@ -470,7 +471,7 @@ export function SerialTrackingManager({ businessId, productId, warehouseId, prod
 
             {/* Bulk Add Dialog */}
             <Dialog open={showBulkDialog} onOpenChange={setShowBulkDialog}>
-                <DialogContent>
+                <DialogContent className={hubDialogContentClass({ maxWidth: 'lg:max-w-lg' })}>
                     <DialogHeader>
                         <DialogTitle>Bulk Add Serial Numbers</DialogTitle>
                         <DialogDescription>

@@ -1,22 +1,12 @@
 'use client';
 
-import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-} from '@/components/ui/sheet';
-import {
   MobileHubTile,
-  MobileActionRow,
   MobileKpiStrip,
   MobilePresetPills,
 } from '@/components/mobile/MobileHubPrimitives';
-import { useHubMobileNav } from '@/lib/hooks/useHubMobileNav';
 
 /**
  * @typedef {Object} DashboardMobilePreset
@@ -44,6 +34,9 @@ import { useHubMobileNav } from '@/lib/hooks/useHubMobileNav';
  */
 
 /**
+ * Mobile dashboard shell — KPIs, quick actions, operational pulse.
+ * Module navigation lives in HubMobileBottomNav (no duplicate tile grid here).
+ *
  * @param {{
  *   mode?: 'easy' | 'advanced',
  *   greeting?: string,
@@ -79,18 +72,11 @@ export function DashboardMobileHub({
   hasCoreData = true,
   quickSetupSteps = [],
 }) {
-  const [modulesOpen, setModulesOpen] = useState(false);
-  const { moduleItems, overflowItems } = useHubMobileNav();
-
   const runAction = (id) => {
-    setModulesOpen(false);
     onQuickAction?.(id);
   };
 
-  const lowStock = reminders.lowStock ?? 0;
-  const overdue = reminders.overdueInvoices ?? 0;
-
-  /** Advanced mode uses header date picker, avoid duplicate preset row on mobile */
+  /** Advanced mode uses header date picker — avoid duplicate preset row on mobile */
   const showPresetPills = mode === 'easy' && presetOptions.length > 0;
 
   const displayName = (() => {
@@ -101,12 +87,17 @@ export function DashboardMobileHub({
   })();
 
   return (
-    <div className="space-y-2.5 border-b border-gray-100 pb-2.5 lg:hidden">
-      {/* Compact greeting, no card chrome, no mode badge, no redundant period copy */}
+    <div className="space-y-3 border-b border-gray-100 pb-3 lg:hidden">
       <div className="space-y-1.5">
         <h1 className="truncate text-sm font-bold leading-tight tracking-tight text-gray-900">
           {greeting}{displayName ? `, ${displayName}` : ''}
         </h1>
+        {businessName ? (
+          <p className="truncate text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+            {businessName}
+            {periodLabel ? ` · ${periodLabel}` : ''}
+          </p>
+        ) : null}
         {showPresetPills && (
           <MobilePresetPills
             compact
@@ -117,12 +108,14 @@ export function DashboardMobileHub({
         )}
       </div>
 
-      {/* KPI scroll */}
-      <MobileKpiStrip items={kpiStrip} />
+      {kpiStrip.length > 0 ? <MobileKpiStrip items={kpiStrip} /> : null}
 
-      {/* Quick actions, 3-column tile grid */}
       {quickActions.length > 0 && (
-        <div className="grid grid-cols-3 gap-2">
+        <div>
+          <p className="mb-1.5 px-0.5 text-[10px] font-bold uppercase tracking-widest text-gray-400">
+            Quick actions
+          </p>
+          <div className="grid grid-cols-3 gap-2">
             {quickActions.slice(0, 6).map((action, index) => (
               <MobileHubTile
                 key={action.id}
@@ -133,58 +126,36 @@ export function DashboardMobileHub({
                 onClick={() => runAction(action.id)}
               />
             ))}
+          </div>
         </div>
       )}
 
-      {/* Hub modules */}
-      <div>
-        {overflowItems.length > 0 && (
-          <div className="mb-1.5 flex justify-end px-0.5">
-            <button
-              type="button"
-              onClick={() => setModulesOpen(true)}
-              className="text-[10px] font-semibold text-brand-primary"
-            >
-              All modules
-            </button>
-          </div>
-        )}
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-          {moduleItems.map((item) => (
-            <MobileHubTile
-              key={item.key}
-              icon={item.icon}
-              label={item.label}
-              sublabel={item.sublabel}
-              badge={
-                item.key === 'inventory' ? lowStock :
-                item.key === 'invoices' ? overdue :
-                undefined
-              }
-              onClick={() => runAction(item.key)}
-            />
-          ))}
-        </div>
-      </div>
-
-      {/* Operational pulse, compact 2×2 on mobile */}
       {healthPanels.length > 0 && (
         <div className="rounded-2xl border border-gray-100 bg-white p-3 shadow-sm">
+          <p className="mb-2 px-0.5 text-[10px] font-bold uppercase tracking-widest text-gray-400">
+            Operational pulse
+          </p>
           <div className="grid grid-cols-2 gap-2">
             {healthPanels.slice(0, 4).map((panel) => (
               <div key={panel.label} className="rounded-xl border border-gray-100 bg-gray-50/80 px-2.5 py-2">
-                <p className="text-[10px] font-bold uppercase tracking-wide text-gray-400 line-clamp-1">{panel.label}</p>
+                <p className="line-clamp-1 text-[10px] font-bold uppercase tracking-wide text-gray-400">
+                  {panel.label}
+                </p>
                 <p className={cn('mt-0.5 text-sm font-semibold tabular-nums', panel.tone)}>{panel.value}</p>
+                {panel.detail ? (
+                  <p className="mt-0.5 line-clamp-1 text-[10px] text-gray-500">{panel.detail}</p>
+                ) : null}
               </div>
             ))}
           </div>
         </div>
       )}
 
-      {/* Quick setup, compact mobile banner */}
       {!hasCoreData && quickSetupSteps.length > 0 && (
         <div className="rounded-2xl border border-cyan-100 bg-cyan-50/60 p-3">
-          <p className="text-xs font-medium text-gray-800">Add products, customers, or an invoice to unlock insights.</p>
+          <p className="text-xs font-medium text-gray-800">
+            Add products, customers, or an invoice to unlock insights.
+          </p>
           <div className="mt-2 flex flex-wrap gap-1.5">
             {quickSetupSteps.map((step) => (
               <Button
@@ -200,27 +171,6 @@ export function DashboardMobileHub({
           </div>
         </div>
       )}
-
-      {/* Overflow modules sheet */}
-      <Sheet open={modulesOpen} onOpenChange={setModulesOpen}>
-        <SheetContent side="bottom" className="max-h-[85vh] rounded-t-3xl px-4 pb-8 pt-4">
-          <SheetHeader className="text-left">
-            <SheetTitle className="text-base">All modules</SheetTitle>
-            <SheetDescription className="text-xs">Jump to any workspace area</SheetDescription>
-          </SheetHeader>
-          <div className="mt-4 space-y-2">
-            {[...moduleItems, ...overflowItems].map((item) => (
-              <MobileActionRow
-                key={item.key}
-                icon={item.icon}
-                label={item.label}
-                disabled={item.locked}
-                onClick={() => !item.locked && runAction(item.key)}
-              />
-            ))}
-          </div>
-        </SheetContent>
-      </Sheet>
     </div>
   );
 }

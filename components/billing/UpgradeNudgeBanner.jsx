@@ -8,6 +8,8 @@ import { Crown, Sparkles, X } from 'lucide-react';
 import { useBusiness } from '@/lib/context/BusinessContext';
 import { getDomainKnowledgeForBusiness } from '@/lib/utils/businessRegionalContext';
 import { buildUpgradeNudge } from '@/lib/utils/upgradeNudge';
+import { cn } from '@/lib/utils';
+import { MOBILE_BOTTOM_NAV_CLASS } from '@/lib/utils/mobileLayout';
 
 const SESSION_KEY = 'tenvo:upgrade-nudge-shown';
 const AUTO_HIDE_MS = 5000;
@@ -100,7 +102,10 @@ export function UpgradeNudgeBanner() {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 24 }}
           transition={{ duration: 0.25, ease: 'easeOut' }}
-          className="fixed inset-x-0 bottom-4 z-[70] flex justify-center px-3 pointer-events-none"
+          className={cn(
+            'fixed inset-x-0 z-[70] flex justify-center px-3 pointer-events-none',
+            MOBILE_BOTTOM_NAV_CLASS
+          )}
           role="status"
           aria-live="polite"
         >

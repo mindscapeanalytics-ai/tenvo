@@ -40,7 +40,7 @@ export default function BusinessLayout({ children }) {
                     <div className={`flex-1 flex flex-col h-full min-w-0 transition-all duration-300 ${marginClass}`}>
                         <Header onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
 
-                        <main className="flex-1 overflow-y-auto custom-scrollbar p-3 pb-20 lg:p-6 lg:pb-6">
+                        <main className="flex-1 overflow-y-auto custom-scrollbar touch-manipulation p-3 pb-20 lg:p-6 lg:pb-6">
                             <SubscriptionBillingBanner />
                             <PendingApprovalGuard>{children}</PendingApprovalGuard>
                         </main>

@@ -13,6 +13,8 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { formatCurrency } from '@/lib/currency';
 import { getDomainColors } from '@/lib/domainColors';
 import { FormError } from '@/components/ui/form-error';
+import { cn } from '@/lib/utils';
+import { hubDialogContentClass } from '@/lib/utils/formMobileStyles';
 import { getDomainVendorFields, getDomainVendorColumns, normalizeKey } from '@/lib/utils/domainHelpers';
 import { DomainFieldRenderer } from './domain/DomainFieldRenderer';
 import toast from 'react-hot-toast';
@@ -228,7 +230,7 @@ export function VendorManager({ vendors = [], onAdd, onUpdate, onDelete, categor
 
       {/* View Vendor Dialog */}
       <Dialog open={!!vendorToView} onOpenChange={(open) => !open && setVendorToView(null)}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col p-0">
+        <DialogContent className={cn(hubDialogContentClass({ wide: true, maxWidth: 'lg:max-w-3xl' }), 'flex flex-col overflow-hidden p-0 lg:p-0 lg:gap-0')}>
           <DialogHeader className="px-6 pt-6">
             <DialogTitle className="flex items-center gap-2">
               <Building2 className="w-5 h-5 text-gray-400" />

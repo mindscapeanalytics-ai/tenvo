@@ -43,36 +43,20 @@ export function StoreThemeStyles({ business, settings }) {
             color: #ffffff;
           }
           [data-store-fitness] .fitness-hero .fitness-hero-eyebrow {
-            color: rgba(251, 113, 133, 0.95);
-            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+            color: rgba(255, 255, 255, 0.62);
+            text-shadow: 0 1px 8px rgba(0, 0, 0, 0.45);
           }
           [data-store-fitness] .fitness-hero .store-heading--inverse {
-            text-shadow: 0 2px 28px rgba(0, 0, 0, 0.4);
+            text-shadow: 0 2px 28px rgba(0, 0, 0, 0.45);
           }
           [data-store-fitness] .fitness-hero .fitness-hero-title {
-            background-image: linear-gradient(
-              176deg,
-              #ffffff 0%,
-              #ffe4e6 24%,
-              #fb7185 52%,
-              #e11d48 72%,
-              #9f1239 100%
-            );
-            background-size: 100% 220%;
-            background-position: 50% 20%;
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
-            color: transparent;
-            text-shadow: none;
-            filter:
-              drop-shadow(0 6px 22px rgba(159, 18, 57, 0.5))
-              drop-shadow(0 2px 6px rgba(0, 0, 0, 0.55));
-            animation: fitness-hero-title-sheen 7s ease-in-out infinite;
-          }
-          @keyframes fitness-hero-title-sheen {
-            0%, 100% { background-position: 50% 16%; }
-            50% { background-position: 50% 84%; }
+            color: #ffffff;
+            -webkit-text-fill-color: #ffffff;
+            background: none;
+            text-shadow:
+              0 2px 24px rgba(0, 0, 0, 0.55),
+              0 0 48px rgba(255, 255, 255, 0.06);
+            filter: drop-shadow(0 4px 16px rgba(0, 0, 0, 0.35));
           }
           /* Reusable static wine→white gradient for fitness section headings.
              No animation (motion is reserved for the hero focal title). */
@@ -102,8 +86,9 @@ export function StoreThemeStyles({ business, settings }) {
             }
           }
           [data-store-fitness] .fitness-hero .store-hero-subtitle,
+          [data-store-fitness] .fitness-hero .fitness-hero-subtitle,
           [data-store-fitness] .fitness-hero p.text-zinc-300 {
-            color: rgba(212, 212, 216, 0.92);
+            color: rgba(255, 255, 255, 0.78);
           }
           @keyframes fitness-hero-glow-pulse {
             0%, 100% { opacity: 0.72; transform: scale(1); }

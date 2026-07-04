@@ -30,7 +30,7 @@ function FitnessHeroBackdrop({ accent }) {
       <div
         className="fitness-hero-glow pointer-events-none absolute inset-0 motion-reduce:opacity-90 max-lg:hidden"
         style={{
-          background: `radial-gradient(ellipse 62% 76% at 78% 46%, ${glow}72 0%, ${glow}30 44%, transparent 74%)`,
+          background: `radial-gradient(ellipse 68% 82% at 74% 42%, ${glow}72 0%, ${glow}30 44%, transparent 74%)`,
         }}
         aria-hidden
       />
@@ -113,19 +113,19 @@ function FitnessHeroBackdrop({ accent }) {
 }
 
 function FitnessAthleteVisual({ brandAccent, heroImageSrc, className, compact = false }) {
-  const ringBottom = compact
-    ? 'bottom-[8%]'
-    : 'bottom-[10%] sm:bottom-[12%] lg:bottom-[13%]';
+  const ringCenter = compact
+    ? 'left-1/2 top-[58%] -translate-x-1/2 -translate-y-1/2'
+    : 'left-1/2 top-1/2 -translate-x-1/2 -translate-y-[46%] lg:-translate-y-[44%]';
 
   return (
     <div className={cn('relative h-full w-full', className)}>
       <div
         className={cn(
-          'fitness-hero-glow pointer-events-none absolute left-1/2 z-0 aspect-square -translate-x-1/2 rounded-full blur-[48px] motion-reduce:opacity-80',
+          'fitness-hero-glow pointer-events-none absolute z-0 aspect-square rounded-full blur-[48px] motion-reduce:opacity-80',
           compact
             ? 'w-[min(115%,360px)] opacity-90'
-            : 'w-[min(108%,520px)] sm:w-[min(112%,580px)] lg:w-[min(126%,700px)]',
-          ringBottom
+            : 'w-[min(108%,520px)] sm:w-[min(114%,580px)] lg:w-[min(128%,720px)] xl:w-[min(136%,780px)]',
+          ringCenter
         )}
         style={{
           background: `radial-gradient(circle, ${brandAccent}95 0%, ${brandAccent}40 42%, transparent 76%)`,
@@ -135,11 +135,11 @@ function FitnessAthleteVisual({ brandAccent, heroImageSrc, className, compact = 
 
       <div
         className={cn(
-          'pointer-events-none absolute left-1/2 z-[1] aspect-square -translate-x-1/2',
+          'pointer-events-none absolute z-[1] aspect-square',
           compact
             ? 'w-[min(98%,300px)]'
-            : 'w-[min(106%,500px)] sm:w-[min(116%,560px)] lg:w-[min(132%,680px)]',
-          ringBottom
+            : 'w-[min(106%,500px)] sm:w-[min(116%,560px)] lg:w-[min(134%,700px)] xl:w-[min(142%,760px)]',
+          ringCenter
         )}
       >
         <div className={cn('fitness-hero-ring relative h-full w-full motion-reduce:animate-none', compact && 'opacity-80')}>
@@ -154,9 +154,9 @@ function FitnessAthleteVisual({ brandAccent, heroImageSrc, className, compact = 
 
       <div
         className={cn(
-          'pointer-events-none absolute left-1/2 z-[1] aspect-square -translate-x-1/2',
-          compact ? 'w-[min(82%,240px)]' : 'w-[min(90%,420px)] sm:w-[min(98%,470px)] lg:w-[min(112%,580px)]',
-          ringBottom
+          'pointer-events-none absolute z-[1] aspect-square',
+          compact ? 'w-[min(82%,240px)]' : 'w-[min(90%,420px)] sm:w-[min(98%,470px)] lg:w-[min(114%,600px)] xl:w-[min(122%,660px)]',
+          ringCenter
         )}
       >
         <div
@@ -171,9 +171,11 @@ function FitnessAthleteVisual({ brandAccent, heroImageSrc, className, compact = 
 
       <div
         className={cn(
-          'pointer-events-none absolute left-1/2 z-0 aspect-square w-[min(118%,520px)] -translate-x-1/2 rounded-full opacity-40 blur-xl',
-          'sm:w-[min(128%,560px)] lg:w-[min(142%,640px)]',
-          ringBottom
+          'pointer-events-none absolute z-0 aspect-square rounded-full opacity-40 blur-xl',
+          compact
+            ? 'w-[min(118%,320px)]'
+            : 'w-[min(118%,520px)] sm:w-[min(128%,560px)] lg:w-[min(146%,720px)] xl:w-[min(154%,780px)]',
+          ringCenter
         )}
         style={{
           background: `radial-gradient(circle, transparent 58%, ${brandAccent}55 72%, transparent 78%)`,
@@ -181,7 +183,12 @@ function FitnessAthleteVisual({ brandAccent, heroImageSrc, className, compact = 
         aria-hidden
       />
 
-      <div className={cn('fitness-hero-athlete absolute inset-x-0 z-10 flex items-end justify-center', compact ? 'bottom-0' : 'bottom-5 sm:bottom-7 lg:bottom-10')}>
+      <div
+        className={cn(
+          'fitness-hero-athlete absolute inset-x-0 z-10 flex justify-center',
+          compact ? 'bottom-0 items-end' : 'inset-y-0 items-end lg:items-center'
+        )}
+      >
         <SmartProductImage
           src={heroImageSrc || FITNESS_ASSETS.heroAthlete}
           alt=""
@@ -189,13 +196,15 @@ function FitnessAthleteVisual({ brandAccent, heroImageSrc, className, compact = 
           height={700}
           priority
           className={cn(
-            'h-auto w-auto max-w-full object-contain object-bottom',
+            'h-auto w-auto max-w-full object-contain',
             compact
-              ? 'max-h-[min(62vw,300px)] -translate-y-0 drop-shadow-[0_18px_52px_rgba(225,29,72,0.6)]'
+              ? 'max-h-[min(68vw,320px)] object-bottom drop-shadow-[0_18px_52px_rgba(225,29,72,0.6)]'
               : cn(
-                  '-translate-y-1 object-contain sm:-translate-y-2 lg:-translate-y-4',
-                  'max-h-[min(50svh,380px)] sm:max-h-[min(56svh,440px)]',
-                  'md:max-h-[min(90svh,760px)] lg:max-h-[min(99svh,920px)] xl:max-h-[min(100svh,1000px)]',
+                  'object-bottom lg:object-[center_92%]',
+                  'max-h-[min(54svh,400px)] sm:max-h-[min(60svh,460px)]',
+                  'md:max-h-[min(78svh,640px)] lg:max-h-[min(94svh,880px)] xl:max-h-[min(98svh,940px)]',
+                  'lg:scale-[1.18] xl:scale-[1.24]',
+                  'lg:-translate-y-[2%] xl:-translate-y-[4%]',
                   'drop-shadow-[0_28px_72px_rgba(225,29,72,0.55)]'
                 )
           )}
@@ -258,7 +267,7 @@ export function FitnessHero({
         className={cn(
           'relative z-10 grid w-full min-h-0',
           'max-lg:flex max-lg:flex-col',
-          'lg:grid lg:h-full lg:grid-cols-[minmax(0,46%)_minmax(0,54%)] lg:grid-rows-1'
+          'lg:grid lg:h-full lg:grid-cols-[minmax(0,44%)_minmax(0,56%)] lg:grid-rows-1 lg:items-center'
         )}
       >
         {/* Copy column */}
@@ -273,35 +282,35 @@ export function FitnessHero({
         >
           <div className="mx-auto flex w-full max-w-[34rem] flex-col gap-3 sm:gap-4 lg:mx-0 lg:max-w-[36rem] lg:gap-5">
             {storeName ? (
-              <p className="fitness-hero-eyebrow font-sans text-[11px] font-semibold uppercase tracking-[0.2em] text-rose-300/95 sm:text-[11px]">
+              <p className="fitness-hero-eyebrow font-sans text-[11px] font-semibold uppercase tracking-[0.22em] text-white/65 sm:text-xs">
                 {storeName}
                 {contactCity ? (
-                  <span className="text-zinc-500"> · {contactCity}</span>
+                  <span className="text-white/45"> · {contactCity}</span>
                 ) : null}
               </p>
             ) : null}
 
-            <div className="space-y-2 sm:space-y-2.5">
+            <div className="space-y-2.5 sm:space-y-3">
               <h1
                 className={cn(
-                  'fitness-hero-title store-heading store-heading--inverse font-sans text-balance font-black tracking-tight text-white',
-                  'text-[clamp(2.5rem,9vw+0.5rem,3.5rem)] leading-[0.98]',
-                  'sm:text-[clamp(3rem,5.6vw+0.4rem,4.5rem)] sm:leading-[1.0]',
-                  'xl:text-[clamp(3.5rem,4vw+0.6rem,5.25rem)]'
+                  'fitness-hero-title store-heading store-heading--inverse font-sans text-balance font-semibold tracking-[-0.03em] text-white',
+                  'text-[clamp(2.5rem,9vw+0.5rem,3.5rem)] leading-[1.02]',
+                  'sm:text-[clamp(3rem,5.6vw+0.4rem,4.5rem)] sm:leading-[1.04]',
+                  'xl:text-[clamp(3.5rem,4vw+0.6rem,5.25rem)] xl:leading-[1.06]'
                 )}
               >
                 {title}
               </h1>
 
               {subtitle ? (
-                <p className="fitness-hero-subtitle max-w-[32rem] font-sans text-pretty text-[15px] leading-snug text-zinc-300 sm:text-[15px] sm:leading-relaxed">
+                <p className="fitness-hero-subtitle max-w-[32rem] font-sans text-pretty text-[15px] font-normal leading-relaxed text-white/78 sm:text-base">
                   {subtitle}
                 </p>
               ) : null}
             </div>
 
             {/* Mobile athlete — between headline and actions */}
-            <div className="relative mx-auto h-[min(64vw,320px)] w-full max-w-[380px] shrink-0 lg:hidden">
+            <div className="relative mx-auto h-[min(68vw,340px)] w-full max-w-[400px] shrink-0 lg:hidden">
               <FitnessAthleteVisual
                 brandAccent={brandAccent}
                 heroImageSrc={heroImageSrc}
@@ -342,7 +351,7 @@ export function FitnessHero({
               )}
               <Link
                 href={`${base}#memberships`}
-                className="col-span-2 inline-flex min-h-10 items-center justify-center gap-1 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm font-semibold text-zinc-300 transition active:scale-[0.98] active:border-rose-500/30 sm:col-span-1 sm:border-transparent sm:bg-transparent sm:py-2.5 sm:hover:text-white"
+                className="col-span-2 inline-flex min-h-10 items-center justify-center gap-1 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm font-semibold text-white/80 transition active:scale-[0.98] active:border-rose-500/30 sm:col-span-1 sm:border-transparent sm:bg-transparent sm:py-2.5 sm:hover:text-white"
               >
                 View memberships
                 <ArrowUpRight className="h-3.5 w-3.5 shrink-0" aria-hidden />
@@ -385,11 +394,11 @@ export function FitnessHero({
         </div>
 
         {/* Desktop athlete column */}
-        <div className="relative hidden h-full min-h-0 w-full shrink-0 lg:block lg:px-0">
+        <div className="relative hidden h-full min-h-0 w-full shrink-0 lg:flex lg:items-center lg:justify-center">
           <FitnessAthleteVisual
             brandAccent={brandAccent}
             heroImageSrc={heroImageSrc}
-            className="mx-auto h-full max-w-none pr-[2%] xl:pr-[4%]"
+            className="mx-auto h-full w-full max-w-[min(100%,760px)] xl:max-w-[min(100%,840px)]"
           />
         </div>
       </div>

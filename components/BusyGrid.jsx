@@ -10,14 +10,14 @@ import { useBusyMode } from '@/lib/context/BusyModeContext';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { readGridCellValue } from '@/lib/utils/inventoryGridColumns';
 import { isSuggestibleInventoryColumn } from '@/lib/utils/inventoryFieldSuggestions';
+import { inventoryGridRowKey, inventoryValidationErrorKey } from '@/lib/utils/inventoryRowKey';
 
 /**
  * BusyGrid Component
  * A high-density, keyboard-navigable data grid inspired by Busy.in/Excel.
  */
 function rowStableKey(row, rowIndex) {
-    if (!row) return `__${rowIndex}`;
-    return row.id || row._tempId || `__${rowIndex}`;
+    return inventoryGridRowKey(row, rowIndex);
 }
 
 function columnWidth(col, colIndex, columnWidths) {
@@ -63,6 +63,7 @@ export function BusyGrid({
     /** Rapid entry: Excel modal, inventory Busy view, or global Busy mode */
     const isDataEntryMode = isExcel || isBusyVariant || isBusyMode;
     const didAutoFocusRef = useRef(false);
+    const prevDataLenRef = useRef(0);
     const [selectedCell, setSelectedCell] = useState({ row: 0, col: 0 });
     const [editingCell, setEditingCell] = useState(null);
     const [editValue, setEditValue] = useState('');
@@ -131,7 +132,9 @@ export function BusyGrid({
 
     const isEditableColumn = useCallback((colIndex) => {
         const col = columns[colIndex];
-        return Boolean(col?.accessorKey && !col?.readOnly);
+        if (!col?.accessorKey || col.readOnly) return false;
+        if (col.id === 'status_dot' || col.accessorKey === '__actions') return false;
+        return true;
     }, [columns]);
 
     const findNextEditableCell = useCallback((startRow, startCol, direction = 1) => {
@@ -366,6 +369,28 @@ export function BusyGrid({
     }, [sortedData.length]);
 
     useEffect(() => {
+        if (variant !== 'busy' || sortedData.length === 0) return;
+        const prevLen = prevDataLenRef.current;
+        if (sortedData.length === prevLen + 1) {
+            const lastRow = sortedData[sortedData.length - 1];
+            if (lastRow?._tempId && !lastRow.id) {
+                const firstEditable = columns.findIndex(
+                    (c) => c.accessorKey && !c.readOnly && c.id !== 'status_dot' && c.accessorKey !== '__actions'
+                );
+                const targetCol = firstEditable >= 0 ? firstEditable : 0;
+                const newRowIndex = sortedData.length - 1;
+                setSelectedCell({ row: newRowIndex, col: targetCol });
+                queueMicrotask(() => {
+                    setEditingCell({ row: newRowIndex, col: targetCol });
+                    setEditValue(getValue(lastRow, columns[targetCol]?.accessorKey) ?? '');
+                    gridRef.current?.focus({ preventScroll: true });
+                });
+            }
+        }
+        prevDataLenRef.current = sortedData.length;
+    }, [sortedData, variant, columns, getValue]);
+
+    useEffect(() => {
         if (selectedCell.row >= 0 && scrollRef.current) {
             const rowElement = document.getElementById(`row-${selectedCell.row}`);
             if (rowElement && scrollRef.current) {
@@ -460,6 +485,11 @@ export function BusyGrid({
                 startEditing();
                 break;
             case 'Enter':
+                if (e.altKey) {
+                    e.preventDefault();
+                    onRowClick?.(sortedData[selectedCell.row]);
+                    break;
+                }
                 if (e.shiftKey) { e.preventDefault(); onAddRow?.(); }
                 else { e.preventDefault(); startEditing(); }
                 break;
@@ -509,7 +539,7 @@ export function BusyGrid({
                 if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) startEditing(e.key);
                 break;
         }
-    }, [selectedCell, editingCell, editValue, sortedData, columns, onAddRow, onDeleteRow, copyToClipboard, pasteFromClipboard, moveSelection, startEditing, commitAndAdvance, advanceSelection, isDataEntryMode, isEditableColumn, clearSelectedCell]);
+    }, [selectedCell, editingCell, editValue, sortedData, columns, onAddRow, onDeleteRow, onRowClick, copyToClipboard, pasteFromClipboard, moveSelection, startEditing, commitAndAdvance, advanceSelection, isDataEntryMode, isEditableColumn, clearSelectedCell]);
 
     return (
         <div
@@ -666,9 +696,16 @@ export function BusyGrid({
                                             'sticky left-0 z-20 box-border border-r border-b text-center font-mono font-bold text-gray-600 transition-colors',
                                             isExcel
                                                 ? 'h-[26px] min-h-[26px] max-h-[26px] w-8 min-w-[32px] max-w-[32px] border-gray-300 bg-[#dfe4ea] text-[10px] leading-none group-hover:text-blue-700'
-                                                : 'w-10 border-gray-100 bg-gray-50/50 text-[10px] text-gray-400 group-hover:text-blue-500'
+                                                : 'w-10 border-gray-100 bg-gray-50/50 text-[10px] text-gray-400 group-hover:text-blue-500',
+                                            onRowClick && !isExcel && 'cursor-pointer hover:bg-blue-50'
                                         )}
                                         style={isExcel ? { width: 32, minWidth: 32, maxWidth: 32 } : undefined}
+                                        title={onRowClick && !isExcel ? 'Double-click to open full product form' : undefined}
+                                        onDoubleClick={(e) => {
+                                            if (!onRowClick || isExcel) return;
+                                            e.stopPropagation();
+                                            onRowClick(row);
+                                        }}
                                     >
                                         {rowIndex + 1}
                                     </td>
@@ -676,11 +713,15 @@ export function BusyGrid({
                                         const isSelected = selectedCell.row === rowIndex && selectedCell.col === colIndex;
                                         const isEditing = editingCell?.row === rowIndex && editingCell?.col === colIndex;
                                         const width = columnWidth(col, colIndex, columnWidths);
-                                        const hasError =
-                                            (col.accessorKey &&
-                                                (validationErrors[`${rk}-${col.accessorKey}`] ||
-                                                    validationErrors[`${rowIndex}-${col.accessorKey}`])) ||
+                                        const fieldKey = col.accessorKey;
+                                        const validationMessage =
+                                            (fieldKey &&
+                                                (validationErrors[inventoryValidationErrorKey(row, rowIndex, fieldKey)] ||
+                                                    validationErrors[`${rk}-${fieldKey}`] ||
+                                                    validationErrors[`idx-${rowIndex}-${fieldKey}`] ||
+                                                    validationErrors[`${rowIndex}-${fieldKey}`])) ||
                                             false;
+                                        const hasError = Boolean(validationMessage);
 
                                         const cellFlashKey = `${rk}_${colIndex}`;
                                         const isFlashing = flashCell === cellFlashKey;
@@ -781,7 +822,7 @@ export function BusyGrid({
                                                         {hasError && (
                                                             <div
                                                                 className="absolute right-0 top-0 h-1.5 w-1.5 rounded-bl-sm bg-red-500"
-                                                                title={typeof hasError === 'string' ? hasError : 'Invalid'}
+                                                                title={typeof validationMessage === 'string' ? validationMessage : 'Invalid'}
                                                             />
                                                         )}
                                                     </div>
@@ -852,7 +893,20 @@ export function BusyGrid({
 
             {contextMenu && (
                 <div className="fixed z-[100] bg-white border border-gray-200 shadow-2xl rounded-lg py-1 w-48 font-sans overflow-hidden" style={{ top: contextMenu.y, left: contextMenu.x }} onContextMenu={(e) => e.preventDefault()}>
-                    <button className="w-full text-left px-4 py-2 hover:bg-blue-50 flex items-center gap-3 text-sm text-gray-700" onClick={copyToClipboard}><Copy className="w-4 h-4 text-gray-400" /><div className="flex flex-col"><span className="font-bold">Copy</span><span className="text-[10px] text-gray-400">CTRL+C</span></div></button>
+                    {onRowClick && (
+                        <button type="button" className="w-full text-left px-4 py-2 hover:bg-blue-50 flex items-center gap-3 text-sm text-gray-700" onClick={() => { onRowClick(sortedData[contextMenu.rowIndex]); setContextMenu(null); }}>
+                            <Settings className="w-4 h-4 text-blue-500" />
+                            <div className="flex flex-col"><span className="font-bold">Edit full form</span><span className="text-[10px] text-gray-400">Alt+Enter</span></div>
+                        </button>
+                    )}
+                    {onAdvancedSettings && (
+                        <button type="button" className="w-full text-left px-4 py-2 hover:bg-blue-50 flex items-center gap-3 text-sm text-gray-700" onClick={() => { onAdvancedSettings(sortedData[contextMenu.rowIndex]); setContextMenu(null); }}>
+                            <Zap className="w-4 h-4 text-indigo-500" />
+                            <div className="flex flex-col"><span className="font-bold">Advanced settings</span></div>
+                        </button>
+                    )}
+                    {(onRowClick || onAdvancedSettings) && <div className="border-t my-1" />}
+                    <button type="button" className="w-full text-left px-4 py-2 hover:bg-blue-50 flex items-center gap-3 text-sm text-gray-700" onClick={copyToClipboard}><Copy className="w-4 h-4 text-gray-400" /><div className="flex flex-col"><span className="font-bold">Copy</span><span className="text-[10px] text-gray-400">CTRL+C</span></div></button>
                     <button className="w-full text-left px-4 py-2 hover:bg-blue-50 flex items-center gap-3 text-sm text-gray-700" onClick={pasteFromClipboard}><Plus className="w-4 h-4 text-blue-500" /><div className="flex flex-col"><span className="font-bold">Paste</span><span className="text-[10px] text-gray-400">CTRL+V</span></div></button>
                     <button className="w-full text-left px-4 py-2 hover:bg-blue-50 flex items-center gap-3 text-sm text-gray-700" onClick={() => { onAddRow?.(sortedData[contextMenu.rowIndex]); setContextMenu(null); }}><Copy className="w-4 h-4 text-green-500" /><div className="flex flex-col"><span className="font-bold">Duplicate</span></div></button>
                     <div className="border-t my-1" />

@@ -45,7 +45,7 @@ import { useMembershipHubAccess } from '@/lib/hooks/useMembershipHubAccess';
 import toast from 'react-hot-toast';
 import { MobileTabHeader, MobileStatStrip } from '@/components/mobile/MobileTabHeader';
 import { useStorefrontEmbedded } from '@/lib/context/StorefrontMobileContext';
-import { MOBILE_INPUT_CLASS } from '@/lib/utils/formMobileStyles';
+import { MOBILE_INPUT_CLASS, hubDialogContentClass } from '@/lib/utils/formMobileStyles';
 import { parseStorefrontShippingAddress } from '@/lib/storefront/storefrontOrderAddress';
 
 const STATUS_CONFIG = {
@@ -708,7 +708,7 @@ export function OrdersManager({ business, category }) {
 
       {/* Order Details Dialog */}
       <Dialog open={!!selectedOrder} onOpenChange={() => setSelectedOrder(null)}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto w-[calc(100vw-1.5rem)] sm:w-full">
+        <DialogContent className={hubDialogContentClass({ wide: true, maxWidth: 'lg:max-w-3xl' })}>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <ArrowLeft 
@@ -1088,7 +1088,7 @@ export function OrdersManager({ business, category }) {
 
       {/* ── Record Manual Payment Modal ─────────────────────────── */}
       <Dialog open={showPaymentModal} onOpenChange={(open) => { if (!recordingPayment) setShowPaymentModal(open); }}>
-        <DialogContent className="max-w-md">
+        <DialogContent className={hubDialogContentClass({ maxWidth: 'lg:max-w-md' })}>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Banknote className="w-5 h-5 text-green-600" />

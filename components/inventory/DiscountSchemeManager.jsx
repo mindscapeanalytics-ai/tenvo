@@ -8,6 +8,8 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { hubDialogContentClass } from '@/lib/utils/formMobileStyles';
+import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/lib/currency';
 
 /**
@@ -142,7 +144,7 @@ export function DiscountSchemeManager({
               New Discount Scheme
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[88vh] overflow-y-auto">
+          <DialogContent className={cn(hubDialogContentClass({ wide: true, maxWidth: 'lg:max-w-2xl' }), 'max-h-[88vh]')}>
             <DialogHeader>
               <DialogTitle>
                 {editingScheme ? 'Edit Discount Scheme' : 'Create New Discount Scheme'}

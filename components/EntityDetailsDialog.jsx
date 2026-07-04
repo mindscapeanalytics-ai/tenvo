@@ -24,6 +24,7 @@ import { CustomerForm } from './CustomerForm';
 import { VendorForm } from './VendorForm';
 import { EnhancedInvoiceBuilder } from './EnhancedInvoiceBuilder';
 import toast from 'react-hot-toast';
+import { HUB_ENTITY_DIALOG } from '@/lib/utils/formMobileStyles';
 
 export function EntityDetailsDialog({ item: initialItem, type, open, onClose, category = 'retail-shop' }) {
     const { currency: businessCurrency } = useBusiness();
@@ -220,7 +221,7 @@ export function EntityDetailsDialog({ item: initialItem, type, open, onClose, ca
 
     return (
         <Dialog open={open} onOpenChange={onClose}>
-            <DialogContent className="max-w-2xl h-[85vh] max-h-[85vh] overflow-hidden flex flex-col p-0 gap-0 rounded-[2.5rem] border-none shadow-2xl bg-white/95 backdrop-blur-xl animate-in zoom-in-95 duration-300">
+            <DialogContent className={HUB_ENTITY_DIALOG}>
                 {renderHeader()}
                 <div className="flex-1 overflow-y-auto min-h-0 custom-scrollbar">
                     <div className="p-3 pb-6 sm:p-6 sm:pb-8">
@@ -248,14 +249,14 @@ export function EntityDetailsDialog({ item: initialItem, type, open, onClose, ca
                     </div>
                 </div>
 
-                <div className="p-6 bg-gray-50/80 border-t border-gray-100 flex items-center justify-between backdrop-blur-md shrink-0">
-                    <div className="flex gap-2">
+                <div className="flex shrink-0 flex-col gap-3 border-t border-gray-100 bg-gray-50/80 p-4 backdrop-blur-md sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex flex-wrap gap-2">
                         <Button variant="outline" size="sm" onClick={handlePrint} className="rounded-xl bg-white border-gray-200 text-gray-600 hover:text-gray-900 hover:border-gray-300 px-3"><Printer className="w-3.5 h-3.5 mr-2" /><span className="text-[10px] font-semibold uppercase tracking-widest">Print</span></Button>
                         <Button variant="outline" size="sm" onClick={() => copyToClipboard(JSON.stringify(item), "Item data")} className="rounded-xl bg-white border-gray-200 text-gray-600 hover:text-gray-900 hover:border-gray-300 px-3"><Copy className="w-3.5 h-3.5 mr-2" /><span className="text-[10px] font-semibold uppercase tracking-widest">Copy</span></Button>
                     </div>
-                    <div className="flex items-center gap-3">
-                        <Button variant="ghost" onClick={isEditing ? () => setIsEditing(false) : onClose} className="rounded-xl font-semibold uppercase text-[10px] tracking-widest px-6">{isEditing ? 'Cancel' : 'Close'}</Button>
-                        <Button onClick={() => setIsEditing(!isEditing)} className="rounded-xl font-semibold uppercase tracking-widest px-6 shadow-lg shadow-gray-200 border-none bg-emerald-600 hover:bg-emerald-700 text-white">
+                    <div className="flex items-center gap-2 sm:gap-3">
+                        <Button variant="ghost" onClick={isEditing ? () => setIsEditing(false) : onClose} className="h-10 flex-1 rounded-xl font-semibold uppercase text-[10px] tracking-widest px-4 sm:flex-none sm:px-6">{isEditing ? 'Cancel' : 'Close'}</Button>
+                        <Button onClick={() => setIsEditing(!isEditing)} className="h-10 flex-1 rounded-xl font-semibold uppercase tracking-widest px-4 shadow-lg shadow-gray-200 border-none bg-emerald-600 hover:bg-emerald-700 text-white sm:flex-none sm:px-6">
                             {isEditing ? <React.Fragment><Eye className="w-3.5 h-3.5 mr-2" />View Details</React.Fragment> : <React.Fragment><Edit3 className="w-3.5 h-3.5 mr-2" />Update Record<ArrowUpRight className="w-3.5 h-3.5 ml-2" /></React.Fragment>}
                         </Button>
                     </div>

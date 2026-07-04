@@ -1273,64 +1273,8 @@ export function DomainDashboard({
                 </div>
             </div>
 
-            {/* Mobile-only portlets */}
-            <div className="space-y-3 lg:hidden lg:col-span-12">
-                <QuickActionTiles
-                    layout="toolbar"
-                    onAction={onQuickAction}
-                    campaignEnabled={campaignEnabled}
-                    multiLocationEnabled={multiLocationEnabled}
-                />
-
-                {!hasCoreData && (
-                    <Card className="border border-brand-100 bg-brand-50/40 shadow-sm">
-                        <CardContent className="p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                            <div>
-                                <p className="text-[10px] font-semibold uppercase tracking-widest text-brand-primary">Quick Setup</p>
-                                <p className="text-sm font-bold text-slate-800 mt-1">Start by adding products, customers, or your first invoice to unlock richer KPI insights.</p>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <Button size="sm" className="h-8 text-[11px] font-bold" onClick={() => onQuickAction?.('add-product')}>Add Product</Button>
-                                <Button size="sm" variant="outline" className="h-8 text-[11px] font-bold" onClick={() => onQuickAction?.('add-customer')}>Add Customer</Button>
-                                <Button size="sm" variant="outline" className="h-8 text-[11px] font-bold" onClick={() => onQuickAction?.('new-invoice')}>New Invoice</Button>
-                            </div>
-                        </CardContent>
-                    </Card>
-                )}
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-                    {topStripKpis.map((item) => (
-                        <DomainMetricCard
-                            key={item.label}
-                            label={item.label}
-                            value={item.value}
-                            subValue={item.subValue}
-                            trend={item.trend}
-                            trendHint={item.trendHint}
-                            icon={item.icon}
-                            theme={item.theme}
-                            colorClass={item.colorClass}
-                            sparkline={item.sparkline}
-                            invertTrendColor={item.invertTrendColor}
-                            actionId={item.actionId}
-                            onNavigate={handleMetricNavigate}
-                            className="h-full"
-                        />
-                    ))}
-                </div>
-
-                <FinanceHeroStrip metrics={financeHeroMetrics} onNavigate={handleMetricNavigate} />
-
-                <PeriodSnapshotCard
-                    dateFrom={new Date(dateRange.from)}
-                    dateTo={new Date(dateRange.to)}
-                    presetLabel={activePresetDisplayLabel}
-                    healthChips={dashboardHeaderHighlights}
-                    metrics={periodSnapshotMetrics}
-                    collapsedCount={6}
-                    onMetricClick={handleMetricNavigate}
-                />
-
+            {/* Mobile — hub covers KPIs/actions; show insights & activity only */}
+            <div className="space-y-3 pb-2 lg:hidden lg:col-span-12">
                 <AnalyticsDashboard
                     businessId={activeBusinessId}
                     category={category}
@@ -1358,7 +1302,7 @@ export function DomainDashboard({
                 <RecentActivityFeed
                     businessId={activeBusinessId}
                     onViewAll={() => onQuickAction?.('reports')}
-                    feedLimit={15}
+                    feedLimit={10}
                 />
             </div>
         </NetsuiteDashboard>

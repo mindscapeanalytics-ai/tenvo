@@ -55,7 +55,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
-import { MOBILE_TAB_LABELS, MOBILE_MINIMAL_HEADER_TABS } from '@/lib/utils/mobileLayout';
+import { MOBILE_TAB_LABELS, MOBILE_MINIMAL_HEADER_TABS, MOBILE_HIDE_HEADER_QUICK_ADD_TABS } from '@/lib/utils/mobileLayout';
 
 export function Header({ onMenuClick }) {
     const { dateRange, setDateRange, searchQuery, setSearchQuery } = useFilters();
@@ -257,6 +257,8 @@ export function Header({ onMenuClick }) {
     const activeTitle = labels[currentTab] || currentTab;
     const mobileTitle = MOBILE_TAB_LABELS[currentTab] || activeTitle;
     const minimalMobileHeader = MOBILE_MINIMAL_HEADER_TABS.has(currentTab);
+    const hideHeaderQuickAdd = MOBILE_HIDE_HEADER_QUICK_ADD_TABS.has(currentTab);
+    const slimDashboardHeader = currentTab === 'dashboard' && isEasyMode;
     const businessShortName =
         business?.business_name || business?.name || business?.domain?.replace(/-/g, ' ') || 'Workspace';
     const dispatchHeaderEvent = (eventName, detail) => {
@@ -325,7 +327,7 @@ export function Header({ onMenuClick }) {
                         </Button>
                     )}
 
-                    {!minimalMobileHeader && (
+                    {!minimalMobileHeader && !slimDashboardHeader && (
                     <Button
                         size="icon"
                         variant="ghost"
@@ -341,7 +343,7 @@ export function Header({ onMenuClick }) {
                     </Button>
                     )}
 
-                    {!minimalMobileHeader && (
+                    {!minimalMobileHeader && !hideHeaderQuickAdd && (
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button

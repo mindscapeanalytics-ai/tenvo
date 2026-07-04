@@ -12,6 +12,8 @@ import { buildInventoryGridColumns, readGridCellValue } from '@/lib/utils/invent
 import { buildNewInventoryRow, getLastRowForDefaults } from '@/lib/utils/inventoryRowDefaults';
 import { mapProductField } from '@/lib/utils/productFieldMapper';
 import { detectColumnMapping, applyColumnMapping } from '@/lib/utils/inventoryColumnMapping';
+import { inventoryGridRowKey, inventoryValidationErrorKey } from '@/lib/utils/inventoryRowKey';
+import { buildSparseHiddenColumnKeys } from '@/lib/utils/inventoryVisualColumnVisibility';
 import { productSchema } from '@/lib/validation/schemas';
 import toast from 'react-hot-toast';
 
@@ -35,7 +37,9 @@ export function ExcelModeModal({
     category = 'retail-shop',
     entityType = 'products', // Added missing prop
     title = 'Excel Data Entry',
-    businessId
+    businessId,
+    business = null,
+    currencySymbol,
 }) {
     const [isFullscreen, setIsFullscreen] = useState(true);
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -76,10 +80,15 @@ export function ExcelModeModal({
             setFuture([]);
             setHasUnsavedChanges(false);
             setValidationErrors({});
-            setHiddenCols(new Set());
+            const sparseKeys = buildSparseHiddenColumnKeys(
+                buildInventoryGridColumns(category, { mode: 'excel', currencySymbol, business }),
+                initialChunk,
+                category
+            );
+            setHiddenCols(sparseKeys);
         }
         wasOpenRef.current = isOpen;
-    }, [isOpen, data]);
+    }, [isOpen, data, category, business, currencySymbol]);
 
     // History Logic
     const pushState = useCallback((newData) => {
@@ -145,27 +154,20 @@ export function ExcelModeModal({
         (accessorKey, row) => {
             const base = getFieldSuggestions ? getFieldSuggestions(accessorKey, row) : [];
             const merged = new Set(base);
-            const scalarKey = accessorKey?.includes('.') ? accessorKey.split('.').pop() : accessorKey;
             localData.forEach((r) => {
-                let val;
-                if (accessorKey?.startsWith('domain_data.')) {
-                    const domainKey = accessorKey.slice('domain_data.'.length);
-                    val = r?.domain_data?.[domainKey];
-                } else if (scalarKey) {
-                    val = r?.[scalarKey];
-                }
+                const val = readGridCellValue(r, accessorKey, category);
                 if (val != null && String(val).trim()) merged.add(String(val).trim());
             });
             return [...merged];
         },
-        [getFieldSuggestions, localData]
+        [getFieldSuggestions, localData, category]
     );
 
     // Enhanced Columns
     const enhancedColumns = useMemo(() => {
         const isProducts = entityType === 'products' || !entityType;
         let base = isProducts
-            ? [...buildInventoryGridColumns(category, { mode: 'excel' })]
+            ? [...buildInventoryGridColumns(category, { mode: 'excel', currencySymbol, business })]
             : [...columns];
         const keys = new Set(base.map(c => c.accessorKey || c.id));
         const addIfMissing = (key, header, width) => {
@@ -243,7 +245,7 @@ export function ExcelModeModal({
         }
 
         return out;
-    }, [columns, category, entityType]);
+    }, [columns, category, entityType, business, currencySymbol]);
 
     const displayColumns = useMemo(() => {
         return enhancedColumns.filter((c) => {
@@ -347,41 +349,16 @@ export function ExcelModeModal({
         const allErrors = {};
         localData.forEach((row, index) => {
             if (isEmptyRow(row)) return;
-            const rowKey = row.id || row._tempId || `idx-${index}`;
+            const rowKey = inventoryGridRowKey(row, index);
             Object.assign(allErrors, validateRow(row, rowKey));
         });
         setValidationErrors(allErrors);
         return Object.keys(allErrors).length === 0;
     }, [localData, validateRow, isEmptyRow]);
 
-    // Global Key Events
-    useEffect(() => {
-        const handleKeyDown = (e) => {
-            const key = e.key?.toLowerCase();
-            if (e.ctrlKey && key === 's') { e.preventDefault(); handleSave(); return; }
-            if (e.ctrlKey && key === 'z') { e.preventDefault(); handleUndo(); return; }
-            if (e.ctrlKey && key === 'y') { e.preventDefault(); handleRedo(); return; }
-            // Add a new blank row: Ctrl+N (best-effort; browsers may reserve it),
-            // Alt+N, or Insert — all reliable in-app fallbacks.
-            if ((e.ctrlKey && key === 'n' && !e.shiftKey) || (e.altKey && key === 'n') || e.key === 'Insert') {
-                e.preventDefault();
-                handleLocalAddRow();
-                return;
-            }
-            // Duplicate Last Row Shortcut (Ctrl+D like Excel)
-            if (e.ctrlKey && key === 'd') {
-                e.preventDefault();
-                if (localData.length > 0) handleLocalAddRow({ ...localData[localData.length - 1], _tempId: undefined, id: undefined });
-            }
-        };
-        if (isOpen) window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [isOpen, localData, handleUndo, handleRedo, hasUnsavedChanges]);
-
-    const handleSave = async (isAutoSave = false) => {
+    const handleSave = useCallback(async (isAutoSave = false) => {
         if (!hasUnsavedChanges && !isAutoSave) return;
 
-        // Intelligent Filtering: Don't save empty rows
         const dataToSave = localData.filter(row => !isEmptyRow(row));
 
         if (dataToSave.length === 0 && localData.length > 0) {
@@ -399,15 +376,14 @@ export function ExcelModeModal({
             if (isAutoSave) {
                 toast.success('Auto-saved', { icon: '💾', duration: 1500 });
             }
-            // Non-autosave: parent (InventoryManager.handleExcelSave) owns the result toast + closes modal
         } catch (err) {
             console.error("Save Error:", err);
             toast.error('Save failed');
         }
         finally { setIsSaving(false); }
-    };
+    }, [hasUnsavedChanges, localData, isEmptyRow, validateAllData, onSave, onClose]);
 
-    const handleLocalCellEdit = (row, key, value) => {
+    const handleLocalCellEdit = useCallback((row, key, value) => {
         const domainKnowledge = { productFields: getDomainProductFields(category) };
         setLocalData(prev => {
             const newData = [...prev];
@@ -423,7 +399,7 @@ export function ExcelModeModal({
                 setHasUnsavedChanges(true);
                 pushState(newData);
 
-                const rowKey = updated.id || updated._tempId || `idx-${idx}`;
+                const rowKey = inventoryGridRowKey(updated, idx);
                 const rowErrors = validateRow(updated, rowKey);
                 setValidationErrors(prevE => {
                     const next = { ...prevE };
@@ -435,9 +411,9 @@ export function ExcelModeModal({
             }
             return newData;
         });
-    };
+    }, [category, pushState, validateRow]);
 
-    const handleLocalAddRow = (initialData = null) => {
+    const handleLocalAddRow = useCallback((initialData = null) => {
         // Ensure we strip ID if coming from a duplicate action
         const { id, _tempId, ...cleanInitialData } = initialData || {};
 
@@ -479,7 +455,29 @@ export function ExcelModeModal({
             const grid = document.querySelector('.custom-scrollbar');
             if (grid) grid.scrollTop = grid.scrollHeight;
         }, 100);
-    };
+    }, [localData, onAddRow, category, businessId, pushState]);
+
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            const key = e.key?.toLowerCase();
+            if (e.ctrlKey && key === 's') { e.preventDefault(); void handleSave(); return; }
+            if (e.ctrlKey && key === 'z') { e.preventDefault(); handleUndo(); return; }
+            if (e.ctrlKey && key === 'y') { e.preventDefault(); handleRedo(); return; }
+            if ((e.ctrlKey && key === 'n' && !e.shiftKey) || (e.altKey && key === 'n') || e.key === 'Insert') {
+                e.preventDefault();
+                handleLocalAddRow();
+                return;
+            }
+            if (e.ctrlKey && key === 'd') {
+                e.preventDefault();
+                if (localData.length > 0) {
+                    handleLocalAddRow({ ...localData[localData.length - 1], _tempId: undefined, id: undefined });
+                }
+            }
+        };
+        if (isOpen) window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [isOpen, localData, handleUndo, handleRedo, handleSave, handleLocalAddRow]);
 
     const NUMERIC_PASTE_FIELDS = new Set([
         'price', 'cost_price', 'mrp', 'stock', 'min_stock', 'reorder_point', 'tax_percent',

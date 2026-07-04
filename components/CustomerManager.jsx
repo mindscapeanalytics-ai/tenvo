@@ -17,6 +17,7 @@ import { customerSchema, validateForm, formatPakistaniPhone } from '@/lib/valida
 import { getDomainColors } from '@/lib/domainColors';
 import { getDomainCustomerColumns } from '@/lib/utils/domainHelpers';
 import { cn } from '@/lib/utils';
+import { hubDialogContentClass } from '@/lib/utils/formMobileStyles';
 import toast from 'react-hot-toast';
 import StakeholderLedger from './StakeholderLedger';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -186,7 +187,7 @@ export function CustomerManager({ customers = [], onAdd, onUpdate, onDelete, cat
 
       {/* View Customer Dialog */}
       <Dialog open={!!customerToView} onOpenChange={(open) => !open && setCustomerToView(null)}>
-        <DialogContent className="max-w-md w-[calc(100vw-1.5rem)] sm:w-full max-h-[min(90vh,800px)] overflow-y-auto overscroll-contain">
+        <DialogContent className={cn(hubDialogContentClass({ maxWidth: 'lg:max-w-md' }), 'overflow-y-auto overscroll-contain')}>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <User className="w-5 h-5 text-gray-400" />

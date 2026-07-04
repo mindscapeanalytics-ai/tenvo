@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   useReactTable,
   getCoreRowModel,
@@ -9,7 +9,7 @@ import {
   getSortedRowModel,
   flexRender,
 } from '@tanstack/react-table';
-import { ChevronLeft, ChevronRight, Search, Download, Filter, Trash2, AlertCircle, X, Settings2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Search, Download, Trash2, X, Settings2 } from 'lucide-react';
 import { getDomainColors } from '@/lib/domainColors';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -32,6 +32,10 @@ import {
  * @param {Function} [props.onExport]
  * @param {Function} [props.onBulkDelete]
  * @param {string} [props.category]
+ * @param {'default'|'inventory'} [props.variant]
+ * @param {Function} [props.onRowClick]
+ * @param {Record<string, boolean>} [props.initialColumnVisibility]
+ * @param {number} [props.initialPageSize]
  */
 export function DataTable({
   data,
@@ -42,17 +46,37 @@ export function DataTable({
   onBulkDelete,
   category = 'retail-shop',
   emptyComponent,
+  variant = 'default',
+  onRowClick,
+  initialColumnVisibility = {},
+  initialPageSize = 10,
 }) {
   const colors = getDomainColors(category);
+  const isInventory = variant === 'inventory';
   const [sorting, setSorting] = useState([]);
   const [columnFilters, setColumnFilters] = useState([]);
   const [globalFilter, setGlobalFilter] = useState('');
   const [pagination, setPagination] = useState({
     pageIndex: 0,
-    pageSize: 10,
+    pageSize: initialPageSize,
   });
-  const [columnVisibility, setColumnVisibility] = useState({});
+  const [columnVisibility, setColumnVisibility] = useState(initialColumnVisibility);
   const [rowSelection, setRowSelection] = useState({});
+
+  useEffect(() => {
+    if (!initialColumnVisibility || !Object.keys(initialColumnVisibility).length) return;
+    setColumnVisibility((prev) => {
+      const next = { ...prev };
+      let changed = false;
+      for (const [key, visible] of Object.entries(initialColumnVisibility)) {
+        if (prev[key] === undefined) {
+          next[key] = visible;
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [initialColumnVisibility]);
 
   // Add Selection Column + Domain Intelligent Columns
   const columns = useMemo(() => [
@@ -76,10 +100,27 @@ export function DataTable({
       ),
       enableSorting: false,
       enableHiding: false,
-      size: 40,
+      size: isInventory ? 36 : 40,
+      minSize: isInventory ? 36 : 40,
+      maxSize: isInventory ? 36 : 40,
     },
     ...userColumns,
-  ], [userColumns]);
+  ], [userColumns, isInventory]);
+
+  const stickyLeftByColumnId = useMemo(() => {
+    if (!isInventory) return {};
+    let offset = 0;
+    const map = {};
+    for (const col of columns) {
+      const id = col.id;
+      const width = col.size ?? col.minSize ?? 40;
+      if (id === 'select' || id === 'actions' || id === 'name') {
+        map[id] = offset;
+        offset += width;
+      }
+    }
+    return map;
+  }, [columns, isInventory]);
 
   const table = useReactTable({
     data,
@@ -161,8 +202,11 @@ export function DataTable({
 
       <div className="w-full">
         {/* Search and Export Bar */}
-        <div className="flex items-center justify-between mb-4 gap-4">
-          {searchable && (
+        <div className={cn(
+          'flex items-center gap-3',
+          isInventory ? 'mb-2.5 justify-end' : 'mb-4 justify-between'
+        )}>
+          {searchable && !isInventory && (
             <div className="relative flex-1 max-w-md">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
@@ -179,7 +223,13 @@ export function DataTable({
               />
             </div>
           )}
-          {exportable && onExport && (
+          {isInventory && (
+            <p className="mr-auto text-[11px] font-medium text-gray-500 tabular-nums">
+              {table.getFilteredRowModel().rows.length} products
+              <span className="hidden sm:inline text-gray-400"> · double-click row to edit</span>
+            </p>
+          )}
+          {exportable && onExport && !isInventory && (
             <button
               onClick={onExport}
               className="flex items-center gap-2 px-4 py-2 text-white rounded-lg transition-all shadow-sm hover:shadow-md active:scale-95"
@@ -191,8 +241,15 @@ export function DataTable({
           )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="ml-auto">
-                <Settings2 className="mr-2 h-4 w-4" />
+              <Button
+                variant="outline"
+                size="sm"
+                className={cn(
+                  'ml-auto h-8 rounded-lg border-gray-200 text-xs font-semibold text-gray-700',
+                  isInventory && 'shadow-none'
+                )}
+              >
+                <Settings2 className="mr-1.5 h-3.5 w-3.5" />
                 Columns
               </Button>
             </DropdownMenuTrigger>
@@ -230,38 +287,56 @@ export function DataTable({
         </div>
 
         {/* Table - with Sticky Header */}
-        <div className="border border-gray-200 rounded-lg relative max-h-[600px] overflow-auto custom-scrollbar group/table">
-          <table className="min-w-full table-auto relative bg-white border-separate border-spacing-0">
-            <thead className="bg-gray-50 sticky top-0 z-10 shadow-sm">
+        <div className={cn(
+          'relative overflow-auto custom-scrollbar group/table border border-gray-200',
+          isInventory ? 'max-h-[calc(100vh-22rem)] min-h-[320px] rounded-xl' : 'max-h-[600px] rounded-lg'
+        )}>
+          <table className={cn(
+            'relative w-full bg-white border-separate border-spacing-0',
+            isInventory ? 'table-fixed min-w-[960px]' : 'min-w-full table-auto'
+          )}>
+            <thead className="sticky top-0 z-20 bg-gray-50/95 shadow-sm backdrop-blur-sm">
               {table.getHeaderGroups().map((headerGroup) => (
                 <tr key={headerGroup.id}>
-                  {headerGroup.headers.map((header, index) => (
+                  {headerGroup.headers.map((header) => {
+                    const colId = header.column.id;
+                    const stickyLeft = stickyLeftByColumnId[colId];
+                    const colSize = header.column.columnDef.size;
+                    const colMin = header.column.columnDef.minSize;
+                    return (
                     <th
                       key={header.id}
+                      style={{
+                        width: colSize,
+                        minWidth: colMin ?? colSize,
+                        maxWidth: header.column.columnDef.maxSize,
+                        ...(stickyLeft != null ? { left: stickyLeft } : {}),
+                      }}
                       className={cn(
-                        "px-3 py-2 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100/80 transition-colors border-b-2 border-transparent",
-                        header.column.getIsSorted() && "border-blue-500 text-blue-600 bg-blue-50/30",
-                        index === 0 && "sticky left-0 z-30 bg-gray-50/95 backdrop-blur-sm shadow-[2px_0_10px_-4px_rgba(0,0,0,0.1)]"
+                        'cursor-pointer border-b border-gray-200 text-left font-semibold uppercase tracking-wide transition-colors hover:bg-gray-100/80',
+                        isInventory ? 'px-2 py-1.5 text-[9px] text-gray-500' : 'px-3 py-2 text-[10px] text-gray-500',
+                        header.column.getIsSorted() && 'border-b-blue-500 bg-blue-50/40 text-blue-700',
+                        stickyLeft != null && 'sticky z-30 bg-gray-50/95 shadow-[2px_0_8px_-4px_rgba(0,0,0,0.08)]'
                       )}
                       onClick={(e) => header.column.getToggleSortingHandler()?.(e)}
                     >
-                      <div className="flex items-center gap-2">
+                      <div className="flex min-w-0 items-center gap-1">
                         {flexRender(header.column.columnDef.header, header.getContext())}
                         {header.column.getCanSort() && (
-                          <span className="text-gray-400">
+                          <span className="shrink-0 text-[10px] text-gray-400">
                             {{
-                              asc: ' ↑',
-                              desc: ' ↓',
-                            }[header.column.getIsSorted()] ?? ' ↕'}
+                              asc: '↑',
+                              desc: '↓',
+                            }[header.column.getIsSorted()] ?? '↕'}
                           </span>
                         )}
                       </div>
                     </th>
-                  ))}
+                  );})}
                 </tr>
               ))}
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="divide-y divide-gray-100 bg-white">
               {table.getRowModel().rows.length === 0 ? (
                 <tr>
                   <td colSpan={columns.length} className="px-3 py-2 text-center text-gray-500">
@@ -280,23 +355,40 @@ export function DataTable({
                 </tr>
               ) : (
                 table.getRowModel().rows.map((row, rowIndex) => (
-                  <tr key={row.id} className={cn(
-                    "hover:bg-gray-50 transition-colors",
-                    rowIndex % 2 === 0 ? "bg-white" : "bg-gray-50/30"
-                  )}>
-                    {row.getVisibleCells().map((cell, index) => (
+                  <tr
+                    key={row.id}
+                    className={cn(
+                      'transition-colors',
+                      onRowClick && 'cursor-pointer',
+                      isInventory
+                        ? 'hover:bg-blue-50/50'
+                        : 'hover:bg-gray-50',
+                      !isInventory && (rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50/30')
+                    )}
+                    onDoubleClick={() => onRowClick?.(row.original)}
+                    title={onRowClick ? 'Double-click to edit' : undefined}
+                  >
+                    {row.getVisibleCells().map((cell) => {
+                      const colId = cell.column.id;
+                      const stickyLeft = stickyLeftByColumnId[colId];
+                      const rowBg = isInventory
+                        ? 'bg-white'
+                        : rowIndex % 2 === 0
+                          ? 'bg-white/95'
+                          : 'bg-gray-50/95';
+                      return (
                       <td
                         key={cell.id}
+                        style={stickyLeft != null ? { left: stickyLeft } : undefined}
                         className={cn(
-                          "px-3 py-1.5 text-xs text-gray-700 font-medium border-b border-gray-100/50",
-                          index === 0 && "sticky left-0 z-20 border-r border-gray-100/50 shadow-[4px_0_12px_-6px_rgba(0,0,0,0.05)]",
-                          index === 0 && rowIndex % 2 === 0 && "bg-white/95 backdrop-blur-sm",
-                          index === 0 && rowIndex % 2 !== 0 && "bg-gray-50/95 backdrop-blur-sm"
+                          'border-b border-gray-100/80 text-xs font-medium text-gray-700',
+                          isInventory ? 'px-2 py-1' : 'px-3 py-1.5',
+                          stickyLeft != null && cn('sticky z-10 border-r border-gray-100/70 shadow-[2px_0_8px_-4px_rgba(0,0,0,0.04)] backdrop-blur-sm', rowBg)
                         )}
                       >
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
                       </td>
-                    ))}
+                    );})}
                   </tr>
                 ))
               )}
@@ -305,8 +397,11 @@ export function DataTable({
         </div>
 
         {/* Pagination */}
-        <div className="flex items-center justify-between mt-4">
-          <div className="text-sm text-gray-500">
+        <div className={cn(
+          'flex items-center justify-between gap-3',
+          isInventory ? 'mt-2.5' : 'mt-4'
+        )}>
+          <div className={cn('text-gray-500', isInventory ? 'text-[11px]' : 'text-sm')}>
             {table.getFilteredRowModel().rows.length > 0 ? (
               <>
                 Showing{' '}
@@ -325,30 +420,41 @@ export function DataTable({
               <span className="text-gray-400 italic">No entries to display</span>
             )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <button
+              type="button"
               onClick={() => table.previousPage()}
               disabled={!table.getCanPreviousPage()}
-              className="p-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+              className={cn(
+                'rounded-lg border border-gray-200 disabled:cursor-not-allowed disabled:opacity-50 hover:bg-gray-50',
+                isInventory ? 'p-1.5' : 'p-2 border-gray-300'
+              )}
             >
-              <ChevronLeft className="w-4 h-4" />
+              <ChevronLeft className={isInventory ? 'h-3.5 w-3.5' : 'h-4 w-4'} />
             </button>
-            <span className="text-sm text-gray-700">
+            <span className={cn('text-gray-700 tabular-nums', isInventory ? 'text-[11px]' : 'text-sm')}>
               Page {table.getPageCount() > 0 ? table.getState().pagination.pageIndex + 1 : 0} of {table.getPageCount()}
             </span>
             <button
+              type="button"
               onClick={() => table.nextPage()}
               disabled={!table.getCanNextPage()}
-              className="p-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+              className={cn(
+                'rounded-lg border border-gray-200 disabled:cursor-not-allowed disabled:opacity-50 hover:bg-gray-50',
+                isInventory ? 'p-1.5' : 'p-2 border-gray-300'
+              )}
             >
-              <ChevronRight className="w-4 h-4" />
+              <ChevronRight className={isInventory ? 'h-3.5 w-3.5' : 'h-4 w-4'} />
             </button>
             <select
               value={table.getState().pagination.pageSize}
               onChange={(e) => table.setPageSize(Number(e.target.value))}
-              className="ml-2 px-3 py-1 border border-gray-300 rounded-lg text-sm"
+              className={cn(
+                'ml-1 rounded-lg border border-gray-200 bg-white',
+                isInventory ? 'px-2 py-1 text-[11px]' : 'ml-2 px-3 py-1 text-sm border-gray-300'
+              )}
             >
-              {[10, 20, 30, 50, 100].map((size) => (
+              {(isInventory ? [25, 50, 100, 200] : [10, 20, 30, 50, 100]).map((size) => (
                 <option key={size} value={size}>
                   Show {size}
                 </option>
