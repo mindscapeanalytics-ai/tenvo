@@ -44,7 +44,7 @@ function bucketByWeek(
         const parsed = new Date(inv.date!);
         const ratio = (parsed.getTime() - from.getTime()) / duration;
         const idx = Math.min(bucketCount - 1, Math.max(0, Math.floor(ratio * bucketCount)));
-        buckets[idx] += valueFn(inv);
+        buckets[idx] = (buckets[idx] ?? 0) + valueFn(inv);
     });
 
     return buckets;

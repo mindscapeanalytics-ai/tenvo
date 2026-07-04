@@ -44,10 +44,10 @@ export function MetricSparkline({
     const baseline = height - padding;
     const areaPath =
         filled && coords.length >= 2
-            ? `M ${coords[0].x} ${baseline} ${coords.map((p) => `L ${p.x} ${p.y}`).join(' ')} L ${coords[coords.length - 1].x} ${baseline} Z`
+            ? `M ${coords[0]!.x} ${baseline} ${coords.map((p) => `L ${p.x} ${p.y}`).join(' ')} L ${coords[coords.length - 1]!.x} ${baseline} Z`
             : '';
 
-    const trendUp = series[series.length - 1] >= series[0];
+    const trendUp = (series[series.length - 1] ?? 0) >= (series[0] ?? 0);
     const isPositive = positiveDirection === 'up' ? trendUp : !trendUp;
     const defaultStroke = isPositive ? 'stroke-emerald-500' : 'stroke-rose-400';
     const defaultFill = isPositive ? 'fill-emerald-500/20' : 'fill-rose-400/15';

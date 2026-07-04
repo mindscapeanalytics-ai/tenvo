@@ -41,11 +41,7 @@ export function buildFinanceHeroMetrics(
     const fin = snapshot?.finance;
     const gl = accountingSummary;
 
-    const netProfit = Number(
-        fin?.netProfit ??
-            (Number(gl?.grossProfit || 0) - 0) ??
-            0
-    );
+    const netProfit = Number(fin?.netProfit ?? gl?.grossProfit ?? 0);
     const receivables = Number(
         fin?.receivables ?? gl?.accountsReceivable ?? 0
     );

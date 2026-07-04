@@ -32,6 +32,7 @@ import { resolveProductStock } from '@/lib/dashboard/easyDashboardHelpers';
 import { buildFinanceHeroMetrics } from '@/lib/dashboard/buildFinanceHeroMetrics';
 import { metricActionId } from '@/lib/dashboard/metricNavigation';
 import { resolveSparklineSeries } from '@/lib/dashboard/sparklineSeries';
+import { isPendingInvoice } from '@/lib/utils/analytics';
 import type { KpiTheme } from '@/lib/dashboard/kpiThemes';
 
 // ===============================================================
@@ -342,10 +343,7 @@ export function DomainDashboard({
     }, [invoices]);
 
     const pendingOrdersFallback = useMemo(() => {
-        return invoices.filter((invoice: InvoiceLike) => {
-            const status = String(invoice?.status || '').toLowerCase();
-            return status.includes('pending') || status.includes('processing');
-        }).length;
+        return invoices.filter((invoice: InvoiceLike) => isPendingInvoice(invoice as Record<string, unknown>)).length;
     }, [invoices]);
 
     const remindersData = useMemo(() => ({
@@ -952,7 +950,7 @@ export function DomainDashboard({
             {
                 label: 'Paid Order Ratio',
                 value: paidOrderRateDisplay,
-                detail: 'Collections quality',
+                detail: paidOrderRateDetail,
                 tone: paidOrderRate !== null && paidOrderRate < 60 ? 'text-rose-600' : 'text-slate-900'
             },
             {
@@ -960,7 +958,7 @@ export function DomainDashboard({
                 value: multiLocationEnabled
                     ? warehouseUtilizationDisplay
                     : stockCheckRecencyDisplay,
-                detail: multiLocationEnabled ? 'Configured capacity usage' : 'Since last stock touch',
+                detail: multiLocationEnabled ? warehouseUtilizationDetail : stockCheckRecencyDetail,
                 tone: 'text-slate-900'
             }
         ];
