@@ -30,6 +30,7 @@ import { RESTAURANT_MENU_THEME } from '@/lib/storefront/restaurantMenu';
 import {
   RestaurantMenuItemCard,
 } from '@/components/storefront/restaurant/RestaurantMenuItemCard';
+import { isPurchasableRestaurantProduct } from '@/lib/dataLab/restaurantSeedHelpers';
 import { RestaurantCategoryMarquee } from '@/components/storefront/sections/restaurant/RestaurantCategoryMarquee';
 
 const TRUST_ICONS = {
@@ -56,7 +57,9 @@ function SpotlightCardGrid({ cards, accent }) {
                 src={card.image}
                 alt={card.title || ''}
                 fill
-                className="object-cover transition duration-500 group-hover:scale-[1.04]"
+                placeholderLabel={card.title}
+                className="object-cover transition duration-500 group-hover:scale-[1.03]"
+                sizes="(max-width: 768px) 50vw, 25vw"
               />
             ) : (
               <div className="flex h-full w-full items-center justify-center bg-zinc-100">
@@ -83,7 +86,7 @@ function SpotlightCardGrid({ cards, accent }) {
   );
 }
 
-function UpperPromoTiles({ tiles, accent }) {
+function UpperPromoTiles({ tiles }) {
   if (!tiles.length) return null;
   return (
     <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4">
@@ -91,19 +94,21 @@ function UpperPromoTiles({ tiles, accent }) {
         <Link
           key={tile.id}
           href={tile.href}
-          className="group relative flex min-h-[88px] items-end overflow-hidden rounded-xl border border-zinc-200/90 bg-white shadow-sm transition hover:border-zinc-300 hover:shadow-md sm:min-h-[100px]"
+          className="group relative flex min-h-[88px] items-end overflow-hidden rounded-xl border border-zinc-200/90 bg-zinc-100 shadow-sm transition hover:border-zinc-300 hover:shadow-md sm:min-h-[100px]"
         >
           {tile.image ? (
             <SmartProductImage
               src={tile.image}
-              alt=""
+              alt={tile.title}
               fill
+              placeholderLabel={tile.title}
               className="object-cover transition duration-500 group-hover:scale-[1.03]"
+              sizes="(max-width: 768px) 50vw, 25vw"
             />
           ) : (
-            <div className="absolute inset-0 bg-zinc-100" aria-hidden />
+            <div className="absolute inset-0 bg-zinc-200" aria-hidden />
           )}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/25 to-transparent" aria-hidden />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" aria-hidden />
           <p className="relative z-10 w-full px-3 py-2.5 text-xs font-semibold text-white sm:text-sm">
             {tile.title}
           </p>
@@ -142,10 +147,11 @@ export function RestaurantHomeSections({
     settings,
     categories,
     businessDomain,
-    storeBase
+    storeBase,
+    products
   );
   const upperPromoTiles = config.showUpperPromoTiles !== false
-    ? resolveRestaurantUpperPromoTiles(settings, storeBase)
+    ? resolveRestaurantUpperPromoTiles(settings, storeBase, products, businessDomain)
     : [];
   const trustPillars = config.showTrustStrip !== false
     ? resolveRestaurantTrustPillars(settings, businessDomain).filter((p) => p.id !== 'cashback')
@@ -161,7 +167,9 @@ export function RestaurantHomeSections({
   const [activeTab, setActiveTab] = useState(curatedTabs[0]?.id || 'all');
   const activeTabDef = curatedTabs.find((t) => t.id === activeTab) || curatedTabs[0];
   const curatedProducts = activeTabDef
-    ? filterRestaurantByCategorySlug(products, activeTabDef.slug).slice(0, 8)
+    ? filterRestaurantByCategorySlug(products, activeTabDef.slug)
+        .filter(isPurchasableRestaurantProduct)
+        .slice(0, 8)
     : [];
 
   return (
@@ -200,7 +208,7 @@ export function RestaurantHomeSections({
       {upperPromoTiles.length > 0 && (
         <section className="border-b border-zinc-200/80 bg-zinc-50 py-5 sm:py-6">
           <div className="mx-auto max-w-[1400px] px-3 sm:px-6 lg:px-8">
-            <UpperPromoTiles tiles={upperPromoTiles.slice(0, 4)} accent={accent} />
+            <UpperPromoTiles tiles={upperPromoTiles.slice(0, 4)} />
           </div>
         </section>
       )}

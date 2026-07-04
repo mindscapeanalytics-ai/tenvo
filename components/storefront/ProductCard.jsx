@@ -17,6 +17,7 @@ import { isFashionEditorialStore } from '@/lib/storefront/fashionEditorial';
 import { isFitnessElevatedStore } from '@/lib/storefront/fitnessStorefront';
 import { getStorefrontStockState } from '@/lib/storefront/storefrontStockUi';
 import { isStorefrontProductUuid } from '@/lib/utils/storefrontProductRef';
+import { resolveStorefrontProductBrowseHref } from '@/lib/storefront/storefrontPurchasability';
 import { resolveSourcingBadge } from '@/lib/storefront/productAttributeChips';
 import { catalogProductNeedsVariantPage } from '@/lib/storefront/storefrontProductVariants';
 import { toast } from 'react-hot-toast';
@@ -66,9 +67,7 @@ export function ProductCard({ product, businessDomain, variant = 'default' }) {
   // added to cart or opened at /products/{slug} (would 404). Route them to a real
   // search results page instead.
   const isPreviewProduct = product.catalog_preview || !isStorefrontProductUuid(product.id);
-  const productHref = isPreviewProduct
-    ? `/store/${businessDomain}/products?search=${encodeURIComponent(product.name || '')}`
-    : `/store/${businessDomain}/products/${product.slug || product.id}`;
+  const productHref = resolveStorefrontProductBrowseHref(product, businessDomain);
   const needsVariantPage = catalogProductNeedsVariantPage(product);
 
   const handleAddToCart = async (e) => {

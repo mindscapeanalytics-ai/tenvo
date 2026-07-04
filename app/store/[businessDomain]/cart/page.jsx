@@ -36,7 +36,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 export default function CartPage({ params }) {
   const { businessDomain } = use(params);
   const router = useRouter();
-  const { cart, updateQuantity, removeItem, isLoading, calculateTotals, hydrated, clearCart, setCheckoutAdjustments } = useCart();
+  const { cart, updateQuantity, removeItem, isLoading, calculateTotals, hydrated, clearCart, setCheckoutAdjustments, syncCartFromReconcile } = useCart();
   const { currency, settings, business, businessId } = useStorefront();
   const accent = getStoreAccentColor(settings, business?.category);
   const restaurantStore = isRestaurantElevatedStore(business?.category);
@@ -142,6 +142,23 @@ export default function CartPage({ params }) {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps -- hydrate once from persisted cart adjustments
   }, [hydrated]);
+
+  const handleProceedToCheckout = async () => {
+    if (cartMismatch) return;
+    saveCheckoutAdjustments();
+    try {
+      const result = await syncCartFromReconcile(businessDomain);
+      if (!result.ok) {
+        toast.error(result.error || 'Some items in your cart are no longer available');
+        return;
+      }
+      router.push(
+        `/store/${businessDomain}/checkout?shipping=${shippingMethod}${restaurantStore ? `&mode=${restaurantOrderMode}` : ''}`
+      );
+    } catch (err) {
+      toast.error(err.message || 'Could not validate your cart');
+    }
+  };
 
   const handleQty = (item, newQty) => {
     if (newQty < 1) {
@@ -616,12 +633,7 @@ export default function CartPage({ params }) {
                     className="w-full gap-2 rounded-xl font-bold"
                     style={{ backgroundColor: accent }}
                     disabled={cartMismatch}
-                    onClick={() => {
-                      saveCheckoutAdjustments();
-                      router.push(
-                        `/store/${businessDomain}/checkout?shipping=${shippingMethod}${restaurantStore ? `&mode=${restaurantOrderMode}` : ''}`
-                      );
-                    }}
+                    onClick={handleProceedToCheckout}
                   >
                     Proceed to Checkout
                     <ArrowRight className="w-5 h-5" />

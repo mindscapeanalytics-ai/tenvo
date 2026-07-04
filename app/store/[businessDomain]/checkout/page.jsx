@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, use } from 'react';
+import { useState, useEffect, useRef, use } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { SmartProductImage } from '@/components/storefront/SmartProductImage';
@@ -66,7 +66,7 @@ export default function CheckoutPage({ params }) {
   const { businessDomain } = use(params);
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { cart, calculateTotals, clearCart, hydrated, checkoutAdjustments } = useCart();
+  const { cart, calculateTotals, clearCart, hydrated, checkoutAdjustments, applyCartIssues, syncCartFromReconcile } = useCart();
   const { currency, businessId, settings, business } = useStorefront();
   const accent = getStoreAccentColor(settings, business?.category);
   const restaurantStore = isRestaurantElevatedStore(business?.category);
@@ -98,6 +98,7 @@ export default function CheckoutPage({ params }) {
   const [downloadingReceipt, setDownloadingReceipt] = useState(false);
   const [cryptoCheckout, setCryptoCheckout] = useState(null);
   const [stripeCheckout, setStripeCheckout] = useState(null);
+  const reconciledRef = useRef(false);
 
   const isDigitalCart =
     cart.items.length > 0 && cart.items.every((i) => i.fulfillmentType === 'digital');
@@ -166,6 +167,32 @@ export default function CheckoutPage({ params }) {
       router.replace(`/store/${businessDomain}/cart`);
     }
   }, [hydrated, cart.businessId, cart.items.length, businessId, orderDone, router, businessDomain]);
+
+  // Reconcile cart with live stock once when checkout loads
+  useEffect(() => {
+    if (!hydrated || !businessDomain || orderDone || reconciledRef.current || cart.items.length === 0) {
+      return;
+    }
+    reconciledRef.current = true;
+    let cancelled = false;
+    (async () => {
+      try {
+        const result = await syncCartFromReconcile(businessDomain);
+        if (cancelled) return;
+        if (!result.ok) {
+          toast.error(result.error || 'Some items in your cart are no longer available');
+          router.replace(`/store/${businessDomain}/cart`);
+        } else if (result.changed) {
+          toast('Your cart was updated to match current availability', { icon: 'ℹ️' });
+        }
+      } catch {
+        // non-blocking — placeOrder validates again
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [hydrated, businessDomain, orderDone, cart.items.length, syncCartFromReconcile, router]);
 
   // Load payment methods (public API — always falls back to COD)
   useEffect(() => {
@@ -411,6 +438,9 @@ export default function CheckoutPage({ params }) {
       clearCart();
       toast.success(`Order ${result.order.orderNumber} placed!`);
     } catch (err) {
+      if (err.issues?.length) {
+        applyCartIssues(err.issues);
+      }
       if (err.status === 409 && !err.retryable) {
         toast.error(err.message || 'Some items in your cart are no longer available');
         router.push(`/store/${businessDomain}/cart`);

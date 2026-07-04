@@ -10,6 +10,7 @@ import { formatCurrency } from '@/lib/currency';
 import { getDomainConfig, getStoreAccentColor } from '@/lib/config/storefrontDomains';
 import { getEffectiveProductImageUrl } from '@/lib/storefront/productImageFallback';
 import { getMergedStorefrontHero } from '@/lib/storefront/mergeHero';
+import { isDemoStoreDomain } from '@/lib/storefront/elevatedStorefrontTenant';
 import { getStoreHomeCopy } from '@/lib/storefront/storeCopy';
 import { getDomainLanding } from '@/lib/storefront/domainLanding';
 import { getHeroPreset, usesFinderHero } from '@/lib/storefront/heroPresets';
@@ -202,7 +203,7 @@ export default async function StoreHomePage({ params }) {
       ? getProducts(business.id, { limit: 48, sort: 'popularity' })
       : Promise.resolve({ success: false, products: [] }),
     restaurantElevatedHero
-      ? getProducts(business.id, { limit: 48, sort: 'popularity' })
+      ? getProducts(business.id, { limit: isDemoStoreDomain(businessDomain) ? 500 : 48, sort: 'popularity' })
       : Promise.resolve({ success: false, products: [] }),
     fitnessElevatedHero
       ? getProducts(business.id, { limit: 48, sort: 'popularity' })

@@ -10,6 +10,7 @@ import { getEffectiveProductImageUrl } from '@/lib/storefront/productImageFallba
 import { formatCurrency } from '@/lib/currency';
 import { cn } from '@/lib/utils';
 import { catalogProductNeedsVariantPage } from '@/lib/storefront/storefrontProductVariants';
+import { isPurchasableStorefrontProduct, resolveStorefrontProductBrowseHref } from '@/lib/storefront/storefrontPurchasability';
 import { RESTAURANT_MENU_THEME } from '@/lib/storefront/restaurantMenu';
 import { toast } from 'react-hot-toast';
 
@@ -23,16 +24,22 @@ export function RestaurantMenuItemCard({ product, businessDomain, accent, classN
   const imageUrl = getEffectiveProductImageUrl(product, business?.category);
   const isOutOfStock =
     product.stock !== null && product.stock !== undefined && Number(product.stock) <= 0;
-  const productHref = `/store/${businessDomain}/products/${product.slug || product.id}`;
+  const productHref = resolveStorefrontProductBrowseHref(product, businessDomain);
   const needsVariantPage = catalogProductNeedsVariantPage(product);
   const comparePrice = product.compare_price ?? product.compare_at_price;
   const onSale = comparePrice && Number(comparePrice) > Number(product.price);
   const ctaColor = accent || RESTAURANT_MENU_THEME.cartCta;
+  const isPreviewProduct = !isPurchasableStorefrontProduct(product);
 
   const handleAdd = async (e) => {
     e.preventDefault();
     e.stopPropagation();
     if (isOutOfStock) return;
+    if (isPreviewProduct) {
+      toast.error('Browse the full menu to order this item');
+      window.location.href = `/store/${businessDomain}/products`;
+      return;
+    }
     if (needsVariantPage) {
       window.location.href = productHref;
       return;
@@ -126,12 +133,18 @@ export function RestaurantMenuListItem({ product, businessDomain, accent }) {
   const imageUrl = getEffectiveProductImageUrl(product, business?.category);
   const isOutOfStock =
     product.stock !== null && product.stock !== undefined && Number(product.stock) <= 0;
-  const productHref = `/store/${businessDomain}/products/${product.slug || product.id}`;
+  const productHref = resolveStorefrontProductBrowseHref(product, businessDomain);
   const needsVariantPage = catalogProductNeedsVariantPage(product);
   const ctaColor = accent || RESTAURANT_MENU_THEME.cartCta;
+  const isPreviewProduct = !isPurchasableStorefrontProduct(product);
 
   const handleAdd = async () => {
     if (isOutOfStock) return;
+    if (isPreviewProduct) {
+      toast.error('Browse the full menu to order this item');
+      window.location.href = `/store/${businessDomain}/products`;
+      return;
+    }
     if (needsVariantPage) {
       window.location.href = productHref;
       return;

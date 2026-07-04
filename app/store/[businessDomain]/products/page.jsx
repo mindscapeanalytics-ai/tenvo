@@ -19,6 +19,11 @@ import {
   isFitnessBookableCategory,
 } from '@/lib/storefront/fitnessStorefront';
 import { isRestaurantElevatedStore, resolveRestaurantTheme } from '@/lib/storefront/restaurantStorefront';
+import {
+  buildRestaurantShopCatalog,
+  paginateRestaurantShopCatalog,
+  enrichRestaurantCategoriesWithSeedImages,
+} from '@/lib/dataLab/restaurantSeedHelpers';
 import { RestaurantMenuLayout } from '@/components/storefront/restaurant/RestaurantMenuLayout';
 import { RestaurantMenuCatalog } from '@/components/storefront/restaurant/RestaurantMenuCatalog';
 
@@ -110,7 +115,11 @@ export default async function ProductsPage({ params, searchParams }) {
   // Fetch categories for filters
   const categoriesResult = await getCategories(business.id);
   const categoriesRaw = categoriesResult.success ? categoriesResult.categories : [];
-  const categories = fitnessStore ? filterFitnessShopCategories(categoriesRaw) : categoriesRaw;
+  const categories = fitnessStore
+    ? filterFitnessShopCategories(categoriesRaw)
+    : restaurantStore
+      ? enrichRestaurantCategoriesWithSeedImages(categoriesRaw)
+      : categoriesRaw;
 
   const categoryMeta = filters.category ? categories.find((c) => c.slug === filters.category) : null;
   const bookableCategoryRequested =
@@ -294,6 +303,40 @@ async function RestaurantMenuContent({
     sort: filters.sort === 'featured' && !filters.category && !filters.search ? 'popularity' : filters.sort,
   };
 
+  if (isDemoStoreDomain(businessDomain)) {
+    const catalogResult = await getProducts(businessId, {
+      page: 1,
+      limit: 500,
+      sort: 'popularity',
+    });
+
+    if (!catalogResult.success) {
+      return (
+        <div className="rounded-lg border border-dashed border-zinc-300 bg-white px-4 py-12 text-center">
+          <p className="text-sm text-zinc-500">Could not load the menu. Please try again.</p>
+        </div>
+      );
+    }
+
+    const { products, total, hasMore } = paginateRestaurantShopCatalog(
+      catalogResult.products,
+      menuFilters,
+      businessDomain
+    );
+
+    return (
+      <RestaurantMenuCatalog
+        products={products}
+        total={total}
+        hasMore={hasMore}
+        businessDomain={businessDomain}
+        currentPage={filters.page}
+        view={view}
+        accent={accent}
+      />
+    );
+  }
+
   const result = await getProducts(businessId, menuFilters);
 
   if (!result.success) {
@@ -304,7 +347,8 @@ async function RestaurantMenuContent({
     );
   }
 
-  const { products, total, hasMore } = result;
+  const { products: rawProducts, total, hasMore } = result;
+  const products = buildRestaurantShopCatalog(rawProducts, businessDomain);
 
   return (
     <RestaurantMenuCatalog

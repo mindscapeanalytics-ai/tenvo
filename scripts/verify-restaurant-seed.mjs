@@ -7,6 +7,8 @@ import {
   resolveRestaurantShowcaseProducts,
   shouldUseRestaurantSeedCatalog,
   mapRestaurantSeedRowToStorefrontProduct,
+  buildRestaurantShopCatalog,
+  enrichRestaurantProductsFromSeed,
 } from '../lib/dataLab/restaurantSeedHelpers.js';
 import { buildRichSeedItems, hasRichCatalog } from '../lib/dataLab/richProductCatalog.js';
 
@@ -64,8 +66,26 @@ if (registrationItems.length !== RESTAURANT_SEED_PRODUCTS.length) {
 }
 
 const preview = resolveRestaurantShowcaseProducts([], 'demo-restaurant', 'restaurant-cafe');
-if (!preview.length || !preview.every((p) => p.catalog_preview)) {
-  errors.push('empty DB should fall back to catalog_preview seed on demo-restaurant');
+if (preview.length !== 0) {
+  errors.push('empty DB should return no preview rows — seed lives in database only');
+}
+
+const seed = RESTAURANT_SEED_PRODUCTS[0];
+const mockDb = enrichRestaurantProductsFromSeed([
+  {
+    id: 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee',
+    sku: seed.sku,
+    name: seed.name,
+    price: seed.price,
+    stock: 99,
+  },
+]);
+if (!mockDb[0]?.image_url?.includes('services.eatx.pk')) {
+  errors.push('DB row should inherit Roll Inn CDN image from seed metadata');
+}
+const shop = buildRestaurantShopCatalog(mockDb, 'demo-restaurant');
+if (shop.length !== 1 || shop[0].id !== mockDb[0].id) {
+  errors.push('buildRestaurantShopCatalog should preserve DB UUID rows');
 }
 const mapped = mapRestaurantSeedRowToStorefrontProduct(RESTAURANT_SEED_PRODUCTS[0]);
 if (!mapped.image_url?.includes('services.eatx.pk')) {

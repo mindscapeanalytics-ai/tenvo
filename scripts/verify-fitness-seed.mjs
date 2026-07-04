@@ -117,23 +117,22 @@ if (!enrichedTiles[0]?.image?.startsWith('https://')) {
   errors.push('enrichFitnessCategoryNavImages should backfill category tile PNG');
 }
 
+const DB_UUID = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';
+
 const dbBacked = resolveFitnessShowcaseProducts(
-  [{ id: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee', name: 'DB Whey', sku: 'DB-001', image_url: '' }],
+  [{ id: DB_UUID, name: 'DB Whey', sku: 'DB-001', image_url: '' }],
   'demo-fitness'
 );
-if (dbBacked.length !== 1 || dbBacked[0].id !== 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee') {
+if (dbBacked.length !== 1 || dbBacked[0].id !== DB_UUID) {
   errors.push('resolveFitnessShowcaseProducts must keep DB products (not replace with seed SKUs)');
 }
-if (dbBacked[0].catalog_preview) {
+if (dbBacked[0]?.catalog_preview) {
   errors.push('DB-backed showcase products must not be catalog_preview');
 }
 
 const previewOnly = resolveFitnessShowcaseProducts([], 'demo-fitness');
-if (!previewOnly.length || !previewOnly.every((p) => p.catalog_preview)) {
-  errors.push('empty DB should fall back to catalog_preview seed rows on demo domain');
-}
-if (previewOnly.some((p) => isStorefrontProductUuid(p.id))) {
-  errors.push('seed preview rows must not use UUID-shaped ids');
+if (previewOnly.length !== 0) {
+  errors.push('empty DB showcase must not inject catalog_preview seed rows');
 }
 
 const liveSparse = buildFitnessSupplementShowcase(
@@ -178,9 +177,22 @@ if (shopSeed.length < 40) {
   errors.push(`expected 40+ shop catalog seed SKUs, got ${shopSeed.length}`);
 }
 
-const demoShop = buildFitnessShopCatalog([], 'demo-fitness');
-if (demoShop.length < shopSeed.length) {
-  errors.push(`demo shop catalog should backfill seed retail SKUs (got ${demoShop.length})`);
+const demoShopEmpty = buildFitnessShopCatalog([], 'demo-fitness');
+if (demoShopEmpty.length !== 0) {
+  errors.push('empty DB shop catalog must not seed-fill preview rows (use data-lab bootstrap)');
+}
+
+const mockDbRetail = shopSeed.slice(0, 8).map((row, index) => ({
+  id: `aaaaaaaa-bbbb-4ccc-8ddd-${String(index).padStart(12, '0')}`,
+  sku: row.sku,
+  name: row.name,
+  price: row.price,
+  stock: row.stock ?? 24,
+  domain_data: row.domain_data || {},
+}));
+const demoShop = buildFitnessShopCatalog(mockDbRetail, 'demo-fitness');
+if (demoShop.length < mockDbRetail.length) {
+  errors.push(`demo shop catalog should keep DB retail SKUs (got ${demoShop.length})`);
 }
 if (demoShop.some(isFitnessBookableProduct)) {
   errors.push('shop catalog must exclude memberships and training sessions');
@@ -199,8 +211,8 @@ if (filteredCats.some((c) => /membership|personal training|^classes$/i.test(c.na
 }
 
 const paged = paginateFitnessShopCatalog(demoShop, { page: 1, limit: 24, sort: 'featured' });
-if (paged.products.length < 1 || paged.total < shopSeed.length) {
-  errors.push('paginateFitnessShopCatalog should return full demo shop totals');
+if (paged.products.length < 1 || paged.total < demoShop.length) {
+  errors.push('paginateFitnessShopCatalog should paginate enriched DB shop catalog');
 }
 
 if (errors.length) {

@@ -23,7 +23,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 export function CartDrawer() {
   const router = useRouter();
 
-  const { cart, updateQuantity, removeItem, calculateTotals, isLoading, isOpen, setIsOpen, clearCart } = useCart();
+  const { cart, updateQuantity, removeItem, calculateTotals, isLoading, isOpen, setIsOpen, clearCart, syncCartFromReconcile } = useCart();
   const { currency, businessDomain, settings, businessId, business } = useStorefront();
   const restaurantStore = isRestaurantElevatedStore(business?.category);
   const restaurantChrome = useRestaurantChromeOptional();
@@ -47,9 +47,19 @@ export function CartDrawer() {
     }
   };
 
-  const handleCheckout = () => {
+  const handleCheckout = async () => {
     if (cartMismatch) {
       toast.error('Your cart contains items from another store. Please clear your cart.');
+      return;
+    }
+    try {
+      const result = await syncCartFromReconcile(businessDomain);
+      if (!result.ok) {
+        toast.error(result.error || 'Some items in your cart are no longer available');
+        return;
+      }
+    } catch (err) {
+      toast.error(err.message || 'Could not validate your cart');
       return;
     }
     setIsOpen(false);

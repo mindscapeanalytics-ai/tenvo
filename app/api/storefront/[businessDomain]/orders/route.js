@@ -44,6 +44,7 @@ import {
   resolveEligibleStorefrontPaymentMethods,
 } from '@/lib/storefront/storefrontPaymentEligibility';
 import { resolveStorefrontOrderShippingAmount } from '@/lib/storefront/storefrontShipping';
+import { resolveCheckoutCartItemRefs } from '@/lib/storefront/validateCheckoutCart';
 
 /**
  * Storefront checkout decrements stock via direct SQL (bypassing InventoryService),
@@ -127,9 +128,14 @@ function mapCheckoutClientError(error) {
   if (
     msg.includes('Insufficient stock') ||
     msg.includes('not found') ||
-    msg.includes('Variant not found')
+    msg.includes('Variant not found') ||
+    msg.includes('preview-only') ||
+    msg.includes('no longer available')
   ) {
     return { status: 409, error: msg, retryable: false };
+  }
+  if (msg.includes('mixes digital and physical')) {
+    return { status: 400, error: msg, retryable: false };
   }
   if (
     msg.includes('select size') ||
@@ -230,15 +236,63 @@ export async function POST(request, { params }) {
     );
   }
 
+  if (!items || !Array.isArray(items) || items.length === 0) {
+    return NextResponse.json(
+      { success: false, error: 'Order must contain at least one item' },
+      { status: 400 }
+    );
+  }
+
+  const resolveClient = await pool.connect();
+  let checkoutItems;
+  try {
+    const { resolvedItems, issues } = await resolveCheckoutCartItemRefs(
+      resolveClient,
+      business.id,
+      items
+    );
+    if (issues.length > 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: issues[0].message,
+          issues,
+        },
+        { status: 409 }
+      );
+    }
+    checkoutItems = resolvedItems;
+  } finally {
+    resolveClient.release();
+  }
+
+  for (const item of checkoutItems) {
+    if (
+      item?.variantId != null &&
+      item.variantId !== '' &&
+      !isStorefrontProductUuid(item.variantId)
+    ) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid product option selected.' },
+        { status: 400 }
+      );
+    }
+    const itemQty = Number(item?.quantity);
+    if (!Number.isFinite(itemQty) || itemQty <= 0) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid quantity for one or more items.' },
+        { status: 400 }
+      );
+    }
+  }
+
   const precheckClient = await pool.connect();
   let digitalOnlyOrder = false;
 
   try {
-    if (items?.length) {
-      const lineRefs = items
-        .filter((i) => isStorefrontProductUuid(i?.productId))
-        .map((i) => ({ productId: i.productId }));
-      if (lineRefs.length === items.length) {
+    if (checkoutItems?.length) {
+      const lineRefs = checkoutItems.map((i) => ({ productId: i.productId }));
+      if (lineRefs.length === checkoutItems.length) {
         const mix = await classifyOrderLineFulfillment(precheckClient, business.id, lineRefs);
         if (mix.mixed) {
           return NextResponse.json(
@@ -296,46 +350,6 @@ export async function POST(request, { params }) {
       ? buildRestaurantPickupAddress(business, normalizedRestaurantMode, tableNumber)
       : shippingAddress;
 
-  if (!items || !Array.isArray(items) || items.length === 0) {
-    return NextResponse.json(
-      { success: false, error: 'Order must contain at least one item' },
-      { status: 400 }
-    );
-  }
-
-  // Fail fast on non-purchasable refs (e.g. demo/preview catalog rows whose id is a
-  // SKU/slug, not a tenant product UUID). Without this, the ::uuid casts below would
-  // throw and surface as an opaque 500 instead of a clean, actionable message.
-  for (const item of items) {
-    if (!isStorefrontProductUuid(item?.productId)) {
-      return NextResponse.json(
-        {
-          success: false,
-          error:
-            'One or more items are preview-only and can’t be ordered. Please add products from the store catalog and try again.',
-        },
-        { status: 400 }
-      );
-    }
-    if (
-      item?.variantId != null &&
-      item.variantId !== '' &&
-      !isStorefrontProductUuid(item.variantId)
-    ) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid product option selected.' },
-        { status: 400 }
-      );
-    }
-    const itemQty = Number(item?.quantity);
-    if (!Number.isFinite(itemQty) || itemQty <= 0) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid quantity for one or more items.' },
-        { status: 400 }
-      );
-    }
-  }
-
   const shippingRaw = Number(shipping);
   const clientDeclaredShipping =
     Number.isFinite(shippingRaw) && shippingRaw >= 0 ? roundMoney(Math.min(shippingRaw, 9_999_999)) : 0;
@@ -351,7 +365,7 @@ export async function POST(request, { params }) {
 
     const resolvedLines = [];
 
-    for (const item of items) {
+    for (const item of checkoutItems) {
       if (!item?.productId) {
         throw new Error('Each item must include productId');
       }
@@ -668,7 +682,7 @@ export async function POST(request, { params }) {
 
     for (let i = 0; i < resolvedLines.length; i++) {
       const line = resolvedLines[i];
-      const bodyItem = items[i];
+      const bodyItem = checkoutItems[i];
 
       const metaPayload = JSON.stringify({
             variantId: line.variantId,
@@ -806,7 +820,7 @@ export async function POST(request, { params }) {
       unitPrice: line.unitPrice,
       lineTotal: line.lineTotal,
       variantName: line.variantName,
-      ...items[idx],
+      ...checkoutItems[idx],
     }));
 
     void sendOrderConfirmationEmail({
