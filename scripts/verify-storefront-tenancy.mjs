@@ -100,11 +100,16 @@ const ordersRoute = read('app/api/storefront/[businessDomain]/orders/route.js');
 if (!ordersRoute.includes('resolveStorefrontBusiness')) {
   mark('orders route must resolve business via resolveStorefrontBusiness');
 }
-if (!ordersRoute.includes('decrementHeadlineAndLocationsInTx')) {
-  mark('orders route must decrement warehouse rows + headline stock via decrementHeadlineAndLocationsInTx');
+if (!ordersRoute.includes('decrementStorefrontOrderLineStock')) {
+  mark('orders route must decrement stock via decrementStorefrontOrderLineStock (InventoryService)');
 }
 if (!ordersRoute.includes('resolveSellableStockQty')) {
   mark('orders route must validate stock with resolveSellableStockQty');
+}
+
+const sfOrderInventory = read('lib/storefront/storefrontOrderInventory.js');
+if (!sfOrderInventory.includes('InventoryService.removeStock') || !sfOrderInventory.includes('removeVariantStock')) {
+  mark('storefrontOrderInventory must route through InventoryService.removeStock and removeVariantStock');
 }
 
 // --- Reviews API ---

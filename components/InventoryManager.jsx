@@ -2448,10 +2448,11 @@ export function InventoryManager({
               domainKnowledge={domainKnowledge}
               businessId={businessId}
               category={category}
-              onAdd={onLocationAdd}
-              onUpdate={onLocationUpdate}
-              onDelete={onLocationDelete}
+              onLocationAdd={onLocationAdd}
+              onLocationUpdate={onLocationUpdate}
+              onLocationDelete={onLocationDelete}
               onStockTransfer={onStockTransfer}
+              refreshData={refreshData}
             />
           </TabsContent>
         )}

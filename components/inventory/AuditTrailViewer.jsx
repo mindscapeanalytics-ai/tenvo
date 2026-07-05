@@ -13,6 +13,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { createClient } from '@/lib/supabase/client';
+import { getRecentStockAdjustmentsAction } from '@/lib/actions/standard/inventory/stock';
+import { formatDisplayDate } from '@/lib/utils/formatDisplayDate';
 import toast from 'react-hot-toast';
 import { ResponsiveManagerHeader } from '@/components/mobile/HubSectionHeader';
 import jsPDF from 'jspdf';
@@ -45,6 +47,28 @@ export function AuditTrailViewer({
   currency = 'PKR'
 }) {
   const supabase = createClient();
+
+  function mapAdjustmentToAuditRecord(row) {
+    const qty = Number(row.quantity || 0);
+    const after = Number(row.newStock || 0);
+    const isIncrease = row.adjustmentType === 'increase';
+    const change = isIncrease ? qty : -qty;
+    return {
+      id: row.id,
+      created_at: row.createdAt,
+      adjustment_type: isIncrease ? 'increase' : 'decrease',
+      product: { id: row.productId, name: row.productName || 'Unknown', sku: '' },
+      quantity_before: after - change,
+      quantity_after: after,
+      quantity_change: change,
+      reason_code: row.reason || 'adjustment',
+      reason_notes: row.notes || '',
+      adjustment_value: 0,
+      approval_status: 'approved',
+      requester: { email: row.createdBy || 'System', full_name: row.createdBy || 'System' },
+      ip_address: null,
+    };
+  }
   
   // State
   const [auditTrail, setAuditTrail] = useState([]);
@@ -92,55 +116,41 @@ export function AuditTrailViewer({
     
     setLoading(true);
     try {
-      let query = supabase
-        .from('stock_adjustments')
-        .select(`
-          *,
-          product:products(id, name, sku),
-          warehouse:warehouses(id, name, code),
-          requester:requested_by(id, email, full_name),
-          approver:approved_by(id, email, full_name)
-        `)
-        .eq('business_id', businessId)
-        .order('created_at', { ascending: false });
-      
-      // Apply filters
+      const res = await getRecentStockAdjustmentsAction(businessId, 500);
+      if (!res?.success) {
+        throw new Error(res?.error || 'Failed to load audit trail');
+      }
+
+      let rows = (res.adjustments || []).map(mapAdjustmentToAuditRecord);
+
       if (filters.startDate) {
-        query = query.gte('created_at', filters.startDate);
+        const start = new Date(filters.startDate).getTime();
+        rows = rows.filter((r) => new Date(r.created_at).getTime() >= start);
       }
       if (filters.endDate) {
-        const endDateTime = new Date(filters.endDate);
-        endDateTime.setHours(23, 59, 59, 999);
-        query = query.lte('created_at', endDateTime.toISOString());
-      }
-      if (filters.userId) {
-        query = query.eq('requested_by', filters.userId);
+        const end = new Date(filters.endDate);
+        end.setHours(23, 59, 59, 999);
+        const endMs = end.getTime();
+        rows = rows.filter((r) => new Date(r.created_at).getTime() <= endMs);
       }
       if (filters.productId) {
-        query = query.eq('product_id', filters.productId);
+        rows = rows.filter((r) => String(r.product?.id || '') === String(filters.productId));
       }
       if (filters.transactionType) {
-        query = query.eq('adjustment_type', filters.transactionType);
+        rows = rows.filter((r) => r.adjustment_type === filters.transactionType);
       }
       if (filters.reasonCode) {
-        query = query.eq('reason_code', filters.reasonCode);
+        rows = rows.filter((r) => String(r.reason_code || '').includes(filters.reasonCode));
       }
-      if (warehouseId) {
-        query = query.eq('warehouse_id', warehouseId);
-      }
-      
-      const { data, error } = await query;
-      
-      if (error) throw error;
-      
-      setAuditTrail(data || []);
+
+      setAuditTrail(rows);
     } catch (error) {
       console.error('Error fetching audit trail:', error);
       toast.error('Failed to load audit trail');
     } finally {
       setLoading(false);
     }
-  }, [businessId, filters, warehouseId, supabase]);
+  }, [businessId, filters, warehouseId]);
   
   /**
    * Fetch users for filter dropdown
@@ -670,7 +680,7 @@ export function AuditTrailViewer({
                   filteredAuditTrail.map((record) => (
                     <tr key={record.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">
-                        {new Date(record.created_at).toLocaleString()}
+                        {formatDisplayDate(record.created_at)}
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-900">
                         <div className="flex items-center gap-2">

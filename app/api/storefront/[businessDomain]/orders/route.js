@@ -8,10 +8,8 @@ import {
   parseStockNumber,
   querySellableLocationQty,
   resolveSellableStockQty,
-  decrementHeadlineAndLocationsInTx,
-  recordStorefrontSaleMovementInTx,
-  recordStorefrontVariantSaleMovementInTx,
 } from '@/lib/storefront/storefrontOrderStock';
+import { decrementStorefrontOrderLineStock } from '@/lib/storefront/storefrontOrderInventory';
 import {
   incrementStorefrontPromoUsage,
   resolveStorefrontOrderDiscount,
@@ -650,40 +648,17 @@ export async function POST(request, { params }) {
         }
       }
 
-      if (line.isVariant && line.variantId) {
-        await client.query(
-          `UPDATE product_variants 
-           SET stock = stock - $1::numeric, updated_at = NOW()
-           WHERE id = $2::uuid AND business_id = $3::uuid`,
-          [line.quantity, line.variantId, business.id]
-        );
-        // Audit trail for size/color variant sales (clothing/footwear norm) so they
-        // appear in stock movement reports; best-effort, never blocks the order.
-        await recordStorefrontVariantSaleMovementInTx(
-          client,
-          business.id,
-          line.productId,
-          line.variantId,
-          line.quantity,
-          { orderId, orderNumber }
-        );
-      } else {
-        await decrementHeadlineAndLocationsInTx(
-          client,
-          business.id,
-          line.productId,
-          line.quantity
-        );
-        // Audit trail: record the sale in stock_movements + inventory_ledger so
-        // storefront sales appear in valuation/reports (symmetric with cancel restock).
-        await recordStorefrontSaleMovementInTx(
-          client,
-          business.id,
-          line.productId,
-          line.quantity,
-          { orderId, orderNumber }
-        );
-      }
+      await decrementStorefrontOrderLineStock(
+        client,
+        business.id,
+        {
+          productId: line.productId,
+          quantity: line.quantity,
+          isVariant: line.isVariant,
+          variantId: line.variantId,
+        },
+        { orderId, orderNumber }
+      );
     }
 
     try {

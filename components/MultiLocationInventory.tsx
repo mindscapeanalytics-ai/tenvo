@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Warehouse, Plus, ArrowRightLeft, MapPin, Pencil, Trash2, Building2 } from 'lucide-react';
 import { HubSectionHeader } from '@/components/mobile';
+import { warehouseAPI } from '@/lib/api/warehouse';
 import toast from 'react-hot-toast';
 import type { WarehouseLocation, Product, DomainKnowledge } from '@/types';
 
@@ -167,6 +168,8 @@ export function MultiLocationInventory({
 
             if (onLocationAdd) {
                 await onLocationAdd(data);
+            } else {
+                await warehouseAPI.createLocation(data);
             }
 
             toast.success('Location added successfully');
@@ -206,6 +209,8 @@ export function MultiLocationInventory({
 
             if (onLocationUpdate) {
                 await onLocationUpdate(selectedLocation.id, updates);
+            } else {
+                await warehouseAPI.updateLocation(businessId, selectedLocation.id, updates);
             }
 
             toast.success('Location updated successfully');
@@ -232,6 +237,8 @@ export function MultiLocationInventory({
         try {
             if (onLocationDelete) {
                 await onLocationDelete(locationId);
+            } else {
+                await warehouseAPI.deleteLocation(businessId, locationId);
             }
 
             toast.success('Location deleted successfully');
@@ -281,6 +288,8 @@ export function MultiLocationInventory({
 
             if (onStockTransfer) {
                 await onStockTransfer(data);
+            } else {
+                await warehouseAPI.createTransfer(data);
             }
 
             toast.success('Stock transferred successfully');

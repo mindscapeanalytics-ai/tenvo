@@ -55,13 +55,14 @@ export const PATCH = withApiAuth(async (request, { businessId, session, parsedBo
 
         // Verify ownership
         const ownerCheck = await client.query(
-            `SELECT id FROM cycle_counts WHERE id = $1 AND business_id = $2`,
+            `SELECT id, warehouse_id FROM cycle_counts WHERE id = $1 AND business_id = $2`,
             [id, businessId]
         );
         if (ownerCheck.rows.length === 0) {
             await client.query('ROLLBACK');
             return apiError('NOT_FOUND', 'Cycle count not found', 404);
         }
+        const cycleWarehouseId = ownerCheck.rows[0].warehouse_id || null;
 
         let varianceCount = 0;
 
@@ -81,7 +82,7 @@ export const PATCH = withApiAuth(async (request, { businessId, session, parsedBo
                 await InventoryService.adjustStock({
                     businessId,
                     productId: item.product_id,
-                    warehouseId: item.warehouse_id || null,
+                    warehouseId: cycleWarehouseId,
                     adjustmentType: adjustType,
                     quantity: Math.abs(variance),
                     reason: `Cycle count variance, count ID: ${id}`,
