@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Warehouse, Plus, ArrowRightLeft, MapPin, Pencil, Trash2, Building2 } from 'lucide-react';
+import { HubSectionHeader } from '@/components/mobile';
 import toast from 'react-hot-toast';
 import type { WarehouseLocation, Product, DomainKnowledge } from '@/types';
 
@@ -360,36 +361,33 @@ export function MultiLocationInventory({
     };
 
     return (
-        <div className="space-y-6">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <div className="flex items-center gap-2 mb-1">
-                        {domainKnowledge?.icon && <span className="text-2xl">{domainKnowledge.icon}</span>}
-                        <h2 className="text-2xl font-bold">
-                            {domainKnowledge?.name ? `${domainKnowledge.name} Inventory` : 'Multi-Location Inventory'}
-                        </h2>
-                        {category && (
-                            <Badge variant="outline" className="ml-2 capitalize opacity-70">
-                                {category.replace(/-/g, ' ')}
-                            </Badge>
-                        )}
-                    </div>
-                    <p className="text-muted-foreground">
-                        Manage warehouse locations, godowns, and stock transfers
-                    </p>
-                </div>
-                <div className="flex gap-2">
-                    <Button onClick={() => setShowTransferDialog(true)} variant="outline">
-                        <ArrowRightLeft className="w-4 h-4 mr-2" />
-                        Transfer Stock
-                    </Button>
-                    <Button onClick={() => setShowAddDialog(true)}>
-                        <Plus className="w-4 h-4 mr-2" />
-                        Add Location
-                    </Button>
-                </div>
-            </div>
+        <div className="min-w-0 space-y-6 overflow-x-hidden">
+            <HubSectionHeader
+                icon={Warehouse}
+                iconClassName="bg-blue-50 text-blue-700"
+                title={
+                    domainKnowledge?.name
+                        ? `${domainKnowledge.name} Inventory`
+                        : 'Multi-Location Inventory'
+                }
+                subtitle="Manage warehouse locations, godowns, and stock transfers"
+                badge={category ? category.replace(/-/g, ' ') : undefined}
+                actions={[
+                    {
+                        id: 'transfer',
+                        label: 'Transfer Stock',
+                        icon: ArrowRightLeft,
+                        variant: 'outline',
+                        onClick: () => setShowTransferDialog(true),
+                    },
+                    {
+                        id: 'add',
+                        label: 'Add Location',
+                        icon: Plus,
+                        onClick: () => setShowAddDialog(true),
+                    },
+                ]}
+            />
 
             {/* Locations Grid */}
             {locations.length === 0 ? (
@@ -418,12 +416,12 @@ export function MultiLocationInventory({
                         return (
                             <Card key={location.id} className="hover:shadow-lg transition-shadow">
                                 <CardHeader>
-                                    <div className="flex items-start justify-between">
-                                        <div className="flex items-center gap-2">
+                                    <div className="flex items-start justify-between gap-2">
+                                        <div className="flex min-w-0 flex-1 items-center gap-2">
                                             {getLocationTypeIcon(location.type)}
-                                            <CardTitle className="text-lg">{location.name}</CardTitle>
+                                            <CardTitle className="truncate text-base lg:text-lg">{location.name}</CardTitle>
                                         </div>
-                                        <div className="flex gap-1">
+                                        <div className="flex shrink-0 gap-1">
                                             <Button
                                                 size="sm"
                                                 variant="ghost"

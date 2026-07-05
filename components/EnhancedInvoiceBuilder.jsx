@@ -1,6 +1,6 @@
 // This file usually uses formatCurrency, but checking for hardcoded symbols
 
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { X, Plus, Trash2, Download, Printer, Save, Calculator, FileText, Loader2, Scan, Keyboard, AlertCircle, ShoppingCart, WandSparkles, Send, Clock3, CheckCircle2, XCircle, ShieldCheck, MoreHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -29,6 +29,9 @@ import { ExpertActionPanel } from '@/components/domain/ExpertActionPanel';
 import { submitInvoiceForApprovalAction, getApprovalHistoryAction, schedulePaymentRemindersAction } from '@/lib/actions/standard/invoice-approval';
 import { MOBILE_OVERLAY, MOBILE_OVERLAY_CARD, MOBILE_FORM_FOOTER, MOBILE_GRID_FIELDS } from '@/lib/utils/formMobileStyles';
 import { InvoiceMobileLineItems } from '@/components/invoice/mobile/InvoiceMobileLineItems';
+import { findProductByScanCode } from '@/lib/utils/productScanLookup';
+import { lookupProductByScanCodeAction } from '@/lib/actions/standard/inventory/lookup';
+import { BarcodeScanTrigger } from '@/components/inventory/BarcodeScanTrigger';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -446,35 +449,57 @@ export function EnhancedInvoiceBuilder({
 
   // Keyboard Shortcuts moved below totals declaration
 
-  // Barcode Sniffer Logic
-  const handleBarcodeScan = (code) => {
-    if (!code) return;
-    const product = products.find(p => p.barcode === code || p.sku === code);
-    if (product) {
-      const existingItem = invoice.items.find(item => item.productId === product.id);
-      if (existingItem) {
-        updateItem(existingItem.id, 'quantity', existingItem.quantity + 1);
-      } else {
-        const newItem = {
-          id: Date.now(),
-          productId: product.id,
-          name: product.name,
-          hsn: product.hsn || product.hsnCode || '',
-          quantity: 1,
-          unit: product.unit || 'pcs',
-          rate: product.price,
-          discount: 0,
-          taxPercent: product.taxPercent || (isPakistaniDomain ? defaultTaxRate : 0),
-          amount: product.price,
-          taxCategory: isPakistaniDomain ? getTaxCategoryForDomain(category) : 'retail-standard',
-        };
-        setInvoice(prev => ({ ...prev, items: [...prev.items, newItem] }));
+  // Barcode scan — client catalog + live DB fallback
+  const addProductFromScan = useCallback(async (code) => {
+    if (!code) return false;
+    let product = findProductByScanCode(products, code);
+    if (!product && business?.id) {
+      try {
+        const result = await lookupProductByScanCodeAction(business.id, code);
+        if (result.success && result.product) product = result.product;
+      } catch {
+        /* client-only */
       }
-      toast.success(`Added: ${product.name}`);
-      setBarcodeInput('');
-    } else {
-      toast.error('Product not found for barcode: ' + code);
     }
+    if (!product) {
+      toast.error(`Product not found for barcode: ${code}`);
+      return false;
+    }
+
+    const existingItem = invoice.items.find((item) => item.productId === product.id);
+    if (existingItem) {
+      updateItem(existingItem.id, 'quantity', existingItem.quantity + 1);
+    } else {
+      const newItem = {
+        id: Date.now(),
+        productId: product.id,
+        name: product.name,
+        hsn: product.hsn || product.hsnCode || product.hsn_code || '',
+        quantity: 1,
+        unit: product.unit || 'pcs',
+        rate: product.price,
+        discount: 0,
+        taxPercent: product.taxPercent || product.tax_percent || (isPakistaniDomain ? defaultTaxRate : 0),
+        amount: product.price,
+        taxCategory: isPakistaniDomain ? getTaxCategoryForDomain(category) : 'retail-standard',
+      };
+      setInvoice((prev) => ({ ...prev, items: [...prev.items, newItem] }));
+    }
+    toast.success(`Added: ${product.name}`);
+    setBarcodeInput('');
+    return true;
+  }, [
+    products,
+    business?.id,
+    invoice.items,
+    updateItem,
+    isPakistaniDomain,
+    defaultTaxRate,
+    category,
+  ]);
+
+  const handleBarcodeScan = (code) => {
+    void addProductFromScan(code);
   };
 
   // Update customer details when selected
@@ -1280,9 +1305,9 @@ export function EnhancedInvoiceBuilder({
                 <ShoppingCart className="w-4 h-4 text-slate-500" />
                 Line Items
               </h3>
-              <div className="flex flex-col gap-2 sm:flex-row sm:gap-2">
-                <div className="relative group w-full sm:w-48">
-                  <Scan className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 group-focus-within:text-indigo-500" />
+                <div className="flex flex-col gap-2 sm:flex-row sm:gap-2">
+                <div className="relative group w-full sm:w-48 flex gap-1">
+                  <Scan className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 group-focus-within:text-indigo-500 z-10" />
                   <Input
                     id="barcode-sniffer"
                     placeholder="Scan barcode"
@@ -1292,6 +1317,12 @@ export function EnhancedInvoiceBuilder({
                       if (e.key === 'Enter') handleBarcodeScan(barcodeInput);
                     }}
                     className="h-9 w-full rounded-md border-dashed border-slate-300 bg-white pl-8 font-mono text-xs shadow-sm transition-all focus:bg-white sm:h-8"
+                  />
+                  <BarcodeScanTrigger
+                    business={business}
+                    onScan={handleBarcodeScan}
+                    className="h-9 w-9 shrink-0 sm:h-8"
+                    title="Camera scan"
                   />
                 </div>
                 <div className="flex gap-2">
@@ -1340,6 +1371,8 @@ export function EnhancedInvoiceBuilder({
                   removeItem={removeItem}
                   addItem={addItem}
                   onEnterLastRow={addItem}
+                  business={business}
+                  onScanBarcode={handleBarcodeScan}
                 />
               </div>
 

@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { ResponsiveManagerHeader } from '@/components/mobile/HubSectionHeader';
 
 import { toast } from 'react-hot-toast';
 
@@ -114,17 +115,19 @@ export function CustomParametersManager({
   const templates = getParameterTemplates();
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h4 className="font-semibold">Custom Parameters</h4>
-          <p className="text-sm text-gray-500">Add custom attributes specific to your products</p>
-        </div>
-        <Button size="sm" onClick={() => setShowAddForm(!showAddForm)}>
-          <Plus className="w-4 h-4 mr-2" />
-          Add Parameter
-        </Button>
-      </div>
+    <div className="min-w-0 space-y-4 overflow-x-hidden">
+      <ResponsiveManagerHeader
+        title="Custom Parameters"
+        subtitle="Add custom attributes specific to your products"
+        actions={[
+          {
+            id: 'add',
+            label: 'Add Parameter',
+            icon: Plus,
+            onClick: () => setShowAddForm(!showAddForm),
+          },
+        ]}
+      />
 
       {/* Quick Add Templates */}
       {templates.length > 0 && (

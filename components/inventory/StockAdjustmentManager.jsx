@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useStockAdjustment } from '@/lib/hooks/useStockAdjustment';
 import toast from 'react-hot-toast';
+import { ResponsiveManagerHeader } from '@/components/mobile/HubSectionHeader';
 
 /**
  * StockAdjustmentManager Component
@@ -187,30 +188,29 @@ export function StockAdjustmentManager({
 
     return (
         <div className="space-y-6">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h3 className="text-xl font-bold">Stock Adjustments</h3>
-                    <p className="text-sm text-gray-500">Adjust stock quantities with reasons and approvals</p>
-                </div>
-                <div className="flex gap-2">
-                    {pendingApprovals.length > 0 && (
-                        <Button
-                            onClick={() => setShowApprovalsDialog(true)}
-                            variant="outline"
-                            className="relative"
-                        >
-                            <Clock className="w-4 h-4 mr-2" />
-                            Pending Approvals
-                            <Badge className="ml-2 bg-yellow-500">{pendingApprovals.length}</Badge>
-                        </Button>
-                    )}
-                    <Button onClick={() => setShowAdjustmentDialog(true)} className="bg-wine hover:bg-wine/90">
-                        <RotateCcw className="w-4 h-4 mr-2" />
-                        New Adjustment
-                    </Button>
-                </div>
-            </div>
+            <ResponsiveManagerHeader
+                title="Stock Adjustments"
+                subtitle="Adjust stock quantities with reasons and approvals"
+                actions={[
+                    ...(pendingApprovals.length > 0
+                        ? [{
+                            id: 'pending',
+                            label: 'Pending Approvals',
+                            icon: Clock,
+                            variant: 'outline',
+                            badge: pendingApprovals.length,
+                            onClick: () => setShowApprovalsDialog(true),
+                        }]
+                        : []),
+                    {
+                        id: 'new',
+                        label: 'New Adjustment',
+                        icon: RotateCcw,
+                        className: 'bg-wine hover:bg-wine/90 text-white',
+                        onClick: () => setShowAdjustmentDialog(true),
+                    },
+                ]}
+            />
 
             {/* Summary Stats */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { useCostingMethod } from '@/lib/hooks/useCostingMethod';
 import { formatCurrency } from '@/lib/currency';
 import toast from 'react-hot-toast';
+import { ResponsiveManagerHeader } from '@/components/mobile/HubSectionHeader';
 import * as XLSX from 'xlsx';
 
 /**
@@ -132,35 +133,30 @@ export function InventoryValuation({ businessId, costingMethod = 'FIFO', currenc
         : ['all'];
 
     return (
-        <div className="space-y-6">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h2 className="text-2xl font-bold text-gray-900">Inventory Valuation Report</h2>
-                    <p className="text-sm text-gray-600">
-                        Using {costingMethod} costing method
-                        {valuation && ` * Generated ${new Date(valuation.calculated_at).toLocaleString()}`}
-                    </p>
-                </div>
-                <div className="flex gap-2">
-                    <Button
-                        onClick={loadValuation}
-                        disabled={loading}
-                        variant="outline"
-                    >
-                        <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-                        Refresh
-                    </Button>
-                    <Button
-                        onClick={handleExportToExcel}
-                        disabled={loading || !valuation}
-                        className="bg-green-600 hover:bg-green-700"
-                    >
-                        <Download className="w-4 h-4 mr-2" />
-                        Export to Excel
-                    </Button>
-                </div>
-            </div>
+        <div className="min-w-0 space-y-6 overflow-x-hidden">
+            <ResponsiveManagerHeader
+                title="Inventory Valuation Report"
+                subtitle={`Using ${costingMethod} costing method${valuation ? ` · Generated ${new Date(valuation.calculated_at).toLocaleString()}` : ''}`}
+                titleClassName="lg:text-2xl"
+                actions={[
+                    {
+                        id: 'refresh',
+                        label: 'Refresh',
+                        icon: RefreshCw,
+                        variant: 'outline',
+                        disabled: loading,
+                        onClick: loadValuation,
+                    },
+                    {
+                        id: 'export',
+                        label: 'Export to Excel',
+                        icon: Download,
+                        className: 'bg-green-600 hover:bg-green-700 text-white',
+                        disabled: loading || !valuation,
+                        onClick: handleExportToExcel,
+                    },
+                ]}
+            />
 
             {/* Summary Cards */}
             {valuation && (

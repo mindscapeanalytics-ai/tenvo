@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { formatCurrency } from '@/lib/currency';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
+import { ResponsiveManagerHeader } from '@/components/mobile/HubSectionHeader';
 
 /**
  * JournalEntryList
@@ -84,21 +85,19 @@ export function JournalEntryList({ businessId, currency, accounts = [], onNewEnt
 
     return (
         <div className="min-w-0 space-y-4 overflow-x-hidden touch-manipulation">
-            {/* Header */}
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                    <h3 className="text-lg font-semibold text-gray-900">Journal Entries</h3>
-                    <p className="text-xs text-gray-400">
-                        {total} entr{total === 1 ? 'y' : 'ies'} · double-entry GL posting
-                    </p>
-                </div>
-                <Button
-                    onClick={onNewEntry}
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs px-5 shadow-lg shadow-emerald-500/20"
-                >
-                    <Plus className="w-4 h-4 mr-1.5" /> New Entry
-                </Button>
-            </div>
+            <ResponsiveManagerHeader
+                title="Journal Entries"
+                subtitle={`${total} entr${total === 1 ? 'y' : 'ies'} · double-entry GL posting`}
+                actions={[
+                    {
+                        id: 'new',
+                        label: 'New Entry',
+                        icon: Plus,
+                        className: 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-500/20',
+                        onClick: () => onNewEntry?.(),
+                    },
+                ]}
+            />
 
             {/* Filters */}
             <div className="flex flex-wrap gap-2 items-end">

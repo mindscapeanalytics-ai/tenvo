@@ -20,6 +20,7 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { formatCurrency } from '@/lib/currency';
+import { formatDisplayDate } from '@/lib/utils/formatDisplayDate';
 import { useBusiness } from '@/lib/context/BusinessContext';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { HubEntityMobileList } from '@/components/mobile/HubEntityMobileList';
@@ -54,13 +55,13 @@ export function SalesOrdersTable({ data, onView, onConvert, isLoading }) {
                         {data.map((order) => (
                             <TableRow key={order.id}>
                                 <TableCell className="font-medium">{order.order_number}</TableCell>
-                                <TableCell>{new Date(order.date).toLocaleDateString()}</TableCell>
+                                <TableCell>{formatDisplayDate(order.date)}</TableCell>
                                 <TableCell>
                                     <div className="flex flex-col">
                                         <span className="font-medium">{order.customer_name}</span>
                                     </div>
                                 </TableCell>
-                                <TableCell>{order.delivery_date ? new Date(order.delivery_date).toLocaleDateString() : '-'}</TableCell>
+                                <TableCell>{order.delivery_date ? formatDisplayDate(order.delivery_date) : '—'}</TableCell>
                                 <TableCell className="text-right font-bold">
                                     {formatCurrency(order.total_amount || order.grand_total || 0, currency)}
                                 </TableCell>
@@ -113,7 +114,7 @@ export function SalesOrdersTable({ data, onView, onConvert, isLoading }) {
                     renderIcon={() => <ShoppingCart className="h-5 w-5 text-wine" />}
                     getTitle={(o) => o.order_number}
                     getSubtitle={(o) => {
-                        const delivery = o.delivery_date ? new Date(o.delivery_date).toLocaleDateString() : 'No delivery date';
+                        const delivery = o.delivery_date ? formatDisplayDate(o.delivery_date) : 'No delivery date';
                         return `${o.customer_name} · ${delivery}`;
                     }}
                     getAmount={(o) => formatCurrency(o.total_amount || o.grand_total || 0, currency)}

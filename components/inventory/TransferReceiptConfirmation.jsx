@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { useMultiLocationSync } from '@/lib/hooks/useMultiLocationSync';
 import { OfflineIndicator } from './OfflineIndicator';
 import toast from 'react-hot-toast';
+import { ResponsiveManagerHeader } from '@/components/mobile/HubSectionHeader';
 
 /**
  * TransferReceiptConfirmation Component
@@ -98,16 +99,13 @@ export function TransferReceiptConfirmation({
         parseFloat(receivedQuantity) < selectedTransfer.quantity_requested;
 
     return (
-        <div className="space-y-6">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h3 className="text-lg font-semibold text-gray-900">Pending Receipts</h3>
-                    <p className="text-sm text-gray-600">
-                        Confirm receipt of incoming stock transfers
-                    </p>
-                </div>
-                <OfflineIndicator 
+        <div className="min-w-0 space-y-6 overflow-x-hidden">
+            <ResponsiveManagerHeader
+                title="Pending Receipts"
+                subtitle="Confirm receipt of incoming stock transfers"
+            />
+            <div className="flex justify-start lg:justify-end">
+                <OfflineIndicator
                     onSyncRequest={syncOfflineQueue}
                     isSyncing={syncing}
                     compact={true}

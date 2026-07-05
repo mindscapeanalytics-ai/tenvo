@@ -20,6 +20,7 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { formatDisplayDate } from '@/lib/utils/formatDisplayDate';
 import { HubEntityMobileList } from '@/components/mobile/HubEntityMobileList';
 
 export function DeliveryChallansTable({ data, onView, onIssueInvoice, isLoading }) {
@@ -49,7 +50,7 @@ export function DeliveryChallansTable({ data, onView, onIssueInvoice, isLoading 
                         {data.map((challan) => (
                             <TableRow key={challan.id}>
                                 <TableCell className="font-medium">{challan.challan_number}</TableCell>
-                                <TableCell>{new Date(challan.date).toLocaleDateString()}</TableCell>
+                                <TableCell>{formatDisplayDate(challan.date)}</TableCell>
                                 <TableCell>
                                     <div className="flex flex-col">
                                         <span className="font-medium">{challan.customer_name}</span>

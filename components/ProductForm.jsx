@@ -62,6 +62,8 @@ import { getCurrentSeason, getSeasonalDiscount, applySeasonalPricing } from '@/l
 import { hasSeasonalPricing } from '@/lib/utils/pakistaniFeatures';
 import { pakistaniSizes, pakistaniColors } from '@/lib/domainData/pakistaniRetailData';
 import { VariantManager } from '@/components/domain/VariantManager';
+import { BarcodeFieldInput } from '@/components/inventory/BarcodeFieldInput';
+import { suggestInternalBarcodeFromSku } from '@/lib/utils/barcodeUtils';
 import { buildVariantsFromForm, dbVariantsToFormState, totalVariantStock } from '@/lib/utils/variantSync';
 import {
   isMultiProductImagesEnabled,
@@ -770,13 +772,26 @@ export function ProductForm({
                             )}
 
                             <div className="space-y-2">
-                                <Label htmlFor="barcode" className="text-[11px] font-semibold text-slate-600">Barcode (EAN/UPC)</Label>
-                                <div className="relative">
-                                    <Input id="barcode" value={formData.barcode ?? ''} onChange={(e) => updateField('barcode', e.target.value)} placeholder="Scanning ready..." className="h-9 rounded-md pr-10" selectOnFocus />
-                                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                                        <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                                    </div>
+                                <div className="flex items-center justify-between gap-2">
+                                    <Label htmlFor="barcode" className="text-[11px] font-semibold text-slate-600">Barcode (EAN/UPC)</Label>
+                                    {!formData.barcode && formData.sku && (
+                                        <button
+                                            type="button"
+                                            className="text-[10px] font-semibold text-emerald-700 hover:underline"
+                                            onClick={() => updateField('barcode', suggestInternalBarcodeFromSku(formData.sku, business?.id))}
+                                        >
+                                            Generate from SKU
+                                        </button>
+                                    )}
                                 </div>
+                                <BarcodeFieldInput
+                                    id="barcode"
+                                    value={formData.barcode ?? ''}
+                                    onChange={(val) => updateField('barcode', val)}
+                                    businessId={business?.id}
+                                    excludeProductId={product?.id}
+                                    business={business}
+                                />
                                 {renderError('barcode')}
                             </div>
 

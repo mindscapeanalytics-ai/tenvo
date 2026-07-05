@@ -15,6 +15,7 @@ import toast from 'react-hot-toast';
 import { formatCurrency } from '@/lib/currency';
 import { InventoryErrorCard } from './InventoryErrorBoundary';
 import { InventoryTableLoading } from './InventoryLoadingState';
+import { ResponsiveManagerHeader } from '@/components/mobile/HubSectionHeader';
 
 /**
  * Cycle Count Manager
@@ -182,32 +183,27 @@ export function CycleCountManager({
 
     return (
         <div className="space-y-4">
-            {/* Header & Actions */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h3 className="text-lg font-bold">Cycle Counts</h3>
-                    <p className="text-xs text-gray-500 mt-1">Reconcile inventory with physical counts</p>
-                </div>
-                <div className="flex gap-2">
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={loadCycleCounts}
-                        disabled={loading}
-                        className="gap-2"
-                    >
-                        <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-                        Refresh
-                    </Button>
-                    <Button
-                        onClick={() => setShowCreateDialog(true)}
-                        className="gap-2 bg-emerald-600 hover:bg-emerald-700"
-                    >
-                        <Plus className="w-4 h-4" />
-                        New Count
-                    </Button>
-                </div>
-            </div>
+            <ResponsiveManagerHeader
+                title="Cycle Counts"
+                subtitle="Reconcile inventory with physical counts"
+                actions={[
+                    {
+                        id: 'refresh',
+                        label: 'Refresh',
+                        icon: RefreshCw,
+                        variant: 'outline',
+                        disabled: loading,
+                        onClick: loadCycleCounts,
+                    },
+                    {
+                        id: 'new',
+                        label: 'New Count',
+                        icon: Plus,
+                        className: 'bg-emerald-600 hover:bg-emerald-700 text-white',
+                        onClick: () => setShowCreateDialog(true),
+                    },
+                ]}
+            />
 
             {/* Filters */}
             <div className="flex flex-wrap gap-2">

@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Download, FileText, Calculator, Receipt, ShieldCheck, Loader2 } from 'lucide-react';
 import { generateReportPDF, exportToCSV } from '@/lib/pdf';
 import { formatCurrency } from '@/lib/utils/formatting';
+import { formatDisplayDate } from '@/lib/utils/formatDisplayDate';
 import { useBusiness } from '@/lib/context/BusinessContext';
 import { getTaxStrategy } from '@/lib/utils/taxStrategies';
 import {
@@ -127,7 +128,7 @@ export function TaxComplianceManager({ invoices = [], purchaseOrders = [], busin
 
     const buildSalesExportRows = () => periodInvoices.map((inv) => ({
         invoice_number: inv.invoice_number || '-',
-        date: inv.date ? new Date(inv.date).toLocaleDateString() : '-',
+        date: formatDisplayDate(inv.date),
         customer_name: inv.customer_name || inv.customer?.name || 'Walk-in',
         subtotal: formatMoney(Number(inv.subtotal) || 0),
         tax_total: formatMoney(Number(inv.tax_total) || 0),
@@ -136,7 +137,7 @@ export function TaxComplianceManager({ invoices = [], purchaseOrders = [], busin
 
     const buildPurchaseExportRows = () => periodPurchases.map((po) => ({
         purchase_number: po.purchase_number || '-',
-        date: po.date ? new Date(po.date).toLocaleDateString() : '-',
+        date: formatDisplayDate(po.date),
         vendor_name: po.vendor_name || 'Supplier',
         subtotal: formatMoney(Number(po.subtotal ?? po.total_amount) || 0),
         tax_total: formatMoney(Number(po.tax_total) || 0),

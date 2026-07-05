@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { variantAPI } from '@/lib/api/variant';
 import { formatCurrency } from '@/lib/currency';
 import toast from 'react-hot-toast';
+import { ResponsiveManagerHeader } from '@/components/mobile/HubSectionHeader';
 
 /**
  * Variant Matrix Editor
@@ -289,44 +290,40 @@ export function VariantMatrixEditor({
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-semibold text-gray-900">Variant Matrix</h3>
-          <p className="text-sm text-gray-600">{product?.name}</p>
-        </div>
-        {variants.length === 0 && (
-          <Button
-            onClick={() => setShowCreateMatrix(true)}
-            className=" bg-emerald-600 hover:bg-emerald-700 text-white"
-            disabled={!product?.id}
-          >
-            <Grid3x3 className="w-4 h-4 mr-2" />
-            Create Matrix
-          </Button>
-        )}
-        {variants.length > 0 && (
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setShowAddVariant(true)}
-              disabled={!product?.id}
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Add Variant
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => setShowCreateMatrix(true)}
-              disabled={!product?.id}
-            >
-              <Grid3x3 className="w-4 h-4 mr-2" />
-              Extend Matrix
-            </Button>
-          </div>
-        )}
-      </div>
+    <div className="min-w-0 space-y-6 overflow-x-hidden">
+      <ResponsiveManagerHeader
+        title="Variant Matrix"
+        subtitle={product?.name || 'Product'}
+        actions={
+          variants.length === 0
+            ? [{
+                id: 'create-matrix',
+                label: 'Create Matrix',
+                icon: Grid3x3,
+                className: 'bg-emerald-600 hover:bg-emerald-700 text-white',
+                disabled: !product?.id,
+                onClick: () => setShowCreateMatrix(true),
+              }]
+            : [
+                {
+                  id: 'add-variant',
+                  label: 'Add Variant',
+                  icon: Plus,
+                  variant: 'outline',
+                  disabled: !product?.id,
+                  onClick: () => setShowAddVariant(true),
+                },
+                {
+                  id: 'extend-matrix',
+                  label: 'Extend Matrix',
+                  icon: Grid3x3,
+                  variant: 'outline',
+                  disabled: !product?.id,
+                  onClick: () => setShowCreateMatrix(true),
+                },
+              ]
+        }
+      />
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

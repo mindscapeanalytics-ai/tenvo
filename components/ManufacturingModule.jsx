@@ -17,6 +17,7 @@ import { Progress } from './ui/progress';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 import { manufacturingAPI } from '@/lib/api/manufacturing';
 import { getManufacturingConfig } from '@/lib/utils/domainHelpers';
+import { HubSectionHeader } from '@/components/mobile';
 
 /** Weighted average purchase cost from active batches when master cost is unset. */
 function getBatchWeightedUnitCost(product) {
@@ -374,24 +375,29 @@ export function ManufacturingModule({
     });
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-black">Manufacturing & Production</h2>
-          <p className="text-gray-600">Manage Bill of Materials, Production Orders, and WIP</p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => { setActiveTab('bom'); setShowBOMForm(true); }}>
-            <Plus className="w-4 h-4 mr-2" />
-            New BOM
-          </Button>
-          <Button onClick={() => { setActiveTab('production'); setShowProductionForm(true); }} className="bg-wine hover:bg-wine/90 text-white">
-            <Factory className="w-4 h-4 mr-2" />
-            Production Order
-          </Button>
-        </div>
-      </div>
+    <div className="min-w-0 space-y-6 overflow-x-hidden">
+      <HubSectionHeader
+        icon={Factory}
+        iconClassName="bg-wine/10 text-wine"
+        title="Manufacturing & Production"
+        subtitle="Manage Bill of Materials, Production Orders, and WIP"
+        actions={[
+          {
+            id: 'bom',
+            label: 'New BOM',
+            icon: Plus,
+            variant: 'outline',
+            onClick: () => { setActiveTab('bom'); setShowBOMForm(true); },
+          },
+          {
+            id: 'production',
+            label: 'Production Order',
+            icon: Factory,
+            className: 'bg-wine hover:bg-wine/90 text-white',
+            onClick: () => { setActiveTab('production'); setShowProductionForm(true); },
+          },
+        ]}
+      />
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

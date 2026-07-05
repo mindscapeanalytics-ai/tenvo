@@ -14,7 +14,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { getDomainDefaults } from '@/lib/domainKnowledge';
 import { DomainFieldRenderer } from '@/components/domain/DomainFieldRenderer';
-import { getDomainProductFields, getDomainFormLabels, isHighPrecisionDomain, sanitizeDomainData, resolveDomainFieldKey } from '@/lib/utils/domainHelpers';
+import { BarcodeFieldInput } from '@/components/inventory/BarcodeFieldInput';
+import { useBusiness } from '@/lib/context/BusinessContext';
 import { validateDomainData } from '@/lib/validation/domainSchemas';
 import toast from 'react-hot-toast';
 import { formatInventoryActionError } from '@/lib/utils/productMutationPayload';
@@ -61,7 +62,7 @@ const TAX_PRESETS = [
 
 // --- Step 1: Basic Info ------------------------------------------------------
 
-function StepBasics({ formData, onChange, category, errors }) {
+function StepBasics({ formData, onChange, category, errors, business }) {
     const categorySuggestions = DOMAIN_CATEGORY_SUGGESTIONS[category] || DOMAIN_CATEGORY_SUGGESTIONS['retail'];
     const labels = getDomainFormLabels(category);
 
@@ -95,15 +96,15 @@ function StepBasics({ formData, onChange, category, errors }) {
                 </div>
                 <div className="space-y-1.5">
                     <label className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Barcode</label>
-                    <div className="relative">
-                        <Barcode className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                        <Input
-                            value={formData.barcode || ''}
-                            onChange={(e) => onChange('barcode', e.target.value)}
-                            placeholder="Scan or type barcode"
-                            className="h-11 rounded-xl text-sm pl-10"
-                        />
-                    </div>
+                    <BarcodeFieldInput
+                        value={formData.barcode || ''}
+                        onChange={(val) => onChange('barcode', val)}
+                        businessId={business?.id}
+                        excludeProductId={formData.id}
+                        business={business}
+                        inputClassName="h-11 rounded-xl text-sm"
+                        showCamera
+                    />
                 </div>
             </div>
 
@@ -521,6 +522,7 @@ export function ProductWizard({
     onCancel,
     currency = 'Rs.',
 }) {
+    const { business } = useBusiness();
     const isEditing = !!product;
     const isPrecision = useMemo(() => isHighPrecisionDomain(category), [category]);
     const wizardSteps = isPrecision ? PRECISION_STEPS : STANDARD_STEPS;
@@ -728,6 +730,7 @@ export function ProductWizard({
                             category={category}
                             currency={currency}
                             errors={errors}
+                            business={business}
                         />
                     </motion.div>
                 </AnimatePresence>

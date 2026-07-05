@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { serialAPI } from '@/lib/api/serial';
 import { formatCurrency } from '@/lib/currency';
 import toast from 'react-hot-toast';
+import { ResponsiveManagerHeader } from '@/components/mobile/HubSectionHeader';
 
 /**
  * Serial Number Scanner and Manager
@@ -301,22 +302,19 @@ export function SerialScanner({
     // Register/View mode - full management interface
     return (
         <div className="space-y-6">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h3 className="text-lg font-semibold text-gray-900">Serial Number Management</h3>
-                    <p className="text-sm text-gray-600">{product?.name}</p>
-                </div>
-                <div className="flex gap-2">
-                    <Button
-                        onClick={() => setShowBulkAdd(true)}
-                        variant="outline"
-                        disabled={!product?.id}
-                    >
-                        Bulk Add
-                    </Button>
-                </div>
-            </div>
+            <ResponsiveManagerHeader
+                title="Serial Number Management"
+                subtitle={product?.name || 'Product'}
+                actions={[
+                    {
+                        id: 'bulk',
+                        label: 'Bulk Add',
+                        variant: 'outline',
+                        disabled: !product?.id,
+                        onClick: () => setShowBulkAdd(true),
+                    },
+                ]}
+            />
 
             {/* Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

@@ -29,6 +29,7 @@ import { PosCloseShiftDialog } from '@/components/pos/shared/PosCloseShiftDialog
 import { PosSplitPaymentDialog } from '@/components/pos/shared/PosSplitPaymentDialog';
 import { PosProductBrowseGrid } from '@/components/pos/shared/PosProductBrowseGrid';
 import { PosCameraScanner } from '@/components/pos/shared/PosCameraScanner';
+import { canUseBarcodeScan } from '@/lib/utils/barcodeAccess';
 import { PosPharmacyBatchDialog } from '@/components/pos/shared/PosPharmacyBatchDialog';
 import { PosMobileCheckoutBar } from '@/components/pos/shared/PosMobileCheckoutBar';
 import { PosOfflineBanner } from '@/components/pos/shared/PosOfflineBanner';
@@ -639,6 +640,7 @@ export function SuperStorePOS({
         category,
         posSettings,
         effectiveTaxRate,
+        businessId: businessId || business?.id,
         setCart,
         setPharmacyProduct,
         onAdded: (product) => {
@@ -649,18 +651,22 @@ export function SuperStorePOS({
 
     const addToCart = tryAddProduct;
 
-    const showCamera = posSettings.barcodeMode === 'camera' || posSettings.barcodeMode === 'auto';
+    const barcodeScanAllowed = canUseBarcodeScan(business);
+    const showCamera = barcodeScanAllowed && (
+        posSettings.barcodeMode === 'camera' || posSettings.barcodeMode === 'auto'
+    );
 
     // --- Cart Operations -----------------------------------------------------
 
     const handleBarcodeScan = useCallback((barcode) => {
         setIsScanning(true);
-        const product = handleScanCode(products, barcode, { clearSearch: () => setSearchTerm('') });
-        if (!product) {
-            setLastScannedItem(`[WARNING] "${barcode}" not found`);
-            setTimeout(() => setLastScannedItem(null), 2000);
-        }
-        setTimeout(() => setIsScanning(false), 300);
+        void handleScanCode(products, barcode, { clearSearch: () => setSearchTerm('') }).then((product) => {
+            if (!product) {
+                setLastScannedItem(`[WARNING] "${barcode}" not found`);
+                setTimeout(() => setLastScannedItem(null), 2000);
+            }
+            setTimeout(() => setIsScanning(false), 300);
+        });
     }, [products, handleScanCode]);
 
     const handleQuantityChange = useCallback((idx, qty) => {

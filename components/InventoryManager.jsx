@@ -61,6 +61,8 @@ import { MOBILE_DIALOG_SHELL_WIDE } from '@/lib/utils/formMobileStyles';
 import { ProductCardGrid } from './inventory/ProductCardGrid';
 import { getTemplatesForDomain } from '@/lib/data/productTemplates';
 import { PosCameraScanner } from '@/components/pos/shared/PosCameraScanner';
+import { mergeScannedProductIntoList } from '@/lib/utils/productScanLookup';
+import { canUseBarcodeScan } from '@/lib/utils/barcodeAccess';
 import { useInventoryScan } from '@/lib/hooks/useInventoryScan';
 import { AdvancedInventoryFeatures } from './AdvancedInventoryFeatures';
 import { MultiLocationInventory } from './MultiLocationInventory';
@@ -944,11 +946,27 @@ export function InventoryManager({
     ]
   );
 
+  const handleScannedProductDiscovered = useCallback((product) => {
+    if (!product?.id) return;
+    setProducts((prev) => mergeScannedProductIntoList(prev, product));
+  }, []);
+
   const { applyScanToInventory } = useInventoryScan({
     products,
     businessId,
     isSerialEnabled,
+    onProductDiscovered: handleScannedProductDiscovered,
   });
+
+  const barcodeScanAllowed = canUseBarcodeScan(business);
+
+  const openBarcodeScanner = useCallback(() => {
+    if (!barcodeScanAllowed) {
+      toast.error('Barcode scanning requires Starter plan or higher');
+      return;
+    }
+    setShowBarcodeScanner(true);
+  }, [barcodeScanAllowed]);
 
   const handleInventoryBarcodeScan = useCallback(async (code) => {
     await applyScanToInventory(code, {
@@ -1818,7 +1836,7 @@ export function InventoryManager({
           onExcelMode={() => setShowExcelMode(true)}
           onImport={() => setShowImportModal(true)}
           onExport={executeExcelExport}
-          onScanBarcode={() => setShowBarcodeScanner(true)}
+          onScanBarcode={openBarcodeScanner}
           onAdjustStock={() => setShowStockAdjustment(true)}
           onTransferStock={() => setShowStockTransferForm(true)}
           onShowShortcuts={() => setShowShortcutsHelp(true)}
@@ -1839,7 +1857,7 @@ export function InventoryManager({
         onExcelMode={() => setShowExcelMode(true)}
         onImport={() => setShowImportModal(true)}
         onExport={executeExcelExport}
-        onScanBarcode={() => setShowBarcodeScanner(true)}
+        onScanBarcode={openBarcodeScanner}
         onAdjustStock={() => setShowStockAdjustment(true)}
         onTransferStock={() => setShowStockTransferForm(true)}
         onShowShortcuts={() => setShowShortcutsHelp(true)}
@@ -1901,7 +1919,7 @@ export function InventoryManager({
         </TabsList>
 
         {/* Products Tab */}
-        <TabsContent value="products" className="space-y-6 max-lg:space-y-3">
+        <TabsContent value="products" className="min-w-0 space-y-6 overflow-x-hidden max-lg:space-y-3">
 
           {/* Alerts and Stats - Compact Premium KPI Cards */}
           {/* KPI cards, desktop only (mobile hub shows mini KPIs) */}
@@ -1977,7 +1995,7 @@ export function InventoryManager({
           {/* Search and Filters */}
           <AdvancedSearch
             searchValue={searchTerm}
-            onScanClick={() => setShowBarcodeScanner(true)}
+            onScanClick={openBarcodeScanner}
             onSearch={(term, domainFilters) => {
               setSearchTerm(term || '');
               setActiveDomainFilters(domainFilters);
@@ -2298,7 +2316,7 @@ export function InventoryManager({
 
         {/* Variants Tab */}
         {isVariantEnabled && (
-          <TabsContent value="variants" className="space-y-6">
+          <TabsContent value="variants" className="min-w-0 space-y-6 overflow-x-hidden">
             {selectedProduct ? (
               <div className="space-y-4">
                 {/* Active product breadcrumb + switcher */}
@@ -2377,7 +2395,7 @@ export function InventoryManager({
         )}
 
         {/* Pricing Tab */}
-        <TabsContent value="pricing" className="space-y-5 mt-4">
+        <TabsContent value="pricing" className="mt-4 min-w-0 space-y-5 overflow-x-hidden">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
             <Card className="overflow-hidden rounded-2xl border-slate-200 shadow-sm transition-all duration-300 hover:shadow-md">
               <CardHeader className="border-b border-slate-100 bg-slate-50/70 px-4 py-3 sm:px-5">
@@ -2423,7 +2441,7 @@ export function InventoryManager({
 
         {/* Locations Tab */}
         {isMultiLocationEnabled && (
-          <TabsContent value="locations" className="space-y-6">
+          <TabsContent value="locations" className="min-w-0 space-y-6 overflow-x-hidden">
             <MultiLocationInventory
               locations={locations}
               products={products}
@@ -2440,7 +2458,7 @@ export function InventoryManager({
 
         {/* Manufacturing Tab */}
         {isManufacturingEnabled && (
-          <TabsContent value="manufacturing" className="space-y-6">
+          <TabsContent value="manufacturing" className="min-w-0 space-y-6 overflow-x-hidden">
             <ManufacturingModule
               products={products}
               bomList={bomList}
@@ -2458,7 +2476,7 @@ export function InventoryManager({
         )}
 
         {/* Orders Tab -- Quotations / Sales Orders / Challans + Stock Reservations */}
-        <TabsContent value="orders" className="space-y-6">
+        <TabsContent value="orders" className="min-w-0 space-y-6 overflow-x-hidden">
           <QuotationOrderChallanManager
             quotations={quotations}
             salesOrders={salesOrders}
@@ -2482,7 +2500,7 @@ export function InventoryManager({
         </TabsContent>
 
         {/* Reports Tab */}
-        <TabsContent value="reports" className="space-y-6">
+        <TabsContent value="reports" className="min-w-0 space-y-6 overflow-x-hidden">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             <div className="group bg-white p-6 rounded-[32px] border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 relative overflow-hidden">
               <div className="absolute top-0 right-0 p-4 opacity-5 transform translate-x-4 -translate-y-4 group-hover:translate-x-2 group-hover:-translate-y-2 transition-transform duration-500">
@@ -2742,13 +2760,15 @@ export function InventoryManager({
         />
       )}
 
+      {barcodeScanAllowed && (
       <PosCameraScanner
         open={showBarcodeScanner}
         onClose={() => setShowBarcodeScanner(false)}
         onScan={handleInventoryBarcodeScan}
         title="Scan inventory item"
-        hint="QR, EAN, UPC, Code 128 · finds product by barcode or SKU"
+        hint="QR, EAN, UPC, Code 128 · finds product by barcode, SKU, or variant"
       />
+      )}
 
       {/* Batch Manager Dialog */}
       <Dialog open={showBatchManager} onOpenChange={setShowBatchManager}>

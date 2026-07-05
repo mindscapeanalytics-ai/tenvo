@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { FileText, Download } from 'lucide-react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { ResponsiveManagerHeader } from '@/components/mobile/HubSectionHeader';
 
 /**
  * CycleCountApproval Component
@@ -254,30 +256,28 @@ export default function CycleCountApproval({ scheduleId, businessId, onApprovalC
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Cycle Count Approval</h2>
-          <p className="mt-1 text-sm text-gray-600">
-            {schedule?.name} - {tasks.length} tasks require approval
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <button
-            onClick={generateReport}
-            className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
-          >
-            View Report
-          </button>
-          <button
-            onClick={exportReport}
-            className="px-4 py-2 bg-[#722F37] text-white rounded-md hover:bg-[#5a2329] transition-colors"
-          >
-            Export CSV
-          </button>
-        </div>
-      </div>
+    <div className="min-w-0 space-y-6 overflow-x-hidden">
+      <ResponsiveManagerHeader
+        title="Cycle Count Approval"
+        subtitle={`${schedule?.name || 'Schedule'} · ${tasks.length} tasks require approval`}
+        titleClassName="lg:text-2xl"
+        actions={[
+          {
+            id: 'report',
+            label: 'View Report',
+            icon: FileText,
+            variant: 'outline',
+            onClick: generateReport,
+          },
+          {
+            id: 'export',
+            label: 'Export CSV',
+            icon: Download,
+            className: 'bg-[#722F37] hover:bg-[#5a2329] text-white',
+            onClick: exportReport,
+          },
+        ]}
+      />
 
       {/* Tasks Requiring Approval */}
       <div className="bg-white rounded-lg shadow overflow-hidden">

@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { DatePicker } from '@/components/DatePicker';
 import { Plus, Trash2, Hash, Scan, ShieldCheck, ShieldAlert, History, Laptop } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { BarcodeScanner } from '@/components/BarcodeScanner';
+import { PosCameraScanner } from '@/components/pos/shared/PosCameraScanner';
 import { toast } from 'react-hot-toast';
 
 const getSerialLabel = (category) => {
@@ -232,12 +232,15 @@ export function SerialNumberInput({
       </div>
 
       {showScanner && (
-        <BarcodeScanner
+        <PosCameraScanner
+          open={showScanner}
+          onClose={() => setShowScanner(false)}
           onScan={(code) => {
-            setNewSerial(prev => ({ ...prev, serialNumber: code }));
+            setNewSerial((prev) => ({ ...prev, serialNumber: code }));
             setShowScanner(false);
           }}
-          onClose={() => setShowScanner(false)}
+          title={`Scan ${getSerialLabel(category)}`}
+          hint="Align serial / IMEI barcode in frame or type manually"
         />
       )}
     </div>

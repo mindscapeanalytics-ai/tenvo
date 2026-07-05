@@ -20,6 +20,7 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { formatCurrency } from '@/lib/currency';
+import { formatDisplayDate } from '@/lib/utils/formatDisplayDate';
 import { useBusiness } from '@/lib/context/BusinessContext';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { HubEntityMobileList } from '@/components/mobile/HubEntityMobileList';
@@ -54,14 +55,14 @@ export function QuotationsTable({ data, onView, onConvert, isLoading }) {
                         {data.map((quotation) => (
                             <TableRow key={quotation.id}>
                                 <TableCell className="font-medium">{quotation.quotation_number}</TableCell>
-                                <TableCell>{new Date(quotation.date).toLocaleDateString()}</TableCell>
+                                <TableCell>{formatDisplayDate(quotation.date)}</TableCell>
                                 <TableCell>
                                     <div className="flex flex-col">
                                         <span className="font-medium">{quotation.customer_name}</span>
                                         <span className="text-xs text-muted-foreground">{quotation.customer_email}</span>
                                     </div>
                                 </TableCell>
-                                <TableCell>{new Date(quotation.valid_until).toLocaleDateString()}</TableCell>
+                                <TableCell>{formatDisplayDate(quotation.valid_until)}</TableCell>
                                 <TableCell className="text-right font-bold">
                                     {formatCurrency(quotation.total_amount || quotation.grand_total || 0, currency)}
                                 </TableCell>
@@ -109,7 +110,7 @@ export function QuotationsTable({ data, onView, onConvert, isLoading }) {
                     onRowPress={onView}
                     renderIcon={() => <FileText className="h-5 w-5 text-wine" />}
                     getTitle={(q) => q.quotation_number}
-                    getSubtitle={(q) => `${q.customer_name} · ${new Date(q.date).toLocaleDateString()}`}
+                    getSubtitle={(q) => `${q.customer_name} · ${formatDisplayDate(q.date)}`}
                     getAmount={(q) => formatCurrency(q.total_amount || q.grand_total || 0, currency)}
                     renderBadge={(q) => (
                         <Badge variant={q.status === 'draft' ? 'secondary' : 'default'} className="uppercase text-[10px]">

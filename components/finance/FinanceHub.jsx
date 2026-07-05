@@ -35,6 +35,7 @@ import TrialBalanceView from '@/components/TrialBalanceView';
 import { GeneralLedgerReport } from '@/components/reports/GeneralLedgerReport';
 import { MobileTabHeader } from '@/components/mobile/MobileTabHeader';
 import { FinanceMobileNav } from '@/components/finance/FinanceMobileNav';
+import { formatDisplayDate } from '@/lib/utils/formatDisplayDate';
 
 // --- Sub-Tab Definitions -----------------------------------------------------
 
@@ -310,7 +311,7 @@ function CreditNotesPanel({ businessId, creditNotes, currency, onRefresh }) {
                             </div>
                             <div className="text-right shrink-0">
                                 <p className="text-sm font-bold text-red-600">{currency} {Number(cn.total_amount).toLocaleString()}</p>
-                                <p className="text-[10px] text-gray-400">{new Date(cn.date).toLocaleDateString()}</p>
+                                <p className="text-[10px] text-gray-400">{formatDisplayDate(cn.date)}</p>
                             </div>
                         </div>
                     ))}
@@ -438,7 +439,7 @@ function ExchangeRatesPanel({ businessId, rates, baseCurrencyCode, onRefresh }) 
                                 )}>
                                     {r.source?.toUpperCase()}
                                 </span>
-                                <p className="text-[10px] text-gray-400 mt-0.5">{new Date(r.effective_date).toLocaleDateString()}</p>
+                                <p className="text-[10px] text-gray-400 mt-0.5">{formatDisplayDate(r.effective_date)}</p>
                             </div>
                         </div>
                     ))}
@@ -692,7 +693,7 @@ export default function FinanceHub({ businessId, initialTab, businessCategory = 
                                                         </>
                                                     )}
                                                     <span className="text-gray-300">•</span>
-                                                    <span className="text-xs text-gray-500">{new Date(p.payment_date).toLocaleDateString()}</span>
+                                                    <span className="text-xs text-gray-500">{formatDisplayDate(p.payment_date)}</span>
                                                 </div>
                                             </div>
                                             <div className="text-right shrink-0">

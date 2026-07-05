@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { MobileTabHeader, MobileStatStrip } from '@/components/mobile/MobileTabHeader';
+import { formatDisplayDate } from '@/lib/utils/formatDisplayDate';
 import { HubEntityMobileList } from '@/components/mobile/HubEntityMobileList';
 import { MOBILE_DIALOG_SHELL } from '@/lib/utils/formMobileStyles';
 import { MOBILE_BOTTOM_NAV_CLASS, MOBILE_FLOATING_Z, MOBILE_MODULE_FAB_RIGHT } from '@/lib/utils/mobileLayout';
@@ -502,7 +503,7 @@ export default function PaymentManager({
                                         ? (p.customer_name || p.customers?.name || 'Customer')
                                         : (p.vendor_name || p.vendors?.name || 'Vendor')),
                                 source: p.source || 'legacy',
-                                date_formatted: new Date(p.payment_date).toLocaleDateString()
+                                date_formatted: formatDisplayDate(p.payment_date)
                             }))}
                             columns={[
                                 {
@@ -585,7 +586,7 @@ export default function PaymentManager({
                             : <ArrowUpRight className="h-5 w-5 text-red-600" />
                     )}
                     getTitle={(p) => getPaymentParty(p)}
-                    getSubtitle={(p) => `${new Date(p.payment_date).toLocaleDateString()} · ${p.payment_mode || 'cash'}`}
+                    getSubtitle={(p) => `${formatDisplayDate(p.payment_date)} · ${p.payment_mode || 'cash'}`}
                     getAmount={(p) => formatCurrency(p.amount, currency)}
                     getAmountClassName={(p) => (isReceiptType(p.payment_type) ? 'text-emerald-600' : 'text-red-600')}
                     renderBadge={(p) => (

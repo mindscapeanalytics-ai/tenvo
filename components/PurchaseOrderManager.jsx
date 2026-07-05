@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { hubDialogContentClass } from '@/lib/utils/formMobileStyles';
 import { cn } from '@/lib/utils';
 import { MobileTabHeader, MobileStatStrip } from '@/components/mobile/MobileTabHeader';
+import { formatDisplayDate } from '@/lib/utils/formatDisplayDate';
 import { HubEntityMobileList } from '@/components/mobile/HubEntityMobileList';
 import { MOBILE_BOTTOM_NAV_CLASS, MOBILE_FLOATING_Z, MOBILE_MODULE_FAB_RIGHT } from '@/lib/utils/mobileLayout';
 import GRNView from './GRNView';
@@ -59,7 +60,7 @@ export function PurchaseOrderManager({ purchaseOrders = [], onCreate, onUpdateSt
           <div>
             <p className="font-semibold text-gray-900 leading-none">{row.original.purchase_number}</p>
             <p className="text-[10px] text-gray-400 font-bold mt-1 uppercase tracking-tighter">
-              {new Date(row.original.date).toLocaleDateString()}
+              {formatDisplayDate(row.original.date)}
             </p>
           </div>
         </div>

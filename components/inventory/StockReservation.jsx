@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'react-hot-toast';
 
 import { stockAPI } from '@/lib/api/stock';
@@ -15,6 +15,7 @@ import { batchAPI } from '@/lib/api/batch';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { InventoryErrorCard } from './InventoryErrorBoundary';
 import { InventoryCardLoading } from './InventoryLoadingState';
+import { ResponsiveManagerHeader } from '@/components/mobile/HubSectionHeader';
 
 /**
  * StockReservation Component
@@ -274,36 +275,41 @@ export function StockReservation({
   const expiredCount = reservationList.filter(r => r.status === 'expired').length;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-xl font-bold">Stock Reservations</h3>
-          <p className="text-sm text-gray-500">Reserve stock for orders and customers</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            onClick={() => loadReservations({ runExpiry: true, silent: false })}
-            disabled={isSyncing || loading || !canViewInventory}
-          >
-            <RefreshCw className={`w-4 h-4 mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
-          <Button
-            variant="outline"
-            onClick={handleExpireOverdueNow}
-            disabled={isSyncing || loading || !canAdjustStock}
-          >
-            Expire Overdue
-          </Button>
-        </div>
-        <Dialog open={showForm} onOpenChange={(open) => { setShowForm(open); if (!open) resetForm(); }}>
-          <DialogTrigger asChild>
-            <Button onClick={resetForm} disabled={!canAdjustStock}>
-              <Lock className="w-4 h-4 mr-2" />
-              Reserve Stock
-            </Button>
-          </DialogTrigger>
+    <div className="min-w-0 space-y-6 overflow-x-hidden">
+      <ResponsiveManagerHeader
+        title="Stock Reservations"
+        subtitle="Reserve stock for orders and customers"
+        actions={[
+          {
+            id: 'refresh',
+            label: 'Refresh',
+            icon: RefreshCw,
+            variant: 'outline',
+            disabled: isSyncing || loading || !canViewInventory,
+            onClick: () => loadReservations({ runExpiry: true, silent: false }),
+          },
+          {
+            id: 'expire',
+            label: 'Expire Overdue',
+            variant: 'outline',
+            disabled: isSyncing || loading || !canAdjustStock,
+            onClick: handleExpireOverdueNow,
+          },
+          {
+            id: 'reserve',
+            label: 'Reserve Stock',
+            icon: Lock,
+            className: 'bg-wine hover:bg-wine/90 text-white',
+            disabled: !canAdjustStock,
+            onClick: () => {
+              resetForm();
+              setShowForm(true);
+            },
+          },
+        ]}
+      />
+
+      <Dialog open={showForm} onOpenChange={(open) => { setShowForm(open); if (!open) resetForm(); }}>
           <DialogContent className="max-w-2xl w-[calc(100vw-1.5rem)] sm:w-full max-h-[min(92vh,900px)] flex flex-col gap-0 p-0 overflow-hidden">
             <DialogHeader className="shrink-0 px-6 pt-6 pb-2 space-y-1.5">
               <DialogTitle>Reserve Stock</DialogTitle>
@@ -448,8 +454,7 @@ export function StockReservation({
               </div>
             </div>
           </DialogContent>
-        </Dialog>
-      </div>
+      </Dialog>
 
       {/* Summary */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -506,7 +511,7 @@ export function StockReservation({
               return (
                 <div
                   key={reservation.id}
-                  className="flex items-center justify-between p-4 border rounded-lg"
+                  className="flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between"
                 >
                   <div className="flex items-center gap-4 flex-1">
                     <div className="flex items-center gap-2">

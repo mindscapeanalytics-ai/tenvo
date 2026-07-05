@@ -12,19 +12,22 @@ import { useBusiness } from '@/lib/context/BusinessContext';
 import { formatCurrency } from '@/lib/currency';
 import { adjustStockAction } from '@/lib/actions/standard/inventory/stock';
 import { getWarehouseLocationsAction } from '@/lib/actions/standard/inventory/warehouse';
+import { findProductByScanCode } from '@/lib/utils/productScanLookup';
+import { lookupProductByScanCodeAction } from '@/lib/actions/standard/inventory/lookup';
+import { BarcodeScanTrigger } from '@/components/inventory/BarcodeScanTrigger';
 import toast from 'react-hot-toast';
 
 // --- Reason codes for stock adjustments --------------------------------------
 const ADJUSTMENT_REASONS = [
-    { value: 'counting_error', label: 'Counting Error', icon: '??', color: 'bg-blue-100 text-blue-700' },
-    { value: 'damage', label: 'Damage / Spoilage', icon: '??', color: 'bg-red-100 text-red-700' },
-    { value: 'theft', label: 'Theft / Loss', icon: '[ALERT]', color: 'bg-red-100 text-red-700' },
-    { value: 'expiry', label: 'Expired Stock', icon: '?', color: 'bg-amber-100 text-amber-700' },
-    { value: 'sample', label: 'Sample / Testing', icon: '[TEST]', color: 'bg-wine-100 text-wine-700' },
-    { value: 'write_off', label: 'Write-Off', icon: '[DECREASE]', color: 'bg-gray-100 text-gray-700' },
-    { value: 'found', label: 'Found Stock', icon: '[SEARCH]', color: 'bg-emerald-100 text-emerald-700' },
-    { value: 'opening', label: 'Opening Balance', icon: '[CHART]', color: 'bg-indigo-100 text-indigo-700' },
-    { value: 'other', label: 'Other', icon: '[CLIPBOARD]', color: 'bg-gray-100 text-gray-700' },
+    { value: 'counting_error', label: 'Counting Error', icon: '#', color: 'bg-blue-100 text-blue-700' },
+    { value: 'damage', label: 'Damage / Spoilage', icon: '!', color: 'bg-red-100 text-red-700' },
+    { value: 'theft', label: 'Theft / Loss', icon: '!', color: 'bg-red-100 text-red-700' },
+    { value: 'expiry', label: 'Expired Stock', icon: 'E', color: 'bg-amber-100 text-amber-700' },
+    { value: 'sample', label: 'Sample / Testing', icon: 'S', color: 'bg-wine-100 text-wine-700' },
+    { value: 'write_off', label: 'Write-Off', icon: '-', color: 'bg-gray-100 text-gray-700' },
+    { value: 'found', label: 'Found Stock', icon: '+', color: 'bg-emerald-100 text-emerald-700' },
+    { value: 'opening', label: 'Opening Balance', icon: 'O', color: 'bg-indigo-100 text-indigo-700' },
+    { value: 'other', label: 'Other', icon: '…', color: 'bg-gray-100 text-gray-700' },
 ];
 
 const ADJUSTMENT_TYPES = [
@@ -68,6 +71,24 @@ export function StockAdjustmentForm({ onClose, onSave, products = [], warehouses
         setSelectedProduct(product);
         setFormData(prev => ({ ...prev, product_id: product.id }));
         setProductSearch('');
+    };
+
+    const handleBarcodeScan = async (code) => {
+        let product = findProductByScanCode(products, code);
+        if (!product && business?.id) {
+            try {
+                const result = await lookupProductByScanCodeAction(business.id, code);
+                if (result.success && result.product) product = result.product;
+            } catch {
+                /* ignore */
+            }
+        }
+        if (product) {
+            selectProduct(product);
+            toast.success(`Selected: ${product.name}`);
+        } else {
+            toast.error(`No product for "${code}"`);
+        }
     };
 
     const handleSave = async () => {
@@ -165,12 +186,18 @@ export function StockAdjustmentForm({ onClose, onSave, products = [], warehouses
                                 </Button>
                             </div>
                         ) : (
-                            <div className="relative">
+                            <div className="flex gap-2">
+                                <div className="relative flex-1">
                                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                                 <Input
                                     value={productSearch}
                                     onChange={(e) => setProductSearch(e.target.value)}
-                                    placeholder="Search by name, SKU, or barcode..."
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' && productSearch.trim()) {
+                                            void handleBarcodeScan(productSearch.trim());
+                                        }
+                                    }}
+                                    placeholder="Search or scan barcode..."
                                     className="h-12 pl-11 border-gray-200 rounded-xl shadow-sm focus:ring-2 focus:ring-amber-500"
                                 />
                                 {productSearch && (
@@ -193,6 +220,13 @@ export function StockAdjustmentForm({ onClose, onSave, products = [], warehouses
                                         )}
                                     </div>
                                 )}
+                                </div>
+                                <BarcodeScanTrigger
+                                    business={business}
+                                    onScan={handleBarcodeScan}
+                                    className="h-12 w-12 shrink-0 rounded-xl"
+                                    title="Scan product"
+                                />
                             </div>
                         )}
                     </div>

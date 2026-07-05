@@ -10,6 +10,7 @@ import {
 import { SmartProductImage } from '@/components/storefront/SmartProductImage';
 import { formatCurrency } from '@/lib/currency';
 import { cn } from '@/lib/utils';
+import { formatDisplayDate } from '@/lib/utils/formatDisplayDate';
 import { DealershipVehicleRail } from './DealershipVehicleRail';
 import { DealershipBookingStrip } from './DealershipBookingStrip';
 import { AutoBrandMarquee } from '@/components/storefront/sections/shared/AutoBrandMarquee';
@@ -646,7 +647,7 @@ export function DealershipHomeSections({
                 </div>
                 <div className="p-4">
                   {item.date ? (
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400">{item.date}</p>
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400">{formatDisplayDate(item.date)}</p>
                   ) : null}
                   <h3 className="mt-1 line-clamp-2 text-base font-semibold text-neutral-900">{item.title}</h3>
                   {item.excerpt ? (

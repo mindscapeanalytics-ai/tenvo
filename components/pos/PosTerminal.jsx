@@ -34,6 +34,7 @@ import {
 import { PosCloseShiftDialog } from '@/components/pos/shared/PosCloseShiftDialog';
 import { PosSplitPaymentDialog } from '@/components/pos/shared/PosSplitPaymentDialog';
 import { PosCameraScanner } from '@/components/pos/shared/PosCameraScanner';
+import { canUseBarcodeScan } from '@/lib/utils/barcodeAccess';
 import { PosPharmacyBatchDialog } from '@/components/pos/shared/PosPharmacyBatchDialog';
 import { PosOfflineBanner } from '@/components/pos/shared/PosOfflineBanner';
 import { PosMobileCheckoutBar } from '@/components/pos/shared/PosMobileCheckoutBar';
@@ -664,13 +665,17 @@ export function PosTerminal({
         category,
         posSettings,
         effectiveTaxRate: posUi.defaultTaxRate,
+        businessId: business?.id,
         setCart,
         setPharmacyProduct,
         onAdded: () => setSearchTerm(''),
     });
 
-    const showCamera = posSettings.barcodeMode === 'camera'
-        || posSettings.barcodeMode === 'auto';
+    const barcodeScanAllowed = canUseBarcodeScan(business);
+    const showCamera = barcodeScanAllowed && (
+        posSettings.barcodeMode === 'camera'
+        || posSettings.barcodeMode === 'auto'
+    );
 
     const categories = useMemo(
         () => buildPosCategoryChips(products, posUi.defaultCategories, posUi.maxCategoryChips),
@@ -742,7 +747,7 @@ export function PosTerminal({
     const addToCart = tryAddProduct;
 
     const handleBarcodeFromCamera = useCallback((code) => {
-        handleScanCode(products, code, { clearSearch: () => setSearchTerm('') });
+        void handleScanCode(products, code, { clearSearch: () => setSearchTerm('') });
     }, [handleScanCode, products]);
 
     const handleQuantityChange = useCallback((idx, qty) => {

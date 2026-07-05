@@ -10,6 +10,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { formatDisplayDate } from '@/lib/utils/formatDisplayDate';
 import { BRAND_PRIMARY, BRAND_PRIMARY_LIGHT } from '@/lib/theme/brandTokens';
 
 const TIERS = [
@@ -224,7 +225,7 @@ export function CustomerLoyaltyPortal({ businessId, currency = 'Rs.' }) {
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <p className="text-xs font-semibold text-gray-800 truncate">{tx.description}</p>
-                                            <p className="text-[10px] text-gray-400">{tx.date}</p>
+                                            <p className="text-[10px] text-gray-400">{formatDisplayDate(tx.date)}</p>
                                         </div>
                                         <span className={cn(
                                             'text-sm font-semibold',
@@ -307,7 +308,7 @@ export function CustomerLoyaltyPortal({ businessId, currency = 'Rs.' }) {
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <p className="text-sm font-semibold text-gray-800">{tx.description}</p>
-                                        <p className="text-xs text-gray-400 mt-0.5">{tx.date}</p>
+                                        <p className="text-xs text-gray-400 mt-0.5">{formatDisplayDate(tx.date)}</p>
                                     </div>
                                     {tx.total && (
                                         <span className="text-xs text-gray-400 font-medium">{currency} {tx.total.toLocaleString()}</span>

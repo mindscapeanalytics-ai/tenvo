@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+import { formatDisplayDate } from '@/lib/utils/formatDisplayDate';
 import { ExpenseEntryForm } from '@/components/ExpenseEntryForm';
 
 const EXPENSE_CATEGORIES = [
@@ -130,7 +131,7 @@ export function ExpenseManager({ businessId, expenses = [], onCreateExpense, onD
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <p className="text-sm font-semibold text-gray-900 truncate">{expense.description}</p>
-                                        <p className="text-[10px] text-gray-400">{expense.date} * {cat?.label || expense.category}</p>
+                                        <p className="text-[10px] text-gray-400">{formatDisplayDate(expense.date)} · {cat?.label || expense.category}</p>
                                     </div>
                                     <span className="text-sm font-semibold text-red-600">{currency}{parseFloat(expense.amount).toLocaleString()}</span>
                                 </motion.div>

@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/lib/utils/formatting';
 import { getDomainInvoiceColumns } from '@/lib/utils/domainHelpers';
 import { MOBILE_INPUT_CLASS, MOBILE_GRID_FIELDS } from '@/lib/utils/formMobileStyles';
+import { BarcodeScanTrigger } from '@/components/inventory/BarcodeScanTrigger';
 
 /**
  * App-style stacked line items for invoice builder on mobile (no horizontal table scroll).
@@ -19,10 +20,12 @@ export function InvoiceMobileLineItems({
   category = 'retail-shop',
   currency = 'PKR',
   colors = { primary: '#10B981' },
+  business = null,
   updateItem,
   removeItem,
   addItem,
   onEnterLastRow,
+  onScanBarcode,
 }) {
   const domainColumns = getDomainInvoiceColumns(category);
 
@@ -31,6 +34,16 @@ export function InvoiceMobileLineItems({
       <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 py-10 text-center">
         <p className="text-sm font-medium text-slate-600">No items added yet</p>
         <p className="mt-1 text-xs text-slate-400">Tap Add line or scan a barcode</p>
+        <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+        {onScanBarcode && (
+          <BarcodeScanTrigger
+            business={business}
+            onScan={onScanBarcode}
+            label="Scan barcode"
+            size="sm"
+            className="h-9 rounded-xl text-xs font-semibold"
+          />
+        )}
         {addItem && (
           <Button
             type="button"
@@ -43,11 +56,25 @@ export function InvoiceMobileLineItems({
             Add line
           </Button>
         )}
+        </div>
       </div>
     );
   }
 
   return (
+    <div className="space-y-3">
+      {onScanBarcode && (
+        <div className="flex justify-end">
+          <BarcodeScanTrigger
+            business={business}
+            onScan={onScanBarcode}
+            label="Scan to add"
+            size="sm"
+            variant="outline"
+            className="h-9 rounded-xl text-xs font-semibold"
+          />
+        </div>
+      )}
     <ul className="space-y-3">
       {items.map((item, index) => {
         const qty = Number(item.quantity || 0);
@@ -218,6 +245,7 @@ export function InvoiceMobileLineItems({
         </Button>
       )}
     </ul>
+    </div>
   );
 }
 

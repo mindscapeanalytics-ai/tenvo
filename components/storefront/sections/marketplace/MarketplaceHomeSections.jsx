@@ -11,6 +11,7 @@ import { SmartProductImage } from '@/components/storefront/SmartProductImage';
 import { ProductGrid } from '@/components/storefront/ProductGrid';
 import { formatCurrency } from '@/lib/currency';
 import { cn } from '@/lib/utils';
+import { formatDisplayDate } from '@/lib/utils/formatDisplayDate';
 import { STORE_VEHICLE_RAIL_TRACK_CLASS, STORE_PRODUCT_RAIL_ITEM_CLASS } from '@/lib/utils/storefrontProductRail';
 import { AutoBrandMarquee } from '@/components/storefront/sections/shared/AutoBrandMarquee';
 import { getEffectiveProductImageUrl } from '@/lib/storefront/productImageFallback';
@@ -627,7 +628,7 @@ export function MarketplaceHomeSections({
                     <SmartProductImage src={article.image} alt="" fill className="object-cover" />
                   </div>
                   <div className="p-3">
-                    <p className="text-[10px] font-semibold uppercase text-neutral-400">{article.date}</p>
+                    <p className="text-[10px] font-semibold uppercase text-neutral-400">{formatDisplayDate(article.date)}</p>
                     <h3 className="mt-1 line-clamp-2 text-sm font-bold text-neutral-900">{article.title}</h3>
                   </div>
                 </article>
@@ -677,7 +678,7 @@ export function MarketplaceHomeSections({
                         className="block rounded-lg border border-neutral-200 bg-white px-4 py-3 transition hover:border-[#003DA5]"
                       >
                         <p className="text-sm font-medium text-neutral-900">{post.title}</p>
-                        <p className="mt-0.5 text-xs text-neutral-500">{post.date}</p>
+                        <p className="mt-0.5 text-xs text-neutral-500">{formatDisplayDate(post.date)}</p>
                       </Link>
                     </li>
                   ))}

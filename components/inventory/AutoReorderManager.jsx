@@ -206,13 +206,13 @@ export function AutoReorderManager({
       )}
 
       {/* Toolbar */}
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-gray-500">
+      <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
+        <p className="min-w-0 text-sm text-gray-500">
           {reorderSuggestions.length > 0
             ? `${reorderSuggestions.length} product${reorderSuggestions.length !== 1 ? 's' : ''} need restocking`
             : 'Monitoring all stock thresholds'}
         </p>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2 shrink-0">
           <Button
             variant="outline"
             size="sm"

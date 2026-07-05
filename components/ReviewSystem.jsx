@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { formatDisplayDate } from '@/lib/utils/formatDisplayDate';
 
 export function ReviewSystem({ category = 'system', targetName = '', targetId = '' }) {
     const [reviews, setReviews] = useState([
@@ -60,15 +61,15 @@ export function ReviewSystem({ category = 'system', targetName = '', targetId = 
     };
 
     return (
-        <div className="space-y-6">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h2 className="text-2xl font-bold text-gray-900">Reviews & Feedback</h2>
-                    <p className="text-gray-600">See what others are saying about our {category} expertise</p>
+        <div className="min-w-0 space-y-6 overflow-x-hidden">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                <div className="min-w-0">
+                    <h2 className="text-base font-bold text-gray-900 lg:text-2xl">Reviews & Feedback</h2>
+                    <p className="text-xs text-gray-600 lg:text-sm">See what others are saying about our {category} expertise</p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                     <Select value={activeFilter} onValueChange={setActiveFilter}>
-                        <SelectTrigger className="w-[180px]">
+                        <SelectTrigger className="h-9 w-full min-w-0 rounded-xl text-xs sm:w-[180px]">
                             <Filter className="w-4 h-4 mr-2" />
                             <SelectValue placeholder="Filter by" />
                         </SelectTrigger>
@@ -171,7 +172,7 @@ export function ReviewSystem({ category = 'system', targetName = '', targetId = 
                                     </Badge>
                                     <div className="flex items-center text-xs text-gray-500">
                                         <Calendar className="w-3 h-3 mr-1" />
-                                        {review.date}
+                                        {formatDisplayDate(review.date)}
                                     </div>
                                 </div>
                             </CardHeader>

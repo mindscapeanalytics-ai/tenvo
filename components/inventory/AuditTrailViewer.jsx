@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { createClient } from '@/lib/supabase/client';
 import toast from 'react-hot-toast';
+import { ResponsiveManagerHeader } from '@/components/mobile/HubSectionHeader';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import * as XLSX from 'xlsx';
@@ -393,60 +394,44 @@ export function AuditTrailViewer({
   };
   
   return (
-    <div className="space-y-4">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h3 className="text-xl font-bold flex items-center gap-2">
-            <FileText className="w-5 h-5 text-wine" />
-            Audit Trail
-          </h3>
-          <p className="text-sm text-gray-500">
-            Comprehensive stock adjustment history with full audit details
-          </p>
-        </div>
-        
-        <div className="flex gap-2">
-          <Button
-            onClick={() => setShowFilters(!showFilters)}
-            variant="outline"
-            size="sm"
-          >
-            <Filter className="w-4 h-4 mr-2" />
-            Filters
-          </Button>
-          
-          <Button
-            onClick={fetchAuditTrail}
-            variant="outline"
-            size="sm"
-            disabled={loading}
-          >
-            <RotateCcw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
-          
-          <Button
-            onClick={exportToPDF}
-            variant="outline"
-            size="sm"
-            disabled={filteredAuditTrail.length === 0}
-          >
-            <FileDown className="w-4 h-4 mr-2" />
-            PDF
-          </Button>
-          
-          <Button
-            onClick={exportToExcel}
-            variant="outline"
-            size="sm"
-            disabled={filteredAuditTrail.length === 0}
-          >
-            <FileSpreadsheet className="w-4 h-4 mr-2" />
-            Excel
-          </Button>
-        </div>
-      </div>
+    <div className="min-w-0 space-y-4 overflow-x-hidden">
+      <ResponsiveManagerHeader
+        title="Audit Trail"
+        subtitle="Comprehensive stock adjustment history with full audit details"
+        actions={[
+          {
+            id: 'filters',
+            label: 'Filters',
+            icon: Filter,
+            variant: 'outline',
+            onClick: () => setShowFilters(!showFilters),
+          },
+          {
+            id: 'refresh',
+            label: 'Refresh',
+            icon: RotateCcw,
+            variant: 'outline',
+            disabled: loading,
+            onClick: fetchAuditTrail,
+          },
+          {
+            id: 'pdf',
+            label: 'PDF',
+            icon: FileDown,
+            variant: 'outline',
+            disabled: filteredAuditTrail.length === 0,
+            onClick: exportToPDF,
+          },
+          {
+            id: 'excel',
+            label: 'Excel',
+            icon: FileSpreadsheet,
+            variant: 'outline',
+            disabled: filteredAuditTrail.length === 0,
+            onClick: exportToExcel,
+          },
+        ]}
+      />
       
       {/* Filters Panel */}
       {showFilters && (

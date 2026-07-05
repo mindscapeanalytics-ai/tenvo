@@ -16,6 +16,7 @@ import { useLanguage } from '@/lib/context/LanguageContext';
 import { translations } from '@/lib/translations';
 import { paymentSchema, validateWithSchema } from '@/lib/validation/schemas';
 import { cn } from '@/lib/utils';
+import { formatDisplayDate } from '@/lib/utils/formatDisplayDate';
 import { MOBILE_OVERLAY, MOBILE_OVERLAY_CARD, MOBILE_FORM_FOOTER, MOBILE_GRID_FIELDS } from '@/lib/utils/formMobileStyles';
 
 export function PaymentReceiptForm({
@@ -369,7 +370,7 @@ export function PaymentReceiptForm({
                                                         <tr key={doc.id} className={`hover:bg-emerald-50/30 transition-colors ${currentAlloc ? 'bg-emerald-50/20' : ''}`}>
                                                             <td className="px-4 py-4">
                                                                 <p className="font-semibold text-gray-900 uppercase tracking-tighter">#{doc.number}</p>
-                                                                <p className="text-[10px] font-bold text-gray-400">{new Date(doc.date).toLocaleDateString()}</p>
+                                                                <p className="text-[10px] font-bold text-gray-400">{formatDisplayDate(doc.date)}</p>
                                                             </td>
                                                             <td className="px-4 py-4 text-right">
                                                                 <p className="font-bold text-gray-600">{formatCurrency(doc.balance, currency)}</p>
@@ -401,7 +402,7 @@ export function PaymentReceiptForm({
                                                         <div className="flex items-start justify-between gap-2">
                                                             <div>
                                                                 <p className="text-sm font-semibold text-gray-900">#{doc.number}</p>
-                                                                <p className="text-[10px] font-bold text-gray-400">{new Date(doc.date).toLocaleDateString()}</p>
+                                                                <p className="text-[10px] font-bold text-gray-400">{formatDisplayDate(doc.date)}</p>
                                                             </div>
                                                             <p className="text-sm font-bold tabular-nums text-gray-600">{formatCurrency(doc.balance, currency)}</p>
                                                         </div>
