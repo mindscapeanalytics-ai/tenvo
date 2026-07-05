@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Pencil, Trash2, Plus, FileText, CreditCard, AlertCircle, CheckCircle2, Clock, Eye, Upload, Download } from 'lucide-react';
-import { formatCurrency } from '@/lib/currency';
+import { formatCurrency, type CurrencyCode } from '@/lib/currency';
 import { DataTable } from '@/components/DataTable';
 import { cn } from '@/lib/utils';
 import type { Invoice } from '@/types';
@@ -17,7 +17,7 @@ import { MOBILE_BOTTOM_NAV_CLASS, MOBILE_FLOATING_Z } from '@/lib/utils/mobileLa
 
 interface InvoiceListProps {
     invoices: Invoice[];
-    currency?: string;
+    currency?: CurrencyCode;
     onInvoiceDelete?: (id: string) => Promise<void>;
     onEdit?: (invoice: Invoice) => void;
     onAdd?: () => void;
