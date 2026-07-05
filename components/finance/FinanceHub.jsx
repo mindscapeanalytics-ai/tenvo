@@ -33,6 +33,8 @@ import { toast } from 'react-hot-toast';
 import FinancialReports from '@/components/FinancialReports';
 import TrialBalanceView from '@/components/TrialBalanceView';
 import { GeneralLedgerReport } from '@/components/reports/GeneralLedgerReport';
+import { MobileTabHeader } from '@/components/mobile/MobileTabHeader';
+import { FinanceMobileNav } from '@/components/finance/FinanceMobileNav';
 
 // --- Sub-Tab Definitions -----------------------------------------------------
 
@@ -168,9 +170,9 @@ function CreditNotesPanel({ businessId, creditNotes, currency, onRefresh }) {
 
     return (
         <div className="space-y-3">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <h3 className="text-sm font-bold text-gray-800">Credit Notes</h3>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                     <span className="text-xs text-gray-400 font-semibold">{creditNotes.length} records</span>
                     <Button
                         onClick={() => { setShowForm(true); loadInvoices(); }}
@@ -363,9 +365,9 @@ function ExchangeRatesPanel({ businessId, rates, baseCurrencyCode, onRefresh }) 
 
     return (
         <div className="space-y-3">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <h3 className="text-sm font-bold text-gray-800">Exchange Rates</h3>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                     <span className="text-xs text-gray-400 font-semibold">{rates.length} rates</span>
                     <Button 
                         onClick={() => setShowForm(true)}
@@ -638,17 +640,17 @@ export default function FinanceHub({ businessId, initialTab, businessCategory = 
             case 'vouchers':
                 return (
                     <div className="space-y-6">
-                        <div className="flex gap-4">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
                             <Button
                                 onClick={() => { setVoucherType('receipt'); setShowVoucherForm(true); }}
-                                className="flex-1 h-24 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl flex flex-col gap-2 shadow-xl shadow-emerald-500/10 transition-all hover:scale-[1.02]"
+                                className="flex h-20 flex-1 flex-col items-center justify-center gap-2 rounded-2xl bg-emerald-600 text-white shadow-xl shadow-emerald-500/10 transition-all hover:bg-emerald-700 sm:h-24 sm:hover:scale-[1.02]"
                             >
                                 <DollarSign className="w-6 h-6" />
                                 <span className="font-semibold text-xs uppercase tracking-widest">Customer Receipt</span>
                             </Button>
                             <Button
                                 onClick={() => { setVoucherType('payment'); setShowVoucherForm(true); }}
-                                className="flex-1 h-24 bg-brand-primary hover:bg-brand-primary-dark text-white rounded-2xl flex flex-col gap-2 shadow-xl shadow-brand-primary/20 transition-all hover:scale-[1.02]"
+                                className="flex h-20 flex-1 flex-col items-center justify-center gap-2 rounded-2xl bg-brand-primary text-white shadow-xl shadow-brand-primary/20 transition-all hover:bg-brand-primary-dark sm:h-24 sm:hover:scale-[1.02]"
                             >
                                 <CreditCard className="w-6 h-6" />
                                 <span className="font-semibold text-xs uppercase tracking-widest">Vendor Payment</span>
@@ -760,9 +762,16 @@ export default function FinanceHub({ businessId, initialTab, businessCategory = 
     };
 
     return (
-        <div className="space-y-4">
-            {/* Finance Header */}
-            <div className="flex items-center gap-3">
+        <div className="min-w-0 space-y-4 overflow-x-hidden pb-[calc(5.5rem+env(safe-area-inset-bottom))] touch-manipulation lg:space-y-4 lg:pb-0">
+            <MobileTabHeader
+                icon={Landmark}
+                iconClassName="bg-brand-100 text-brand-primary"
+                title="Finance & Accounting"
+                subtitle="Statements · GL · Expenses · Fiscal"
+            />
+
+            {/* Desktop header */}
+            <div className="hidden items-center gap-3 lg:flex">
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-primary to-brand-primary-dark flex items-center justify-center">
                     <Landmark className="w-5 h-5 text-white" />
                 </div>
@@ -772,28 +781,8 @@ export default function FinanceHub({ businessId, initialTab, businessCategory = 
                 </div>
             </div>
 
-            {/* Sub-Tab Navigation */}
-            <div className="flex gap-1 overflow-x-auto pb-1 scrollbar-hide">
-                {visibleTabs.map(tab => {
-                    const isActive = activeTab === tab.key;
-                    const Icon = tab.icon;
-                    return (
-                        <button
-                            key={tab.key}
-                            onClick={() => setActiveTab(tab.key)}
-                            className={cn(
-                                'flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-all shrink-0',
-                                isActive
-                                    ? 'bg-brand-50 text-brand-primary-dark shadow-sm'
-                                    : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'
-                            )}
-                        >
-                            <Icon className="w-3.5 h-3.5" />
-                            {tab.label}
-                        </button>
-                    );
-                })}
-            </div>
+            {/* Sub-Tab Navigation — wrap on mobile, no horizontal scroll */}
+            <FinanceMobileNav tabs={visibleTabs} activeTab={activeTab} onSelect={setActiveTab} />
 
             {/* Content Area */}
             <AnimatePresence mode="wait">

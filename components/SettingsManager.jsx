@@ -725,7 +725,7 @@ export function SettingsManager({ category }) {
   }
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500 max-w-[1400px] mx-auto">
+    <div className="mx-auto max-w-[1400px] space-y-6 overflow-x-hidden touch-manipulation animate-in fade-in duration-500">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between lg:gap-6">
         <div className="min-w-0 flex-1">
           <h2 className="text-2xl font-bold tracking-tight text-gray-900">Enterprise Settings</h2>
@@ -734,7 +734,7 @@ export function SettingsManager({ category }) {
           </p>
         </div>
         <div
-          className="flex flex-row flex-nowrap items-stretch sm:items-center gap-2 overflow-x-auto pb-0.5 -mx-1 px-1 lg:mx-0 lg:px-0 lg:shrink-0 [scrollbar-width:thin]"
+          className="flex flex-wrap items-stretch gap-2 sm:items-center lg:shrink-0"
           role="toolbar"
           aria-label="Workspace actions"
         >
@@ -828,7 +828,7 @@ export function SettingsManager({ category }) {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="flex h-auto w-full flex-nowrap sm:flex-wrap justify-start gap-1 overflow-x-auto pb-1 bg-slate-100/90 p-1.5 sm:p-2 rounded-xl sm:rounded-2xl border border-slate-200/70 [scrollbar-width:thin]">
+        <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1 rounded-xl border border-slate-200/70 bg-slate-100/90 p-1.5 sm:rounded-2xl sm:p-2">
           {visibleSections.map(section => (
             <TabsTrigger
               key={section.value}

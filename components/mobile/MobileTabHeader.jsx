@@ -70,7 +70,7 @@ export function MobileTabHeader({
         )}
       </div>
       {actions.length > 0 && (
-        <div className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-none">
+        <div className="flex flex-wrap gap-1.5 pb-0.5">
           {actions.map((action) => (
             <Button
               key={action.id}
@@ -78,7 +78,7 @@ export function MobileTabHeader({
               variant={action.variant || 'outline'}
               size="sm"
               className={cn(
-                'h-8 shrink-0 rounded-xl px-2.5 text-[11px] font-semibold',
+                'h-8 rounded-xl px-2.5 text-[11px] font-semibold',
                 action.className
               )}
               onClick={action.onClick}
@@ -96,7 +96,7 @@ export function MobileTabHeader({
 /**
  * @param {{ items?: MobileStatItem[], layout?: 'scroll' | 'grid' }} props
  */
-export function MobileStatStrip({ items = [], layout = 'scroll' }) {
+export function MobileStatStrip({ items = [], layout = 'grid' }) {
   if (!items.length) return null;
 
   if (layout === 'grid') {

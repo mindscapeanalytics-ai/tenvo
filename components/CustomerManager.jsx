@@ -22,6 +22,8 @@ import toast from 'react-hot-toast';
 import StakeholderLedger from './StakeholderLedger';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { MobileTabHeader, MobileStatStrip } from '@/components/mobile/MobileTabHeader';
+import { HubEntityMobileList } from '@/components/mobile/HubEntityMobileList';
+import { MOBILE_BOTTOM_NAV_CLASS, MOBILE_FLOATING_Z } from '@/lib/utils/mobileLayout';
 import { useBusiness } from '@/lib/context/BusinessContext';
 
 export function CustomerManager({ customers = [], onAdd, onUpdate, onDelete, category = 'retail-shop', businessId }) {
@@ -124,21 +126,16 @@ export function CustomerManager({ customers = [], onAdd, onUpdate, onDelete, cat
 
 
   return (
-    <div className="space-y-4 lg:space-y-6">
+    <div className="min-w-0 space-y-4 overflow-x-hidden touch-manipulation lg:space-y-6">
       <MobileTabHeader
         icon={User}
         iconClassName="bg-emerald-100 text-emerald-600"
         title="Customer Database"
         subtitle={`${customers.length} clients · ${knowledge?.name || 'Business'}`}
-        primaryAction={{
-          label: 'Add',
-          icon: Plus,
-          className: 'bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-lg',
-          onClick: () => onAdd?.(),
-        }}
       />
 
       <MobileStatStrip
+        layout="grid"
         items={[
           { label: 'Total', value: customers.length },
           { label: 'Reachable', value: customers.filter((c) => c.phone || c.email).length, valueTone: 'text-emerald-600' },
@@ -165,8 +162,8 @@ export function CustomerManager({ customers = [], onAdd, onUpdate, onDelete, cat
         </div>
       </div>
 
-      <Card className="border-wine/10 shadow-xl bg-white/50 backdrop-blur-md">
-        <CardHeader className="pb-4">
+      <Card className="border-wine/10 bg-white/50 shadow-xl backdrop-blur-md lg:block">
+        <CardHeader className="hidden pb-4 lg:block">
           <div className="flex items-center gap-4">
             <div className="relative flex-1 group">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 group-focus-within:text-wine w-4 h-4 transition-colors" />
@@ -179,10 +176,73 @@ export function CustomerManager({ customers = [], onAdd, onUpdate, onDelete, cat
             </div>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="hidden lg:block">
           <DataTable category={category} data={filteredCustomers} columns={allColumns} emptyComponent={<EmptyState module="customers" compact onAction={onAdd} />} />
         </CardContent>
       </Card>
+
+      <div className="pb-[calc(5.5rem+env(safe-area-inset-bottom))] lg:hidden">
+        <HubEntityMobileList
+          items={customers}
+          search={searchTerm}
+          onSearchChange={setSearchTerm}
+          searchPlaceholder="Search customers..."
+          emptyIcon={User}
+          emptyTitle="No customers yet"
+          emptySubtitle="Add your first client to get started"
+          emptyActionLabel="Add customer"
+          onEmptyAction={() => onAdd?.()}
+          getKey={(c) => c.id}
+          onRowPress={(c) => setCustomerToView(c)}
+          renderIcon={(c) => (
+            <Avatar className="h-10 w-10">
+              <AvatarFallback className="text-sm font-bold" style={{ backgroundColor: `${colors.primary}15`, color: colors.primary }}>
+                {c.name?.charAt(0) || '?'}
+              </AvatarFallback>
+            </Avatar>
+          )}
+          getTitle={(c) => c.name}
+          getSubtitle={(c) => c.phone || c.email || 'No contact info'}
+          getAmount={(c) => formatCurrency(c.totalSpent || 0, currency)}
+          getAmountClassName={() => 'text-emerald-700'}
+          renderBadge={(c) => (
+            <span className={cn('rounded-md px-1.5 py-0.5 text-[10px] font-semibold', c.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600')}>
+              {c.status || 'active'}
+            </span>
+          )}
+          filterItems={(list, q) => {
+            const query = q.trim().toLowerCase();
+            if (!query) return list;
+            return list.filter(
+              (c) =>
+                c.name?.toLowerCase().includes(query) ||
+                c.email?.toLowerCase().includes(query) ||
+                c.phone?.includes(query)
+            );
+          }}
+          getActions={(c) => [
+            { id: 'view', icon: Eye, label: 'View profile', onClick: () => setCustomerToView(c) },
+            { id: 'edit', icon: Edit, label: 'Edit customer', onClick: () => onUpdate?.(c) },
+            { id: 'delete', icon: Trash2, label: 'Remove customer', destructive: true, onClick: () => setCustomerToDelete(c) },
+          ]}
+        />
+      </div>
+
+      {onAdd && (
+        <button
+          type="button"
+          onClick={() => onAdd()}
+          className={cn(
+            'fixed right-4 flex h-14 w-14 items-center justify-center rounded-full text-white shadow-lg transition active:scale-95 lg:hidden',
+            MOBILE_BOTTOM_NAV_CLASS,
+            MOBILE_FLOATING_Z
+          )}
+          style={{ backgroundColor: colors.primary, boxShadow: `0 8px 24px -4px ${colors.primary}50` }}
+          aria-label="Add customer"
+        >
+          <Plus className="h-6 w-6" />
+        </button>
+      )}
 
 
       {/* View Customer Dialog */}

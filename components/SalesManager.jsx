@@ -226,7 +226,7 @@ export function SalesManager({
     const embeddedInStorefront = useStorefrontEmbedded();
 
     return (
-        <div className="space-y-2 lg:space-y-5">
+        <div className="min-w-0 space-y-2 overflow-x-hidden touch-manipulation lg:space-y-5">
             {!embeddedInStorefront && (
                 <MobileTabHeader
                     icon={BarChart2}
@@ -419,7 +419,7 @@ export function SalesManager({
                         <p className="text-sm font-semibold text-gray-800">Top Customers</p>
                         <p className="text-xs text-gray-400">Ranked by total spend</p>
                     </div>
-                    <div className="overflow-x-auto">
+                    <div className="hidden overflow-x-auto lg:block">
                         <table className="w-full text-sm">
                             <thead>
                                 <tr className="border-b border-gray-50">
@@ -449,6 +449,21 @@ export function SalesManager({
                                 ))}
                             </tbody>
                         </table>
+                    </div>
+                    <div className="divide-y divide-gray-50 lg:hidden">
+                        {topCustomers.map((c, i) => (
+                            <div key={c.id} className="flex items-center gap-3 px-4 py-3">
+                                <span className="w-4 shrink-0 text-xs font-bold text-gray-300">{i + 1}</span>
+                                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gray-100 text-xs font-bold text-gray-500">
+                                    {c.name?.charAt(0)?.toUpperCase() || '?'}
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                    <p className="truncate font-medium text-gray-800">{c.name}</p>
+                                    <p className="text-[11px] text-gray-400">{c.count} orders · avg {formatCurrency(c.count > 0 ? c.total / c.count : 0, currency)}</p>
+                                </div>
+                                <p className="shrink-0 text-sm font-semibold tabular-nums text-gray-800">{formatCurrency(c.total, currency)}</p>
+                            </div>
+                        ))}
                     </div>
                 </div>
             )}

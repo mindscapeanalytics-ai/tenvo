@@ -53,30 +53,31 @@ export default function TrialBalanceView({ businessId, currency: currencyProp })
     }
 
     return (
-        <Card className="border-none shadow-sm bg-white print:shadow-none">
-            <CardHeader className="flex flex-row items-center justify-between pb-2 border-b">
-                <div>
+        <Card className="min-w-0 overflow-x-hidden border-none bg-white shadow-sm print:shadow-none">
+            <CardHeader className="flex flex-col gap-3 border-b pb-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
                     <CardTitle className="text-xl font-bold text-gray-900">Trial Balance</CardTitle>
                     <CardDescription>As of {new Date(date).toLocaleDateString()}</CardDescription>
                 </div>
-                <div className="flex items-center gap-2 print:hidden">
+                <div className="flex flex-wrap items-center gap-2 print:hidden">
                     <input
                         type="date"
                         value={date}
                         onChange={(e) => setDate(e.target.value)}
-                        className="h-9 px-3 border rounded-md text-sm"
+                        className="h-9 w-full rounded-md border px-3 text-sm sm:w-auto"
                     />
                     <Button variant="outline" size="icon" onClick={fetchReport}>
                         <RefreshCw className="w-4 h-4" />
                     </Button>
-                    <Button variant="outline" onClick={handlePrint}>
-                        <Download className="w-4 h-4 mr-2" />
+                    <Button variant="outline" className="flex-1 sm:flex-none" onClick={handlePrint}>
+                        <Download className="mr-2 h-4 w-4" />
                         Export / Print
                     </Button>
                 </div>
             </CardHeader>
             <CardContent className="p-0">
-                <div className="overflow-x-auto">
+                {/* Desktop table */}
+                <div className="hidden overflow-x-auto lg:block">
                     <table className="w-full text-sm">
                         <thead className="bg-gray-50 font-semibold text-gray-600 border-b">
                             <tr>
@@ -118,8 +119,44 @@ export default function TrialBalanceView({ businessId, currency: currencyProp })
                     </table>
                 </div>
 
+                {/* Mobile cards */}
+                <div className="divide-y divide-gray-100 lg:hidden">
+                    {data.trialBalance.map((row) => (
+                        <div key={row.id} className="px-3 py-3">
+                            <div className="flex items-start justify-between gap-2">
+                                <div className="min-w-0">
+                                    <p className="text-[13px] font-bold text-gray-900">{row.name}</p>
+                                    <p className="mt-0.5 text-[11px] font-mono text-gray-400">
+                                        {row.code} · {row.type}
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="mt-2 grid grid-cols-2 gap-2 text-[11px] tabular-nums">
+                                <div className="rounded-lg bg-gray-50 px-2 py-1.5">
+                                    <p className="text-[10px] font-medium uppercase text-gray-400">Debit</p>
+                                    <p className="font-semibold text-gray-800">
+                                        {Number(row.total_debit) > 0 ? formatCurrency(Number(row.total_debit), currency) : '—'}
+                                    </p>
+                                </div>
+                                <div className="rounded-lg bg-gray-50 px-2 py-1.5">
+                                    <p className="text-[10px] font-medium uppercase text-gray-400">Credit</p>
+                                    <p className="font-semibold text-gray-800">
+                                        {Number(row.total_credit) > 0 ? formatCurrency(Number(row.total_credit), currency) : '—'}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                    <div className="grid grid-cols-2 gap-2 bg-gray-50 px-3 py-3 text-sm font-bold">
+                        <div className="text-right text-gray-600">Total Dr</div>
+                        <div className="text-right text-gray-900">{formatCurrency(Number(data.totals.debit), currency)}</div>
+                        <div className="text-right text-gray-600">Total Cr</div>
+                        <div className="text-right text-gray-900">{formatCurrency(Number(data.totals.credit), currency)}</div>
+                    </div>
+                </div>
+
                 {/* Balance Status */}
-                <div className={`mx-6 my-6 p-4 rounded-lg flex items-center justify-between ${data.totals.balanced ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                <div className={`mx-3 my-4 flex flex-col gap-3 rounded-lg p-4 sm:mx-6 sm:my-6 sm:flex-row sm:items-center sm:justify-between ${data.totals.balanced ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
                     <div className="flex items-center gap-3">
                         {data.totals.balanced ? <CheckCircle2 className="w-6 h-6" /> : <AlertCircle className="w-6 h-6" />}
                         <div>

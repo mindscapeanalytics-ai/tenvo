@@ -298,7 +298,7 @@ function EasyQuickActionBar({
   onAction?: (id: string) => void;
 }) {
   return (
-    <div className="flex shrink-0 items-center gap-1 overflow-x-auto [scrollbar-width:none]">
+    <div className="flex shrink-0 flex-wrap items-center gap-1">
       {actions.map((action, index) => {
         const Icon = action.icon;
         const isPrimary = index === 0;
@@ -882,7 +882,7 @@ export function EasyBusinessDashboard(props: EasyBusinessDashboardProps) {
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="bg-white">
           <div className="border-b border-neutral-100 px-4 py-2 sm:px-5">
-            <TabsList className="h-8 w-full justify-start gap-0.5 overflow-x-auto bg-neutral-100/80 p-0.5 [scrollbar-width:none] sm:w-auto">
+            <TabsList className="flex h-auto min-h-8 w-full flex-wrap justify-start gap-0.5 bg-neutral-100/80 p-0.5 sm:w-auto">
               <EasyTabTrigger value="overview" label="Overview" />
               <EasyTabTrigger value="sales" label="Sales" badge={tabBadges.sales} />
               <EasyTabTrigger value="accounts" label="Accounts" badge={tabBadges.accounts} />

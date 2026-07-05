@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
     Card, CardContent, CardDescription, CardHeader, CardTitle
 } from "@/components/ui/card";
@@ -12,7 +12,7 @@ import {
     Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from "@/components/ui/select";
 import {
-    Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger
+    Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle
 } from "@/components/ui/dialog";
 import {
     Tabs, TabsContent, TabsList, TabsTrigger
@@ -24,7 +24,9 @@ import {
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { MobileTabHeader, MobileStatStrip } from '@/components/mobile/MobileTabHeader';
+import { HubEntityMobileList } from '@/components/mobile/HubEntityMobileList';
 import { MOBILE_DIALOG_SHELL } from '@/lib/utils/formMobileStyles';
+import { MOBILE_BOTTOM_NAV_CLASS, MOBILE_FLOATING_Z } from '@/lib/utils/mobileLayout';
 import { cn } from '@/lib/utils';
 import { DataTable } from "@/components/DataTable";
 import { paymentAPI } from "@/lib/api/payments";
@@ -169,25 +171,198 @@ export default function PaymentManager({
         ? invoices.filter(inv => inv.customer_id === formData.customerId && inv.status !== 'paid')
         : purchases.filter(p => p.vendor_id === formData.vendorId && p.status !== 'paid');
 
+    const filteredPayments = useMemo(() => {
+        const q = searchQuery.trim().toLowerCase();
+        return payments.filter((p) => {
+            if (!q) return true;
+            const searchStr = `${p.notes} ${p.bank_name} ${p.transaction_id} ${p.customer_name} ${p.vendor_name} ${p.party_name}`.toLowerCase();
+            return searchStr.includes(q);
+        });
+    }, [payments, searchQuery]);
+
+    const getPaymentParty = (p) =>
+        p.party_name
+        || (isReceiptType(p.payment_type)
+            ? (p.customer_name || p.customers?.name || 'Customer')
+            : (p.vendor_name || p.vendors?.name || 'Vendor'));
+
+    const paymentFormDialog = (
+        <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
+            <DialogContent className={cn(MOBILE_DIALOG_SHELL, 'max-w-2xl')}>
+                <DialogHeader className="shrink-0 px-3 pt-3 sm:px-6 sm:pt-6 pb-2">
+                    <DialogTitle>New Financial Transaction</DialogTitle>
+                    <DialogDescription>
+                        Record a customer receipt or vendor payment.
+                    </DialogDescription>
+                </DialogHeader>
+
+                <div className="grid min-h-0 flex-1 gap-6 overflow-y-auto overscroll-contain px-3 py-4 pb-6 sm:px-6">
+                    <div className="flex p-1 bg-gray-100 rounded-xl">
+                        <button
+                            type="button"
+                            className={`flex-1 py-2 px-4 rounded-lg flex items-center justify-center gap-2 font-medium transition-all ${paymentType === 'receipt' ? 'bg-white shadow-sm text-wine' : 'text-gray-500 hover:text-gray-700'}`}
+                            onClick={() => {
+                                setPaymentType('receipt');
+                                setFormData(prev => ({ ...prev, referenceType: 'invoice', referenceId: '' }));
+                            }}
+                        >
+                            <ArrowDownLeft className="w-4 h-4" />
+                            Customer Receipt
+                        </button>
+                        <button
+                            type="button"
+                            className={`flex-1 py-2 px-4 rounded-lg flex items-center justify-center gap-2 font-medium transition-all ${paymentType === 'payment' ? 'bg-white shadow-sm text-wine' : 'text-gray-500 hover:text-gray-700'}`}
+                            onClick={() => {
+                                setPaymentType('payment');
+                                setFormData(prev => ({ ...prev, referenceType: 'purchase', referenceId: '' }));
+                            }}
+                        >
+                            <ArrowUpRight className="w-4 h-4" />
+                            Vendor Payment
+                        </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label>{paymentType === 'receipt' ? 'Customer' : 'Vendor'}</Label>
+                            <Combobox
+                                options={paymentType === 'receipt'
+                                    ? customers.map(c => ({ value: String(c.id), label: c.name, description: c.phone || c.email || '' }))
+                                    : vendors.map(v => ({ value: String(v.id), label: v.name, description: v.city || v.phone || '' }))
+                                }
+                                value={String(paymentType === 'receipt' ? formData.customerId : formData.vendorId) || ''}
+                                onChange={(val) => setFormData({
+                                    ...formData,
+                                    [paymentType === 'receipt' ? 'customerId' : 'vendorId']: val,
+                                    referenceId: ''
+                                })}
+                                placeholder={`Search ${paymentType === 'receipt' ? 'customers' : 'vendors'}...`}
+                                emptyText={`No ${paymentType === 'receipt' ? 'customers' : 'vendors'} found`}
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label>Date</Label>
+                            <Input
+                                type="date"
+                                value={formData.paymentDate}
+                                onChange={(e) => setFormData({ ...formData, paymentDate: e.target.value })}
+                            />
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label>Amount ({currency})</Label>
+                            <Input
+                                type="number"
+                                placeholder="0.00"
+                                value={formData.amount}
+                                onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label>Payment Mode</Label>
+                            <Select
+                                value={formData.paymentMode}
+                                onValueChange={(val) => setFormData({ ...formData, paymentMode: val })}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="cash">Cash</SelectItem>
+                                    <SelectItem value="bank">Bank Transfer</SelectItem>
+                                    <SelectItem value="cheque">Cheque</SelectItem>
+                                    <SelectItem value="online">Online Payment</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label>Reference (Optional)</Label>
+                        <Combobox
+                            options={[
+                                { value: 'none', label: 'No Reference', description: '' },
+                                ...filteredReferences.map(doc => ({
+                                    value: String(doc.id),
+                                    label: doc.invoice_number || doc.purchase_number || String(doc.id),
+                                    description: formatCurrency(doc.grand_total || doc.total_amount, currency)
+                                }))
+                            ]}
+                            value={String(formData.referenceId || 'none')}
+                            onChange={(val) => setFormData({ ...formData, referenceId: val === 'none' ? '' : val })}
+                            placeholder={`Link to ${paymentType === 'receipt' ? 'Invoice' : 'Purchase Order'}`}
+                            emptyText="No outstanding documents found"
+                        />
+                    </div>
+
+                    {(formData.paymentMode === 'bank' || formData.paymentMode === 'cheque') && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label>Bank Name</Label>
+                                <Input
+                                    placeholder="HBL / UBL / etc"
+                                    value={formData.bankName}
+                                    onChange={(e) => setFormData({ ...formData, bankName: e.target.value })}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>{formData.paymentMode === 'cheque' ? 'Cheque #' : 'Transaction ID'}</Label>
+                                <Input
+                                    placeholder="Reference number"
+                                    value={formData.paymentMode === 'cheque' ? formData.chequeNumber : formData.transactionId}
+                                    onChange={(e) => setFormData({
+                                        ...formData,
+                                        [formData.paymentMode === 'cheque' ? 'chequeNumber' : 'transactionId']: e.target.value
+                                    })}
+                                />
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="space-y-2">
+                        <Label>Notes</Label>
+                        <Input
+                            placeholder="Optional transaction notes"
+                            value={formData.notes}
+                            onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                        />
+                    </div>
+
+                    <Button
+                        className="mt-2 w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+                        onClick={handleCreatePayment}
+                        disabled={isSubmitting}
+                    >
+                        {isSubmitting ? (
+                            <div className="flex items-center gap-2">
+                                <RefreshCcw className="w-4 h-4 animate-spin" />
+                                Processing...
+                            </div>
+                        ) : 'Save Transaction'}
+                    </Button>
+                </div>
+            </DialogContent>
+        </Dialog>
+    );
+
     return (
-        <div className="space-y-4 lg:space-y-6">
+        <div className="min-w-0 space-y-4 overflow-x-hidden touch-manipulation lg:space-y-6">
             <MobileTabHeader
                 icon={Wallet}
                 iconClassName="bg-wine/10 text-wine"
                 title="Finance & Payments"
                 subtitle={`${payments.length} transactions`}
-                primaryAction={{
-                    label: 'Record',
-                    icon: Plus,
-                    className: 'bg-wine hover:bg-wine/90 text-white font-bold',
-                    onClick: () => setShowPaymentDialog(true),
-                }}
                 actions={[
                     { id: 'refresh', label: 'Refresh', icon: RefreshCcw, onClick: fetchPayments },
                 ]}
             />
 
             <MobileStatStrip
+                layout="grid"
                 items={[
                     {
                         label: 'Receipts',
@@ -221,170 +396,13 @@ export default function PaymentManager({
                         Refresh
                     </Button>
 
-                    <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
-                        <DialogTrigger asChild>
-                            <Button className="bg-wine font-bold text-white shadow-lg shadow-wine/20 hover:bg-wine/90">
-                                <Plus className="mr-2 h-4 w-4" />
-                                Record Transaction
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent className={cn(MOBILE_DIALOG_SHELL, 'max-w-2xl')}>
-                            <DialogHeader className="shrink-0 px-6 pt-6 pb-2">
-                                <DialogTitle>New Financial Transaction</DialogTitle>
-                                <DialogDescription>
-                                    Record a customer receipt or vendor payment.
-                                </DialogDescription>
-                            </DialogHeader>
-
-                            <div className="grid gap-6 py-4 px-6 pb-6 overflow-y-auto min-h-0 flex-1">
-                                <div className="flex p-1 bg-gray-100 rounded-xl">
-                                    <button
-                                        className={`flex-1 py-2 px-4 rounded-lg flex items-center justify-center gap-2 font-medium transition-all ${paymentType === 'receipt' ? 'bg-white shadow-sm text-wine' : 'text-gray-500 hover:text-gray-700'}`}
-                                        onClick={() => {
-                                            setPaymentType('receipt');
-                                            setFormData(prev => ({ ...prev, referenceType: 'invoice', referenceId: '' }));
-                                        }}
-                                    >
-                                        <ArrowDownLeft className="w-4 h-4" />
-                                        Customer Receipt
-                                    </button>
-                                    <button
-                                        className={`flex-1 py-2 px-4 rounded-lg flex items-center justify-center gap-2 font-medium transition-all ${paymentType === 'payment' ? 'bg-white shadow-sm text-wine' : 'text-gray-500 hover:text-gray-700'}`}
-                                        onClick={() => {
-                                            setPaymentType('payment');
-                                            setFormData(prev => ({ ...prev, referenceType: 'purchase', referenceId: '' }));
-                                        }}
-                                    >
-                                        <ArrowUpRight className="w-4 h-4" />
-                                        Vendor Payment
-                                    </button>
-                                </div>
-
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <Label>{paymentType === 'receipt' ? 'Customer' : 'Vendor'}</Label>
-                                        <Combobox
-                                            options={paymentType === 'receipt'
-                                                ? customers.map(c => ({ value: String(c.id), label: c.name, description: c.phone || c.email || '' }))
-                                                : vendors.map(v => ({ value: String(v.id), label: v.name, description: v.city || v.phone || '' }))
-                                            }
-                                            value={String(paymentType === 'receipt' ? formData.customerId : formData.vendorId) || ''}
-                                            onChange={(val) => setFormData({
-                                                ...formData,
-                                                [paymentType === 'receipt' ? 'customerId' : 'vendorId']: val,
-                                                referenceId: ''
-                                            })}
-                                            placeholder={`Search ${paymentType === 'receipt' ? 'customers' : 'vendors'}...`}
-                                            emptyText={`No ${paymentType === 'receipt' ? 'customers' : 'vendors'} found`}
-                                        />
-                                    </div>
-
-                                    <div className="space-y-2">
-                                        <Label>Date</Label>
-                                        <Input
-                                            type="date"
-                                            value={formData.paymentDate}
-                                            onChange={(e) => setFormData({ ...formData, paymentDate: e.target.value })}
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <Label>Amount ({currency})</Label>
-                                        <Input
-                                            type="number"
-                                            placeholder="0.00"
-                                            value={formData.amount}
-                                            onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                                        />
-                                    </div>
-
-                                    <div className="space-y-2">
-                                        <Label>Payment Mode</Label>
-                                        <Select
-                                            value={formData.paymentMode}
-                                            onValueChange={(val) => setFormData({ ...formData, paymentMode: val })}
-                                        >
-                                            <SelectTrigger>
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="cash">Cash</SelectItem>
-                                                <SelectItem value="bank">Bank Transfer</SelectItem>
-                                                <SelectItem value="cheque">Cheque</SelectItem>
-                                                <SelectItem value="online">Online Payment</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label>Reference (Optional)</Label>
-                                    <Combobox
-                                        options={[
-                                            { value: 'none', label: 'No Reference', description: '' },
-                                            ...filteredReferences.map(doc => ({
-                                                value: String(doc.id),
-                                                label: doc.invoice_number || doc.purchase_number || String(doc.id),
-                                                description: formatCurrency(doc.grand_total || doc.total_amount, currency)
-                                            }))
-                                        ]}
-                                        value={String(formData.referenceId || 'none')}
-                                        onChange={(val) => setFormData({ ...formData, referenceId: val === 'none' ? '' : val })}
-                                        placeholder={`Link to ${paymentType === 'receipt' ? 'Invoice' : 'Purchase Order'}`}
-                                        emptyText="No outstanding documents found"
-                                    />
-                                </div>
-
-                                {(formData.paymentMode === 'bank' || formData.paymentMode === 'cheque') && (
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                            <Label>Bank Name</Label>
-                                            <Input
-                                                placeholder="HBL / UBL / etc"
-                                                value={formData.bankName}
-                                                onChange={(e) => setFormData({ ...formData, bankName: e.target.value })}
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label>{formData.paymentMode === 'cheque' ? 'Cheque #' : 'Transaction ID'}</Label>
-                                            <Input
-                                                placeholder="Reference number"
-                                                value={formData.paymentMode === 'cheque' ? formData.chequeNumber : formData.transactionId}
-                                                onChange={(e) => setFormData({
-                                                    ...formData,
-                                                    [formData.paymentMode === 'cheque' ? 'chequeNumber' : 'transactionId']: e.target.value
-                                                })}
-                                            />
-                                        </div>
-                                    </div>
-                                )}
-
-                                <div className="space-y-2">
-                                    <Label>Notes</Label>
-                                    <Input
-                                        placeholder="Optional transaction notes"
-                                        value={formData.notes}
-                                        onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                                    />
-                                </div>
-
-                                <Button
-                                    className="w-full mt-2 bg-emerald-600 hover:bg-emerald-700 text-white"
-                                    onClick={handleCreatePayment}
-                                    disabled={isSubmitting}
-                                >
-                                    {isSubmitting ? (
-                                        <div className="flex items-center gap-2">
-                                            <RefreshCcw className="w-4 h-4 animate-spin" />
-                                            Processing...
-                                        </div>
-                                    ) : 'Save Transaction'}
-                                </Button>
-                            </div>
-                        </DialogContent>
-                    </Dialog>
+                    <Button
+                        className="bg-wine font-bold text-white shadow-lg shadow-wine/20 hover:bg-wine/90"
+                        onClick={() => setShowPaymentDialog(true)}
+                    >
+                        <Plus className="mr-2 h-4 w-4" />
+                        Record Transaction
+                    </Button>
                 </div>
             </div>
 
@@ -441,7 +459,7 @@ export default function PaymentManager({
                 </Card>
             </div>
 
-            <Card>
+            <Card className="hidden lg:block">
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                         <History className="w-5 h-5 text-gray-500" />
@@ -542,6 +560,55 @@ export default function PaymentManager({
                     )}
                 </CardContent>
             </Card>
+
+            <div className="pb-[calc(5.5rem+env(safe-area-inset-bottom))] lg:hidden">
+                <HubEntityMobileList
+                    items={filteredPayments}
+                    search={searchQuery}
+                    onSearchChange={setSearchQuery}
+                    searchPlaceholder="Search transactions..."
+                    emptyIcon={Receipt}
+                    emptyTitle="No transactions yet"
+                    emptySubtitle="Record receipts and vendor payments"
+                    emptyActionLabel="Record transaction"
+                    onEmptyAction={() => setShowPaymentDialog(true)}
+                    getKey={(p) => p.id}
+                    renderIcon={(p) => (
+                        isReceiptType(p.payment_type)
+                            ? <ArrowDownLeft className="h-5 w-5 text-emerald-600" />
+                            : <ArrowUpRight className="h-5 w-5 text-red-600" />
+                    )}
+                    getTitle={(p) => getPaymentParty(p)}
+                    getSubtitle={(p) => `${new Date(p.payment_date).toLocaleDateString()} · ${p.payment_mode || 'cash'}`}
+                    getAmount={(p) => formatCurrency(p.amount, currency)}
+                    getAmountClassName={(p) => (isReceiptType(p.payment_type) ? 'text-emerald-600' : 'text-red-600')}
+                    renderBadge={(p) => (
+                        <Badge className={cn('text-[10px] font-semibold', isReceiptType(p.payment_type) ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700')}>
+                            {getPaymentTypeLabel(p.payment_type)}
+                        </Badge>
+                    )}
+                    getActions={(p) =>
+                        p.source === 'invoice_payment'
+                            ? []
+                            : [{ id: 'delete', icon: Trash2, label: 'Delete transaction', destructive: true, onClick: () => handleDeletePayment(p.id) }]
+                    }
+                />
+            </div>
+
+            <button
+                type="button"
+                onClick={() => setShowPaymentDialog(true)}
+                className={cn(
+                    'fixed right-4 flex h-14 w-14 items-center justify-center rounded-full bg-wine text-white shadow-lg shadow-wine/30 transition active:scale-95 lg:hidden',
+                    MOBILE_BOTTOM_NAV_CLASS,
+                    MOBILE_FLOATING_Z
+                )}
+                aria-label="Record transaction"
+            >
+                <Plus className="h-6 w-6" />
+            </button>
+
+            {paymentFormDialog}
         </div>
     );
 }

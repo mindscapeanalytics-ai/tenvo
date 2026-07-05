@@ -351,7 +351,8 @@ export function PaymentReceiptForm({
                                             <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">No outstanding {isCustomer ? 'invoices' : 'purchases'} found for this entity</p>
                                         </div>
                                     ) : (
-                                        <div className="-mx-1 overflow-x-auto px-1 sm:mx-0 sm:px-0">
+                                        <>
+                                        <div className="hidden sm:block">
                                         <table className="w-full min-w-[480px] text-xs">
                                             <thead className="bg-gray-50 sticky top-0 z-10">
                                                 <tr className="border-b">
@@ -391,6 +392,34 @@ export function PaymentReceiptForm({
                                             </tbody>
                                         </table>
                                         </div>
+                                        <div className="divide-y divide-gray-100 sm:hidden">
+                                            {pendingDocs.map(doc => {
+                                                const idField = doc.type === 'invoice' ? 'invoice_id' : 'purchase_id';
+                                                const currentAlloc = formData.allocations.find(a => a[idField] === doc.id);
+                                                return (
+                                                    <div key={doc.id} className={`px-3 py-3 ${currentAlloc ? 'bg-emerald-50/30' : ''}`}>
+                                                        <div className="flex items-start justify-between gap-2">
+                                                            <div>
+                                                                <p className="text-sm font-semibold text-gray-900">#{doc.number}</p>
+                                                                <p className="text-[10px] font-bold text-gray-400">{new Date(doc.date).toLocaleDateString()}</p>
+                                                            </div>
+                                                            <p className="text-sm font-bold tabular-nums text-gray-600">{formatCurrency(doc.balance, currency)}</p>
+                                                        </div>
+                                                        <div className="relative mt-2">
+                                                            <Input
+                                                                type="number"
+                                                                className={`h-10 text-right font-bold ${currentAlloc ? 'border-emerald-500 ring-1 ring-emerald-500' : 'border-gray-200'}`}
+                                                                placeholder="Allocate amount"
+                                                                value={currentAlloc?.amount || ''}
+                                                                onChange={(e) => handleAllocationChange(doc.id, e.target.value)}
+                                                            />
+                                                            {currentAlloc && <CheckCircle2 className="absolute left-2 top-3 h-4 w-4 text-emerald-500 fill-white" />}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                        </>
                                     )}
                                 </div>
                                 <div className="p-4 bg-gray-50 border-t flex justify-between items-center">

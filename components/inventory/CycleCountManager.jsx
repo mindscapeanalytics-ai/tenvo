@@ -210,7 +210,7 @@ export function CycleCountManager({
             </div>
 
             {/* Filters */}
-            <div className="flex gap-2 overflow-x-auto">
+            <div className="flex flex-wrap gap-2">
                 {['all', 'active', 'completed', 'variance'].map(f => (
                     <Button
                         key={f}
@@ -482,7 +482,7 @@ function CycleCountDetailView({ count, products, onClose, onCountDownload, curre
                                 Template
                             </Button>
                         </div>
-                        <div className="overflow-x-auto">
+                        <div className="hidden overflow-x-auto lg:block">
                             <table className="w-full text-sm">
                                 <thead>
                                     <tr className="border-b bg-gray-50">
@@ -521,6 +521,42 @@ function CycleCountDetailView({ count, products, onClose, onCountDownload, curre
                                     })}
                                 </tbody>
                             </table>
+                        </div>
+                        <div className="divide-y divide-gray-100 lg:hidden">
+                            {items.map((item, idx) => {
+                                const variance_qty = (item.counted_quantity || 0) - (item.system_quantity || 0);
+                                return (
+                                    <div key={idx} className="px-3 py-3">
+                                        <p className="text-[13px] font-bold text-gray-900">{item.product_name}</p>
+                                        <p className="font-mono text-[11px] text-gray-500">{item.sku}</p>
+                                        <div className="mt-2 grid grid-cols-3 items-end gap-2 text-[11px]">
+                                            <div>
+                                                <p className="text-[10px] uppercase text-gray-400">System</p>
+                                                <p className="font-semibold tabular-nums">{item.system_quantity}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] uppercase text-gray-400">Counted</p>
+                                                <Input
+                                                    type="number"
+                                                    min="0"
+                                                    value={item.counted_quantity || ''}
+                                                    onChange={(e) => handleUpdateItemCount(idx, e.target.value)}
+                                                    className="mt-0.5 h-9 text-right text-sm"
+                                                    placeholder="0"
+                                                />
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="text-[10px] uppercase text-gray-400">Variance</p>
+                                                <p className={`font-semibold tabular-nums ${
+                                                    variance_qty > 0 ? 'text-red-600' : variance_qty < 0 ? 'text-orange-600' : ''
+                                                }`}>
+                                                    {variance_qty > 0 ? '+' : ''}{variance_qty}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
                         </div>
                     </div>
 

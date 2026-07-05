@@ -112,9 +112,9 @@ export function AttendanceTracker({ businessId, employees: propEmployees = [] })
     const monthName = new Intl.DateTimeFormat('en', { month: 'long', year: 'numeric' }).format(new Date(currentYear, currentMonth));
 
     return (
-        <div className="space-y-4">
+        <div className="min-w-0 space-y-4 overflow-x-hidden touch-manipulation">
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-2">
                     <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => navigateMonth(-1)}>
                         <ChevronLeft className="w-4 h-4" />
@@ -215,8 +215,8 @@ export function AttendanceTracker({ businessId, employees: propEmployees = [] })
                 </Button>
             </div>
 
-            {/* Calendar Grid */}
-            <Card className="border-none shadow-sm overflow-x-auto">
+            {/* Calendar Grid — desktop */}
+            <Card className="hidden border-none shadow-sm overflow-x-auto lg:block">
                 <CardContent className="p-0">
                     <table className="w-full text-xs min-w-[900px]">
                         <thead>
@@ -285,6 +285,54 @@ export function AttendanceTracker({ businessId, employees: propEmployees = [] })
                     </table>
                 </CardContent>
             </Card>
+
+            {/* Mobile — per-employee month summary */}
+            <div className="space-y-2 lg:hidden">
+                {employees.map((emp) => {
+                    const summary = monthSummary[emp.id] || {};
+                    const todayStatus = attendance[emp.id]?.[today.getDate()] || 'present';
+                    const todayCfg = STATUS_TYPES[todayStatus] || STATUS_TYPES.present;
+                    const TodayIcon = todayCfg.icon;
+                    return (
+                        <div key={emp.id} className="rounded-2xl border border-gray-100 bg-white p-3 shadow-sm">
+                            <div className="flex items-start justify-between gap-2">
+                                <div className="flex min-w-0 items-center gap-2.5">
+                                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-[10px] font-semibold text-brand-primary">
+                                        {emp.name.split(' ').map((n) => n[0]).join('')}
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="truncate text-[13px] font-bold text-gray-900">{emp.name}</p>
+                                        <p className="text-[11px] text-gray-400">{emp.role} · {emp.department}</p>
+                                    </div>
+                                </div>
+                                <span className={cn('flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold', todayCfg.color)}>
+                                    <TodayIcon className="h-3 w-3" />
+                                    Today
+                                </span>
+                            </div>
+                            <div className="mt-2 grid grid-cols-4 gap-1.5 text-center text-[11px]">
+                                <div className="rounded-lg bg-emerald-50 px-1 py-1.5">
+                                    <p className="font-bold text-emerald-700">{summary.present || 0}</p>
+                                    <p className="text-[9px] text-emerald-600">Present</p>
+                                </div>
+                                <div className="rounded-lg bg-red-50 px-1 py-1.5">
+                                    <p className="font-bold text-red-600">{summary.absent || 0}</p>
+                                    <p className="text-[9px] text-red-500">Absent</p>
+                                </div>
+                                <div className="rounded-lg bg-amber-50 px-1 py-1.5">
+                                    <p className="font-bold text-amber-600">{summary.halfday || 0}</p>
+                                    <p className="text-[9px] text-amber-500">Half</p>
+                                </div>
+                                <div className="rounded-lg bg-indigo-50 px-1 py-1.5">
+                                    <p className="font-bold text-indigo-600">{summary.leave || 0}</p>
+                                    <p className="text-[9px] text-indigo-500">Leave</p>
+                                </div>
+                            </div>
+                        </div>
+                    );
+                })}
+                <p className="px-1 text-center text-[10px] text-gray-400">Full month grid available on desktop</p>
+            </div>
         </div>
     );
 }

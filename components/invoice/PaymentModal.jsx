@@ -18,6 +18,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import toast from 'react-hot-toast';
 import { formatCurrency, getCurrencySymbol } from '@/lib/currency';
 import { cn } from '@/lib/utils';
 import { MOBILE_DIALOG_SHELL, MOBILE_INPUT_CLASS, MOBILE_LABEL_CLASS } from '@/lib/utils/formMobileStyles';
@@ -164,9 +165,9 @@ export function PaymentModal({
                             <span className="text-gray-600">Invoice #</span>
                             <span className="font-medium">{invoice.invoice_number}</span>
                         </div>
-                        <div className="flex justify-between text-sm">
-                            <span className="text-gray-600">Customer</span>
-                            <span className="font-medium">{invoice.customer_name || invoice.customer?.name || 'Walk-in Customer'}</span>
+                        <div className="flex justify-between gap-3 text-sm">
+                            <span className="shrink-0 text-gray-600">Customer</span>
+                            <span className="min-w-0 truncate text-right font-medium">{invoice.customer_name || invoice.customer?.name || 'Walk-in Customer'}</span>
                         </div>
                         <div className="flex justify-between text-sm">
                             <span className="text-gray-600">Invoice Total</span>

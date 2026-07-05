@@ -22,6 +22,7 @@ import {
 import { formatCurrency } from '@/lib/currency';
 import { useBusiness } from '@/lib/context/BusinessContext';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { HubEntityMobileList } from '@/components/mobile/HubEntityMobileList';
 
 export function QuotationsTable({ data, onView, onConvert, isLoading }) {
     const { currency } = useBusiness();
@@ -35,69 +36,93 @@ export function QuotationsTable({ data, onView, onConvert, isLoading }) {
     }
 
     return (
-        <div className="border rounded-md">
-            <Table>
-                <TableHeader>
-                    <TableRow>
-                        <TableHead>Quotation #</TableHead>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Customer</TableHead>
-                        <TableHead>Valid Until</TableHead>
-                        <TableHead className="text-right">Total Amount</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="w-[50px]"></TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {data.map((quotation) => (
-                        <TableRow key={quotation.id}>
-                            <TableCell className="font-medium">{quotation.quotation_number}</TableCell>
-                            <TableCell>{new Date(quotation.date).toLocaleDateString()}</TableCell>
-                            <TableCell>
-                                <div className="flex flex-col">
-                                    <span className="font-medium">{quotation.customer_name}</span>
-                                    <span className="text-xs text-muted-foreground">{quotation.customer_email}</span>
-                                </div>
-                            </TableCell>
-                            <TableCell>{new Date(quotation.valid_until).toLocaleDateString()}</TableCell>
-                            <TableCell className="text-right font-bold">
-                                {formatCurrency(quotation.total_amount || quotation.grand_total || 0, currency)}
-                            </TableCell>
-                            <TableCell>
-                                <Badge variant={quotation.status === 'draft' ? 'secondary' : 'default'} className="uppercase text-[10px]">
-                                    {quotation.status}
-                                </Badge>
-                            </TableCell>
-                            <TableCell>
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" className="h-8 w-8 p-0">
-                                            <span className="sr-only">Open menu</span>
-                                            <MoreHorizontal className="h-4 w-4" />
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                        <DropdownMenuItem onClick={() => onView(quotation)}>
-                                            <FileText className="mr-2 h-4 w-4" />
-                                            View Details
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem onClick={() => onView(quotation)}>
-                                            <Printer className="mr-2 h-4 w-4" />
-                                            Print / PDF
-                                        </DropdownMenuItem>
-                                        <DropdownMenuSeparator />
-                                        <DropdownMenuItem onClick={() => onConvert(quotation.id)}>
-                                            <ArrowRight className="mr-2 h-4 w-4" />
-                                            Convert to Sales Order
-                                        </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-                            </TableCell>
+        <div className="min-w-0 overflow-x-hidden">
+            <div className="hidden rounded-md border lg:block">
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Quotation #</TableHead>
+                            <TableHead>Date</TableHead>
+                            <TableHead>Customer</TableHead>
+                            <TableHead>Valid Until</TableHead>
+                            <TableHead className="text-right">Total Amount</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead className="w-[50px]"></TableHead>
                         </TableRow>
-                    ))}
-                </TableBody>
-            </Table>
+                    </TableHeader>
+                    <TableBody>
+                        {data.map((quotation) => (
+                            <TableRow key={quotation.id}>
+                                <TableCell className="font-medium">{quotation.quotation_number}</TableCell>
+                                <TableCell>{new Date(quotation.date).toLocaleDateString()}</TableCell>
+                                <TableCell>
+                                    <div className="flex flex-col">
+                                        <span className="font-medium">{quotation.customer_name}</span>
+                                        <span className="text-xs text-muted-foreground">{quotation.customer_email}</span>
+                                    </div>
+                                </TableCell>
+                                <TableCell>{new Date(quotation.valid_until).toLocaleDateString()}</TableCell>
+                                <TableCell className="text-right font-bold">
+                                    {formatCurrency(quotation.total_amount || quotation.grand_total || 0, currency)}
+                                </TableCell>
+                                <TableCell>
+                                    <Badge variant={quotation.status === 'draft' ? 'secondary' : 'default'} className="uppercase text-[10px]">
+                                        {quotation.status}
+                                    </Badge>
+                                </TableCell>
+                                <TableCell>
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button variant="ghost" className="h-8 w-8 p-0">
+                                                <span className="sr-only">Open menu</span>
+                                                <MoreHorizontal className="h-4 w-4" />
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end">
+                                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                            <DropdownMenuItem onClick={() => onView(quotation)}>
+                                                <FileText className="mr-2 h-4 w-4" />
+                                                View Details
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => onView(quotation)}>
+                                                <Printer className="mr-2 h-4 w-4" />
+                                                Print / PDF
+                                            </DropdownMenuItem>
+                                            <DropdownMenuSeparator />
+                                            <DropdownMenuItem onClick={() => onConvert(quotation.id)}>
+                                                <ArrowRight className="mr-2 h-4 w-4" />
+                                                Convert to Sales Order
+                                            </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                </TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </div>
+
+            <div className="lg:hidden">
+                <HubEntityMobileList
+                    items={data}
+                    getKey={(q) => q.id}
+                    onRowPress={onView}
+                    renderIcon={() => <FileText className="h-5 w-5 text-wine" />}
+                    getTitle={(q) => q.quotation_number}
+                    getSubtitle={(q) => `${q.customer_name} · ${new Date(q.date).toLocaleDateString()}`}
+                    getAmount={(q) => formatCurrency(q.total_amount || q.grand_total || 0, currency)}
+                    renderBadge={(q) => (
+                        <Badge variant={q.status === 'draft' ? 'secondary' : 'default'} className="uppercase text-[10px]">
+                            {q.status}
+                        </Badge>
+                    )}
+                    getActions={(q) => [
+                        { id: 'view', icon: FileText, label: 'View details', onClick: () => onView(q) },
+                        { id: 'print', icon: Printer, label: 'Print / PDF', onClick: () => onView(q) },
+                        { id: 'convert', icon: ArrowRight, label: 'Convert to sales order', onClick: () => onConvert(q.id) },
+                    ]}
+                />
+            </div>
         </div>
     );
 }

@@ -44,12 +44,13 @@ function AgingSummaryCards({ summary, currency }) {
 
 function AgingTable({ rows, currency, type }) {
     if (!rows?.length) {
-        return <p className="text-sm text-gray-500 py-8 text-center">No outstanding balances in this category.</p>;
+        return <p className="py-8 text-center text-sm text-gray-500">No outstanding balances in this category.</p>;
     }
 
     return (
-        <div className="overflow-x-auto border rounded-lg">
-            <table className="w-full text-sm">
+        <>
+            <div className="hidden overflow-x-auto rounded-lg border lg:block">
+                <table className="w-full text-sm">
                 <thead className="bg-gray-50 text-[10px] font-semibold uppercase text-gray-500 tracking-wider">
                     <tr>
                         <th className="px-4 py-3 text-left">{type === 'ar' ? 'Customer' : 'Vendor'}</th>
@@ -85,7 +86,42 @@ function AgingTable({ rows, currency, type }) {
                     ))}
                 </tbody>
             </table>
-        </div>
+            </div>
+
+            <div className="divide-y divide-gray-100 rounded-2xl border border-gray-100 bg-white lg:hidden">
+                {rows.map((row) => (
+                    <div key={row.id} className="px-3 py-3">
+                        <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                                <p className="truncate text-[13px] font-bold text-gray-900">
+                                    {type === 'ar' ? row.customer_name : row.vendor_name}
+                                </p>
+                                <p className="mt-0.5 font-mono text-[11px] text-gray-500">
+                                    {type === 'ar' ? row.invoice_number : row.purchase_number}
+                                    {' · '}
+                                    {row.date ? new Date(row.date).toLocaleDateString() : ''}
+                                </p>
+                            </div>
+                            <p className="shrink-0 text-[13px] font-bold tabular-nums text-gray-900">
+                                {formatCurrency(row.balance, currency)}
+                            </p>
+                        </div>
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                            <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold text-gray-600">
+                                {row.days_overdue ?? 0} days
+                            </span>
+                            {BUCKET_COLUMNS.map((c) => (
+                                Number(row[c.key] || 0) > 0 && (
+                                    <span key={c.key} className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
+                                        {c.label}: {formatCurrency(row[c.key], currency)}
+                                    </span>
+                                )
+                            ))}
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </>
     );
 }
 

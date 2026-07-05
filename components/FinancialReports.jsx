@@ -189,15 +189,15 @@ export default function FinancialReports({ businessId }) {
             </CardHeader>
             <CardContent className="px-0">
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                    <div className="flex items-center justify-between mb-6">
-                        <TabsList className="bg-white border">
-                            <TabsTrigger value="pl">Profit & Loss</TabsTrigger>
-                            <TabsTrigger value="bs">Balance Sheet</TabsTrigger>
-                            <TabsTrigger value="cf">Cash Flow</TabsTrigger>
-                            <TabsTrigger value="aging">A/R & A/P Aging</TabsTrigger>
+                    <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                        <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1 border bg-white p-1">
+                            <TabsTrigger value="pl" className="text-xs sm:text-sm">Profit & Loss</TabsTrigger>
+                            <TabsTrigger value="bs" className="text-xs sm:text-sm">Balance Sheet</TabsTrigger>
+                            <TabsTrigger value="cf" className="text-xs sm:text-sm">Cash Flow</TabsTrigger>
+                            <TabsTrigger value="aging" className="text-xs sm:text-sm">A/R & A/P Aging</TabsTrigger>
                         </TabsList>
 
-                        <div className="flex items-center gap-2 print:hidden">
+                        <div className="flex flex-wrap items-center gap-2 print:hidden">
                             {activeTab === 'pl' ? (
                                 <>
                                     <div className="flex items-center gap-2 bg-white border rounded-md px-2 py-1">

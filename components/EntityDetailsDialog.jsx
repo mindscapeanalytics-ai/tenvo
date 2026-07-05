@@ -83,9 +83,9 @@ export function EntityDetailsDialog({ item: initialItem, type, open, onClose, ca
         }
 
         return (
-            <DialogHeader className="p-6 pb-4 border-b border-gray-100 bg-gray-50/50 shrink-0">
-                <div className="flex items-start justify-between gap-4">
-                    <div className="space-y-1 flex-1">
+            <DialogHeader className="shrink-0 border-b border-gray-100 bg-gray-50/50 p-4 pb-4 sm:p-6">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+                    <div className="min-w-0 flex-1 space-y-1">
                         <div className="flex items-center gap-3">
                             <div className="p-2.5 bg-white rounded-2xl shadow-sm border border-gray-100">{icon}</div>
                             <div>
@@ -103,8 +103,8 @@ export function EntityDetailsDialog({ item: initialItem, type, open, onClose, ca
                         </div>
                     </div>
                     {!isEditing && (item.grand_total || item.amount || item.total_cost) && (
-                        <div className="text-right">
-                            <div className={`text-2xl font-semibold ${item.grand_total > 0 ? 'text-gray-900' : 'text-gray-400 opacity-50'}`}>
+                        <div className="text-left sm:text-right shrink-0">
+                            <div className={`text-xl font-semibold sm:text-2xl ${item.grand_total > 0 ? 'text-gray-900' : 'text-gray-400 opacity-50'}`}>
                                 {formatCurrency(item.grand_total || item.amount || item.total_cost || 0, currency)}
                             </div>
                             <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest">
@@ -119,7 +119,7 @@ export function EntityDetailsDialog({ item: initialItem, type, open, onClose, ca
 
     const renderInvoiceDetails = () => (
         <div className="space-y-6">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
                 <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
                     <div className="flex items-center gap-2 mb-2"><Users className="w-3.5 h-3.5 text-gray-400" /><label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest">Customer</label></div>
                     <p className="font-bold text-gray-900">{item.customer_name || item.customer?.name || 'Walk-in Customer'}</p>
@@ -135,7 +135,30 @@ export function EntityDetailsDialog({ item: initialItem, type, open, onClose, ca
             <div className="space-y-3">
                 <div className="flex items-center justify-between px-1"><label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest">Items ({item.items?.length || 0})</label></div>
                 {item.items && item.items.length > 0 ? (
-                    <div className="border border-gray-100 rounded-3xl overflow-hidden bg-white shadow-sm">
+                    <>
+                        {/* Mobile: card list */}
+                        <ul className="space-y-2 lg:hidden">
+                            {item.items.map((line, i) => (
+                                <li
+                                    key={i}
+                                    className="flex items-center justify-between gap-3 rounded-xl border border-gray-100 bg-white px-3 py-2.5 shadow-sm"
+                                >
+                                    <div className="min-w-0 flex-1">
+                                        <p className="truncate text-xs font-bold text-gray-900">
+                                            {line.name || line.product_name}
+                                        </p>
+                                        <p className="mt-0.5 text-[10px] font-semibold text-gray-400">
+                                            Qty {line.quantity}
+                                        </p>
+                                    </div>
+                                    <p className="shrink-0 text-xs font-bold tabular-nums text-gray-900">
+                                        {formatCurrency(line.total || line.amount || (line.rate * line.quantity), currency)}
+                                    </p>
+                                </li>
+                            ))}
+                        </ul>
+                        {/* Desktop: table */}
+                        <div className="hidden overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm lg:block">
                         <table className="w-full text-sm">
                             <thead className="bg-gray-100/50 text-gray-400 border-b border-gray-100">
                                 <tr>
@@ -154,7 +177,8 @@ export function EntityDetailsDialog({ item: initialItem, type, open, onClose, ca
                                 ))}
                             </tbody>
                         </table>
-                    </div>
+                        </div>
+                    </>
                 ) : <div className="p-8 text-center border-2 border-dashed border-gray-100 rounded-[2rem] bg-gray-50/30"><p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest">No items summarized</p></div>}
             </div>
         </div>

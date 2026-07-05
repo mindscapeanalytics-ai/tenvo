@@ -253,8 +253,8 @@ export function BankReconciliation({ businessId, currency, accounts = [] }) {
         return (
             <div className="space-y-4">
                 {/* Session Header */}
-                <div className="flex items-center justify-between bg-white rounded-xl border border-gray-100 px-4 py-3">
-                    <div>
+                <div className="flex flex-col gap-3 rounded-xl border border-gray-100 bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0">
                         <h4 className="text-sm font-semibold text-gray-900">
                             {session.account_name} · {format(new Date(session.statement_date), 'dd MMM yyyy')}
                         </h4>
@@ -263,7 +263,7 @@ export function BankReconciliation({ businessId, currency, accounts = [] }) {
                             Closing balance: {formatCurrency(Number(session.statement_closing_balance), currency)}
                         </p>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                         <Button
                             variant="outline" size="sm"
                             onClick={() => { setActiveSession(null); setSessionDetail(null); }}
@@ -287,7 +287,7 @@ export function BankReconciliation({ businessId, currency, accounts = [] }) {
 
                 {/* Stats */}
                 {stats && (
-                    <div className="grid grid-cols-4 gap-3">
+                    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
                         {[
                             { label: 'Total Lines', value: stats.total, color: 'text-gray-800' },
                             { label: 'Matched', value: stats.matched, color: 'text-emerald-600' },

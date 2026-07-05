@@ -147,16 +147,19 @@ export function InvoiceList({
         onExport(exportData);
     };
 
-    const getPaymentStatusBadge = (invoice: Invoice) => {
+    const getPaymentStatusBadge = (invoice: Invoice, compact = false) => {
         const total = Number(invoice.grand_total) || 0;
         const balance = Number((invoice as any).balance) || total;
         const paid = total - balance;
         const percentage = total > 0 ? Math.round((paid / total) * 100) : 0;
+        const badgeClass = compact
+            ? 'text-[10px] px-1.5 py-0 h-5 font-semibold'
+            : '';
 
         if (invoice.payment_status === 'paid' || invoice.status === 'paid' || percentage >= 100) {
             return (
-                <Badge className="bg-green-100 text-green-800 hover:bg-green-200">
-                    <CheckCircle2 className="w-3 h-3 mr-1" />
+                <Badge className={cn('bg-green-100 text-green-800 hover:bg-green-200', badgeClass)}>
+                    {!compact && <CheckCircle2 className="w-3 h-3 mr-1" />}
                     Paid
                 </Badge>
             );
@@ -164,25 +167,25 @@ export function InvoiceList({
 
         if (invoice.payment_status === 'partial' || (paid > 0 && paid < total)) {
             return (
-                <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-200">
-                    <CreditCard className="w-3 h-3 mr-1" />
-                    {percentage}% Paid
+                <Badge className={cn('bg-blue-100 text-blue-800 hover:bg-blue-200', badgeClass)}>
+                    {!compact && <CreditCard className="w-3 h-3 mr-1" />}
+                    {compact ? `${percentage}%` : `${percentage}% Paid`}
                 </Badge>
             );
         }
 
         if (invoice.due_date && new Date(invoice.due_date) < new Date()) {
             return (
-                <Badge className="bg-red-100 text-red-800 hover:bg-red-200">
-                    <AlertCircle className="w-3 h-3 mr-1" />
+                <Badge className={cn('bg-red-100 text-red-800 hover:bg-red-200', badgeClass)}>
+                    {!compact && <AlertCircle className="w-3 h-3 mr-1" />}
                     Overdue
                 </Badge>
             );
         }
 
         return (
-            <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-200">
-                <Clock className="w-3 h-3 mr-1" />
+            <Badge className={cn('bg-amber-100 text-amber-800 hover:bg-amber-200', badgeClass)}>
+                {!compact && <Clock className="w-3 h-3 mr-1" />}
                 Unpaid
             </Badge>
         );
@@ -243,19 +246,13 @@ export function InvoiceList({
     };
 
     return (
-        <div className="space-y-4 touch-manipulation lg:space-y-6">
+        <div className="min-w-0 space-y-4 overflow-x-hidden touch-manipulation lg:space-y-6">
             {/* Mobile, compact header + stat strip */}
             <MobileTabHeader
                 icon={FileText}
                 iconClassName="bg-emerald-100 text-emerald-600"
                 title="Sales & Invoicing"
-                subtitle={`${stats.total} invoices · ${formatCurrency(stats.totalBalance, currency as any)} outstanding`}
-                primaryAction={{
-                    label: 'New',
-                    icon: Plus,
-                    className: 'bg-emerald-600 hover:bg-emerald-700 text-white',
-                    onClick: () => onAdd?.(),
-                }}
+                subtitle={`${stats.total} invoices · ${formatCurrency(stats.totalBalance, currency)} outstanding`}
                 actions={[
                     ...(onBulkImport
                         ? [{ id: 'import', label: 'Import', icon: Upload, onClick: () => setShowImportModal(true) }]
@@ -267,13 +264,14 @@ export function InvoiceList({
             />
 
             <MobileStatStrip
+                layout="grid"
                 items={[
-                    { label: 'Total', value: stats.total, hint: formatCurrency(stats.totalAmount, currency as any) },
-                    { label: 'Paid', value: stats.paid, valueTone: 'text-green-600', hint: formatCurrency(stats.totalPaid, currency as any), hintTone: 'text-green-600' },
-                    { label: 'Partial', value: stats.partial, valueTone: 'text-blue-600', hint: `${stats.total > 0 ? Math.round((stats.partial / stats.total) * 100) : 0}%`, hintTone: 'text-blue-600' },
-                    { label: 'Unpaid', value: stats.unpaid, valueTone: 'text-amber-600', hint: formatCurrency(stats.totalBalance, currency as any), hintTone: 'text-amber-600' },
-                    { label: 'Overdue', value: stats.overdue, valueTone: 'text-red-600', alert: stats.overdue > 0, hint: formatCurrency(stats.aging1_30 + stats.aging31_60 + stats.aging61_90 + stats.agingOver90, currency as any), hintTone: 'text-red-600' },
-                    { label: 'Draft', value: stats.draft },
+                    { label: 'Total', value: stats.total, hint: formatCurrency(stats.totalAmount, currency) },
+                    { label: 'Paid', value: stats.paid, valueTone: 'text-green-600', hint: formatCurrency(stats.totalPaid, currency), hintTone: 'text-green-600' },
+                    { label: 'Unpaid', value: stats.unpaid, valueTone: 'text-amber-600', hint: formatCurrency(stats.totalBalance, currency), hintTone: 'text-amber-600' },
+                    { label: 'Overdue', value: stats.overdue, valueTone: 'text-red-600', alert: stats.overdue > 0, hint: formatCurrency(stats.aging1_30 + stats.aging31_60 + stats.aging61_90 + stats.agingOver90, currency), hintTone: 'text-red-600' },
+                    { label: 'Partial', value: stats.partial, valueTone: 'text-blue-600' },
+                    { label: 'Draft', value: stats.draft, valueTone: 'text-gray-600' },
                 ]}
             />
 
@@ -565,7 +563,7 @@ export function InvoiceList({
                                 onRecordPayment={onRecordPayment}
                                 onDelete={onInvoiceDelete}
                                 onAdd={onAdd}
-                                renderPaymentBadge={getPaymentStatusBadge}
+                                renderPaymentBadge={(inv) => getPaymentStatusBadge(inv, true)}
                                 renderAging={calculateAging}
                             />
                         </div>

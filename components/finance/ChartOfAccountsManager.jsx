@@ -121,10 +121,10 @@ export function ChartOfAccountsManager({ businessId, accounts, onRefresh }) {
     });
 
     return (
-        <div className="space-y-4">
-            <div className="flex items-center justify-between">
+        <div className="min-w-0 space-y-4 overflow-x-hidden touch-manipulation">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <h3 className="text-sm font-bold text-gray-800">Chart of Accounts Management</h3>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                     {accounts.length === 0 && (
                         <Button
                             type="button"
@@ -219,9 +219,9 @@ export function ChartOfAccountsManager({ businessId, accounts, onRefresh }) {
                             </div>
                             <div className="divide-y divide-gray-100">
                                 {typeAccounts.sort((a,b) => a.code.localeCompare(b.code)).map(acc => (
-                                    <div key={acc.id} className="flex items-center p-3 hover:bg-gray-50/50 transition-colors group">
-                                        <div className="w-16 font-mono text-xs font-bold text-gray-500">{acc.code}</div>
-                                        <div className="flex-1">
+                                    <div key={acc.id} className="flex items-center gap-2 p-3 transition-colors hover:bg-gray-50/50 group">
+                                        <div className="w-14 shrink-0 font-mono text-xs font-bold text-gray-500 sm:w-16">{acc.code}</div>
+                                        <div className="min-w-0 flex-1">
                                             <div className="flex items-center gap-2">
                                                 <span className="text-sm font-semibold text-gray-800">{acc.name}</span>
                                                 {acc.is_system && <span className="text-[10px] uppercase tracking-widest font-semibold bg-brand-50 text-brand-primary px-1.5 py-0.5 rounded-sm">System</span>}
@@ -229,7 +229,7 @@ export function ChartOfAccountsManager({ businessId, accounts, onRefresh }) {
                                             </div>
                                             {acc.description && <p className="text-[10px] text-gray-400 mt-0.5">{acc.description}</p>}
                                         </div>
-                                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <div className="flex gap-1 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
                                             <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-brand-primary" onClick={() => handleEdit(acc)}>
                                                 <Edit2 className="w-3 h-3" />
                                             </Button>

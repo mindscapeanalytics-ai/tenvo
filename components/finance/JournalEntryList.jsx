@@ -83,9 +83,9 @@ export function JournalEntryList({ businessId, currency, accounts = [], onNewEnt
     };
 
     return (
-        <div className="space-y-4">
+        <div className="min-w-0 space-y-4 overflow-x-hidden touch-manipulation">
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <h3 className="text-lg font-semibold text-gray-900">Journal Entries</h3>
                     <p className="text-xs text-gray-400">
@@ -153,10 +153,10 @@ export function JournalEntryList({ businessId, currency, accounts = [], onNewEnt
                 </Button>
             </div>
 
-            {/* Table */}
-            <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+            {/* Desktop table */}
+            <div className="hidden overflow-hidden rounded-2xl border border-gray-100 bg-white lg:block">
                 {/* Column Headers */}
-                <div className="grid grid-cols-[32px_140px_1fr_120px_96px_96px_80px] gap-2 px-4 py-2.5 bg-gray-50 border-b border-gray-100 text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+                <div className="grid grid-cols-[32px_140px_1fr_120px_96px_96px_80px] gap-2 border-b border-gray-100 bg-gray-50 px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-gray-500">
                     <span />
                     <span>Journal #</span>
                     <span>Description</span>
@@ -257,6 +257,92 @@ export function JournalEntryList({ businessId, currency, accounts = [], onNewEnt
                                         <p className="text-[10px] text-gray-400 mt-2 text-right">
                                             Posted by {je.created_by} ·{' '}
                                             {je.created_at ? format(new Date(je.created_at), 'dd MMM yyyy HH:mm') : ''}
+                                        </p>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    );
+                })}
+            </div>
+
+            {/* Mobile cards */}
+            <div className="space-y-2 lg:hidden">
+                {loading && journals.length === 0 && (
+                    <div className="flex items-center justify-center py-16 text-gray-400">
+                        <Loader2 className="mr-2 h-6 w-6 animate-spin" /> Loading...
+                    </div>
+                )}
+
+                {!loading && journals.length === 0 && (
+                    <div className="rounded-2xl border border-gray-100 bg-white py-16 text-center text-gray-400">
+                        <FileText className="mx-auto mb-2 h-10 w-10 opacity-30" />
+                        <p className="text-sm font-semibold">No journal entries found</p>
+                        <p className="text-xs">Adjust filters or create your first entry</p>
+                    </div>
+                )}
+
+                {journals.map((je) => {
+                    const isExpanded = expandedId === je.id;
+                    const refType = je.reference_type || 'manual';
+                    const badgeCls = REFERENCE_BADGE[refType] || 'bg-gray-100 text-gray-600';
+
+                    return (
+                        <div key={je.id} className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+                            <button
+                                type="button"
+                                onClick={() => toggleExpand(je.id)}
+                                className="w-full px-3 py-3 text-left active:bg-gray-50/80"
+                            >
+                                <div className="flex items-start justify-between gap-2">
+                                    <div className="min-w-0 flex-1">
+                                        <p className="truncate text-[13px] font-bold font-mono text-gray-900">
+                                            {je.journal_number || '--'}
+                                        </p>
+                                        <p className="mt-0.5 line-clamp-2 text-xs text-gray-600">{je.description}</p>
+                                        <p className="mt-1 text-[11px] text-gray-400">
+                                            {je.transaction_date
+                                                ? format(new Date(je.transaction_date), 'dd MMM yyyy')
+                                                : '--'}
+                                            {' · '}
+                                            {je.line_count} lines
+                                        </p>
+                                    </div>
+                                    <div className="shrink-0 text-right">
+                                        <Badge className={`rounded-full border-0 px-1.5 py-0.5 text-[10px] font-semibold ${badgeCls}`}>
+                                            {refType.toUpperCase()}
+                                        </Badge>
+                                        <p className="mt-1.5 text-[12px] font-bold tabular-nums text-gray-900">
+                                            {formatCurrency(Number(je.total_debit), currency)}
+                                        </p>
+                                    </div>
+                                </div>
+                            </button>
+
+                            {isExpanded && (
+                                <div className="border-t border-gray-100 bg-gray-50/60 px-3 py-3">
+                                    <div className="space-y-2">
+                                        {je.lines.map((line) => (
+                                            <div key={line.id} className="rounded-xl border border-gray-100 bg-white px-3 py-2">
+                                                <p className="text-xs font-semibold text-gray-800">
+                                                    <span className="font-mono text-gray-400">{line.account_code}</span>
+                                                    {' · '}
+                                                    {line.account_name}
+                                                </p>
+                                                <div className="mt-1 flex justify-between text-[11px] tabular-nums">
+                                                    <span className="text-gray-500">
+                                                        Dr {Number(line.debit) > 0 ? formatCurrency(Number(line.debit), currency) : '—'}
+                                                    </span>
+                                                    <span className="text-gray-500">
+                                                        Cr {Number(line.credit) > 0 ? formatCurrency(Number(line.credit), currency) : '—'}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    {je.created_by && (
+                                        <p className="mt-2 text-right text-[10px] text-gray-400">
+                                            Posted by {je.created_by}
                                         </p>
                                     )}
                                 </div>

@@ -4,6 +4,7 @@
  * Customers Tab - Client wrapper for interactive list + mobile header
  */
 
+import { useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -12,6 +13,7 @@ import { Users, Phone, MapPin, Pencil, Trash2, Plus } from 'lucide-react';
 import { DataTable } from '@/components/DataTable';
 import { ExportButton } from '@/components/ExportButton';
 import { MobileTabHeader, MobileStatStrip } from '@/components/mobile/MobileTabHeader';
+import { HubEntityMobileList } from '@/components/mobile/HubEntityMobileList';
 import { CustomerMembershipBadge } from '@/components/crm/CustomerMembershipBadge';
 import { useMembershipVerticalCustomers } from '@/lib/hooks/useCustomerMembershipMap';
 import {
@@ -39,6 +41,7 @@ export function CustomersTab({
 }: CustomersTabProps) {
     const router = useRouter();
     const params = useParams();
+    const [searchTerm, setSearchTerm] = useState('');
     const { enabled: membershipEnabled, byCustomerId, getForCustomer } =
         useMembershipVerticalCustomers(category, businessId);
 
@@ -59,7 +62,7 @@ export function CustomersTab({
     const activeCustomerCount = customers.filter((c) => c.is_active !== false).length;
 
     return (
-        <div className="space-y-4 lg:space-y-6">
+        <div className="min-w-0 space-y-4 overflow-x-hidden touch-manipulation lg:space-y-6">
             <MobileTabHeader
                 icon={Users}
                 iconClassName="bg-emerald-100 text-emerald-600"
@@ -74,6 +77,7 @@ export function CustomersTab({
             />
 
             <MobileStatStrip
+                layout="grid"
                 items={[
                     { label: 'Total', value: customers.length },
                     { label: 'Reachable', value: reachableCount, valueTone: 'text-emerald-600' },
@@ -167,14 +171,14 @@ export function CustomersTab({
             </div>
 
             {/* Customer List */}
-            <Card>
-                <CardHeader>
+            <Card className="border-gray-100">
+                <CardHeader className="hidden lg:block">
                     <CardTitle>Customer Directory</CardTitle>
                     <CardDescription>
                         {customers.length} customers registered
                     </CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="hidden lg:block">
                     <DataTable
                         category={category}
                         data={customers}
@@ -261,6 +265,53 @@ export function CustomersTab({
                     />
                 </CardContent>
             </Card>
+
+            <div className="pb-[calc(5.5rem+env(safe-area-inset-bottom))] lg:hidden">
+                <HubEntityMobileList<Customer>
+                    items={customers}
+                    search={searchTerm}
+                    onSearchChange={setSearchTerm}
+                    searchPlaceholder="Search customers..."
+                    emptyIcon={Users}
+                    emptyTitle="No customers yet"
+                    emptySubtitle="Add your first customer to get started"
+                    emptyActionLabel="Add customer"
+                    onEmptyAction={() => onAdd?.()}
+                    filterItems={(rows: Customer[], q: string) => {
+                        const needle = q.trim().toLowerCase();
+                        if (!needle) return rows;
+                        return rows.filter(
+                            (c) =>
+                                c.name?.toLowerCase().includes(needle) ||
+                                c.email?.toLowerCase().includes(needle) ||
+                                c.phone?.includes(needle) ||
+                                c.city?.toLowerCase().includes(needle)
+                        );
+                    }}
+                    getKey={(c: Customer) => c.id}
+                    onRowPress={(c: Customer) => onUpdate?.(c)}
+                    renderIcon={() => <Users className="h-5 w-5 text-emerald-600" />}
+                    getTitle={(c: Customer) => c.name}
+                    getSubtitle={(c: Customer) => [c.phone, c.email, c.city].filter(Boolean).join(' · ') || 'No contact info'}
+                    renderBadge={(c: Customer) => (
+                        <>
+                            <Badge className={c.is_active === false ? 'bg-gray-100 text-gray-700' : 'bg-green-100 text-green-700'}>
+                                {c.is_active === false ? 'Inactive' : 'Active'}
+                            </Badge>
+                            {membershipEnabled && getForCustomer(c.id) ? (
+                                <CustomerMembershipBadge
+                                    membership={getForCustomer(c.id)!}
+                                    onClick={openMembershipsTab}
+                                />
+                            ) : null}
+                        </>
+                    )}
+                    getActions={(c: Customer) => [
+                        { id: 'edit', icon: Pencil, label: 'Edit customer', onClick: () => onUpdate?.(c) },
+                        { id: 'delete', icon: Trash2, label: 'Delete customer', destructive: true, onClick: () => onCustomerDelete?.(c.id) },
+                    ]}
+                />
+            </div>
         </div>
     );
 }

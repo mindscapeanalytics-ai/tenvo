@@ -48,7 +48,7 @@ export function ExpenseManager({ businessId, expenses = [], onCreateExpense, onD
     return (
         <div className="space-y-6">
             {/* KPIs */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 lg:gap-4">
                 <Card className="border-none shadow-sm">
                     <CardContent className="p-4">
                         <p className="text-xs text-gray-500 font-medium">Total Expenses</p>
@@ -71,10 +71,10 @@ export function ExpenseManager({ businessId, expenses = [], onCreateExpense, onD
             </div>
 
             {/* Actions Bar */}
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex w-full items-center gap-2 sm:w-auto">
                     <Select value={filterCategory} onValueChange={setFilterCategory}>
-                        <SelectTrigger className="w-[180px] h-9 text-xs rounded-xl">
+                        <SelectTrigger className="h-9 w-full rounded-xl text-xs sm:w-[180px]">
                             <Filter className="w-3 h-3 mr-2" />
                             <SelectValue placeholder="All Categories" />
                         </SelectTrigger>

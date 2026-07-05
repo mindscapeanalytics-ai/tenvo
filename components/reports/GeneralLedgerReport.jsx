@@ -146,23 +146,23 @@ export function GeneralLedgerReport({ businessId }) {
     };
 
     return (
-        <Card className="w-full shadow-sm">
+        <Card className="w-full min-w-0 overflow-x-hidden shadow-sm">
             <CardHeader className="bg-gray-50/50 pb-4">
-                <div className="flex items-center justify-between">
-                    <div>
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                    <div className="min-w-0">
                         <CardTitle className="flex items-center gap-2 text-xl font-bold text-gray-800">
-                            <BookOpen className="w-6 h-6 text-wine" />
+                            <BookOpen className="h-6 w-6 text-wine" />
                             General Ledger
                         </CardTitle>
                         <CardDescription>Double-entry accounting records with full audit trail</CardDescription>
                     </div>
-                    <Button type="button" variant="outline" className="gap-2" onClick={handleExportCsv} disabled={entries.length === 0}>
-                        <Download className="w-4 h-4" /> Export CSV
+                    <Button type="button" variant="outline" className="w-full gap-2 sm:w-auto" onClick={handleExportCsv} disabled={entries.length === 0}>
+                        <Download className="h-4 w-4" /> Export CSV
                     </Button>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-4 mt-4">
-                    <div className="w-[200px]">
+                <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+                    <div className="w-full sm:w-[200px]">
                         <Select value={selectedAccount} onValueChange={setSelectedAccount}>
                             <SelectTrigger className="bg-white">
                                 <SelectValue placeholder="All Accounts" />
@@ -177,28 +177,30 @@ export function GeneralLedgerReport({ businessId }) {
                             </SelectContent>
                         </Select>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
                         <Input
                             type="date"
                             value={startDate}
                             onChange={e => setStartDate(e.target.value)}
-                            className="bg-white w-[140px]"
+                            className="min-w-0 flex-1 bg-white sm:w-[140px] sm:flex-none"
                         />
                         <span className="text-gray-400">to</span>
                         <Input
                             type="date"
                             value={endDate}
                             onChange={e => setEndDate(e.target.value)}
-                            className="bg-white w-[140px]"
+                            className="min-w-0 flex-1 bg-white sm:w-[140px] sm:flex-none"
                         />
                     </div>
-                    <Button onClick={fetchLedger} className="bg-wine hover:bg-wine/90 text-white">
-                        <Filter className="w-4 h-4 mr-2" /> Filter
+                    <Button onClick={fetchLedger} className="w-full bg-wine text-white hover:bg-wine/90 sm:w-auto">
+                        <Filter className="mr-2 h-4 w-4" /> Filter
                     </Button>
                 </div>
             </CardHeader>
 
             <CardContent className="p-0">
+                {/* Desktop table */}
+                <div className="hidden lg:block">
                 <Table>
                     <TableHeader>
                         <TableRow className="bg-gray-50 border-b border-gray-100">
@@ -278,6 +280,67 @@ export function GeneralLedgerReport({ businessId }) {
                         )}
                     </TableBody>
                 </Table>
+                </div>
+
+                {/* Mobile cards */}
+                <div className="divide-y divide-gray-100 lg:hidden">
+                    {loading ? (
+                        <div className="py-12 text-center text-gray-400">Loading records...</div>
+                    ) : entries.length === 0 ? (
+                        <div className="py-12 text-center text-gray-400">No entries found for this period.</div>
+                    ) : (
+                        <>
+                            {isSingleAccount && (
+                                <div className="bg-yellow-50/50 px-3 py-2 text-xs font-medium text-yellow-700">
+                                    Opening balance: {formatCurrency(openingBalance, displayCurrency)}
+                                </div>
+                            )}
+                            {entriesWithBalance.map((entry) => {
+                                const link = getReferenceLink(entry.reference_type, entry.reference_id);
+                                return (
+                                    <div key={entry.id} className="px-3 py-3">
+                                        <div className="flex items-start justify-between gap-2">
+                                            <div className="min-w-0">
+                                                <p className="text-xs font-mono text-gray-500">
+                                                    {format(new Date(entry.transaction_date), 'dd MMM yyyy')}
+                                                </p>
+                                                <p className="mt-0.5 text-[13px] font-semibold text-gray-800">{entry.account?.name}</p>
+                                                <p className="text-[11px] text-gray-500">{entry.description}</p>
+                                            </div>
+                                            {isSingleAccount && (
+                                                <p className="shrink-0 text-[12px] font-bold tabular-nums text-gray-900">
+                                                    {formatCurrency(entry.runningBalance, displayCurrency)}
+                                                </p>
+                                            )}
+                                        </div>
+                                        <div className="mt-2 grid grid-cols-2 gap-2 text-[11px] tabular-nums">
+                                            <div className="rounded-lg bg-gray-50 px-2 py-1.5">
+                                                <p className="text-[10px] uppercase text-gray-400">Debit</p>
+                                                <p>{parseFloat(entry.debit) > 0 ? formatCurrency(entry.debit, displayCurrency) : '—'}</p>
+                                            </div>
+                                            <div className="rounded-lg bg-gray-50 px-2 py-1.5">
+                                                <p className="text-[10px] uppercase text-gray-400">Credit</p>
+                                                <p>{parseFloat(entry.credit) > 0 ? formatCurrency(entry.credit, displayCurrency) : '—'}</p>
+                                            </div>
+                                        </div>
+                                        {(entry.reference_type || entry.reference_id) && (
+                                            <p className="mt-1.5 text-[10px] text-gray-400">
+                                                Ref: {entry.reference_type}
+                                                {link ? (
+                                                    <Link href={link} className="ml-1 font-medium text-blue-600">
+                                                        #{entry.reference_id?.slice(0, 8)}
+                                                    </Link>
+                                                ) : (
+                                                    <span className="ml-1">#{entry.reference_id?.slice(0, 8)}</span>
+                                                )}
+                                            </p>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </>
+                    )}
+                </div>
             </CardContent>
         </Card>
     );

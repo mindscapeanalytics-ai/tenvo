@@ -34,6 +34,33 @@ import type { Invoice } from '@/types';
 
 const PAGE_SIZE = 20;
 
+const STATUS_FILTERS = [
+  { id: 'all', label: 'All' },
+  { id: 'unpaid', label: 'Unpaid' },
+  { id: 'overdue', label: 'Overdue' },
+  { id: 'paid', label: 'Paid' },
+] as const;
+
+type StatusFilterId = (typeof STATUS_FILTERS)[number]['id'];
+
+function matchesStatusFilter(inv: InvoiceMobileRow, filter: StatusFilterId) {
+  if (filter === 'all') return true;
+  const total = Number(inv.grand_total) || 0;
+  const balance = Number((inv as InvoiceMobileRow & { balance?: number }).balance) || total;
+  const paid = total - balance;
+  const isPaid = inv.payment_status === 'paid' || inv.status === 'paid' || (total > 0 && paid >= total);
+  const isOverdue =
+    Boolean(inv.due_date) &&
+    !isPaid &&
+    inv.status !== 'voided' &&
+    new Date(inv.due_date!) < new Date();
+
+  if (filter === 'paid') return isPaid;
+  if (filter === 'overdue') return isOverdue;
+  if (filter === 'unpaid') return !isPaid && inv.status !== 'voided';
+  return true;
+}
+
 export type InvoiceMobileRow = Invoice & {
   customer_name?: string;
   grand_total_formatted?: string;
@@ -78,18 +105,20 @@ export function InvoiceMobileList({
   renderAging,
 }: InvoiceMobileListProps) {
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<StatusFilterId>('all');
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [actionInvoice, setActionInvoice] = useState<InvoiceMobileRow | null>(null);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return invoices;
     return invoices.filter((inv) => {
+      if (!matchesStatusFilter(inv, statusFilter)) return false;
+      if (!q) return true;
       const num = String(inv.invoice_number || inv.id || '').toLowerCase();
       const customer = String(inv.customer_name || inv.customer?.name || '').toLowerCase();
       return num.includes(q) || customer.includes(q);
     });
-  }, [invoices, search]);
+  }, [invoices, search, statusFilter]);
 
   const visible = useMemo(
     () => filtered.slice(0, visibleCount),
@@ -146,6 +175,27 @@ export function InvoiceMobileList({
             className={cn(MOBILE_INPUT_CLASS, 'pl-9')}
             aria-label="Search invoices"
           />
+        </div>
+
+        <div className="flex flex-wrap gap-1.5">
+          {STATUS_FILTERS.map((filter) => (
+            <button
+              key={filter.id}
+              type="button"
+              onClick={() => {
+                setStatusFilter(filter.id);
+                setVisibleCount(PAGE_SIZE);
+              }}
+              className={cn(
+                'rounded-lg px-2.5 py-1 text-[11px] font-semibold transition-colors',
+                statusFilter === filter.id
+                  ? 'bg-emerald-600 text-white shadow-sm'
+                  : 'bg-gray-100 text-gray-600 active:bg-gray-200'
+              )}
+            >
+              {filter.label}
+            </button>
+          ))}
         </div>
 
         <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">

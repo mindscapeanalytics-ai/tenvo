@@ -24,7 +24,8 @@ import { validateNTN, formatNTN } from '@/lib/tax/pakistaniTax';
 import { formatPakistaniPhone, isValidPakistaniPhone, vendorSchema, validateForm } from '@/lib/validation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { MobileTabHeader, MobileStatStrip } from '@/components/mobile/MobileTabHeader';
-import { FileUpload } from './FileUpload';
+import { HubEntityMobileList } from '@/components/mobile/HubEntityMobileList';
+import { MOBILE_BOTTOM_NAV_CLASS, MOBILE_FLOATING_Z } from '@/lib/utils/mobileLayout';
 import { useBusiness } from '@/lib/context/BusinessContext';
 import { Badge } from '@/components/ui/badge';
 
@@ -147,21 +148,16 @@ export function VendorManager({ vendors = [], onAdd, onUpdate, onDelete, categor
   };
 
   return (
-    <div className="space-y-4 lg:space-y-6">
+    <div className="min-w-0 space-y-4 overflow-x-hidden touch-manipulation lg:space-y-6">
       <MobileTabHeader
         icon={Building2}
         iconClassName="bg-blue-100 text-blue-600"
         title="Vendor Network"
         subtitle={`${vendors.length} suppliers · supply chain`}
-        primaryAction={{
-          label: 'Add',
-          icon: Plus,
-          className: 'bg-emerald-600 hover:bg-emerald-700 text-white',
-          onClick: handleOpenAdd,
-        }}
       />
 
       <MobileStatStrip
+        layout="grid"
         items={[
           { label: 'Vendors', value: vendors.length },
           {
@@ -211,8 +207,8 @@ export function VendorManager({ vendors = [], onAdd, onUpdate, onDelete, categor
         </Card>
       </div>
 
-      <Card className="border-wine/5 shadow-xl bg-white/50 backdrop-blur-md">
-        <CardHeader className="pb-4">
+      <Card className="border-wine/5 bg-white/50 shadow-xl backdrop-blur-md lg:block">
+        <CardHeader className="hidden pb-4 lg:block">
           <div className="relative group">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 group-focus-within:text-wine w-4 h-4 transition-colors" />
             <Input
@@ -223,10 +219,56 @@ export function VendorManager({ vendors = [], onAdd, onUpdate, onDelete, categor
             />
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="hidden lg:block">
           <DataTable category={category} data={filteredVendors} columns={allColumns} emptyComponent={<EmptyState module="vendors" compact onAction={onAdd} />} />
         </CardContent>
       </Card>
+
+      <div className="pb-[calc(5.5rem+env(safe-area-inset-bottom))] lg:hidden">
+        <HubEntityMobileList
+          items={vendors}
+          search={searchTerm}
+          onSearchChange={setSearchTerm}
+          searchPlaceholder="Search vendors..."
+          emptyIcon={Building2}
+          emptyTitle="No vendors yet"
+          emptySubtitle="Add suppliers to track payables"
+          emptyActionLabel="Add vendor"
+          onEmptyAction={handleOpenAdd}
+          getKey={(v) => v.id}
+          onRowPress={(v) => setVendorToView(v)}
+          renderIcon={() => <Building2 className="h-5 w-5" style={{ color: colors.primary }} />}
+          getTitle={(v) => v.name}
+          getSubtitle={(v) => v.phone || v.city || v.email || 'No contact'}
+          getAmount={(v) => formatCurrency(v.outstanding_balance || 0, currency)}
+          getAmountClassName={(v) => (Number(v.outstanding_balance) > 0 ? 'text-red-600' : 'text-green-600')}
+          filterItems={(list, q) => {
+            const query = q.trim().toLowerCase();
+            if (!query) return list;
+            return list.filter(
+              (v) => v.name?.toLowerCase().includes(query) || v.email?.toLowerCase().includes(query)
+            );
+          }}
+          getActions={(v) => [
+            { id: 'view', icon: Eye, label: 'View supplier', onClick: () => setVendorToView(v) },
+            { id: 'edit', icon: Edit, label: 'Edit vendor', onClick: () => onUpdate?.(v) },
+            { id: 'delete', icon: Trash2, label: 'Remove vendor', destructive: true, onClick: () => setVendorToDelete(v) },
+          ]}
+        />
+      </div>
+
+      <button
+        type="button"
+        onClick={handleOpenAdd}
+        className={cn(
+          'fixed right-4 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-600 text-white shadow-lg shadow-emerald-600/30 transition active:scale-95 lg:hidden',
+          MOBILE_BOTTOM_NAV_CLASS,
+          MOBILE_FLOATING_Z
+        )}
+        aria-label="Add vendor"
+      >
+        <Plus className="h-6 w-6" />
+      </button>
 
       {/* View Vendor Dialog */}
       <Dialog open={!!vendorToView} onOpenChange={(open) => !open && setVendorToView(null)}>

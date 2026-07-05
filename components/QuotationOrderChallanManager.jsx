@@ -131,7 +131,7 @@ export function QuotationOrderChallanManager({
   ];
 
   return (
-    <div className="space-y-2 lg:space-y-6">
+    <div className="min-w-0 space-y-2 overflow-x-hidden touch-manipulation lg:space-y-6">
       {!embeddedInStorefront && (
         <MobileTabHeader
           icon={FileText}
@@ -154,14 +154,14 @@ export function QuotationOrderChallanManager({
       <div className="lg:hidden">
         <MobileStatStrip items={statItems} />
         {embeddedInStorefront && (
-          <div className="mt-1.5 flex gap-1 overflow-x-auto scrollbar-none">
-            <Button size="sm" variant="outline" className="h-8 shrink-0 rounded-lg px-2.5 text-[10px] font-bold" onClick={() => { setActiveTab('quotations'); setShowForm('quotation'); }}>
+          <div className="mt-1.5 flex flex-wrap gap-1">
+            <Button size="sm" variant="outline" className="h-8 rounded-lg px-2.5 text-[10px] font-bold" onClick={() => { setActiveTab('quotations'); setShowForm('quotation'); }}>
               <Plus className="mr-1 h-3 w-3" /> Quote
             </Button>
-            <Button size="sm" variant="outline" className="h-8 shrink-0 rounded-lg px-2.5 text-[10px] font-bold" onClick={() => { setActiveTab('orders'); setShowForm('sales_order'); }}>
+            <Button size="sm" variant="outline" className="h-8 rounded-lg px-2.5 text-[10px] font-bold" onClick={() => { setActiveTab('orders'); setShowForm('sales_order'); }}>
               <Plus className="mr-1 h-3 w-3" /> Order
             </Button>
-            <Button size="sm" className="h-8 shrink-0 rounded-lg bg-wine-600 px-2.5 text-[10px] font-bold text-white" onClick={() => { setActiveTab('challans'); setShowForm('delivery_challan'); }}>
+            <Button size="sm" className="h-8 rounded-lg bg-wine-600 px-2.5 text-[10px] font-bold text-white" onClick={() => { setActiveTab('challans'); setShowForm('delivery_challan'); }}>
               <Plus className="mr-1 h-3 w-3" /> Challan
             </Button>
           </div>

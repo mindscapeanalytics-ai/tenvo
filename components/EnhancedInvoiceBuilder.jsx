@@ -28,6 +28,7 @@ import { hasSeasonalPricing } from '@/lib/utils/pakistaniFeatures';
 import { ExpertActionPanel } from '@/components/domain/ExpertActionPanel';
 import { submitInvoiceForApprovalAction, getApprovalHistoryAction, schedulePaymentRemindersAction } from '@/lib/actions/standard/invoice-approval';
 import { MOBILE_OVERLAY, MOBILE_OVERLAY_CARD, MOBILE_FORM_FOOTER, MOBILE_GRID_FIELDS } from '@/lib/utils/formMobileStyles';
+import { InvoiceMobileLineItems } from '@/components/invoice/mobile/InvoiceMobileLineItems';
 
 /**
  * Enhanced Invoice Builder Component
@@ -1015,8 +1016,8 @@ export function EnhancedInvoiceBuilder({
               )}
             </div>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 bg-slate-100/80 px-2.5 py-1.5 rounded-md border border-slate-200 text-slate-500 cursor-help hover:bg-slate-200 transition-colors" onClick={() => setShowKeyboardHints(!showKeyboardHints)}>
+          <div className="flex shrink-0 items-center gap-2 sm:gap-4">
+            <div className="hidden items-center gap-2 rounded-md border border-slate-200 bg-slate-100/80 px-2.5 py-1.5 text-slate-500 transition-colors hover:bg-slate-200 sm:flex cursor-help" onClick={() => setShowKeyboardHints(!showKeyboardHints)}>
               <Keyboard className="w-3.5 h-3.5" />
               <span className="text-[10px] font-bold uppercase tracking-wider">Hotkeys</span>
             </div>
@@ -1102,9 +1103,9 @@ export function EnhancedInvoiceBuilder({
           </div>
 
           {/* Customer Selection */}
-          <div className="border border-slate-100 rounded-xl p-5">
-            <div className="flex items-center justify-between mb-5">
-              <h3 className="font-semibold text-lg">Customer Details</h3>
+          <div className="rounded-xl border border-slate-100 p-3 sm:p-5">
+            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <h3 className="text-base font-semibold sm:text-lg">Customer Details</h3>
               {customers.length > 0 && (
                 <Combobox
                   options={customers.map(c => ({
@@ -1122,7 +1123,7 @@ export function EnhancedInvoiceBuilder({
                   }}
                   placeholder="Search customers..."
                   emptyText="No customers found"
-                  className="w-full sm:w-[300px] h-9 shadow-sm"
+                  className="h-9 w-full shadow-sm sm:w-[300px]"
                 />
               )}
             </div>
@@ -1185,15 +1186,17 @@ export function EnhancedInvoiceBuilder({
               )}
               {invoice.customer.credit_limit > 0 && (
                 <div className={cn(
-                  "col-span-full p-2.5 rounded-lg border flex items-center justify-between mb-2",
+                  "col-span-full mb-2 flex flex-col gap-2 rounded-lg border p-2.5 sm:flex-row sm:items-center sm:justify-between",
                   totals.total + (invoice.customer.outstanding_balance || 0) > invoice.customer.credit_limit
                     ? "bg-red-50 border-red-200 text-red-700"
                     : "bg-slate-50 border-slate-200 text-slate-700"
                 )}>
-                  <div className="flex items-center gap-2">
-                    <ShoppingCart className="w-4 h-4 text-slate-400" />
-                    <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Credit Profile</span>
-                    <span className="text-xs font-medium ml-2">Limit: {formatCurrency(invoice.customer.credit_limit, currency)} <span className="text-slate-300 mx-1">|</span> Current Balance: {formatCurrency(invoice.customer.outstanding_balance || 0, currency)}</span>
+                  <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
+                    <div className="flex items-center gap-2">
+                      <ShoppingCart className="w-4 h-4 shrink-0 text-slate-400" />
+                      <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Credit Profile</span>
+                    </div>
+                    <span className="text-xs font-medium">Limit: {formatCurrency(invoice.customer.credit_limit, currency)} <span className="text-slate-300 mx-1">|</span> Balance: {formatCurrency(invoice.customer.outstanding_balance || 0, currency)}</span>
                   </div>
                   {totals.total + (invoice.customer.outstanding_balance || 0) > invoice.customer.credit_limit && (
                     <div className="flex items-center gap-1.5 font-bold text-[10px] uppercase tracking-wider bg-red-100 px-2 py-0.5 rounded text-red-600">
@@ -1266,40 +1269,42 @@ export function EnhancedInvoiceBuilder({
 
           {/* Items Section */}
           <div className="pt-2">
-            <div className="flex items-center justify-between mb-4 bg-slate-50 border border-slate-200 rounded-lg px-4 py-2">
-              <h3 className="font-semibold text-slate-800 text-sm flex items-center gap-2">
+            <div className="mb-4 flex flex-col gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:px-4 sm:py-2">
+              <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-800">
                 <ShoppingCart className="w-4 h-4 text-slate-500" />
                 Line Items
               </h3>
-              <div className="flex gap-2">
-                <div className="relative group lg:w-48">
+              <div className="flex flex-col gap-2 sm:flex-row sm:gap-2">
+                <div className="relative group w-full sm:w-48">
                   <Scan className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 group-focus-within:text-indigo-500" />
                   <Input
                     id="barcode-sniffer"
-                    placeholder="Scan Barcode (Ctrl+B)"
+                    placeholder="Scan barcode"
                     value={barcodeInput}
                     onChange={(e) => setBarcodeInput(e.target.value)}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') handleBarcodeScan(barcodeInput);
                     }}
-                    className="pl-8 h-8 rounded-md border-dashed border-slate-300 bg-white focus:bg-white transition-all font-mono text-xs shadow-sm"
+                    className="h-9 w-full rounded-md border-dashed border-slate-300 bg-white pl-8 font-mono text-xs shadow-sm transition-all focus:bg-white sm:h-8"
                   />
                 </div>
+                <div className="flex gap-2">
                 {isPakistaniDomain && (
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => setShowTaxCalculator(!showTaxCalculator)}
-                    className="h-8 rounded-md border-slate-200 text-xs shadow-sm"
+                    className="h-9 flex-1 rounded-md border-slate-200 text-xs shadow-sm sm:h-8 sm:flex-none"
                   >
                     <Calculator className="w-3.5 h-3.5 mr-1.5 text-slate-500" />
-                    Tax Helper
+                    Tax
                   </Button>
                 )}
-                <Button onClick={addItem} size="sm" className="h-8 text-white font-medium shadow-sm rounded-md transition-all hover:opacity-90" style={{ backgroundColor: colors.primary }}>
+                <Button onClick={addItem} size="sm" className="h-9 flex-1 rounded-md text-xs font-medium text-white shadow-sm transition-all hover:opacity-90 sm:h-8 sm:flex-none" style={{ backgroundColor: colors.primary }}>
                   <Plus className="w-3.5 h-3.5 mr-1.5" />
-                  Add Row
+                  Add line
                 </Button>
+                </div>
               </div>
             </div>
 
@@ -1317,14 +1322,30 @@ export function EnhancedInvoiceBuilder({
             )}
 
             <div className="space-y-3">
+              {/* Mobile: stacked line cards (no horizontal scroll) */}
+              <div className="lg:hidden">
+                <InvoiceMobileLineItems
+                  items={invoice.items}
+                  products={products}
+                  category={category}
+                  currency={currency}
+                  colors={colors}
+                  updateItem={updateItem}
+                  removeItem={removeItem}
+                  addItem={addItem}
+                  onEnterLastRow={addItem}
+                />
+              </div>
+
+              {/* Desktop: wide line table */}
               {invoice.items.length === 0 ? (
-                <div className="text-center py-10 bg-slate-50 text-slate-500 border border-dashed border-slate-200 rounded-xl">
+                <div className="hidden text-center py-10 bg-slate-50 text-slate-500 border border-dashed border-slate-200 rounded-xl lg:block">
                   <FileText className="w-10 h-10 mx-auto mb-3 text-slate-300" />
                   <p className="font-medium text-sm text-slate-600">No items added yet.</p>
                   <p className="text-xs mt-1">Click "Add Row" or scan a barcode to get started.</p>
                 </div>
               ) : (
-                <div className="relative overflow-x-auto border border-slate-200 rounded-lg shadow-sm">
+                <div className="relative hidden overflow-x-auto rounded-lg border border-slate-200 shadow-sm lg:block">
                   <table className="w-full text-sm text-left" style={{minWidth: '900px'}}>
                     <thead className="bg-slate-100 border-b border-slate-200 text-slate-600">
                       <tr>
@@ -1471,17 +1492,17 @@ export function EnhancedInvoiceBuilder({
 
           {/* Totals */}
           <div className="border-t pt-4">
-            <div className="flex justify-end">
-              <div className="w-80 space-y-2">
+            <div className="flex justify-stretch lg:justify-end">
+              <div className="w-full space-y-2 lg:w-80">
                 <div className="flex justify-between">
                   <span>Subtotal:</span>
                   <span className="font-semibold">{formatCurrency(totals.rawSubtotal ?? totals.subtotal, currency)}</span>
                 </div>
-                <div className="flex justify-between items-center bg-gray-50 p-3 rounded-2xl border border-gray-100">
-                  <div className="flex items-center gap-2">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex min-w-0 items-center gap-2">
                     <span className="text-xs font-semibold uppercase text-gray-400">Total Discount:</span>
                     <select
-                      className="bg-transparent text-[10px] font-bold border-0 p-0 h-auto focus:ring-0 cursor-pointer text-wine"
+                      className="h-auto cursor-pointer border-0 bg-transparent p-0 text-[10px] font-bold text-wine focus:ring-0"
                       value={invoice.discountType}
                       onChange={(e) => setInvoice({ ...invoice, discountType: e.target.value })}
                     >
@@ -1489,7 +1510,7 @@ export function EnhancedInvoiceBuilder({
                       <option value="amount">Fixed {standards.currencySymbol}</option>
                     </select>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center justify-end gap-2">
                     <Input
                       type="number"
                       value={invoice.discount || 0}
@@ -1501,14 +1522,14 @@ export function EnhancedInvoiceBuilder({
                 </div>
                 {/* Seasonal Discount Display */}
                 {totals.seasonalDiscount > 0 && currentSeason && (
-                  <div className="flex justify-between items-center bg-gradient-to-r from-orange-50 to-pink-50 p-3 rounded-2xl border border-orange-200">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-semibold uppercase text-orange-600">[CELEBRATION] {currentSeason.name.en} Discount:</span>
+                  <div className="flex flex-col gap-2 rounded-2xl border border-orange-200 bg-gradient-to-r from-orange-50 to-pink-50 p-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex min-w-0 flex-wrap items-center gap-2">
+                      <span className="text-xs font-semibold uppercase text-orange-600">{currentSeason.name.en} Discount</span>
                       <Badge className="bg-orange-500 text-white text-[10px] font-semibold">
                         {currentSeason.discountPercent}% OFF
                       </Badge>
                     </div>
-                    <span className="font-semibold text-orange-600">-{formatCurrency(totals.seasonalDiscount, currency)}</span>
+                    <span className="shrink-0 font-semibold text-orange-600">-{formatCurrency(totals.seasonalDiscount, currency)}</span>
                   </div>
                 )}
                 {/* Render dynamic tax breakdown from strategy */}
@@ -1545,7 +1566,7 @@ export function EnhancedInvoiceBuilder({
           </div>
 
           {/* Additional Fields */}
-          <div className="grid grid-cols-2 gap-4 border-t pt-4">
+          <div className="grid grid-cols-1 gap-4 border-t pt-4 lg:grid-cols-2">
             {!isPakistaniDomain && (
               <>
                 <div>
@@ -1585,13 +1606,13 @@ export function EnhancedInvoiceBuilder({
           </div>
 
           <div className="border-t pt-4">
-            <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-              <div className="flex items-center gap-2 text-sm text-slate-700">
-                <ShieldCheck className="w-4 h-4" />
-                <span className="font-semibold">Workflow Status:</span>
-                <span>{activeApprovalStatus.helper}</span>
+            <div className="flex flex-col gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-4">
+              <div className="flex min-w-0 items-start gap-2 text-sm text-slate-700 sm:items-center">
+                <ShieldCheck className="w-4 h-4 shrink-0" />
+                <span className="font-semibold shrink-0">Workflow:</span>
+                <span className="min-w-0">{activeApprovalStatus.helper}</span>
               </div>
-              <span className="text-xs text-slate-500 font-medium">Invoice Ref: {invoice.invoiceNumber}</span>
+              <span className="shrink-0 text-xs font-medium text-slate-500">Ref: {invoice.invoiceNumber}</span>
             </div>
 
             {approvalHistory.length > 0 && (

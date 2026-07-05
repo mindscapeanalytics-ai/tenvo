@@ -102,9 +102,9 @@ export function FiscalPeriodManager({ businessId, currency, periods = [], onRefr
     };
 
     return (
-        <div className="space-y-4">
+        <div className="min-w-0 space-y-4 overflow-x-hidden touch-manipulation">
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <h3 className="text-lg font-semibold text-gray-900">Fiscal Periods</h3>
                     <p className="text-xs text-gray-400">

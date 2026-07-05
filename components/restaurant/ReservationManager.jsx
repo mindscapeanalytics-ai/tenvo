@@ -172,7 +172,7 @@ export function ReservationManager({ businessId, tables = [], onSave }) {
         const dayRes = reservations.filter(r => r.date === dateStr && r.status !== 'cancelled' && r.status !== 'noshow');
 
         return (
-            <div className="overflow-x-auto">
+            <div className="hidden overflow-x-auto lg:block">
                 <div className="min-w-[700px]">
                     {/* Header */}
                     <div className="grid gap-0 border-b border-gray-200" style={{ gridTemplateColumns: `80px repeat(${displayTables.length}, 1fr)` }}>
@@ -305,7 +305,7 @@ export function ReservationManager({ businessId, tables = [], onSave }) {
         .reduce((s, r) => s + r.partySize, 0);
 
     return (
-        <div className="space-y-4">
+        <div className="min-w-0 space-y-4 overflow-x-hidden touch-manipulation">
             {/* Stats Bar */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {[
@@ -366,13 +366,13 @@ export function ReservationManager({ businessId, tables = [], onSave }) {
 
                 <div className="flex-1" />
 
-                <div className="relative">
-                    <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <div className="relative min-w-0 flex-1 sm:max-w-xs">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                     <Input
                         placeholder="Search guests..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="pl-9 h-8 w-48 text-xs rounded-lg"
+                        className="h-8 w-full rounded-lg pl-9 text-xs"
                     />
                 </div>
 
@@ -383,18 +383,23 @@ export function ReservationManager({ businessId, tables = [], onSave }) {
             </div>
 
             {/* Main Content */}
-            <Card className="border-none shadow-sm">
+            <Card className={cn('border-none shadow-sm', viewMode === 'day' && 'hidden lg:block')}>
                 <CardContent className="p-0">
                     {viewMode === 'day' ? renderDayView() : renderWeekView()}
                 </CardContent>
             </Card>
 
-            {/* Upcoming Reservations List (Day View) */}
-            {viewMode === 'day' && filteredReservations.length > 0 && (
-                <div className="space-y-2">
-                    <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider px-1">
-                        {formatDate(selectedDate)} -- {filteredReservations.length} Booking{filteredReservations.length !== 1 ? 's' : ''}
+            {/* Day bookings list — mobile-first */}
+            {viewMode === 'day' && (
+                <div className={cn('space-y-2 lg:hidden', filteredReservations.length === 0 && '')}>
+                    <h4 className="px-1 text-xs font-bold uppercase tracking-wider text-gray-500">
+                        {formatDate(selectedDate)} — {filteredReservations.length} booking{filteredReservations.length !== 1 ? 's' : ''}
                     </h4>
+                    {filteredReservations.length === 0 ? (
+                        <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50/80 px-4 py-10 text-center text-sm text-gray-500 lg:hidden">
+                            No bookings for this day
+                        </div>
+                    ) : null}
                     {filteredReservations.map(res => {
                         const cfg = STATUS_CONFIG[res.status];
                         const table = displayTables.find(t => t.id === res.tableId);

@@ -128,7 +128,7 @@ export function ShiftScheduler({ businessId, employees: propEmployees = [] }) {
     };
 
     return (
-        <div className="space-y-4">
+        <div className="min-w-0 space-y-4 overflow-x-hidden touch-manipulation">
             {/* Toolbar */}
             <div className="flex flex-wrap items-center gap-3">
                 <div className="flex items-center gap-2">
@@ -175,8 +175,8 @@ export function ShiftScheduler({ businessId, employees: propEmployees = [] }) {
                 ))}
             </div>
 
-            {/* Schedule Grid */}
-            <Card className="border-none shadow-sm overflow-x-auto">
+            {/* Schedule Grid — desktop */}
+            <Card className="hidden border-none shadow-sm overflow-x-auto lg:block">
                 <CardContent className="p-0">
                     <table className="w-full text-xs min-w-[800px]">
                         <thead>
@@ -258,6 +258,54 @@ export function ShiftScheduler({ businessId, employees: propEmployees = [] }) {
                     </table>
                 </CardContent>
             </Card>
+
+            {/* Mobile — per-employee week roster */}
+            <div className="space-y-2 lg:hidden">
+                {employees.map((emp) => {
+                    const weeklyHours = getEmployeeWeeklyHours(emp.id);
+                    const isOvertime = weeklyHours > 40;
+                    return (
+                        <div key={emp.id} className="rounded-2xl border border-gray-100 bg-white p-3 shadow-sm">
+                            <div className="flex items-center justify-between gap-2">
+                                <div className="flex min-w-0 items-center gap-2">
+                                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-[10px] font-semibold text-brand-primary">
+                                        {emp.name.split(' ').map((n) => n[0]).join('')}
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="truncate text-[13px] font-bold text-gray-900">{emp.name}</p>
+                                        <p className="text-[11px] text-gray-400">{emp.role}</p>
+                                    </div>
+                                </div>
+                                <span className={cn('text-sm font-semibold tabular-nums', isOvertime ? 'text-amber-600' : 'text-gray-700')}>
+                                    {weeklyHours}h{isOvertime ? ' OT' : ''}
+                                </span>
+                            </div>
+                            <div className="mt-2 flex flex-wrap gap-1.5">
+                                {DAYS.map((day, idx) => {
+                                    const shiftId = schedule[emp.id]?.[day] || 'off';
+                                    const shift = SHIFT_TEMPLATES.find((s) => s.id === shiftId);
+                                    const hasConflict = conflicts.some((c) => c.empId === emp.id && c.day === day);
+                                    return (
+                                        <button
+                                            key={day}
+                                            type="button"
+                                            onClick={() => openAssign(emp.id, day)}
+                                            className={cn(
+                                                'min-w-[calc(25%-6px)] flex-1 rounded-lg border px-1 py-1.5 text-center text-[10px] font-bold',
+                                                shift?.color || 'border-gray-100 bg-gray-50 text-gray-400',
+                                                hasConflict && 'ring-2 ring-amber-400'
+                                            )}
+                                        >
+                                            <div>{SHORT_DAYS[idx]}</div>
+                                            <div className="mt-0.5 truncate opacity-80">{shift?.label || 'Off'}</div>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
 
             {/* Assign Shift Dialog */}
             <Dialog open={showAssignDialog} onOpenChange={setShowAssignDialog}>

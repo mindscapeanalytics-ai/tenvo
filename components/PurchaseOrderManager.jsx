@@ -14,6 +14,9 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { hubDialogContentClass } from '@/lib/utils/formMobileStyles';
 import { cn } from '@/lib/utils';
+import { MobileTabHeader, MobileStatStrip } from '@/components/mobile/MobileTabHeader';
+import { HubEntityMobileList } from '@/components/mobile/HubEntityMobileList';
+import { MOBILE_BOTTOM_NAV_CLASS, MOBILE_FLOATING_Z } from '@/lib/utils/mobileLayout';
 import GRNView from './GRNView';
 import { useBusiness } from '@/lib/context/BusinessContext';
 import {
@@ -143,8 +146,25 @@ export function PurchaseOrderManager({ purchaseOrders = [], onCreate, onUpdateSt
   const receivedCount = purchaseOrders.filter(p => normalizePurchaseStatus(p.status) === PURCHASE_STATUSES.RECEIVED).length;
 
   return (
-    <div className="space-y-6 animate-in slide-in-from-right-5 duration-500">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="min-w-0 space-y-4 overflow-x-hidden touch-manipulation animate-in slide-in-from-right-5 duration-500 lg:space-y-6">
+      <MobileTabHeader
+        icon={ShoppingCart}
+        iconClassName="bg-blue-100 text-blue-600"
+        title="Purchase Orders"
+        subtitle={`${purchaseOrders.length} orders · procurement`}
+      />
+
+      <MobileStatStrip
+        layout="grid"
+        items={[
+          { label: 'Open', value: openOrdersCount, valueTone: 'text-amber-600' },
+          { label: 'Pending', value: pendingReceiptCount, valueTone: 'text-orange-600' },
+          { label: 'Received', value: receivedCount, valueTone: 'text-green-600' },
+          { label: 'Value', value: formatCurrency(procurementValue, business?.currency || 'PKR'), hint: 'Total listed' },
+        ]}
+      />
+
+      <div className="hidden flex-col gap-4 md:flex-row md:items-center md:justify-between lg:flex">
         <div>
           <h2 className="text-xl font-bold text-foreground">Purchase Orders</h2>
           <p className="text-muted-foreground font-medium">Coordinate inventory procurement and tracking</p>
@@ -166,7 +186,7 @@ export function PurchaseOrderManager({ purchaseOrders = [], onCreate, onUpdateSt
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="hidden grid-cols-2 gap-3 lg:grid lg:grid-cols-4 lg:gap-4">
         <Card className="border-border shadow-sm bg-card">
           <CardHeader className="pb-2">
             <CardTitle className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Open Orders</CardTitle>
@@ -211,7 +231,7 @@ export function PurchaseOrderManager({ purchaseOrders = [], onCreate, onUpdateSt
         </Card>
       </div>
 
-      <Card className="border-border shadow-sm bg-card">
+      <Card className="hidden border-border bg-card shadow-sm lg:block">
         <CardHeader className="pb-4">
           <div className="relative group">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground group-focus-within:text-primary w-4 h-4 transition-colors" />
@@ -227,6 +247,66 @@ export function PurchaseOrderManager({ purchaseOrders = [], onCreate, onUpdateSt
           <DataTable category={category} data={filteredOrders} columns={columns} searchable={false} emptyComponent={<EmptyState module="purchases" compact onAction={onCreate} />} />
         </CardContent>
       </Card>
+
+      <div className="pb-[calc(5.5rem+env(safe-area-inset-bottom))] lg:hidden">
+        <HubEntityMobileList
+          items={purchaseOrders}
+          search={searchTerm}
+          onSearchChange={setSearchTerm}
+          searchPlaceholder="Search PO or vendor..."
+          emptyIcon={ShoppingCart}
+          emptyTitle="No purchase orders"
+          emptySubtitle="Create a PO to track procurement"
+          emptyActionLabel="Create purchase"
+          onEmptyAction={() => onCreate?.()}
+          getKey={(o) => o.id}
+          onRowPress={(o) => setPoToView(o)}
+          renderIcon={() => <ShoppingCart className="h-5 w-5 text-blue-600" />}
+          getTitle={(o) => o.purchase_number || 'PO'}
+          getSubtitle={(o) => o.vendor_name || 'Unknown supplier'}
+          getAmount={(o) => formatCurrency(o.total_amount, business?.currency || 'PKR')}
+          renderBadge={(o) => (
+            <Badge variant="outline" className={cn('text-[10px] font-semibold uppercase', getStatusBadge(o.status))}>
+              {getPurchaseStatusLabel(o.status)}
+            </Badge>
+          )}
+          filterItems={(list, q) => {
+            const query = q.trim().toLowerCase();
+            if (!query) return list;
+            return list.filter(
+              (o) =>
+                o.purchase_number?.toLowerCase().includes(query) ||
+                o.vendor_name?.toLowerCase().includes(query)
+            );
+          }}
+          getActions={(o) => {
+            const status = normalizePurchaseStatus(o.status);
+            const actions = [
+              { id: 'view', icon: ExternalLink, label: 'View PO / GRN', onClick: () => setPoToView(o) },
+            ];
+            if (status === PURCHASE_STATUSES.DRAFT) {
+              actions.push({ id: 'sent', icon: Send, label: 'Mark sent', onClick: () => onUpdateStatus?.(o.id, PURCHASE_STATUSES.ORDERED) });
+            }
+            if (isReceivablePurchaseStatus(o.status)) {
+              actions.push({ id: 'recv', icon: CheckCircle2, label: 'Mark received', onClick: () => onUpdateStatus?.(o.id, PURCHASE_STATUSES.RECEIVED) });
+            }
+            return actions;
+          }}
+        />
+      </div>
+
+      <button
+        type="button"
+        onClick={() => onCreate?.()}
+        className={cn(
+          'fixed right-4 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-600 text-white shadow-lg shadow-emerald-600/30 transition active:scale-95 lg:hidden',
+          MOBILE_BOTTOM_NAV_CLASS,
+          MOBILE_FLOATING_Z
+        )}
+        aria-label="Create purchase order"
+      >
+        <Plus className="h-6 w-6" />
+      </button>
       <Dialog open={!!poToView} onOpenChange={(open) => !open && setPoToView(null)}>
         <DialogContent className={hubDialogContentClass({ wide: true, maxWidth: 'lg:max-w-4xl' })}>
           <DialogHeader>

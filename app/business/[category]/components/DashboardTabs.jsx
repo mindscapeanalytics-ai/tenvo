@@ -704,9 +704,9 @@ export function DashboardTabs({
                     {wrapTab(
                         <TabGuard tabKey="reports" role={role} planTier={planTier} featureName="Analytics & AI" onUpgrade={() => handleTabChange('settings')}>
                             <div className="space-y-6">
-                                <div className="flex items-center justify-between">
-                                    <h2 className="text-xl font-semibold text-gray-900 uppercase tracking-tight">Analytics & Reports</h2>
-                                    <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1">
+                                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                                    <h2 className="text-xl font-semibold uppercase tracking-tight text-gray-900">Analytics & Reports</h2>
+                                    <div className="flex flex-wrap gap-1 rounded-xl bg-gray-100 p-1 lg:gap-1">
                                         {[
                                             { key: 'analytics', label: 'Analytics' },
                                             { key: 'forecast', label: 'Demand Forecast' },
@@ -716,7 +716,7 @@ export function DashboardTabs({
                                             <button
                                                 key={v.key}
                                                 onClick={() => setReportsView(v.key)}
-                                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${reportsView === v.key ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+                                                className={`rounded-lg px-2.5 py-1.5 text-[11px] font-bold transition-all sm:px-3 sm:text-xs ${reportsView === v.key ? 'bg-white text-gray-900 shadow' : 'text-gray-500 hover:text-gray-700'}`}
                                             >
                                                 {v.label}
                                             </button>
@@ -887,7 +887,7 @@ export function DashboardTabs({
                                     </div>
                                 </div>
 
-                                <div className="flex gap-1 overflow-x-auto rounded-lg bg-gray-100/80 p-0.5 scrollbar-none lg:hidden">
+                                <div className="flex flex-wrap gap-1 rounded-lg bg-gray-100/80 p-0.5 lg:hidden">
                                     {[
                                         { key: 'manager', label: 'Manager' },
                                         { key: 'floorplan', label: 'Floor' },
