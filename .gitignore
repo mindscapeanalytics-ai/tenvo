@@ -16,7 +16,6 @@
 /out/
 /.kiro/
 /backups/
-/scripts/
 
 # production
 /build
