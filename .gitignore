@@ -14,10 +14,14 @@
 # next.js
 /.next/
 /out/
+/.kiro/
+/backups/
+/scripts/
 
 # production
 /build
 /backups
+/archive
 
 # misc
 .DS_Store
