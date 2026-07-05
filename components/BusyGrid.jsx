@@ -11,6 +11,8 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { readGridCellValue } from '@/lib/utils/inventoryGridColumns';
 import { isSuggestibleInventoryColumn } from '@/lib/utils/inventoryFieldSuggestions';
 import { inventoryGridRowKey, inventoryValidationErrorKey } from '@/lib/utils/inventoryRowKey';
+import { resolveExcelMobileColumnWidth } from '@/lib/utils/inventoryExcelMobile';
+import { MOBILE_NO_ZOOM_TEXT } from '@/lib/utils/formMobileStyles';
 
 /**
  * BusyGrid Component
@@ -20,7 +22,9 @@ function rowStableKey(row, rowIndex) {
     return inventoryGridRowKey(row, rowIndex);
 }
 
-function columnWidth(col, colIndex, columnWidths) {
+function columnWidth(col, colIndex, columnWidths, touchOptimized = false) {
+    const mobileWidth = resolveExcelMobileColumnWidth(col, touchOptimized);
+    if (mobileWidth != null) return mobileWidth;
     return columnWidths[colIndex] ?? col.width ?? col.size ?? 120;
 }
 
@@ -52,6 +56,8 @@ export function BusyGrid({
     getFieldSuggestions,
     /** Dense spreadsheet layout: light gridlines, compact rows, stable row order (no column sort). */
     variant = 'default',
+    /** Dense spreadsheet on desktop; larger touch targets below lg. */
+    touchOptimized = false,
 }) {
     const { language } = useLanguage();
     const t = translations[language];
@@ -60,6 +66,12 @@ export function BusyGrid({
     const { isBusyMode } = useBusyMode();
     const isExcel = variant === 'excel';
     const isBusyVariant = variant === 'busy';
+    const excelRowHeight = touchOptimized && isExcel
+        ? 'h-11 min-h-11 max-h-11'
+        : isExcel
+          ? 'h-[26px] min-h-[26px] max-h-[26px]'
+          : '';
+    const excelHeaderHeight = touchOptimized && isExcel ? 'h-10 min-h-10' : isExcel ? 'h-7' : '';
     /** Rapid entry: Excel modal, inventory Busy view, or global Busy mode */
     const isDataEntryMode = isExcel || isBusyVariant || isBusyMode;
     const didAutoFocusRef = useRef(false);
@@ -282,6 +294,16 @@ export function BusyGrid({
         onCellEdit?.(row, colDef.accessorKey, empty);
     }, [selectedCell, columns, sortedData, isEditableColumn, onCellEdit]);
 
+    const fillDownFromSelected = useCallback(() => {
+        if (!isEditableColumn(selectedCell.col)) return;
+        const colDef = columns[selectedCell.col];
+        const row = sortedData[selectedCell.row];
+        const below = sortedData[selectedCell.row + 1];
+        if (!colDef?.accessorKey || !row || !below) return;
+        const val = getValue(row, colDef.accessorKey);
+        onCellEdit?.(below, colDef.accessorKey, val ?? '');
+    }, [selectedCell, columns, sortedData, isEditableColumn, onCellEdit, getValue]);
+
     const startEditing = useCallback((initialChar = null) => {
         beginEditingAt(selectedCell, initialChar);
     }, [selectedCell, beginEditingAt]);
@@ -351,6 +373,14 @@ export function BusyGrid({
         });
     }, [editingCell, findNextEditableCell, isEditableColumn]);
 
+    const handleTouchNextField = useCallback(() => {
+        if (editingCell) {
+            commitAndAdvance(editValue, 'tab');
+            return;
+        }
+        advanceSelection(1, true);
+    }, [editingCell, editValue, commitAndAdvance, advanceSelection]);
+
     useLayoutEffect(() => {
         if (!editingCell) return;
         const input = inputRef.current;
@@ -413,7 +443,7 @@ export function BusyGrid({
     const handleMouseDown = (e, colIndex) => {
         e.preventDefault();
         const startX = e.pageX;
-        const startWidth = columnWidths[colIndex] || columnWidth(columns[colIndex], colIndex, columnWidths);
+        const startWidth = columnWidths[colIndex] || columnWidth(columns[colIndex], colIndex, columnWidths, touchOptimized);
         const handleMouseMove = (moveEvent) => {
             const newWidth = Math.max(50, startWidth + (moveEvent.pageX - startX));
             setColumnWidths(prev => ({ ...prev, [colIndex]: newWidth }));
@@ -596,7 +626,7 @@ export function BusyGrid({
                                 className={cn(
                                     'sticky left-0 z-40 box-border shrink-0 border-r border-b text-center font-mono font-bold leading-none text-gray-600',
                                     isExcel
-                                        ? 'h-7 w-8 min-w-[32px] max-w-[32px] border-gray-300 bg-[#dfe4ea] p-0 text-[10px]'
+                                        ? cn('w-8 min-w-[32px] max-w-[32px] border-gray-300 bg-[#dfe4ea] p-0 text-[10px]', touchOptimized && 'w-10 min-w-[40px] max-w-[40px] text-xs')
                                         : 'h-10 w-10 border-gray-300 bg-gray-200/80 text-[10px] text-gray-500'
                                 )}
                                 style={isExcel ? { width: 32, minWidth: 32, maxWidth: 32 } : undefined}
@@ -604,7 +634,7 @@ export function BusyGrid({
                                 #
                             </th>
                             {columns.map((col, idx) => {
-                                const width = columnWidth(col, idx, columnWidths);
+                                const width = columnWidth(col, idx, columnWidths, touchOptimized);
                                 const headerLabel = typeof col.header === 'function' ? col.header() : col.header;
                                 return (
                                     <th
@@ -612,7 +642,7 @@ export function BusyGrid({
                                         className={cn(
                                             'relative box-border border-r border-b p-0 text-left align-middle',
                                             isExcel
-                                                ? 'h-7 border-gray-300 bg-[#eceff2]'
+                                                ? cn('border-gray-300 bg-[#eceff2]', excelHeaderHeight)
                                                 : 'h-10 border-gray-300 bg-gray-100/95'
                                         )}
                                         style={{ width }}
@@ -695,7 +725,7 @@ export function BusyGrid({
                                         className={cn(
                                             'sticky left-0 z-20 box-border border-r border-b text-center font-mono font-bold text-gray-600 transition-colors',
                                             isExcel
-                                                ? 'h-[26px] min-h-[26px] max-h-[26px] w-8 min-w-[32px] max-w-[32px] border-gray-300 bg-[#dfe4ea] text-[10px] leading-none group-hover:text-blue-700'
+                                                ? cn('border-gray-300 bg-[#dfe4ea] text-[10px] leading-none group-hover:text-blue-700', excelRowHeight, touchOptimized && 'w-10 min-w-[40px] max-w-[40px] text-xs')
                                                 : 'w-10 border-gray-100 bg-gray-50/50 text-[10px] text-gray-400 group-hover:text-blue-500',
                                             onRowClick && !isExcel && 'cursor-pointer hover:bg-blue-50'
                                         )}
@@ -712,7 +742,7 @@ export function BusyGrid({
                                     {columns.map((col, colIndex) => {
                                         const isSelected = selectedCell.row === rowIndex && selectedCell.col === colIndex;
                                         const isEditing = editingCell?.row === rowIndex && editingCell?.col === colIndex;
-                                        const width = columnWidth(col, colIndex, columnWidths);
+                                        const width = columnWidth(col, colIndex, columnWidths, touchOptimized);
                                         const fieldKey = col.accessorKey;
                                         const validationMessage =
                                             (fieldKey &&
@@ -738,7 +768,7 @@ export function BusyGrid({
                                                 className={cn(
                                                     'relative box-border border-r border-b p-0 align-middle transition-all duration-150',
                                                     isExcel
-                                                        ? 'h-[26px] min-h-[26px] max-h-[26px] border-gray-300'
+                                                        ? cn('border-gray-300', excelRowHeight)
                                                         : 'h-10 border-gray-100',
                                                     !isExcel && isBusyMode && 'h-8',
                                                     isSelected &&
@@ -773,7 +803,7 @@ export function BusyGrid({
                                                             aria-label={`Edit ${col.accessorKey}`}
                                                             className={cn(
                                                                 'z-50 h-full w-full bg-white font-medium text-gray-900 outline-none ring-2 ring-blue-600',
-                                                                isExcel ? 'px-2 text-xs' : 'px-2.5 text-sm shadow-xl'
+                                                                isExcel ? cn('px-2', touchOptimized ? MOBILE_NO_ZOOM_TEXT : 'text-xs') : 'px-2.5 text-sm shadow-xl'
                                                             )}
                                                             value={editValue}
                                                             onChange={(e) => setEditValue(e.target.value)}
@@ -809,7 +839,7 @@ export function BusyGrid({
                                                         className={cn(
                                                             'relative flex w-full min-w-0 items-center truncate transition-colors',
                                                             isExcel
-                                                                ? 'h-[26px] max-h-[26px] px-1.5 py-0 text-[11px] leading-tight [&>div]:gap-0 [&>div]:py-0'
+                                                                ? cn('max-h-[44px] px-2 py-0 leading-tight [&>div]:gap-0 [&>div]:py-0', touchOptimized ? 'h-11 text-sm' : 'h-[26px] text-[11px]')
                                                                 : 'min-h-[inherit] px-3 py-1 text-sm',
                                                             col.readOnly ? 'font-medium italic text-gray-400' : 'font-medium text-gray-800',
                                                             isSelected && 'font-semibold text-blue-800',
@@ -843,10 +873,10 @@ export function BusyGrid({
             <div
                 className={cn(
                     'z-40 flex items-center border-t border-gray-200 bg-slate-50 p-0 shadow-sm',
-                    isExcel ? 'h-7 min-h-[28px]' : 'h-8'
+                    isExcel ? (touchOptimized ? 'min-h-12' : 'h-7 min-h-[28px]') : 'h-8'
                 )}
             >
-                <div className="flex flex-1 items-center gap-4 overflow-hidden px-3 sm:px-4">
+                <div className="flex flex-1 items-center gap-3 overflow-hidden px-3 sm:gap-4 sm:px-4">
                     <div className="flex items-center gap-1.5">
                         <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Items</span>
                         <span className="font-mono text-[10px] font-semibold text-gray-900 tabular-nums">{sortedData.length}</span>
@@ -859,7 +889,7 @@ export function BusyGrid({
                             {selectedCell.row + 1}
                         </span>
                     </div>
-                    {isExcel && (
+                    {isExcel && !touchOptimized && (
                         <>
                             <div className="h-3 w-px bg-gray-200 hidden sm:block" />
                             <span className="hidden text-[10px] text-gray-500 sm:inline">Sort disabled · row order = save order</span>
@@ -872,23 +902,43 @@ export function BusyGrid({
                         </div>
                     )}
                 </div>
-                <div className="ml-auto flex h-full items-center gap-2 border-l border-gray-200 bg-gray-50/80 px-2">
-                    {[
-                        { k: 'Tab', l: 'Save+next' },
-                        { k: 'F2', l: 'Edit' },
-                        { k: 'Insert', l: 'New row' },
-                        { k: 'Ctrl+D', l: 'Fill down' },
-                        { k: '↵', l: 'Down' },
-                        { k: 'Bksp', l: 'Clear' },
-                    ].map((btn) => (
-                        <div key={btn.k} className="flex items-center gap-0.5 opacity-70">
-                            <kbd className="rounded border border-gray-200 bg-white px-1 font-mono text-[10px] font-bold text-gray-600">
-                                {btn.k}
-                            </kbd>
-                            <span className="text-[10px] font-bold uppercase tracking-tight text-gray-500">{btn.l}</span>
-                        </div>
-                    ))}
-                </div>
+                {touchOptimized && isExcel ? (
+                    <div className="flex h-full items-stretch gap-1 border-l border-gray-200 bg-white/90 px-2 py-1">
+                        {[
+                            { label: 'Next', action: handleTouchNextField },
+                            { label: 'New row', action: () => onAddRow?.() },
+                            { label: 'Fill down', action: fillDownFromSelected },
+                            { label: 'Clear', action: clearSelectedCell },
+                        ].map((btn) => (
+                            <button
+                                key={btn.label}
+                                type="button"
+                                onClick={btn.action}
+                                className="min-h-10 min-w-[4.5rem] rounded-lg border border-gray-200 bg-white px-2 text-[11px] font-semibold text-gray-700 active:bg-blue-50"
+                            >
+                                {btn.label}
+                            </button>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="ml-auto hidden h-full items-center gap-2 border-l border-gray-200 bg-gray-50/80 px-2 sm:flex">
+                        {[
+                            { k: 'Tab', l: 'Save+next' },
+                            { k: 'F2', l: 'Edit' },
+                            { k: 'Insert', l: 'New row' },
+                            { k: 'Ctrl+D', l: 'Fill down' },
+                            { k: '↵', l: 'Down' },
+                            { k: 'Bksp', l: 'Clear' },
+                        ].map((btn) => (
+                            <div key={btn.k} className="flex items-center gap-0.5 opacity-70">
+                                <kbd className="rounded border border-gray-200 bg-white px-1 font-mono text-[10px] font-bold text-gray-600">
+                                    {btn.k}
+                                </kbd>
+                                <span className="text-[10px] font-bold uppercase tracking-tight text-gray-500">{btn.l}</span>
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
 
             {contextMenu && (

@@ -17,6 +17,9 @@ import { inventoryGridRowKey, inventoryValidationErrorKey } from '@/lib/utils/in
 import { buildSparseHiddenColumnKeys } from '@/lib/utils/inventoryVisualColumnVisibility';
 import { productSchema } from '@/lib/validation/schemas';
 import toast from 'react-hot-toast';
+import { useCompactViewport } from '@/lib/hooks/useCompactViewport';
+import { buildExcelMobileHiddenColumnKeys } from '@/lib/utils/inventoryExcelMobile';
+import { MOBILE_FORM_FOOTER } from '@/lib/utils/formMobileStyles';
 
 /** Max rows loaded into Excel modal working set (Busy/Zoho-style performance). */
 const EXCEL_WORKSET_SIZE = 500;
@@ -55,7 +58,9 @@ export function ExcelModeModal({
     const colPickerRef = useRef(null);
 
     const wasOpenRef = useRef(false);
+    const mobileColsAppliedRef = useRef(false);
     const [sourceTotal, setSourceTotal] = useState(0);
+    const isMobileExcel = useCompactViewport();
 
     // History Tracking (Undo/Redo)
     const [history, setHistory] = useState([]);
@@ -104,6 +109,10 @@ export function ExcelModeModal({
                 category
             );
             setHiddenCols(sparseKeys);
+            mobileColsAppliedRef.current = false;
+        }
+        if (!isOpen) {
+            mobileColsAppliedRef.current = false;
         }
         wasOpenRef.current = isOpen;
     }, [isOpen, data, category, gridColumnOptions]);
@@ -264,6 +273,17 @@ export function ExcelModeModal({
 
         return out;
     }, [columns, category, entityType, gridColumnOptions, inventoryFeatures.batchTrackingEnabled, inventoryFeatures.serialTrackingEnabled]);
+
+    useEffect(() => {
+        if (!isOpen || !isMobileExcel || mobileColsAppliedRef.current) return;
+        setHiddenCols((prev) => {
+            const mobileHidden = buildExcelMobileHiddenColumnKeys(enhancedColumns);
+            const next = new Set(prev);
+            mobileHidden.forEach((key) => next.add(key));
+            return next;
+        });
+        mobileColsAppliedRef.current = true;
+    }, [isOpen, isMobileExcel, enhancedColumns]);
 
     const displayColumns = useMemo(() => {
         return enhancedColumns.filter((c) => {
@@ -683,41 +703,29 @@ export function ExcelModeModal({
             aria-labelledby="excel-modal-title"
         >
             <div className={cn(
-                "bg-white flex flex-col shadow-[0_0_50px_rgba(0,0,0,0.3)] transition-all duration-500 overflow-hidden",
+                "bg-white flex flex-col min-h-0 shadow-[0_0_50px_rgba(0,0,0,0.3)] transition-all duration-500 overflow-hidden",
                 isFullscreen ? "w-full h-full rounded-none" : "w-[96vw] h-[92vh] rounded-3xl border border-gray-200"
             )}>
                 {/* Premium Header */}
-                <div className="h-14 shrink-0 border-b-2 flex items-center justify-between gap-3 px-4 sm:px-6" style={{ backgroundColor: colors?.bg || '#f8fafc', borderColor: colors?.border || '#e2e8f0' }}>
-                    <div className="flex items-center gap-4">
-                        <div className="w-11 h-11 rounded-xl flex items-center justify-center shadow-lg transform hover:scale-105 transition-transform" style={{ backgroundColor: colors?.primary || '#3b82f6' }}>
-                            <Table2 className="w-6 h-6 text-white" aria-hidden="true" />
+                <div className="h-auto min-h-14 shrink-0 border-b-2 flex flex-wrap items-center justify-between gap-2 px-3 py-2 sm:gap-3 sm:px-6 sm:py-0 sm:h-14" style={{ backgroundColor: colors?.bg || '#f8fafc', borderColor: colors?.border || '#e2e8f0' }}>
+                    <div className="flex min-w-0 items-center gap-3">
+                        <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center shadow-lg" style={{ backgroundColor: colors?.primary || '#3b82f6' }}>
+                            <Table2 className="w-5 h-5 sm:w-6 sm:h-6 text-white" aria-hidden="true" />
                         </div>
-                        <div className="flex flex-col">
-                            <h2 id="excel-modal-title" className="text-base font-semibold uppercase tracking-wider text-slate-800 flex items-center gap-2">
-                                {title} <Sparkles className="w-4 h-4 text-amber-400 fill-amber-400" aria-hidden="true" />
+                        <div className="flex min-w-0 flex-col">
+                            <h2 id="excel-modal-title" className="truncate text-sm font-semibold uppercase tracking-wider text-slate-800 sm:text-base">
+                                {title}
                             </h2>
-                            <div className="flex items-center gap-3 mt-0.5">
+                            <div className="flex flex-wrap items-center gap-2 mt-0.5">
                                 <Badge variant="secondary" className="bg-white/50 border-slate-200 text-slate-500 text-[10px] uppercase font-bold px-1.5 py-0">
                                     {localData.length}{sourceTotal > localData.length ? ` / ${sourceTotal}` : ''} rows
-                                    {searchQuery.trim() ? ` · showing ${filteredData.length}` : ''}
                                 </Badge>
-                                {localData.length < sourceTotal && (
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        className="h-7 text-[10px] font-semibold uppercase"
-                                        onClick={handleLoadMoreRows}
-                                    >
-                                        Load {Math.min(EXCEL_WORKSET_SIZE, sourceTotal - localData.length)} more
-                                    </Button>
-                                )}
-                                {hasUnsavedChanges && <span className="flex items-center gap-1 text-[10px] font-bold text-orange-500 uppercase"><span className="w-1.5 h-1.5 bg-orange-500 rounded-full animate-pulse" /> Unsaved</span>}
+                                {hasUnsavedChanges && <span className="text-[10px] font-bold text-orange-500 uppercase">Unsaved</span>}
                             </div>
                         </div>
                     </div>
 
-                    {/* Middle Integrated Search */}
+                    {/* Desktop search */}
                     <div className="hidden md:flex flex-1 max-w-md mx-8">
                         <div className="relative w-full group">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
@@ -732,15 +740,15 @@ export function ExcelModeModal({
                     </div>
 
                     {/* Active Actions */}
-                    <div className="flex items-center gap-2">
-                        <div className="flex border-2 border-slate-200 rounded-xl overflow-hidden bg-white mr-2">
+                    <div className="flex w-full flex-wrap items-center justify-end gap-1.5 sm:w-auto sm:gap-2">
+                        <div className="hidden border-2 border-slate-200 rounded-xl overflow-hidden bg-white sm:flex">
                             <Button variant="ghost" size="icon" disabled={history.length <= 1} onClick={handleUndo} className="h-9 w-9 rounded-none border-r"><Undo className="w-4 h-4" /></Button>
                             <Button variant="ghost" size="icon" disabled={future.length === 0} onClick={handleRedo} className="h-9 w-9 rounded-none"><Redo className="w-4 h-4" /></Button>
                         </div>
 
-                        <Button variant="outline" size="sm" onClick={() => handleLocalAddRow()} className="h-10 px-4 font-bold border-2 border-blue-200 text-blue-700 hover:bg-blue-50" title="Add a new blank row (Ctrl+N / Alt+N / Insert)"><Plus className="w-4 h-4 mr-2" /> Add Row</Button>
-                        <Button variant="outline" size="sm" onClick={handlePasteFromExcel} className="h-10 px-4 font-bold border-2 text-slate-700 hover:bg-slate-50"><Copy className="w-4 h-4 mr-2" /> Smart Paste</Button>
-                        <Button variant="outline" size="sm" onClick={() => handleSave(false)} disabled={!hasUnsavedChanges || isSaving} className={cn("h-10 px-6 font-semibold border-2 transition-all shadow-sm", hasUnsavedChanges ? "bg-green-600 text-white border-green-700 hover:bg-green-700 hover:shadow-green-200" : "bg-white text-slate-400 border-slate-100")}>
+                        <Button variant="outline" size="sm" onClick={() => handleLocalAddRow()} className="h-10 px-3 font-bold border-2 border-blue-200 text-blue-700 hover:bg-blue-50 sm:px-4"><Plus className="w-4 h-4 sm:mr-2" /><span className="hidden sm:inline">Add Row</span></Button>
+                        <Button variant="outline" size="sm" onClick={handlePasteFromExcel} className="hidden h-10 px-4 font-bold border-2 text-slate-700 hover:bg-slate-50 sm:inline-flex"><Copy className="w-4 h-4 mr-2" /> Smart Paste</Button>
+                        <Button variant="outline" size="sm" onClick={() => handleSave(false)} disabled={!hasUnsavedChanges || isSaving} className={cn("hidden h-10 px-6 font-semibold border-2 transition-all shadow-sm sm:inline-flex", hasUnsavedChanges ? "bg-green-600 text-white border-green-700 hover:bg-green-700 hover:shadow-green-200" : "bg-white text-slate-400 border-slate-100")}>
                             {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4 mr-2" />} SAVE
                         </Button>
 
@@ -793,13 +801,38 @@ export function ExcelModeModal({
                         </div>
 
                         <div className="h-8 w-0.5 bg-slate-200 mx-1" />
-                        <Button variant="ghost" size="icon" onClick={() => setIsFullscreen(!isFullscreen)} className="h-10 w-10 text-slate-500 hover:bg-slate-100">{isFullscreen ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}</Button>
                         <Button variant="ghost" size="icon" onClick={handleClose} className="h-10 w-10 hover:bg-red-50 hover:text-red-500 transition-colors"><X className="w-6 h-6" /></Button>
                     </div>
                 </div>
 
+                {isMobileExcel && (
+                    <div className="shrink-0 border-b border-slate-200 bg-white px-3 py-2 md:hidden">
+                        <div className="relative w-full">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                            <input
+                                type="search"
+                                placeholder="Search rows..."
+                                className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-3 text-base outline-none focus:border-blue-500"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                            />
+                        </div>
+                        {localData.length < sourceTotal && (
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="mt-2 h-10 w-full text-xs font-semibold uppercase"
+                                onClick={handleLoadMoreRows}
+                            >
+                                Load {Math.min(EXCEL_WORKSET_SIZE, sourceTotal - localData.length)} more rows
+                            </Button>
+                        )}
+                    </div>
+                )}
+
                 {/* Grid Container */}
-                <div className="flex-1 overflow-hidden relative bg-slate-50">
+                <div className="flex min-h-0 flex-1 flex-col overflow-hidden relative bg-slate-50">
                     <BusyGrid
                         data={filteredData}
                         columns={displayColumns}
@@ -810,12 +843,57 @@ export function ExcelModeModal({
                         validationErrors={validationErrors}
                         category={category}
                         variant="excel"
-                        className="h-full border-0 shadow-none"
+                        touchOptimized={isMobileExcel}
+                        className="h-full min-h-0 border-0 shadow-none"
                     />
                 </div>
 
+                {isMobileExcel && (
+                    <div className="shrink-0 border-t border-slate-800 bg-slate-900 px-3 py-2 text-[10px] font-semibold uppercase tracking-wide lg:hidden">
+                        {errorCount > 0 ? (
+                            <span className="flex items-center gap-2 text-red-400">
+                                <AlertCircle className="h-4 w-4" />
+                                {errorCount} validation errors
+                            </span>
+                        ) : (
+                            <span className="flex items-center gap-2 text-emerald-400">
+                                <CheckCircle2 className="h-4 w-4" />
+                                Data integrity verified
+                            </span>
+                        )}
+                    </div>
+                )}
+
+                {isMobileExcel && (
+                    <div className={cn('shrink-0 border-t border-slate-200 bg-white lg:hidden', MOBILE_FORM_FOOTER)}>
+                        <div className="flex items-center gap-2">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                className="h-11 flex-1 rounded-xl font-semibold"
+                                onClick={handlePasteFromExcel}
+                            >
+                                <Copy className="mr-2 h-4 w-4" />
+                                Paste
+                            </Button>
+                            <Button
+                                type="button"
+                                className={cn(
+                                    'h-11 flex-[1.4] rounded-xl font-semibold',
+                                    hasUnsavedChanges ? 'bg-green-600 text-white hover:bg-green-700' : ''
+                                )}
+                                onClick={() => handleSave(false)}
+                                disabled={!hasUnsavedChanges || isSaving}
+                            >
+                                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                                Save changes
+                            </Button>
+                        </div>
+                    </div>
+                )}
+
                 {/* Intelligent Footer */}
-                <div className="h-9 shrink-0 border-t-2 bg-slate-900 px-4 text-[10px] font-bold uppercase tracking-wide text-slate-400 shadow-2xl sm:px-6 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between py-1.5 sm:py-0 sm:h-10">
+                <div className="hidden shrink-0 border-t-2 bg-slate-900 px-4 text-[10px] font-bold uppercase tracking-wide text-slate-400 shadow-2xl sm:px-6 lg:flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between py-1.5 sm:py-0 sm:h-10">
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
                         <div className="flex items-center gap-2">
                             {errorCount > 0 ? (

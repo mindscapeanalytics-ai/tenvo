@@ -177,6 +177,27 @@ if (approvalQueue.includes("from('stock_adjustments')") || approvalQueue.include
   pass('ApprovalQueue uses Prisma-backed useStockAdjustment');
 }
 
+// --- Excel mobile bulk entry ---
+if (!existsSync(join(root, 'lib/utils/inventoryExcelMobile.js'))) {
+  fail('lib/utils/inventoryExcelMobile.js missing');
+} else {
+  pass('inventoryExcelMobile helpers present');
+}
+
+const excelModal = read('components/ExcelModeModal.jsx');
+if (!excelModal.includes('useCompactViewport') || !excelModal.includes('touchOptimized={isMobileExcel}')) {
+  fail('ExcelModeModal missing mobile touch-optimized grid wiring');
+} else {
+  pass('ExcelModeModal mobile touch layout wired');
+}
+
+const busyGrid = read('components/BusyGrid.jsx');
+if (!busyGrid.includes('touchOptimized') || !busyGrid.includes('handleTouchNextField')) {
+  fail('BusyGrid missing mobile excel touch toolbar');
+} else {
+  pass('BusyGrid mobile excel touch toolbar present');
+}
+
 if (!existsSync(join(root, 'components/mobile/index.ts'))) {
   fail('components/mobile/index.ts barrel missing');
 } else {
