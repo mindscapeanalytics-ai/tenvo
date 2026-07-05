@@ -13,20 +13,18 @@
 --           (business_id, order_number) is in place for multi-tenancy.
 -- =============================================================================
 
--- STEP 1: Drop all existing order_number unique constraints
+-- STEP 1: Drop all existing order_number unique constraints and orphan indexes
 DO $$
 DECLARE
     constraint_rec RECORD;
 BEGIN
-    -- Find all unique constraints on order_number column
     FOR constraint_rec IN 
         SELECT conname, conrelid::regclass AS table_name
         FROM pg_constraint 
         WHERE conrelid = 'storefront_orders'::regclass
-          AND contype = 'u'  -- unique constraint
+          AND contype = 'u'
           AND conname LIKE '%order_number%'
     LOOP
-        -- Drop each constraint found
         EXECUTE format('ALTER TABLE %s DROP CONSTRAINT IF EXISTS %I CASCADE', 
                       constraint_rec.table_name, 
                       constraint_rec.conname);
@@ -34,6 +32,8 @@ BEGIN
     END LOOP;
 END;
 $$;
+
+DROP INDEX IF EXISTS storefront_orders_order_number_key;
 
 -- STEP 2: Add the correct composite unique constraint
 DO $$

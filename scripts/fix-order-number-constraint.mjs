@@ -35,7 +35,11 @@ async function fixOrderNumberConstraint() {
     });
     console.log('');
     
-    // Step 2: Drop all order_number unique constraints
+    // Step 2: Drop orphan global unique index (constraint drop alone may leave this behind)
+    console.log('\n🗑️  Dropping orphan global index if present...');
+    await client.query(`DROP INDEX IF EXISTS storefront_orders_order_number_key`);
+
+    // Step 3: Drop remaining order_number unique constraints
     const constraintsToDrop = await client.query(`
       SELECT conname
       FROM pg_constraint 
@@ -52,7 +56,7 @@ async function fixOrderNumberConstraint() {
       `);
     }
     
-    // Step 3: Add composite unique constraint
+    // Step 4: Add composite unique constraint
     console.log('\n✅ Adding composite unique constraint (business_id, order_number)...');
     await client.query(`
       DO $$
@@ -70,7 +74,7 @@ async function fixOrderNumberConstraint() {
       $$;
     `);
     
-    // Step 4: Ensure indexes exist
+    // Step 5: Ensure indexes exist
     console.log('📊 Creating indexes...');
     
     await client.query(`
@@ -88,7 +92,7 @@ async function fixOrderNumberConstraint() {
         ON storefront_orders (customer_email)
     `);
     
-    // Step 5: Verify the fix
+    // Step 6: Verify the fix
     console.log('\n🔍 Verifying fix...');
     
     const verifyResult = await client.query(`
@@ -106,7 +110,19 @@ async function fixOrderNumberConstraint() {
       console.log(`  ✓ ${row.constraint_name}: ${row.definition}`);
     });
     
-    // Step 6: Final check
+    const indexVerify = await client.query(`
+      SELECT indexname, indexdef
+      FROM pg_indexes
+      WHERE tablename = 'storefront_orders'
+        AND indexname = 'storefront_orders_order_number_key'
+    `);
+
+    const hasGlobalIndex = indexVerify.rows.length > 0;
+    if (hasGlobalIndex) {
+      console.log('\n⚠️  Global index still present:', indexVerify.rows[0]?.indexdef);
+    }
+
+    // Step 7: Final check
     const hasGlobal = verifyResult.rows.some(r => 
       r.constraint_name === 'storefront_orders_order_number_key'
     );
@@ -116,12 +132,13 @@ async function fixOrderNumberConstraint() {
     );
     
     console.log('\n' + '='.repeat(60));
-    if (!hasGlobal && hasComposite) {
+    if (!hasGlobal && !hasGlobalIndex && hasComposite) {
       console.log('✅ SUCCESS! Constraints are correctly configured.');
       console.log('   Multiple businesses can now use the same order number.');
     } else {
       console.log('⚠️  WARNING: Configuration may not be optimal.');
       if (hasGlobal) console.log('   - Global constraint still exists');
+      if (hasGlobalIndex) console.log('   - Global unique index still exists');
       if (!hasComposite) console.log('   - Composite constraint missing');
     }
     console.log('='.repeat(60) + '\n');

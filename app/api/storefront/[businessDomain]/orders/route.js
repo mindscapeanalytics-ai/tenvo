@@ -1,10 +1,9 @@
 import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import { generateOrderNumber, isStorefrontOrderNumberConflict } from '@/lib/utils/order';
-import { sendOrderConfirmationEmail, sendNewOrderMerchantEmail } from '@/lib/email/resend';
 import { resolveStorefrontBusiness } from '@/lib/tenancy/resolveStorefrontBusiness';
-import { invalidateStorefrontCatalog } from '@/lib/storefront/invalidateStorefrontCatalog';
 import { lookupPublicStorefrontOrders } from '@/lib/storefront/publicOrderLookup';
+import { scheduleStorefrontOrderPostCommit } from '@/lib/storefront/storefrontOrderPostCommit';
 import {
   parseStockNumber,
   querySellableLocationQty,
@@ -13,15 +12,12 @@ import {
   recordStorefrontSaleMovementInTx,
   recordStorefrontVariantSaleMovementInTx,
 } from '@/lib/storefront/storefrontOrderStock';
-import { recordStorefrontOrderAnalytics } from '@/lib/storefront/storefrontAnalytics';
 import {
   incrementStorefrontPromoUsage,
   resolveStorefrontOrderDiscount,
 } from '@/lib/storefront/storefrontOrderDiscount';
 import { MembershipService } from '@/lib/services/MembershipService';
 import { MEMBERSHIP_SOURCE } from '@/lib/memberships/membershipConstants';
-import { notifyStorefrontOrder, notifyLowStock } from '@/lib/notifications/notificationHelpers';
-import { resolveBusinessMerchantAlertEmails } from '@/lib/notifications/businessNotificationRecipients';
 import { isStorefrontProductUuid } from '@/lib/utils/storefrontProductRef';
 import { queryStorefrontVariantRequirement } from '@/lib/storefront/storefrontProductVariants';
 import {
@@ -46,77 +42,6 @@ import {
 } from '@/lib/storefront/storefrontPaymentEligibility';
 import { resolveStorefrontOrderShippingAmount } from '@/lib/storefront/storefrontShipping';
 import { resolveCheckoutCartItemRefs } from '@/lib/storefront/validateCheckoutCart';
-
-/**
- * Storefront checkout decrements stock via direct SQL (bypassing InventoryService),
- * so the InventoryService low-stock notification never runs for online sales. This
- * re-adds that safety net: after commit, re-read each sold product's sellable stock
- * and raise a low-stock notification when it drops to/below its threshold.
- * Best-effort and never throws.
- */
-async function checkLowStockAfterSale(client, business, resolvedLines) {
-  const productIds = [...new Set(resolvedLines.map((l) => l.productId).filter(Boolean))];
-  for (const productId of productIds) {
-    try {
-      const pr = await client.query(
-        `SELECT name, stock::float AS stock, has_variants,
-                reorder_point::float AS reorder_point,
-                min_stock::float AS min_stock,
-                min_stock_level::float AS min_stock_level
-         FROM products WHERE id = $1::uuid AND business_id = $2::uuid`,
-        [productId, business.id]
-      );
-      const p = pr.rows[0];
-      if (!p) continue;
-
-      let variantSum = 0;
-      if (p.has_variants) {
-        const vr = await client.query(
-          `SELECT COALESCE(SUM(stock), 0)::float AS s
-           FROM product_variants
-           WHERE product_id = $1::uuid AND business_id = $2::uuid
-             AND COALESCE(is_active, true) = true AND COALESCE(is_deleted, false) = false`,
-          [productId, business.id]
-        );
-        variantSum = parseFloat(vr.rows[0]?.s || 0);
-      }
-      let locationQty = 0;
-      try {
-        locationQty = (await querySellableLocationQty(client, productId, business.id)) || 0;
-      } catch {
-        locationQty = 0;
-      }
-
-      const sellable = Math.max(parseFloat(p.stock || 0), variantSum, locationQty);
-      const threshold =
-        Number(p.reorder_point) > 0
-          ? Number(p.reorder_point)
-          : Number(p.min_stock_level) > 0
-            ? Number(p.min_stock_level)
-            : Number(p.min_stock) > 0
-              ? Number(p.min_stock)
-              : 5;
-
-      if (sellable <= threshold) {
-        await notifyLowStock({
-          businessId: business.id,
-          business: {
-            id: business.id,
-            domain: business.domain,
-            business_name: business.business_name,
-          },
-          productId,
-          productName: p.name,
-          currentStock: sellable,
-          minStock: threshold,
-          client,
-        });
-      }
-    } catch (err) {
-      console.warn('[Create Order] low-stock check skipped:', err?.message || err);
-    }
-  }
-}
 
 function roundMoney(n) {
   return Math.round(Number(n) * 100) / 100;
@@ -192,44 +117,6 @@ export async function POST(request, { params }) {
     shippingMethod,
   } = body;
 
-  let effectivePaymentMethod = paymentMethod || 'cod';
-  let eligibleMethods = [];
-  const paymentGateClient = await pool.connect();
-  try {
-    const paymentCtx = await loadStorefrontPaymentContext(paymentGateClient, business.id);
-    eligibleMethods = resolveEligibleStorefrontPaymentMethods(paymentCtx);
-    if (eligibleMethods.length === 0) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'No payment methods are available for this store. Please contact the store owner.',
-        },
-        { status: 400 }
-      );
-    }
-    effectivePaymentMethod = coerceStorefrontPaymentMethod(paymentMethod, eligibleMethods);
-    if (String(paymentMethod || '').toLowerCase() !== effectivePaymentMethod) {
-      console.warn(
-        `[Create Order] Payment method "${paymentMethod}" unavailable for ${business.domain}, using "${effectivePaymentMethod}"`
-      );
-    }
-  } catch (paymentGateErr) {
-    console.warn('[Create Order] payment method gate skipped:', paymentGateErr?.message);
-    effectivePaymentMethod = 'cod';
-  } finally {
-    paymentGateClient.release();
-  }
-
-  const paymentMethodCoerced =
-    String(paymentMethod || '').trim().toLowerCase() !== String(effectivePaymentMethod || '').toLowerCase();
-
-  const isRestaurant = isRestaurantElevatedStore(business.category);
-  const normalizedRestaurantMode =
-    isRestaurant && restaurantOrderMode
-      ? normalizeRestaurantOrderMode(restaurantOrderMode)
-      : null;
-  const restaurantPickup = isRestaurant && isRestaurantPickupOrder(normalizedRestaurantMode);
-
   if (!customer?.email || !customer?.firstName || !customer?.phone) {
     return NextResponse.json(
       { success: false, error: 'Customer information is required' },
@@ -244,11 +131,38 @@ export async function POST(request, { params }) {
     );
   }
 
-  const resolveClient = await pool.connect();
+  let effectivePaymentMethod = paymentMethod || 'cod';
+  let eligibleMethods = [];
   let checkoutItems;
+  let digitalOnlyOrder = false;
+
+  const preflightClient = await pool.connect();
   try {
+    try {
+      const paymentCtx = await loadStorefrontPaymentContext(preflightClient, business.id);
+      eligibleMethods = resolveEligibleStorefrontPaymentMethods(paymentCtx);
+      if (eligibleMethods.length === 0) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'No payment methods are available for this store. Please contact the store owner.',
+          },
+          { status: 400 }
+        );
+      }
+      effectivePaymentMethod = coerceStorefrontPaymentMethod(paymentMethod, eligibleMethods);
+      if (String(paymentMethod || '').toLowerCase() !== effectivePaymentMethod) {
+        console.warn(
+          `[Create Order] Payment method "${paymentMethod}" unavailable for ${business.domain}, using "${effectivePaymentMethod}"`
+        );
+      }
+    } catch (paymentGateErr) {
+      console.warn('[Create Order] payment method gate skipped:', paymentGateErr?.message);
+      effectivePaymentMethod = 'cod';
+    }
+
     const { resolvedItems, issues } = await resolveCheckoutCartItemRefs(
-      resolveClient,
+      preflightClient,
       business.id,
       items
     );
@@ -263,9 +177,41 @@ export async function POST(request, { params }) {
       );
     }
     checkoutItems = resolvedItems;
+
+    if (checkoutItems?.length) {
+      const lineRefs = checkoutItems.map((i) => ({ productId: i.productId }));
+      if (lineRefs.length === checkoutItems.length) {
+        try {
+          const mix = await classifyOrderLineFulfillment(preflightClient, business.id, lineRefs);
+          if (mix.mixed) {
+            return NextResponse.json(
+              {
+                success: false,
+                error:
+                  'Your cart mixes digital and physical products. Please checkout digital and physical items separately.',
+              },
+              { status: 400 }
+            );
+          }
+          digitalOnlyOrder = mix.allDigital;
+        } catch (digitalErr) {
+          console.warn('[Create Order] digital pre-check skipped:', digitalErr?.message);
+        }
+      }
+    }
   } finally {
-    resolveClient.release();
+    preflightClient.release();
   }
+
+  const paymentMethodCoerced =
+    String(paymentMethod || '').trim().toLowerCase() !== String(effectivePaymentMethod || '').toLowerCase();
+
+  const isRestaurant = isRestaurantElevatedStore(business.category);
+  const normalizedRestaurantMode =
+    isRestaurant && restaurantOrderMode
+      ? normalizeRestaurantOrderMode(restaurantOrderMode)
+      : null;
+  const restaurantPickup = isRestaurant && isRestaurantPickupOrder(normalizedRestaurantMode);
 
   for (const item of checkoutItems) {
     if (
@@ -285,33 +231,6 @@ export async function POST(request, { params }) {
         { status: 400 }
       );
     }
-  }
-
-  const precheckClient = await pool.connect();
-  let digitalOnlyOrder = false;
-
-  try {
-    if (checkoutItems?.length) {
-      const lineRefs = checkoutItems.map((i) => ({ productId: i.productId }));
-      if (lineRefs.length === checkoutItems.length) {
-        const mix = await classifyOrderLineFulfillment(precheckClient, business.id, lineRefs);
-        if (mix.mixed) {
-          return NextResponse.json(
-            {
-              success: false,
-              error:
-                'Your cart mixes digital and physical products. Please checkout digital and physical items separately.',
-            },
-            { status: 400 }
-          );
-        }
-        digitalOnlyOrder = mix.allDigital;
-      }
-    }
-  } catch (digitalErr) {
-    console.warn('[Create Order] digital pre-check skipped:', digitalErr?.message);
-  } finally {
-    precheckClient.release();
   }
 
   if (
@@ -790,90 +709,23 @@ export async function POST(request, { params }) {
 
     await client.query('COMMIT');
 
-    invalidateStorefrontCatalog(business.id);
-
-    // Create notification for business (new online order alert)
-    try {
-      await notifyStorefrontOrder({
-        businessId: business.id,
-        business,
-        orderId,
-        orderNumber,
-        customerName,
-        customerEmail: customer.email,
-        totalAmount: grandTotal,
-        itemCount: resolvedLines.length,
-        client,
-      });
-    } catch (notifyErr) {
-      console.warn('[Create Order] notification skipped:', notifyErr?.message || notifyErr);
-    }
-
-    try {
-      await recordStorefrontOrderAnalytics(client, business.id, grandTotal);
-    } catch (analyticsErr) {
-      console.warn('[Create Order] analytics rollup skipped:', analyticsErr?.message || analyticsErr);
-    }
-
-    await checkLowStockAfterSale(client, business, resolvedLines);
-
-    const emailItems = resolvedLines.map((line, idx) => ({
-      name: line.productName,
-      quantity: line.quantity,
-      unitPrice: line.unitPrice,
-      lineTotal: line.lineTotal,
-      variantName: line.variantName,
-      ...checkoutItems[idx],
-    }));
-
-    void sendOrderConfirmationEmail({
-      to: customer.email,
-      order: {
-        orderNumber,
-        items: emailItems,
-        subtotal: subtotalNet,
-        shipping: shippingAmount,
-        tax: taxTotal,
-        total: grandTotal,
-        shippingMethod: body.shippingMethod,
-        paymentMethod: effectivePaymentMethod,
-      },
-      business: {
-        name: business.business_name,
-        email: business.email,
-      },
-    }).catch(console.error);
-
-    // Notify tenant owners/admins by email (scoped to this business_id only)
-    void (async () => {
-      try {
-        const merchantEmails = await resolveBusinessMerchantAlertEmails(business.id, {
-          fallbackBusinessEmail: business.email,
-        });
-        if (merchantEmails.length === 0) return;
-
-        const merchantBusiness = {
-          name: business.business_name,
-          email: merchantEmails[0],
-        };
-        const orderPayload = {
-          orderNumber,
-          items: emailItems,
-          total: grandTotal,
-          currency: business.currency || undefined,
-          customerName,
-          customerEmail: customer.email,
-        };
-
-        await Promise.all(
-          merchantEmails.map((to) =>
-            sendNewOrderMerchantEmail({ to, order: orderPayload, business: merchantBusiness })
-          )
-        );
-      } catch (merchantEmailErr) {
-        console.error('[Create Order] merchant email failed:', merchantEmailErr);
-      }
-    })();
+    scheduleStorefrontOrderPostCommit({
+      business,
+      orderId,
+      orderNumber,
+      customerName,
+      customerEmail: customer.email,
+      grandTotal,
+      resolvedLines,
+      checkoutItems,
+      customer,
+      effectivePaymentMethod,
+      shippingMethod: body.shippingMethod,
+      subtotalNet,
+      shippingAmount,
+      taxTotal,
+      currency,
+    });
 
     return NextResponse.json({
       success: true,
