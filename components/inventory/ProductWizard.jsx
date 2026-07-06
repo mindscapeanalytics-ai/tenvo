@@ -14,6 +14,12 @@ import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { getDomainDefaults } from '@/lib/domainKnowledge';
 import { DomainFieldRenderer } from '@/components/domain/DomainFieldRenderer';
+import { 
+    isHighPrecisionDomain, 
+    getDomainFormLabels, 
+    getDomainProductFields,
+    resolveDomainFieldKey 
+} from '@/lib/utils/domainHelpers';
 import { BarcodeFieldInput } from '@/components/inventory/BarcodeFieldInput';
 import { useBusiness } from '@/lib/context/BusinessContext';
 import { validateDomainData } from '@/lib/validation/domainSchemas';
