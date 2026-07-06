@@ -128,6 +128,11 @@ function BusinessDashboardContent() {
     });
   }, [optimisticTab, resolvedUrlTab]);
 
+  // Clear optimistic tab on pathname change (browser back/forward navigation)
+  useEffect(() => {
+    setOptimisticTab(null);
+  }, [pathname]);
+
   useEffect(() => {
     const billing = searchParams.get('billing');
     const legacyPayment = searchParams.get('payment');
@@ -704,7 +709,19 @@ function BusinessDashboardContent() {
     
     // Only handle actual mismatches, not initial loads
     if (business.domain !== urlDomain) {
-      // Silently attempt switch without console spam
+      // CRITICAL: Check approval status FIRST to avoid race condition with PendingApprovalGuard
+      const needsApproval = 
+        business.approval_status === 'pending_approval' || 
+        business.approval_status === 'info_requested' ||
+        business.approval_status === 'rejected';
+      
+      if (needsApproval) {
+        // Let PendingApprovalGuard handle redirect to /pending-approval
+        // Don't attempt domain switch for unapproved businesses
+        return;
+      }
+      
+      // Attempt domain switch for approved business
       const trySwitch = async () => {
         const result = await switchBusinessByDomain(urlDomain);
         if (!result.success) {
@@ -719,7 +736,7 @@ function BusinessDashboardContent() {
 
       trySwitch();
     }
-  }, [business?.domain, businessLoading, authLoading, params?.category, router, switchBusinessByDomain]);
+  }, [business?.domain, business?.approval_status, businessLoading, authLoading, params?.category, router, switchBusinessByDomain]);
 
 
   // Data is now managed by DataProvider and synced via useData hook
