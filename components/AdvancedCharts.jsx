@@ -279,7 +279,7 @@ export function RevenueBarChart({ data = [], colors, currency = 'PKR' }) {
  * @param {any[]} props.data
  * @param {any} [props.colors]
  */
-export function CategoryPieChart({ data, colors }) {
+export function CategoryPieChart({ data = [], colors }) {
   const palette =
     Array.isArray(colors?.chartPalette) && colors.chartPalette.length > 0
       ? colors.chartPalette
@@ -299,23 +299,22 @@ export function CategoryPieChart({ data, colors }) {
     '#6366f1', // Indigo
   ];
 
+  const total = data.reduce((sum, item) => sum + (Number(item.value) || 0), 0);
+
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <PieChart>
+      <PieChart margin={{ top: 0, right: 10, left: 10, bottom: 0 }}>
         <Pie
           data={data}
-          cx="50%"
+          cx="30%"
           cy="50%"
-          labelLine={{
-            stroke: '#9ca3af',
-            strokeWidth: 1
-          }}
-          label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-          outerRadius={90}
-          innerRadius={50}
+          labelLine={false}
+          label={false}
+          outerRadius={75}
+          innerRadius={45}
           fill="#3b82f6"
           dataKey="value"
-          paddingAngle={2}
+          paddingAngle={3}
         >
           {data.map((entry, index) => (
             <Cell 
@@ -332,6 +331,31 @@ export function CategoryPieChart({ data, colors }) {
             border: 'none',
             boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
             fontSize: '12px'
+          }}
+          formatter={(value) => [Number(value).toLocaleString(), 'Value']}
+        />
+        <Legend
+          layout="vertical"
+          verticalAlign="middle"
+          align="right"
+          iconType="circle"
+          formatter={(value, entry) => {
+            const item = entry.payload;
+            const val = item ? Number(item.value) : 0;
+            const percent = total > 0 ? ((val / total) * 100).toFixed(0) : '0';
+            const name = value.length > 14 ? `${value.substring(0, 12)}…` : value;
+            return (
+              <span className="text-[11px] font-medium text-slate-600">
+                {name} <span className="text-slate-400 font-semibold tabular-nums">({percent}%)</span>
+              </span>
+            );
+          }}
+          wrapperStyle={{ 
+            fontSize: 11, 
+            paddingLeft: 10, 
+            right: 0, 
+            width: '50%',
+            overflow: 'hidden'
           }}
         />
       </PieChart>
@@ -384,7 +408,7 @@ export function TopProductsChart({ data, colors, currency = 'PKR' }) {
 
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <BarChart data={data} layout="vertical" margin={{ left: 10, right: 20, top: 5, bottom: 5 }}>
+      <BarChart data={data} layout="vertical" margin={{ left: 5, right: 15, top: 5, bottom: 5 }}>
         <defs>
           <linearGradient id="barTopProduct" x1="0" y1="0" x2="1" y2="0">
             <stop offset="0%" stopColor={primary} stopOpacity={0.7} />
@@ -402,8 +426,12 @@ export function TopProductsChart({ data, colors, currency = 'PKR' }) {
         <YAxis 
           dataKey="name" 
           type="category" 
-          width={110} 
-          tick={{ fontSize: 11, fill: '#374151', fontWeight: 500 }}
+          width={130} 
+          tickFormatter={(name) => {
+            const str = String(name || '');
+            return str.length > 20 ? `${str.substring(0, 18)}…` : str;
+          }}
+          tick={{ fontSize: 10, fill: '#374151', fontWeight: 500 }}
           tickLine={false}
           axisLine={false}
         />

@@ -1213,6 +1213,30 @@ export function DomainDashboard({
                     dateRange={dateRange}
                     onQuickAction={onQuickAction}
                 />
+
+                {/* Bottom row of left column — Recent Activity Feed & Domain Efficiency Meter */}
+                <div className="grid grid-cols-12 gap-2.5 items-stretch">
+                    <div className="col-span-7 min-h-0 flex">
+                        <RecentActivityFeed
+                            businessId={activeBusinessId}
+                            onViewAll={() => onQuickAction?.('reports')}
+                            feedLimit={25}
+                            className="flex-1"
+                        />
+                    </div>
+                    <div className="col-span-5 min-h-0 flex">
+                        <div className="flex h-full min-h-[16rem] w-full">
+                            <KPIMeter
+                                title="Domain Efficiency"
+                                value={domainEfficiency}
+                                target={95}
+                                suffix="%"
+                                trendValue={Number(revenueTrendSigned.toFixed(1))}
+                                trendLabel="vs previous period"
+                            />
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div className="hidden lg:flex lg:col-span-4 flex-col gap-2.5 min-h-0">
@@ -1246,51 +1270,26 @@ export function DomainDashboard({
                     snapshotError={advancedOpsSnapshot.error}
                     onSnapshotRetry={advancedOpsSnapshot.reload}
                 />
-            </div>
 
-            {/* Bottom band — fills space below analytics with balanced columns */}
-            <div className="hidden lg:grid lg:col-span-12 lg:grid-cols-12 gap-2.5 items-stretch">
-                <div className="lg:col-span-4 min-h-0">
-                    <DomainOperationsPanel
-                        businessId={activeBusinessId}
-                        business={business}
-                        category={category}
-                        domainKnowledge={domainKnowledge as Record<string, unknown> | undefined}
-                        dateRange={dateRange}
-                        periodLabel={periodLabel}
-                        formatCurrencyCompact={formatCurrencyCompact}
-                        onQuickAction={onQuickAction}
-                        isActive
-                        variant="compact"
-                        sections={['collections']}
-                        hideKpiStrip
-                        hideMiddleCharts
-                        hideOrderTimeline
-                        showLoadingShell={false}
-                        snapshot={advancedOpsSnapshot.snapshot}
-                        onSnapshotRetry={advancedOpsSnapshot.reload}
-                    />
-                </div>
-                <div className="lg:col-span-5 min-h-0 flex">
-                    <RecentActivityFeed
-                        businessId={activeBusinessId}
-                        onViewAll={() => onQuickAction?.('reports')}
-                        feedLimit={25}
-                        className="flex-1"
-                    />
-                </div>
-                <div className="lg:col-span-3 min-h-0 flex">
-                    <div className="flex h-full min-h-[16rem] w-full">
-                    <KPIMeter
-                        title="Domain Efficiency"
-                        value={domainEfficiency}
-                        target={95}
-                        suffix="%"
-                        trendValue={Number(revenueTrendSigned.toFixed(1))}
-                        trendLabel="vs previous period"
-                    />
-                    </div>
-                </div>
+                <DomainOperationsPanel
+                    businessId={activeBusinessId}
+                    business={business}
+                    category={category}
+                    domainKnowledge={domainKnowledge as Record<string, unknown> | undefined}
+                    dateRange={dateRange}
+                    periodLabel={periodLabel}
+                    formatCurrencyCompact={formatCurrencyCompact}
+                    onQuickAction={onQuickAction}
+                    isActive
+                    variant="compact"
+                    sections={['collections']}
+                    hideKpiStrip
+                    hideMiddleCharts
+                    hideOrderTimeline
+                    showLoadingShell={false}
+                    snapshot={advancedOpsSnapshot.snapshot}
+                    onSnapshotRetry={advancedOpsSnapshot.reload}
+                />
             </div>
 
             {/* Mobile — hub covers KPIs/actions; show insights & activity only */}
