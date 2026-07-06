@@ -23,7 +23,8 @@ import {
 import { formatCurrency, isValidCurrency } from '@/lib/currency';
 import { authClient } from '@/lib/auth-client';
 import { useRegistrationPersistence, clearRegistrationData } from '@/lib/hooks/useRegistrationPersistence';
-import { DataRecoveryDialog } from '@/components/registration/DataRecoveryDialog';
+import { ResumeBanner } from '@/components/registration/ResumeBanner';
+import { GoogleOAuthError } from '@/components/registration/GoogleOAuthError';
 import Link from 'next/link';
 import { AuthShell, AuthDivider, AuthFooterLink, AuthGoogleButton, authInputClass, authLabelClass } from '@/components/auth/AuthShell';
 import { isEmailVerified } from '@/lib/actions/auth/verification';
@@ -216,6 +217,8 @@ export default function RegisterWizard() {
     const [emailDeliveryHint, setEmailDeliveryHint] = useState(null);
     const [resumeChecked, setResumeChecked] = useState(false);
     const [showOptionalFields, setShowOptionalFields] = useState(false);
+    const [showResumeBanner, setShowResumeBanner] = useState(false);
+    const [googleError, setGoogleError] = useState(null);
     
     // Form data with persistence
     const [formData, setFormData] = useState(() => buildRegistrationFormState(persistedFormData));
@@ -236,6 +239,44 @@ export default function RegisterWizard() {
     const domainKnowledgeForWizard = formData.category
         ? getDomainKnowledge(formData.category, { countryIso: formData.country })
         : null;
+
+    // Smart auto-resume: restore data without blocking dialog
+    useEffect(() => {
+        if (hasRecoveredData && !resumeChecked) {
+            // Auto-fill form with saved data
+            const restoredData = buildRegistrationFormState(persistedFormData);
+            setFormData(restoredData);
+            
+            // Calculate data age
+            const savedAt = persistedFormData._savedAt ? new Date(persistedFormData._savedAt) : null;
+            const ageMinutes = savedAt ? (Date.now() - savedAt.getTime()) / (1000 * 60) : 0;
+            
+            // Smart resume based on age
+            if (ageMinutes < 30) {
+                // Recent data (< 30 min) - silent auto-resume with subtle toast
+                toast.success('Restored your registration from a few minutes ago', { duration: 3000 });
+            } else {
+                // Older data - show dismissible banner
+                setShowResumeBanner(true);
+                
+                // Auto-hide banner after 15 seconds
+                setTimeout(() => setShowResumeBanner(false), 15000);
+            }
+            
+            setResumeChecked(true);
+        }
+    }, [hasRecoveredData, persistedFormData, resumeChecked]);
+
+    const handleDismissResumeBanner = () => {
+        setShowResumeBanner(false);
+    };
+
+    const handleStartFresh = () => {
+        rejectRecoveredData();
+        setShowResumeBanner(false);
+        setFormData(buildRegistrationFormState({}));
+        toast.success('Starting fresh - form cleared');
+    };
 
     // Sync step with persistence
     useEffect(() => {
@@ -350,14 +391,6 @@ export default function RegisterWizard() {
     const nextStep = () => goToStep(step + 1);
     const prevStep = () => goToStep(step - 1);
 
-    const handleAcceptRecovery = () => {
-        acceptRecoveredData();
-        setFormData(buildRegistrationFormState(persistedFormData));
-        if (persistedStep >= 1 && persistedStep <= 3) {
-            setStep(persistedStep);
-        }
-    };
-
     // Debounced sync of wizard state to localStorage
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -377,7 +410,7 @@ export default function RegisterWizard() {
         return () => { cancelled = true; };
     }, []);
 
-    // Resume onboarding from URL params or returning verified users
+    // Handle URL params for errors and resume state
     useEffect(() => {
         if (typeof window === 'undefined' || resumeChecked) return;
 
@@ -398,8 +431,13 @@ export default function RegisterWizard() {
             toast.success('Email verified - finish your workspace setup.');
         }
 
+        // Enhanced Google OAuth error handling
         if (params.get('error') === 'google') {
-            toast.error('Google sign-in was cancelled or blocked. Try again or use email registration.');
+            const errorType = params.get('google_error') || 'generic';
+            setGoogleError(errorType);
+            
+            // Clear error from URL after setting state
+            window.history.replaceState({}, '', window.location.pathname);
         }
 
         setResumeChecked(true);
@@ -613,17 +651,42 @@ export default function RegisterWizard() {
 
     const handleGoogleRegister = async () => {
         setIsLoading(true);
+        setGoogleError(null); // Clear any previous errors
         try {
             await authClient.signIn.social({
                 provider: 'google',
                 callbackURL: '/register',
-                errorCallbackURL: '/register?error=google',
+                errorCallbackURL: '/register?error=google&google_error=generic',
             });
         } catch (e) {
             console.error(e);
-            toast.error(e?.message || 'Google sign-in failed to start.');
+            
+            // Detect specific error types
+            let errorType = 'generic';
+            const errorMsg = e?.message?.toLowerCase() || '';
+            
+            if (errorMsg.includes('popup') && errorMsg.includes('blocked')) {
+                errorType = 'popup_blocked';
+            } else if (errorMsg.includes('popup') || errorMsg.includes('closed')) {
+                errorType = 'popup_closed';
+            } else if (errorMsg.includes('network') || errorMsg.includes('fetch')) {
+                errorType = 'network_error';
+            } else if (errorMsg.includes('denied') || errorMsg.includes('cancel')) {
+                errorType = 'access_denied';
+            }
+            
+            setGoogleError(errorType);
             setIsLoading(false);
         }
+    };
+
+    const handleRetryGoogle = () => {
+        setGoogleError(null);
+        handleGoogleRegister();
+    };
+
+    const handleDismissGoogleError = () => {
+        setGoogleError(null);
     };
 
     const handleFinish = async () => {
@@ -758,16 +821,6 @@ export default function RegisterWizard() {
 
     return (
         <>
-            <DataRecoveryDialog
-                isOpen={showRecoveryDialog}
-                onClose={() => {}}
-                onAccept={handleAcceptRecovery}
-                onReject={rejectRecoveredData}
-                savedAt={persistedFormData._savedAt ? new Date(persistedFormData._savedAt) : null}
-                ageHours={persistedFormData._savedAt ? Math.floor((Date.now() - new Date(persistedFormData._savedAt).getTime()) / (1000 * 60 * 60)) : 0}
-                step={persistedStep}
-            />
-
             <AuthShell
                 variant="register"
                 title={stepMeta[step]?.title}
@@ -790,6 +843,26 @@ export default function RegisterWizard() {
                     ) : null
                 }
             >
+                                    {/* Resume banner - non-blocking, auto-dismisses */}
+                                    {showResumeBanner && step === 1 && (
+                                        <ResumeBanner
+                                            onDismiss={handleDismissResumeBanner}
+                                            onStartFresh={handleStartFresh}
+                                            savedAt={persistedFormData._savedAt}
+                                            className="mb-6"
+                                        />
+                                    )}
+
+                                    {/* Google OAuth error - contextual and actionable */}
+                                    {googleError && step === 1 && !user && (
+                                        <GoogleOAuthError
+                                            errorType={googleError}
+                                            onRetry={handleRetryGoogle}
+                                            onDismiss={handleDismissGoogleError}
+                                            className="mb-6"
+                                        />
+                                    )}
+
                                     {step === 1 && (
                                         <div className="grid gap-4 animate-in slide-in-from-left-4 duration-300">
                                             {user ? (
