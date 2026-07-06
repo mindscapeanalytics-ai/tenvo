@@ -501,6 +501,12 @@ export default async function StoreHomePage({ params }) {
             accent={accent}
             placement="after-hero"
           />
+          <StoreMarketingSections
+            sections={settings?.pageSections}
+            businessDomain={businessDomain}
+            accent={accent}
+            placement="mid-page"
+          />
           <SupermarketHomeSections
             businessDomain={businessDomain}
             businessCategory={business.category}
@@ -512,6 +518,12 @@ export default async function StoreHomePage({ params }) {
             settings={settings}
             storeName={supermarketStoreName}
             freeShippingThreshold={freeShippingThreshold}
+          />
+          <StoreMarketingSections
+            sections={settings?.pageSections}
+            businessDomain={businessDomain}
+            accent={accent}
+            placement="before-footer"
           />
         </SupermarketFeedLayout>
       ) : immersiveHero ? (
@@ -528,6 +540,14 @@ export default async function StoreHomePage({ params }) {
           accent={accent}
           placement="after-hero"
         />
+        {skipHomeNavSections ? (
+          <StoreMarketingSections
+            sections={settings?.pageSections}
+            businessDomain={businessDomain}
+            accent={accent}
+            placement="mid-page"
+          />
+        ) : null}
         </>
       ) : (
       /* ── Hero Section (general retail) ─────────────────────────────────── */
@@ -662,6 +682,15 @@ export default async function StoreHomePage({ params }) {
         />
       ) : null}
 
+      {skipHomeNavSections && !supermarketElevatedHero && !immersiveHero ? (
+        <StoreMarketingSections
+          sections={settings?.pageSections}
+          businessDomain={businessDomain}
+          accent={accent}
+          placement="mid-page"
+        />
+      ) : null}
+
       {dealershipHero && dealershipCatalogResult.success && (
         <LazyVerticalHomeSections
           variant="dealership"
@@ -791,6 +820,15 @@ export default async function StoreHomePage({ params }) {
         />
       )}
 
+      {skipHomeNavSections && !supermarketElevatedHero ? (
+        <StoreMarketingSections
+          sections={settings?.pageSections}
+          businessDomain={businessDomain}
+          accent={accent}
+          placement="before-footer"
+        />
+      ) : null}
+
       {supportsFashionGulSections(business.category) && !editorialHero && (
         <FashionGulAhmedSections
           businessDomain={businessDomain}
@@ -849,12 +887,14 @@ export default async function StoreHomePage({ params }) {
         <DomainDealStrip dealStrip={landing.dealStrip} accent={accent} accentDark={accentDark} />
       )}
 
+      {!skipHomeNavSections ? (
       <StoreMarketingSections
         sections={settings?.pageSections}
         businessDomain={businessDomain}
         accent={accent}
         placement="mid-page"
       />
+      ) : null}
 
       {/* ── Category Cards Grid (tablet+) ─────────────────────────────────── */}
       {categories.length >= 3 && !skipHomeNavSections && (
@@ -1019,12 +1059,14 @@ export default async function StoreHomePage({ params }) {
       </section>
       )}
 
+      {!skipHomeNavSections ? (
       <StoreMarketingSections
         sections={settings?.pageSections}
         businessDomain={businessDomain}
         accent={accent}
         placement="before-footer"
       />
+      ) : null}
 
       {/* ── New Arrivals (only when catalog has more beyond featured) ───────── */}
       {showNewArrivals && !editorialHero && !dealershipHero && !marketplaceHero && !pharmacyElevatedHero && !furnitureElevatedHero && !restaurantElevatedHero && !fitnessElevatedHero && !supermarketElevatedHero && (

@@ -7,6 +7,7 @@ import {
   getActivePageSections,
   getSectionBackgroundStyle,
   isImageOnlyBanner,
+  resolveBannerFrameClasses,
 } from '@/lib/storefront/storePageSections';
 
 /**
@@ -86,20 +87,21 @@ export function StoreMarketingSections({
         }
 
         if (isImageOnlyBanner(section)) {
+          const frameClass = resolveBannerFrameClasses(section, { isAfterHero });
+          const fitClass = section.imageFit === 'contain' ? 'object-contain' : 'object-cover';
           const imageBlock = (
             <div
               className={cn(
                 'relative w-full overflow-hidden bg-slate-100',
-                isAfterHero
-                  ? 'aspect-[21/9] min-h-[120px] sm:min-h-[160px] lg:min-h-[200px]'
-                  : 'aspect-[21/9] min-h-[140px] rounded-2xl sm:min-h-[180px] sm:rounded-3xl'
+                frameClass,
+                !isAfterHero && 'rounded-2xl sm:rounded-3xl'
               )}
             >
               <SmartProductImage
                 src={section.imageUrl}
                 alt={section.title || 'Store promotion'}
                 fill
-                className="object-cover"
+                className={fitClass}
                 sizes="(max-width: 768px) 100vw, 1400px"
               />
             </div>
@@ -136,9 +138,12 @@ export function StoreMarketingSections({
 
         return (
           <section key={section.id} className="border-b border-slate-200/60">
-            <div className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-8 py-6 sm:py-10">
+            <div className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
               <div
-                className="relative min-h-[220px] overflow-hidden rounded-2xl sm:min-h-[260px] sm:rounded-3xl px-6 py-10 sm:px-10 sm:py-14 shadow-sm"
+                className={cn(
+                  'relative overflow-hidden px-6 py-8 shadow-sm sm:px-10 sm:py-12',
+                  resolveBannerFrameClasses(section, { framed: true })
+                )}
                 style={style}
               >
                 <div className="relative z-[1] max-w-2xl">

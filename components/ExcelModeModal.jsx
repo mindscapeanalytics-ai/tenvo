@@ -712,7 +712,157 @@ export function ExcelModeModal({
                 "bg-white flex flex-col min-h-0 shadow-[0_0_50px_rgba(0,0,0,0.3)] transition-all duration-500 overflow-hidden",
                 isFullscreen ? "w-full h-full rounded-none" : "w-[96vw] h-[92vh] rounded-3xl border border-gray-200"
             )}>
-                {/* Premium Header */}
+                {/* Header — compact single row on mobile; full toolbar on desktop */}
+                {isMobileExcel ? (
+                    <div
+                        className="shrink-0 border-b border-slate-200 bg-white px-2 py-1.5"
+                        style={{ borderColor: colors?.border || '#e2e8f0' }}
+                    >
+                        <div className="flex items-center gap-1.5">
+                            <div className="relative min-w-0 flex-1">
+                                <Search
+                                    className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+                                    aria-hidden="true"
+                                />
+                                <input
+                                    type="search"
+                                    aria-label="Search rows"
+                                    placeholder={`Search ${localData.length} rows…`}
+                                    className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50 pl-9 pr-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                />
+                            </div>
+
+                            <div
+                                className="flex shrink-0 rounded-lg border border-slate-200 bg-slate-100 p-0.5"
+                                role="group"
+                                aria-label="View mode"
+                            >
+                                <button
+                                    type="button"
+                                    aria-label="Card view"
+                                    aria-pressed={mobileViewMode === 'cards'}
+                                    className={cn(
+                                        'flex h-8 w-8 items-center justify-center rounded-md transition-colors',
+                                        mobileViewMode === 'cards'
+                                            ? 'bg-white text-blue-700 shadow-sm'
+                                            : 'text-slate-500'
+                                    )}
+                                    onClick={() => setMobileViewMode('cards')}
+                                >
+                                    <LayoutGrid className="h-4 w-4" />
+                                </button>
+                                <button
+                                    type="button"
+                                    aria-label="Grid view"
+                                    aria-pressed={mobileViewMode === 'grid'}
+                                    className={cn(
+                                        'flex h-8 w-8 items-center justify-center rounded-md transition-colors',
+                                        mobileViewMode === 'grid'
+                                            ? 'bg-white text-blue-700 shadow-sm'
+                                            : 'text-slate-500'
+                                    )}
+                                    onClick={() => setMobileViewMode('grid')}
+                                >
+                                    <Table2 className="h-4 w-4" />
+                                </button>
+                            </div>
+
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="icon"
+                                aria-label="Add row"
+                                className="h-9 w-9 shrink-0 border-blue-200 text-blue-700"
+                                onClick={() => handleLocalAddRow()}
+                            >
+                                <Plus className="h-4 w-4" />
+                            </Button>
+
+                            <div className="relative shrink-0" ref={colPickerRef}>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="icon"
+                                    aria-label="Choose columns"
+                                    aria-expanded={showColPicker}
+                                    className="h-9 w-9"
+                                    onClick={() => setShowColPicker((v) => !v)}
+                                >
+                                    <Columns className="h-4 w-4" />
+                                </Button>
+                                {showColPicker && (
+                                    <div className="absolute right-0 top-full z-[10000] mt-1 max-h-[min(50vh,18rem)] w-56 overflow-auto rounded-xl border border-slate-200 bg-white p-2 text-left shadow-2xl">
+                                        <p className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                                            Visible columns
+                                        </p>
+                                        {enhancedColumns
+                                            .filter((c) => c.id !== 'status_dot')
+                                            .map((col) => {
+                                                const key = col.accessorKey || col.id;
+                                                const label =
+                                                    typeof col.header === 'function'
+                                                        ? col.header()
+                                                        : col.header || key;
+                                                const visible = !hiddenCols.has(key);
+                                                return (
+                                                    <label
+                                                        key={String(key)}
+                                                        className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-xs hover:bg-slate-50"
+                                                    >
+                                                        <input
+                                                            type="checkbox"
+                                                            className="rounded border-slate-300"
+                                                            checked={visible}
+                                                            onChange={() => {
+                                                                setHiddenCols((prev) => {
+                                                                    const next = new Set(prev);
+                                                                    if (next.has(key)) next.delete(key);
+                                                                    else next.add(key);
+                                                                    return next;
+                                                                });
+                                                            }}
+                                                        />
+                                                        <span className="truncate font-medium text-slate-700">
+                                                            {label}
+                                                        </span>
+                                                    </label>
+                                                );
+                                            })}
+                                    </div>
+                                )}
+                            </div>
+
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                aria-label="Close bulk entry"
+                                className="h-9 w-9 shrink-0 text-slate-600 hover:bg-red-50 hover:text-red-500"
+                                onClick={handleClose}
+                            >
+                                <X className="h-5 w-5" />
+                            </Button>
+                        </div>
+
+                        {localData.length < sourceTotal && (
+                            <button
+                                type="button"
+                                className="mt-1.5 w-full rounded-md py-1 text-center text-[11px] font-semibold text-blue-700 hover:bg-blue-50"
+                                onClick={handleLoadMoreRows}
+                            >
+                                Load {Math.min(EXCEL_WORKSET_SIZE, sourceTotal - localData.length)} more
+                                {' '}
+                                ({localData.length}/{sourceTotal})
+                            </button>
+                        )}
+
+                        <h2 id="excel-modal-title" className="sr-only">
+                            {title}
+                        </h2>
+                    </div>
+                ) : (
                 <div className="h-auto min-h-14 shrink-0 border-b-2 flex flex-wrap items-center justify-between gap-2 px-3 py-2 sm:gap-3 sm:px-6 sm:py-0 sm:h-14" style={{ backgroundColor: colors?.bg || '#f8fafc', borderColor: colors?.border || '#e2e8f0' }}>
                     <div className="flex min-w-0 items-center gap-3">
                         <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center shadow-lg" style={{ backgroundColor: colors?.primary || '#3b82f6' }}>
@@ -810,55 +960,6 @@ export function ExcelModeModal({
                         <Button variant="ghost" size="icon" onClick={handleClose} className="h-10 w-10 hover:bg-red-50 hover:text-red-500 transition-colors"><X className="w-6 h-6" /></Button>
                     </div>
                 </div>
-
-                {isMobileExcel && (
-                    <div className="shrink-0 border-b border-slate-200 bg-white px-3 py-2 md:hidden">
-                        <div className="mb-2 flex rounded-xl border border-slate-200 bg-slate-100 p-0.5">
-                            <button
-                                type="button"
-                                className={cn(
-                                    'flex h-10 flex-1 items-center justify-center gap-1.5 rounded-lg text-xs font-semibold transition-colors',
-                                    mobileViewMode === 'cards' ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-600'
-                                )}
-                                onClick={() => setMobileViewMode('cards')}
-                            >
-                                <LayoutGrid className="h-4 w-4" />
-                                Cards
-                            </button>
-                            <button
-                                type="button"
-                                className={cn(
-                                    'flex h-10 flex-1 items-center justify-center gap-1.5 rounded-lg text-xs font-semibold transition-colors',
-                                    mobileViewMode === 'grid' ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-600'
-                                )}
-                                onClick={() => setMobileViewMode('grid')}
-                            >
-                                <Table2 className="h-4 w-4" />
-                                Grid
-                            </button>
-                        </div>
-                        <div className="relative w-full">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                            <input
-                                type="search"
-                                placeholder="Search rows..."
-                                className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-3 text-base outline-none focus:border-blue-500"
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                            />
-                        </div>
-                        {localData.length < sourceTotal && (
-                            <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                className="mt-2 h-10 w-full text-xs font-semibold uppercase"
-                                onClick={handleLoadMoreRows}
-                            >
-                                Load {Math.min(EXCEL_WORKSET_SIZE, sourceTotal - localData.length)} more rows
-                            </Button>
-                        )}
-                    </div>
                 )}
 
                 {/* Grid / card entry */}
@@ -894,23 +995,25 @@ export function ExcelModeModal({
                 </div>
 
                 {isMobileExcel && (
-                    <div className="shrink-0 border-t border-slate-800 bg-slate-900 px-3 py-2 text-[10px] font-semibold uppercase tracking-wide lg:hidden">
-                        {errorCount > 0 ? (
-                            <span className="flex items-center gap-2 text-red-400">
-                                <AlertCircle className="h-4 w-4" />
-                                {errorCount} validation errors
-                            </span>
-                        ) : (
-                            <span className="flex items-center gap-2 text-emerald-400">
-                                <CheckCircle2 className="h-4 w-4" />
-                                Data integrity verified
-                            </span>
-                        )}
-                    </div>
-                )}
-
-                {isMobileExcel && (
                     <div className={cn('shrink-0 border-t border-slate-200 bg-white lg:hidden', MOBILE_FORM_FOOTER)}>
+                        <div className="mb-1.5 flex items-center justify-between gap-2 text-[10px] font-semibold uppercase tracking-wide">
+                            {errorCount > 0 ? (
+                                <span className="flex items-center gap-1 text-red-600">
+                                    <AlertCircle className="h-3.5 w-3.5" />
+                                    {errorCount} errors
+                                </span>
+                            ) : (
+                                <span className="flex items-center gap-1 text-emerald-600">
+                                    <CheckCircle2 className="h-3.5 w-3.5" />
+                                    Ready
+                                </span>
+                            )}
+                            <span className="text-slate-400">
+                                {localData.length}
+                                {sourceTotal > localData.length ? `/${sourceTotal}` : ''} rows
+                                {hasUnsavedChanges ? ' · Unsaved' : ''}
+                            </span>
+                        </div>
                         <div className="flex items-center gap-2">
                             <Button
                                 type="button"

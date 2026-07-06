@@ -1678,7 +1678,7 @@ export function StoreSettingsManager({ business, category }) {
                 <Megaphone className="w-4 h-4" /> Homepage marketing sections
               </CardTitle>
               <CardDescription>
-                Upload full marketing banners (like supermarket promos) or promo strips. Choose placement on your homepage — after hero, mid-page, or before footer. Works on all store templates.
+                Upload full marketing banners or promo strips. Choose placement on your homepage (after hero, mid-page, or before footer) and adjust banner height. Works on all store templates.
               </CardDescription>
             </CardHeader>
             <CardContent>

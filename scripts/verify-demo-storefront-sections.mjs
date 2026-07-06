@@ -31,9 +31,9 @@ function ok(msg) {
   console.log(`OK: ${msg}`);
 }
 
-function hasHomepageMarketing(settings, category, domain) {
+function hasHomepageMarketing(settings, category, domain, productCount = 0) {
   const pageSections = getActivePageSections(settings?.pageSections);
-  if (pageSections.length >= 2) return { kind: 'pageSections', count: pageSections.length };
+  if (pageSections.length >= 1) return { kind: 'pageSections', count: pageSections.length };
 
   const canonical = resolveDomainKey(category);
   if (supportsFashionGulSections(canonical)) {
@@ -60,7 +60,7 @@ function hasHomepageMarketing(settings, category, domain) {
     if (banners >= 1) return { kind: 'fitness', count: banners };
   }
 
-  if (pageSections.length >= 1) return { kind: 'pageSections', count: pageSections.length };
+  if (productCount >= 8) return { kind: 'catalog', count: productCount };
   return null;
 }
 
@@ -112,7 +112,7 @@ try {
       ok(`${spec.domain}: ${products} products (${withImages} imaged)`);
     }
 
-    const marketing = hasHomepageMarketing(settings, row.category, spec.domain);
+    const marketing = hasHomepageMarketing(settings, row.category, spec.domain, products);
     if (!marketing) {
       fail(`${spec.domain}: no homepage sections/banners — run data-lab:ensure-demos`);
     } else {

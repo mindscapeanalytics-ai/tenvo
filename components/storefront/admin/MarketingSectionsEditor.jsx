@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { BRAND_PRIMARY } from '@/lib/theme/brandTokens';
 import {
+  BANNER_HEIGHT_PRESETS,
   createEmptyPageSection,
   MAX_PAGE_SECTIONS,
   PAGE_SECTION_PLACEMENTS,
@@ -267,6 +268,35 @@ export function MarketingSectionsEditor({ sections = [], brandColor, businessId,
 
               {section.type === 'banner' ? (
                 <div className="space-y-3 rounded-xl border border-gray-100 bg-gray-50/80 p-4">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label>Banner height</Label>
+                      <select
+                        className="h-9 w-full rounded-md border border-gray-200 bg-white px-3 text-sm"
+                        value={section.heightPreset || 'standard'}
+                        onChange={(e) => updateSection(section.id, { heightPreset: e.target.value })}
+                      >
+                        {BANNER_HEIGHT_PRESETS.map((preset) => (
+                          <option key={preset.id} value={preset.id}>
+                            {preset.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    {imageOnly ? (
+                      <div className="space-y-1.5">
+                        <Label>Image fit</Label>
+                        <select
+                          className="h-9 w-full rounded-md border border-gray-200 bg-white px-3 text-sm"
+                          value={section.imageFit || 'cover'}
+                          onChange={(e) => updateSection(section.id, { imageFit: e.target.value })}
+                        >
+                          <option value="cover">Cover (fill frame)</option>
+                          <option value="contain">Contain (show full image)</option>
+                        </select>
+                      </div>
+                    ) : null}
+                  </div>
                   <Label>Design style</Label>
                   <div className="flex flex-wrap gap-2">
                     {[
