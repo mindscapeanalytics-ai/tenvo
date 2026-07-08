@@ -33,7 +33,14 @@ export function FashionGulAhmedSections({
       )
     : null;
   const saleMosaic = config.showSaleMosaic
-    ? resolveFashionSaleMosaic(settings, businessCategory, businessDomain, storeBase)
+    ? resolveFashionSaleMosaic(
+        settings,
+        businessCategory,
+        businessDomain,
+        storeBase,
+        categories,
+        products
+      )
     : null;
 
   if (!homeEdit && !saleMosaic) return null;

@@ -23,6 +23,7 @@ import {
   getStorefrontSettings, updateBusinessSettings,
   configureStorefrontDomain, syncInventoryToStorefront
 } from '@/lib/actions/storefront/admin';
+import { getCategories } from '@/lib/actions/storefront/products';
 import { MobileTabHeader } from '@/components/mobile/MobileTabHeader';
 import { useStorefrontEmbedded } from '@/lib/context/StorefrontMobileContext';
 import { getRegionalStandards } from '@/lib/utils/regionalHelpers';
@@ -123,6 +124,7 @@ export function StoreSettingsManager({ business, category }) {
   const [syncing, setSyncing] = useState(false);
   const [domainSaving, setDomainSaving] = useState(false);
   const [newDomain, setNewDomain] = useState('');
+  const [fashionCategories, setFashionCategories] = useState([]);
 
   const [settings, setSettings] = useState({
     enabled: true,
@@ -326,6 +328,12 @@ export function StoreSettingsManager({ business, category }) {
         setSettings(prev => ({ ...prev, ...result.data }));
         setNewDomain(result.data.storeDomain || '');
         setLoadedPlanTier(result.data.planTier || null);
+      }
+      if (supportsFashionGulSections(category || business?.category)) {
+        const categoryResult = await getCategories(business.id);
+        if (categoryResult?.success) {
+          setFashionCategories(categoryResult.categories || []);
+        }
       }
     } catch (err) {
       console.error('Failed to load store settings:', err);
@@ -1571,11 +1579,14 @@ export function StoreSettingsManager({ business, category }) {
                   setFashion={setFashion}
                   businessCategory={category || business?.category}
                   businessId={business?.id}
+                  categories={fashionCategories}
                 />
                 <FashionCatalogEditor fashion={settings.fashion || {}} setFashion={setFashion} />
                 <p className="text-xs text-gray-500">
-                  Department rows use your category and product photos. Set your accent color under
-                  Branding and the top announcement strip under Content.
+                  The Home Edit and Sale mosaic use your inventory categories and product photos.
+                  Link each tile to a category; images fall back to category art or a product photo
+                  until you upload a custom banner. Live stores without a saved Sale mosaic auto-build
+                  from top categories (sale items first).
                 </p>
               </CardContent>
             </Card>

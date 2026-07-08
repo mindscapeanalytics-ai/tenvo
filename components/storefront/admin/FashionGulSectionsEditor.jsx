@@ -67,9 +67,48 @@ function ImageUploadField({ value, onChange, businessId, label = 'Image' }) {
   );
 }
 
-function HomeEditTilesEditor({ tiles = [], onChange, businessId }) {
+function CategoryLinkField({ categories = [], value, onChange, onPick }) {
+  if (!categories.length) {
+    return (
+      <p className="text-xs text-gray-500">
+        Add categories in Inventory to link tiles to live catalog collections.
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-1">
+      <Label className="text-xs">Inventory category</Label>
+      <select
+        className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+        value={value || ''}
+        onChange={(e) => {
+          const slug = e.target.value;
+          onChange(slug);
+          const cat = categories.find((row) => row.slug === slug);
+          if (cat && onPick) onPick(cat);
+        }}
+      >
+        <option value="">Select category…</option>
+        {categories.map((cat) => (
+          <option key={cat.id || cat.slug} value={cat.slug}>
+            {cat.name}
+            {cat.product_count ? ` (${cat.product_count})` : ''}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+function HomeEditTilesEditor({ tiles = [], onChange, businessId, categories = [] }) {
   const updateTile = (index, key, val) => {
     const next = tiles.map((t, i) => (i === index ? { ...t, [key]: val } : t));
+    onChange(next);
+  };
+
+  const updateTileFields = (index, patch) => {
+    const next = tiles.map((t, i) => (i === index ? { ...t, ...patch } : t));
     onChange(next);
   };
 
@@ -88,6 +127,19 @@ function HomeEditTilesEditor({ tiles = [], onChange, businessId }) {
             <div className="space-y-1">
               <Label className="text-xs">Link (query or path)</Label>
               <Input value={tile.href || ''} onChange={(e) => updateTile(index, 'href', e.target.value)} placeholder="?category=bedding" />
+            </div>
+            <div className="sm:col-span-2">
+              <CategoryLinkField
+                categories={categories}
+                value={tile.categorySlug || ''}
+                onChange={(slug) => updateTile(index, 'categorySlug', slug)}
+                onPick={(cat) => {
+                  updateTileFields(index, {
+                    categorySlug: cat.slug,
+                    href: `?category=${encodeURIComponent(cat.slug)}`,
+                  });
+                }}
+              />
             </div>
             <div className="space-y-1 sm:col-span-2">
               <Label className="text-xs">Headline (optional)</Label>
@@ -108,7 +160,7 @@ function HomeEditTilesEditor({ tiles = [], onChange, businessId }) {
   );
 }
 
-function SaleTilesEditor({ columns = [], onChange, businessId }) {
+function SaleTilesEditor({ columns = [], onChange, businessId, categories = [] }) {
   const flat = columns.flatMap((col) => col.tiles || []);
   const updateFlat = (flatIndex, key, val) => {
     let cursor = 0;
@@ -118,6 +170,19 @@ function SaleTilesEditor({ columns = [], onChange, businessId }) {
         const isTarget = cursor === flatIndex;
         cursor += 1;
         return isTarget ? { ...tile, [key]: val } : tile;
+      }),
+    }));
+    onChange(nextCols);
+  };
+
+  const updateFlatFields = (flatIndex, patch) => {
+    let cursor = 0;
+    const nextCols = columns.map((col) => ({
+      ...col,
+      tiles: (col.tiles || []).map((tile) => {
+        const isTarget = cursor === flatIndex;
+        cursor += 1;
+        return isTarget ? { ...tile, ...patch } : tile;
       }),
     }));
     onChange(nextCols);
@@ -136,6 +201,20 @@ function SaleTilesEditor({ columns = [], onChange, businessId }) {
             <div className="space-y-1">
               <Label className="text-xs">Link</Label>
               <Input value={tile.href || ''} onChange={(e) => updateFlat(index, 'href', e.target.value)} placeholder="?category=kids&onSale=true" />
+            </div>
+            <div className="sm:col-span-2">
+              <CategoryLinkField
+                categories={categories}
+                value={tile.categorySlug || ''}
+                onChange={(slug) => updateFlat(index, 'categorySlug', slug)}
+                onPick={(cat) => {
+                  updateFlatFields(index, {
+                    categorySlug: cat.slug,
+                    label: tile.label || cat.name,
+                    href: `?category=${encodeURIComponent(cat.slug)}&onSale=true`,
+                  });
+                }}
+              />
             </div>
             <div className="sm:col-span-2">
               <ImageUploadField
@@ -163,7 +242,7 @@ function SaleTilesEditor({ columns = [], onChange, businessId }) {
 /**
  * Owner editor for Gul Ahmed–style Home Edit + Sale mosaic homepage blocks.
  */
-export function FashionGulSectionsEditor({ fashion = {}, setFashion, businessCategory, businessId }) {
+export function FashionGulSectionsEditor({ fashion = {}, setFashion, businessCategory, businessId, categories = [] }) {
   const variant = getLuxuryFashionVariant(businessCategory) || 'boutique';
   const defaults = getDefaultFashionGulSections(variant);
   const homeEdit = fashion.homeEdit?.tiles?.length ? fashion.homeEdit : defaults.homeEdit;
@@ -205,6 +284,7 @@ export function FashionGulSectionsEditor({ fashion = {}, setFashion, businessCat
       <HomeEditTilesEditor
         tiles={homeEdit.tiles}
         businessId={businessId}
+        categories={categories}
         onChange={(tiles) => setFashion('homeEdit', { ...homeEdit, tiles })}
       />
       <Button type="button" variant="outline" size="sm" onClick={resetHomeEdit}>
@@ -224,6 +304,7 @@ export function FashionGulSectionsEditor({ fashion = {}, setFashion, businessCat
       <SaleTilesEditor
         columns={saleMosaic.columns}
         businessId={businessId}
+        categories={categories}
         onChange={(columns) => setFashion('saleMosaic', { ...saleMosaic, columns })}
       />
       <Button type="button" variant="outline" size="sm" onClick={resetSaleMosaic}>
