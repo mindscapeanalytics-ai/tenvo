@@ -6,18 +6,23 @@
 import { redirect } from 'next/navigation';
 import { getServerSession } from '@/lib/auth/rbac';
 import { BusinessShellLayout } from '@/components/layout/BusinessShellLayout';
-import {
-  HubSessionHydrator,
-  toHubSessionHint,
-} from '@/components/guards/HubSessionHydrator';
+import { HubSessionHydrator } from '@/components/guards/HubSessionHydrator';
+import { toHubSessionHint } from '@/lib/utils/hubSessionHint';
 
 export default async function BusinessLayout({ children }) {
-  const session = await getServerSession();
+  let session = null;
+  try {
+    session = await getServerSession();
+  } catch (error) {
+    console.error('[BusinessLayout] getServerSession failed:', error);
+    redirect('/login');
+  }
 
   if (!session?.user) {
     redirect('/login');
   }
 
+  // Always serialize on the server with a non-client util (never import helpers from 'use client').
   const initialSession = toHubSessionHint(session);
 
   return (

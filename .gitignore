@@ -50,12 +50,23 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# Cursor local agent state (not part of the product)
+.cursor/hooks/state/
+
+# Proprietary — do not publish root/docs README that expose product architecture or setup playbooks
+/README.md
+README_DASHBOARD_CHANGES.md
+docs/README.md
+docs/README_*.md
+
 # maintenance & diagnostics
 /_maintenance/
 *.log
 *.txt
 !docs/*.md
-!README.md
+# Re-hide proprietary overview docs even if docs/*.md is allowlisted above
+docs/README.md
+docs/README_*.md
 !package.json
 !pnpm-lock.yaml
 !next.config.js

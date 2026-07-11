@@ -1030,6 +1030,10 @@ export function DomainDashboard({
                 category={category}
                 currency={currency}
                 metricsPending={metricsPending}
+                isSalesLoading={isSalesLoading}
+                isInventoryLoading={isInventoryLoading}
+                isFinanceLoading={isFinanceLoading}
+                isAnalyticsLoading={isAnalyticsLoading}
                 domainKnowledge={domainKnowledge as Record<string, unknown> | undefined}
                 domainVerticalLabel={domainVerticalLabel}
                 periodLabel={periodLabel}

@@ -77,7 +77,7 @@ export default function MarketingFooter({ variant = 'default' }) {
       <footer className="border-t border-brand-primary/20 bg-neutral-900">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-6 px-4 py-8 sm:flex-row sm:px-6 lg:px-12">
           <p className="text-center text-[10px] font-semibold uppercase tracking-[0.2em] text-neutral-500 sm:text-left">
-            © {new Date().getFullYear()} TENVO · Mindscape Analytics LLC · Pakistan launch; global roadmap
+            © {new Date().getFullYear()} TENVO · A Mindscape Analytics LLC product · www.mindscapeanalytics.com · Pakistan launch; global roadmap
           </p>
           <nav
             className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-[10px] font-semibold uppercase tracking-[0.2em]"
@@ -344,7 +344,7 @@ export default function MarketingFooter({ variant = 'default' }) {
         {/* Bottom bar */}
         <div className="mt-14 flex flex-col items-center justify-between gap-6 border-t border-white/10 pt-8 sm:flex-row sm:items-end">
           <p className="text-center text-[10px] font-semibold uppercase tracking-[0.2em] text-neutral-600 sm:text-left">
-            © {new Date().getFullYear()} TENVO · Mindscape Analytics LLC · All rights reserved
+            © {new Date().getFullYear()} TENVO · A Mindscape Analytics LLC product · www.mindscapeanalytics.com · All rights reserved
           </p>
           <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-neutral-600">
             <Link href="/industries" className="transition-colors hover:text-neutral-300">

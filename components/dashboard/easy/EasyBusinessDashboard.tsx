@@ -600,6 +600,10 @@ export interface EasyBusinessDashboardProps {
   warehouseUtilizationDisplay: string;
   stockCheckRecencyDisplay: string;
   metricsPending?: boolean;
+  isSalesLoading?: boolean;
+  isInventoryLoading?: boolean;
+  isFinanceLoading?: boolean;
+  isAnalyticsLoading?: boolean;
 }
 
 export function EasyBusinessDashboard(props: EasyBusinessDashboardProps) {
@@ -652,7 +656,17 @@ export function EasyBusinessDashboard(props: EasyBusinessDashboardProps) {
     warehouseUtilizationDisplay,
     stockCheckRecencyDisplay,
     metricsPending = false,
+    isSalesLoading = false,
+    isInventoryLoading = false,
+    isFinanceLoading = false,
+    isAnalyticsLoading = false,
   } = props;
+
+  // Per-module skeletons (Zoho/Busy-style): unlock tiles as each module settles.
+  const tileSalesLoading = isSalesLoading || isAnalyticsLoading;
+  const tileInventoryLoading = isInventoryLoading;
+  const tileFinanceLoading = isFinanceLoading || isSalesLoading;
+  const tileCoreLoading = tileSalesLoading || tileFinanceLoading || tileInventoryLoading;
 
   const [activeTab, setActiveTab] = useState('overview');
   const [operationsBadge, setOperationsBadge] = useState<number | null>(null);
@@ -891,19 +905,19 @@ export function EasyBusinessDashboard(props: EasyBusinessDashboardProps) {
             {/* OVERVIEW */}
             <TabsContent value="overview" className="mt-0 space-y-4">
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
-                <EasyStatTile label="Revenue" value={formatCurrencyCompact(periodMetrics.currentRevenue)} hint={periodLabel} trend={Number(revenueTrend.toFixed(1))} onClick={() => onQuickAction?.('reports')} isLoading={metricsPending} />
-                <EasyStatTile label={domainKpiLabels.ordersLabel} value={periodMetrics.currentOrders} hint={`${periodMetrics.soldUnits} ${domainKpiLabels.unitsSold.toLowerCase()}`} trend={Number(ordersTrend.toFixed(1))} onClick={() => onQuickAction?.('invoices')} isLoading={metricsPending} />
-                <EasyStatTile label={domainKpiLabels.inventoryLabel} value={formatCurrencyCompact(inventoryValue)} hint={`${inStockUnits.toLocaleString()} units`} onClick={() => onQuickAction?.('inventory')} isLoading={metricsPending} />
-                <EasyStatTile label="Receivables" value={formatCurrencyCompact(outstandingAmount)} hint={`${openInvoicesCount} open`} onClick={() => onQuickAction?.('invoices')} isLoading={metricsPending} />
+                <EasyStatTile label="Revenue" value={formatCurrencyCompact(periodMetrics.currentRevenue)} hint={periodLabel} trend={Number(revenueTrend.toFixed(1))} onClick={() => onQuickAction?.('reports')} isLoading={tileSalesLoading} />
+                <EasyStatTile label={domainKpiLabels.ordersLabel} value={periodMetrics.currentOrders} hint={`${periodMetrics.soldUnits} ${domainKpiLabels.unitsSold.toLowerCase()}`} trend={Number(ordersTrend.toFixed(1))} onClick={() => onQuickAction?.('invoices')} isLoading={tileSalesLoading} />
+                <EasyStatTile label={domainKpiLabels.inventoryLabel} value={formatCurrencyCompact(inventoryValue)} hint={`${inStockUnits.toLocaleString()} units`} onClick={() => onQuickAction?.('inventory')} isLoading={tileInventoryLoading} />
+                <EasyStatTile label="Receivables" value={formatCurrencyCompact(outstandingAmount)} hint={`${openInvoicesCount} open`} onClick={() => onQuickAction?.('invoices')} isLoading={tileFinanceLoading} />
                 <EasyStatTile
                   label="Customers"
                   value={periodMetrics.currentCustomers}
                   hint="Active in period"
                   trend={Number(customerTrend.toFixed(1))}
                   onClick={() => onQuickAction?.('customers')}
-                  isLoading={metricsPending}
+                  isLoading={tileSalesLoading}
                 />
-                <EasyStatTile label="Efficiency" value={`${domainEfficiency}%`} hint={domainEfficiency >= 85 ? 'Healthy' : 'Review alerts'} isLoading={metricsPending} />
+                <EasyStatTile label="Efficiency" value={`${domainEfficiency}%`} hint={domainEfficiency >= 85 ? 'Healthy' : 'Review alerts'} isLoading={tileCoreLoading} />
               </div>
 
               <EasyTabInsightStrip insights={tabInsights} onAction={handleInsightAction} />
@@ -913,7 +927,7 @@ export function EasyBusinessDashboard(props: EasyBusinessDashboardProps) {
                   <CardTitle className="text-xs font-semibold text-neutral-700">Snapshot</CardTitle>
                 </CardHeader>
                 <CardContent className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-                  {metricsPending ? (
+                  {tileCoreLoading ? (
                     Array.from({ length: 4 }).map((_, i) => (
                       <div key={`snapshot-skel-${i}`} className="rounded-lg bg-neutral-50 px-3 py-2 animate-pulse">
                         <div className="h-3 w-20 rounded bg-neutral-200" />
@@ -949,7 +963,7 @@ export function EasyBusinessDashboard(props: EasyBusinessDashboardProps) {
                     <CardTitle className="text-xs font-semibold text-neutral-700">Efficiency</CardTitle>
                   </CardHeader>
                   <CardContent className="flex flex-col items-center pb-4">
-                    {metricsPending ? (
+                    {tileCoreLoading ? (
                       <div className="flex h-36 w-36 items-center justify-center animate-pulse" aria-busy="true">
                         <div className="h-28 w-28 rounded-full border-8 border-neutral-200" />
                       </div>
@@ -968,7 +982,6 @@ export function EasyBusinessDashboard(props: EasyBusinessDashboardProps) {
                     )}
                   </CardContent>
                 </Card>
-
                 <Card className="border-neutral-200 shadow-sm lg:col-span-8">
                   <CardHeader className="flex flex-row items-center justify-between pb-2 pt-3 px-4">
                     <CardTitle className="text-xs font-semibold text-neutral-700">Period movement</CardTitle>
@@ -1073,17 +1086,17 @@ export function EasyBusinessDashboard(props: EasyBusinessDashboardProps) {
             <TabsContent value="sales" className="mt-0 space-y-4">
               <EasyTabInsightStrip insights={tabInsights} onAction={handleInsightAction} />
               <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-                <EasyStatTile label="Revenue" value={formatCurrencyCompact(periodMetrics.currentRevenue)} hint={periodLabel} trend={Number(revenueTrend.toFixed(1))} isLoading={metricsPending} />
-                <EasyStatTile label={domainKpiLabels.ordersLabel} value={periodMetrics.currentOrders} hint={`${periodMetrics.soldUnits} ${domainKpiLabels.unitsSold.toLowerCase()}`} trend={Number(ordersTrend.toFixed(1))} isLoading={metricsPending} />
-                <EasyStatTile label="Avg order" value={formatCurrencyCompact(avgOrderValue)} hint="Per closed order" isLoading={metricsPending} />
-                <EasyStatTile label={domainKpiLabels.unitsSold} value={unitsPerOrder} hint="Per order" isLoading={metricsPending} />
+                <EasyStatTile label="Revenue" value={formatCurrencyCompact(periodMetrics.currentRevenue)} hint={periodLabel} trend={Number(revenueTrend.toFixed(1))} isLoading={tileSalesLoading} />
+                <EasyStatTile label={domainKpiLabels.ordersLabel} value={periodMetrics.currentOrders} hint={`${periodMetrics.soldUnits} ${domainKpiLabels.unitsSold.toLowerCase()}`} trend={Number(ordersTrend.toFixed(1))} isLoading={tileSalesLoading} />
+                <EasyStatTile label="Avg order" value={formatCurrencyCompact(avgOrderValue)} hint="Per closed order" isLoading={tileSalesLoading} />
+                <EasyStatTile label={domainKpiLabels.unitsSold} value={unitsPerOrder} hint="Per order" isLoading={tileSalesLoading} />
               </div>
 
               <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-                <EasyStatTile label="Paid sales" value={salesBreakdown.paidCount} hint={formatCurrencyCompact(salesBreakdown.paidRevenue)} isLoading={metricsPending} />
-                <EasyStatTile label="Open sales" value={salesBreakdown.openCount} hint={formatCurrencyCompact(salesBreakdown.openRevenue)} isLoading={metricsPending} />
-                <EasyStatTile label="Pending" value={salesBreakdown.pendingCount} hint="Awaiting fulfillment" onClick={() => onQuickAction?.('invoices')} isLoading={metricsPending} />
-                <EasyStatTile label="Returns" value={periodMetrics.returnInvoices} hint={`${returnRate.toFixed(1)}% · ${periodMetrics.pendingReturns} pending`} isLoading={metricsPending} />
+                <EasyStatTile label="Paid sales" value={salesBreakdown.paidCount} hint={formatCurrencyCompact(salesBreakdown.paidRevenue)} isLoading={tileSalesLoading} />
+                <EasyStatTile label="Open sales" value={salesBreakdown.openCount} hint={formatCurrencyCompact(salesBreakdown.openRevenue)} isLoading={tileSalesLoading} />
+                <EasyStatTile label="Pending" value={salesBreakdown.pendingCount} hint="Awaiting fulfillment" onClick={() => onQuickAction?.('invoices')} isLoading={tileSalesLoading} />
+                <EasyStatTile label="Returns" value={periodMetrics.returnInvoices} hint={`${returnRate.toFixed(1)}% · ${periodMetrics.pendingReturns} pending`} isLoading={tileSalesLoading} />
               </div>
 
               <div className="grid gap-4 lg:grid-cols-12">
@@ -1196,12 +1209,12 @@ export function EasyBusinessDashboard(props: EasyBusinessDashboardProps) {
             <TabsContent value="accounts" className="mt-0 space-y-4">
               <EasyTabInsightStrip insights={tabInsights} onAction={handleInsightAction} />
               <div className="grid grid-cols-2 gap-2 lg:grid-cols-3 xl:grid-cols-6">
-                <EasyStatTile label="Receivables" value={formatCurrencyCompact(outstandingAmount)} hint={`${openInvoicesCount} open`} onClick={() => onQuickAction?.('invoices')} isLoading={metricsPending} />
-                <EasyStatTile label="Overdue" value={reminders.overdueInvoices ?? 0} hint={formatCurrencyCompact(invoiceAging.overdueAmount)} onClick={() => onQuickAction?.('invoices')} isLoading={metricsPending} />
-                <EasyStatTile label="Period revenue" value={formatCurrencyCompact(periodMetrics.currentRevenue)} hint={periodLabel} trend={Number(revenueTrend.toFixed(1))} isLoading={metricsPending} />
-                <EasyStatTile label="Period spend" value={formatCurrencyCompact(periodMetrics.currentExpenses)} hint="Operating costs" trend={Number(expenseTrend.toFixed(1))} isLoading={metricsPending} />
-                <EasyStatTile label="Net margin" value={`${netMarginPct.toFixed(1)}%`} hint="Revenue minus spend" isLoading={metricsPending} />
-                <EasyStatTile label="Cash flow" value={formatCurrencyCompact(cashFlowCurrent)} hint={periodLabel} trend={Number(cashFlowGrowth.toFixed(1))} isLoading={metricsPending} />
+                <EasyStatTile label="Receivables" value={formatCurrencyCompact(outstandingAmount)} hint={`${openInvoicesCount} open`} onClick={() => onQuickAction?.('invoices')} isLoading={tileFinanceLoading} />
+                <EasyStatTile label="Overdue" value={reminders.overdueInvoices ?? 0} hint={formatCurrencyCompact(invoiceAging.overdueAmount)} onClick={() => onQuickAction?.('invoices')} isLoading={tileFinanceLoading} />
+                <EasyStatTile label="Period revenue" value={formatCurrencyCompact(periodMetrics.currentRevenue)} hint={periodLabel} trend={Number(revenueTrend.toFixed(1))} isLoading={tileFinanceLoading} />
+                <EasyStatTile label="Period spend" value={formatCurrencyCompact(periodMetrics.currentExpenses)} hint="Operating costs" trend={Number(expenseTrend.toFixed(1))} isLoading={tileFinanceLoading} />
+                <EasyStatTile label="Net margin" value={`${netMarginPct.toFixed(1)}%`} hint="Revenue minus spend" isLoading={tileFinanceLoading} />
+                <EasyStatTile label="Cash flow" value={formatCurrencyCompact(cashFlowCurrent)} hint={periodLabel} trend={Number(cashFlowGrowth.toFixed(1))} isLoading={tileFinanceLoading} />
               </div>
 
               <div className="grid gap-4 lg:grid-cols-12">
@@ -1327,8 +1340,8 @@ export function EasyBusinessDashboard(props: EasyBusinessDashboardProps) {
                 </CardContent>
               </Card>
               <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-                <EasyStatTile label={domainKpiLabels.inventoryLabel} value={formatCurrencyCompact(inventoryValue)} hint="At cost" onClick={() => onQuickAction?.('inventory')} isLoading={metricsPending} />
-                <EasyStatTile label="Units on hand" value={inStockUnits.toLocaleString()} hint={`Avg ${formatCurrencyCompact(avgUnitValue)}/unit`} isLoading={metricsPending} />
+                <EasyStatTile label={domainKpiLabels.inventoryLabel} value={formatCurrencyCompact(inventoryValue)} hint="At cost" onClick={() => onQuickAction?.('inventory')} isLoading={tileInventoryLoading} />
+                <EasyStatTile label="Units on hand" value={inStockUnits.toLocaleString()} hint={`Avg ${formatCurrencyCompact(avgUnitValue)}/unit`} isLoading={tileInventoryLoading} />
                 <EasyStatTile
                   label="Low stock"
                   value={reminders.lowStock ?? 0}
@@ -1340,21 +1353,21 @@ export function EasyBusinessDashboard(props: EasyBusinessDashboardProps) {
                         : 'Stable'
                   }
                   onClick={() => onQuickAction?.('inventory')}
-                  isLoading={metricsPending}
+                  isLoading={tileInventoryLoading}
                 />
-                <EasyStatTile label="Out of stock" value={outOfStockCount} hint={`${products.length} SKUs in catalog`} onClick={() => onQuickAction?.('inventory')} isLoading={metricsPending} />
+                <EasyStatTile label="Out of stock" value={outOfStockCount} hint={`${products.length} SKUs in catalog`} onClick={() => onQuickAction?.('inventory')} isLoading={tileInventoryLoading} />
               </div>
 
               <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-                <EasyStatTile label="Coverage" value={coverageDays > 365 ? '365+' : coverageDays} hint="Estimated days" isLoading={metricsPending} />
+                <EasyStatTile label="Coverage" value={coverageDays > 365 ? '365+' : coverageDays} hint="Estimated days" isLoading={tileInventoryLoading} />
                 <EasyStatTile
                   label={multiLocationEnabled ? 'Warehouse util.' : 'Stock recency'}
                   value={multiLocationEnabled ? warehouseUtilizationDisplay : stockCheckRecencyDisplay}
                   hint={multiLocationEnabled ? 'Capacity usage' : 'Since last touch'}
-                  isLoading={metricsPending}
+                  isLoading={tileInventoryLoading}
                 />
-                <EasyStatTile label="Pending returns" value={periodMetrics.pendingReturns} hint="Awaiting processing" isLoading={metricsPending} />
-                <EasyStatTile label="Return rate" value={`${returnRate.toFixed(1)}%`} hint={`${periodMetrics.returnInvoices} docs`} isLoading={metricsPending} />
+                <EasyStatTile label="Pending returns" value={periodMetrics.pendingReturns} hint="Awaiting processing" isLoading={tileInventoryLoading} />
+                <EasyStatTile label="Return rate" value={`${returnRate.toFixed(1)}%`} hint={`${periodMetrics.returnInvoices} docs`} isLoading={tileInventoryLoading} />
               </div>
 
               <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
@@ -1447,11 +1460,11 @@ export function EasyBusinessDashboard(props: EasyBusinessDashboardProps) {
                   value={periodMetrics.currentCustomers}
                   hint="Bought in selected range"
                   trend={Number(customerTrend.toFixed(1))}
-                  isLoading={metricsPending}
+                  isLoading={tileSalesLoading}
                 />
-                <EasyStatTile label="Total CRM records" value={customers.length} hint="All customers" onClick={() => onQuickAction?.('customers')} isLoading={metricsPending} />
-                <EasyStatTile label="Revenue / buyer" value={formatCurrencyCompact(revenuePerCustomer)} hint={periodLabel} isLoading={metricsPending} />
-                <EasyStatTile label="Avg order value" value={formatCurrencyCompact(avgOrderValue)} hint="Per closed order" isLoading={metricsPending} />
+                <EasyStatTile label="Total CRM records" value={customers.length} hint="All customers" onClick={() => onQuickAction?.('customers')} isLoading={tileSalesLoading} />
+                <EasyStatTile label="Revenue / buyer" value={formatCurrencyCompact(revenuePerCustomer)} hint={periodLabel} isLoading={tileSalesLoading} />
+                <EasyStatTile label="Avg order value" value={formatCurrencyCompact(avgOrderValue)} hint="Per closed order" isLoading={tileSalesLoading} />
               </div>
 
               <div className="grid gap-4 lg:grid-cols-2">
@@ -1528,10 +1541,10 @@ export function EasyBusinessDashboard(props: EasyBusinessDashboardProps) {
             <TabsContent value="insights" className="mt-0 space-y-4">
               <EasyTabInsightStrip insights={tabInsights} onAction={handleInsightAction} />
               <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-                <EasyStatTile label="Efficiency" value={`${domainEfficiency}%`} hint="Operations score" isLoading={metricsPending} />
-                <EasyStatTile label="Net margin" value={`${netMarginPct.toFixed(1)}%`} hint={periodLabel} isLoading={metricsPending} />
-                <EasyStatTile label="Low stock" value={reminders.lowStock ?? 0} hint="SKUs to review" onClick={() => onQuickAction?.('inventory')} isLoading={metricsPending} />
-                <EasyStatTile label="Overdue AR" value={reminders.overdueInvoices ?? 0} hint="Collections risk" onClick={() => onQuickAction?.('invoices')} isLoading={metricsPending} />
+                <EasyStatTile label="Efficiency" value={`${domainEfficiency}%`} hint="Operations score" isLoading={tileCoreLoading} />
+                <EasyStatTile label="Net margin" value={`${netMarginPct.toFixed(1)}%`} hint={periodLabel} isLoading={tileCoreLoading} />
+                <EasyStatTile label="Low stock" value={reminders.lowStock ?? 0} hint="SKUs to review" onClick={() => onQuickAction?.('inventory')} isLoading={tileCoreLoading} />
+                <EasyStatTile label="Overdue AR" value={reminders.overdueInvoices ?? 0} hint="Collections risk" onClick={() => onQuickAction?.('invoices')} isLoading={tileCoreLoading} />
               </div>
 
               <IndustryInsights category={category} domainKnowledge={domainKnowledge} variant="compact" />
