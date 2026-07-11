@@ -136,6 +136,10 @@ Folder: `prisma/migrations/20260711_product_categories_business_name_unique/`
 
 Adds Prisma `@@unique([business_id, name])` when only legacy `UNIQUE (business_id, slug)` existed, so registration/demo category upserts and `ON CONFLICT (business_id, name)` seeds work. After deploy, run `bun scripts/repair-product-category-links.mjs` to recreate empty category rows and set `products.category_id` from `products.category` labels.
 
+Folder: `prisma/migrations/20260711_business_settings_id_uuid/`
+
+Converts legacy `business_settings.id` SERIAL/integer PK to UUID so Prisma `business_settings.create()` on registration stops failing with **Expected a string in column `id`, got number**. Also ensures `is_storefront_enabled`, `settings`, and `business_id` unique. Manual mirror: `lib/db/migrations/046_business_settings_id_uuid.sql`. Apply with `bun run db:migrate`.
+
 ---
 
 ## Product variant default flag
