@@ -82,7 +82,7 @@ export function BarcodeFieldInput({
   }, [value, runValidation]);
 
   return (
-    <div className={cn('relative', className)}>
+    <div className={cn('relative min-w-0', className)}>
       <Input
         id={id}
         value={value ?? ''}
@@ -95,19 +95,26 @@ export function BarcodeFieldInput({
         spellCheck={false}
       />
       {showCamera && (
-        <div className="absolute right-1 top-1/2 -translate-y-1/2">
+        <div className="pointer-events-auto absolute inset-y-0 right-1 flex items-center">
           <BarcodeScanTrigger
             business={business}
             onScan={handleScan}
             title="Scan product barcode"
             size="icon"
             variant="ghost"
-            className="h-8 w-8 text-emerald-600 hover:bg-emerald-50"
+            className="h-8 w-8 shrink-0 text-emerald-600 hover:bg-emerald-50"
           />
         </div>
       )}
       {warning && (
-        <p className="mt-1 text-[10px] font-medium text-amber-700">{warning}</p>
+        <p
+          className={cn(
+            'mt-1 text-[10px] font-medium',
+            warning.includes('already used') ? 'text-red-600' : 'text-amber-700'
+          )}
+        >
+          {warning}
+        </p>
       )}
     </div>
   );

@@ -706,9 +706,9 @@ export function isHighPrecisionDomain(category: string): boolean {
   const precisionDomains = [
     'auto-parts', 'pharmacy', 'livestock-farm', 'poultry-farm', 
     'electronics-appliances', 'hospital-healthcare', 'diagnostic-lab',
-    'heavy-machinery'
+    'heavy-machinery', 'textile-wholesale', 'gems-jewellery',
   ];
-  return precisionDomains.includes(category);
+  return precisionDomains.includes(resolveDomainKey(category));
 }
 
 /**

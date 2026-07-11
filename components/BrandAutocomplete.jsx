@@ -35,7 +35,7 @@ export function BrandAutocomplete({
 
     return (
         <div className={`space-y-2 ${className}`}>
-            <Label htmlFor="brand-autocomplete" className="text-xs font-semibold uppercase text-gray-400 tracking-wider">
+            <Label htmlFor="brand-autocomplete" className="text-[11px] font-semibold uppercase tracking-wider text-slate-600">
                 {displayLabel}
                 {required && <span className="text-red-500 ml-1">*</span>}
             </Label>
@@ -46,7 +46,7 @@ export function BrandAutocomplete({
                 value={value || ''}
                 onChange={handleChange}
                 placeholder={displayPlaceholder}
-                className="h-11 rounded-xl"
+                className="h-11 min-w-0 rounded-xl"
                 required={required}
                 dir={language === 'ur' ? 'rtl' : 'ltr'}
             />

@@ -137,10 +137,11 @@ export function ActionModals({
             {/* Product Form Modal -- Wizard for new, Full form for edit */}
             <Dialog open={showProductForm} onOpenChange={setShowProductForm}>
                 <DialogContent
+                    hideCloseButton
                     className={
                         editingProduct
-                            ? 'flex max-h-[min(92vh,900px)] w-[calc(100vw-1.5rem)] max-w-4xl flex-col gap-0 overflow-hidden p-0 sm:w-full'
-                            : 'flex max-h-[min(92vh,900px)] w-[calc(100vw-1.5rem)] max-w-3xl flex-col gap-0 overflow-hidden border-none bg-transparent p-2 shadow-none sm:w-full'
+                            ? 'flex max-h-[min(92dvh,900px)] w-[calc(100vw-1.5rem)] max-w-4xl flex-col gap-0 overflow-hidden p-0 sm:w-full lg:max-w-4xl lg:p-0'
+                            : 'flex max-h-[min(92dvh,900px)] w-[calc(100vw-1.5rem)] max-w-3xl flex-col gap-0 overflow-hidden border-0 bg-transparent p-0 shadow-none sm:w-full lg:max-w-3xl lg:p-0'
                     }
                 >
                     <DialogHeader className="sr-only">
@@ -149,7 +150,7 @@ export function ActionModals({
                             {editingProduct ? 'Modify the details of the selected product.' : 'Add a new product using the guided wizard.'}
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+                    <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
                     {editingProduct ? (
                         <ProductForm
                             product={editingProduct}

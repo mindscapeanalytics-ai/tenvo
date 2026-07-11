@@ -63,6 +63,7 @@ import { pakistaniSizes, pakistaniColors } from '@/lib/domainData/pakistaniRetai
 import { VariantManager } from '@/components/domain/VariantManager';
 import { BarcodeFieldInput } from '@/components/inventory/BarcodeFieldInput';
 import { suggestInternalBarcodeFromSku } from '@/lib/utils/barcodeUtils';
+import { checkBarcodeExistsAction } from '@/lib/actions/standard/inventory/validation';
 import { buildVariantsFromForm, dbVariantsToFormState, totalVariantStock } from '@/lib/utils/variantSync';
 import {
   isMultiProductImagesEnabled,
@@ -494,6 +495,29 @@ export function ProductForm({
 
             setIsLoading(false);
             return;
+        }
+
+        // Barcode uniqueness (live products only; archived barcodes reusable)
+        if (String(formData.barcode || '').trim() && business?.id) {
+            try {
+                const dup = await checkBarcodeExistsAction(
+                    formData.barcode,
+                    business.id,
+                    product?.id || null
+                );
+                if (dup.success && dup.exists) {
+                    setErrors((prev) => ({
+                        ...prev,
+                        barcode: 'This barcode is already used by another product',
+                    }));
+                    setActiveTab('basic');
+                    toast.error('Barcode already in use — scan or enter a unique code');
+                    setIsLoading(false);
+                    return;
+                }
+            } catch {
+                /* non-blocking if uniqueness check fails open */
+            }
         }
 
         // Warning handling (from logic check)
