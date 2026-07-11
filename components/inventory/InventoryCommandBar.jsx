@@ -31,8 +31,18 @@ const VIEW_MODES = [
   { id: 'cards', label: 'Cards' },
 ];
 
+const DEFAULT_CAPS = {
+  canCreate: false,
+  canEdit: false,
+  canAdjustStock: false,
+  canTransferStock: false,
+  canScanBarcode: false,
+  canExport: true,
+};
+
 /**
  * Single-row inventory toolbar, sync, view mode, and grouped actions.
+ * Write actions honor exact RBAC allow-lists via `capabilities` (Zoho/Busy least privilege).
  */
 export function InventoryCommandBar({
   activeTab = 'products',
@@ -52,11 +62,16 @@ export function InventoryCommandBar({
   onTransferStock,
   onShowShortcuts,
   onGoToReports,
+  capabilities = DEFAULT_CAPS,
 }) {
+  const caps = { ...DEFAULT_CAPS, ...capabilities };
   const isProductsTab = activeTab === 'products';
   const syncLabel = lastSyncedAt
     ? `Synced ${lastSyncedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
     : 'Synced';
+
+  const showDataMenu = caps.canCreate || caps.canEdit || caps.canExport;
+  const showStockMenu = caps.canScanBarcode || caps.canAdjustStock || caps.canTransferStock;
 
   return (
     <div className="scrollbar-none flex min-w-0 items-center gap-1.5 overflow-x-auto border-b border-gray-100/80 pb-2.5">
@@ -110,85 +125,99 @@ export function InventoryCommandBar({
 
           <div className="mx-0.5 h-5 w-px shrink-0 bg-gray-200" aria-hidden />
 
-          {/* AI smart add, direct action */}
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={onAiSmartAdd}
-            className="h-8 shrink-0 rounded-lg border-slate-200 bg-slate-900 px-2.5 text-[10px] font-semibold uppercase tracking-wide text-white hover:bg-slate-800"
-            title="AI smart add"
-          >
-            <BrainCircuit className="mr-1.5 h-3.5 w-3.5 text-blue-300" />
-            AI Add
-          </Button>
+          {caps.canCreate && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onAiSmartAdd}
+              className="h-8 shrink-0 rounded-lg border-slate-200 bg-slate-900 px-2.5 text-[10px] font-semibold uppercase tracking-wide text-white hover:bg-slate-800"
+              title="AI smart add"
+            >
+              <BrainCircuit className="mr-1.5 h-3.5 w-3.5 text-blue-300" />
+              AI Add
+            </Button>
+          )}
 
-          {/* Data */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 shrink-0 rounded-lg border-gray-200 px-2.5 text-[10px] font-semibold uppercase tracking-wide text-gray-700"
-              >
-                <LayoutGrid className="mr-1.5 h-3.5 w-3.5" />
-                Data
-                <ChevronDown className="ml-1 h-3 w-3 opacity-50" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-52 rounded-xl p-1.5">
-              <DropdownMenuLabel className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">
-                Spreadsheet
-              </DropdownMenuLabel>
-              <DropdownMenuItem onClick={onExcelMode} className="rounded-lg py-2">
-                <Table2 className="mr-2 h-4 w-4 text-emerald-600" />
-                <span className="text-xs font-semibold">Excel mode</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={onImport} className="rounded-lg py-2">
-                <Upload className="mr-2 h-4 w-4 text-blue-600" />
-                <span className="text-xs font-semibold">Import Excel</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={onExport} className="rounded-lg py-2">
-                <Download className="mr-2 h-4 w-4 text-violet-600" />
-                <span className="text-xs font-semibold">Export inventory</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {showDataMenu && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 shrink-0 rounded-lg border-gray-200 px-2.5 text-[10px] font-semibold uppercase tracking-wide text-gray-700"
+                >
+                  <LayoutGrid className="mr-1.5 h-3.5 w-3.5" />
+                  Data
+                  <ChevronDown className="ml-1 h-3 w-3 opacity-50" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-52 rounded-xl p-1.5">
+                <DropdownMenuLabel className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">
+                  Spreadsheet
+                </DropdownMenuLabel>
+                {(caps.canCreate || caps.canEdit) && (
+                  <DropdownMenuItem onClick={onExcelMode} className="rounded-lg py-2">
+                    <Table2 className="mr-2 h-4 w-4 text-emerald-600" />
+                    <span className="text-xs font-semibold">Excel mode</span>
+                  </DropdownMenuItem>
+                )}
+                {caps.canCreate && (
+                  <DropdownMenuItem onClick={onImport} className="rounded-lg py-2">
+                    <Upload className="mr-2 h-4 w-4 text-blue-600" />
+                    <span className="text-xs font-semibold">Import Excel</span>
+                  </DropdownMenuItem>
+                )}
+                {caps.canExport && (
+                  <DropdownMenuItem onClick={onExport} className="rounded-lg py-2">
+                    <Download className="mr-2 h-4 w-4 text-violet-600" />
+                    <span className="text-xs font-semibold">Export inventory</span>
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
 
-          {/* Stock */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 shrink-0 rounded-lg border-gray-200 px-2.5 text-[10px] font-semibold uppercase tracking-wide text-gray-700"
-              >
-                <ScanBarcode className="mr-1.5 h-3.5 w-3.5" />
-                Stock
-                <ChevronDown className="ml-1 h-3 w-3 opacity-50" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-52 rounded-xl p-1.5">
-              <DropdownMenuLabel className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">
-                Operations
-              </DropdownMenuLabel>
-              <DropdownMenuItem onClick={onScanBarcode} className="rounded-lg py-2">
-                <ScanBarcode className="mr-2 h-4 w-4 text-brand-primary" />
-                <span className="text-xs font-semibold">Scan (camera & QR)</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={onAdjustStock} className="rounded-lg py-2">
-                <AlertTriangle className="mr-2 h-4 w-4 text-amber-500" />
-                <span className="text-xs font-semibold">Adjust stock</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={onTransferStock} className="rounded-lg py-2">
-                <Repeat className="mr-2 h-4 w-4 text-violet-500" />
-                <span className="text-xs font-semibold">Transfer stock</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {showStockMenu && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 shrink-0 rounded-lg border-gray-200 px-2.5 text-[10px] font-semibold uppercase tracking-wide text-gray-700"
+                >
+                  <ScanBarcode className="mr-1.5 h-3.5 w-3.5" />
+                  Stock
+                  <ChevronDown className="ml-1 h-3 w-3 opacity-50" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-52 rounded-xl p-1.5">
+                <DropdownMenuLabel className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">
+                  Operations
+                </DropdownMenuLabel>
+                {caps.canScanBarcode && (
+                  <DropdownMenuItem onClick={onScanBarcode} className="rounded-lg py-2">
+                    <ScanBarcode className="mr-2 h-4 w-4 text-brand-primary" />
+                    <span className="text-xs font-semibold">Scan (camera & QR)</span>
+                  </DropdownMenuItem>
+                )}
+                {caps.canAdjustStock && (
+                  <DropdownMenuItem onClick={onAdjustStock} className="rounded-lg py-2">
+                    <AlertTriangle className="mr-2 h-4 w-4 text-amber-500" />
+                    <span className="text-xs font-semibold">Adjust stock</span>
+                  </DropdownMenuItem>
+                )}
+                {caps.canTransferStock && (
+                  <DropdownMenuItem onClick={onTransferStock} className="rounded-lg py-2">
+                    <Repeat className="mr-2 h-4 w-4 text-violet-500" />
+                    <span className="text-xs font-semibold">Transfer stock</span>
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
 
-          {/* Templates shortcut when available */}
-          {hasQuickAddTemplates && (
+          {hasQuickAddTemplates && caps.canCreate && (
             <Button
               type="button"
               variant="outline"

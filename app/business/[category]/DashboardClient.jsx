@@ -19,7 +19,7 @@ import { workflowAPI } from '@/lib/api/workflow';
 import { bulkDeleteAction } from '@/lib/actions/premium/automation/bulk';
 import { getTablesAction, getKitchenQueueAction } from '@/lib/actions/standard/restaurant';
 import { formatInventoryActionError, isPersistedProductUuid, flattenCompositeProductPayload } from '@/lib/utils/productMutationPayload';
-import { setPendingInventoryFocus } from '@/lib/utils/hubNavigationIntent';
+import { setPendingInventoryFocus, setPendingExcelMode } from '@/lib/utils/hubNavigationIntent';
 import { Button } from '@/components/ui/button';
 import { Tabs } from '@/components/ui/tabs';
 import { ProductForm } from '@/components/ProductForm';
@@ -369,13 +369,20 @@ function BusinessDashboardContent() {
         break;
       case 'excel-mode':
       case 'fast-entry':
+      case 'bulk-entry':
+        // Persist intent: inventory tab is lazy-mounted, so a microtask event alone is often lost.
+        setPendingExcelMode();
         handleTabChange('inventory');
         if (typeof window !== 'undefined') {
+          // If InventoryManager is already mounted, open immediately.
           queueMicrotask(() => {
             window.dispatchEvent(new CustomEvent('inventory-open-excel-mode'));
           });
+          // Retry after lazy tab chunk mounts (covers cold first open from dashboard).
+          window.setTimeout(() => {
+            window.dispatchEvent(new CustomEvent('inventory-open-excel-mode'));
+          }, 120);
         }
-        toast.success('Opening Excel mode…', { duration: 2200 });
         break;
       default: {
         const normalized = normalizeDashboardTab(id);
@@ -905,27 +912,32 @@ function BusinessDashboardContent() {
     try {
       if (vendorData.id) {
         await vendorAPI.update(vendorData.id, { ...vendorData, business_id: business.id });
-        toast.success('Vendor updated');
+        toast.success('Supplier updated');
       } else {
         await vendorAPI.create({
           ...vendorData,
           business_id: business.id
         });
-        toast.success('Vendor added');
+        toast.success('Supplier registered');
       }
       await fetchPurchases();
       setShowVendorForm(false);
       setEditingVendor(null);
+      return { success: true };
     } catch (error) {
       console.error('Error saving vendor:', error);
       if (isEntitlementError(error)) {
         toast.error(getEntitlementErrorMessage(error, { action: 'save vendor' }));
         markEntitlementErrorHandled(error);
         handleTabChange('settings');
-      } else {
-        toast.error('Failed to save vendor: ' + (error.message || 'Unknown error'));
       }
-      throw error;
+      return {
+        success: false,
+        error: error.message || 'Failed to save vendor',
+        code: error.code || (error.validationErrors ? 'VALIDATION_ERROR' : null),
+        errors: error.validationErrors || null,
+        details: error.validationErrors || error.details || null,
+      };
     }
   };
 

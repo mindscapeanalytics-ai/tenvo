@@ -143,8 +143,10 @@ export function DashboardTabs({
         const lowerTerm = searchTerm.toLowerCase();
         return vendors.filter(v =>
             v.name?.toLowerCase().includes(lowerTerm) ||
-            v.company_name?.toLowerCase().includes(lowerTerm) ||
-            v.phone?.toLowerCase().includes(lowerTerm)
+            v.phone?.toLowerCase().includes(lowerTerm) ||
+            v.ntn?.toLowerCase().includes(lowerTerm) ||
+            v.email?.toLowerCase().includes(lowerTerm) ||
+            v.contact_person?.toLowerCase().includes(lowerTerm)
         );
     }, [vendors, searchTerm]);
 

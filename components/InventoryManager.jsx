@@ -89,6 +89,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from 'react-hot-toast';
 import { useBusiness } from '@/lib/context/BusinessContext';
+import { usePermissions } from '@/lib/hooks/usePermissions';
 import { ProductThumbnail } from '@/components/product/ProductThumbnail';
 import { formatCurrency } from '@/lib/utils/formatting';
 import { VariantMatrixEditor } from './inventory/VariantMatrixEditor';
@@ -135,6 +136,7 @@ import { VisualInventoryQuickEdit } from './inventory/VisualInventoryQuickEdit';
 import { buildSparseDomainColumnVisibility, buildSparseHiddenColumnKeys } from '@/lib/utils/inventoryVisualColumnVisibility';
 import {
   consumePendingInventoryFocus,
+  consumePendingExcelMode,
   inventoryFocusModeToStockFilter,
 } from '@/lib/utils/hubNavigationIntent';
 import { resolveInventoryDomainFeatures } from '@/lib/utils/inventoryDomainFeatures';
@@ -567,25 +569,6 @@ export function InventoryManager({
   const [showStockAdjustment, setShowStockAdjustment] = useState(false);
   const [showStockTransferForm, setShowStockTransferForm] = useState(false);
 
-  const openProductAdd = useCallback(() => {
-    if (onAdd) {
-      onAdd();
-      return;
-    }
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('open-modal', { detail: { modalId: 'product' } }));
-    }
-  }, [onAdd]);
-
-  const openProductEdit = useCallback((product) => {
-    if (onEdit) {
-      onEdit(product);
-      return;
-    }
-    setEditingProduct(product);
-    setShowProductFormInternal(true);
-  }, [onEdit]);
-
   const buildFlatOnUpdatePayload = useCallback(
     (row, { productId } = {}) => {
       const mapped = mapExcelRowForSave({ ...row, business_id: businessId }, category);
@@ -946,6 +929,15 @@ export function InventoryManager({
   const isVariantEnabled =
     inventoryFeatures.sizeColorMatrixEnabled || isSizeColorMatrixEnabled(category);
 
+  const { can, planCan } = usePermissions();
+  const canCreateInventory = can('inventory.create');
+  const canEditInventory = can('inventory.edit');
+  const canDeleteInventory = can('inventory.delete');
+  const canAdjustInventory = can('inventory.adjust_stock');
+  const canTransferInventory = can('inventory.transfer') && planCan('multi_warehouse');
+  const showMultiWarehouseUi = isMultiLocationEnabled && planCan('multi_warehouse');
+  const showAiRestock = planCan('ai_restock');
+
   const gridColumnOptions = useMemo(
     () => ({
       currencySymbol: standards.currencySymbol,
@@ -975,6 +967,54 @@ export function InventoryManager({
   });
 
   const barcodeScanAllowed = canUseBarcodeScan(business);
+
+  const inventoryWriteCapabilities = useMemo(
+    () => ({
+      canCreate: canCreateInventory,
+      canEdit: canEditInventory,
+      canDelete: canDeleteInventory,
+      canAdjustStock: canAdjustInventory,
+      canTransferStock: canTransferInventory,
+      canScanBarcode: barcodeScanAllowed,
+      canExport: can('inventory.view'),
+    }),
+    [
+      canCreateInventory,
+      canEditInventory,
+      canDeleteInventory,
+      canAdjustInventory,
+      canTransferInventory,
+      barcodeScanAllowed,
+      can,
+    ]
+  );
+
+  const openProductAdd = useCallback(() => {
+    if (!canCreateInventory) {
+      toast.error('You do not have permission to add products');
+      return;
+    }
+    if (onAdd) {
+      onAdd();
+      return;
+    }
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('open-modal', { detail: { modalId: 'product' } }));
+    }
+  }, [onAdd, canCreateInventory]);
+
+  const openProductEdit = useCallback((product) => {
+    if (!canEditInventory) {
+      setProductToView(product);
+      return;
+    }
+    if (onEdit) {
+      onEdit(product);
+      return;
+    }
+    setEditingProduct(product);
+    setShowProductFormInternal(true);
+  }, [onEdit, canEditInventory]);
 
   const openBarcodeScanner = useCallback(() => {
     if (!barcodeScanAllowed) {
@@ -1090,7 +1130,7 @@ export function InventoryManager({
   useEffect(() => {
     const tabSequence = [
       'products',
-      isMultiLocationEnabled ? 'locations' : null,
+      showMultiWarehouseUi ? 'locations' : null,
       isManufacturingEnabled ? 'manufacturing' : null,
       'orders',
       'reports',
@@ -1121,7 +1161,7 @@ export function InventoryManager({
 
     window.addEventListener('keydown', handleGlobalShortcuts);
     return () => window.removeEventListener('keydown', handleGlobalShortcuts);
-  }, [isMultiLocationEnabled, isManufacturingEnabled, isVariantEnabled]);
+  }, [showMultiWarehouseUi, isManufacturingEnabled, isVariantEnabled]);
 
   // Handle global events from Header Page Controls
   const applyInventoryStockFocus = useCallback((mode) => {
@@ -1144,6 +1184,13 @@ export function InventoryManager({
   }, [applyInventoryStockFocus]);
 
   useEffect(() => {
+    if (!consumePendingExcelMode()) return;
+    if (!canCreateInventory && !canEditInventory) return;
+    setActiveTab('products');
+    setShowExcelMode(true);
+  }, [canCreateInventory, canEditInventory]);
+
+  useEffect(() => {
     const handleToggleFilters = () => {
       // Focus the advanced search or toggle its visibility if we add a toggle state later
       toast.success("Filters focused", { icon: '[SEARCH]' });
@@ -1162,6 +1209,8 @@ export function InventoryManager({
     };
 
     const handleOpenExcelMode = () => {
+      consumePendingExcelMode();
+      if (!canCreateInventory && !canEditInventory) return;
       setActiveTab('products');
       setShowExcelMode(true);
     };
@@ -1175,7 +1224,7 @@ export function InventoryManager({
       window.removeEventListener('inventory-focus-low-stock', handleInventoryFocusLowStock);
       window.removeEventListener('inventory-open-excel-mode', handleOpenExcelMode);
     };
-  }, [applyInventoryStockFocus, productsToDisplay]);
+  }, [applyInventoryStockFocus, productsToDisplay, canCreateInventory, canEditInventory]);
 
   // Demand forecasting (simple moving average)
   const forecastDemand = (product) => {
@@ -1297,6 +1346,10 @@ export function InventoryManager({
   };
 
   const handleInventoryCellEdit = useCallback(async (product, field, value) => {
+    if (!canEditInventory) {
+      toast.error('You do not have permission to edit products');
+      return;
+    }
     const scalarKey = field.includes('.') ? field.split('.').pop() : field;
     const processedValue = processFieldValue(scalarKey, value);
 
@@ -1450,7 +1503,7 @@ export function InventoryManager({
       console.error('Inventory cell update error:', error);
       throw error;
     }
-  }, [products, category, domainKnowledge, businessId, onUpdate, handleCreateProduct, reloadProductsSilent, isBatchEnabled, isSerialEnabled]);
+  }, [products, category, domainKnowledge, businessId, onUpdate, handleCreateProduct, reloadProductsSilent, isBatchEnabled, isSerialEnabled, canEditInventory]);
 
   // Column Definitions with Optimized Widths & Alignment
   const columns = useMemo(() => {
@@ -1479,42 +1532,54 @@ export function InventoryManager({
               <DropdownMenuItem onClick={() => setProductToView(row.original)} className="text-sm">
                 <Eye className="mr-2 h-3.5 w-3.5" /> View Details
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => openProductEdit(row.original)} className="text-sm">
-                <Edit className="mr-2 h-3.5 w-3.5" /> Edit Product
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              {isBatchEnabled && (
+              {canEditInventory && (
+                <DropdownMenuItem onClick={() => openProductEdit(row.original)} className="text-sm">
+                  <Edit className="mr-2 h-3.5 w-3.5" /> Edit Product
+                </DropdownMenuItem>
+              )}
+              {canEditInventory && (isBatchEnabled || isSerialEnabled || isVariantEnabled) && (
+                <DropdownMenuSeparator />
+              )}
+              {canEditInventory && isBatchEnabled && (
                 <DropdownMenuItem onClick={() => { setSelectedProduct(row.original); setShowBatchManager(true); }} className="text-sm">
                   <Package className="mr-2 h-3.5 w-3.5" /> Manage Batches
                 </DropdownMenuItem>
               )}
-              {isSerialEnabled && (
+              {canEditInventory && isSerialEnabled && (
                 <DropdownMenuItem onClick={() => { setSelectedProduct(row.original); setShowSerialScanner(true); }} className="text-sm">
                   <Hash className="mr-2 h-3.5 w-3.5" /> Serial Numbers
                 </DropdownMenuItem>
               )}
-              {isVariantEnabled && (
+              {canEditInventory && isVariantEnabled && (
                 <DropdownMenuItem onClick={() => { setSelectedProduct(row.original); setShowVariantEditor(true); }} className="text-sm">
                   <Layers className="mr-2 h-3.5 w-3.5" /> Manage Variants
                 </DropdownMenuItem>
               )}
-              <DropdownMenuItem onClick={() => { setSelectedProduct(row.original); setShowAdvancedFeatures(true); }} className="text-sm">
-                <Settings className="mr-2 h-3.5 w-3.5" /> Advanced Settings
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={() => handleToggleActive(row.original)}
-                className="text-sm"
-              >
-                {row.original.is_active === false ? (
-                  <><CheckCircle2 className="mr-2 h-3.5 w-3.5 text-green-600" /> Activate</>
-                ) : (
-                  <><XCircle className="mr-2 h-3.5 w-3.5 text-amber-600" /> Deactivate</>
-                )}
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setProductToDelete(row.original)} className="text-red-600 focus:text-red-600 focus:bg-red-50 text-sm">
-                <Archive className="mr-2 h-3.5 w-3.5" /> Archive
-              </DropdownMenuItem>
+              {canEditInventory && (
+                <DropdownMenuItem onClick={() => { setSelectedProduct(row.original); setShowAdvancedFeatures(true); }} className="text-sm">
+                  <Settings className="mr-2 h-3.5 w-3.5" /> Advanced Settings
+                </DropdownMenuItem>
+              )}
+              {canEditInventory && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => handleToggleActive(row.original)}
+                    className="text-sm"
+                  >
+                    {row.original.is_active === false ? (
+                      <><CheckCircle2 className="mr-2 h-3.5 w-3.5 text-green-600" /> Activate</>
+                    ) : (
+                      <><XCircle className="mr-2 h-3.5 w-3.5 text-amber-600" /> Deactivate</>
+                    )}
+                  </DropdownMenuItem>
+                </>
+              )}
+              {canDeleteInventory && (
+                <DropdownMenuItem onClick={() => setProductToDelete(row.original)} className="text-red-600 focus:text-red-600 focus:bg-red-50 text-sm">
+                  <Archive className="mr-2 h-3.5 w-3.5" /> Archive
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         ),
@@ -1533,6 +1598,7 @@ export function InventoryManager({
             />
             <div className="min-w-0 flex-1">
               <VisualInventoryQuickEdit
+                disabled={!canEditInventory}
                 value={p.name || ''}
                 displayValue={
                   <span className="line-clamp-1 text-[11px] font-semibold text-gray-900">{p.name || '-'}</span>
@@ -1557,6 +1623,7 @@ export function InventoryManager({
         const p = row.original;
         return (
           <VisualInventoryQuickEdit
+            disabled={!canEditInventory}
             value={p.sku || ''}
             displayValue={
               <span className="truncate font-mono text-[10px] text-gray-600">{p.sku || '-'}</span>
@@ -1570,6 +1637,7 @@ export function InventoryManager({
         const p = row.original;
         return (
           <VisualInventoryQuickEdit
+            disabled={!canEditInventory}
             value={p.category || ''}
             displayValue={
               <span className="block max-w-full truncate rounded bg-gray-100 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-gray-600">
@@ -1593,6 +1661,7 @@ export function InventoryManager({
 
         return (
           <VisualInventoryQuickEdit
+            disabled={!canEditInventory}
             type="number"
             align="right"
             value={safeStock}
@@ -1619,6 +1688,7 @@ export function InventoryManager({
         const price = Number(p.price || 0);
         return (
           <VisualInventoryQuickEdit
+            disabled={!canEditInventory}
             type="number"
             align="right"
             value={price}
@@ -1638,6 +1708,7 @@ export function InventoryManager({
         const tax = p.tax_percent ?? p.taxPercent ?? 17;
         return (
           <VisualInventoryQuickEdit
+            disabled={!canEditInventory}
             type="number"
             align="right"
             value={tax}
@@ -1742,6 +1813,7 @@ export function InventoryManager({
           }
           return (
             <VisualInventoryQuickEdit
+              disabled={!canEditInventory}
               value={val ?? ''}
               displayValue={
                 display === '-' ? (
@@ -1761,7 +1833,7 @@ export function InventoryManager({
     });
 
     return [actionsCol, ...dataCols];
-  }, [domainKnowledge, isExpiryEnabled, isBatchEnabled, isManufacturingEnabled, isSerialEnabled, isVariantEnabled, category, standards.currency, standards.currencySymbol, business?.category, handleInventoryCellEdit, gridColumnOptions]);
+  }, [domainKnowledge, isExpiryEnabled, isBatchEnabled, isManufacturingEnabled, isSerialEnabled, isVariantEnabled, category, standards.currency, standards.currencySymbol, business?.category, handleInventoryCellEdit, gridColumnOptions, canEditInventory, canDeleteInventory, openProductEdit, handleToggleActive]);
 
   const visualDefaultColumnVisibility = useMemo(() => {
     const sharedCols = buildInventoryGridColumns(category, {
@@ -1871,6 +1943,7 @@ export function InventoryManager({
           onTransferStock={() => setShowStockTransferForm(true)}
           onShowShortcuts={() => setShowShortcutsHelp(true)}
           onGoToReports={() => setActiveTab('reports')}
+          capabilities={inventoryWriteCapabilities}
         />
       </div>
 
@@ -1892,9 +1965,10 @@ export function InventoryManager({
         onTransferStock={() => setShowStockTransferForm(true)}
         onShowShortcuts={() => setShowShortcutsHelp(true)}
         onGoToReports={() => setActiveTab('reports')}
-        isMultiLocationEnabled={isMultiLocationEnabled}
+        isMultiLocationEnabled={showMultiWarehouseUi}
         isManufacturingEnabled={isManufacturingEnabled}
         isVariantEnabled={isVariantEnabled}
+        capabilities={inventoryWriteCapabilities}
         stats={{
           totalProducts: products.length,
           lowStock: lowStockItems.length,
@@ -1916,7 +1990,7 @@ export function InventoryManager({
             <Package className="w-4 h-4 mr-2" />
             Products
           </TabsTrigger>
-          {isMultiLocationEnabled && (
+          {showMultiWarehouseUi && (
             <TabsTrigger value="locations" className="h-8 rounded-md px-3 text-xs font-semibold transition-all data-[state=active]:bg-white data-[state=active]:shadow-sm">
               <Warehouse className="w-4 h-4 mr-2" />
               Locations
@@ -2073,9 +2147,9 @@ export function InventoryManager({
                   domainKnowledge={inventoryFeatures.knowledge}
                   countryIso={countryIso}
                   resultCount={productsToDisplay.length}
-                  onEdit={openProductEdit}
-                  onQuickSave={handleInventoryCellEdit}
-                  onAdd={openProductAdd}
+                  onEdit={canEditInventory ? openProductEdit : undefined}
+                  onQuickSave={canEditInventory ? handleInventoryCellEdit : undefined}
+                  onAdd={canCreateInventory ? openProductAdd : undefined}
                 />
               ) : mobileViewMode === 'busy' ? (
                 <div
@@ -2091,7 +2165,9 @@ export function InventoryManager({
                       variant="outline"
                       size="sm"
                       className="h-8 shrink-0 rounded-lg border-gray-200 px-2 text-[10px] font-semibold uppercase"
+                      disabled={!canCreateInventory}
                       onClick={() => {
+                        if (!canCreateInventory) return;
                         const previousRow = getLastRowForDefaults(productsToDisplay);
                         const newRow = buildNewInventoryRow(category, businessId, previousRow, { countryIso });
                         setProducts((prev) => [...prev, newRow]);
@@ -2109,35 +2185,49 @@ export function InventoryManager({
                     category={category}
                     getFieldSuggestions={getFieldSuggestions}
                     onRowClick={openProductEdit}
-                    onAddRow={() => {
-                      const previousRow = getLastRowForDefaults(productsToDisplay);
-                      const newRow = buildNewInventoryRow(category, businessId, previousRow, { countryIso });
-                      setProducts((prev) => [...prev, newRow]);
-                    }}
+                    onAddRow={
+                      canCreateInventory
+                        ? () => {
+                            const previousRow = getLastRowForDefaults(productsToDisplay);
+                            const newRow = buildNewInventoryRow(category, businessId, previousRow, { countryIso });
+                            setProducts((prev) => [...prev, newRow]);
+                          }
+                        : undefined
+                    }
                     className="min-h-0 flex-1"
-                    onDeleteRow={(product) => setProductToDelete(product)}
-                    onAdvancedSettings={(product) => {
-                      setSelectedProduct(product);
-                      setShowAdvancedFeatures(true);
-                    }}
-                    onCellEdit={async (product, field, value) => {
-                      try {
-                        await handleInventoryCellEdit(product, field, value);
-                        const rowKey =
-                          product?.id != null && product.id !== ''
-                            ? String(product.id)
-                            : product?._tempId != null
-                              ? String(product._tempId)
-                              : '';
-                        if (typeof window !== 'undefined' && rowKey) {
-                          window.dispatchEvent(
-                            new CustomEvent('tenvo:inventory-busy-cell-saved', { detail: { rowKey, field } })
-                          );
-                        }
-                      } catch {
-                        // handleInventoryCellEdit toasts and rolls back
-                      }
-                    }}
+                    onDeleteRow={canDeleteInventory ? (product) => setProductToDelete(product) : undefined}
+                    onAdvancedSettings={
+                      canEditInventory
+                        ? (product) => {
+                            setSelectedProduct(product);
+                            setShowAdvancedFeatures(true);
+                          }
+                        : undefined
+                    }
+                    onCellEdit={
+                      canEditInventory
+                        ? async (product, field, value) => {
+                            try {
+                              await handleInventoryCellEdit(product, field, value);
+                              const rowKey =
+                                product?.id != null && product.id !== ''
+                                  ? String(product.id)
+                                  : product?._tempId != null
+                                    ? String(product._tempId)
+                                    : '';
+                              if (typeof window !== 'undefined' && rowKey) {
+                                window.dispatchEvent(
+                                  new CustomEvent('tenvo:inventory-busy-cell-saved', {
+                                    detail: { rowKey, field },
+                                  })
+                                );
+                              }
+                            } catch {
+                              // handleInventoryCellEdit toasts and rolls back
+                            }
+                          }
+                        : undefined
+                    }
                   />
                 </div>
               ) : (
@@ -2146,10 +2236,10 @@ export function InventoryManager({
                   currencySymbol={standards.currencySymbol}
                   businessCategory={business?.category}
                   onView={(p) => setProductToView(p)}
-                  onEdit={openProductEdit}
-                  onDelete={(p) => setProductToDelete(p)}
-                  onToggleActive={handleToggleActive}
-                  onAdd={openProductAdd}
+                  onEdit={canEditInventory ? openProductEdit : undefined}
+                  onDelete={canDeleteInventory ? (p) => setProductToDelete(p) : undefined}
+                  onToggleActive={canEditInventory ? handleToggleActive : undefined}
+                  onAdd={canCreateInventory ? openProductAdd : undefined}
                 />
               )}
             </div>
@@ -2168,10 +2258,12 @@ export function InventoryManager({
                     size="sm"
                     className="h-7 shrink-0 rounded-lg border-gray-200 px-2.5 text-[10px] font-semibold uppercase tracking-wide"
                     onClick={() => {
+                      if (!canCreateInventory) return;
                       const previousRow = getLastRowForDefaults(productsToDisplay);
                       const newRow = buildNewInventoryRow(category, businessId, previousRow, { countryIso });
                       setProducts((prev) => [...prev, newRow]);
                     }}
+                    disabled={!canCreateInventory}
                   >
                     <Plus className="mr-1 h-3.5 w-3.5" />
                     Add row
@@ -2185,32 +2277,49 @@ export function InventoryManager({
                   category={category}
                   getFieldSuggestions={getFieldSuggestions}
                   onRowClick={openProductEdit}
-                  onAddRow={() => {
-                    const previousRow = getLastRowForDefaults(productsToDisplay);
-                    const newRow = buildNewInventoryRow(category, businessId, previousRow, { countryIso });
-                    setProducts((prev) => [...prev, newRow]);
-                  }}
+                  onAddRow={
+                    canCreateInventory
+                      ? () => {
+                          const previousRow = getLastRowForDefaults(productsToDisplay);
+                          const newRow = buildNewInventoryRow(category, businessId, previousRow, { countryIso });
+                          setProducts((prev) => [...prev, newRow]);
+                        }
+                      : undefined
+                  }
                   className="min-h-0 flex-1"
-                  onDeleteRow={(product) => setProductToDelete(product)}
-                  onAdvancedSettings={(product) => { setSelectedProduct(product); setShowAdvancedFeatures(true); }}
-                  onCellEdit={async (product, field, value) => {
-                    try {
-                      await handleInventoryCellEdit(product, field, value);
-                      const rowKey =
-                        product?.id != null && product.id !== ''
-                          ? String(product.id)
-                          : product?._tempId != null
-                            ? String(product._tempId)
-                            : '';
-                      if (typeof window !== 'undefined' && rowKey) {
-                        window.dispatchEvent(
-                          new CustomEvent('tenvo:inventory-busy-cell-saved', { detail: { rowKey, field } })
-                        );
-                      }
-                    } catch {
-                      // handleInventoryCellEdit toasts and rolls back
-                    }
-                  }}
+                  onDeleteRow={canDeleteInventory ? (product) => setProductToDelete(product) : undefined}
+                  onAdvancedSettings={
+                    canEditInventory
+                      ? (product) => {
+                          setSelectedProduct(product);
+                          setShowAdvancedFeatures(true);
+                        }
+                      : undefined
+                  }
+                  onCellEdit={
+                    canEditInventory
+                      ? async (product, field, value) => {
+                          try {
+                            await handleInventoryCellEdit(product, field, value);
+                            const rowKey =
+                              product?.id != null && product.id !== ''
+                                ? String(product.id)
+                                : product?._tempId != null
+                                  ? String(product._tempId)
+                                  : '';
+                            if (typeof window !== 'undefined' && rowKey) {
+                              window.dispatchEvent(
+                                new CustomEvent('tenvo:inventory-busy-cell-saved', {
+                                  detail: { rowKey, field },
+                                })
+                              );
+                            }
+                          } catch {
+                            // handleInventoryCellEdit toasts and rolls back
+                          }
+                        }
+                      : undefined
+                  }
                 />
               </div>
             ) : viewMode === 'cards' ? (
@@ -2220,10 +2329,10 @@ export function InventoryManager({
                   currencySymbol={standards.currencySymbol}
                   businessCategory={business?.category}
                   onView={(p) => setProductToView(p)}
-                  onEdit={openProductEdit}
-                  onDelete={(p) => setProductToDelete(p)}
-                  onToggleActive={handleToggleActive}
-                  onAdd={openProductAdd}
+                  onEdit={canEditInventory ? openProductEdit : undefined}
+                  onDelete={canDeleteInventory ? (p) => setProductToDelete(p) : undefined}
+                  onToggleActive={canEditInventory ? handleToggleActive : undefined}
+                  onAdd={canCreateInventory ? openProductAdd : undefined}
                 />
               </div>
             ) : (
@@ -2237,8 +2346,8 @@ export function InventoryManager({
                   exportable={false}
                   initialPageSize={25}
                   initialColumnVisibility={visualDefaultColumnVisibility}
-                  onRowClick={openProductEdit}
-                  onBulkDelete={handleBulkDelete}
+                  onRowClick={canEditInventory ? openProductEdit : (p) => setProductToView(p)}
+                  onBulkDelete={canDeleteInventory ? handleBulkDelete : undefined}
                   onExport={async (items) => {
                     const dataToExport = items || productsToDisplay;
                     try {
@@ -2282,7 +2391,7 @@ export function InventoryManager({
           </div>
 
           {/* Mobile FAB — add product (products tab only) */}
-          {activeTab === 'products' && (
+          {activeTab === 'products' && canCreateInventory && (
             <button
               type="button"
               onClick={openProductAdd}
@@ -2536,7 +2645,7 @@ export function InventoryManager({
         </TabsContent>
 
         {/* Locations Tab */}
-        {isMultiLocationEnabled && (
+        {showMultiWarehouseUi && (
           <TabsContent value="locations" className="min-w-0 space-y-6 overflow-x-hidden">
             <MultiLocationInventory
               locations={locations}
@@ -2820,16 +2929,18 @@ export function InventoryManager({
             </CardContent>
           </Card>
 
-          <SmartRestockEngine
-            products={products}
-            invoices={invoices}
-            vendors={vendors}
-            locations={locations}
-            category={category}
-            domainKnowledge={domainKnowledge}
-            businessId={businessId}
-            refreshData={refreshData}
-          />
+          {showAiRestock && (
+            <SmartRestockEngine
+              products={products}
+              invoices={invoices}
+              vendors={vendors}
+              locations={locations}
+              category={category}
+              domainKnowledge={domainKnowledge}
+              businessId={businessId}
+              refreshData={refreshData}
+            />
+          )}
         </TabsContent>
       </Tabs>
 
@@ -3107,19 +3218,26 @@ export function InventoryManager({
         currencySymbol={standards.currencySymbol}
         domainKnowledge={inventoryFeatures.knowledge}
         countryIso={countryIso}
-        onAddRow={(previousRow) =>
-          buildNewInventoryRow(
-            category,
-            businessId,
-            previousRow || getLastRowForDefaults(productsToDisplay),
-            { countryIso }
-          )
+        onAddRow={
+          canCreateInventory
+            ? (previousRow) =>
+                buildNewInventoryRow(
+                  category,
+                  businessId,
+                  previousRow || getLastRowForDefaults(productsToDisplay),
+                  { countryIso }
+                )
+            : undefined
         }
-        onDeleteRow={async (row) => {
-          if (row?.id) {
-            await handleDeleteProduct(row.id);
-          }
-        }}
+        onDeleteRow={
+          canDeleteInventory
+            ? async (row) => {
+                if (row?.id) {
+                  await handleDeleteProduct(row.id);
+                }
+              }
+            : undefined
+        }
         category={category}
         businessId={businessId}
         title={`${category.replace(/-/g, ' ').toUpperCase()} - BULK ENTRY`}

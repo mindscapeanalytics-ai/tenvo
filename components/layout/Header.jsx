@@ -134,8 +134,14 @@ export function Header({ onMenuClick }) {
                 i.customer_name?.toLowerCase().includes(term)
             ).slice(0, 5),
             crm: [
-                ...customers.filter(c => c.name?.toLowerCase().includes(term) || c.phone?.toLowerCase().includes(term)),
-                ...vendors.filter(v => v.name?.toLowerCase().includes(term) || v.company_name?.toLowerCase().includes(term))
+                ...customers.filter(c => c.name?.toLowerCase().includes(term) || c.phone?.toLowerCase().includes(term))
+                    .map(c => ({ ...c, _entityKind: 'customer' })),
+                ...vendors.filter(v =>
+                    v.name?.toLowerCase().includes(term) ||
+                    v.phone?.toLowerCase().includes(term) ||
+                    v.ntn?.toLowerCase().includes(term) ||
+                    v.contact_person?.toLowerCase().includes(term)
+                ).map(v => ({ ...v, _entityKind: 'vendor' })),
             ].slice(0, 5),
             manufacturing: [
                 ...bomList.filter(b => b.name?.toLowerCase().includes(term) || b.product_name?.toLowerCase().includes(term)),
@@ -177,8 +183,8 @@ export function Header({ onMenuClick }) {
                 detailType = 'invoice';
                 break;
             case 'crm':
-                tab = item.company_name ? 'vendors' : 'customers';
-                detailType = item.company_name ? 'vendor' : 'customer';
+                tab = item._entityKind === 'vendor' ? 'vendors' : 'customers';
+                detailType = item._entityKind === 'vendor' ? 'vendor' : 'customer';
                 break;
             case 'manufacturing':
                 tab = 'manufacturing';
@@ -501,7 +507,7 @@ export function Header({ onMenuClick }) {
                                                                                     {highlightMatch(item.name || item.number || item.product_name || 'Unnamed Item', searchQuery)}
                                                                                 </span>
                                                                                 <span className="text-[10px] text-gray-500 line-clamp-1">
-                                                                                    {highlightMatch(item.sku || item.customer_name || item.company_name || item.category || item.status || '', searchQuery)}
+                                                                                    {highlightMatch(item.sku || item.customer_name || item.phone || item.ntn || item.contact_person || item.category || item.status || '', searchQuery)}
                                                                                 </span>
                                                                             </div>
                                                                             <ChevronIcon className={`w-3 h-3 transition-all ${isSelected ? 'text-brand-primary translate-x-0.5' : 'text-gray-300'}`} />

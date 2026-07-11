@@ -116,16 +116,23 @@ export function InventoryMobileProductList({
     return header || col.accessorKey || col.id || 'Field';
   };
 
+  const canQuickEdit = typeof onQuickSave === 'function';
+  const canOpenEdit = typeof onEdit === 'function';
+
   if (!products.length) {
     return (
       <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-gray-200 bg-gray-50/80 py-14 px-4">
         <Package className="h-10 w-10 text-gray-300" aria-hidden />
         <p className="text-center text-sm font-semibold text-gray-700">No products match your search</p>
-        <p className="text-center text-xs text-gray-500">Add a product or adjust filters</p>
-        <Button type="button" className={MOBILE_BTN_PRIMARY} onClick={onAdd}>
-          <Plus className="mr-1.5 h-4 w-4" />
-          Add product
-        </Button>
+        <p className="text-center text-xs text-gray-500">
+          {typeof onAdd === 'function' ? 'Add a product or adjust filters' : 'Adjust filters to find products'}
+        </p>
+        {typeof onAdd === 'function' && (
+          <Button type="button" className={MOBILE_BTN_PRIMARY} onClick={onAdd}>
+            <Plus className="mr-1.5 h-4 w-4" />
+            Add product
+          </Button>
+        )}
       </div>
     );
   }
@@ -140,7 +147,13 @@ export function InventoryMobileProductList({
           <p className="text-[11px] font-medium text-gray-500 tabular-nums">
             {resultCount ?? products.length} items
           </p>
-          <p className="text-[10px] font-medium text-gray-400">Tap row to edit · tap stock/price for quick update</p>
+          <p className="text-[10px] font-medium text-gray-400">
+            {canQuickEdit
+              ? 'Tap row to edit · tap stock/price for quick update'
+              : canOpenEdit
+                ? 'Tap row to open product'
+                : 'View only'}
+          </p>
         </div>
 
         <ul className="divide-y divide-gray-100">
@@ -210,7 +223,8 @@ export function InventoryMobileProductList({
                             {chip.value}
                           </span>
                         ))}
-                        {domainFieldPills.map((pill) => (
+                        {canQuickEdit &&
+                          domainFieldPills.map((pill) => (
                           <button
                             key={`${p.id || p._tempId}-edit-${pill.key}`}
                             type="button"
@@ -224,30 +238,59 @@ export function InventoryMobileProductList({
                             {pill.label}: {pill.value}
                           </button>
                         ))}
+                        {!canQuickEdit &&
+                          domainFieldPills.map((pill) => (
+                          <span
+                            key={`${p.id || p._tempId}-view-${pill.key}`}
+                            className="rounded-md bg-gray-50 px-1.5 py-0.5 text-[9px] font-medium text-gray-600"
+                            title={`${pill.label}: ${pill.value}`}
+                          >
+                            {pill.label}: {pill.value}
+                          </span>
+                        ))}
                       </div>
                     </div>
                     <ChevronRight className="h-4 w-4 shrink-0 text-gray-300" aria-hidden />
                   </button>
 
                   <div className="flex shrink-0 flex-col items-end gap-1">
-                    <button
-                      type="button"
-                      onClick={() => openQuickEdit(p, 'stock', 'Stock quantity', 'number')}
-                      className={cn(
-                        'inline-flex min-w-[2.5rem] items-center justify-center rounded-lg px-2 py-1 text-[11px] font-bold tabular-nums ring-1 ring-inset',
-                        stock.className
-                      )}
-                    >
-                      {stock.label}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => openQuickEdit(p, 'price', 'Sale price', 'number')}
-                      className="text-[12px] font-semibold tabular-nums text-gray-900 underline decoration-gray-300 underline-offset-2"
-                    >
-                      {currencySymbol}
-                      {price.toLocaleString()}
-                    </button>
+                    {canQuickEdit ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => openQuickEdit(p, 'stock', 'Stock quantity', 'number')}
+                          className={cn(
+                            'inline-flex min-w-[2.5rem] items-center justify-center rounded-lg px-2 py-1 text-[11px] font-bold tabular-nums ring-1 ring-inset',
+                            stock.className
+                          )}
+                        >
+                          {stock.label}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => openQuickEdit(p, 'price', 'Sale price', 'number')}
+                          className="text-[12px] font-semibold tabular-nums text-gray-900 underline decoration-gray-300 underline-offset-2"
+                        >
+                          {currencySymbol}
+                          {price.toLocaleString()}
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <span
+                          className={cn(
+                            'inline-flex min-w-[2.5rem] items-center justify-center rounded-lg px-2 py-1 text-[11px] font-bold tabular-nums ring-1 ring-inset',
+                            stock.className
+                          )}
+                        >
+                          {stock.label}
+                        </span>
+                        <span className="text-[12px] font-semibold tabular-nums text-gray-900">
+                          {currencySymbol}
+                          {price.toLocaleString()}
+                        </span>
+                      </>
+                    )}
                   </div>
                 </div>
               </li>

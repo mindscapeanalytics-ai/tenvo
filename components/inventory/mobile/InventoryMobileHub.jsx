@@ -65,8 +65,17 @@ export function InventoryMobileHub({
   isManufacturingEnabled,
   isVariantEnabled,
   stats = {},
+  capabilities = {},
 }) {
   const [toolsOpen, setToolsOpen] = useState(false);
+  const caps = {
+    canCreate: capabilities.canCreate === true,
+    canEdit: capabilities.canEdit === true,
+    canAdjustStock: capabilities.canAdjustStock === true,
+    canTransferStock: capabilities.canTransferStock === true,
+    canScanBarcode: capabilities.canScanBarcode === true,
+    canExport: capabilities.canExport !== false,
+  };
 
   const syncLabel = lastSyncedAt
     ? lastSyncedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -174,11 +183,21 @@ export function InventoryMobileHub({
         <div>
           <p className="mb-2 px-0.5 text-[10px] font-bold uppercase tracking-widest text-gray-400">Quick actions</p>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            <MobileHubTile icon={BrainCircuit} label="AI Add" sublabel="Smart entry" tone="primary" onClick={onAiSmartAdd} />
-            <MobileHubTile icon={ScanBarcode} label="Scan" sublabel="Camera & QR" tone="accent" onClick={onScanBarcode} />
-            <MobileHubTile icon={Table2} label="Bulk entry" sublabel="Cards or grid" onClick={onExcelMode} />
-            <MobileHubTile icon={Upload} label="Import" sublabel="From file" onClick={onImport} />
-            <MobileHubTile icon={Download} label="Export" sublabel="Download" onClick={onExport} />
+            {caps.canCreate && (
+              <MobileHubTile icon={BrainCircuit} label="AI Add" sublabel="Smart entry" tone="primary" onClick={onAiSmartAdd} />
+            )}
+            {caps.canScanBarcode && (
+              <MobileHubTile icon={ScanBarcode} label="Scan" sublabel="Camera & QR" tone="accent" onClick={onScanBarcode} />
+            )}
+            {(caps.canCreate || caps.canEdit) && (
+              <MobileHubTile icon={Table2} label="Bulk entry" sublabel="Cards or grid" onClick={onExcelMode} />
+            )}
+            {caps.canCreate && (
+              <MobileHubTile icon={Upload} label="Import" sublabel="From file" onClick={onImport} />
+            )}
+            {caps.canExport && (
+              <MobileHubTile icon={Download} label="Export" sublabel="Download" onClick={onExport} />
+            )}
             <MobileHubTile icon={LayoutGrid} label="All tools" sublabel="More options" onClick={() => setToolsOpen(true)} />
           </div>
         </div>
@@ -194,9 +213,13 @@ export function InventoryMobileHub({
           </SheetHeader>
           <div className={MOBILE_BOTTOM_SHEET_BODY}>
             <div className="space-y-2">
-              <MobileActionRow icon={AlertTriangle} label="Adjust stock" onClick={() => runAction(onAdjustStock)} />
-              <MobileActionRow icon={Repeat} label="Transfer stock" onClick={() => runAction(onTransferStock)} />
-              {hasQuickAddTemplates && (
+              {caps.canAdjustStock && (
+                <MobileActionRow icon={AlertTriangle} label="Adjust stock" onClick={() => runAction(onAdjustStock)} />
+              )}
+              {caps.canTransferStock && (
+                <MobileActionRow icon={Repeat} label="Transfer stock" onClick={() => runAction(onTransferStock)} />
+              )}
+              {hasQuickAddTemplates && caps.canCreate && (
                 <MobileActionRow icon={Sparkles} label="Starter templates" onClick={() => runAction(onOpenTemplates)} />
               )}
               <MobileActionRow icon={BarChart3} label="Reports & restock" onClick={() => runAction(onGoToReports)} />
