@@ -357,7 +357,7 @@ function EasyDashboardHeader({
   currency: string;
   activePreset: string;
   presetOptions: typeof EASY_PRESET_OPTIONS;
-  onDateRangePresetChange?: (preset: 'today' | '7d' | '30d' | 'mtd') => void;
+  onDateRangePresetChange?: (preset: 'today' | '7d' | '30d' | 'mtd' | '90d' | 'last_month' | 'ytd') => void;
   quickActions: Array<{ id: string; label: string; icon: React.ElementType; color: string }>;
   onQuickAction?: (id: string) => void;
   seasonBadge: { label: string; tone: string } | null;
@@ -383,7 +383,7 @@ function EasyDashboardHeader({
               <button
                 key={preset.id}
                 type="button"
-                onClick={() => onDateRangePresetChange?.(preset.id as 'today' | '7d' | '30d' | 'mtd')}
+                onClick={() => onDateRangePresetChange?.(preset.id as 'today' | '7d' | '30d' | 'mtd' | '90d' | 'last_month' | 'ytd')}
                 className={cn(
                   'rounded-md px-2 py-0.5 text-[10px] font-semibold transition-colors',
                   activePreset === preset.id
@@ -395,6 +395,9 @@ function EasyDashboardHeader({
               </button>
             ))}
           </div>
+          {activePreset === 'custom' || activePreset === 'ytd' ? (
+            <span className="hidden text-[10px] font-semibold text-neutral-500 sm:inline">{periodLabel}</span>
+          ) : null}
         </div>
       </div>
       <div className="flex items-center justify-between gap-3 border-t border-neutral-50 px-4 py-2 sm:px-5">
@@ -588,7 +591,7 @@ export interface EasyBusinessDashboardProps {
   openInvoicesCount: number;
   inventoryValue: number;
   inStockUnits: number;
-  coverageDays: number;
+  coverageDays: number | null;
   avgOrderValue: number;
   returnRate: number;
   paidOrderRateDisplay: string;
@@ -662,10 +665,20 @@ export function EasyBusinessDashboard(props: EasyBusinessDashboardProps) {
     isAnalyticsLoading = false,
   } = props;
 
-  // Per-module skeletons (Zoho/Busy-style): unlock tiles as each module settles.
-  const tileSalesLoading = isSalesLoading || isAnalyticsLoading;
+  // isAnalyticsLoading retained for callers; Overview KPIs unlock from sales/inventory/finance.
+  void isAnalyticsLoading;
+  // Per-module skeletons: unlock tiles from the module that owns each metric.
+  // Do not gate sales KPIs on analytics (calendar-month getDashboardMetricsAction).
+  const tileSalesLoading = isSalesLoading;
   const tileInventoryLoading = isInventoryLoading;
+  // Receivables need sales; P&L / cash wait on finance only (Busy/Zoho-style module settle).
   const tileFinanceLoading = isFinanceLoading || isSalesLoading;
+  const tilePnlLoading = isFinanceLoading;
+  const tilePeriodLoading = isSalesLoading || isFinanceLoading;
+  const tileAttentionLoading = isSalesLoading || isInventoryLoading;
+  const tileReturnsLoading = isSalesLoading;
+  const tileCoverageLoading = isSalesLoading || isInventoryLoading;
+  // Efficiency / Snapshot mix sales + inventory (+ finance for margin); analytics is optional fallback only.
   const tileCoreLoading = tileSalesLoading || tileFinanceLoading || tileInventoryLoading;
 
   const [activeTab, setActiveTab] = useState('overview');
@@ -802,10 +815,8 @@ export function EasyBusinessDashboard(props: EasyBusinessDashboardProps) {
   const custDelta = deltaVisual(customerTrend, 'growth');
   const expDelta = deltaVisual(expenseTrend, 'expense');
 
-  const resolvedPreset =
-    activePreset === 'custom' || activePreset === '90d' || activePreset === 'last_month' || activePreset === 'ytd'
-      ? '30d'
-      : activePreset;
+  const easyPresetIds = useMemo(() => new Set(EASY_PRESET_OPTIONS.map((p) => p.id)), []);
+  const resolvedPreset = easyPresetIds.has(activePreset) ? activePreset : 'custom';
 
   const efficiencyTone = domainEfficiency >= 85 ? 'success' : domainEfficiency >= 65 ? 'warning' : 'secondary';
 
@@ -818,11 +829,16 @@ export function EasyBusinessDashboard(props: EasyBusinessDashboardProps) {
         userName={userName}
         businessName={business?.name}
         periodLabel={periodLabel}
-        presetOptions={EASY_PRESET_OPTIONS}
-        activePreset={resolvedPreset}
-        onDateRangePresetChange={(preset) =>
-          onDateRangePresetChange?.(preset as 'today' | '7d' | '30d' | '90d' | 'mtd' | 'last_month' | 'ytd')
+        presetOptions={
+          resolvedPreset === 'custom'
+            ? [...EASY_PRESET_OPTIONS, { id: 'custom', label: periodLabel || 'Custom' }]
+            : EASY_PRESET_OPTIONS
         }
+        activePreset={resolvedPreset}
+        onDateRangePresetChange={(preset) => {
+          if (preset === 'custom') return;
+          onDateRangePresetChange?.(preset as 'today' | '7d' | '30d' | '90d' | 'mtd' | 'last_month' | 'ytd');
+        }}
         kpiStrip={commandStrip.map((item) => ({
           label: item.label.replace(' invoices', '').replace('Invoices', 'Invoices'),
           value: item.value,
@@ -990,19 +1006,30 @@ export function EasyBusinessDashboard(props: EasyBusinessDashboardProps) {
                     </Button>
                   </CardHeader>
                   <CardContent>
-                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                      {[
-                        { label: 'Revenue', delta: revDelta },
-                        { label: 'Orders', delta: ordDelta },
-                        { label: 'Customers', delta: custDelta },
-                        { label: 'Spend', delta: expDelta },
-                      ].map((row) => (
-                        <div key={row.label} className="rounded-lg bg-neutral-50 px-3 py-2">
-                          <p className="text-[10px] font-semibold uppercase text-neutral-500">{row.label}</p>
-                          <p className={cn('mt-1 text-sm', row.delta.className)}>{row.delta.text}</p>
-                        </div>
-                      ))}
-                    </div>
+                    {tilePeriodLoading ? (
+                      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                        {Array.from({ length: 4 }).map((_, i) => (
+                          <div key={`period-skel-${i}`} className="rounded-lg bg-neutral-50 px-3 py-2 animate-pulse">
+                            <div className="h-3 w-16 rounded bg-neutral-200" />
+                            <div className="mt-2 h-4 w-10 rounded bg-neutral-300" />
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                        {[
+                          { label: 'Revenue', delta: revDelta },
+                          { label: 'Orders', delta: ordDelta },
+                          { label: 'Customers', delta: custDelta },
+                          { label: 'Spend', delta: expDelta },
+                        ].map((row) => (
+                          <div key={row.label} className="rounded-lg bg-neutral-50 px-3 py-2">
+                            <p className="text-[10px] font-semibold uppercase text-neutral-500">{row.label}</p>
+                            <p className={cn('mt-1 text-sm', row.delta.className)}>{row.delta.text}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </div>
@@ -1038,7 +1065,12 @@ export function EasyBusinessDashboard(props: EasyBusinessDashboardProps) {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    {(reminders.lowStock ?? 0) === 0 && (reminders.overdueInvoices ?? 0) === 0 && (reminders.pendingOrders ?? 0) === 0 ? (
+                    {tileAttentionLoading ? (
+                      <div className="space-y-2 animate-pulse" aria-busy="true">
+                        <div className="h-9 rounded-lg bg-neutral-100" />
+                        <div className="h-9 rounded-lg bg-neutral-100" />
+                      </div>
+                    ) : (reminders.lowStock ?? 0) === 0 && (reminders.overdueInvoices ?? 0) === 0 && (reminders.pendingOrders ?? 0) === 0 ? (
                       <div className="flex items-center gap-2 text-emerald-700">
                         <CheckCircle2 className="h-4 w-4" />
                         <span className="text-xs font-semibold">No urgent stock, collections, or order issues.</span>
@@ -1048,7 +1080,7 @@ export function EasyBusinessDashboard(props: EasyBusinessDashboardProps) {
                         {(reminders.pendingOrders ?? 0) > 0 && (
                           <button
                             type="button"
-                            onClick={() => onQuickAction?.('invoices')}
+                            onClick={() => onQuickAction?.('pending-orders')}
                             className="flex w-full items-center justify-between rounded-lg border border-cyan-100 bg-cyan-50/70 px-3 py-2 text-left"
                           >
                             <span className="text-xs font-semibold text-cyan-900">{reminders.pendingOrders} pending orders</span>
@@ -1058,7 +1090,7 @@ export function EasyBusinessDashboard(props: EasyBusinessDashboardProps) {
                         {(reminders.lowStock ?? 0) > 0 && (
                           <button
                             type="button"
-                            onClick={() => onQuickAction?.('inventory')}
+                            onClick={() => onQuickAction?.('low-stock')}
                             className="flex w-full items-center justify-between rounded-lg border border-amber-100 bg-amber-50/70 px-3 py-2 text-left"
                           >
                             <span className="text-xs font-semibold text-amber-900">{reminders.lowStock} low-stock SKUs</span>
@@ -1068,7 +1100,7 @@ export function EasyBusinessDashboard(props: EasyBusinessDashboardProps) {
                         {(reminders.overdueInvoices ?? 0) > 0 && (
                           <button
                             type="button"
-                            onClick={() => onQuickAction?.('invoices')}
+                            onClick={() => onQuickAction?.('overdue')}
                             className="flex w-full items-center justify-between rounded-lg border border-rose-100 bg-rose-50/70 px-3 py-2 text-left"
                           >
                             <span className="text-xs font-semibold text-rose-900">{reminders.overdueInvoices} overdue invoices</span>
@@ -1210,11 +1242,11 @@ export function EasyBusinessDashboard(props: EasyBusinessDashboardProps) {
               <EasyTabInsightStrip insights={tabInsights} onAction={handleInsightAction} />
               <div className="grid grid-cols-2 gap-2 lg:grid-cols-3 xl:grid-cols-6">
                 <EasyStatTile label="Receivables" value={formatCurrencyCompact(outstandingAmount)} hint={`${openInvoicesCount} open`} onClick={() => onQuickAction?.('invoices')} isLoading={tileFinanceLoading} />
-                <EasyStatTile label="Overdue" value={reminders.overdueInvoices ?? 0} hint={formatCurrencyCompact(invoiceAging.overdueAmount)} onClick={() => onQuickAction?.('invoices')} isLoading={tileFinanceLoading} />
-                <EasyStatTile label="Period revenue" value={formatCurrencyCompact(periodMetrics.currentRevenue)} hint={periodLabel} trend={Number(revenueTrend.toFixed(1))} isLoading={tileFinanceLoading} />
-                <EasyStatTile label="Period spend" value={formatCurrencyCompact(periodMetrics.currentExpenses)} hint="Operating costs" trend={Number(expenseTrend.toFixed(1))} isLoading={tileFinanceLoading} />
-                <EasyStatTile label="Net margin" value={`${netMarginPct.toFixed(1)}%`} hint="Revenue minus spend" isLoading={tileFinanceLoading} />
-                <EasyStatTile label="Cash flow" value={formatCurrencyCompact(cashFlowCurrent)} hint={periodLabel} trend={Number(cashFlowGrowth.toFixed(1))} isLoading={tileFinanceLoading} />
+                <EasyStatTile label="Overdue" value={reminders.overdueInvoices ?? 0} hint={formatCurrencyCompact(invoiceAging.overdueAmount)} onClick={() => onQuickAction?.('overdue')} isLoading={tileFinanceLoading} />
+                <EasyStatTile label="Period revenue" value={formatCurrencyCompact(periodMetrics.currentRevenue)} hint={periodLabel} trend={Number(revenueTrend.toFixed(1))} isLoading={tileSalesLoading} />
+                <EasyStatTile label="Period spend" value={formatCurrencyCompact(periodMetrics.currentExpenses)} hint="Operating costs" trend={Number(expenseTrend.toFixed(1))} isLoading={tilePnlLoading} />
+                <EasyStatTile label="Net margin" value={`${netMarginPct.toFixed(1)}%`} hint="Revenue minus spend" isLoading={tileSalesLoading || tilePnlLoading} />
+                <EasyStatTile label="Cash flow" value={formatCurrencyCompact(cashFlowCurrent)} hint={periodLabel} trend={Number(cashFlowGrowth.toFixed(1))} isLoading={tilePnlLoading} />
               </div>
 
               <div className="grid gap-4 lg:grid-cols-12">
@@ -1359,15 +1391,15 @@ export function EasyBusinessDashboard(props: EasyBusinessDashboardProps) {
               </div>
 
               <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-                <EasyStatTile label="Coverage" value={coverageDays > 365 ? '365+' : coverageDays} hint="Estimated days" isLoading={tileInventoryLoading} />
+                <EasyStatTile label="Coverage" value={coverageDays == null ? '—' : coverageDays > 365 ? '365+' : coverageDays} hint="Estimated days" isLoading={tileCoverageLoading} />
                 <EasyStatTile
                   label={multiLocationEnabled ? 'Warehouse util.' : 'Stock recency'}
                   value={multiLocationEnabled ? warehouseUtilizationDisplay : stockCheckRecencyDisplay}
                   hint={multiLocationEnabled ? 'Capacity usage' : 'Since last touch'}
                   isLoading={tileInventoryLoading}
                 />
-                <EasyStatTile label="Pending returns" value={periodMetrics.pendingReturns} hint="Awaiting processing" isLoading={tileInventoryLoading} />
-                <EasyStatTile label="Return rate" value={`${returnRate.toFixed(1)}%`} hint={`${periodMetrics.returnInvoices} docs`} isLoading={tileInventoryLoading} />
+                <EasyStatTile label="Pending returns" value={periodMetrics.pendingReturns} hint="Awaiting processing" isLoading={tileReturnsLoading} />
+                <EasyStatTile label="Return rate" value={`${returnRate.toFixed(1)}%`} hint={`${periodMetrics.returnInvoices} docs`} isLoading={tileReturnsLoading} />
               </div>
 
               <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">

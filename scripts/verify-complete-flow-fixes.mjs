@@ -265,9 +265,9 @@ check(
 );
 
 check(
-  '[TAB-3] Tab alias: exp → expenses',
-  () => fileContains('lib/config/tabs.js', "exp: 'expenses'"),
-  'Shortcut "exp" routes to expenses'
+  '[TAB-3] Tab alias: exp → finance (expenses view)',
+  () => fileContains('lib/config/tabs.js', "exp: 'finance'") && fileContains('lib/config/tabs.js', "exp: 'expenses'"),
+  'Shortcut "exp" routes to finance hub with expenses view'
 );
 
 check(
@@ -283,9 +283,9 @@ check(
 );
 
 check(
-  '[TAB-6] Tab alias: acc → accounting',
-  () => fileContains('lib/config/tabs.js', "acc: 'accounting'"),
-  'Shortcut "acc" routes to accounting'
+  '[TAB-6] Tab alias: acc → finance',
+  () => fileContains('lib/config/tabs.js', "acc: 'finance'"),
+  'Shortcut "acc" routes to finance hub'
 );
 
 check(

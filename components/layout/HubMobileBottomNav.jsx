@@ -107,7 +107,7 @@ export function HubMobileBottomNav() {
           <SheetHeader className={MOBILE_BOTTOM_SHEET_HEADER}>
             <SheetTitle className="text-base font-bold text-gray-900">More modules</SheetTitle>
             <SheetDescription className="text-xs text-gray-500">
-              Customers, purchases, settings, and more
+              Customers, purchases, reports, settings, and more
             </SheetDescription>
           </SheetHeader>
           <div className={MOBILE_BOTTOM_SHEET_BODY}>

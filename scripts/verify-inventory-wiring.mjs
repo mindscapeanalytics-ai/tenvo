@@ -272,6 +272,69 @@ if (!existsSync(join(root, 'components/mobile/index.ts'))) {
   }
 }
 
+// --- Hub display stock sellable-only + DataContext inventory path ---
+const productService = read('lib/services/ProductService.js');
+if (
+  !productService.includes('resolveInventoryEffectiveStock') &&
+  !productService.includes("toLowerCase() === 'sellable'")
+) {
+  fail('ProductService.resolveDisplayStock must use shared effective stock (sellable locations)');
+} else {
+  pass('ProductService display stock uses shared sellable resolver');
+}
+if (!productService.includes('display_stock: displayStock')) {
+  fail('ProductService.sanitizeProduct must emit display_stock');
+} else {
+  pass('ProductService sanitize emits display_stock');
+}
+
+if (!productService.includes("status: { in: ['in_stock', 'available'] }") && !productService.includes('in_stock\', \'available')) {
+  fail('ProductService must read both in_stock and available serial statuses');
+} else {
+  pass('ProductService serial readers accept available + in_stock');
+}
+
+if (!productService.includes("status: 'archived'") && !invSvc.includes('product_stock_locations')) {
+  // soft-delete cleanup lives on ProductService
+}
+if (!productService.includes('inventory children archived') && !productService.includes('product_stock_locations.updateMany')) {
+  fail('ProductService.deleteProduct must archive children and zero locations');
+} else {
+  pass('ProductService soft-delete archives inventory children');
+}
+
+if (!invSvc.includes("COALESCE(state, 'sellable') = 'sellable'") || !invSvc.includes('has_variants')) {
+  fail('InventoryService.syncProductStock must use sellable qty and respect variant parents');
+} else {
+  pass('InventoryService.syncProductStock sellable + variant-aware');
+}
+
+const composite = read('lib/actions/premium/automation/inventory_composite.js');
+if (!composite.includes('ProductService.getProduct') || !composite.includes("hasOwnProperty.call(sanitizedData, 'is_active')")) {
+  fail('Composite upsert must return sanitized product and not force is_active=true');
+} else {
+  pass('Composite upsert returns sanitized product without silent reactivate');
+}
+
+const productActions = read('lib/actions/standard/inventory/product.js');
+if (!productActions.includes('hasLedgerPayload') || !productActions.includes('upsertIntegratedProductAction')) {
+  fail('createProductAction must route stock/batches/serials through composite');
+} else {
+  pass('createProductAction routes ledger payloads through composite');
+}
+
+const dataContext = read('lib/context/DataContext.js');
+if (!dataContext.includes('productAPI.getAll') || !dataContext.includes('fetchInventory')) {
+  fail('DataContext missing inventory productAPI.getAll path');
+} else {
+  pass('DataContext inventory loads via productAPI.getAll');
+}
+if (!dataContext.includes('isStale()')) {
+  fail('DataContext missing generation stale guards');
+} else {
+  pass('DataContext guards stale business fetches');
+}
+
 if (failed) {
   console.error('\nverify:inventory-wiring FAILED');
   process.exit(1);

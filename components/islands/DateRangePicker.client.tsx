@@ -16,7 +16,8 @@ import { DATE_RANGE_PRESETS, getDateRangeFromPreset, isDateRangeEqual } from '@/
 interface DateRangePickerProps {
     className?: string;
     date: DateRange | undefined;
-    onDateChange: (date: DateRange | undefined) => void;
+    /** Second arg carries presetKey when the user picks a named preset. */
+    onDateChange: (date: DateRange | undefined, meta?: { presetKey?: string }) => void;
     compact?: boolean;
     minimal?: boolean;
 }
@@ -112,7 +113,7 @@ export function DateRangePicker({
 
     const handleApply = () => {
         if (canApply) {
-            onDateChange(draft);
+            onDateChange(draft, { presetKey: 'custom' });
             setOpen(false);
         }
     };
@@ -121,7 +122,7 @@ export function DateRangePicker({
         const range = getDateRangeFromPreset(presetKey);
         if (range) {
             setDraft(range);
-            onDateChange(range);
+            onDateChange(range, { presetKey });
             setOpen(false);
         }
     };

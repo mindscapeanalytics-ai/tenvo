@@ -37,6 +37,7 @@ import { useData } from '@/lib/context/DataContext';
 import { useLanguage } from '@/lib/context/LanguageContext';
 import { useAppMode } from '@/lib/context/BusyModeContext';
 import { useSearchParams } from 'next/navigation';
+import { normalizeDashboardTab } from '@/lib/config/tabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
@@ -75,7 +76,7 @@ export function Header({ onMenuClick }) {
     } = useData();
     const { t, language } = useLanguage();
     const searchParams = useSearchParams();
-    const currentTab = searchParams.get('tab') || 'dashboard';
+    const currentTab = normalizeDashboardTab(searchParams.get('tab') || 'dashboard');
 
     const [isSearchFocused, setIsSearchFocused] = React.useState(false);
     const [activeIndex, setActiveIndex] = React.useState(-1);
@@ -241,7 +242,7 @@ export function Header({ onMenuClick }) {
 
     // Extract category from URL
     const labels = {
-        dashboard: 'Command Overview',
+        dashboard: isEasyMode ? 'Home' : 'Command Overview',
         inventory: 'Inventory Engine',
         invoices: 'Billing & Invoicing',
         customers: 'CRM & Client Hub',
@@ -257,7 +258,10 @@ export function Header({ onMenuClick }) {
         gst: 'Tax & Compliance',
         settings: 'System Configs',
         reports: 'Analytics Hub',
-        analytics: 'Intelligence Center'
+        analytics: 'Intelligence Center',
+        finance: 'Finance Hub',
+        orders: 'Orders',
+        inquiries: 'Inquiries',
     };
 
     const activeTitle = labels[currentTab] || currentTab;
@@ -269,6 +273,11 @@ export function Header({ onMenuClick }) {
         business?.business_name || business?.name || business?.domain?.replace(/-/g, ' ') || 'Workspace';
     const dispatchHeaderEvent = (eventName, detail) => {
         window.dispatchEvent(new CustomEvent(eventName, detail ? { detail } : undefined));
+    };
+
+    const handleHeaderDateChange = (newRange, meta) => {
+        if (!newRange?.from) return;
+        setDateRange(newRange, meta?.presetKey ? { presetKey: meta.presetKey } : undefined);
     };
 
     return (
@@ -301,11 +310,7 @@ export function Header({ onMenuClick }) {
                             <DateRangePicker
                                 minimal
                                 date={dateRange}
-                                onDateChange={(newRange) => {
-                                    if (newRange?.from && newRange?.to) {
-                                        setDateRange(newRange);
-                                    }
-                                }}
+                                onDateChange={handleHeaderDateChange}
                             />
                             <Button
                                 size="icon"
@@ -427,14 +432,20 @@ export function Header({ onMenuClick }) {
             {/* ── Desktop header ── */}
             <div className="hidden h-14 items-center gap-3 px-4 lg:flex lg:px-5">
             <div className="mx-auto flex w-full max-w-[1600px] items-center gap-3">
-                {/* Left: module title */}
+                {/* Left: module title (Easy home keeps body as primary title) */}
                 <div className="flex min-w-0 shrink-0 flex-col justify-center">
                     <span className="truncate text-[10px] font-bold uppercase leading-none tracking-[0.16em] text-neutral-400 max-w-[10rem] xl:max-w-[12rem]">
                         {businessShortName}
                     </span>
-                    <h1 className="truncate text-sm font-bold tracking-tight text-neutral-900 max-w-[10rem] xl:max-w-[12rem]">
-                        {activeTitle}
-                    </h1>
+                    {!slimDashboardHeader ? (
+                        <h1 className="truncate text-sm font-bold tracking-tight text-neutral-900 max-w-[10rem] xl:max-w-[12rem]">
+                            {activeTitle}
+                        </h1>
+                    ) : (
+                        <span className="truncate text-sm font-semibold tracking-tight text-neutral-500 max-w-[10rem] xl:max-w-[12rem]">
+                            Home
+                        </span>
+                    )}
                 </div>
 
                 {/* Center: search */}
@@ -539,11 +550,7 @@ export function Header({ onMenuClick }) {
                         <div className="flex items-center gap-1 sm:gap-1.5 border-r border-gray-100 pr-1.5 sm:pr-2 min-w-0">
                             <DateRangePicker
                                 date={dateRange}
-                                onDateChange={(newRange) => {
-                                    if (newRange?.from && newRange?.to) {
-                                        setDateRange(newRange);
-                                    }
-                                }}
+                                onDateChange={handleHeaderDateChange}
                                 className="min-w-0 w-[min(12.5rem,calc(100vw-10rem))] sm:w-[205px] lg:w-[214px]"
                             />
                             <Button

@@ -35,7 +35,6 @@ import notify, { TOAST_IDS } from '@/lib/utils/appToast';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { useFilters } from '@/lib/context/FilterContext';
 import { useData } from '@/lib/context/DataContext';
-import { getDateRangeFromPreset } from '@/lib/utils/datePresets';
 import { isBatchTrackingEnabled, isSerialTrackingEnabled } from '@/lib/utils/domainHelpers';
 import { filterMeaningfulBatches, filterMeaningfulSerials } from '@/lib/utils/inventoryTrackingHelpers';
 import { isEntitlementError, getEntitlementErrorMessage, markEntitlementErrorHandled } from '@/lib/utils/subscriptionErrors';
@@ -46,7 +45,7 @@ import { useHubReady } from '@/lib/hooks/useHubReady';
 import { useResourceLimits } from '@/lib/hooks/useResourceLimits';
 import { getDomainConfig } from '@/lib/config/domains';
 import { QUICK_ACTION_IDS } from '@/lib/config/quickActions';
-import { normalizeDashboardTab, resolveDashboardTab } from '@/lib/config/tabs';
+import { normalizeDashboardTab, resolveDashboardTab, resolveFinanceViewForTab } from '@/lib/config/tabs';
 import { TRIAL_CONFIG } from '@/lib/config/platform';
 
 /**
@@ -174,20 +173,6 @@ function BusinessDashboardContent() {
     router.replace(q ? `${basePath}?${q}` : basePath, { scroll: false });
   }, [searchParams, router, pathname, currentDomain]);
 
-  // Sync URL when state changes (e.g. valid tab click)
-  const handleTabChange = useCallback((val) => {
-    const normalizedTab = normalizeDashboardTab(val);
-
-    if (normalizedTab === 'platform-admin') {
-      router.push('/admin', { scroll: false });
-      return;
-    }
-
-    const targetTab = resolveDashboardTab(normalizedTab);
-    setOptimisticTab(targetTab);
-    router.push(`/business/${currentDomain}?tab=${targetTab}`, { scroll: false });
-  }, [currentDomain, router]);
-
   const [showSetupWizard, setShowSetupWizard] = useState(false);
   const [showQuickAction, setShowQuickAction] = useState(false);
   const [showQuickInvoice, setShowQuickInvoice] = useState(false);
@@ -202,7 +187,6 @@ function BusinessDashboardContent() {
   const [poInitialData, setPoInitialData] = useState(null);
   const [viewingItem, setViewingItem] = useState(null);
   const [viewingType, setViewingType] = useState(null);
-
   const [financeInitialTab, setFinanceInitialTab] = useState(null);
 
   useEffect(() => {
@@ -211,6 +195,28 @@ function BusinessDashboardContent() {
       setFinanceInitialTab(financeView);
     }
   }, [searchParams]);
+
+  // Sync URL when state changes (e.g. valid tab click)
+  const handleTabChange = useCallback((val) => {
+    const raw = String(val || '').trim().toLowerCase();
+    const financeView = resolveFinanceViewForTab(raw);
+    if (financeView) {
+      setFinanceInitialTab(financeView);
+    }
+
+    const normalizedTab = normalizeDashboardTab(val);
+
+    if (normalizedTab === 'platform-admin') {
+      router.push('/admin', { scroll: false });
+      return;
+    }
+
+    const targetTab = resolveDashboardTab(normalizedTab);
+    setOptimisticTab(targetTab);
+    const qs = new URLSearchParams({ tab: targetTab });
+    if (financeView) qs.set('financeView', financeView);
+    router.push(`/business/${currentDomain}?${qs.toString()}`, { scroll: false });
+  }, [currentDomain, router]);
 
   const handleQuickAction = useCallback((actionId) => {
     if (actionId == null) return;
@@ -496,12 +502,15 @@ function BusinessDashboardContent() {
     loadingModules,
   } = useData();
 
-  // Only block the dashboard tab on analytics (shell-critical KPIs).
-  // Finance and sales stream in via background fetch — individual widgets
-  // show their own loading states rather than blocking the entire tab.
+  // Only block the dashboard tab on analytics for Advanced chrome that still needs metrics.
+  // Easy mode unlocks from sales/inventory/finance; do not skeleton the whole tab on analytics.
   const dashboardTabLoading =
     activeTab === 'dashboard' &&
-    !dashboardMetrics && Boolean(loadingModules.analytics);
+    !dashboardMetrics &&
+    Boolean(loadingModules.analytics) &&
+    !moduleReady.sales &&
+    !moduleReady.inventory &&
+    !moduleReady.finance;
 
   useEffect(() => {
     const onRefreshDashboardData = async () => {
@@ -565,6 +574,13 @@ function BusinessDashboardContent() {
       }
       if (!moduleReady.finance && !loadingModules.finance) {
         fetchFinance();
+      }
+      // Easy/Advanced stock KPIs need inventory in parallel with sales/finance — do not wait for inventory tab.
+      if (!moduleReady.inventory && !loadingModules.inventory) {
+        fetchInventory();
+      }
+      if (!moduleReady.expenses && !loadingModules.expenses) {
+        fetchExpenses();
       }
       return;
     }
@@ -643,7 +659,7 @@ function BusinessDashboardContent() {
   const [editingCustomer, setEditingCustomer] = useState(null);
 
   // Date Range and Search Filtering
-  const { dateRange, setDateRange, searchQuery, setSearchQuery } = useFilters();
+  const { dateRange, setDateRange, applyDatePreset, searchQuery, setSearchQuery } = useFilters();
 
   // POS & Restaurant States
   const [posSession, setPosSession] = useState(null);
@@ -782,15 +798,28 @@ function BusinessDashboardContent() {
       const allBatches = isBatchTrackingEnabled(domainCat)
         ? filterMeaningfulBatches(normalizedInput.batches || [])
         : [];
-      const allSerials = isSerialTrackingEnabled(domainCat)
-        ? filterMeaningfulSerials(normalizedInput.serialNumbers || normalizedInput.serial_numbers || [])
-        : [];
+      const serialsDeferred = Boolean(normalizedInput._serialsDeferred);
+      const serialsExplicit =
+        Object.prototype.hasOwnProperty.call(normalizedInput, 'serialNumbers') ||
+        Object.prototype.hasOwnProperty.call(normalizedInput, 'serial_numbers');
+      const allSerials =
+        serialsDeferred && !serialsExplicit
+          ? null
+          : isSerialTrackingEnabled(domainCat)
+            ? filterMeaningfulSerials(normalizedInput.serialNumbers || normalizedInput.serial_numbers || [])
+            : [];
+
+      // Blank stock on edit must not coerce to 0 (Busy cell edits of other fields / cleared cell).
+      const stockRaw = normalizedInput.stock;
+      const stockExplicit =
+        stockRaw !== '' && stockRaw !== null && stockRaw !== undefined && Number.isFinite(Number(stockRaw));
+      const stockValue = stockExplicit ? toNumber(stockRaw, 0) : isEditing ? undefined : 0;
+
       const normalizedProductData = {
         ...normalizedInput,
         price: toNumber(normalizedInput.price, 0),
         cost_price: toNumber(normalizedInput.cost_price, 0),
         mrp: toNumber(normalizedInput.mrp, 0),
-        stock: toNumber(normalizedInput.stock, 0),
         tax_percent: toNumber(normalizedInput.tax_percent, 0),
         min_stock: toNumber(normalizedInput.min_stock, 0),
         max_stock: toNumber(normalizedInput.max_stock, 0),
@@ -800,6 +829,12 @@ function BusinessDashboardContent() {
         expiry_date: normalizedInput.expiry_date || null,
         manufacturing_date: normalizedInput.manufacturing_date || null,
       };
+      delete normalizedProductData._serialsDeferred;
+      if (stockValue === undefined) {
+        delete normalizedProductData.stock;
+      } else {
+        normalizedProductData.stock = stockValue;
+      }
 
       let domainData = normalizedProductData.domain_data;
       if (typeof domainData === 'string') {
@@ -829,7 +864,9 @@ function BusinessDashboardContent() {
           serialNumbers: undefined
         },
         batches: allBatches,
-        serialNumbers: allSerials,
+        // When serials were deferred and not explicitly edited, pass [] so composite skips
+        // serial reconcile (addition-only) without inventing an empty wipe list from UI.
+        serialNumbers: allSerials === null ? [] : allSerials,
         isUpdate: isEditing,
         productId: isEditing ? productId : null,
         // Pass initial stock for new products without batch/serial tracking
@@ -841,7 +878,7 @@ function BusinessDashboardContent() {
       }
 
       if (skipFullWorkspaceRefresh) {
-        await fetchInventory({ force: true });
+        await fetchInventory({ force: true, includeSerials: true });
       } else {
         // Full workspace sync (forms, cross-module aggregates)
         await refreshAllData();
@@ -988,10 +1025,8 @@ function BusinessDashboardContent() {
   };
 
   const handleDateRangePreset = useCallback((preset) => {
-    const range = getDateRangeFromPreset(preset);
-    if (!range) return;
-    setDateRange(range);
-  }, [setDateRange]);
+    applyDatePreset(preset);
+  }, [applyDatePreset]);
 
   const handleBulkDelete = async (ids) => {
     if (!ids || ids.length === 0) return;
@@ -1797,7 +1832,10 @@ function BusinessDashboardContent() {
               setInvoiceInitialData,
               formatCurrency,
               handleQuickAction,
-              openFinanceSubTab: (subTab) => setFinanceInitialTab(subTab),
+              openFinanceSubTab: (subTab) => {
+                setFinanceInitialTab(subTab);
+                handleTabChange('finance');
+              },
               handleDateRangePreset,
               setShowVendorForm,
               setEditingVendor,

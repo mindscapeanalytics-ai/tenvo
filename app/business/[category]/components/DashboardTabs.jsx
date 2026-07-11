@@ -6,7 +6,7 @@ import { Tabs as BaseTabs, TabsContent, TabsList, TabsTrigger } from '@/componen
 
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Package, ShoppingCart, DollarSign as DollarIcon, TrendingUp, TrendingDown, Package as PackageIcon } from 'lucide-react';
+import { Package } from 'lucide-react';
 import { lazyHubTab } from '@/lib/utils/lazyHubTab';
 import { isPosRelevant, isHospitality, isCampaignRelevant, isMembershipRelevant } from '@/lib/config/domains';
 import { resolvePosVariant } from '@/lib/config/posDomains';
@@ -24,7 +24,6 @@ const PaymentManager = lazyHubTab(() => import('@/components/payment/PaymentMana
 const QuotationOrderChallanManager = lazyHubTab(() => import('@/components/QuotationOrderChallanManager').then(mod => mod.QuotationOrderChallanManager));
 const AdvancedAnalytics = lazyHubTab(() => import('@/components/AdvancedAnalytics').then(mod => mod.AdvancedAnalytics));
 const DemandForecast = lazyHubTab(() => import('@/components/DemandForecast').then(mod => mod.DemandForecast));
-const FinancialOverview = lazyHubTab(() => import('@/components/dashboard/FinancialOverview').then(mod => mod.FinancialOverview));
 const TaxComplianceManager = lazyHubTab(() => import('@/components/TaxComplianceManager').then(mod => mod.TaxComplianceManager));
 const SettingsManager = lazyHubTab(() => import('@/components/SettingsManager').then(mod => mod.SettingsManager));
 const SerialScanner = lazyHubTab(() => import('@/components/inventory/SerialScanner').then(mod => mod.SerialScanner));
@@ -35,7 +34,6 @@ const RestaurantPOS = lazyHubTab(() => import('@/components/restaurant/Restauran
 const FloorPlanEditor = lazyHubTab(() => import('@/components/restaurant/FloorPlanEditor').then(mod => mod.FloorPlanEditor));
 const KitchenDisplaySystem = lazyHubTab(() => import('@/components/restaurant/KitchenDisplaySystem').then(mod => mod.KitchenDisplaySystem));
 const ReservationManager = lazyHubTab(() => import('@/components/restaurant/ReservationManager').then(mod => mod.ReservationManager));
-const ExpenseManager = lazyHubTab(() => import('@/components/finance/ExpenseManager').then(mod => mod.ExpenseManager));
 const FinanceHub = lazyHubTab(() => import('@/components/finance/FinanceHub'));
 const PayrollDashboard = lazyHubTab(() => import('@/components/hr/PayrollDashboard').then(mod => mod.PayrollDashboard));
 const AttendanceTracker = lazyHubTab(() => import('@/components/hr/AttendanceTracker').then(mod => mod.AttendanceTracker));
@@ -247,8 +245,6 @@ export function DashboardTabs({
         setShowVendorForm,
         setEditingVendor,
         setShowPOBuilder,
-        formatCurrency,
-        openFinanceSubTab,
         // POS & Restaurant
         posSession,
         handleStartPosSession,
@@ -300,6 +296,7 @@ export function DashboardTabs({
                             expenseBreakdown={expenseBreakdown}
                             expenses={expenses}
                             advancedDashboardSnapshot={advancedDashboardSnapshot}
+                            domainKnowledge={domainKnowledge}
                             isLoading={isLoading}
                             user={user}
                             isAnalyticsLoading={isAnalyticsLoading}
@@ -383,21 +380,45 @@ export function DashboardTabs({
                                     // when `product.id` is missing (Excel new rows). Avoid hardcoding isUpdate.
                                     const persisted = Boolean(product?.id);
                                     const fullProduct = persisted ? products.find((p) => p.id === product.id) : null;
-
-                                    const saved = await handleSaveProduct(
-                                        {
-                                            ...product,
-                                            batches: fullProduct?.batches || product.batches || [],
-                                            serialNumbers:
-                                                fullProduct?.serial_numbers ||
-                                                fullProduct?.serialNumbers ||
-                                                product.serialNumbers ||
-                                                product.serial_numbers ||
-                                                [],
-                                            business_id: business.id,
-                                        },
-                                        { skipFullWorkspaceRefresh: true, silentToast: true }
+                                    const firstNonEmpty = (...candidates) => {
+                                        for (const c of candidates) {
+                                            if (Array.isArray(c) && c.length > 0) return c;
+                                        }
+                                        return null;
+                                    };
+                                    const batches =
+                                        firstNonEmpty(fullProduct?.batches, product.batches) || [];
+                                    // Never prefer empty [] over deferred/missing — that drops serial tracking on Busy save.
+                                    const serialsDeferred = Boolean(
+                                        fullProduct?._serialsDeferred || product?._serialsDeferred
                                     );
+                                    const serialNumbers = firstNonEmpty(
+                                        serialsDeferred ? null : fullProduct?.serial_numbers,
+                                        serialsDeferred ? null : fullProduct?.serialNumbers,
+                                        product.serialNumbers,
+                                        product.serial_numbers
+                                    );
+
+                                    const payload = {
+                                        ...product,
+                                        batches,
+                                        business_id: business.id,
+                                    };
+                                    if (serialNumbers) {
+                                        payload.serialNumbers = serialNumbers;
+                                    } else if (serialsDeferred) {
+                                        // Omit serials so composite does not treat this as "clear serial mode".
+                                        delete payload.serialNumbers;
+                                        delete payload.serial_numbers;
+                                        payload._serialsDeferred = true;
+                                    } else {
+                                        payload.serialNumbers = [];
+                                    }
+
+                                    const saved = await handleSaveProduct(payload, {
+                                        skipFullWorkspaceRefresh: true,
+                                        silentToast: true,
+                                    });
                                     return saved;
                                 }}
                                 onLocationAdd={handleLocationAdd}
@@ -604,104 +625,7 @@ export function DashboardTabs({
                     </TabsContent>
                 )}
 
-                <TabsContent value="accounting" className="space-y-6 outline-none">
-                    {wrapTab(
-                        <TabGuard tabKey="accounting" role={role} planTier={planTier} featureName="Accounting" onUpgrade={() => handleTabChange('settings')}>
-                            <>
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                                    <Card className="border-none shadow-sm bg-white overflow-hidden group hover:shadow-md transition-all">
-                                        <CardHeader className="pb-2">
-                                            <div className="flex items-center justify-between">
-                                                <CardTitle className="text-sm font-medium text-gray-500">Accounts Receivable</CardTitle>
-                                                <div className="p-2 bg-brand-50 rounded-lg text-brand-primary">
-                                                    <DollarIcon className="w-4 h-4" />
-                                                </div>
-                                            </div>
-                                        </CardHeader>
-                                        <CardContent>
-                                            <div className="text-2xl font-semibold text-gray-900">
-                                                {formatCurrency(accountingSummary?.accountsReceivable || 0, currency)}
-                                            </div>
-                                            <div className="flex items-center mt-1 text-xs font-medium text-brand-primary bg-brand-50 w-fit px-2 py-0.5 rounded-full">
-                                                {accountingSummary?.pendingInvoiceCount || 0} invoices pending
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-
-                                    <Card className="border-none shadow-sm bg-white overflow-hidden group hover:shadow-md transition-all">
-                                        <CardHeader className="pb-2">
-                                            <div className="flex items-center justify-between">
-                                                <CardTitle className="text-sm font-medium text-gray-500">Accounts Payable</CardTitle>
-                                                <div className="p-2 bg-red-50 rounded-lg text-red-600">
-                                                    <ShoppingCart className="w-4 h-4" />
-                                                </div>
-                                            </div>
-                                        </CardHeader>
-                                        <CardContent>
-                                            <div className="text-2xl font-semibold text-gray-900">
-                                                {formatCurrency(accountingSummary?.accountsPayable || 0, currency)}
-                                            </div>
-                                            <div className="flex items-center mt-1 text-xs font-medium text-red-600 bg-red-50 w-fit px-2 py-0.5 rounded-full">
-                                                <TrendingDown className="w-3 h-3 mr-1" />
-                                                {accountingSummary?.pendingPurchaseCount || 0} orders pending
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-
-                                    <Card className="border-none shadow-sm bg-white overflow-hidden group hover:shadow-md transition-all">
-                                        <CardHeader className="pb-2">
-                                            <div className="flex items-center justify-between">
-                                                <CardTitle className="text-sm font-medium text-gray-500">Inventory Value</CardTitle>
-                                                <div className="p-2 bg-brand-50 rounded-lg text-brand-primary">
-                                                    <PackageIcon className="w-4 h-4" />
-                                                </div>
-                                            </div>
-                                        </CardHeader>
-                                        <CardContent>
-                                            <div className="text-2xl font-semibold text-gray-900">
-                                                {formatCurrency(accountingSummary?.inventoryValue || 0, currency)}
-                                            </div>
-                                            <div className="mt-1 text-xs font-medium text-gray-500">
-                                                {products.reduce((sum, p) => sum + (Number(p.stock) || 0), 0).toLocaleString()} units in stock
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-
-                                    <Card className="border-none shadow-sm bg-white overflow-hidden group hover:shadow-md transition-all">
-                                        <CardHeader className="pb-2">
-                                            <div className="flex items-center justify-between">
-                                                <CardTitle className="text-sm font-medium text-gray-500">Gross Profit</CardTitle>
-                                                <div className="p-2 bg-green-50 rounded-lg text-green-600">
-                                                    <TrendingUp className="w-4 h-4" />
-                                                </div>
-                                            </div>
-                                        </CardHeader>
-                                        <CardContent>
-                                            <div className={`text-2xl font-semibold ${(accountingSummary?.grossProfit || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                                {formatCurrency(accountingSummary?.grossProfit || 0, currency)}
-                                            </div>
-                                            <div className="flex items-center mt-1 text-xs font-medium text-green-600 bg-green-50 w-fit px-2 py-0.5 rounded-full">
-                                                {Math.round(accountingSummary?.margin || 0)}% net margin
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-                                </div>
-
-                                <FinancialOverview
-                                    businessId={business?.id}
-                                    category={category}
-                                    accountingSummary={accountingSummary}
-                                    chartData={dashboardChartData}
-                                    currency={currency}
-                                    role={role}
-                                    onTabChange={handleTabChange}
-                                    onFinanceSubTab={openFinanceSubTab}
-                                />
-                            </>
-                        </TabGuard>
-                    )}
-                </TabsContent>
-
+                {/* Legacy accounting/expenses/credit-notes/fiscal/exchange-rates tabs alias → finance via tabs.js */}
                 <TabsContent value="finance" className="space-y-6 outline-none">
                     {wrapTab(
                         <TabGuard tabKey="finance" role={role} planTier={planTier} featureName="Finance" onUpgrade={() => handleTabChange('settings')}>
@@ -979,36 +903,6 @@ export function DashboardTabs({
                     )}
                 </TabsContent>
 
-                <TabsContent value="expenses" className="space-y-6 outline-none">
-                    {wrapTab(
-                        <TabGuard
-                            role={role}
-                            planTier={planTier}
-                            permission="finance.manage_expenses"
-                            featureKey="expense_tracking"
-                            requiredPlan="starter"
-                            featureName="Expenses"
-                            onUpgrade={() => handleTabChange('settings')}
-                        >
-                            <div className="space-y-6">
-                                <ExpenseManager
-                                    businessId={business?.id}
-                                    expenses={expenses}
-                                    vendors={filteredVendors}
-                                    currency={currency}
-                                    onCreateExpense={async () => {
-                                        await handlers?.handleExpenseSaved?.();
-                                    }}
-                                />
-
-                                <div className="border-t border-gray-100 pt-6">
-                                    <FinanceHub businessId={business?.id} businessCategory={category} initialTab="expenses" />
-                                </div>
-                            </div>
-                        </TabGuard>
-                    )}
-                </TabsContent>
-
                 <TabsContent value="payroll" className="space-y-6 outline-none">
                     {wrapTab(
                         <TabGuard tabKey="payroll" role={role} planTier={planTier} requiredPlan="business" featureName="HR & Payroll" onUpgrade={() => handleTabChange('settings')}>
@@ -1191,31 +1085,6 @@ export function DashboardTabs({
                             <StorefrontTabShell activeTab="store-settings">
                             <StoreSettingsManager business={business} category={category} />
                             </StorefrontTabShell>
-                        </TabGuard>
-                    )}
-                </TabsContent>
-
-                {/* --- Finance Sub-Tabs (promoted to top-level navigation) --- */}
-                <TabsContent value="credit-notes" className="space-y-6 outline-none">
-                    {wrapTab(
-                        <TabGuard tabKey="credit-notes" role={role} planTier={planTier} featureName="Credit Notes" onUpgrade={() => handleTabChange('settings')}>
-                            <FinanceHub businessId={business?.id} businessCategory={category} initialTab="credit-notes" />
-                        </TabGuard>
-                    )}
-                </TabsContent>
-
-                <TabsContent value="fiscal" className="space-y-6 outline-none">
-                    {wrapTab(
-                        <TabGuard tabKey="fiscal" role={role} planTier={planTier} requiredPlan="starter" featureName="Fiscal Periods" onUpgrade={() => handleTabChange('settings')}>
-                            <FinanceHub businessId={business?.id} businessCategory={category} initialTab="fiscal" />
-                        </TabGuard>
-                    )}
-                </TabsContent>
-
-                <TabsContent value="exchange-rates" className="space-y-6 outline-none">
-                    {wrapTab(
-                        <TabGuard tabKey="exchange-rates" role={role} planTier={planTier} requiredPlan="professional" featureName="Exchange Rates" onUpgrade={() => handleTabChange('settings')}>
-                            <FinanceHub businessId={business?.id} businessCategory={category} initialTab="exchange" />
                         </TabGuard>
                     )}
                 </TabsContent>

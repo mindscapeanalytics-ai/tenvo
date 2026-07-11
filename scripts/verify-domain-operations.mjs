@@ -67,7 +67,7 @@ if (!beacon.includes('sessionStorage')) {
 if (!storeLayout.includes('StorefrontAnalyticsBeacon')) {
   mark('store layout must mount StorefrontAnalyticsBeacon');
 }
-if (!ordersRoute.includes('recordStorefrontOrderAnalytics')) {
+if (!ordersRoute.includes('scheduleStorefrontOrderPostCommit') && !ordersRoute.includes('recordStorefrontOrderAnalytics')) {
   mark('storefront checkout must roll up order analytics');
 }
 

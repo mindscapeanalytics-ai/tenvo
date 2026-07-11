@@ -286,10 +286,21 @@ export function BusyGrid({
         if (!isEditableColumn(selectedCell.col)) return;
         const colDef = columns[selectedCell.col];
         const row = sortedData[selectedCell.row];
-        const below = sortedData[selectedCell.row + 1];
-        if (!colDef?.accessorKey || !row || !below) return;
+        if (!colDef?.accessorKey || !row) return;
         const val = getValue(row, colDef.accessorKey);
-        onCellEdit?.(below, colDef.accessorKey, val ?? '');
+        // Excel/Zoho-style: always fill the next row, then continue through contiguous empty cells.
+        const maxFill = Math.min(sortedData.length - 1, selectedCell.row + 50);
+        for (let r = selectedCell.row + 1; r <= maxFill; r += 1) {
+            const target = sortedData[r];
+            if (!target) break;
+            if (r > selectedCell.row + 1) {
+                const existing = getValue(target, colDef.accessorKey);
+                // Only skip non-empty cells; keep 0 as a real value (price/stock).
+                const empty = existing === '' || existing == null || existing === undefined;
+                if (!empty) break;
+            }
+            onCellEdit?.(target, colDef.accessorKey, val ?? '');
+        }
     }, [selectedCell, columns, sortedData, isEditableColumn, onCellEdit, getValue]);
 
     const startEditing = useCallback((initialChar = null) => {
@@ -923,7 +934,7 @@ export function BusyGrid({
                             { k: 'Tab', l: 'Save+next' },
                             { k: 'F2', l: 'Edit' },
                             { k: 'Insert', l: 'New row' },
-                            { k: 'Ctrl+D', l: 'Fill down' },
+                            { k: 'Ctrl+D', l: 'Fill down (empty rows)' },
                             { k: '↵', l: 'Down' },
                             { k: 'Bksp', l: 'Clear' },
                         ].map((btn) => (

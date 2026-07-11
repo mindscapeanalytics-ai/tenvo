@@ -505,7 +505,16 @@ export function InventoryManager({
         skipExisting: false
       });
       
-      toast.success(`Import completed: ${res.imported} imported, ${res.updated} updated.`);
+      const failed = Array.isArray(res?.warnings) ? res.warnings.length : 0;
+      const errRows = Array.isArray(res?.errors) ? res.errors.length : 0;
+      const failCount = Math.max(failed, errRows);
+      if (failCount > 0) {
+        toast.success(
+          `Import: ${res.imported || 0} added, ${res.updated || 0} updated, ${failCount} row(s) skipped.`
+        );
+      } else {
+        toast.success(`Import completed: ${res.imported} imported, ${res.updated} updated.`);
+      }
       setShowImportModal(false);
       
       // Refresh the products list to show new data

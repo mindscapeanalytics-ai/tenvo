@@ -12,6 +12,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useBusiness } from '@/lib/context/BusinessContext';
 import { useAppMode } from '@/lib/context/BusyModeContext';
+import { useFilters } from '@/lib/context/FilterContext';
 import { getDomainColors } from '@/lib/domainColors';
 import { isCampaignRelevant } from '@/lib/config/domains';
 import { getDomainKnowledge } from '@/lib/domainKnowledge';
@@ -29,7 +30,7 @@ import { EasyBusinessDashboard } from '@/components/dashboard/easy/EasyBusinessD
 import { DomainOperationsPanel } from '@/components/dashboard/easy/DomainOperationsPanel';
 import { useDomainOperationsSnapshot } from '@/lib/hooks/useDomainOperationsSnapshot';
 import { FinanceHeroStrip } from '@/components/dashboard/advanced/FinanceHeroStrip.client';
-import { resolveProductStock } from '@/lib/dashboard/easyDashboardHelpers';
+import { countLowStockProducts, resolveInvoiceOpenBalance, resolveProductStock } from '@/lib/dashboard/easyDashboardHelpers';
 import { buildFinanceHeroMetrics } from '@/lib/dashboard/buildFinanceHeroMetrics';
 import { metricActionId } from '@/lib/dashboard/metricNavigation';
 import { resolveSparklineSeries } from '@/lib/dashboard/sparklineSeries';
@@ -78,6 +79,9 @@ interface InvoiceLike {
     customer_name?: string;
     grand_total?: number | string;
     amount?: number | string;
+    balance?: number | string;
+    remaining_balance?: number | string;
+    amount_due?: number | string;
     items?: InvoiceItemLike[];
 }
 
@@ -198,11 +202,13 @@ export function DomainDashboard({
     isSalesLoading = false,
     isInventoryLoading = false,
     isFinanceLoading = false,
+    isExpensesLoading = false,
 }: DomainDashboardProps) {
     const { business } = useBusiness() as {
         business?: { id?: string; name?: string; country?: string; city?: string } | null;
     };
     const { isEasyMode, modeReady } = useAppMode();
+    const { datePresetKey } = useFilters();
     const activeBusinessId = businessId || business?.id;
     const advancedOpsSnapshot = useDomainOperationsSnapshot({
         businessId: activeBusinessId,
@@ -246,15 +252,21 @@ export function DomainDashboard({
         };
 
         const validInvoices = invoices.filter(inv => !['cancelled', 'draft'].includes(String(inv?.status || '').toLowerCase()));
-        const paidInvoices = validInvoices.filter(inv => String(inv?.status || '').toLowerCase() === 'paid');
+        const isReturnLike = (inv: InvoiceLike) => {
+            const status = String(inv?.status || '').toLowerCase();
+            return status.includes('return') || status.includes('refund') || status.includes('credit');
+        };
+        // Billed sales (not cash-only): aligns Revenue with Orders for wholesale credit.
+        // Paid ratio / receivables stay separate for collections health.
+        const billableInvoices = validInvoices.filter(inv => !isReturnLike(inv));
 
-        const currentOrders = validInvoices.filter(inv => inRange(inv?.date, currentFrom, currentTo)).length;
-        const previousOrders = validInvoices.filter(inv => inRange(inv?.date, prevFrom, prevTo)).length;
+        const currentOrders = billableInvoices.filter(inv => inRange(inv?.date, currentFrom, currentTo)).length;
+        const previousOrders = billableInvoices.filter(inv => inRange(inv?.date, prevFrom, prevTo)).length;
 
-        const currentRevenue = paidInvoices
+        const currentRevenue = billableInvoices
             .filter(inv => inRange(inv?.date, currentFrom, currentTo))
             .reduce((sum, inv) => sum + (Number(inv?.grand_total) || Number(inv?.amount) || 0), 0);
-        const previousRevenue = paidInvoices
+        const previousRevenue = billableInvoices
             .filter(inv => inRange(inv?.date, prevFrom, prevTo))
             .reduce((sum, inv) => sum + (Number(inv?.grand_total) || Number(inv?.amount) || 0), 0);
 
@@ -281,7 +293,7 @@ export function DomainDashboard({
                 .filter(Boolean)
         ).size;
 
-        const soldUnits = validInvoices
+        const soldUnits = billableInvoices
             .filter(inv => inRange(inv?.date, currentFrom, currentTo))
             .reduce((sum, inv) => sum + (inv?.items || []).reduce((itemSum: number, item: InvoiceItemLike) => itemSum + (Number(item?.quantity) || 0), 0), 0);
 
@@ -348,17 +360,7 @@ export function DomainDashboard({
         [periodCashFlow, periodMetrics.previousRevenue, periodMetrics.previousExpenses]
     );
 
-    const lowStockFallback = useMemo(() => {
-        return products.filter((product: ProductLike) => {
-            const stock = resolveProductStock(product);
-            const safetyStock =
-                Number(product?.reorder_point) ||
-                Number(product?.min_stock) ||
-                Number(product?.minStock) ||
-                10;
-            return stock <= safetyStock;
-        }).length;
-    }, [products]);
+    const lowStockFallback = useMemo(() => countLowStockProducts(products), [products]);
 
     const overdueInvoicesFallback = useMemo(() => {
         const now = new Date();
@@ -379,15 +381,28 @@ export function DomainDashboard({
         return invoices.filter((invoice: InvoiceLike) => isPendingInvoice(invoice as Record<string, unknown>)).length;
     }, [invoices]);
 
-    const remindersData = useMemo(() => ({
-        lowStock: Math.max(lowStockFallback, dashboardMetrics?.alerts?.lowStock ?? 0),
-        overdueInvoices: Math.max(overdueInvoicesFallback, dashboardMetrics?.alerts?.overdueInvoices ?? 0),
-        pendingOrders: pendingOrdersFallback,
-    }), [dashboardMetrics, lowStockFallback, overdueInvoicesFallback, pendingOrdersFallback]);
+    // Prefer filter-range client counts once modules settle. Avoid Math.max with
+    // calendar-month server alerts (different stock field + threshold) that inflate Attention.
+    const remindersData = useMemo(() => {
+        const serverLow = dashboardMetrics?.alerts?.lowStock ?? 0;
+        const serverOverdue = dashboardMetrics?.alerts?.overdueInvoices ?? 0;
+        return {
+            lowStock: isInventoryLoading ? serverLow : lowStockFallback,
+            overdueInvoices: isSalesLoading ? serverOverdue : overdueInvoicesFallback,
+            pendingOrders: pendingOrdersFallback,
+        };
+    }, [
+        dashboardMetrics,
+        isInventoryLoading,
+        isSalesLoading,
+        lowStockFallback,
+        overdueInvoicesFallback,
+        pendingOrdersFallback,
+    ]);
 
     const domainEfficiency = useMemo(() => {
         const productBase = Math.max(products.length, 1);
-        const orderBase = Math.max(dashboardMetrics?.orders?.total || periodMetrics.currentOrders || 1, 1);
+        const orderBase = Math.max(periodMetrics.currentOrders || dashboardMetrics?.orders?.total || 1, 1);
 
         const inventoryScore = Math.max(0, 100 - ((remindersData.lowStock || 0) / productBase) * 100);
         const pendingScore = Math.max(0, 100 - ((remindersData.pendingOrders || 0) / orderBase) * 100);
@@ -430,7 +445,8 @@ export function DomainDashboard({
         const msInDay = 1000 * 60 * 60 * 24;
         const daysInRange = Math.max(1, Math.round((new Date(dateRange.to).getTime() - new Date(dateRange.from).getTime()) / msInDay));
         const dailyVelocity = periodMetrics.soldUnits / daysInRange;
-        if (dailyVelocity <= 0) return 365;
+        // No velocity yet (or sales still settling) — avoid flashing a false "365+" healthy signal.
+        if (dailyVelocity <= 0) return null;
         return Math.round(inStockUnits / dailyVelocity);
     }, [dateRange.from, dateRange.to, periodMetrics.soldUnits, inStockUnits]);
 
@@ -452,9 +468,7 @@ export function DomainDashboard({
 
     const outstandingAmount = useMemo(() => {
         return invoices.reduce((sum: number, invoice: InvoiceLike) => {
-            const status = String(invoice?.status || '').toLowerCase();
-            if (['paid', 'cancelled', 'draft'].includes(status)) return sum;
-            return sum + (Number(invoice?.grand_total) || Number(invoice?.amount) || 0);
+            return sum + resolveInvoiceOpenBalance(invoice);
         }, 0);
     }, [invoices]);
 
@@ -545,7 +559,7 @@ export function DomainDashboard({
             },
             {
                 label: 'Coverage Days',
-                value: coverageDays > 365 ? '365+' : coverageDays,
+                value: coverageDays == null ? '—' : coverageDays > 365 ? '365+' : coverageDays,
                 tone: 'text-slate-900',
                 icon: Warehouse,
                 actionId: metricActionId('coverage_days'),
@@ -666,54 +680,39 @@ export function DomainDashboard({
 
     const hasCoreData = (products.length + invoices.length + customers.length) > 0;
 
-    const periodLabel = useMemo(() => {
-        const msInDay = 1000 * 60 * 60 * 24;
-        const days = Math.max(1, Math.round((new Date(dateRange.to).getTime() - new Date(dateRange.from).getTime()) / msInDay));
-        if (days <= 7) return 'Last 7 Days';
-        if (days <= 31) return 'This Month';
-        if (days <= 92) return 'Last Quarter';
-        return 'Custom Period';
-    }, [dateRange.from, dateRange.to]);
-
     const activePreset = useMemo<'today' | '7d' | '30d' | '90d' | 'mtd' | 'last_month' | 'ytd' | 'custom'>(() => {
-        const from = new Date(dateRange.from);
-        const to = new Date(dateRange.to);
-        const diffMs = Math.max(1, to.getTime() - from.getTime());
-        const days = Math.round(diffMs / (1000 * 60 * 60 * 24)) + 1;
-
-        const sameDay =
-            from.getFullYear() === to.getFullYear() &&
-            from.getMonth() === to.getMonth() &&
-            from.getDate() === to.getDate();
-        if (sameDay) return 'today';
-
-        const isMtd =
-            from.getFullYear() === to.getFullYear() &&
-            from.getMonth() === to.getMonth() &&
-            from.getDate() === 1;
-        if (isMtd) return 'mtd';
-
-        const prevMonthDate = new Date(to);
-        prevMonthDate.setMonth(to.getMonth() - 1, 1);
-        const prevMonthEnd = new Date(prevMonthDate.getFullYear(), prevMonthDate.getMonth() + 1, 0);
-        const isLastMonth =
-            from.getFullYear() === prevMonthDate.getFullYear() &&
-            from.getMonth() === prevMonthDate.getMonth() &&
-            from.getDate() === 1 &&
-            to.getFullYear() === prevMonthEnd.getFullYear() &&
-            to.getMonth() === prevMonthEnd.getMonth() &&
-            to.getDate() === prevMonthEnd.getDate();
-        if (isLastMonth) return 'last_month';
-
-        const isYtd = from.getFullYear() === to.getFullYear()
-            && from.getMonth() === 0
-            && from.getDate() === 1;
-        if (isYtd) return 'ytd';
-        if (days >= 6 && days <= 8) return '7d';
-        if (days >= 29 && days <= 31) return '30d';
-        if (days >= 89 && days <= 92) return '90d';
+        const key = String(datePresetKey || '').toLowerCase();
+        if (
+            key === 'today' ||
+            key === '7d' ||
+            key === '30d' ||
+            key === '90d' ||
+            key === 'mtd' ||
+            key === 'last_month' ||
+            key === 'ytd' ||
+            key === 'custom'
+        ) {
+            return key;
+        }
         return 'custom';
-    }, [dateRange.from, dateRange.to]);
+    }, [datePresetKey]);
+
+    const periodLabel = useMemo(() => {
+        const labels: Record<
+            'today' | '7d' | '30d' | '90d' | 'mtd' | 'last_month' | 'ytd' | 'custom',
+            string
+        > = {
+            today: 'Today',
+            '7d': 'Last 7 Days',
+            '30d': 'Last 30 Days',
+            '90d': 'Last 90 Days',
+            mtd: 'This Month',
+            last_month: 'Last Month',
+            ytd: 'Year to Date',
+            custom: 'Custom Range',
+        };
+        return labels[activePreset];
+    }, [activePreset]);
 
     const activePresetDisplayLabel = useMemo(() => {
         const labels: Record<
@@ -912,7 +911,8 @@ export function DomainDashboard({
         return insights;
     }, [remindersData, campaignEnabled, revenueTrendSigned, periodMetrics.currentExpenses, expenseTrend, domainKnowledge?.intelligence]);
 
-    const metricsPending = isLoading || isAnalyticsLoading || isSalesLoading || isInventoryLoading || isFinanceLoading;
+    // Easy/Advanced tiles unlock from owning modules — do not gate the cockpit on analytics.
+    const metricsPending = isSalesLoading || isInventoryLoading || isFinanceLoading || isExpensesLoading;
     // Avoid false empty-state while sales/inventory modules are still hydrating ([] arrays).
     const showQuickSetup = !metricsPending && !hasCoreData;
 
@@ -1032,7 +1032,7 @@ export function DomainDashboard({
                 metricsPending={metricsPending}
                 isSalesLoading={isSalesLoading}
                 isInventoryLoading={isInventoryLoading}
-                isFinanceLoading={isFinanceLoading}
+                isFinanceLoading={isFinanceLoading || isExpensesLoading}
                 isAnalyticsLoading={isAnalyticsLoading}
                 domainKnowledge={domainKnowledge as Record<string, unknown> | undefined}
                 domainVerticalLabel={domainVerticalLabel}
@@ -1089,11 +1089,14 @@ export function DomainDashboard({
 
     const advancedUserName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'there';
     const advancedGreeting = new Date().getHours() < 12 ? 'Good morning' : new Date().getHours() < 17 ? 'Good afternoon' : 'Good evening';
-    const advancedPresetOptions: Array<{ id: 'today' | '7d' | '30d' | 'mtd'; label: string }> = [
+    const advancedPresetOptions: Array<{ id: 'today' | '7d' | '30d' | '90d' | 'mtd' | 'last_month' | 'ytd'; label: string }> = [
         { id: 'today', label: 'Today' },
         { id: '7d', label: '7 Days' },
         { id: '30d', label: '30 Days' },
+        { id: '90d', label: '90 Days' },
         { id: 'mtd', label: 'MTD' },
+        { id: 'last_month', label: 'Last Mo' },
+        { id: 'ytd', label: 'YTD' },
     ];
     const advancedQuickActions = [
         { id: 'new-invoice', label: 'New Invoice', sublabel: 'Direct sale', icon: FileText },
@@ -1125,15 +1128,16 @@ export function DomainDashboard({
                 userName={advancedUserName}
                 businessName={business?.name}
                 periodLabel={periodLabel}
-                presetOptions={advancedPresetOptions}
-                activePreset={
-                    activePreset === 'custom' || activePreset === '90d' || activePreset === 'last_month' || activePreset === 'ytd'
-                        ? '30d'
-                        : activePreset
+                presetOptions={
+                    activePreset === 'custom'
+                        ? [...advancedPresetOptions, { id: 'custom', label: 'Custom' }]
+                        : advancedPresetOptions
                 }
-                onDateRangePresetChange={(preset) =>
-                    onDateRangePresetChange?.(preset as 'today' | '7d' | '30d' | '90d' | 'mtd' | 'last_month' | 'ytd')
-                }
+                activePreset={activePreset}
+                onDateRangePresetChange={(preset) => {
+                    if (preset === 'custom') return;
+                    onDateRangePresetChange?.(preset as 'today' | '7d' | '30d' | '90d' | 'mtd' | 'last_month' | 'ytd');
+                }}
                 kpiStrip={dashboardHeaderHighlights.map((item) => ({
                     label: item.label.replace(' Invoices', '').replace(' Orders', ''),
                     value: item.value,
