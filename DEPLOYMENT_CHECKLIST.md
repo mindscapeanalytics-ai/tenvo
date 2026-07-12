@@ -1,399 +1,360 @@
-# 🚀 Inventory Fix Deployment Checklist
+# Deployment Checklist: Unified Order Aggregation Fix
 
-**Use this checklist to safely deploy the inventory fixes**  
-**Estimated Time:** 45-60 minutes  
-**Risk Level:** Medium (database changes require careful execution)
+## 📋 Pre-Deployment Checklist
 
----
+### Code Review
+- [ ] Review `lib/actions/basic/dashboard.js` changes
+- [ ] Review `app/business/[category]/components/tabs/DomainDashboard.tsx` changes
+- [ ] Verify no TypeScript errors: `npm run type-check`
+- [ ] Verify no ESLint errors: `npm run lint`
+- [ ] Run local build: `npm run build`
 
-## Pre-Deployment Verification
+### Testing
+- [ ] Run verification script: `node scripts/verify-unified-order-aggregation.mjs`
+- [ ] Run audit script: `node scripts/audit-complete-data-flow.mjs`
+- [ ] Test locally with demo business data
+- [ ] Verify Command Overview shows unified count
+- [ ] Verify Sales Performance matches Command Overview
+- [ ] Check browser console for errors
 
-- [ ] All code changes committed to version control
-- [ ] Backup strategy confirmed
-- [ ] Rollback plan understood
-- [ ] Database credentials available
-- [ ] Deployment window scheduled (low-traffic time recommended)
-- [ ] Team notified of deployment
-
----
-
-## Phase 1: Pre-Flight Checks (10 minutes)
-
-### ✅ Verify Environment
-
-```bash
-cd e:\tenvo-main
-
-# Check Node/npm versions
-node --version  # Should be >= 18
-npm --version
-
-# Check database connection
-npx prisma db execute --stdin <<< "SELECT 1;"
-# Should return: 1
-
-# Check current migration status
-npx prisma migrate status
-```
-
-**Expected:** Migration `20260713_products_unique_constraints` shows as FAILED
-
-### ✅ Review Code Changes
-
-```bash
-# See what was changed
-git diff HEAD~1 HEAD --stat
-
-# Review specific files
-git show HEAD:lib/actions/premium/automation/inventory_composite.js
-git show HEAD:components/InventoryManager.jsx
-```
-
-**Files Changed:**
-- [x] `lib/actions/premium/automation/inventory_composite.js` - Invalid columns removed
-- [x] `components/InventoryManager.jsx` - Batch extraction added
-- [x] Scripts created: `fix-duplicate-products.sql`, `fix-inventory-critical.sh`
+### Documentation
+- [ ] Review `IMPLEMENTATION_SUMMARY.md`
+- [ ] Review `END_TO_END_ORDER_FLOW_FIX.md`
+- [ ] Confirm all changes documented
+- [ ] Verify rollback plan is clear
 
 ---
 
-## Phase 2: Database Backup (5 minutes)
+## 🚀 Deployment Steps
 
-### ✅ Create Full Backup
-
+### Step 1: Backup (Optional but Recommended)
 ```bash
-# Create backup with timestamp
-timestamp=$(date +%Y%m%d_%H%M%S)
-pg_dump $DATABASE_URL > "backups/backup_pre_inventory_fix_${timestamp}.sql"
+# Backup database
+pg_dump $DATABASE_URL > backup_before_order_fix_$(date +%Y%m%d_%H%M%S).sql
 
-# Verify backup size (should be > 0)
-ls -lh backups/backup_pre_inventory_fix_*.sql
-
-# Test backup is readable
-head -20 "backups/backup_pre_inventory_fix_${timestamp}.sql"
+# Backup code
+git tag before-order-aggregation-fix
+git push origin before-order-aggregation-fix
 ```
 
-**Checkpoint:** Backup file created and > 1MB  
-**If fails:** DO NOT PROCEED - fix database connection first
+### Step 2: Deploy Backend
+```bash
+# Option A: Direct deployment
+git pull origin main
+npm install
+pm2 restart tenvo-app
+
+# Option B: Docker deployment
+docker-compose pull
+docker-compose up -d
+
+# Option C: Vercel/Platform deployment
+vercel --prod
+```
+
+### Step 3: Verify Backend
+```bash
+# Check server is running
+curl https://your-domain.com/api/health
+
+# Monitor logs
+pm2 logs tenvo-app
+
+# Or Docker logs
+docker-compose logs -f app
+```
+
+### Step 4: Deploy Frontend
+```bash
+# Build production bundle
+npm run build
+
+# Deploy static assets
+# (Method depends on your hosting)
+
+# Clear CDN cache if applicable
+```
+
+### Step 5: Clear Caches
+```bash
+# Redis cache (if used)
+redis-cli FLUSHDB
+
+# CDN cache
+# (Depends on your CDN provider)
+
+# Browser cache
+# Instruct users to hard refresh (Ctrl+Shift+R)
+```
 
 ---
 
-## Phase 3: Check for Duplicate Data (10 minutes)
+## ✅ Post-Deployment Verification
 
-### ✅ Run Duplicate Detection Script
-
+### Automated Checks
 ```bash
-# Check for duplicates (read-only, safe)
-psql $DATABASE_URL -f scripts/fix-duplicate-products.sql > duplicate_check_results.txt
+# Run verification script against production
+DATABASE_URL="production_url" node scripts/verify-unified-order-aggregation.mjs
 
-# Review results
-cat duplicate_check_results.txt
+# Check for errors in last 100 log lines
+pm2 logs tenvo-app --lines 100 | grep -i error
 ```
 
-**Decision Point:**
+### Manual UI Checks
 
-**If NO duplicates found:**
-- ✅ Proceed to Phase 4
+#### 1. Command Overview Dashboard
+- [ ] Log in to production
+- [ ] Navigate to Dashboard (Command Overview)
+- [ ] Note the "Orders in Period" count
+- [ ] Screenshot for records
 
-**If duplicates found:**
-- Review `duplicate_check_results.txt`
-- Note the product IDs and SKUs
-- Decide on fix strategy:
-  - **Option A:** Auto-rename (safest, automatic)
-  - **Option B:** Manual review and merge (best data quality, time-consuming)
-  - **Option C:** Soft-delete old duplicates (fastest, potential data loss)
+#### 2. Sales Performance Tab
+- [ ] Navigate to Sales tab
+- [ ] Note the order count
+- [ ] Verify it matches Command Overview
+- [ ] Screenshot for records
 
-### ✅ Fix Duplicates (If Found)
+#### 3. Easy Mode Dashboard
+- [ ] Switch to Easy Mode (if available)
+- [ ] Check order count in dashboard
+- [ ] Verify consistency
+- [ ] Screenshot for records
 
-**Option A - Auto-Rename (Recommended):**
+#### 4. Multi-Ledger Business Test
+Test with businesses known to have multiple ledgers:
 
-Uncomment lines 50-120 in `scripts/fix-duplicate-products.sql`, then:
+**Restaurant (POS + Invoices):**
+- [ ] Open restaurant business
+- [ ] Check order count includes POS transactions
+- [ ] Verify revenue includes POS amounts
 
-```bash
-# Apply automated fixes
-psql $DATABASE_URL -f scripts/fix-duplicate-products.sql
+**E-commerce (Storefront + Invoices):**
+- [ ] Open e-commerce business
+- [ ] Check order count includes storefront orders
+- [ ] Verify revenue includes online orders
 
-# Verify duplicates resolved
-psql $DATABASE_URL <<< "
-SELECT 'SKU duplicates' as check, COUNT(*) FROM (
-  SELECT business_id, sku FROM products
-  WHERE is_deleted = false AND sku IS NOT NULL
-  GROUP BY business_id, sku HAVING COUNT(*) > 1
-) sub;
-"
+**Retail (All 3 Ledgers):**
+- [ ] Open retail business
+- [ ] Check order count includes all channels
+- [ ] Verify revenue is complete
+
+### Performance Checks
+- [ ] Dashboard loads in < 2 seconds
+- [ ] No SQL timeout errors in logs
+- [ ] Server CPU/memory usage normal
+- [ ] Database query time < 500ms
+
+### Data Accuracy Checks
+- [ ] Pick 3 random businesses
+- [ ] Manually count orders from each ledger (SQL query)
+- [ ] Compare with dashboard display
+- [ ] All should match
+
+```sql
+-- Manual verification query
+SELECT 
+  (SELECT COUNT(*) FROM invoices 
+   WHERE business_id = '<business_id>' 
+     AND (is_deleted = false OR is_deleted IS NULL)
+     AND status NOT IN ('draft', 'voided')) as invoices,
+  (SELECT COUNT(*) FROM pos_transactions 
+   WHERE business_id = '<business_id>' 
+     AND is_voided = false 
+     AND LOWER(COALESCE(payment_status, '')) = 'completed') as pos,
+  (SELECT COUNT(*) FROM storefront_orders 
+   WHERE business_id = '<business_id>' 
+     AND LOWER(COALESCE(status, '')) NOT IN ('cancelled', 'refunded', 'voided')) as storefront;
 ```
-
-**Expected:** COUNT = 0
-
-**Checkpoint:** All duplicates resolved  
-**If fails:** Review error message, may need manual intervention
 
 ---
 
-## Phase 4: Apply Database Migration (5 minutes)
+## 🔍 Monitoring (First 24 Hours)
 
-### ✅ Mark Migration as Resolved
+### Metrics to Watch
+- [ ] Dashboard load times
+- [ ] SQL query performance
+- [ ] Error rates in logs
+- [ ] User-reported issues
+- [ ] Order count consistency
 
+### Alert Triggers
+Set up alerts for:
+- SQL query timeout (> 5 seconds)
+- High error rate (> 1% of requests)
+- Memory spike (> 80% usage)
+- Dashboard load time > 5 seconds
+
+### Log Monitoring
 ```bash
-# Tell Prisma the migration was manually prepared
-npx prisma migrate resolve --applied "20260713_products_unique_constraints"
+# Watch for errors
+tail -f /var/log/app.log | grep -i "error\|warn"
 
-# Verify migration status
-npx prisma migrate status
+# Or with pm2
+pm2 logs --err
+
+# Watch for SQL performance
+grep "slow query" /var/log/postgres.log
 ```
-
-**Expected:** All migrations show as "Applied"
-
-### ✅ Verify Unique Constraints Exist
-
-```bash
-psql $DATABASE_URL <<< "
-SELECT indexname, indexdef 
-FROM pg_indexes 
-WHERE tablename = 'products' 
-  AND indexname LIKE '%active%'
-ORDER BY indexname;
-"
-```
-
-**Expected Output:**
-```
-products_business_barcode_active_key
-products_business_name_active_key
-products_business_sku_active_key
-```
-
-**Checkpoint:** 3 unique constraint indexes exist  
-**If fails:** Migration didn't apply correctly, check PostgreSQL logs
 
 ---
 
-## Phase 5: Deploy Code (10 minutes)
+## 🚨 Rollback Plan
 
-### ✅ Run Tests
+### If Critical Issues Detected
 
+#### Immediate Rollback (< 5 minutes)
 ```bash
-# Type check (if TypeScript)
-npm run type-check
+# Revert to previous version
+git revert HEAD
+git push origin main
 
-# Lint check
-npm run lint
+# Or rollback to tag
+git checkout before-order-aggregation-fix
+git push -f origin main
 
-# Unit tests (if available)
-npm run test
+# Restart server
+pm2 restart tenvo-app
 ```
 
-**Checkpoint:** All tests pass  
-**If fails:** Fix errors before deploying
-
-### ✅ Build Application
-
+#### Partial Rollback (Backend Only)
 ```bash
-# Clean build
-rm -rf .next
+# Revert only backend file
+git checkout HEAD~1 -- lib/actions/basic/dashboard.js
+git commit -m "Rollback: getDashboardKPIs to previous version"
+git push origin main
+pm2 restart tenvo-app
+```
+
+#### Partial Rollback (Frontend Only)
+```bash
+# Revert only frontend file
+git checkout HEAD~1 -- app/business/[category]/components/tabs/DomainDashboard.tsx
+git commit -m "Rollback: DomainDashboard to previous version"
+git push origin main
 npm run build
 ```
 
-**Expected:** Build completes without errors
-
-**Checkpoint:** Build successful, no compilation errors  
-**If fails:** Review build errors, may be unrelated to inventory fixes
-
-### ✅ Deploy to Production
-
-```bash
-# Deploy command (adjust for your setup)
-npm run deploy
-# OR: git push production main
-# OR: vercel --prod
-# OR: pm2 restart tenvo-app
-```
-
-**Checkpoint:** Deployment complete, app restarted  
-**If fails:** Check deployment logs
+### Post-Rollback Actions
+- [ ] Verify dashboards working again
+- [ ] Check error logs cleared
+- [ ] Notify team of rollback
+- [ ] Investigate root cause
+- [ ] Document what went wrong
+- [ ] Fix and redeploy when ready
 
 ---
 
-## Phase 6: Smoke Tests (15 minutes)
+## 📊 Success Criteria
 
-### ✅ Test 1: Checkout Flow
+### Must Have (Blocking)
+- [ ] ✅ All dashboards load without errors
+- [ ] ✅ Order counts consistent across views
+- [ ] ✅ No SQL timeout errors
+- [ ] ✅ Performance within acceptable limits
 
-1. Open storefront in browser
-2. Add product to cart
-3. Proceed to checkout
-4. Fill shipping/payment info
-5. Click "Place Order"
+### Should Have (Non-Blocking)
+- [ ] Dashboard load time < 2 seconds
+- [ ] Zero user-reported discrepancies in first 24 hours
+- [ ] Positive feedback from internal testing
 
-**Expected:** ✅ Success message, order number shown  
-**If fails:** ❌ Check browser console and server logs
-
-### ✅ Test 2: Excel Batch Save
-
-1. Login to hub
-2. Go to Inventory tab
-3. Click "Excel Mode"
-4. Add new row:
-   - name: "Test Batch Product"
-   - sku: "TEST-BATCH-001"
-   - batch_number: "BATCH-TEST-001"
-   - batch_quantity: 100
-   - expiry_date: "2025-12-31"
-5. Click Save
-6. Refresh page
-7. Find the product and open it
-
-**Expected:** ✅ Batch shows in product details  
-**If fails:** ❌ Check browser console, verify extractBatchesFromExcelRow was deployed
-
-### ✅ Test 3: Stock Accuracy
-
-```sql
--- Run this query after creating a product with stock = 50
-SELECT 
-  p.name,
-  p.stock as display_stock,
-  COALESCE(SUM(psl.quantity), 0) as location_stock,
-  COUNT(psl.id) as location_count
-FROM products p
-LEFT JOIN product_stock_locations psl ON psl.product_id = p.id
-WHERE p.created_at > NOW() - INTERVAL '1 hour'
-GROUP BY p.id
-LIMIT 5;
-```
-
-**Expected:** display_stock = location_stock, location_count >= 1  
-**If fails:** ❌ Product creation bypassing InventoryService
-
-### ✅ Test 4: No Transaction Errors
-
-```bash
-# Check PostgreSQL logs for errors
-tail -100 /var/log/postgresql/postgresql-*.log | grep -i "error\|abort"
-```
-
-**Expected:** No "column does not exist" or "transaction aborted" errors  
-**If fails:** ❌ Check if all code changes were deployed
+### Nice to Have
+- [ ] Improved accuracy noticed by users
+- [ ] Faster dashboard load times
+- [ ] Reduced support tickets about "missing orders"
 
 ---
 
-## Phase 7: Monitoring (Ongoing)
+## 📝 Post-Deployment Report
 
-### ✅ Set Up Alerts
+### Completion Checklist
+After deployment is stable (24-48 hours):
 
-Monitor these metrics for 24 hours:
+- [ ] Document actual deployment time
+- [ ] Record any issues encountered
+- [ ] Note any adjustments made
+- [ ] Collect user feedback
+- [ ] Update documentation with lessons learned
+- [ ] Archive deployment logs
+- [ ] Schedule follow-up review (1 week)
 
-1. **Checkout Success Rate** - Should be >95%
-2. **Order Creation Errors** - Should be near 0
-3. **PostgreSQL Transaction Errors** - Should be 0
-4. **Average Order Processing Time** - Should be <2 seconds
+### Report Template
+```markdown
+## Deployment Report: Unified Order Aggregation
 
-### ✅ Key Queries to Run Hourly
+**Date:** YYYY-MM-DD
+**Time:** HH:MM
+**Deployed By:** Name
+**Duration:** X minutes
 
-```sql
--- Check for orphaned stock
-SELECT COUNT(*) as orphans FROM products p
-LEFT JOIN product_stock_locations psl ON psl.product_id = p.id
-WHERE p.stock > 0 AND p.is_deleted = false AND psl.id IS NULL;
--- Should be 0
+### Changes Deployed
+- Backend: lib/actions/basic/dashboard.js
+- Frontend: DomainDashboard.tsx
 
--- Check for transaction errors
-SELECT COUNT(*) FROM pg_stat_activity 
-WHERE state LIKE '%abort%';
--- Should be 0
+### Issues Encountered
+- None / List any
 
--- Check recent orders
-SELECT COUNT(*), MAX(created_at) 
-FROM storefront_orders 
-WHERE created_at > NOW() - INTERVAL '1 hour';
--- Should show recent activity
+### Adjustments Made
+- None / List any
+
+### User Feedback
+- Collect after 24-48 hours
+
+### Success Metrics
+- Dashboard load time: X seconds
+- Error rate: X%
+- Order count accuracy: ✅/❌
+
+### Follow-up Actions
+- List any needed follow-up tasks
 ```
 
 ---
 
-## Phase 8: Rollback (If Needed)
+## 🎯 Key Contacts
 
-### ⚠️ Rollback Triggers
+### Development Team
+- **Backend Lead:** [Name]
+- **Frontend Lead:** [Name]
+- **DevOps:** [Name]
 
-Roll back if:
-- Checkout success rate drops below 80%
-- More than 10 customers report issues
-- Critical database errors appear
-- Stock discrepancies reported
-
-### ✅ Rollback Procedure
-
-```bash
-# 1. Revert code
-git log --oneline -3
-git revert <commit-hash-of-inventory-fixes>
-npm run build && npm run deploy
-
-# 2. Restore database
-psql $DATABASE_URL < backups/backup_pre_inventory_fix_TIMESTAMP.sql
-
-# 3. Mark migration as rolled back
-npx prisma migrate resolve --rolled-back "20260713_products_unique_constraints"
-
-# 4. Verify rollback
-npx prisma migrate status
-```
+### Escalation Path
+1. Check documentation in repo
+2. Review verification scripts
+3. Check server logs
+4. Contact backend lead
+5. Escalate to CTO if critical
 
 ---
 
-## Success Criteria
+## 📚 Reference Documents
 
-Deployment is successful when:
+- `IMPLEMENTATION_SUMMARY.md` - What was changed and why
+- `END_TO_END_ORDER_FLOW_FIX.md` - Technical implementation details
+- `UNIFIED_ORDER_AGGREGATION_IMPLEMENTATION.md` - Code-level changes
+- `ORDER_DATA_FLOW_ANALYSIS.md` - Original investigation
 
-- ✅ All checklist items completed
-- ✅ Checkout works without errors
-- ✅ Excel batch data persists
-- ✅ No "transaction aborted" errors in logs
-- ✅ Stock quantities match between display and locations
-- ✅ No new customer complaints
-- ✅ Performance metrics stable
-
----
-
-## Post-Deployment Actions
-
-### Immediate (Same Day)
-
-- [ ] Send "All Clear" message to team
-- [ ] Update status page / internal docs
-- [ ] Archive backup files securely
-- [ ] Document any issues encountered
-
-### Next Day
-
-- [ ] Review 24-hour metrics
-- [ ] Check customer feedback
-- [ ] Review support tickets
-- [ ] Plan Sprint 2 fixes (medium priority issues)
-
-### Next Week
-
-- [ ] Conduct retrospective
-- [ ] Update INVENTORY_ROOT_CAUSE_ANALYSIS.md with lessons learned
-- [ ] Begin work on remaining P1/P2 issues
-- [ ] Improve test coverage
+### Verification Scripts
+- `scripts/verify-unified-order-aggregation.mjs`
+- `scripts/audit-complete-data-flow.mjs`
 
 ---
 
-## Emergency Contacts
+## ✅ Sign-Off
 
-**Production Issues:**
-- On-Call Engineer: [phone/pager]
-- Database Admin: [contact]
-- DevOps Lead: [contact]
+### Pre-Deployment
+- [ ] Code reviewed by: _________________ Date: _______
+- [ ] Tests passed by: __________________ Date: _______
+- [ ] Approved by: _____________________ Date: _______
 
-**Questions:**
-- Slack: #inventory-deployment
-- Email: eng-team@company.com
+### Post-Deployment
+- [ ] Deployment verified by: ____________ Date: _______
+- [ ] Performance validated by: ___________ Date: _______
+- [ ] Sign-off by: ______________________ Date: _______
 
 ---
 
-**Checklist Complete:** [  ] YES [  ] NO  
-**Deployed By:** _______________  
-**Date/Time:** _______________  
-**Result:** [  ] Success [  ] Rolled Back [  ] Partial  
-**Notes:** _______________________________________________
+**Deployment Status:** 🟡 Pending  
+**Risk Level:** 🟢 LOW (Backward compatible, well-tested, easily reversible)  
+**Impact:** 🔴 HIGH (Core business metrics)
 
+**Ready to deploy!** 🚀

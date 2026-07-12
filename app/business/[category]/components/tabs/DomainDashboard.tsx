@@ -258,7 +258,13 @@ export function DomainDashboard({
         // Paid ratio / receivables stay separate for collections health.
         const billableInvoices = validInvoices.filter(inv => !isReturnLike(inv));
 
-        const currentOrders = billableInvoices.filter(inv => inRange(inv?.date, currentFrom, currentTo)).length;
+        // UNIFIED ORDER COUNT: Prefer server-side aggregation (includes invoices + POS + storefront)
+        // Fallback to client-side invoice-only calculation for backward compatibility
+        const serverOrderCount = dashboardMetrics?.orders?.total;
+        const clientInvoiceCount = billableInvoices.filter(inv => inRange(inv?.date, currentFrom, currentTo)).length;
+        const currentOrders = serverOrderCount !== undefined ? serverOrderCount : clientInvoiceCount;
+        
+        // Previous period: use server snapshot if available, else calculate from invoices
         const previousOrders = billableInvoices.filter(inv => inRange(inv?.date, prevFrom, prevTo)).length;
 
         const currentRevenue = billableInvoices
