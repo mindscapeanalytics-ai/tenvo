@@ -611,6 +611,10 @@ export async function POST(request, { params }) {
             sku: line.sku || bodyItem?.sku || null,
             taxPercent: line.taxPercent,
           });
+      
+      // Set a savepoint before attempting the INSERT so we can retry if a column is missing
+      await client.query('SAVEPOINT before_line_item_insert');
+      
       try {
         await client.query(
           `INSERT INTO storefront_order_items (
@@ -630,8 +634,14 @@ export async function POST(request, { params }) {
             metaPayload,
           ]
         );
+        // Release the savepoint on success
+        await client.query('RELEASE SAVEPOINT before_line_item_insert');
       } catch (insErr) {
         if (insErr.code === '42703') {
+          // Rollback to the savepoint to clear the aborted transaction state
+          await client.query('ROLLBACK TO SAVEPOINT before_line_item_insert');
+          
+          // Now retry with the fallback INSERT
           await client.query(
             `INSERT INTO storefront_order_items (
             order_id, business_id, product_id, product_name, quantity, unit_price, tax_amount, total_price, metadata
@@ -648,6 +658,8 @@ export async function POST(request, { params }) {
               metaPayload,
             ]
           );
+          // Release the savepoint after successful fallback insert
+          await client.query('RELEASE SAVEPOINT before_line_item_insert');
         } else {
           throw insErr;
         }

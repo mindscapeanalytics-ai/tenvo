@@ -88,7 +88,6 @@ export function DashboardTabs({
     resourceLimits,
     domainKnowledge,
     handlers,
-    isLoading = false,
     user,
     financeInitialTab = null,
     onFinanceInitialTabConsumed,
@@ -297,7 +296,6 @@ export function DashboardTabs({
                             expenses={expenses}
                             advancedDashboardSnapshot={advancedDashboardSnapshot}
                             domainKnowledge={domainKnowledge}
-                            isLoading={isLoading}
                             user={user}
                             isAnalyticsLoading={isAnalyticsLoading}
                             isSalesLoading={isSalesLoading}
