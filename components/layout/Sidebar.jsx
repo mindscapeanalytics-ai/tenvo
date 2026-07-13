@@ -75,7 +75,7 @@ const ADVANCED_NAV_SECTIONS = [
   {
     label: 'STOREFRONT',
     items: [
-      { key: 'orders', label: 'Orders', icon: Package, alwaysShow: true, badge: 'NEW' },
+      { key: 'orders', label: 'Storefront Orders', icon: Package, alwaysShow: true, badge: 'NEW' },
       { key: 'inquiries', label: 'Customer Inquiries', icon: Inbox, alwaysShow: true },
       { key: 'pos', label: 'Point of Sale', icon: ShoppingCart, domainRule: 'posRelevant' },
       { key: 'refunds', label: 'Refunds & Returns', icon: RefreshCcw, domainRule: 'posRelevant' },
@@ -141,7 +141,7 @@ const EASY_NAV_SECTIONS = [
       { key: 'invoices', label: 'Invoices', icon: FileText, alwaysShow: true },
       { key: 'customers', label: 'Customers', icon: Users, alwaysShow: true },
       { key: 'memberships', label: 'Memberships', icon: BadgeCheck, domainRule: 'membershipRelevant' },
-      { key: 'orders', label: 'Orders', icon: Package, alwaysShow: true, badge: 'NEW' },
+      { key: 'orders', label: 'Storefront Orders', icon: Package, alwaysShow: true, badge: 'NEW' },
       { key: 'inquiries', label: 'Customer Inquiries', icon: Inbox, alwaysShow: true },
       { key: 'pos', label: 'Point of Sale', icon: ShoppingCart, domainRule: 'posRelevant' },
       { key: 'refunds', label: 'Refunds & Returns', icon: RefreshCcw, domainRule: 'posRelevant' },

@@ -358,7 +358,7 @@ export function OrdersManager({ business, category }) {
         <MobileTabHeader
           icon={Package}
           iconClassName="bg-blue-100 text-blue-600"
-          title="Store Orders"
+          title="Storefront Orders"
           subtitle={`${totalOrders} orders`}
           actions={[
             { id: 'refresh', label: 'Refresh', icon: RefreshCw, onClick: loadOrders },
@@ -373,7 +373,7 @@ export function OrdersManager({ business, category }) {
       {/* Desktop header */}
       <div className="hidden flex-col gap-4 sm:flex-row sm:items-center sm:justify-between lg:flex">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Orders</h2>
+          <h2 className="text-2xl font-bold text-gray-900">Storefront Orders</h2>
           <p className="mt-1 text-sm text-gray-500">
             Manage and track customer orders from your storefront
           </p>
@@ -397,7 +397,7 @@ export function OrdersManager({ business, category }) {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-500">Total Orders</p>
+                <p className="text-sm text-gray-500">Total Storefront Orders</p>
                 <p className="text-2xl font-bold">{totalOrders}</p>
               </div>
               <Package className="w-8 h-8 text-blue-500" />
@@ -553,7 +553,7 @@ export function OrdersManager({ business, category }) {
         ) : orders.length === 0 ? (
           <div className="flex flex-col items-center justify-center rounded-xl border border-gray-100 bg-white py-12 text-center px-4">
             <Package className="h-10 w-10 text-gray-300" />
-            <p className="mt-2 text-sm font-medium text-gray-600">No orders found</p>
+            <p className="mt-2 text-sm font-medium text-gray-600">No storefront orders found</p>
             <p className="text-xs text-gray-400">Storefront orders will appear here</p>
           </div>
         ) : (
@@ -624,7 +624,7 @@ export function OrdersManager({ business, category }) {
                 <TableRow>
                   <TableCell colSpan={8} className="text-center py-8">
                     <Package className="w-12 h-12 mx-auto text-gray-300" />
-                    <p className="text-sm text-gray-500 mt-2">No orders found</p>
+                    <p className="text-sm text-gray-500 mt-2">No storefront orders found</p>
                     <p className="text-xs text-gray-400">
                       Orders from your storefront will appear here
                     </p>
