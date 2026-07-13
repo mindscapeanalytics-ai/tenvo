@@ -260,8 +260,15 @@ export function Header({ onMenuClick }) {
         reports: 'Analytics Hub',
         analytics: 'Intelligence Center',
         finance: 'Finance Hub',
-        orders: 'Orders',
-        inquiries: 'Inquiries',
+        orders: 'Storefront Orders',
+        inquiries: 'Customer Inquiries',
+        pos: 'Point of Sale',
+        refunds: 'Refunds & Returns',
+        restaurant: 'Restaurant Desk',
+        loyalty: 'Loyalty & CRM',
+        memberships: 'Memberships',
+        sales: 'Sales Manager',
+        'store-settings': 'Store Settings',
     };
 
     const activeTitle = labels[currentTab] || currentTab;
