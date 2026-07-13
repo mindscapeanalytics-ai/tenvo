@@ -649,6 +649,46 @@ export function InventoryManager({
     return filterMeaningfulBatches(existingBatches);
   };
 
+  // Helper: Extract serials from Excel row (comma/semicolon/newline-separated string to array)
+  const extractSerialsFromExcelRow = (row) => {
+    // Start with existing serials array from the row
+    const existingSerials = Array.isArray(row.serial_numbers || row.serialNumbers)
+      ? (row.serial_numbers || row.serialNumbers)
+      : [];
+
+    // If Excel serial_number column was filled (comma-separated or multi-line string)
+    if (row.serial_number && typeof row.serial_number === 'string') {
+      const serialString = String(row.serial_number).trim();
+      if (serialString) {
+        // Split by comma, semicolon, newline, or pipe
+        const serialList = serialString
+          .split(/[,;\n|]/)
+          .map((s) => s.trim())
+          .filter(Boolean);
+
+        serialList.forEach((sn) => {
+          // Avoid duplicates
+          const isDuplicate = existingSerials.some(
+            (existing) => (existing.serial_number || existing.serialNumber) === sn
+          );
+          if (!isDuplicate) {
+            existingSerials.push({
+              serial_number: sn,
+              serialNumber: sn, // Support both snake_case and camelCase
+              status: 'available',
+              imei: row.imei || null,
+              warehouse_id: row.warehouse_id || null,
+              warehouseId: row.warehouse_id || null,
+            });
+          }
+        });
+      }
+    }
+
+    // Filter out empty serials using helper (meaningful serial validation)
+    return filterMeaningfulSerials(existingSerials);
+  };
+
   const handleExcelSave = async (updatedData) => {
     setLoading(true);
     const results = { updated: 0, created: 0, failed: 0 };
@@ -688,20 +728,25 @@ export function InventoryManager({
           // Extract batches from Excel columns + existing batches array
           const extractedBatches = extractBatchesFromExcelRow(mapped);
           
+          // Extract serials from Excel serial_number column (comma-separated string)
+          const extractedSerials = extractSerialsFromExcelRow(mapped);
+          
           const rowForComposite = isNew
-            ? { ...mapped, batches: extractedBatches }
+            ? { ...mapped, batches: extractedBatches, serial_numbers: extractedSerials }
             : {
                 ...mapped,
                 batches: extractedBatches.length > 0 
                   ? extractedBatches 
                   : filterMeaningfulBatches(original?.batches ?? mapped.batches ?? []),
-                serial_numbers: filterMeaningfulSerials(
-                  original?.serial_numbers ??
-                    original?.serialNumbers ??
-                    mapped.serial_numbers ??
-                    mapped.serialNumbers ??
-                    []
-                ),
+                serial_numbers: extractedSerials.length > 0
+                  ? extractedSerials
+                  : filterMeaningfulSerials(
+                      original?.serial_numbers ??
+                        original?.serialNumbers ??
+                        mapped.serial_numbers ??
+                        mapped.serialNumbers ??
+                        []
+                    ),
               };
           const params = prepareCompositeUpsertFromRow(rowForComposite, category, businessId);
           params.productData = isNew
