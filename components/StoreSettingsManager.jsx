@@ -28,7 +28,6 @@ import { MobileTabHeader } from '@/components/mobile/MobileTabHeader';
 import { useStorefrontEmbedded } from '@/lib/context/StorefrontMobileContext';
 import { getRegionalStandards } from '@/lib/utils/regionalHelpers';
 import { MarketingSectionsEditor } from '@/components/storefront/admin/MarketingSectionsEditor';
-import { CustomDomainManager } from '@/components/storefront/CustomDomainManager';
 import { isAutoMarketplaceStore } from '@/lib/storefront/autoMarketplace';
 import { isAutoDealershipStore } from '@/lib/storefront/autoDealership';
 import { isAutoPartsStore } from '@/lib/storefront/autoParts';
@@ -1747,8 +1746,6 @@ export function StoreSettingsManager({ business, category }) {
               </div>
             </CardContent>
           </Card>
-
-          <CustomDomainManager businessId={business.id} businessDomain={business.domain} />
 
           <Card>
             <CardHeader className="pb-4">
