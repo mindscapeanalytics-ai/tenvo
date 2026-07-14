@@ -17,9 +17,11 @@ import { useWishlist } from '@/lib/hooks/storefront/useWishlist';
 import { SearchBar } from './SearchBar';
 import { MobileNav } from './MobileNav';
 import { FashionMobileNav } from './FashionMobileNav';
+import { JewelleryMobileNav } from './JewelleryMobileNav';
 import { getDomainConfig, getStoreAccentColor } from '@/lib/config/storefrontDomains';
 import { getStoreHomeCopy } from '@/lib/storefront/storeCopy';
 import { isFashionEditorialStore, resolveFashionSearchPlaceholder } from '@/lib/storefront/fashionEditorial';
+import { isJewelleryStore, resolveJewellerySearchPlaceholder } from '@/lib/storefront/jewelleryStorefront';
 import { isAutoDealershipStore, getDealershipNavLinks, getDealershipNavGroups } from '@/lib/storefront/autoDealership';
 import { resolveStorefrontLogo } from '@/lib/storefront/resolveStorefrontLogo';
 import { isAutoMarketplaceStore, getMarketplaceNavLinks } from '@/lib/storefront/autoMarketplace';
@@ -93,18 +95,22 @@ export function StoreHeader({ business, categories, settings }) {
   const storeRoot = `/store/${businessDomain}`;
   const isHome = pathname === storeRoot || pathname === `${storeRoot}/`;
   const editorialNav = isFashionEditorialStore(business?.category);
+  const jewelleryNav = isJewelleryStore(business?.category);
   const dealershipNav = isAutoDealershipStore(business?.category);
   const marketplaceNav = isAutoMarketplaceStore(business?.category);
   const pharmacyNav = isPharmacyElevatedStore(business?.category);
-  const searchPlaceholder = editorialNav
-    ? resolveFashionSearchPlaceholder(settings, business?.category, businessDomain)
-    : storeCopy.searchPlaceholder;
-  const immersiveNav = editorialNav || dealershipNav;
+  const searchPlaceholder = jewelleryNav
+    ? resolveJewellerySearchPlaceholder(settings, businessDomain)
+    : editorialNav
+      ? resolveFashionSearchPlaceholder(settings, business?.category, businessDomain)
+      : storeCopy.searchPlaceholder;
+  const immersiveNav = editorialNav || jewelleryNav || dealershipNav;
   const editorialOnHome = editorialNav && isHome;
+  const jewelleryOnHome = jewelleryNav && isHome;
   const dealershipOnHome = dealershipNav && isHome;
   const marketplaceOnHome = marketplaceNav && isHome;
   const pharmacyOnHome = pharmacyNav && isHome;
-  const transparentHeader = (editorialOnHome || dealershipOnHome) && !isScrolled;
+  const transparentHeader = (editorialOnHome || jewelleryOnHome || dealershipOnHome) && !isScrolled;
   const canonical = resolveDomainKey(business?.category);
   const dealershipLinks = dealershipNav
     ? getDealershipNavLinks(storeRoot, { country: business?.country, settings })
@@ -608,6 +614,72 @@ export function StoreHeader({ business, categories, settings }) {
                   </button>
                 </div>
               </>
+            ) : editorialNav || jewelleryNav ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setIsMobileMenuOpen(true)}
+                  className={cn(
+                    'flex h-10 w-10 items-center justify-center',
+                    transparentHeader ? 'text-white' : 'text-gray-800'
+                  )}
+                  aria-label="Open menu"
+                >
+                  <EditorialMenuIcon />
+                </button>
+
+                <Link
+                  href={storeRoot}
+                  className={cn(
+                    'absolute left-1/2 -translate-x-1/2 text-base font-bold uppercase tracking-[0.28em]',
+                    transparentHeader ? 'text-white' : 'text-gray-900'
+                  )}
+                >
+                  {business?.business_name}
+                </Link>
+
+                <div className="ml-auto flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setIsSearchOpen(true)}
+                    className={cn(
+                      'p-2.5 transition-colors',
+                      transparentHeader ? 'text-white hover:text-white/80' : 'text-gray-700 hover:text-gray-900'
+                    )}
+                    aria-label="Search"
+                  >
+                    <Search className="w-5 h-5" strokeWidth={1.75} />
+                  </button>
+                  <Link
+                    href={`/store/${businessDomain}/orders`}
+                    className={cn(
+                      'p-2.5 transition-colors',
+                      transparentHeader ? 'text-white hover:text-white/80' : 'text-gray-700 hover:text-gray-900'
+                    )}
+                    aria-label="My Orders"
+                  >
+                    <User className="w-5 h-5" strokeWidth={1.75} />
+                  </Link>
+                  <Link
+                    href={`/store/${businessDomain}/cart`}
+                    className={cn(
+                      'relative p-2.5 transition-colors',
+                      transparentHeader ? 'text-white hover:text-white/80' : 'text-gray-700 hover:text-gray-900'
+                    )}
+                    aria-label={`Cart (${cartItemCount} items)`}
+                  >
+                    <ShoppingBag className="w-5 h-5" strokeWidth={1.75} />
+                    {cartItemCount > 0 && (
+                      <span
+                        className="absolute top-0.5 right-0.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full text-white text-[10px] font-black px-1"
+                        style={{ backgroundColor: accent }}
+                      >
+                        {cartItemCount > 99 ? '99+' : cartItemCount}
+                      </span>
+                    )}
+                  </Link>
+                </div>
+              </>
             ) : editorialNav ? (
               <>
                 <button
@@ -962,7 +1034,17 @@ export function StoreHeader({ business, categories, settings }) {
       )}
 
       {/* ── Mobile Nav ─────────────────────────────────────────────────── */}
-      {editorialNav ? (
+      {jewelleryNav ? (
+        <JewelleryMobileNav
+          isOpen={isMobileMenuOpen}
+          onClose={() => setIsMobileMenuOpen(false)}
+          businessDomain={businessDomain}
+          business={business}
+          categories={categories}
+          accent={accent}
+          canonical={canonical}
+        />
+      ) : editorialNav ? (
         <FashionMobileNav
           isOpen={isMobileMenuOpen}
           onClose={() => setIsMobileMenuOpen(false)}
