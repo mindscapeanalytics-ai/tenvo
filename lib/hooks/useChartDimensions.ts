@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, RefObject } from 'react';
 
 interface ChartDimensionsResult {
-    containerRef: RefObject<HTMLDivElement>;
+    containerRef: RefObject<HTMLDivElement | null>;
     isReady: boolean;
     dimensions: { width: number; height: number };
 }
