@@ -120,8 +120,8 @@ export function AnalyticsDashboard({
             transition={{ duration: 0.4 }}
         >
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <Card className="overflow-hidden rounded-2xl border border-slate-200/80 bg-gradient-to-br from-white via-slate-50/20 to-white shadow-md">
-                    <CardHeader className="flex flex-col gap-3 py-3.5 px-4 sm:px-5 border-b border-slate-100 bg-gradient-to-r from-violet-50/30 via-white to-cyan-50/30 space-y-0">
+                <Card className="min-h-[360px] overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-br from-white via-slate-50/20 to-white shadow-sm">
+                    <CardHeader className="flex flex-col gap-2.5 py-2.5 px-3.5 sm:px-4 border-b border-slate-100 bg-gradient-to-r from-violet-50/30 via-white to-cyan-50/30 space-y-0">
                         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                             <div className="flex flex-col min-w-0">
                                 <CardTitle className="text-[10px] font-semibold text-slate-800 uppercase tracking-[0.2em] flex items-center gap-2">
@@ -144,20 +144,20 @@ export function AnalyticsDashboard({
                             </div>
                         </div>
 
-                        <TabsList className="bg-slate-100/90 h-auto p-1 rounded-xl border border-slate-200/70 flex flex-wrap gap-1 w-full sm:w-auto">
-                            <TabsTrigger value="visual" className="text-[10px] px-3 h-7 rounded-lg uppercase font-semibold data-[state=active]:bg-white data-[state=active]:text-violet-700 data-[state=active]:shadow-sm">
+                        <TabsList className="bg-slate-100/90 h-auto p-0.5 rounded-xl border border-slate-200/70 flex flex-wrap gap-0.5 w-full sm:w-auto">
+                            <TabsTrigger value="visual" className="text-[10px] px-2.5 h-6 rounded-lg uppercase font-semibold data-[state=active]:bg-white data-[state=active]:text-violet-700 data-[state=active]:shadow-sm">
                                 Trends
                             </TabsTrigger>
-                            <TabsTrigger value="predictive" className="text-[10px] px-3 h-7 rounded-lg uppercase font-semibold data-[state=active]:bg-white data-[state=active]:text-violet-700 data-[state=active]:shadow-sm">
+                            <TabsTrigger value="predictive" className="text-[10px] px-2.5 h-6 rounded-lg uppercase font-semibold data-[state=active]:bg-white data-[state=active]:text-violet-700 data-[state=active]:shadow-sm">
                                 Projections
                             </TabsTrigger>
-                            <TabsTrigger value="studio" className="text-[10px] px-3 h-7 rounded-lg uppercase font-semibold data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-600 data-[state=active]:to-cyan-600 data-[state=active]:text-white data-[state=active]:shadow-md">
+                            <TabsTrigger value="studio" className="text-[10px] px-2.5 h-6 rounded-lg uppercase font-semibold data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-600 data-[state=active]:to-cyan-600 data-[state=active]:text-white data-[state=active]:shadow-md">
                                 Visual Studio
                             </TabsTrigger>
-                            <TabsTrigger value="planning" className="text-[10px] px-3 h-7 rounded-lg uppercase font-semibold data-[state=active]:bg-white data-[state=active]:text-violet-700 data-[state=active]:shadow-sm">
+                            <TabsTrigger value="planning" className="text-[10px] px-2.5 h-6 rounded-lg uppercase font-semibold data-[state=active]:bg-white data-[state=active]:text-violet-700 data-[state=active]:shadow-sm">
                                 AI Planning
                             </TabsTrigger>
-                            <TabsTrigger value="audit" className="text-[10px] px-3 h-7 rounded-lg uppercase font-semibold data-[state=active]:bg-white data-[state=active]:text-violet-700 data-[state=active]:shadow-sm">
+                            <TabsTrigger value="audit" className="text-[10px] px-2.5 h-6 rounded-lg uppercase font-semibold data-[state=active]:bg-white data-[state=active]:text-violet-700 data-[state=active]:shadow-sm">
                                 Integrity
                             </TabsTrigger>
                         </TabsList>
@@ -167,7 +167,7 @@ export function AnalyticsDashboard({
                     </CardHeader>
 
                     <CardContent className="p-0">
-                        <TabsContent value="visual" className="m-0 p-4 pt-5">
+                        <TabsContent value="visual" className="m-0 p-3">
                             {hasTrendData ? (
                                 <div className="h-[320px] w-full">
                                     <IntegratedPerformanceChart revenueData={chartData} invoices={invoices} colors={colors} />
@@ -177,7 +177,7 @@ export function AnalyticsDashboard({
                             )}
                         </TabsContent>
 
-                        <TabsContent value="predictive" className="m-0 p-4 overflow-y-auto max-h-[480px]">
+                        <TabsContent value="predictive" className="m-0 p-3 overflow-y-auto max-h-[420px]">
                             <DemandForecast
                                 businessId={businessId}
                                 category={category}
@@ -186,7 +186,7 @@ export function AnalyticsDashboard({
                             />
                         </TabsContent>
 
-                        <TabsContent value="studio" className="m-0 p-4 pt-5">
+                        <TabsContent value="studio" className="m-0 p-3">
                             <VisualAnalyticsPanel
                                 businessId={businessId}
                                 category={category}
@@ -197,7 +197,7 @@ export function AnalyticsDashboard({
                             />
                         </TabsContent>
 
-                        <TabsContent value="planning" className="m-0 p-4 pt-2">
+                        <TabsContent value="planning" className="m-0 p-3">
                             <PredictivePlanningPortlet
                                 businessId={businessId}
                                 domainKnowledge={domainKnowledge}
@@ -206,7 +206,7 @@ export function AnalyticsDashboard({
                             />
                         </TabsContent>
 
-                        <TabsContent value="audit" className="m-0 p-4 pt-2">
+                        <TabsContent value="audit" className="m-0 p-3">
                             <AgenticAuditPortlet businessId={businessId} compact />
                         </TabsContent>
                     </CardContent>

@@ -508,9 +508,9 @@ export function DomainOperationsPanel({
       ) : null}
 
       {hasQueueCards ? (
-      <div className={cn('grid gap-4', compact ? 'grid-cols-1' : 'lg:grid-cols-3')}>
+      <div className={cn('grid gap-4', compact ? 'grid-cols-1' : 'lg:grid-cols-12')}>
         {showInquiries ? (
-        <Card className="border-neutral-200 shadow-sm h-full">
+        <Card className={cn('border-neutral-200 shadow-sm h-full', !compact && 'lg:col-span-6')}>
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-sm">
               <Inbox className="h-4 w-4" />
@@ -518,12 +518,12 @@ export function DomainOperationsPanel({
             </CardTitle>
             <CardDescription className="text-xs">Storefront contact & booking messages</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent className="space-y-1.5">
             {(contacts.recent || []).length === 0 ? (
               <p className="py-4 text-center text-xs text-neutral-500">No contact requests yet.</p>
             ) : (
               (contacts.recent || []).slice(0, compact ? 4 : 6).map((row) => (
-                <div key={row.id ?? `${row.name}-${row.createdAt}`} className="rounded-lg border border-neutral-100 px-2.5 py-2">
+                <div key={row.id ?? `${row.name}-${row.createdAt}`} className="rounded-lg border border-neutral-100 px-2 py-1.5">
                   <div className="flex items-center justify-between gap-2">
                     <div className="min-w-0">
                       <p className="truncate text-xs font-semibold text-neutral-900">{row.name || 'Guest'}</p>
@@ -537,7 +537,7 @@ export function DomainOperationsPanel({
                     <Button
                       variant="outline"
                       size="sm"
-                      className="mt-2 h-6 w-full text-[10px]"
+                      className="mt-1.5 h-6 w-full text-[10px]"
                       disabled={updatingContactId === row.id}
                       onClick={() => handleMarkContactHandled(row.id!)}
                     >
@@ -547,7 +547,7 @@ export function DomainOperationsPanel({
                 </div>
               ))
             )}
-            <Button variant="outline" size="sm" className="mt-2 h-7 w-full text-[11px]" onClick={() => onQuickAction?.('inquiries')}>
+            <Button variant="outline" size="sm" className="mt-1.5 h-6 w-full text-[10px]" onClick={() => onQuickAction?.('inquiries')}>
               Open customer inquiries
             </Button>
           </CardContent>
@@ -555,7 +555,7 @@ export function DomainOperationsPanel({
         ) : null}
 
         {showCollections ? (
-        <Card className="border-neutral-200 shadow-sm h-full">
+        <Card className={cn('border-neutral-200 shadow-sm h-full', !compact && 'lg:col-span-3')}>
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-sm">
               <Wallet className="h-4 w-4" />
@@ -563,12 +563,12 @@ export function DomainOperationsPanel({
             </CardTitle>
             <CardDescription className="text-xs">Paid invoices & storefront in period</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent className="space-y-1.5">
             {(collections.recent || []).length === 0 ? (
               <p className="py-4 text-center text-xs text-neutral-500">No collections recorded in this period.</p>
             ) : (
               (collections.recent || []).slice(0, compact ? 4 : 6).map((row, idx) => (
-                <div key={`${row.name}-${idx}`} className="flex items-center justify-between gap-2 rounded-lg bg-neutral-50 px-2.5 py-2">
+                <div key={`${row.name}-${idx}`} className="flex items-center justify-between gap-2 rounded-lg bg-neutral-50 px-2 py-1.5">
                   <div className="min-w-0">
                     <p className="truncate text-xs font-semibold text-neutral-900">{row.name || 'Customer'}</p>
                     <p className="text-[10px] text-neutral-500">{row.source}</p>
@@ -582,7 +582,7 @@ export function DomainOperationsPanel({
         ) : null}
 
         {showTimeline ? (
-        <Card className="border-neutral-200 shadow-sm h-full">
+        <Card className={cn('border-neutral-200 shadow-sm h-full', !compact && 'lg:col-span-3')}>
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-sm">
               <Calendar className="h-4 w-4" />
@@ -590,12 +590,12 @@ export function DomainOperationsPanel({
             </CardTitle>
             <CardDescription className="text-xs">Requests & online orders in period</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent className="space-y-1.5">
             {schedule.length === 0 ? (
               <p className="py-4 text-center text-xs text-neutral-500">No recent operational events.</p>
             ) : (
               schedule.slice(0, compact ? 4 : 6).map((row, idx) => (
-                <div key={`${row.title}-${idx}`} className="flex gap-2 rounded-lg border border-neutral-100 px-2.5 py-2">
+                <div key={`${row.title}-${idx}`} className="flex gap-2 rounded-lg border border-neutral-100 px-2 py-1.5">
                   <div className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-cyan-500" />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-xs font-semibold text-neutral-900">{row.title}</p>

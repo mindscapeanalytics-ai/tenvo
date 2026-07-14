@@ -30,6 +30,7 @@ import { EasyBusinessDashboard } from '@/components/dashboard/easy/EasyBusinessD
 import { DomainOperationsPanel } from '@/components/dashboard/easy/DomainOperationsPanel';
 import { useDomainOperationsSnapshot } from '@/lib/hooks/useDomainOperationsSnapshot';
 import { FinanceHeroStrip } from '@/components/dashboard/advanced/FinanceHeroStrip.client';
+import { PerformanceKPIs } from '../islands/portlets/PerformanceKPIs.client';
 import { countLowStockProducts, resolveInvoiceOpenBalance, resolveProductStock } from '@/lib/dashboard/easyDashboardHelpers';
 import { buildFinanceHeroMetrics } from '@/lib/dashboard/buildFinanceHeroMetrics';
 import { metricActionId } from '@/lib/dashboard/metricNavigation';
@@ -1243,7 +1244,7 @@ export function DomainDashboard({
             </div>
 
             {/* Analytics + contextual right rail */}
-            <div className="hidden lg:block lg:col-span-8 min-h-0 space-y-3">
+            <div className="hidden lg:block lg:col-span-8 min-h-0 space-y-2">
                 <AnalyticsDashboard
                     businessId={activeBusinessId}
                     category={category}
@@ -1258,33 +1259,40 @@ export function DomainDashboard({
                     onQuickAction={onQuickAction}
                 />
 
-                {/* Bottom row of left column — Recent Activity Feed & Domain Efficiency Meter */}
-                <div className="grid grid-cols-12 gap-2.5 items-stretch">
-                    <div className="col-span-7 min-h-0 flex">
+                {/* Bottom row — Recent Activity & Domain Efficiency in 12-col grid */}
+                <div className="grid grid-cols-12 gap-2 items-stretch">
+                    <div className="col-span-7 min-h-0">
                         <RecentActivityFeed
                             businessId={activeBusinessId}
                             onViewAll={() => onQuickAction?.('reports')}
                             feedLimit={25}
-                            className="flex-1"
                         />
                     </div>
-                    <div className="col-span-5 min-h-0 flex">
-                        <div className="flex h-full min-h-[16rem] w-full">
-                            <KPIMeter
-                                title="Domain Efficiency"
-                                value={domainEfficiency}
-                                target={95}
-                                suffix="%"
-                                trendValue={Number(revenueTrendSigned.toFixed(1))}
-                                trendLabel="vs previous period"
-                            />
-                        </div>
+                    <div className="col-span-5 min-h-0">
+                        <KPIMeter
+                            title="Domain Efficiency"
+                            value={domainEfficiency}
+                            target={95}
+                            suffix="%"
+                            trendValue={Number(revenueTrendSigned.toFixed(1))}
+                            trendLabel="vs previous period"
+                        />
                     </div>
                 </div>
             </div>
 
-            <div className="hidden lg:flex lg:col-span-4 flex-col gap-2.5 min-h-0">
+            <div className="hidden lg:flex lg:col-span-4 flex-col gap-2 min-h-0 self-start">
                 <RemindersPortlet data={remindersData} onItemClick={onQuickAction} />
+
+                <PerformanceKPIs
+                    revenue={formatCurrencyCompact(periodMetrics.currentRevenue)}
+                    revenueChange={Number(revenueTrendSigned)}
+                    orders={periodMetrics.currentOrders}
+                    ordersChange={Number(ordersTrend)}
+                    customers={periodMetrics.currentCustomers}
+                    customersChange={Number(customerTrend)}
+                    avgOrderValue={formatCurrencyCompact(avgOrderValue)}
+                />
 
                 <MergedActionInsights
                     category={category}
@@ -1305,33 +1313,13 @@ export function DomainDashboard({
                     onQuickAction={onQuickAction}
                     isActive
                     variant="compact"
-                    sections={['inquiries']}
+                    sections={['collections']}
                     hideKpiStrip
                     hideMiddleCharts
                     hideOrderTimeline
                     snapshot={advancedOpsSnapshot.snapshot}
                     snapshotLoading={advancedOpsSnapshot.loading}
                     snapshotError={advancedOpsSnapshot.error}
-                    onSnapshotRetry={advancedOpsSnapshot.reload}
-                />
-
-                <DomainOperationsPanel
-                    businessId={activeBusinessId}
-                    business={business}
-                    category={category}
-                    domainKnowledge={domainKnowledge as Record<string, unknown> | undefined}
-                    dateRange={dateRange}
-                    periodLabel={periodLabel}
-                    formatCurrencyCompact={formatCurrencyCompact}
-                    onQuickAction={onQuickAction}
-                    isActive
-                    variant="compact"
-                    sections={['collections']}
-                    hideKpiStrip
-                    hideMiddleCharts
-                    hideOrderTimeline
-                    showLoadingShell={false}
-                    snapshot={advancedOpsSnapshot.snapshot}
                     onSnapshotRetry={advancedOpsSnapshot.reload}
                 />
             </div>

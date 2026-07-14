@@ -303,15 +303,15 @@ export function CategoryPieChart({ data = [], colors }) {
 
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <PieChart margin={{ top: 0, right: 10, left: 10, bottom: 0 }}>
+      <PieChart margin={{ top: 10, right: 20, left: 20, bottom: 10 }}>
         <Pie
           data={data}
-          cx="30%"
+          cx="35%"
           cy="50%"
           labelLine={false}
           label={false}
-          outerRadius={75}
-          innerRadius={45}
+          outerRadius={85}
+          innerRadius={55}
           fill="#3b82f6"
           dataKey="value"
           paddingAngle={3}
@@ -339,23 +339,22 @@ export function CategoryPieChart({ data = [], colors }) {
           verticalAlign="middle"
           align="right"
           iconType="circle"
+          iconSize={8}
           formatter={(value, entry) => {
             const item = entry.payload;
             const val = item ? Number(item.value) : 0;
             const percent = total > 0 ? ((val / total) * 100).toFixed(0) : '0';
             const name = value.length > 14 ? `${value.substring(0, 12)}…` : value;
             return (
-              <span className="text-[11px] font-medium text-slate-600">
+              <span className="text-[10px] font-medium text-slate-600 leading-snug">
                 {name} <span className="text-slate-400 font-semibold tabular-nums">({percent}%)</span>
               </span>
             );
           }}
           wrapperStyle={{ 
-            fontSize: 11, 
-            paddingLeft: 10, 
-            right: 0, 
-            width: '50%',
-            overflow: 'hidden'
+            fontSize: 10, 
+            paddingLeft: 8,
+            lineHeight: '1.4'
           }}
         />
       </PieChart>

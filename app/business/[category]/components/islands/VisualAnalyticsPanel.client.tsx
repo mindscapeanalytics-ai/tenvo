@@ -189,24 +189,24 @@ export function VisualAnalyticsPanel({
                 </ChartShell>
 
                 <ChartShell
-                    title={copy.categoryTitle}
-                    description={copy.categoryDesc}
-                    icon={PieChart}
-                    accent="violet"
-                    className="lg:col-span-4"
-                    chartHeight="h-[260px]"
-                >
-                    <CategoryPieChart data={categoryData} colors={colors} />
-                </ChartShell>
-
-                <ChartShell
                     title={copy.topTitle}
                     description={copy.topDesc}
                     icon={Package}
                     accent="amber"
-                    className="lg:col-span-5"
+                    className="lg:col-span-4"
+                    chartHeight="h-[260px]"
                 >
                     <TopProductsChart data={topProducts} colors={colors} currency={currency} />
+                </ChartShell>
+
+                <ChartShell
+                    title={copy.categoryTitle}
+                    description={copy.categoryDesc}
+                    icon={PieChart}
+                    accent="violet"
+                    className="lg:col-span-5"
+                >
+                    <CategoryPieChart data={categoryData} colors={colors} />
                 </ChartShell>
 
                 <ChartShell

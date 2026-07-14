@@ -4,6 +4,7 @@ import { memo } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { PieChart as PieChartIcon } from 'lucide-react';
+import { useChartDimensions } from '@/lib/hooks/useChartDimensions';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
 
@@ -12,6 +13,8 @@ interface ExpenseBreakdownChartProps {
 }
 
 export const ExpenseBreakdownChart = memo(function ExpenseBreakdownChart({ data = [] }: ExpenseBreakdownChartProps) {
+    const { containerRef, isReady } = useChartDimensions(100, 220, 50);
+    
     if (!data || data.length === 0) {
         return (
             <div className="h-[200px] flex items-center justify-center text-[10px] text-slate-400 italic border border-dashed border-slate-200 rounded-xl bg-slate-50">
@@ -31,9 +34,10 @@ export const ExpenseBreakdownChart = memo(function ExpenseBreakdownChart({ data 
                     Expense Breakdown
                 </CardTitle>
             </CardHeader>
-            <CardContent className="h-[220px] p-0 relative">
-                <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
+            <CardContent ref={containerRef} className="h-[220px] p-0 relative">
+                {isReady ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
                         <Pie
                             data={sortedData}
                             cx="50%"
@@ -60,6 +64,11 @@ export const ExpenseBreakdownChart = memo(function ExpenseBreakdownChart({ data 
                         />
                     </PieChart>
                 </ResponsiveContainer>
+                ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                        <div className="w-full h-full animate-pulse bg-slate-100 rounded-lg" />
+                    </div>
+                )}
 
                 {/* Center Label */}
                 <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none pr-14">

@@ -63,15 +63,15 @@ export const RemindersPortlet = memo(function RemindersPortlet({
             description="Operational alerts & tasks"
             isLoading={isLoading}
         >
-            <div className="space-y-1.5">
+            <div className="space-y-1">
                 {reminders.map((item) => (
                     <div
                         key={item.id}
                         onClick={() => onItemClick?.(item.id)}
-                        className="flex items-center justify-between p-2 rounded-lg border border-transparent hover:border-gray-100 hover:bg-gray-50/50 transition-all cursor-pointer group"
+                        className="flex items-center justify-between p-1.5 rounded-lg border border-transparent hover:border-gray-100 hover:bg-gray-50/50 transition-all cursor-pointer group"
                     >
-                        <div className="flex items-center gap-2.5">
-                            <div className={cn("p-1.5 rounded-md", item.bgColor)}>
+                        <div className="flex items-center gap-2">
+                            <div className={cn("p-1 rounded-md", item.bgColor)}>
                                 <item.icon className={cn("w-3.5 h-3.5", item.color)} />
                             </div>
                             <span className="text-[11px] font-bold text-gray-700 uppercase tracking-tight">{item.label}</span>
