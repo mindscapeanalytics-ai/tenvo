@@ -34,47 +34,49 @@ export const ExpenseBreakdownChart = memo(function ExpenseBreakdownChart({ data 
                     Expense Breakdown
                 </CardTitle>
             </CardHeader>
-            <CardContent ref={containerRef} className="h-[220px] p-0 relative">
-                {isReady ? (
-                    <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                        <Pie
-                            data={sortedData}
-                            cx="50%"
-                            cy="50%"
-                            innerRadius={50}
-                            outerRadius={70}
-                            paddingAngle={5}
-                            dataKey="value"
-                        >
-                            {sortedData.map((_, index) => (
-                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} strokeWidth={0} />
-                            ))}
-                        </Pie>
-                        <Tooltip
-                            contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', fontSize: '11px', fontWeight: 'bold' }}
-                            formatter={(value) => `PKR ${value.toLocaleString()}`}
-                        />
-                        <Legend
-                            layout="vertical"
-                            verticalAlign="middle"
-                            align="right"
-                            iconSize={8}
-                            wrapperStyle={{ fontSize: '10px', fontWeight: 'bold', color: '#64748b' }}
-                        />
-                    </PieChart>
-                </ResponsiveContainer>
-                ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                        <div className="w-full h-full animate-pulse bg-slate-100 rounded-lg" />
-                    </div>
-                )}
+            <CardContent className="p-0 relative">
+                <div ref={containerRef} className="h-[220px]">
+                    {isReady ? (
+                        <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                            <Pie
+                                data={sortedData}
+                                cx="50%"
+                                cy="50%"
+                                innerRadius={50}
+                                outerRadius={70}
+                                paddingAngle={5}
+                                dataKey="value"
+                            >
+                                {sortedData.map((_, index) => (
+                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} strokeWidth={0} />
+                                ))}
+                            </Pie>
+                            <Tooltip
+                                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', fontSize: '11px', fontWeight: 'bold' }}
+                                formatter={(value) => `PKR ${value.toLocaleString()}`}
+                            />
+                            <Legend
+                                layout="vertical"
+                                verticalAlign="middle"
+                                align="right"
+                                iconSize={8}
+                                wrapperStyle={{ fontSize: '10px', fontWeight: 'bold', color: '#64748b' }}
+                            />
+                        </PieChart>
+                    </ResponsiveContainer>
+                    ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                            <div className="w-full h-full animate-pulse bg-slate-100 rounded-lg" />
+                        </div>
+                    )}
 
-                {/* Center Label */}
-                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none pr-14">
-                    <div className="text-[10px] font-bold text-slate-400 uppercase">Total</div>
-                    <div className="text-[12px] font-semibold text-slate-800">
-                        {((sortedData.reduce((sum, item) => sum + item.value, 0) / 1000).toFixed(1))}k
+                    {/* Center Label */}
+                    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none pr-14">
+                        <div className="text-[10px] font-bold text-slate-400 uppercase">Total</div>
+                        <div className="text-[12px] font-semibold text-slate-800">
+                            {((sortedData.reduce((sum, item) => sum + item.value, 0) / 1000).toFixed(1))}k
+                        </div>
                     </div>
                 </div>
             </CardContent>
