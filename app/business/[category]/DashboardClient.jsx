@@ -500,6 +500,9 @@ function BusinessDashboardContent() {
     fetchExpenses,
     moduleReady,
     loadingModules,
+    upsertProductInState,
+    removeProductFromState,
+    scheduleAnalyticsRefresh,
   } = useData();
 
   // Only block the dashboard tab on analytics for Advanced chrome that still needs metrics.
@@ -767,13 +770,22 @@ function BusinessDashboardContent() {
 
 
   /**
+   * Persist product via composite upsert.
    * @param {object} productData
-   * @param {{ skipFullWorkspaceRefresh?: boolean, silentToast?: boolean }} [options], Busy grid / inline edits:
-   *   refresh products only so optimistic UI is not overwritten by a concurrent full refetch.
+   * @param {{ skipFullWorkspaceRefresh?: boolean, silentToast?: boolean, refreshMode?: 'patch'|'inventory'|'full' }} [options]
+   *   Busy / inline: prefer patch (merge saved row). Form: inventory-only + debounced analytics.
    *   silentToast: do not toast here (InventoryManager BusyGrid / Excel already surfaces success).
    */
   const handleSaveProduct = async (productData, options = {}) => {
-    const { skipFullWorkspaceRefresh = false, silentToast = false } = options;
+    const {
+      skipFullWorkspaceRefresh = false,
+      silentToast = false,
+      refreshMode: refreshModeOpt,
+    } = options;
+    // skipFullWorkspaceRefresh historically meant inventory-only; prefer patch when possible.
+    const refreshMode =
+      refreshModeOpt ||
+      (skipFullWorkspaceRefresh ? 'patch' : 'inventory');
     const normalizedInput = flattenCompositeProductPayload(productData, business?.id);
     if (!business?.id) {
       toast.error('System is initializing. Please try again in 2 seconds.');
@@ -877,11 +889,21 @@ function BusinessDashboardContent() {
         toast.success(isEditing ? 'Product updated' : 'Product created');
       }
 
-      if (skipFullWorkspaceRefresh) {
-        await fetchInventory({ force: true, includeSerials: true });
-      } else {
-        // Full workspace sync (forms, cross-module aggregates)
+      const canPatch =
+        savedProduct?.id &&
+        (typeof upsertProductInState === 'function'
+          ? upsertProductInState(savedProduct)
+          : false);
+
+      if (refreshMode === 'patch' && canPatch) {
+        scheduleAnalyticsRefresh?.();
+      } else if (refreshMode === 'full') {
         await refreshAllData();
+      } else {
+        // Default inventory-only (form saves): one catalog fetch + debounced KPIs.
+        // Safety: also used when patch was requested but response was incomplete.
+        await fetchInventory({ force: true, includeSerials: true });
+        scheduleAnalyticsRefresh?.();
       }
 
       setShowProductForm(false);
@@ -899,11 +921,23 @@ function BusinessDashboardContent() {
 
 
 
-  const handleDeleteProduct = async (productId) => {
+  const handleDeleteProduct = async (productId, options = {}) => {
+    const alreadyDeleted =
+      options === true ||
+      (options && typeof options === 'object' && options.alreadyDeleted === true);
     try {
-      await productAPI.delete(productId, business.id);
-      await fetchInventory({ force: true });
-      toast.success('Product deleted successfully');
+      if (!alreadyDeleted) {
+        await productAPI.delete(productId, business.id);
+      }
+      if (typeof removeProductFromState === 'function') {
+        removeProductFromState(productId);
+      } else {
+        await fetchInventory({ force: true });
+      }
+      scheduleAnalyticsRefresh?.();
+      if (!alreadyDeleted) {
+        toast.success('Product deleted successfully');
+      }
     } catch (error) {
       console.error('Error deleting product:', error);
       toast.error('Failed to delete product: ' + formatInventoryActionError(error), {
@@ -925,7 +959,7 @@ function BusinessDashboardContent() {
         });
         toast.success('Customer added successfully');
       }
-      await fetchSales();
+      await fetchSales({ force: true });
       setShowCustomerForm(false);
       setEditingCustomer(null);
       return { success: true };
@@ -957,7 +991,7 @@ function BusinessDashboardContent() {
         });
         toast.success('Supplier registered');
       }
-      await fetchPurchases();
+      await fetchPurchases({ force: true });
       setShowVendorForm(false);
       setEditingVendor(null);
       return { success: true };
@@ -1055,7 +1089,7 @@ function BusinessDashboardContent() {
     if (confirm('De-register this supplier?')) {
       try {
         await vendorAPI.delete(business.id, vendorId);
-        await fetchPurchases();
+        await fetchPurchases({ force: true });
         toast.success('Vendor removed');
       } catch (error) {
         console.error('Error deleting vendor:', error);
@@ -1068,7 +1102,7 @@ function BusinessDashboardContent() {
     if (confirm('Are you sure you want to delete this customer?')) {
       try {
         await customerAPI.delete(customerId, business.id);
-        await fetchSales();
+        await fetchSales({ force: true });
         toast.success('Customer deleted successfully');
       } catch (error) {
         console.error('Error deleting customer:', error);
@@ -1290,7 +1324,7 @@ function BusinessDashboardContent() {
   const handleUpdatePOStatus = async (poId, status) => {
     try {
       const updated = await purchaseOrderAPI.updateStatus(business.id, poId, status);
-      await fetchPurchases();
+      await fetchPurchases({ force: true });
 
       if (status === PURCHASE_STATUSES.RECEIVED && business?.id) {
         await fetchInventory({ force: true });

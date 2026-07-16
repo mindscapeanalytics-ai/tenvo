@@ -602,6 +602,9 @@ export function ProductForm({
             }
             if (formData.serialNumbers && formData.serialNumbers.length > 0) {
                 payload.serialNumbers = formData.serialNumbers;
+            } else if (product?._serialsDeferred) {
+                // Light list load omitted serials — do not send empty arrays (mis-routes stock ledger).
+                payload._serialsDeferred = true;
             }
 
             const variantRows = buildVariantsFromForm(formData, { sku: payload.sku, ...payload });

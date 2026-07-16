@@ -293,11 +293,22 @@ export function InventoryManager({
     });
   }, []);
 
-  // Sync internal state when prop changes (from parent refresh)
+  // Sync internal state when prop changes (from parent refresh).
+  // Soft-merge by id so in-flight optimistic Busy edits are not hard-clobbered.
   useEffect(() => {
     const next = deduplicateProducts(initialProducts || []);
     queueMicrotask(() => {
-      setProducts(next);
+      setProducts((prev) => {
+        if (!Array.isArray(prev) || prev.length === 0) return next;
+        const prevById = new Map(prev.filter((p) => p?.id).map((p) => [p.id, p]));
+        const temps = prev.filter((p) => p?._tempId && !p?.id);
+        const merged = next.map((n) => {
+          if (!n?.id) return n;
+          const existing = prevById.get(n.id);
+          return existing ? mergeInventoryServerRow(existing, n) : n;
+        });
+        return deduplicateProducts([...temps, ...merged]);
+      });
       setLastSyncedAt(new Date());
     });
   }, [initialProducts]);
@@ -413,11 +424,7 @@ export function InventoryManager({
         if (!silentToast) {
           toast.success('Product created successfully');
         }
-        if (refreshData) {
-          await refreshData();
-        } else {
-          await reloadProductsSilent();
-        }
+        // Parent handleSaveProduct already patched / refreshed inventory — do not double-fetch.
         onAdd?.(productData);
         if (closeForm) {
           setShowProductFormInternal(false);
@@ -456,7 +463,7 @@ export function InventoryManager({
         toast.error(res.error || 'Failed to delete product');
       } else {
         toast.success('Product archived');
-        onDelete?.(id);
+        onDelete?.(id, { alreadyDeleted: true });
       }
     } catch (err) {
       setProducts(old); // Revert on network error
@@ -986,7 +993,7 @@ export function InventoryManager({
         const product = toDelete[index];
         if (result.status === 'fulfilled' && result.value.success) {
           successCount++;
-          onDelete?.(product.id);
+          onDelete?.(product.id, { alreadyDeleted: true });
         } else {
           failed++;
           idsToKeep.push(product.id);
@@ -1534,7 +1541,7 @@ export function InventoryManager({
     try {
       if (onUpdate) {
         const mappedForSave = mapExcelRowForSave(updatedProduct, category);
-        await onUpdate({
+        const saved = await onUpdate({
           ...leanProductPayloadForUpdate(mappedForSave),
           id: updatedProduct.id,
           business_id: businessId,
@@ -1554,7 +1561,16 @@ export function InventoryManager({
                 ),
         });
         if (busyCellSaveGenRef.current.get(saveKey) !== gen) return;
-        await reloadProductsSilent();
+        // Prefer patch from composite return — avoid a second full catalog fetch.
+        if (saved?.id) {
+          setProducts((prev) =>
+            prev.map((p) =>
+              rowsMatchInventoryRow(p, product) ? mergeInventoryServerRow(p, saved) : p
+            )
+          );
+        } else {
+          await reloadProductsSilent();
+        }
       } else {
         const saveRes = await updateProductAction(updatedProduct.id, businessId, updatedProduct);
         if (busyCellSaveGenRef.current.get(saveKey) !== gen) return;
@@ -3195,8 +3211,14 @@ export function InventoryManager({
         open={!!productToView}
         onClose={() => setProductToView(null)}
         onUpdate={(updatedProduct) => {
-          setProducts(prev => prev.map(p => p.id === updatedProduct.id ? updatedProduct : p));
-          onUpdate?.(updatedProduct);
+          // ProductDetailsDialog already persisted via updateProductAction.
+          // Merge locally only — do not call composite onUpdate (would double-write).
+          setProducts((prev) =>
+            prev.map((p) =>
+              p.id === updatedProduct.id ? mergeInventoryServerRow(p, updatedProduct) : p
+            )
+          );
+          void refreshData?.();
         }}
         category={category}
       />
@@ -3226,7 +3248,7 @@ export function InventoryManager({
                   if (res.success) {
                     setProducts(prev => prev.filter(p => p.id !== id));
                     toast.success('Product archived');
-                    onDelete?.(id);
+                    onDelete?.(id, { alreadyDeleted: true });
                     setProductToDelete(null);
                   } else {
                     toast.error(res.error || 'Failed to delete product');
