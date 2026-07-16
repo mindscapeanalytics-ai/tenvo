@@ -17,6 +17,7 @@ interface MergedActionInsightsProps {
     operationalInsights: ActionInsight[];
     reminders: { lowStock?: number; overdueInvoices?: number; pendingOrders?: number };
     onQuickAction?: (actionId: string) => void;
+    className?: string;
 }
 
 /** Domain playbook + deduped operational alerts in one sidebar column. */
@@ -26,6 +27,7 @@ export function MergedActionInsights({
     operationalInsights,
     reminders,
     onQuickAction,
+    className,
 }: MergedActionInsightsProps) {
     const intel = (domainKnowledge?.intelligence ?? {}) as Record<string, unknown>;
 
@@ -51,26 +53,26 @@ export function MergedActionInsights({
     const alerts = filteredOperational.slice(0, 3);
 
     return (
-        <div className="space-y-1.5">
+        <div className={cn('space-y-1.5', className)}>
             <IndustryInsights category={category} domainKnowledge={domainKnowledge} variant="compact" />
 
             {alerts.length > 0 ? (
-                <div className="rounded-2xl border border-gray-100 bg-white p-2.5 shadow-sm min-h-[180px]">
+                <div className="rounded-2xl border border-gray-100 bg-white p-3 shadow-sm">
                     <div className="mb-1 flex items-center gap-2">
-                        <Zap className="h-4 w-4 text-amber-500 fill-amber-500" />
+                        <Zap className="h-4 w-4 shrink-0 text-amber-500 fill-amber-500" />
                         <h3 className="text-sm font-semibold text-gray-900">Action alerts</h3>
                     </div>
-                    <p className="mb-1.5 text-[10px] text-slate-500 leading-snug">
+                    <p className="mb-2 text-[10px] leading-snug text-slate-500">
                         Tap an alert to jump to the right workspace tab. Counts like overdue and low stock stay in Reminders above.
                     </p>
-                    <div className="space-y-1.5 max-h-40 overflow-y-auto overscroll-y-contain pr-0.5">
+                    <div className="max-h-[9.5rem] space-y-1.5 overflow-y-auto overscroll-y-contain pr-1">
                         {alerts.map((insight, idx) => (
                             <button
                                 key={`${insight.title}-${idx}`}
                                 type="button"
                                 onClick={() => onQuickAction?.(insight.actionTab)}
                                 className={cn(
-                                    'w-full text-left p-2 rounded-xl border transition-all hover:shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30',
+                                    'w-full rounded-xl border p-2 text-left transition-all hover:shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30',
                                     insight.tone === 'indigo' && 'bg-brand-50 border-brand-100 hover:bg-brand-100/50',
                                     insight.tone === 'emerald' && 'bg-emerald-50 border-emerald-100 hover:bg-emerald-100/50',
                                     insight.tone === 'amber' && 'bg-amber-50 border-amber-100 hover:bg-amber-100/50',
@@ -79,7 +81,7 @@ export function MergedActionInsights({
                                 )}
                             >
                                 <p className="text-[11px] font-bold text-slate-700">{insight.title}</p>
-                                <p className="text-[10px] text-slate-600 mt-1 leading-snug">{insight.text}</p>
+                                <p className="mt-1 text-[10px] leading-snug text-slate-600">{insight.text}</p>
                             </button>
                         ))}
                     </div>

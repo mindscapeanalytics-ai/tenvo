@@ -34,10 +34,10 @@ export const Portlet = memo(function Portlet({
 
     return (
         <Card className={cn(
-            "border-gray-200 shadow-sm overflow-hidden group/portlet bg-white transition-all duration-300 hover:shadow-md",
+            "flex flex-col border-gray-200 shadow-sm overflow-hidden group/portlet bg-white transition-all duration-300 hover:shadow-md",
             className
         )}>
-            <CardHeader className="bg-gray-50/50 border-b border-gray-100 py-2.5 px-3 flex flex-row items-center justify-between space-y-0 text-left">
+            <CardHeader className="shrink-0 bg-gray-50/50 border-b border-gray-100 py-2.5 px-3 flex flex-row items-center justify-between space-y-0 text-left">
                 <div className="flex flex-col gap-0.5">
                     <div className="flex items-center gap-1.5">
                         <GripVertical className="w-3 h-3 text-gray-300 cursor-grab active:cursor-grabbing opacity-0 group-hover/portlet:opacity-100 transition-opacity" />
@@ -71,13 +71,13 @@ export const Portlet = memo(function Portlet({
                 </div>
             </CardHeader>
             {!isCollapsed && (
-                <CardContent className={cn("p-0 relative", isLoading && "opacity-50 pointer-events-none")}>
+                <CardContent className={cn("relative flex min-h-0 flex-1 flex-col p-0", isLoading && "opacity-50 pointer-events-none")}>
                     {isLoading && (
                         <div className="absolute inset-0 flex items-center justify-center bg-white/20 backdrop-blur-[1px] z-10">
                             <div className="w-5 h-5 border-2 border-wine border-t-transparent rounded-full animate-spin" />
                         </div>
                     )}
-                    <div className={cn(compact ? "p-2" : "p-3")}>
+                    <div className={cn('flex min-h-0 flex-1 flex-col', compact ? "p-2" : "p-3")}>
                         {children}
                     </div>
                 </CardContent>

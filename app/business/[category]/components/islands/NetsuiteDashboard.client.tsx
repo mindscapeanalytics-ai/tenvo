@@ -28,9 +28,9 @@ export default function NetsuiteDashboard({
 
     return (
         <div className={cn("animate-in fade-in duration-500", className)}>
-            {/* Portlet Grid */}
+            {/* Portlet Grid — bottom pad clears AI copilot FAB on desktop + mobile */}
             <div className={cn(
-                "grid gap-3 mt-1 items-start",
+                "grid gap-3 mt-1 items-start pb-[calc(5.5rem+env(safe-area-inset-bottom))] lg:pb-24",
                 layout === 'grid' ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-12" : "grid-cols-1"
             )}>
                 {children}

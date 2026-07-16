@@ -111,6 +111,7 @@ export interface DomainOperationsPanelProps {
   onSnapshotRetry?: () => void;
   /** When false, render nothing while shared snapshot is loading (avoids duplicate loaders). */
   showLoadingShell?: boolean;
+  className?: string;
 }
 
 export type { DomainOperationsSnapshot } from '@/lib/hooks/useDomainOperationsSnapshot';
@@ -137,6 +138,7 @@ export function DomainOperationsPanel({
   snapshotError,
   onSnapshotRetry,
   showLoadingShell = true,
+  className,
 }: DomainOperationsPanelProps) {
   const [internalLoading, setInternalLoading] = useState(false);
   const [internalSnapshot, setInternalSnapshot] = useState<DomainOperationsSnapshot | null>(null);
@@ -318,7 +320,11 @@ export function DomainOperationsPanel({
             : Store;
 
   return (
-    <div className={cn('space-y-4', compact && 'space-y-3')}>
+    <div className={cn(
+      'space-y-4',
+      compact && 'flex h-full min-h-0 flex-col space-y-2',
+      className
+    )}>
       {!compact ? (
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex items-start gap-2">
@@ -508,7 +514,10 @@ export function DomainOperationsPanel({
       ) : null}
 
       {hasQueueCards ? (
-      <div className={cn('grid gap-4', compact ? 'grid-cols-1' : 'lg:grid-cols-12')}>
+      <div className={cn(
+        'grid gap-4',
+        compact ? 'min-h-0 flex-1 grid-cols-1' : 'lg:grid-cols-12'
+      )}>
         {showInquiries ? (
         <Card className={cn('border-neutral-200 shadow-sm h-full', !compact && 'lg:col-span-6')}>
           <CardHeader className="pb-2">
@@ -555,25 +564,29 @@ export function DomainOperationsPanel({
         ) : null}
 
         {showCollections ? (
-        <Card className={cn('border-neutral-200 shadow-sm h-full', !compact && 'lg:col-span-3')}>
-          <CardHeader className="pb-2">
+        <Card className={cn(
+          'border-neutral-200 shadow-sm h-full',
+          compact && 'flex min-h-0 flex-col',
+          !compact && 'lg:col-span-3'
+        )}>
+          <CardHeader className="shrink-0 pb-2">
             <CardTitle className="flex items-center gap-2 text-sm">
-              <Wallet className="h-4 w-4" />
+              <Wallet className="h-4 w-4 shrink-0" />
               Collections
             </CardTitle>
             <CardDescription className="text-xs">Paid invoices & storefront in period</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-1.5">
+          <CardContent className={cn('space-y-1.5', compact && 'min-h-0 flex-1 overflow-y-auto overscroll-y-contain pr-0.5 [scrollbar-gutter:stable]')}>
             {(collections.recent || []).length === 0 ? (
               <p className="py-4 text-center text-xs text-neutral-500">No collections recorded in this period.</p>
             ) : (
               (collections.recent || []).slice(0, compact ? 4 : 6).map((row, idx) => (
-                <div key={`${row.name}-${idx}`} className="flex items-center justify-between gap-2 rounded-lg bg-neutral-50 px-2 py-1.5">
-                  <div className="min-w-0">
+                <div key={`${row.name}-${idx}`} className="flex items-center justify-between gap-2 rounded-lg bg-neutral-50 px-2.5 py-1.5">
+                  <div className="min-w-0 flex-1 pr-2">
                     <p className="truncate text-xs font-semibold text-neutral-900">{row.name || 'Customer'}</p>
                     <p className="text-[10px] text-neutral-500">{row.source}</p>
                   </div>
-                  <span className="shrink-0 text-xs font-semibold tabular-nums">{formatCurrencyCompact(row.amount || 0)}</span>
+                  <span className="shrink-0 text-right text-xs font-semibold tabular-nums">{formatCurrencyCompact(row.amount || 0)}</span>
                 </div>
               ))
             )}

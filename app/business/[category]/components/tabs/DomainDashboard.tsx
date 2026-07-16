@@ -1243,8 +1243,8 @@ export function DomainDashboard({
                 />
             </div>
 
-            {/* Analytics + contextual right rail */}
-            <div className="hidden lg:block lg:col-span-8 min-h-0 space-y-2">
+            {/* Analytics + contextual right rail (reminders / period KPIs only) */}
+            <div className="hidden lg:block lg:col-span-8 min-h-0">
                 <AnalyticsDashboard
                     businessId={activeBusinessId}
                     category={category}
@@ -1258,30 +1258,9 @@ export function DomainDashboard({
                     dateRange={dateRange}
                     onQuickAction={onQuickAction}
                 />
-
-                {/* Bottom row — Recent Activity & Domain Efficiency in 12-col grid */}
-                <div className="grid grid-cols-12 gap-2 items-stretch">
-                    <div className="col-span-7 min-h-0">
-                        <RecentActivityFeed
-                            businessId={activeBusinessId}
-                            onViewAll={() => onQuickAction?.('reports')}
-                            feedLimit={25}
-                        />
-                    </div>
-                    <div className="col-span-5 min-h-0">
-                        <KPIMeter
-                            title="Domain Efficiency"
-                            value={domainEfficiency}
-                            target={95}
-                            suffix="%"
-                            trendValue={Number(revenueTrendSigned.toFixed(1))}
-                            trendLabel="vs previous period"
-                        />
-                    </div>
-                </div>
             </div>
 
-            <div className="hidden lg:flex lg:col-span-4 flex-col gap-2 min-h-0 self-start">
+            <div className="hidden lg:flex lg:col-span-4 flex-col gap-2 min-h-0 self-stretch">
                 <RemindersPortlet data={remindersData} onItemClick={onQuickAction} />
 
                 <PerformanceKPIs
@@ -1293,39 +1272,67 @@ export function DomainDashboard({
                     customersChange={Number(customerTrend)}
                     avgOrderValue={formatCurrencyCompact(avgOrderValue)}
                 />
+            </div>
 
-                <MergedActionInsights
-                    category={category}
-                    domainKnowledge={domainKnowledge as Record<string, unknown> | undefined}
-                    operationalInsights={intelligentInsights}
-                    reminders={remindersData}
-                    onQuickAction={onQuickAction}
-                />
+            {/* Bottom band — Activity | Efficiency | Alerts+Collections, equal stretch */}
+            <div className="hidden lg:grid lg:col-span-12 grid-cols-12 gap-2 items-stretch min-h-[22rem]">
+                <div className="col-span-5 min-h-0 flex flex-col">
+                    <RecentActivityFeed
+                        businessId={activeBusinessId}
+                        onViewAll={() => onQuickAction?.('reports')}
+                        feedLimit={25}
+                        className="h-full"
+                    />
+                </div>
+                <div className="col-span-3 min-h-0 flex flex-col">
+                    <KPIMeter
+                        title="Domain Efficiency"
+                        value={domainEfficiency}
+                        target={95}
+                        suffix="%"
+                        trendValue={Number(revenueTrendSigned.toFixed(1))}
+                        trendLabel="vs previous period"
+                        className="h-full"
+                    />
+                </div>
+                <div className="col-span-4 min-h-0 flex flex-col gap-2">
+                    <MergedActionInsights
+                        category={category}
+                        domainKnowledge={domainKnowledge as Record<string, unknown> | undefined}
+                        operationalInsights={intelligentInsights}
+                        reminders={remindersData}
+                        onQuickAction={onQuickAction}
+                        className="shrink-0"
+                    />
 
-                <DomainOperationsPanel
-                    businessId={activeBusinessId}
-                    business={business}
-                    category={category}
-                    domainKnowledge={domainKnowledge as Record<string, unknown> | undefined}
-                    dateRange={dateRange}
-                    periodLabel={periodLabel}
-                    formatCurrencyCompact={formatCurrencyCompact}
-                    onQuickAction={onQuickAction}
-                    isActive
-                    variant="compact"
-                    sections={['collections']}
-                    hideKpiStrip
-                    hideMiddleCharts
-                    hideOrderTimeline
-                    snapshot={advancedOpsSnapshot.snapshot}
-                    snapshotLoading={advancedOpsSnapshot.loading}
-                    snapshotError={advancedOpsSnapshot.error}
-                    onSnapshotRetry={advancedOpsSnapshot.reload}
-                />
+                    <div className="min-h-0 flex-1">
+                        <DomainOperationsPanel
+                            businessId={activeBusinessId}
+                            business={business}
+                            category={category}
+                            domainKnowledge={domainKnowledge as Record<string, unknown> | undefined}
+                            dateRange={dateRange}
+                            periodLabel={periodLabel}
+                            formatCurrencyCompact={formatCurrencyCompact}
+                            onQuickAction={onQuickAction}
+                            isActive
+                            variant="compact"
+                            sections={['collections']}
+                            hideKpiStrip
+                            hideMiddleCharts
+                            hideOrderTimeline
+                            snapshot={advancedOpsSnapshot.snapshot}
+                            snapshotLoading={advancedOpsSnapshot.loading}
+                            snapshotError={advancedOpsSnapshot.error}
+                            onSnapshotRetry={advancedOpsSnapshot.reload}
+                            className="h-full"
+                        />
+                    </div>
+                </div>
             </div>
 
             {/* Mobile — hub covers KPIs/actions; show insights & activity only */}
-            <div className="min-w-0 space-y-3 overflow-x-hidden pb-2 lg:hidden lg:col-span-12">
+            <div className="min-w-0 space-y-3 overflow-x-hidden lg:hidden lg:col-span-12">
                 <AnalyticsDashboard
                     businessId={activeBusinessId}
                     category={category}

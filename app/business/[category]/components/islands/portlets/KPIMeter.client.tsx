@@ -21,6 +21,7 @@ interface KPIMeterProps {
     color?: string;
     trendValue?: number;
     trendLabel?: string;
+    className?: string;
     additionalMetrics?: Array<{
         label: string;
         value: string;
@@ -37,6 +38,7 @@ export const KPIMeter = memo(function KPIMeter({
     color = BRAND_PRIMARY,
     trendValue = 0,
     trendLabel = "vs previous period",
+    className,
     additionalMetrics = []
 }: KPIMeterProps) {
     const safeValue = Math.max(0, Math.min(Number(value) || 0, Number(target) || 100));
@@ -48,14 +50,14 @@ export const KPIMeter = memo(function KPIMeter({
     ];
 
     return (
-        <Portlet title={title}>
-            <div className="flex flex-col items-center justify-center">
-                <div className="h-[190px] w-full relative flex items-center justify-center">
+        <Portlet title={title} className={cn('flex h-full min-h-[22rem] flex-col', className)}>
+            <div className="flex h-full min-h-0 flex-col items-center justify-between gap-3">
+                <div className="relative flex h-[9.5rem] w-full shrink-0 items-center justify-center sm:h-[11rem]">
                     <ResponsiveContainer width="100%" height="100%">
                         <RadialBarChart
                             cx="50%"
-                            cy="50%"
-                            innerRadius="70%"
+                            cy="58%"
+                            innerRadius="68%"
                             outerRadius="100%"
                             barSize={12}
                             data={data}
@@ -69,47 +71,47 @@ export const KPIMeter = memo(function KPIMeter({
                         </RadialBarChart>
                     </ResponsiveContainer>
 
-                    {/* Centered Value */}
-                    <div className="absolute inset-0 flex flex-col items-center justify-center">
-                        <span className="text-3xl font-semibold text-gray-900 leading-none">
+                    {/* Centered Value — sit in gauge bowl */}
+                    <div className="pointer-events-none absolute inset-x-0 top-[42%] flex flex-col items-center justify-center">
+                        <span className="text-3xl font-semibold leading-none text-gray-900 tabular-nums">
                             {prefix}{safeValue}{suffix}
                         </span>
-                        <div className="flex items-center gap-1 mt-1">
-                            <TrendingUp className={`w-3 h-3 ${trendValue >= 0 ? 'text-emerald-500' : 'text-red-500 rotate-180'}`} />
-                            <span className={`text-[10px] font-semibold uppercase tracking-wide ${trendValue >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                        <div className="mt-1.5 flex max-w-[90%] items-center justify-center gap-1 px-1">
+                            <TrendingUp className={`h-3 w-3 shrink-0 ${trendValue >= 0 ? 'text-emerald-500' : 'text-red-500 rotate-180'}`} />
+                            <span className={`text-center text-[10px] font-semibold uppercase tracking-wide leading-tight ${trendValue >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                                 {trendValue >= 0 ? '+' : ''}{trendValue}% {trendLabel}
                             </span>
                         </div>
                     </div>
                 </div>
 
-                <div className="w-full flex items-center justify-center gap-8 border-t border-gray-100 pt-3 mt-2">
-                    <div className="text-center">
+                <div className="mt-auto flex w-full items-center justify-between gap-2 border-t border-gray-100 pt-3 sm:justify-center sm:gap-6">
+                    <div className="min-w-0 flex-1 text-center sm:flex-none">
                         <p className={cn(HUB_MICRO_LABEL, 'mb-1 text-neutral-400')}>Current</p>
-                        <p className={cn(HUB_STAT_VALUE, 'text-sm text-neutral-800')}>{prefix}{safeValue}{suffix}</p>
+                        <p className={cn(HUB_STAT_VALUE, 'text-sm text-neutral-800 tabular-nums')}>{prefix}{safeValue}{suffix}</p>
                     </div>
-                    <div className="h-8 w-px bg-gray-200"></div>
-                    <div className="text-center">
+                    <div className="hidden h-8 w-px shrink-0 bg-gray-200 sm:block" aria-hidden />
+                    <div className="min-w-0 flex-1 text-center sm:flex-none">
                         <p className={cn(HUB_MICRO_LABEL, 'mb-1 text-neutral-400')}>Target</p>
-                        <p className={cn(HUB_STAT_VALUE, 'text-sm text-neutral-800')}>{prefix}{target}{suffix}</p>
+                        <p className={cn(HUB_STAT_VALUE, 'text-sm text-neutral-800 tabular-nums')}>{prefix}{target}{suffix}</p>
                     </div>
-                    <div className="h-8 w-px bg-gray-200"></div>
-                    <div className="text-center">
+                    <div className="hidden h-8 w-px shrink-0 bg-gray-200 sm:block" aria-hidden />
+                    <div className="min-w-0 flex-1 text-center sm:flex-none">
                         <p className={cn(HUB_MICRO_LABEL, 'mb-1 text-neutral-400')}>Gap</p>
-                        <p className={cn(HUB_STAT_VALUE, 'text-sm text-red-600')}>{Math.max(0, target - safeValue)}{suffix}</p>
+                        <p className={cn(HUB_STAT_VALUE, 'text-sm text-red-600 tabular-nums')}>{Math.max(0, target - safeValue)}{suffix}</p>
                     </div>
                 </div>
 
                 {additionalMetrics && additionalMetrics.length > 0 && (
-                    <div className="w-full grid grid-cols-3 gap-2 border-t border-gray-100 pt-2.5 mt-2">
+                    <div className="mt-2 grid w-full grid-cols-3 gap-2 border-t border-gray-100 pt-2.5">
                         {additionalMetrics.map((metric, idx) => (
-                            <div key={idx} className="text-center px-2">
-                                <p className={cn(HUB_MICRO_LABEL, 'mb-1 text-neutral-400 truncate')}>{metric.label}</p>
+                            <div key={idx} className="px-1 text-center sm:px-2">
+                                <p className={cn(HUB_MICRO_LABEL, 'mb-1 truncate text-neutral-400')}>{metric.label}</p>
                                 <div className="flex items-center justify-center gap-1">
                                     {metric.trend && (
                                         <TrendingUp 
                                             className={cn(
-                                                'w-3 h-3',
+                                                'h-3 w-3',
                                                 metric.trend === 'up' ? 'text-emerald-500' : 'text-red-500 rotate-180'
                                             )} 
                                         />
