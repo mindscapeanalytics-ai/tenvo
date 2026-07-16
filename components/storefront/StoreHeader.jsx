@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import {
   ShoppingBag, Search, Menu, User, Heart,
   Phone, MapPin, X, ChevronDown,
-  Truck, Shield, RotateCcw, HelpCircle, Mail, FileUp,
+  Shield, FileUp,
   Gauge, Percent, Calendar,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -28,7 +28,6 @@ import { isAutoMarketplaceStore, getMarketplaceNavLinks } from '@/lib/storefront
 import { isPharmacyElevatedStore, getPharmacyNavLinks, formatPharmacyStoreName } from '@/lib/storefront/pharmacyStorefront';
 import { resolveDomainKey } from '@/lib/config/domainKeyAliases';
 import { SmartProductImage } from '@/components/storefront/SmartProductImage';
-import { formatCurrency } from '@/lib/currency';
 import { resolveStoreContact } from '@/lib/storefront/businessContact';
 
 function EditorialMenuIcon({ className }) {
@@ -67,8 +66,6 @@ export function StoreHeader({ business, categories, settings }) {
   const contact = resolveStoreContact({ business, settings });
   const contactPhone = contact.phone;
   const contactCity = contact.city || settings?.contact?.city;
-  const freeShip = settings?.freeShippingThreshold;
-  const returnDays = settings?.returnPolicyDays;
 
   useEffect(() => {
     const onScroll = () => setIsScrolled(window.scrollY > 40);
@@ -110,7 +107,13 @@ export function StoreHeader({ business, categories, settings }) {
   const dealershipOnHome = dealershipNav && isHome;
   const marketplaceOnHome = marketplaceNav && isHome;
   const pharmacyOnHome = pharmacyNav && isHome;
+  /** Jewellery / beauty / fashion: one compact bar when scrolled (no stacked announcement + policies). */
+  const compactLuxuryHeader = (jewelleryNav || editorialNav) && isScrolled;
   const transparentHeader = (editorialOnHome || jewelleryOnHome || dealershipOnHome) && !isScrolled;
+  const showAnnouncementBar =
+    topBarEnabled &&
+    !(immersiveNav && isHome && !isScrolled) &&
+    !compactLuxuryHeader;
   const canonical = resolveDomainKey(business?.category);
   const dealershipLinks = dealershipNav
     ? getDealershipNavLinks(storeRoot, { country: business?.country, settings })
@@ -138,7 +141,7 @@ export function StoreHeader({ business, categories, settings }) {
         )}
     >
       {/* ── Announcement / Top Bar ─────────────────────────────────────── */}
-      {topBarEnabled && !(immersiveNav && isHome && !isScrolled) && (
+      {showAnnouncementBar && (
         <div
           className="hidden text-white text-xs py-2 px-4 md:block"
           style={{ backgroundColor: accent }}
@@ -195,57 +198,6 @@ export function StoreHeader({ business, categories, settings }) {
               )
         )}
       >
-        {/* Service Strip - Only visible when scrolled (merged into header) */}
-        {isScrolled && showServiceStrip && !dealershipNav && !marketplaceNav && (editorialNav || jewelleryNav) && (
-          <div className="hidden border-b border-stone-200/50 bg-stone-50/80 lg:block">
-            <div className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-8 py-1.5">
-              <nav
-                className="flex flex-wrap items-center justify-center gap-x-5 text-[10px] font-semibold uppercase tracking-wider text-stone-600"
-                aria-label="Store policies"
-              >
-                <Link
-                  href={`${storeRoot}/shipping`}
-                  className="inline-flex items-center gap-1.5 transition-colors hover:text-stone-900"
-                >
-                  <Truck className="h-3 w-3" style={{ color: accent }} aria-hidden />
-                  {typeof freeShip === 'number' && freeShip > 0
-                    ? `Free over ${formatCurrency(freeShip, currency || 'PKR', { maximumFractionDigits: 0 })}`
-                    : 'Shipping'}
-                </Link>
-                <span className="text-stone-300 select-none" aria-hidden>|</span>
-                <Link
-                  href={`${storeRoot}/returns`}
-                  className="inline-flex items-center gap-1.5 transition-colors hover:text-stone-900"
-                >
-                  <RotateCcw className="h-3 w-3" style={{ color: accent }} aria-hidden />
-                  {typeof returnDays === 'number' && returnDays > 0 ? `${returnDays}-day returns` : 'Returns'}
-                </Link>
-                <span className="text-stone-300 select-none" aria-hidden>|</span>
-                <Link
-                  href={`${storeRoot}/faqs`}
-                  className="inline-flex items-center gap-1.5 transition-colors hover:text-stone-900"
-                >
-                  <HelpCircle className="h-3 w-3" style={{ color: accent }} aria-hidden />
-                  FAQs
-                </Link>
-                <span className="text-stone-300 select-none" aria-hidden>|</span>
-                <Link
-                  href={`${storeRoot}/contact`}
-                  className="inline-flex items-center gap-1.5 transition-colors hover:text-stone-900"
-                >
-                  <Mail className="h-3 w-3" style={{ color: accent }} aria-hidden />
-                  Contact
-                </Link>
-                <span className="text-stone-300 select-none" aria-hidden>|</span>
-                <span className="inline-flex items-center gap-1.5 font-medium normal-case tracking-normal text-stone-500">
-                  <Shield className="h-3 w-3" style={{ color: accent }} aria-hidden />
-                  Secure checkout
-                </span>
-              </nav>
-            </div>
-          </div>
-        )}
-
         {/* Marketplace Service Strip - Only visible when scrolled */}
         {isScrolled && showServiceStrip && marketplaceNav && (
           <div className="hidden border-b border-neutral-100 bg-neutral-50/80 lg:block">
@@ -446,7 +398,11 @@ export function StoreHeader({ business, categories, settings }) {
           <div
             className={cn(
               'relative hidden items-center justify-between gap-4 transition-all duration-200 lg:flex',
-              editorialNav ? 'py-4' : isScrolled ? 'py-2.5' : 'py-4'
+              (editorialNav || jewelleryNav)
+                ? (isScrolled ? 'py-2.5' : 'py-4')
+                : isScrolled
+                  ? 'py-2.5'
+                  : 'py-4'
             )}
           >
             {dealershipNav ? (
