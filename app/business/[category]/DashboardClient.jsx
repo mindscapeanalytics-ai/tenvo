@@ -885,23 +885,24 @@ function BusinessDashboardContent() {
         initialStock: !isEditing ? (normalizedProductData.stock || 0) : 0,
       });
 
-      if (!silentToast) {
-        toast.success(isEditing ? 'Product updated' : 'Product created');
-      }
-
       const canPatch =
         savedProduct?.id &&
         (typeof upsertProductInState === 'function'
           ? upsertProductInState(savedProduct)
           : false);
 
-      if (refreshMode === 'patch' && canPatch) {
-        scheduleAnalyticsRefresh?.();
-      } else if (refreshMode === 'full') {
+      // Confirm only after DB commit. Compact chip for grid paths; form uses same chip.
+      if (!silentToast) {
+        notify.compactSave(isEditing ? 'Updated' : 'Created');
+      }
+
+      if (refreshMode === 'full') {
         await refreshAllData();
+      } else if (canPatch) {
+        // Patch path: UI unlocks immediately; KPIs refresh in background.
+        scheduleAnalyticsRefresh?.();
       } else {
-        // Default inventory-only (form saves): one catalog fetch + debounced KPIs.
-        // Safety: also used when patch was requested but response was incomplete.
+        // Safety fallback when save response cannot be merged into state.
         await fetchInventory({ force: true, includeSerials: true });
         scheduleAnalyticsRefresh?.();
       }

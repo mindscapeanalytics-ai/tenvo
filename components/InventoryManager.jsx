@@ -88,7 +88,9 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from 'react-hot-toast';
+import notify, { TOAST_IDS } from '@/lib/utils/appToast';
 import { useBusiness } from '@/lib/context/BusinessContext';
+import { useDataOptional } from '@/lib/context/DataContext';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { ProductThumbnail } from '@/components/product/ProductThumbnail';
 import { formatCurrency } from '@/lib/utils/formatting';
@@ -255,6 +257,9 @@ export function InventoryManager({
   refreshData,
 }) {
   const { regionalStandards, currency, currencySymbol, regionalPack, business } = useBusiness();
+  const dataCtx = useDataOptional();
+  const upsertProductInState = dataCtx?.upsertProductInState;
+  const scheduleAnalyticsRefresh = dataCtx?.scheduleAnalyticsRefresh;
   const standards = regionalStandards || {
     currencySymbol: currencySymbol || '₨',
     currency: currency || 'PKR',
@@ -393,8 +398,8 @@ export function InventoryManager({
         business_id: businessId,
       });
       if (res.success) {
-        toast.success('Product created successfully');
         setProducts((prev) => [res.product, ...prev]);
+        notify.compactSave('Created');
         onAdd?.(res.product);
         return res.product;
       }
@@ -422,7 +427,7 @@ export function InventoryManager({
         await onUpdate(buildFlatOnUpdatePayload(productData));
 
         if (!silentToast) {
-          toast.success('Product created successfully');
+          notify.compactSave('Created');
         }
         // Parent handleSaveProduct already patched / refreshed inventory — do not double-fetch.
         onAdd?.(productData);
@@ -725,6 +730,7 @@ export function InventoryManager({
       const useCompositeSave = typeof onUpdate === 'function' && businessId;
       const successfulTempIds = new Set();
       let compositeSuccess = false;
+      let compositeProducts = [];
 
       if (useCompositeSave) {
         const bulkItems = changedItems.map((item) => {
@@ -766,6 +772,7 @@ export function InventoryManager({
         results.created = bulkRes.created ?? 0;
         results.updated = bulkRes.updated ?? 0;
         results.failed = bulkRes.failed?.length ?? 0;
+        compositeProducts = Array.isArray(bulkRes.products) ? bulkRes.products : [];
         compositeSuccess = results.created + results.updated > 0;
         changedItems.forEach((item, idx) => {
           if (item._tempId && !bulkRes.failed?.some((f) => f.index === idx)) {
@@ -837,31 +844,53 @@ export function InventoryManager({
       }
 
       if (useCompositeSave && results.created + results.updated > 0) {
-        try {
-          await reloadProductsSilent();
-        } catch (e) {
-          console.warn('[handleExcelSave] reload after composite save:', e);
+        const savedProducts = compositeProducts;
+        if (savedProducts.length > 0) {
+          const byId = new Map(savedProducts.map((p) => [p.id, p]));
           setProducts((prev) => {
             let next = prev.filter((p) => !p._tempId || !successfulTempIds.has(p._tempId));
-            for (const item of changedItems) {
-              const mapped = mapExcelRowForSave(item, category);
-              if (mapped.id) {
-                next = next.map((p) =>
-                  p.id === mapped.id ? preserveRelationalData({ ...p, ...mapped }, p) : p
-                );
+            next = next.map((p) => (p.id && byId.has(p.id) ? mergeInventoryServerRow(p, byId.get(p.id)) : p));
+            for (const p of savedProducts) {
+              if (p?.id && !next.some((row) => row.id === p.id)) {
+                next = [p, ...next];
               }
             }
-            return next;
+            return deduplicateProducts(next);
           });
+          if (typeof upsertProductInState === 'function') {
+            savedProducts.forEach((p) => upsertProductInState(p));
+          }
+          scheduleAnalyticsRefresh?.();
+        } else {
+          try {
+            await reloadProductsSilent();
+          } catch (e) {
+            console.warn('[handleExcelSave] reload after composite save:', e);
+            setProducts((prev) => {
+              let next = prev.filter((p) => !p._tempId || !successfulTempIds.has(p._tempId));
+              for (const item of changedItems) {
+                const mapped = mapExcelRowForSave(item, category);
+                if (mapped.id) {
+                  next = next.map((p) =>
+                    p.id === mapped.id ? preserveRelationalData({ ...p, ...mapped }, p) : p
+                  );
+                }
+              }
+              return next;
+            });
+          }
         }
       }
 
       toast.dismiss('excel-save');
 
       if (results.failed === 0) {
-        toast.success(`Excel Save Complete: ${results.updated} updated, ${results.created} created`, {
-          id: 'excel-save-result',
-          duration: 3500,
+        const parts = [];
+        if (results.updated) parts.push(`${results.updated} updated`);
+        if (results.created) parts.push(`${results.created} created`);
+        notify.compactSave(parts.length ? parts.join(', ') : 'Saved', {
+          id: TOAST_IDS.INVENTORY_EXCEL,
+          duration: 1800,
         });
         setShowExcelMode(false);
       } else {
@@ -1169,6 +1198,7 @@ export function InventoryManager({
     try {
       if (onUpdate) {
         await onUpdate(buildFlatOnUpdatePayload(productData, { productId: productData.id }));
+        notify.compactSave('Updated');
 
         if (closeForm) {
           setShowProductFormInternal(false);
@@ -1181,7 +1211,7 @@ export function InventoryManager({
       const res = await updateProductAction(productData.id, businessId, productData);
       if (res.success) {
         setProducts(prev => prev.map(p => p.id === productData.id ? res.product : p));
-        toast.success('Product updated');
+        notify.compactSave('Updated');
         setShowProductFormInternal(false);
         setEditingProduct(null);
         return res.product;
@@ -1519,6 +1549,7 @@ export function InventoryManager({
             { ...updatedProduct, business_id: businessId },
             { closeForm: false, silentToast: true }
           );
+          notify.compactSave('Created');
           setProducts((prev) => prev.filter((p) => p._tempId !== updatedProduct._tempId));
         } catch (createErr) {
           busyDraftCreateRef.current.delete(tempKey);
@@ -1568,8 +1599,10 @@ export function InventoryManager({
               rowsMatchInventoryRow(p, product) ? mergeInventoryServerRow(p, saved) : p
             )
           );
+          notify.compactSave('Saved');
         } else {
           await reloadProductsSilent();
+          notify.compactSave('Saved');
         }
       } else {
         const saveRes = await updateProductAction(updatedProduct.id, businessId, updatedProduct);
@@ -1608,6 +1641,7 @@ export function InventoryManager({
               return next;
             })
           );
+          notify.compactSave('Saved');
         }
       }
     } catch (error) {
@@ -1621,7 +1655,7 @@ export function InventoryManager({
       console.error('Inventory cell update error:', error);
       throw error;
     }
-  }, [products, category, domainKnowledge, businessId, onUpdate, handleCreateProduct, reloadProductsSilent, isBatchEnabled, isSerialEnabled, canEditInventory]);
+  }, [products, category, domainKnowledge, businessId, onUpdate, handleCreateProduct, reloadProductsSilent, isBatchEnabled, isSerialEnabled, canEditInventory, upsertProductInState, scheduleAnalyticsRefresh]);
 
   // Column Definitions with Optimized Widths & Alignment
   const columns = useMemo(() => {
