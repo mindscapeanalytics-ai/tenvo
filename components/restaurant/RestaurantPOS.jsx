@@ -18,13 +18,15 @@ import { PosHotkeyDock } from '@/components/pos/shared/PosHotkeyDock';
 import { PosTaxPanel } from '@/components/pos/shared/PosTaxPanel';
 import { PosMobileCheckoutBar } from '@/components/pos/shared/PosMobileCheckoutBar';
 import { getPosShellHeightClass } from '@/lib/utils/posLayout';
-import { allocatePosTaxBreakdown, sumPosTaxComponentRates } from '@/lib/utils/posTaxComponents';
+import { computePosCartTax } from '@/lib/utils/posTaxComponents';
+import { getPosUiConfig } from '@/lib/utils/posHelpers';
+import { nextPosPaymentMethod } from '@/lib/config/posHotkeys';
+import { usePosReceipt } from '@/lib/hooks/usePosReceipt';
 import { Button } from '@/components/ui/button';
 import toast from 'react-hot-toast';
 
-// ===============================================================
-// ORDER TYPE SELECTOR
-// ===============================================================
+const RESTAURANT_PAYMENT_METHODS = ['cash', 'card', 'digital_wallet', 'staff_account'];
+
 
 const ORDER_TYPES = [
     { key: 'dine-in', label: 'Dine In', icon: UtensilsCrossed, color: 'bg-indigo-500' },
@@ -170,11 +172,14 @@ export function RestaurantPOS({ businessId, products = [], onCompleteSale, onOrd
     const { business } = useBusiness();
     const effectiveBusinessId = businessId || business?.id;
     const posSettings = usePosSettings();
+    const posUi = useMemo(
+        () => getPosUiConfig('restaurant-cafe', business),
+        [business]
+    );
     const {
         taxMode,
         setTaxMode,
         components: taxComponents,
-        effectiveTaxRate: componentTaxRate,
         taxLabel,
         taxConfig: loadedTaxConfig,
     } = usePosTaxConfig('restaurant-cafe');
@@ -182,6 +187,12 @@ export function RestaurantPOS({ businessId, products = [], onCompleteSale, onOrd
     const { requestApproval, managerPinDialog } = usePosManagerGate({
         businessId: effectiveBusinessId,
         posSettings,
+    });
+    const { printBillFromCart } = usePosReceipt({
+        business,
+        documentLabel: posUi.receiptLabel || 'Order',
+        category: 'restaurant-cafe',
+        currencyCode: posUi.currencyCode,
     });
     const [mobilePane, setMobilePane] = useState('menu');
     const [showTaxPanel, setShowTaxPanel] = useState(false);
@@ -202,6 +213,9 @@ export function RestaurantPOS({ businessId, products = [], onCompleteSale, onOrd
     const [isFullscreen, setIsFullscreen] = useState(false);
     const containerRef = React.useRef(null);
     const searchInputRef = React.useRef(null);
+    const customerNameRef = React.useRef(null);
+    const customerPhoneRef = React.useRef(null);
+    const deliveryAddressRef = React.useRef(null);
     // Customer info for takeaway/delivery
     const [customerName, setCustomerName] = useState('');
     const [customerPhone, setCustomerPhone] = useState('');
@@ -261,23 +275,28 @@ export function RestaurantPOS({ businessId, products = [], onCompleteSale, onOrd
         return filtered;
     }, [products, activeCategory, search]);
 
-    // Order calculations
+    // Order calculations (respect taxMode via taxComponents from usePosTaxConfig)
     const subtotal = useMemo(() =>
         orderItems.reduce((sum, item) => sum + (item.quantity * Number(item.price || item.selling_price || 0)), 0),
         [orderItems]);
-    const packRate = componentTaxRate > 0
-        ? componentTaxRate
-        : Number(taxConfig?.sales_tax_rate ?? 16);
-    const taxBreakdown = useMemo(
-        () => allocatePosTaxBreakdown(subtotal, taxComponents).breakdown,
-        [subtotal, taxComponents]
-    );
-    const taxPct = taxComponents.length
-        ? sumPosTaxComponentRates(taxComponents)
-        : packRate;
-    const tax = Math.round(subtotal * (taxPct / 100) * 100) / 100;
+    const orderTax = useMemo(() => {
+        const lines = orderItems.map((item) => ({
+            unitPrice: Number(item.price || item.selling_price || 0),
+            quantity: item.quantity,
+        }));
+        return computePosCartTax(lines, taxComponents);
+    }, [orderItems, taxComponents]);
+    const tax = orderTax.taxAmount;
+    const taxBreakdown = orderTax.breakdown;
+    const taxPct = orderTax.taxPercent;
     const total = subtotal + tax + (orderType === 'delivery' ? deliveryFee : 0);
     const showTaxBreakdown = taxBreakdown.length > 1;
+    const orderTotals = useMemo(() => ({
+        subtotal,
+        taxAmount: tax,
+        discountAmount: 0,
+        total,
+    }), [subtotal, tax, total]);
 
     // Handlers
     const addItem = useCallback((product) => {
@@ -302,25 +321,26 @@ export function RestaurantPOS({ businessId, products = [], onCompleteSale, onOrd
         setOrderItems(prev => prev.filter(i => i.id !== id));
     }, []);
 
-    const handleSendToKitchen = async () => {
-        if (!effectiveBusinessId || orderItems.length === 0) return;
-        // Delivery validation
+    const submitOrder = useCallback(async ({ skipKitchen = false } = {}) => {
+        if (!effectiveBusinessId || orderItems.length === 0) return false;
         if (orderType === 'delivery' && !customerName.trim()) {
-            toast.error('Customer name is required for delivery orders'); return;
+            toast.error('Customer name is required for delivery orders');
+            return false;
         }
         if (orderType === 'delivery' && !customerPhone.trim()) {
-            toast.error('Customer phone is required for delivery orders'); return;
+            toast.error('Customer phone is required for delivery orders');
+            return false;
         }
         if (orderType === 'delivery' && !deliveryAddress.trim()) {
-            toast.error('Delivery address is required'); return;
+            toast.error('Delivery address is required');
+            return false;
         }
-        // Dine-in validation, only enforce table selection if tables are configured
         if (orderType === 'dine-in' && tables.length > 0 && !selectedTable) {
-            toast.error('Please select a table for dine-in orders'); return;
+            toast.error('Please select a table for dine-in orders');
+            return false;
         }
         setIsProcessing(true);
         try {
-            // Normalize order type to DB format (dine_in not dine-in)
             const dbOrderType = orderType === 'dine-in' ? 'dine_in' : orderType;
             const result = await createRestaurantOrderAction({
                 businessId: effectiveBusinessId,
@@ -331,7 +351,8 @@ export function RestaurantPOS({ businessId, products = [], onCompleteSale, onOrd
                 customerPhone: customerPhone.trim() || null,
                 deliveryAddress: deliveryAddress.trim() || null,
                 deliveryFee: deliveryFee || 0,
-                items: orderItems.map(i => ({
+                skipKitchen,
+                items: orderItems.map((i) => ({
                     productId: i.id,
                     name: i.name,
                     quantity: i.quantity,
@@ -343,24 +364,61 @@ export function RestaurantPOS({ businessId, products = [], onCompleteSale, onOrd
             });
 
             if (result.success) {
-                toast.success(`Order #${result.order?.order_number || 'NEW'} sent to kitchen`, { icon: '🔥' });
+                const label = skipKitchen ? 'Order ready for payment' : 'sent to kitchen';
+                toast.success(`Order #${result.order?.order_number || 'NEW'} ${label}`, {
+                    icon: skipKitchen ? '💳' : '🔥',
+                });
                 setCurrentOrderId(result.order?.id || null);
                 onOrderSent?.();
                 setShowPayment(true);
-            } else {
-                toast.error(result.error || 'Failed to create order');
+                if (!paymentMethod) setPaymentMethod('cash');
+                return true;
             }
+            toast.error(result.error || 'Failed to create order');
+            return false;
         } catch (err) {
             toast.error('Failed to send order');
-            console.error('[RestaurantPOS] Send to kitchen failed:', err);
+            console.error('[RestaurantPOS] Order submit failed:', err);
+            return false;
         } finally {
             setIsProcessing(false);
         }
-    };
+    }, [
+        effectiveBusinessId,
+        orderItems,
+        orderType,
+        customerName,
+        customerPhone,
+        deliveryAddress,
+        deliveryFee,
+        tables.length,
+        selectedTable,
+        covers,
+        taxPct,
+        waiterNote,
+        onOrderSent,
+        paymentMethod,
+    ]);
 
-    const handlePayment = async () => {
-        if (!paymentMethod) { toast.error('Select payment method'); return; }
-        if (!currentOrderId) { toast.error('Send order to kitchen first'); return; }
+    const handleSendToKitchen = useCallback(
+        () => submitOrder({ skipKitchen: false }),
+        [submitOrder]
+    );
+
+    const handleQuickPay = useCallback(
+        () => submitOrder({ skipKitchen: true }),
+        [submitOrder]
+    );
+
+    const handlePayment = useCallback(async () => {
+        if (!paymentMethod) {
+            toast.error('Select payment method');
+            return;
+        }
+        if (!currentOrderId) {
+            toast.error('Send order to kitchen first');
+            return;
+        }
         setIsProcessing(true);
         try {
             const result = await settleRestaurantOrderAction({
@@ -373,10 +431,7 @@ export function RestaurantPOS({ businessId, products = [], onCompleteSale, onOrd
 
             if (result.success) {
                 toast.success('Payment processed!', { icon: '✅' });
-                // Notify parent for dashboard refresh only, do NOT call onCompleteSale
-                // (that triggers POS invoice logic which is incompatible with restaurant orders)
                 onOrderComplete?.(result);
-                // Reset all state for next order
                 setOrderItems([]);
                 setSelectedTable(null);
                 setPaymentMethod('');
@@ -387,8 +442,7 @@ export function RestaurantPOS({ businessId, products = [], onCompleteSale, onOrd
                 setCustomerPhone('');
                 setDeliveryAddress('');
                 setDeliveryFee(0);
-                // Refresh tables
-                getTablesAction(effectiveBusinessId).then(res => {
+                getTablesAction(effectiveBusinessId).then((res) => {
                     if (res.success) setTables(res.tables || []);
                 });
             } else {
@@ -399,14 +453,69 @@ export function RestaurantPOS({ businessId, products = [], onCompleteSale, onOrd
         } finally {
             setIsProcessing(false);
         }
-    };
+    }, [
+        paymentMethod,
+        currentOrderId,
+        effectiveBusinessId,
+        total,
+        posSettings.syncRestaurantToPos,
+        session?.id,
+        onOrderComplete,
+    ]);
 
     const availableTables = tables.filter(t => t.status === 'available' || t.status === 'reserved');
     const occupiedTables = tables.filter(t => t.status === 'occupied');
 
     const clearOrder = useCallback(() => {
-        requestApproval('clear', () => setOrderItems([]));
+        requestApproval('clear', () => {
+            setOrderItems([]);
+            setCurrentOrderId(null);
+            setShowPayment(false);
+            setPaymentMethod('');
+        });
     }, [requestApproval]);
+
+    const focusCustomerField = useCallback(() => {
+        if (orderType === 'dine-in') {
+            toast('Switch to Takeaway or Delivery to capture customer details', { id: 'resto-customer' });
+            return;
+        }
+        if (orderType === 'delivery') {
+            if (!customerName.trim()) {
+                customerNameRef.current?.focus();
+                return;
+            }
+            if (!customerPhone.trim()) {
+                customerPhoneRef.current?.focus();
+                return;
+            }
+            deliveryAddressRef.current?.focus();
+            return;
+        }
+        customerNameRef.current?.focus();
+    }, [orderType, customerName, customerPhone]);
+
+    const handlePrintBill = useCallback(() => {
+        if (!orderItems.length) {
+            toast.error('Add items before printing');
+            return;
+        }
+        const cart = orderItems.map((item) => ({
+            name: item.name,
+            sku: item.sku,
+            quantity: item.quantity,
+            unitPrice: Number(item.price || item.selling_price || 0),
+        }));
+        printBillFromCart({
+            cart,
+            customer: customerName.trim()
+                ? { name: customerName.trim(), phone: customerPhone.trim() || undefined }
+                : null,
+            paymentMethod: paymentMethod || 'cash',
+            totalsFromCart: orderTotals,
+            transactionRef: currentOrderId ? `ORDER-${currentOrderId}` : 'DRAFT-ORDER',
+        });
+    }, [orderItems, customerName, customerPhone, paymentMethod, orderTotals, currentOrderId, printBillFromCart]);
 
     const handleTaxModeChange = useCallback((mode) => {
         if (mode === 'exempt') {
@@ -417,31 +526,65 @@ export function RestaurantPOS({ businessId, products = [], onCompleteSale, onOrd
     }, [requestApproval, setTaxMode]);
 
     const hotkeyHandlers = useMemo(() => ({
-        search: () => searchInputRef.current?.focus(),
-        customer: () => {
-            /* focus first customer field when takeaway/delivery */
+        search: () => {
+            searchInputRef.current?.focus();
+            searchInputRef.current?.select?.();
         },
-        discount: () => {},
-        hold: () => {},
+        customer: focusCustomerField,
+        discount: () => toast('Order discounts are managed from the hub', { id: 'resto-discount' }),
+        hold: () => toast('Use Send to Kitchen to park an open order', { id: 'resto-hold' }),
         pay: () => {
-            if (showPayment) void handlePayment();
-            else void handleSendToKitchen();
+            if (orderItems.length === 0 || isProcessing) return;
+            if (showPayment) {
+                void handlePayment();
+                return;
+            }
+            void handleSendToKitchen();
         },
         payment: () => {
-            const cycle = ['cash', 'card', 'digital_wallet', 'staff_account'];
-            const idx = cycle.indexOf(paymentMethod);
-            setPaymentMethod(cycle[(idx + 1) % cycle.length]);
-            setShowPayment(true);
+            if (orderItems.length === 0 || isProcessing) return;
+            if (showPayment || currentOrderId) {
+                setShowPayment(true);
+                setPaymentMethod((prev) => nextPosPaymentMethod(prev || 'cash', RESTAURANT_PAYMENT_METHODS));
+                return;
+            }
+            toast('Send order first (F5), then cycle tender (F6)', { id: 'resto-tender' });
         },
         tax: () => setShowTaxPanel(true),
         clear: clearOrder,
-        print: () => toast('Use kitchen print from KDS', { id: 'resto-print' }),
-    }), [showPayment, handlePayment, handleSendToKitchen, paymentMethod, clearOrder]);
+        print: handlePrintBill,
+    }), [
+        focusCustomerField,
+        orderItems.length,
+        isProcessing,
+        showPayment,
+        currentOrderId,
+        handlePayment,
+        handleSendToKitchen,
+        clearOrder,
+        handlePrintBill,
+    ]);
 
     usePosHotkeys({
         enabled: !showTaxPanel,
         handlers: hotkeyHandlers,
     });
+
+    useEffect(() => {
+        const onKeyDown = (e) => {
+            if (e.key === 'Enter' && showPayment && paymentMethod && !isProcessing && orderItems.length > 0) {
+                if (e.target instanceof HTMLInputElement && e.target.type === 'text') return;
+                e.preventDefault();
+                void handlePayment();
+            }
+            if (e.key === 'Escape' && search) {
+                setSearch('');
+                searchInputRef.current?.focus();
+            }
+        };
+        window.addEventListener('keydown', onKeyDown);
+        return () => window.removeEventListener('keydown', onKeyDown);
+    }, [showPayment, paymentMethod, isProcessing, orderItems.length, handlePayment, search]);
 
     return (
         <div
@@ -487,6 +630,7 @@ export function RestaurantPOS({ businessId, products = [], onCompleteSale, onOrd
                         <div className="flex gap-2">
                             <input
                                 type="text"
+                                ref={customerNameRef}
                                 placeholder="Customer name (optional)"
                                 value={customerName}
                                 onChange={e => setCustomerName(e.target.value)}
@@ -494,6 +638,7 @@ export function RestaurantPOS({ businessId, products = [], onCompleteSale, onOrd
                             />
                             <input
                                 type="tel"
+                                ref={customerPhoneRef}
                                 placeholder="Phone (optional)"
                                 value={customerPhone}
                                 onChange={e => setCustomerPhone(e.target.value)}
@@ -508,6 +653,7 @@ export function RestaurantPOS({ businessId, products = [], onCompleteSale, onOrd
                             <div className="flex gap-2">
                                 <input
                                     type="text"
+                                    ref={customerNameRef}
                                     placeholder="Customer name *"
                                     value={customerName}
                                     onChange={e => setCustomerName(e.target.value)}
@@ -515,6 +661,7 @@ export function RestaurantPOS({ businessId, products = [], onCompleteSale, onOrd
                                 />
                                 <input
                                     type="tel"
+                                    ref={customerPhoneRef}
                                     placeholder="Phone *"
                                     value={customerPhone}
                                     onChange={e => setCustomerPhone(e.target.value)}
@@ -524,6 +671,7 @@ export function RestaurantPOS({ businessId, products = [], onCompleteSale, onOrd
                             <div className="flex gap-2">
                                 <input
                                     type="text"
+                                    ref={deliveryAddressRef}
                                     placeholder="Delivery address *"
                                     value={deliveryAddress}
                                     onChange={e => setDeliveryAddress(e.target.value)}
@@ -647,7 +795,7 @@ export function RestaurantPOS({ businessId, products = [], onCompleteSale, onOrd
                             {orderItems.length > 0 && (
                                 <button
                                     type="button"
-                                    onClick={() => requestApproval('clear', () => setOrderItems([]))}
+                                    onClick={clearOrder}
                                     className="text-[10px] text-red-400 font-bold hover:text-red-600 px-2 py-1 touch-manipulation"
                                 >
                                     Clear
@@ -706,7 +854,16 @@ export function RestaurantPOS({ businessId, products = [], onCompleteSale, onOrd
                         <span>Subtotal</span>
                         <span className="font-bold">{currency} {subtotal.toLocaleString()}</span>
                     </div>
-                    {showTaxBreakdown ? (
+                    {taxMode === 'exempt' ? (
+                        <button
+                            type="button"
+                            onClick={() => setShowTaxPanel(true)}
+                            className="flex w-full justify-between text-xs text-gray-500 hover:text-emerald-700"
+                        >
+                            <span>Tax exempt</span>
+                            <span className="font-bold">{currency} 0</span>
+                        </button>
+                    ) : showTaxBreakdown ? (
                         taxBreakdown.map((row) => (
                             <button
                                 key={row.key}
@@ -800,7 +957,7 @@ export function RestaurantPOS({ businessId, products = [], onCompleteSale, onOrd
                             {orderType === 'delivery' ? 'Place Delivery Order' : orderType === 'takeaway' ? 'Place Takeaway Order' : 'Send to Kitchen'}
                         </button>
                         <button
-                            onClick={handleSendToKitchen}
+                            onClick={handleQuickPay}
                             disabled={orderItems.length === 0 || isProcessing}
                             className="w-full py-2.5 border-2 border-gray-200 text-gray-600 text-xs font-bold rounded-xl hover:border-gray-300 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                         >
@@ -818,9 +975,10 @@ export function RestaurantPOS({ businessId, products = [], onCompleteSale, onOrd
                 disabledActions={{
                     hold: true,
                     discount: true,
-                    print: true,
+                    print: orderItems.length === 0,
                     clear: orderItems.length === 0,
                     pay: orderItems.length === 0 || isProcessing,
+                    payment: orderItems.length === 0 || isProcessing,
                 }}
             />
 
