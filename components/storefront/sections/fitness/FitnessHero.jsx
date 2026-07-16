@@ -114,17 +114,17 @@ function FitnessHeroBackdrop({ accent }) {
 
 function FitnessAthleteVisual({ brandAccent, heroImageSrc, className, compact = false }) {
   const ringCenter = compact
-    ? 'left-1/2 top-[58%] -translate-x-1/2 -translate-y-1/2'
-    : 'left-1/2 top-1/2 -translate-x-1/2 -translate-y-[46%] lg:-translate-y-[44%]';
+    ? 'left-1/2 top-[52%] -translate-x-1/2 -translate-y-1/2'
+    : 'left-1/2 top-[48%] -translate-x-1/2 -translate-y-1/2';
 
   return (
-    <div className={cn('relative h-full w-full', className)}>
+    <div className={cn('relative h-full w-full overflow-visible', className)}>
       <div
         className={cn(
           'fitness-hero-glow pointer-events-none absolute z-0 aspect-square rounded-full blur-[48px] motion-reduce:opacity-80',
           compact
-            ? 'w-[min(115%,360px)] opacity-90'
-            : 'w-[min(108%,520px)] sm:w-[min(114%,580px)] lg:w-[min(128%,720px)] xl:w-[min(136%,780px)]',
+            ? 'w-[min(108%,340px)] opacity-90'
+            : 'w-[min(100%,480px)] sm:w-[min(106%,540px)] lg:w-[min(112%,640px)] xl:w-[min(118%,700px)]',
           ringCenter
         )}
         style={{
@@ -137,8 +137,8 @@ function FitnessAthleteVisual({ brandAccent, heroImageSrc, className, compact = 
         className={cn(
           'pointer-events-none absolute z-[1] aspect-square',
           compact
-            ? 'w-[min(98%,300px)]'
-            : 'w-[min(106%,500px)] sm:w-[min(116%,560px)] lg:w-[min(134%,700px)] xl:w-[min(142%,760px)]',
+            ? 'w-[min(92%,280px)]'
+            : 'w-[min(96%,460px)] sm:w-[min(102%,520px)] lg:w-[min(110%,600px)] xl:w-[min(116%,660px)]',
           ringCenter
         )}
       >
@@ -155,7 +155,7 @@ function FitnessAthleteVisual({ brandAccent, heroImageSrc, className, compact = 
       <div
         className={cn(
           'pointer-events-none absolute z-[1] aspect-square',
-          compact ? 'w-[min(82%,240px)]' : 'w-[min(90%,420px)] sm:w-[min(98%,470px)] lg:w-[min(114%,600px)] xl:w-[min(122%,660px)]',
+          compact ? 'w-[min(76%,220px)]' : 'w-[min(82%,380px)] sm:w-[min(88%,430px)] lg:w-[min(96%,520px)] xl:w-[min(102%,580px)]',
           ringCenter
         )}
       >
@@ -173,8 +173,8 @@ function FitnessAthleteVisual({ brandAccent, heroImageSrc, className, compact = 
         className={cn(
           'pointer-events-none absolute z-0 aspect-square rounded-full opacity-40 blur-xl',
           compact
-            ? 'w-[min(118%,320px)]'
-            : 'w-[min(118%,520px)] sm:w-[min(128%,560px)] lg:w-[min(146%,720px)] xl:w-[min(154%,780px)]',
+            ? 'w-[min(110%,300px)]'
+            : 'w-[min(108%,480px)] sm:w-[min(114%,520px)] lg:w-[min(122%,640px)] xl:w-[min(128%,700px)]',
           ringCenter
         )}
         style={{
@@ -186,7 +186,7 @@ function FitnessAthleteVisual({ brandAccent, heroImageSrc, className, compact = 
       <div
         className={cn(
           'fitness-hero-athlete absolute inset-x-0 z-10 flex justify-center',
-          compact ? 'bottom-0 items-end' : 'inset-y-0 items-end lg:items-center'
+          compact ? 'bottom-0 top-[8%] items-end' : 'inset-y-0 items-end lg:items-center'
         )}
       >
         <SmartProductImage
@@ -196,15 +196,13 @@ function FitnessAthleteVisual({ brandAccent, heroImageSrc, className, compact = 
           height={700}
           priority
           className={cn(
-            'h-auto w-auto max-w-full object-contain',
+            'h-auto w-auto max-w-full object-contain object-center',
             compact
-              ? 'max-h-[min(68vw,320px)] object-bottom drop-shadow-[0_18px_52px_rgba(225,29,72,0.6)]'
+              ? 'max-h-[min(62vw,300px)] object-bottom drop-shadow-[0_18px_52px_rgba(225,29,72,0.6)]'
               : cn(
-                  'object-bottom lg:object-[center_92%]',
-                  'max-h-[min(54svh,400px)] sm:max-h-[min(60svh,460px)]',
-                  'md:max-h-[min(78svh,640px)] lg:max-h-[min(94svh,880px)] xl:max-h-[min(98svh,940px)]',
-                  'lg:scale-[1.18] xl:scale-[1.24]',
-                  'lg:-translate-y-[2%] xl:-translate-y-[4%]',
+                  'max-h-[min(52svh,380px)] sm:max-h-[min(56svh,440px)]',
+                  'md:max-h-[min(70svh,580px)] lg:max-h-[min(82svh,760px)] xl:max-h-[min(86svh,820px)]',
+                  'lg:scale-[1.02] xl:scale-[1.04]',
                   'drop-shadow-[0_28px_72px_rgba(225,29,72,0.55)]'
                 )
           )}
@@ -256,9 +254,9 @@ export function FitnessHero({
   return (
     <section
       className={cn(
-        'store-hero fitness-hero relative isolate overflow-hidden bg-black text-white',
+        'store-hero fitness-hero relative isolate overflow-x-clip overflow-y-visible bg-black text-white',
         HERO_VIEWPORT,
-        'max-lg:pb-6'
+        'max-lg:overflow-hidden max-lg:pb-6'
       )}
     >
       <FitnessHeroBackdrop accent={brandAccent} />
@@ -335,7 +333,7 @@ export function FitnessHero({
                   href={meetingUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-white/18 bg-white/[0.07] px-3 py-2.5 text-sm font-semibold text-white backdrop-blur-md transition hover:border-white/28 hover:bg-white/[0.11] active:scale-[0.98] sm:px-4"
+                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-white/35 bg-white/[0.1] px-3 py-2.5 text-sm font-semibold text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)] backdrop-blur-md transition hover:border-white/50 hover:bg-white/[0.16] active:scale-[0.98] sm:px-4"
                 >
                   <Calendar className="h-4 w-4 shrink-0" aria-hidden />
                   <span className="truncate">Book session</span>
@@ -343,7 +341,7 @@ export function FitnessHero({
               ) : (
                 <Link
                   href={`${base}#book`}
-                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-white/18 bg-white/[0.07] px-3 py-2.5 text-sm font-semibold text-white backdrop-blur-md transition hover:border-white/28 hover:bg-white/[0.11] active:scale-[0.98] sm:px-4"
+                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-white/35 bg-white/[0.1] px-3 py-2.5 text-sm font-semibold text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)] backdrop-blur-md transition hover:border-white/50 hover:bg-white/[0.16] active:scale-[0.98] sm:px-4"
                 >
                   <Calendar className="h-4 w-4 shrink-0" aria-hidden />
                   <span className="truncate">Book session</span>
@@ -394,11 +392,11 @@ export function FitnessHero({
         </div>
 
         {/* Desktop athlete column */}
-        <div className="relative hidden h-full min-h-0 w-full shrink-0 lg:flex lg:items-center lg:justify-center">
+        <div className="relative hidden h-full min-h-0 w-full shrink-0 overflow-visible lg:flex lg:items-center lg:justify-center lg:pr-4 xl:pr-8">
           <FitnessAthleteVisual
             brandAccent={brandAccent}
             heroImageSrc={heroImageSrc}
-            className="mx-auto h-full w-full max-w-[min(100%,760px)] xl:max-w-[min(100%,840px)]"
+            className="mx-auto h-full w-full max-w-[min(100%,680px)] xl:max-w-[min(100%,740px)]"
           />
         </div>
       </div>

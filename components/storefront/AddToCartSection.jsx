@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { ShoppingBag, Check, AlertCircle, Minus, Plus, Heart, Share2, Zap } from 'lucide-react';
+import { ShoppingBag, Check, AlertCircle, Minus, Plus, Heart, Share2, Zap, Calendar, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -16,6 +16,12 @@ import { resolveStorefrontVariantRequirement } from '@/lib/storefront/storefront
 import { isPharmacyElevatedStore } from '@/lib/storefront/pharmacyStorefront';
 import { isPrescriptionRequiredProduct } from '@/lib/storefront/pharmacyProducts';
 import { PharmacyPrescriptionCta } from '@/components/storefront/pharmacy/PharmacyPrescriptionCta';
+import {
+  isFitnessElevatedStore,
+  isFitnessBookableProduct,
+  resolveFitnessBookHref,
+} from '@/lib/storefront/fitnessStorefront';
+import { getTenantMeetingUrl } from '@/lib/storefront/storefrontBooking';
 import { getStoreAccentColor } from '@/lib/config/storefrontDomains';
 import { toast } from 'react-hot-toast';
 
@@ -28,6 +34,16 @@ export function AddToCartSection({ product, businessDomain, selectedVariant = nu
   const isWishlisted = isInWishlist(product.id);
   const pharmacyStore = isPharmacyElevatedStore(business?.category);
   const requiresPrescription = pharmacyStore && isPrescriptionRequiredProduct(product);
+  const fitnessStore = isFitnessElevatedStore(business?.category);
+  const bookableFitness = fitnessStore && isFitnessBookableProduct(product);
+  const meetingUrl = fitnessStore ? getTenantMeetingUrl(business, settings) : '';
+  const bookHref = bookableFitness
+    ? resolveFitnessBookHref(`/store/${businessDomain}`, {
+        meetingUrl,
+        subject: 'appointment',
+        packageName: product.name,
+      })
+    : null;
   const accent = getStoreAccentColor(settings, business?.category);
   const variantRequirement = resolveStorefrontVariantRequirement(product);
   const requiresVariant = variantRequirement.required;
@@ -120,6 +136,54 @@ export function AddToCartSection({ product, businessDomain, selectedVariant = nu
           accent={accent}
           variant="panel"
         />
+      </div>
+    );
+  }
+
+  if (bookableFitness && bookHref) {
+    return (
+      <div className="space-y-4">
+        <div className="rounded-xl border border-rose-200/60 bg-rose-50/50 px-4 py-3 text-sm text-rose-950">
+          Memberships, classes, and coaching are booked with the gym. Cart checkout is for retail supplements and gear only.
+        </div>
+        <div className="flex gap-3">
+          <a
+            href={bookHref}
+            target={meetingUrl ? '_blank' : undefined}
+            rel={meetingUrl ? 'noopener noreferrer' : undefined}
+            className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl px-5 py-3.5 text-base font-semibold text-white shadow-md transition hover:opacity-95"
+            style={{ backgroundColor: accent }}
+          >
+            <Calendar className="h-5 w-5" aria-hidden />
+            Book session
+            {meetingUrl ? <ExternalLink className="h-4 w-4 opacity-80" aria-hidden /> : null}
+          </a>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className={cn(
+                    'px-3 border-2',
+                    isWishlisted && 'border-red-200 bg-red-50 text-red-500 hover:bg-red-100'
+                  )}
+                  onClick={() => (isWishlisted ? removeFromWishlist(product.id) : addToWishlist(product))}
+                  aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+                  aria-pressed={isWishlisted}
+                >
+                  <Heart className={cn('w-5 h-5', isWishlisted && 'fill-current')} />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+        <p className="text-center text-xs text-gray-400">
+          Prefer talking to front desk? Use Book session to schedule a visit.
+        </p>
       </div>
     );
   }

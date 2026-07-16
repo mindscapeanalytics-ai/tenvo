@@ -1,18 +1,17 @@
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
 import {
-  Calendar, ExternalLink, ShoppingBag, Dumbbell, UtensilsCrossed, Sparkles,
+  Calendar, ExternalLink, Dumbbell, UtensilsCrossed, Sparkles,
 } from 'lucide-react';
 import { SmartProductImage } from '@/components/storefront/SmartProductImage';
 import { formatCurrency } from '@/lib/currency';
-import { useCart } from '@/lib/hooks/storefront/useCart';
-import { useStorefront } from '@/lib/context/StorefrontContext';
 import { cn } from '@/lib/utils';
-import { dedupeFitnessServices } from '@/lib/storefront/fitnessStorefront';
+import {
+  dedupeFitnessServices,
+  resolveFitnessBookHref,
+} from '@/lib/storefront/fitnessStorefront';
 import { isStorefrontProductUuid } from '@/lib/utils/storefrontProductRef';
-import { toast } from 'react-hot-toast';
 
 const SERVICE_ICONS = {
   'personal training': Dumbbell,
@@ -44,9 +43,6 @@ function TrainingMarqueeTrack({
   currency,
   accent,
   meetingUrl,
-  contactHref,
-  addingId,
-  onAddToCart,
   ariaHidden,
 }) {
   return (
@@ -66,9 +62,6 @@ function TrainingMarqueeTrack({
           currency={currency}
           accent={accent}
           meetingUrl={meetingUrl}
-          contactHref={contactHref}
-          addingId={addingId}
-          onAddToCart={onAddToCart}
         />
       ))}
     </div>
@@ -82,9 +75,6 @@ function TrainingOverlayCard({
   currency,
   accent,
   meetingUrl,
-  contactHref,
-  addingId,
-  onAddToCart,
   className,
 }) {
   const Icon = resolveServiceIcon(product);
@@ -99,7 +89,11 @@ function TrainingOverlayCard({
   const productHref = slug
     ? `${storeBase}/products/${slug}`
     : `${productsUrl}?search=${encodeURIComponent(String(product.name || ''))}`;
-  const bookHref = meetingUrl || `${contactHref}?subject=appointment`;
+  const bookHref = resolveFitnessBookHref(storeBase, {
+    meetingUrl,
+    subject: 'appointment',
+    packageName: product.name,
+  });
   const bookExternal = Boolean(meetingUrl);
 
   return (
@@ -129,28 +123,28 @@ function TrainingOverlayCard({
         </span>
       ) : null}
 
-      <div className="absolute inset-x-0 bottom-0 flex flex-col gap-3 p-5 sm:gap-4 sm:p-6">
+      <div className="absolute inset-x-0 bottom-0 flex flex-col gap-3.5 p-5 sm:gap-4 sm:p-6">
         <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-white/15 bg-black/50 px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-white/90 backdrop-blur-sm">
           <Icon className="h-3.5 w-3.5" aria-hidden />
           {eyebrow}
         </span>
 
-        <div>
-          <h3 className="text-xl font-bold leading-tight text-white sm:text-2xl">
+        <div className="space-y-2">
+          <h3 className="text-xl font-semibold leading-tight text-white sm:text-2xl">
             <Link href={productHref} className="hover:text-rose-100">
               {product.name}
             </Link>
           </h3>
           {product.description ? (
-            <p className="mt-1.5 line-clamp-2 text-sm leading-relaxed text-white/75">
+            <p className="line-clamp-2 text-sm leading-relaxed text-white/75">
               {product.description}
             </p>
           ) : null}
         </div>
 
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-            <span className="text-2xl font-semibold tabular-nums text-white sm:text-3xl">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
+          <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-0.5">
+            <span className="text-2xl font-semibold tabular-nums tracking-tight text-white sm:text-3xl">
               {formatCurrency(price, currency, { maximumFractionDigits: 0 })}
             </span>
             {compare && Number(compare) > price ? (
@@ -160,28 +154,17 @@ function TrainingOverlayCard({
             ) : null}
           </div>
 
-          <div className="flex gap-2 sm:min-w-[240px]">
-            <button
-              type="button"
-              onClick={() => onAddToCart(product)}
-              disabled={addingId === product.id}
-              className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl py-3 text-sm font-semibold text-white transition hover:opacity-95 disabled:opacity-60"
-              style={{ backgroundColor: accent }}
-            >
-              <ShoppingBag className="h-4 w-4" aria-hidden />
-              {addingId === product.id ? 'Adding…' : 'Add to cart'}
-            </button>
-            <a
-              href={bookHref}
-              target={bookExternal ? '_blank' : undefined}
-              rel={bookExternal ? 'noopener noreferrer' : undefined}
-              className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-white/20 bg-black/40 py-3 text-sm font-semibold text-white backdrop-blur-sm transition hover:border-rose-500/40"
-            >
-              <Calendar className="h-4 w-4" aria-hidden />
-              Book
-              {bookExternal ? <ExternalLink className="h-3 w-3 opacity-60" aria-hidden /> : null}
-            </a>
-          </div>
+          <a
+            href={bookHref}
+            target={bookExternal ? '_blank' : undefined}
+            rel={bookExternal ? 'noopener noreferrer' : undefined}
+            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-rose-950/35 transition hover:opacity-95 active:scale-[0.98] sm:w-auto sm:min-w-[11rem]"
+            style={{ backgroundColor: accent }}
+          >
+            <Calendar className="h-4 w-4" aria-hidden />
+            Book session
+            {bookExternal ? <ExternalLink className="h-3.5 w-3.5 opacity-70" aria-hidden /> : null}
+          </a>
         </div>
       </div>
     </article>
@@ -189,7 +172,7 @@ function TrainingOverlayCard({
 }
 
 /**
- * Full-bleed hero-style training carousel — overlay cards, auto-scroll, no heading.
+ * Full-bleed training carousel — overlay cards, auto-scroll, booking-only CTAs.
  */
 export function FitnessTrainingServices({
   services = [],
@@ -199,39 +182,9 @@ export function FitnessTrainingServices({
   accent = '#e11d48',
   meetingUrl,
 }) {
-  const { addItem } = useCart();
-  const { businessId } = useStorefront();
-  const [addingId, setAddingId] = useState(null);
   const items = dedupeFitnessServices(services);
-  const contactHref = `${storeBase}/contact`;
 
   if (!items.length) return null;
-
-  const handleAddToCart = async (product) => {
-    if (!product?.id || product.catalog_preview || !isStorefrontProductUuid(product.id)) {
-      const slug = product.slug;
-      const href = slug
-        ? `${storeBase}/products/${slug}`
-        : `${productsUrl}?search=${encodeURIComponent(String(product.name || ''))}`;
-      window.location.href = href;
-      return;
-    }
-    setAddingId(product.id);
-    try {
-      await addItem({
-        productId: product.id,
-        quantity: 1,
-        variantId: product.default_variant_id || null,
-        businessId,
-      });
-      toast.success('Added to cart');
-      window.dispatchEvent(new Event('toggle-cart'));
-    } catch {
-      toast.error('Could not add to cart');
-    } finally {
-      setAddingId(null);
-    }
-  };
 
   return (
     <section
@@ -268,9 +221,6 @@ export function FitnessTrainingServices({
               currency={currency}
               accent={accent}
               meetingUrl={meetingUrl}
-              contactHref={contactHref}
-              addingId={addingId}
-              onAddToCart={handleAddToCart}
             />
             <TrainingMarqueeTrack
               trackId="b"
@@ -280,9 +230,6 @@ export function FitnessTrainingServices({
               currency={currency}
               accent={accent}
               meetingUrl={meetingUrl}
-              contactHref={contactHref}
-              addingId={addingId}
-              onAddToCart={handleAddToCart}
               ariaHidden
             />
           </div>

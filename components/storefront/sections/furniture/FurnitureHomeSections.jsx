@@ -2,11 +2,12 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { ArrowRight, Palette, Home, MapPin, Mail } from 'lucide-react';
+import { ArrowRight, MapPin, Mail } from 'lucide-react';
 import { SmartProductImage } from '@/components/storefront/SmartProductImage';
 import { resolveSpotlightBannerImage } from '@/lib/storefront/storefrontImagePlaceholders';
 import { StoreProductRail } from '@/components/storefront/StoreProductRail';
 import { ProductGrid } from '@/components/storefront/ProductGrid';
+import { FurnitureCategoryIcons } from '@/components/storefront/sections/furniture/FurnitureCategoryIcons';
 import { cn } from '@/lib/utils';
 import { STORE_SECTION_HEADING } from '@/lib/utils/typography';
 import {
@@ -63,28 +64,7 @@ export function FurnitureHomeSections({
 
   return (
     <>
-      {/* Shop by category */}
-      <section className="border-b border-amber-50 bg-white pb-6 pt-3 sm:pb-10 sm:pt-6">
-        <div className="mx-auto max-w-[1400px] px-3 sm:px-6 lg:px-8">
-          <h2 className={cn(STORE_SECTION_HEADING, 'mb-3 text-stone-900 lg:mb-5')}>Shop by category</h2>
-          <div className="grid grid-cols-4 gap-2 sm:grid-cols-5 sm:gap-3 md:grid-cols-6 lg:grid-cols-10 lg:gap-4">
-            {categoryIcons.map((cat) => (
-              <Link
-                key={cat.id}
-                href={cat.href}
-                className="group flex flex-col items-center gap-1.5 rounded-2xl border border-transparent p-1.5 text-center active:scale-[0.97] sm:gap-2 sm:p-0"
-              >
-                <div className="relative h-14 w-14 overflow-hidden rounded-2xl border border-amber-100 bg-amber-50/60 shadow-sm transition group-active:border-amber-300 sm:h-16 sm:w-16 sm:rounded-full lg:group-hover:border-amber-300 lg:group-hover:shadow-md">
-                  <SmartProductImage src={cat.image} alt="" fill className="object-cover" />
-                </div>
-                <span className="line-clamp-2 text-[10px] font-semibold leading-tight text-stone-700 sm:text-xs">
-                  {cat.label}
-                </span>
-              </Link>
-            ))}
-          </div>
-        </div>
-      </section>
+      <FurnitureCategoryIcons categoryIcons={categoryIcons} />
 
       {/* Top picks */}
       {topPicks.length > 0 && (

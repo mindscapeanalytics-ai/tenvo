@@ -3,12 +3,10 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
-  ArrowRight, Calendar, ExternalLink, ShoppingBag, Sparkles,
+  ArrowRight, Calendar, ExternalLink, Sparkles,
 } from 'lucide-react';
 import { SmartProductImage } from '@/components/storefront/SmartProductImage';
 import { formatCurrency } from '@/lib/currency';
-import { useCart } from '@/lib/hooks/storefront/useCart';
-import { useStorefront } from '@/lib/context/StorefrontContext';
 import { cn } from '@/lib/utils';
 import { normalizeProseCopy } from '@/lib/utils/copyTypography';
 import {
@@ -17,12 +15,11 @@ import {
   resolveGymMembershipPackages,
   resolveFitnessMembershipsCategoryHref,
   resolveFitnessMembershipSectionCopy,
+  resolveFitnessBookHref,
 } from '@/lib/storefront/fitnessStorefront';
-import { isStorefrontProductUuid } from '@/lib/utils/storefrontProductRef';
-import { toast } from 'react-hot-toast';
 import { FitnessMarqueeRow } from '@/components/storefront/sections/fitness/FitnessMarqueeRow';
 
-function MembershipPackageCard({ pkg, gender, currency, accent, addingId, onAddToCart }) {
+function MembershipPackageCard({ pkg, gender, currency, accent }) {
   const isLadies = gender === 'female';
 
   return (
@@ -67,7 +64,7 @@ function MembershipPackageCard({ pkg, gender, currency, accent, addingId, onAddT
           {pkg.durationLabel} pass
         </h3>
         <div className="shrink-0 text-right">
-          <span className="block text-xl font-semibold tabular-nums text-white sm:text-[1.65rem]">
+          <span className="block text-xl font-semibold tabular-nums tracking-tight text-white sm:text-[1.65rem]">
             {formatCurrency(pkg.price, currency, { maximumFractionDigits: 0 })}
           </span>
           {pkg.comparePrice && pkg.comparePrice > pkg.price ? (
@@ -82,13 +79,13 @@ function MembershipPackageCard({ pkg, gender, currency, accent, addingId, onAddT
         {normalizeProseCopy(pkg.description)}
       </p>
 
-      <div className="mt-4 grid grid-cols-2 gap-2 sm:mt-5 sm:flex sm:flex-col sm:gap-2">
-        <button
-          type="button"
-          onClick={() => onAddToCart(pkg)}
-          disabled={addingId === pkg.id}
+      <div className="mt-4 sm:mt-5">
+        <a
+          href={pkg.bookHref}
+          target={pkg.bookExternal ? '_blank' : undefined}
+          rel={pkg.bookExternal ? 'noopener noreferrer' : undefined}
           className={cn(
-            'inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl px-2 py-2.5 text-xs font-semibold text-white transition hover:opacity-95 active:scale-[0.98] disabled:opacity-60 sm:gap-2 sm:px-3 sm:text-sm',
+            'inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold text-white transition hover:opacity-95 active:scale-[0.98]',
             pkg.featured ? 'shadow-md shadow-rose-950/30' : ''
           )}
           style={{
@@ -97,19 +94,10 @@ function MembershipPackageCard({ pkg, gender, currency, accent, addingId, onAddT
               : 'rgba(255,255,255,0.12)',
           }}
         >
-          <ShoppingBag className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" aria-hidden />
-          <span className="truncate">{addingId === pkg.id ? 'Adding…' : 'Add to cart'}</span>
-        </button>
-        <a
-          href={pkg.bookHref}
-          target={pkg.bookExternal ? '_blank' : undefined}
-          rel={pkg.bookExternal ? 'noopener noreferrer' : undefined}
-          className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-white/15 px-2 py-2.5 text-xs font-semibold text-white/90 transition hover:border-rose-500/40 hover:bg-white/[0.04] hover:text-white active:scale-[0.98] sm:gap-2 sm:px-3 sm:text-sm"
-        >
-          <Calendar className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" aria-hidden />
-          <span className="truncate">Book tour</span>
+          <Calendar className="h-4 w-4 shrink-0" aria-hidden />
+          <span>Book tour</span>
           {pkg.bookExternal ? (
-            <ExternalLink className="hidden h-3.5 w-3.5 opacity-60 sm:inline" aria-hidden />
+            <ExternalLink className="h-3.5 w-3.5 opacity-70" aria-hidden />
           ) : null}
         </a>
       </div>
@@ -118,7 +106,7 @@ function MembershipPackageCard({ pkg, gender, currency, accent, addingId, onAddT
 }
 
 /**
- * Pakistani-style gents / ladies gym packages with duration tiers and booking CTAs.
+ * Pakistani-style gents / ladies gym packages with booking CTAs (no cart for memberships).
  */
 export function FitnessMembershipPackages({
   products = [],
@@ -131,17 +119,14 @@ export function FitnessMembershipPackages({
   settings = {},
   country = '',
 }) {
-  const { addItem } = useCart();
-  const { businessId } = useStorefront();
   const [gender, setGender] = useState('male');
-  const [addingId, setAddingId] = useState(null);
 
   const sectionCopy = useMemo(
     () => resolveFitnessMembershipSectionCopy(settings, businessDomain, { country }),
     [settings, businessDomain, country]
   );
 
-  const { byGender, trial, contactHref, productsUrl } = useMemo(
+  const { byGender, trial } = useMemo(
     () =>
       resolveGymMembershipPackages(products, storeBase, {
         meetingUrl,
@@ -155,31 +140,14 @@ export function FitnessMembershipPackages({
   const activePackages = byGender[gender] || [];
   const alternateGender = gender === 'male' ? 'female' : 'male';
   const alternatePackages = byGender[alternateGender] || [];
+  const trialBookHref = resolveFitnessBookHref(storeBase, {
+    meetingUrl,
+    subject: 'trial',
+    packageName: trial?.name,
+  });
+  const trialBookExternal = Boolean(meetingUrl);
 
   if (!byGender.male.length && !byGender.female.length && !trial) return null;
-
-  const handleAddToCart = async (pkg) => {
-    const product = pkg.product;
-    if (!product?.id || product.catalog_preview || !isStorefrontProductUuid(product.id)) {
-      window.location.href = pkg.productHref;
-      return;
-    }
-    setAddingId(pkg.id);
-    try {
-      await addItem({
-        productId: product.id,
-        quantity: 1,
-        variantId: product.default_variant_id || null,
-        businessId,
-      });
-      toast.success('Membership added to cart');
-      window.dispatchEvent(new Event('toggle-cart'));
-    } catch {
-      toast.error('Could not add to cart');
-    } finally {
-      setAddingId(null);
-    }
-  };
 
   return (
     <section
@@ -285,8 +253,6 @@ export function FitnessMembershipPackages({
                     gender={gender}
                     currency={currency}
                     accent={accent}
-                    addingId={addingId}
-                    onAddToCart={handleAddToCart}
                   />
                 )}
               />
@@ -299,8 +265,6 @@ export function FitnessMembershipPackages({
                     gender={gender}
                     currency={currency}
                     accent={accent}
-                    addingId={addingId}
-                    onAddToCart={handleAddToCart}
                   />
                 ))}
               </div>
@@ -328,8 +292,8 @@ export function FitnessMembershipPackages({
 
         <div className="mt-6 flex flex-col gap-4 border-t border-white/10 pt-6 sm:mt-10 sm:flex-row sm:items-center sm:justify-between sm:gap-5 sm:pt-8">
           {trial ? (
-            <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 sm:flex-row sm:items-center sm:rounded-none sm:border-0 sm:bg-transparent sm:p-0">
-              <div className="flex items-center gap-3 sm:gap-3">
+            <div className="flex w-full flex-col gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 sm:flex-row sm:items-center sm:gap-4 sm:rounded-2xl sm:border sm:bg-white/[0.03] sm:p-4 lg:max-w-xl">
+              <div className="flex min-w-0 flex-1 items-center gap-3">
                 <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl border border-white/10 sm:h-14 sm:w-14">
                   <SmartProductImage
                     src={trial.image_url}
@@ -340,22 +304,29 @@ export function FitnessMembershipPackages({
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold text-white">{trial.name}</p>
-                  <p className="text-xs text-white/50">
-                    {formatCurrency(Number(trial.price), currency, { maximumFractionDigits: 0 })}{' '}
-                    · try before you commit
+                  <p className="mt-0.5 text-xs leading-snug text-white/50">
+                    <span className="tabular-nums">
+                      {formatCurrency(Number(trial.price), currency, { maximumFractionDigits: 0 })}
+                    </span>
+                    <span className="text-white/35"> · </span>
+                    try before you commit
                   </p>
                 </div>
               </div>
-              <Link
-                href={
-                  trial.slug
-                    ? `${storeBase}/products/${trial.slug}`
-                    : `${productsUrl}?search=${encodeURIComponent(String(trial.name || 'Rookie'))}`
-                }
-                className="inline-flex min-h-10 w-full items-center justify-center gap-1.5 rounded-xl border border-white/20 px-4 py-2 text-xs font-semibold text-white transition hover:border-rose-500/50 active:scale-[0.98] sm:w-auto sm:rounded-full"
+              <a
+                href={trialBookHref}
+                target={trialBookExternal ? '_blank' : undefined}
+                rel={trialBookExternal ? 'noopener noreferrer' : undefined}
+                className="inline-flex min-h-10 w-full shrink-0 items-center justify-center gap-1.5 rounded-xl px-4 py-2 text-xs font-semibold text-white transition hover:opacity-95 active:scale-[0.98] sm:w-auto"
+                style={{
+                  background: `linear-gradient(135deg, ${accent} 0%, #9f1239 100%)`,
+                }}
               >
                 Get trial pass <ArrowRight className="h-3.5 w-3.5" />
-              </Link>
+                {trialBookExternal ? (
+                  <ExternalLink className="h-3 w-3 opacity-70" aria-hidden />
+                ) : null}
+              </a>
             </div>
           ) : (
             <p className="text-center text-xs text-white/45 sm:text-left">

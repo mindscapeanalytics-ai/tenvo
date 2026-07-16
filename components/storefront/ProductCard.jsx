@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { SmartProductImage } from '@/components/storefront/SmartProductImage';
-import { Heart, ShoppingBag, Eye, Star, Zap } from 'lucide-react';
+import { Heart, ShoppingBag, Eye, Star, Zap, Calendar } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/lib/currency';
@@ -14,7 +14,11 @@ import { getStoreAccentColor } from '@/lib/config/storefrontDomains';
 import { getEffectiveProductImageUrl, getFallbackProductImageUrl } from '@/lib/storefront/productImageFallback';
 import { isAutoPartsFinderStore } from '@/lib/storefront/partsFinder';
 import { isFashionEditorialStore } from '@/lib/storefront/fashionEditorial';
-import { isFitnessElevatedStore } from '@/lib/storefront/fitnessStorefront';
+import {
+  isFitnessElevatedStore,
+  isFitnessBookableProduct,
+  resolveFitnessBookHref,
+} from '@/lib/storefront/fitnessStorefront';
 import { isPharmacyElevatedStore } from '@/lib/storefront/pharmacyStorefront';
 import { isPrescriptionRequiredProduct, buildPharmacyPrescriptionContactHref } from '@/lib/storefront/pharmacyProducts';
 import { PharmacyPrescriptionCta } from '@/components/storefront/pharmacy/PharmacyPrescriptionCta';
@@ -23,6 +27,7 @@ import { isStorefrontProductUuid } from '@/lib/utils/storefrontProductRef';
 import { resolveStorefrontProductBrowseHref } from '@/lib/storefront/storefrontPurchasability';
 import { resolveSourcingBadge } from '@/lib/storefront/productAttributeChips';
 import { catalogProductNeedsVariantPage } from '@/lib/storefront/storefrontProductVariants';
+import { getTenantMeetingUrl } from '@/lib/storefront/storefrontBooking';
 import { toast } from 'react-hot-toast';
 import { motion } from 'framer-motion';
 
@@ -42,6 +47,15 @@ export function ProductCard({ product, businessDomain, variant = 'default' }) {
   const fitnessStore = isFitnessElevatedStore(business?.category);
   const pharmacyStore = isPharmacyElevatedStore(business?.category);
   const requiresPrescription = pharmacyStore && isPrescriptionRequiredProduct(product);
+  const bookableFitness = fitnessStore && isFitnessBookableProduct(product);
+  const meetingUrl = fitnessStore ? getTenantMeetingUrl(business, settings) : '';
+  const bookHref = bookableFitness
+    ? resolveFitnessBookHref(`/store/${businessDomain}`, {
+        meetingUrl,
+        subject: 'appointment',
+        packageName: product.name,
+      })
+    : null;
   const displayImage = getEffectiveProductImageUrl(product, business?.category);
   const imageFallback =
     product?.image_url?.trim()
@@ -79,6 +93,15 @@ export function ProductCard({ product, businessDomain, variant = 'default' }) {
     e.preventDefault();
     e.stopPropagation();
     if (isOutOfStock) return;
+
+    if (bookableFitness && bookHref) {
+      if (meetingUrl) {
+        window.open(bookHref, '_blank', 'noopener,noreferrer');
+      } else {
+        window.location.href = bookHref;
+      }
+      return;
+    }
 
     if (requiresPrescription) {
       window.location.href = buildPharmacyPrescriptionContactHref(businessDomain, product);
@@ -286,6 +309,18 @@ export function ProductCard({ product, businessDomain, variant = 'default' }) {
                 accent={accent}
                 variant="card"
               />
+            ) : bookableFitness && bookHref ? (
+              <a
+                href={bookHref}
+                target={meetingUrl ? '_blank' : undefined}
+                rel={meetingUrl ? 'noopener noreferrer' : undefined}
+                onClick={(e) => e.stopPropagation()}
+                className="flex w-full items-center justify-center gap-2 rounded-lg py-2 text-xs font-bold text-white shadow-lg transition-all active:scale-95 sm:rounded-xl sm:py-2.5 sm:text-sm"
+                style={{ backgroundColor: accent }}
+              >
+                <Calendar className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                Book
+              </a>
             ) : (
               <button
                 type="button"
@@ -382,6 +417,21 @@ export function ProductCard({ product, businessDomain, variant = 'default' }) {
               variant="card"
               className={cn(isDense ? 'py-1.5 text-[10px] sm:text-[11px]' : 'mt-1 py-2 text-xs')}
             />
+          ) : bookableFitness && bookHref ? (
+            <a
+              href={bookHref}
+              target={meetingUrl ? '_blank' : undefined}
+              rel={meetingUrl ? 'noopener noreferrer' : undefined}
+              onClick={(e) => e.stopPropagation()}
+              className={cn(
+                'mt-auto flex w-full items-center justify-center gap-1.5 rounded-lg font-bold text-white transition-all active:scale-[0.98]',
+                isDense ? 'py-1.5 text-[10px] sm:text-[11px]' : 'mt-1 py-2 text-xs'
+              )}
+              style={{ backgroundColor: accent }}
+            >
+              <Calendar className={cn(isDense ? 'h-3 w-3' : 'h-3.5 w-3.5')} aria-hidden />
+              Book
+            </a>
           ) : (
             <button
               type="button"
