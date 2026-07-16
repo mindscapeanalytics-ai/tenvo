@@ -21,6 +21,7 @@ import {
   resolveFurnitureEditorialBanners,
   resolveFurnitureTestimonials,
   formatFurnitureStoreName,
+  resolveFurnitureCategoryFallbackImage,
 } from '@/lib/storefront/furnitureStorefront';
 
 /**
@@ -150,7 +151,18 @@ export function FurnitureHomeSections({
                 View all
               </Link>
             </div>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+            <div
+              className={cn(
+                'grid gap-3',
+                roomCollections.length >= 6
+                  ? 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-6'
+                  : roomCollections.length === 5
+                    ? 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-5'
+                    : roomCollections.length === 4
+                      ? 'grid-cols-2 sm:grid-cols-4'
+                      : 'grid-cols-2 sm:grid-cols-3'
+              )}
+            >
               {roomCollections.map((room) => (
                 <Link
                   key={room.id}
@@ -159,9 +171,11 @@ export function FurnitureHomeSections({
                 >
                   <SmartProductImage
                     src={room.image}
-                    alt=""
+                    alt={room.label || ''}
                     fill
                     className="object-cover transition duration-500 group-hover:scale-105"
+                    fallbackSrc={resolveFurnitureCategoryFallbackImage(room)}
+                    placeholderLabel={room.label}
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-stone-950/80 via-stone-900/20 to-transparent" />
                   <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-4">

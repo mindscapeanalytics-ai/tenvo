@@ -44,6 +44,13 @@ import { usePosFullscreen } from '@/lib/hooks/usePosFullscreen';
 import { usePosReceipt } from '@/lib/hooks/usePosReceipt';
 import { getEffectiveProductImageUrl } from '@/lib/storefront/productImageFallback';
 import { ProductThumbnail } from '@/components/product/ProductThumbnail';
+import { PosHotkeyDock } from '@/components/pos/shared/PosHotkeyDock';
+import { PosTaxPanel } from '@/components/pos/shared/PosTaxPanel';
+import { usePosHotkeys } from '@/lib/hooks/usePosHotkeys';
+import { usePosHeldSales } from '@/lib/hooks/usePosHeldSales';
+import { usePosTaxConfig } from '@/lib/hooks/usePosTaxConfig';
+import { nextPosPaymentMethod } from '@/lib/config/posHotkeys';
+import { computePosCartTax } from '@/lib/utils/posTaxComponents';
 import toast from 'react-hot-toast';
 
 // --- Department Filter Bar ---------------------------------------------------
@@ -123,7 +130,8 @@ function BarcodeScannerInput({ onScan, onSearchChange, searchTerm, isScanning })
             )} />
             <Input
                 ref={inputRef}
-                placeholder="Scan barcode or type product name..."
+                data-pos-role="scan"
+                placeholder="Scan barcode or type product name... (F1)"
                 className="pl-11 h-12 rounded-xl bg-gray-50 border-gray-200 focus:bg-white text-sm font-medium
                            focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400 transition-all"
                 value={searchTerm}
@@ -272,10 +280,8 @@ function CartSummary({
     discount = 0, onDiscountChange, onPaymentMethodSelect,
     onCompleteSale, onHoldSale, onVoidSale, isProcessing,
     currency = 'Rs.', heldOrders = [], onResumeHeldSale, onPrintBill, onDownloadBillPdf,
-    onBack,
+    onBack, taxLabel = 'Tax', taxBreakdown = [], discountInputRef,
 }) {
-    // Priority: taxConfig.sales_tax_rate -> taxPercent prop -> 17.0 (fallback)
-    const effectiveTaxRate = taxConfig?.sales_tax_rate ?? taxPercent ?? 17;
     const itemCount = items.reduce((sum, i) => sum + (i.isWeightItem ? 1 * i.quantity : i.quantity), 0);
     const subtotal = items.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0);
     
@@ -288,6 +294,7 @@ function CartSummary({
     const taxAmount = Math.round(totalTax * 100) / 100;
     const discountAmount = parseFloat(discount || 0);
     const total = Math.round((subtotal + taxAmount - discountAmount) * 100) / 100;
+    const showBreakdown = Array.isArray(taxBreakdown) && taxBreakdown.length > 1;
 
     return (
         <div className="flex flex-col h-full bg-slate-900 text-white touch-manipulation min-h-0 overflow-hidden">
@@ -334,14 +341,25 @@ function CartSummary({
                                 <span>Subtotal ({items.length} items)</span>
                                 <span>{currency}{subtotal.toLocaleString()}</span>
                             </div>
-                            <div className="flex justify-between text-gray-400">
-                                <span>Tax</span>
-                                <span>{currency}{taxAmount.toLocaleString()}</span>
-                            </div>
+                            {showBreakdown ? (
+                                taxBreakdown.map((row) => (
+                                    <div key={row.key} className="flex justify-between text-gray-400">
+                                        <span>{row.label} ({row.rate}%)</span>
+                                        <span>{currency}{row.amount.toLocaleString()}</span>
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="flex justify-between text-gray-400">
+                                    <span>{taxLabel}</span>
+                                    <span>{currency}{taxAmount.toLocaleString()}</span>
+                                </div>
+                            )}
                             <div className="flex items-center justify-between text-gray-400">
                                 <span>Discount</span>
                                 <Input
+                                    ref={discountInputRef}
                                     type="number"
+                                    data-pos-role="discount"
                                     value={discount}
                                     onChange={(e) => onDiscountChange?.(e.target.value)}
                                     className="w-20 h-6 text-right text-xs bg-slate-800 border-slate-700 text-white rounded px-2"
@@ -470,11 +488,20 @@ function CartSummary({
 
 export function SuperStorePOS({ 
     businessId, products = [], customers = [], onStartSession, onCloseSession,
-    onCompleteSale, currency = 'Rs.', session, taxConfig, category: categoryProp,
+    onCompleteSale, currency = 'Rs.', session, taxConfig: taxConfigProp, category: categoryProp,
 }) {
     const { business, currencySymbol } = useBusiness();
     const category = categoryProp || business?.category || 'supermarket';
-    const posUi = getPosUiConfig(category, business);
+    const {
+        taxMode,
+        setTaxMode,
+        components: taxComponents,
+        effectiveTaxRate,
+        taxLabel,
+        taxConfig: loadedTaxConfig,
+        posUi,
+    } = usePosTaxConfig(category);
+    const taxConfig = taxConfigProp || loadedTaxConfig;
     const domainFlags = getPosDomainFlags(category);
     const departments = useMemo(
         () => buildPosDepartments(category, products, posUi.maxCategoryChips + 2),
@@ -484,7 +511,6 @@ export function SuperStorePOS({
     const documentLabel = posUi.receiptLabel || domainConfig?.label_overrides?.invoice || 'Receipt';
     const currencyCode = posUi.currencyCode;
     const displayCurrency = currencySymbol || posUi.currencySymbol;
-    const effectiveTaxRate = taxConfig?.sales_tax_rate ?? posUi.defaultTaxRate;
     const [cart, setCart] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [activeDepartment, setActiveDepartment] = useState('all');
@@ -496,14 +522,16 @@ export function SuperStorePOS({
     const [splitPayments, setSplitPayments] = useState(null);
     const [showSplitDialog, setShowSplitDialog] = useState(false);
     const [showCloseShiftDialog, setShowCloseShiftDialog] = useState(false);
+    const [showTaxPanel, setShowTaxPanel] = useState(false);
     const [mobilePane, setMobilePane] = useState('browse');
     const [showCameraScanner, setShowCameraScanner] = useState(false);
     const [pharmacyProduct, setPharmacyProduct] = useState(null);
     const [isProcessing, setIsProcessing] = useState(false);
-    const [heldOrders, setHeldOrders] = useState([]);
     const [isStartingSession, setIsStartingSession] = useState(false);
     const [isScanning, setIsScanning] = useState(false);
     const [lastScannedItem, setLastScannedItem] = useState(null);
+    const discountInputRef = useRef(null);
+    const { heldOrders, holdSale, resumeLastHeld } = usePosHeldSales(businessId || business?.id);
     const posSettings = usePosSettings();
     const { isOnline, pendingCount, isSyncing, queueSale, syncPending } = usePosOffline(businessId, {
         enabled: posSettings.offlineModeEnabled,
@@ -538,8 +566,6 @@ export function SuperStorePOS({
         : null;
     const terminalLabel = session?.terminalName || session?.terminal_name || posUi.terminalLabel;
 
-    const heldOrdersStorageKey = useMemo(() => `fh:pos:held:${businessId || 'default'}`, [businessId]);
-
     const filteredCustomers = useMemo(() => {
         if (!customerQuery.trim()) return (customers || []).slice(0, 40);
         const lower = customerQuery.toLowerCase();
@@ -549,6 +575,14 @@ export function SuperStorePOS({
             || c.email?.toLowerCase().includes(lower)
         ).slice(0, 40);
     }, [customers, customerQuery]);
+
+    useEffect(() => {
+        setCart((prev) => prev.map((line) => (
+            line.taxExempt || line.tax_exempt
+                ? line
+                : { ...line, taxPercent: effectiveTaxRate }
+        )));
+    }, [effectiveTaxRate]);
 
     const handlePrintReceipt = useCallback(() => {
         printLastReceipt();
@@ -585,30 +619,6 @@ export function SuperStorePOS({
             setIsStartingSession(false);
         }
     }, [onStartSession, isStartingSession]);
-
-    // --- Fullscreen (shared hook) --------------------------------------------
-
-    useEffect(() => {
-        if (typeof window === 'undefined') return;
-        try {
-            const raw = window.localStorage.getItem(heldOrdersStorageKey);
-            if (raw) {
-                const parsed = JSON.parse(raw);
-                if (Array.isArray(parsed)) setHeldOrders(parsed);
-            }
-        } catch (error) {
-            console.warn('Failed to load held POS orders:', error);
-        }
-    }, [heldOrdersStorageKey]);
-
-    useEffect(() => {
-        if (typeof window === 'undefined') return;
-        try {
-            window.localStorage.setItem(heldOrdersStorageKey, JSON.stringify(heldOrders));
-        } catch (error) {
-            console.warn('Failed to persist held POS orders:', error);
-        }
-    }, [heldOrders, heldOrdersStorageKey]);
 
     // --- Derived Data --------------------------------------------------------
 
@@ -683,27 +693,30 @@ export function SuperStorePOS({
 
     const handleHoldSale = useCallback(() => {
         if (cart.length === 0) return;
-        setHeldOrders(prev => [...prev, { items: cart, customer, discount, timestamp: Date.now() }]);
+        holdSale({ items: cart, customer, discount, taxMode, paymentMethod });
         setCart([]);
         setCustomer(null);
         setDiscount(0);
-    }, [cart, customer, discount]);
+        setTaxMode('standard');
+        toast.success('Sale held', { id: 'pos-hold' });
+    }, [cart, customer, discount, taxMode, paymentMethod, holdSale, setTaxMode]);
 
     const handleVoidSale = useCallback(() => {
         setCart([]);
         setCustomer(null);
         setDiscount(0);
-    }, []);
+        setTaxMode('standard');
+    }, [setTaxMode]);
 
     const handleResumeLastHeldSale = useCallback(() => {
         if (heldOrders.length === 0 || cart.length > 0) return;
-        const updated = [...heldOrders];
-        const restored = updated.pop();
-        setHeldOrders(updated);
+        const restored = resumeLastHeld();
+        if (!restored) return;
         setCart(restored?.items || []);
         setCustomer(restored?.customer || null);
         setDiscount(restored?.discount || 0);
-    }, [heldOrders, cart.length]);
+        if (restored?.taxMode) setTaxMode(restored.taxMode);
+    }, [heldOrders.length, cart.length, resumeLastHeld, setTaxMode]);
 
     const handleCompleteSale = useCallback(async () => {
         if (cart.length === 0 || isProcessing) return;
@@ -767,30 +780,102 @@ export function SuperStorePOS({
         }
     }, [cart, businessId, session, customer, discount, paymentMethod, splitPayments, isProcessing, onCompleteSale, hasSession, effectiveTaxRate, category, recordSuccessfulSale, formatSaleError, isOnline, posSettings.offlineModeEnabled, queueSale]);
 
-    const cartSummary = useMemo(() => {
-        const subtotal = cart.reduce((s, i) => s + i.unitPrice * i.quantity, 0);
-        const taxAmount = Math.round(cart.reduce((s, i) => s + (i.unitPrice * i.quantity) * ((i.taxPercent || 0) / 100), 0) * 100) / 100;
-        const discountAmount = parseFloat(discount || 0);
-        const total = Math.round((subtotal + taxAmount - discountAmount) * 100) / 100;
-        const itemCount = cart.reduce((s, i) => s + (i.isWeightItem ? 1 : i.quantity), 0);
-        return { subtotal, taxAmount, discountAmount, total, itemCount };
-    }, [cart, discount]);
+    const cartTax = useMemo(
+        () => computePosCartTax(cart, taxComponents),
+        [cart, taxComponents]
+    );
 
-    // --- Keyboard Shortcuts --------------------------------------------------
+    const cartSummary = useMemo(() => {
+        const totals = computePosOrderTotals(cart, {
+            discount,
+            discountType: 'fixed',
+            taxComponents,
+            precomputedTax: cartTax,
+        });
+        const itemCount = cart.reduce((s, i) => s + (i.isWeightItem ? 1 : i.quantity), 0);
+        return {
+            subtotal: totals.subtotal,
+            taxAmount: totals.taxAmount,
+            taxBreakdown: totals.taxBreakdown || cartTax.breakdown || [],
+            discountAmount: totals.discountAmount,
+            total: totals.total,
+            itemCount,
+        };
+    }, [cart, discount, taxComponents, cartTax]);
+
+    const focusScanSearch = useCallback(() => {
+        const el = typeof document !== 'undefined'
+            ? document.querySelector('[data-pos-role="scan"]')
+            : null;
+        if (el instanceof HTMLElement) el.focus();
+    }, []);
+
+    const hotkeyHandlers = useMemo(() => ({
+        search: focusScanSearch,
+        customer: () => setShowCustomerDialog(true),
+        discount: () => discountInputRef.current?.focus(),
+        hold: handleHoldSale,
+        pay: () => {
+            if (cart.length > 0 && !isProcessing) handleCompleteSale();
+        },
+        payment: () => handlePaymentMethodSelect(nextPosPaymentMethod(paymentMethod)),
+        tax: () => setShowTaxPanel(true),
+        clear: handleVoidSale,
+        print: () => handlePrintBill({
+            subtotal: cartSummary.subtotal,
+            taxAmount: cartSummary.taxAmount,
+            discountAmount: cartSummary.discountAmount,
+            total: cartSummary.total,
+        }),
+    }), [
+        focusScanSearch,
+        handleHoldSale,
+        cart.length,
+        isProcessing,
+        handleCompleteSale,
+        handlePaymentMethodSelect,
+        paymentMethod,
+        handleVoidSale,
+        handlePrintBill,
+        cartSummary,
+    ]);
+
+    usePosHotkeys({
+        enabled: !showCustomerDialog && !showSplitDialog && !showTaxPanel,
+        handlers: hotkeyHandlers,
+    });
 
     useEffect(() => {
         const handleKeyDown = (e) => {
-            if (e.key === 'F9') { e.preventDefault(); handleCompleteSale(); }
-            if (e.key === 'F8') { e.preventDefault(); handleHoldSale(); }
             if (e.key === 'F11') { e.preventDefault(); toggleFullscreen(); }
-            if (e.key === 'Escape') { handleVoidSale(); }
         };
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [handleCompleteSale, handleHoldSale, handleVoidSale, toggleFullscreen]);
+    }, [toggleFullscreen]);
 
     // --- Render --------------------------------------------------------------
 
+    const cartSummaryProps = {
+        items: cart,
+        customer,
+        onCustomerSelect: () => setShowCustomerDialog(true),
+        discount,
+        onDiscountChange: setDiscount,
+        onPaymentMethodSelect: handlePaymentMethodSelect,
+        onCompleteSale: handleCompleteSale,
+        onHoldSale: handleHoldSale,
+        onVoidSale: handleVoidSale,
+        onResumeHeldSale: handleResumeLastHeldSale,
+        onPrintBill: handlePrintBill,
+        onDownloadBillPdf: handleDownloadBillPdf,
+        isProcessing,
+        currency: displayCurrency,
+        heldOrders,
+        taxConfig,
+        taxLabel: taxLabel || posUi.taxLabel,
+        taxBreakdown: cartSummary.taxBreakdown,
+        discountInputRef,
+    };
     return (
         <div
             ref={containerRef}
@@ -829,10 +914,12 @@ export function SuperStorePOS({
                             <button key={p.id} type="button" onClick={() => { addToCart(p); setSearchTerm(''); }} className="flex w-full px-4 py-2 text-left hover:bg-emerald-50/50 text-xs font-bold">{p.name}</button>
                         ))}</div>
                     )}
-                    <div className="shrink-0 flex justify-between px-4 py-1.5 bg-gray-50 border-t text-[10px] font-bold text-gray-400 uppercase"><span>F9 Checkout</span><span>F8 Hold</span><span>ESC Void</span></div>
+                    <div className="shrink-0 px-4 py-1.5 bg-gray-50 border-t text-[10px] font-semibold text-gray-400 text-center">
+                        F1 search · F4 hold · F5 pay · F7 tax · F9 print
+                    </div>
                 </div>
                 <aside className="w-[min(100%,400px)] shrink-0 flex flex-col min-h-0">
-                    <CartSummary {...{ items: cart, customer, onCustomerSelect: () => setShowCustomerDialog(true), discount, onDiscountChange: setDiscount, onPaymentMethodSelect: handlePaymentMethodSelect, onCompleteSale: handleCompleteSale, onHoldSale: handleHoldSale, onVoidSale: handleVoidSale, onResumeHeldSale: handleResumeLastHeldSale, onPrintBill: handlePrintBill, onDownloadBillPdf: handleDownloadBillPdf, isProcessing, currency: displayCurrency, heldOrders, taxConfig }} />
+                    <CartSummary {...cartSummaryProps} />
                 </aside>
             </div>
 
@@ -871,10 +958,31 @@ export function SuperStorePOS({
                     </>
                 ) : (
                     <div className="flex-1 min-h-0 flex flex-col">
-                        <CartSummary {...{ items: cart, customer, onCustomerSelect: () => setShowCustomerDialog(true), discount, onDiscountChange: setDiscount, onPaymentMethodSelect: handlePaymentMethodSelect, onCompleteSale: handleCompleteSale, onHoldSale: handleHoldSale, onVoidSale: handleVoidSale, onResumeHeldSale: handleResumeLastHeldSale, onPrintBill: handlePrintBill, onDownloadBillPdf: handleDownloadBillPdf, isProcessing, currency: displayCurrency, heldOrders, taxConfig, onBack: () => setMobilePane('browse') }} />
+                        <CartSummary {...cartSummaryProps} onBack={() => setMobilePane('browse')} />
                     </div>
                 )}
             </div>
+
+            <PosHotkeyDock
+                className="hidden lg:block"
+                onAction={(action) => hotkeyHandlers[action]?.()}
+                disabledActions={{
+                    hold: cart.length === 0,
+                    pay: cart.length === 0 || isProcessing,
+                    print: cart.length === 0,
+                    clear: cart.length === 0,
+                }}
+            />
+
+            <PosTaxPanel
+                open={showTaxPanel}
+                onOpenChange={setShowTaxPanel}
+                taxMode={taxMode}
+                onTaxModeChange={setTaxMode}
+                components={taxComponents}
+                currency={displayCurrency}
+                sampleTaxAmount={cartSummary.taxAmount}
+            />
 
             {/* Sale Success Toast */}
             <AnimatePresence>

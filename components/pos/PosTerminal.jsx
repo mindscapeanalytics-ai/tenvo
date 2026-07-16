@@ -28,7 +28,6 @@ import {
     buildPosCategoryChips,
     computePosOrderTotals,
     findProductByScanCode,
-    getPosUiConfig,
     getProductAvailableStock,
 } from '@/lib/utils/posHelpers';
 import { PosCloseShiftDialog } from '@/components/pos/shared/PosCloseShiftDialog';
@@ -41,7 +40,7 @@ import { PosMobileCheckoutBar } from '@/components/pos/shared/PosMobileCheckoutB
 import { usePosSettings } from '@/lib/hooks/usePosSettings';
 import { usePosOffline } from '@/lib/hooks/usePosOffline';
 import { usePosProductAdd } from '@/lib/hooks/usePosProductAdd';
-import { getPosDomainFlags, normalizePosCategoryKey } from '@/lib/config/posDomains';
+import { normalizePosCategoryKey } from '@/lib/config/posDomains';
 import { usePosFullscreen } from '@/lib/hooks/usePosFullscreen';
 import { usePosReceipt } from '@/lib/hooks/usePosReceipt';
 import {
@@ -52,6 +51,13 @@ import {
 } from '@/lib/utils/posLayout';
 import { getEffectiveProductImageUrl } from '@/lib/storefront/productImageFallback';
 import { ProductThumbnail } from '@/components/product/ProductThumbnail';
+import { PosHotkeyDock } from '@/components/pos/shared/PosHotkeyDock';
+import { PosTaxPanel } from '@/components/pos/shared/PosTaxPanel';
+import { usePosHotkeys } from '@/lib/hooks/usePosHotkeys';
+import { usePosHeldSales } from '@/lib/hooks/usePosHeldSales';
+import { usePosTaxConfig } from '@/lib/hooks/usePosTaxConfig';
+import { nextPosPaymentMethod } from '@/lib/config/posHotkeys';
+import { computePosCartTax } from '@/lib/utils/posTaxComponents';
 import toast from 'react-hot-toast';
 
 // --- Product Grid ------------------------------------------------------------
@@ -160,9 +166,10 @@ function PosProductGrid({
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" aria-hidden="true" />
                     <Input
                         ref={searchInputRef}
+                        data-pos-role="scan"
                         placeholder={barcodeFirst
                             ? 'Scan or search SKU / name… (Enter)'
-                            : 'Search SKU, name, or barcode… (Ctrl+F)'}
+                            : 'Search SKU, name, or barcode… (F1)'}
                         className={cn(
                             toolbarControlClass,
                             'pl-9 pr-3 w-full focus-visible:ring-emerald-500/25 focus-visible:border-emerald-400'
@@ -294,8 +301,11 @@ function PosCart({
     items, onQuantityChange, onRemoveItem, onClearCart,
     customer, onCustomerSelect, discount = 0, discountType = 'fixed',
     onDiscountChange, onDiscountTypeChange, onPaymentMethodSelect, onCompleteSale, isProcessing,
-    loyaltyBalance = 0, currency = '₨', taxLabel = 'Tax', selectedPaymentMethod = 'cash',
+    loyaltyBalance = 0, currency = '₨', taxLabel = 'Tax', taxBreakdown = [],
+    selectedPaymentMethod = 'cash',
     onBack, hideKeyboardHint = false, businessCategory, onPrintBill, onDownloadBillPdf,
+    onHoldSale, onResumeHeldSale, heldOrders = [],
+    discountInputRef,
 }) {
     const subtotal = items.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0);
     
@@ -315,6 +325,7 @@ function PosCart({
     
     const total = Math.round((subtotal + taxAmount - discountAmount) * 100) / 100;
     const itemQty = items.reduce((sum, i) => sum + i.quantity, 0);
+    const showBreakdown = Array.isArray(taxBreakdown) && taxBreakdown.length > 1;
 
     return (
         <div
@@ -466,10 +477,19 @@ function PosCart({
                                 <span>Subtotal ({itemQty})</span>
                                 <span className="tabular-nums text-gray-700">{currency}{subtotal.toLocaleString()}</span>
                             </div>
-                            <div className="flex justify-between text-gray-500">
-                                <span>{taxLabel}</span>
-                                <span className="tabular-nums text-gray-700">{currency}{taxAmount.toLocaleString()}</span>
-                            </div>
+                            {showBreakdown ? (
+                                taxBreakdown.map((row) => (
+                                    <div key={row.key} className="flex justify-between text-gray-500">
+                                        <span>{row.label} ({row.rate}%)</span>
+                                        <span className="tabular-nums text-gray-700">{currency}{row.amount.toLocaleString()}</span>
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="flex justify-between text-gray-500">
+                                    <span>{taxLabel}</span>
+                                    <span className="tabular-nums text-gray-700">{currency}{taxAmount.toLocaleString()}</span>
+                                </div>
+                            )}
                             <div className="flex items-center justify-between text-gray-500 gap-2">
                                 <div className="flex items-center gap-1 min-w-0">
                                     <span>Discount</span>
@@ -483,7 +503,9 @@ function PosCart({
                                     </button>
                                 </div>
                                 <Input
+                                    ref={discountInputRef}
                                     type="number"
+                                    data-pos-role="discount"
                                     value={discount}
                                     onChange={(e) => onDiscountChange?.(e.target.value)}
                                     className="w-16 h-7 text-right text-xs bg-white border-gray-200 text-gray-900 rounded-md px-2 focus-visible:ring-emerald-500/25 focus-visible:border-emerald-400"
@@ -504,6 +526,31 @@ function PosCart({
                                     {currency}{total.toLocaleString()}
                                 </span>
                             </div>
+                        </div>
+
+                        <div className="flex gap-1.5">
+                            {onHoldSale ? (
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={onHoldSale}
+                                    disabled={items.length === 0 || isProcessing}
+                                    className="h-9 flex-1 rounded-xl text-[10px] font-semibold border-amber-200 text-amber-800 hover:bg-amber-50"
+                                >
+                                    <Clock className="w-3.5 h-3.5 mr-1" /> Hold
+                                </Button>
+                            ) : null}
+                            {heldOrders.length > 0 && onResumeHeldSale ? (
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={onResumeHeldSale}
+                                    disabled={items.length > 0 || isProcessing}
+                                    className="h-9 flex-1 rounded-xl text-[10px] font-semibold border-sky-200 text-sky-800 hover:bg-sky-50"
+                                >
+                                    <RotateCcw className="w-3.5 h-3.5 mr-1" /> Resume ({heldOrders.length})
+                                </Button>
+                            ) : null}
                         </div>
 
                         <div
@@ -582,7 +629,7 @@ function PosCart({
                         </div>
                         {!hideKeyboardHint && (
                             <p className="text-[10px] text-gray-400 text-center flex items-center justify-center gap-1">
-                                <Keyboard className="w-3 h-3" /> Ctrl+F search · Enter checkout
+                                <Keyboard className="w-3 h-3" /> F1–F9 dock · Enter pay
                             </p>
                         )}
                     </>
@@ -612,10 +659,6 @@ export function PosTerminal({
 }) {
     const { business, currencySymbol } = useBusiness();
     const category = categoryProp || business?.category || 'retail-shop';
-    const posUi = useMemo(() => getPosUiConfig(category, business), [category, business]);
-    const documentLabel = posUi.receiptLabel;
-    const currencyCode = posUi.currencyCode;
-    const displayCurrency = currencySymbol || posUi.currencySymbol;
     const [cart, setCart] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [activeCategory, setActiveCategory] = useState('all');
@@ -631,14 +674,23 @@ export function PosTerminal({
     const [showCameraScanner, setShowCameraScanner] = useState(false);
     const [pharmacyProduct, setPharmacyProduct] = useState(null);
     const posSettings = usePosSettings();
-    const domainFlags = useMemo(() => getPosDomainFlags(category), [category]);
     const { isOnline, pendingCount, isSyncing, queueSale, syncPending } = usePosOffline(businessId, {
         enabled: posSettings.offlineModeEnabled,
     });
     const [isProcessing, setIsProcessing] = useState(false);
     const [isStartingSession, setIsStartingSession] = useState(false);
     const [mobilePane, setMobilePane] = useState('browse');
-    const searchInputRef = useRef(null);
+    const [showTaxPanel, setShowTaxPanel] = useState(false);
+    const discountInputRef = useRef(null);
+    const {
+        taxMode,
+        setTaxMode,
+        components: taxComponents,
+        effectiveTaxRate,
+        taxLabel,
+        posUi,
+    } = usePosTaxConfig(category);
+    const { heldOrders, holdSale, resumeLastHeld } = usePosHeldSales(businessId || business?.id);
     const { containerRef, isFullscreen, toggleFullscreen } = usePosFullscreen();
     const {
         autoPrintEnabled,
@@ -654,10 +706,12 @@ export function PosTerminal({
         formatSaleError,
     } = usePosReceipt({
         business,
-        documentLabel,
+        documentLabel: posUi.receiptLabel,
         category,
-        currencyCode,
+        currencyCode: posUi.currencyCode,
     });
+
+    const displayCurrency = currencySymbol || posUi.currencySymbol;
 
     const hasSession = Boolean(
         session?.id
@@ -673,12 +727,20 @@ export function PosTerminal({
     const { tryAddProduct, handleScanCode } = usePosProductAdd({
         category,
         posSettings,
-        effectiveTaxRate: posUi.defaultTaxRate,
+        effectiveTaxRate,
         businessId: business?.id,
         setCart,
         setPharmacyProduct,
         onAdded: () => setSearchTerm(''),
     });
+
+    useEffect(() => {
+        setCart((prev) => prev.map((line) => (
+            line.taxExempt || line.tax_exempt
+                ? line
+                : { ...line, taxPercent: effectiveTaxRate }
+        )));
+    }, [effectiveTaxRate]);
 
     const barcodeScanAllowed = canUseBarcodeScan(business);
     const showCamera = barcodeScanAllowed && (
@@ -701,21 +763,28 @@ export function PosTerminal({
         ).slice(0, 40);
     }, [customers, customerQuery]);
 
+    const cartTax = useMemo(
+        () => computePosCartTax(cart, taxComponents),
+        [cart, taxComponents]
+    );
+
     const cartSummary = useMemo(() => {
-        const subtotal = cart.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0);
-        const totalTax = cart.reduce(
-            (sum, i) => sum + (i.unitPrice * i.quantity) * ((i.taxPercent || 0) / 100),
-            0
-        );
-        const taxAmount = Math.round(totalTax * 100) / 100;
-        const rawDiscount = parseFloat(discount || 0);
-        const discountAmount = discountType === 'percentage'
-            ? Math.min(subtotal * (rawDiscount / 100), subtotal)
-            : Math.min(rawDiscount, subtotal);
-        const total = Math.round((subtotal + taxAmount - discountAmount) * 100) / 100;
+        const totals = computePosOrderTotals(cart, {
+            discount,
+            discountType,
+            taxComponents,
+            precomputedTax: cartTax,
+        });
         const itemCount = cart.reduce((sum, i) => sum + i.quantity, 0);
-        return { subtotal, taxAmount, discountAmount, total, itemCount };
-    }, [cart, discount, discountType]);
+        return {
+            subtotal: totals.subtotal,
+            taxAmount: totals.taxAmount,
+            taxBreakdown: totals.taxBreakdown || cartTax.breakdown || [],
+            discountAmount: totals.discountAmount,
+            total: totals.total,
+            itemCount,
+        };
+    }, [cart, discount, discountType, taxComponents, cartTax]);
 
     const handlePrintBill = useCallback((totalsFromCart) => {
         printBillFromCart({
@@ -786,6 +855,64 @@ export function PosTerminal({
         setPaymentMethod(method);
     }, []);
 
+    const focusScanSearch = useCallback(() => {
+        const el = typeof document !== 'undefined'
+            ? document.querySelector('[data-pos-role="scan"]')
+            : null;
+        if (el instanceof HTMLElement) {
+            el.focus();
+        }
+    }, []);
+
+    const handleHoldSale = useCallback(() => {
+        if (cart.length === 0) {
+            toast.error('Cart is empty', { id: 'pos-hold' });
+            return;
+        }
+        const ok = holdSale({
+            items: cart,
+            customer,
+            discount,
+            discountType,
+            taxMode,
+            paymentMethod,
+        });
+        if (!ok) return;
+        setCart([]);
+        setCustomer(null);
+        setDiscount(0);
+        setDiscountType('fixed');
+        setSplitPayments(null);
+        setTaxMode('standard');
+        toast.success('Sale held', { id: 'pos-hold' });
+    }, [cart, customer, discount, discountType, taxMode, paymentMethod, holdSale, setTaxMode]);
+
+    const handleResumeHeldSale = useCallback(() => {
+        if (cart.length > 0) {
+            toast.error('Clear or hold the current cart first', { id: 'pos-hold' });
+            return;
+        }
+        const restored = resumeLastHeld();
+        if (!restored) return;
+        setCart(restored.items || []);
+        setCustomer(restored.customer || null);
+        setDiscount(restored.discount ?? 0);
+        setDiscountType(restored.discountType || 'fixed');
+        if (restored.taxMode) setTaxMode(restored.taxMode);
+        if (restored.paymentMethod) setPaymentMethod(restored.paymentMethod);
+        toast.success('Held sale restored', { id: 'pos-hold' });
+    }, [cart.length, resumeLastHeld, setTaxMode]);
+
+    const handleClearCart = useCallback(() => {
+        if (cart.length === 0) return;
+        setCart([]);
+        setCustomer(null);
+        setDiscount(0);
+        setDiscountType('fixed');
+        setSplitPayments(null);
+        setTaxMode('standard');
+    }, [cart.length, setTaxMode]);
+
     const handleCompleteSale = useCallback(async () => {
         if (cart.length === 0 || isProcessing) return;
         setIsProcessing(true);
@@ -796,6 +923,7 @@ export function PosTerminal({
                 customerId: customer?.id || null,
                 cart: cart.map((i) => ({
                     ...i,
+                    taxPercent: i.taxPercent ?? effectiveTaxRate,
                     batchId: i.batchId || null,
                 })),
                 discount,
@@ -813,11 +941,19 @@ export function PosTerminal({
                 setDiscountType('fixed');
                 setSplitPayments(null);
                 setPaymentMethod('cash');
+                setTaxMode('standard');
                 setMobilePane('browse');
                 return;
             }
 
-            const result = await onCompleteSale?.(payload);
+            const result = await onCompleteSale?.({
+                ...payload,
+                metadata: {
+                    taxMode,
+                    taxBreakdown: cartSummary.taxBreakdown,
+                    taxRate: effectiveTaxRate,
+                },
+            });
 
             if (result?.success) {
                 recordSuccessfulSale({
@@ -834,6 +970,7 @@ export function PosTerminal({
                 setDiscountType('fixed');
                 setSplitPayments(null);
                 setPaymentMethod('cash');
+                setTaxMode('standard');
                 setMobilePane('browse');
             } else if (result?.error) {
                 toast.error(formatSaleError(result), { id: 'pos-sale-error' });
@@ -844,15 +981,50 @@ export function PosTerminal({
         } finally {
             setIsProcessing(false);
         }
-    }, [cart, businessId, session, customer, discount, discountType, paymentMethod, splitPayments, isProcessing, onCompleteSale, hasSession, recordSuccessfulSale, formatSaleError, isOnline, posSettings.offlineModeEnabled, queueSale]);
+    }, [cart, businessId, session, customer, discount, discountType, paymentMethod, splitPayments, isProcessing, onCompleteSale, hasSession, recordSuccessfulSale, formatSaleError, isOnline, posSettings.offlineModeEnabled, queueSale, effectiveTaxRate, taxMode, cartSummary.taxBreakdown, setTaxMode]);
+
+    const hotkeyHandlers = useMemo(() => ({
+        search: focusScanSearch,
+        customer: () => setShowCustomerDialog(true),
+        discount: () => discountInputRef.current?.focus(),
+        hold: handleHoldSale,
+        pay: () => {
+            if (cart.length > 0 && !isProcessing) handleCompleteSale();
+        },
+        payment: () => handlePaymentMethodSelect(nextPosPaymentMethod(paymentMethod)),
+        tax: () => setShowTaxPanel(true),
+        clear: handleClearCart,
+        print: () => handlePrintBill({
+            subtotal: cartSummary.subtotal,
+            taxAmount: cartSummary.taxAmount,
+            discountAmount: cartSummary.discountAmount,
+            total: cartSummary.total,
+        }),
+    }), [
+        focusScanSearch,
+        handleHoldSale,
+        cart.length,
+        isProcessing,
+        handleCompleteSale,
+        handlePaymentMethodSelect,
+        paymentMethod,
+        handleClearCart,
+        handlePrintBill,
+        cartSummary,
+    ]);
+
+    usePosHotkeys({
+        enabled: !showCustomerDialog && !showSplitDialog && !showTaxPanel,
+        handlers: hotkeyHandlers,
+    });
 
     useEffect(() => {
         const handleKeyDown = (e) => {
             if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
                 e.preventDefault();
-                searchInputRef.current?.focus();
+                focusScanSearch();
             }
-            if (e.key === 'Enter' && cart.length > 0 && !isProcessing && !showCustomerDialog) {
+            if (e.key === 'Enter' && cart.length > 0 && !isProcessing && !showCustomerDialog && !showTaxPanel) {
                 if (e.target.tagName !== 'INPUT') {
                     e.preventDefault();
                     handleCompleteSale();
@@ -864,18 +1036,18 @@ export function PosTerminal({
             }
             if (e.key === 'Escape' && searchTerm) {
                 setSearchTerm('');
-                searchInputRef.current?.focus();
+                focusScanSearch();
             }
         };
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [cart.length, isProcessing, searchTerm, showCustomerDialog, toggleFullscreen, handleCompleteSale]);
+    }, [cart.length, isProcessing, searchTerm, showCustomerDialog, showTaxPanel, toggleFullscreen, handleCompleteSale, focusScanSearch]);
 
     const cartPanelProps = {
         items: cart,
         onQuantityChange: handleQuantityChange,
         onRemoveItem: handleRemoveItem,
-        onClearCart: () => setCart([]),
+        onClearCart: handleClearCart,
         customer,
         onCustomerSelect: () => setShowCustomerDialog(true),
         discount,
@@ -886,12 +1058,17 @@ export function PosTerminal({
         onCompleteSale: handleCompleteSale,
         isProcessing,
         currency: displayCurrency,
-        taxLabel: posUi.taxLabel,
+        taxLabel: taxLabel || posUi.taxLabel,
+        taxBreakdown: cartSummary.taxBreakdown,
         selectedPaymentMethod: paymentMethod,
         loyaltyBalance: 0,
         businessCategory: category,
         onPrintBill: handlePrintBill,
         onDownloadBillPdf: handleDownloadBillPdf,
+        onHoldSale: handleHoldSale,
+        onResumeHeldSale: handleResumeHeldSale,
+        heldOrders,
+        discountInputRef,
     };
 
     const posShellHeader = (
@@ -1006,7 +1183,7 @@ export function PosTerminal({
                         searchTerm={searchTerm}
                         onSearchChange={setSearchTerm}
                         currency={displayCurrency}
-                        taxLabel={posUi.taxLabel}
+                        taxLabel={taxLabel || posUi.taxLabel}
                         barcodeFirst={posUi.barcodeFirst}
                         businessCategory={category}
                         onOpenCamera={showCamera ? () => setShowCameraScanner(true) : undefined}
@@ -1031,7 +1208,7 @@ export function PosTerminal({
                                 searchTerm={searchTerm}
                                 onSearchChange={setSearchTerm}
                                 currency={displayCurrency}
-                                taxLabel={posUi.taxLabel}
+                                taxLabel={taxLabel || posUi.taxLabel}
                                 barcodeFirst={posUi.barcodeFirst}
                                 businessCategory={category}
                                 onOpenCamera={showCamera ? () => setShowCameraScanner(true) : undefined}
@@ -1062,6 +1239,27 @@ export function PosTerminal({
                     </div>
                 )}
             </div>
+
+            <PosHotkeyDock
+                className="hidden lg:block"
+                onAction={(action) => hotkeyHandlers[action]?.()}
+                disabledActions={{
+                    hold: cart.length === 0,
+                    pay: cart.length === 0 || isProcessing,
+                    print: cart.length === 0,
+                    clear: cart.length === 0,
+                }}
+            />
+
+            <PosTaxPanel
+                open={showTaxPanel}
+                onOpenChange={setShowTaxPanel}
+                taxMode={taxMode}
+                onTaxModeChange={setTaxMode}
+                components={taxComponents}
+                currency={displayCurrency}
+                sampleTaxAmount={cartSummary.taxAmount}
+            />
 
             {/* Sale Success Toast */}
             <AnimatePresence>

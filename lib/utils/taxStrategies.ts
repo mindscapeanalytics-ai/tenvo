@@ -10,6 +10,10 @@ export interface TaxLineItem {
     taxPercent: number;
     category?: string;
     domain?: string;
+    /** Optional GST share (%) when breaking out GST_PST */
+    gstPercent?: number;
+    /** Optional PST share (%) when breaking out GST_PST */
+    pstPercent?: number;
 }
 
 export interface TaxBreakdown {
@@ -29,12 +33,25 @@ export interface TaxStrategy {
 
 /**
  * Pakistan Tax Strategy (GST + PST)
+ * When item.taxPercent is a combined rate, shows a single GST/PST detail.
+ * Prefer POS resolvePosTaxComponents for true multi-line breakout at the till.
  */
 export const PakistanTaxStrategy: TaxStrategy = {
     calculate(item, standards) {
         const base = item.amount;
         const rate = (item.taxPercent || 18) / 100;
         const taxAmount = Math.round(base * rate * 100) / 100;
+        const gstShare = item.gstPercent != null ? Number(item.gstPercent) / 100 : rate;
+        const pstShare = item.pstPercent != null ? Number(item.pstPercent) / 100 : 0;
+        const details =
+            pstShare > 0
+                ? {
+                    GST: { rate: gstShare, amount: Math.round(base * gstShare * 100) / 100 },
+                    PST: { rate: pstShare, amount: Math.round(base * pstShare * 100) / 100 },
+                  }
+                : {
+                    'GST/PST': { rate: rate, amount: taxAmount },
+                  };
 
         return {
             baseAmount: base,
@@ -42,30 +59,28 @@ export const PakistanTaxStrategy: TaxStrategy = {
             totalTax: taxAmount,
             totalAmount: base + taxAmount,
             label: standards.taxLabel,
-            details: {
-                'GST/PST': { rate: rate, amount: taxAmount }
-            }
+            details,
         };
     },
     calculateBulk(items, standards) {
         // Aggregate per-item tax amounts, accumulating details by tax label
         const aggregated = items.reduce((acc, item) => {
             const result = this.calculate(item, standards);
-            const detailKey = 'GST/PST';
-            const prevDetail = acc.details[detailKey] || { rate: result.details[detailKey]?.rate || 0, amount: 0 };
+            const nextDetails = { ...acc.details };
+            for (const [key, val] of Object.entries(result.details || {})) {
+                const prevDetail = nextDetails[key] || { rate: val.rate || 0, amount: 0 };
+                nextDetails[key] = {
+                    rate: val.rate ?? prevDetail.rate,
+                    amount: prevDetail.amount + (val.amount || 0),
+                };
+            }
             return {
                 baseAmount: acc.baseAmount + result.baseAmount,
                 taxAmount: acc.taxAmount + result.taxAmount,
                 totalTax: acc.totalTax + result.taxAmount,
                 totalAmount: acc.totalAmount + result.totalAmount,
                 label: standards.taxLabel,
-                details: {
-                    ...acc.details,
-                    [detailKey]: {
-                        rate: prevDetail.rate,
-                        amount: prevDetail.amount + result.taxAmount,
-                    }
-                }
+                details: nextDetails,
             };
         }, { baseAmount: 0, taxAmount: 0, totalTax: 0, totalAmount: 0, label: standards.taxLabel, details: {} as Record<string, { rate: number; amount: number }> });
         return aggregated;
