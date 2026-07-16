@@ -706,16 +706,25 @@ export function RestaurantPOS({ businessId, products = [], onCompleteSale, onOrd
                     </div>
                     {showTaxBreakdown ? (
                         taxBreakdown.map((row) => (
-                            <div key={row.key} className="flex justify-between text-xs text-gray-500">
+                            <button
+                                key={row.key}
+                                type="button"
+                                onClick={() => setShowTaxPanel(true)}
+                                className="flex w-full justify-between text-xs text-gray-500 hover:text-emerald-700"
+                            >
                                 <span>{row.label} ({row.rate}%)</span>
                                 <span className="font-bold">{currency} {row.amount.toLocaleString()}</span>
-                            </div>
+                            </button>
                         ))
                     ) : (
-                        <div className="flex justify-between text-xs text-gray-500">
+                        <button
+                            type="button"
+                            onClick={() => setShowTaxPanel(true)}
+                            className="flex w-full justify-between text-xs text-gray-500 hover:text-emerald-700"
+                        >
                             <span>{taxLabel || 'Tax'} ({Math.round(taxPct)}%)</span>
                             <span className="font-bold">{currency} {tax.toLocaleString()}</span>
-                        </div>
+                        </button>
                     )}
                     {taxMode !== 'standard' && (
                         <p className="text-[10px] text-amber-600 font-medium">Tax mode: {taxMode.replace('_', ' ')}</p>

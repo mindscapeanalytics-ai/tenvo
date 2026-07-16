@@ -284,6 +284,7 @@ function CartSummary({
     onCompleteSale, onHoldSale, onVoidSale, isProcessing,
     currency = 'Rs.', heldOrders = [], onResumeHeldSale, onPrintBill, onDownloadBillPdf,
     onBack, taxLabel = 'Tax', taxBreakdown = [], discountInputRef,
+    onOpenTax, taxMode = 'standard',
 }) {
     const itemCount = items.reduce((sum, i) => sum + (i.isWeightItem ? 1 * i.quantity : i.quantity), 0);
     const subtotal = items.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0);
@@ -346,16 +347,27 @@ function CartSummary({
                             </div>
                             {showBreakdown ? (
                                 taxBreakdown.map((row) => (
-                                    <div key={row.key} className="flex justify-between text-gray-400">
+                                    <button
+                                        key={row.key}
+                                        type="button"
+                                        onClick={onOpenTax}
+                                        disabled={!onOpenTax}
+                                        className="flex w-full justify-between text-gray-400 enabled:hover:text-emerald-300 disabled:cursor-default"
+                                    >
                                         <span>{row.label} ({row.rate}%)</span>
                                         <span>{currency}{row.amount.toLocaleString()}</span>
-                                    </div>
+                                    </button>
                                 ))
                             ) : (
-                                <div className="flex justify-between text-gray-400">
-                                    <span>{taxLabel}</span>
+                                <button
+                                    type="button"
+                                    onClick={onOpenTax}
+                                    disabled={!onOpenTax}
+                                    className="flex w-full justify-between text-gray-400 enabled:hover:text-emerald-300 disabled:cursor-default"
+                                >
+                                    <span>{taxLabel}{taxMode && taxMode !== 'standard' ? ` · ${taxMode === 'gst_only' ? 'GST only' : 'Exempt'}` : ''}</span>
                                     <span>{currency}{taxAmount.toLocaleString()}</span>
-                                </div>
+                                </button>
                             )}
                             <div className="flex items-center justify-between text-gray-400">
                                 <span>Discount</span>
@@ -910,6 +922,8 @@ export function SuperStorePOS({
         taxLabel: taxLabel || posUi.taxLabel,
         taxBreakdown: cartSummary.taxBreakdown,
         discountInputRef,
+        onOpenTax: () => setShowTaxPanel(true),
+        taxMode,
     };
     return (
         <div

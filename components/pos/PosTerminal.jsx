@@ -315,6 +315,8 @@ function PosCart({
     onHoldSale, onResumeHeldSale, heldOrders = [],
     discountInputRef,
     onOpenLoyalty,
+    onOpenTax,
+    taxMode = 'standard',
 }) {
     const subtotal = items.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0);
     
@@ -502,16 +504,27 @@ function PosCart({
                             </div>
                             {showBreakdown ? (
                                 taxBreakdown.map((row) => (
-                                    <div key={row.key} className="flex justify-between text-gray-500">
+                                    <button
+                                        key={row.key}
+                                        type="button"
+                                        onClick={onOpenTax}
+                                        disabled={!onOpenTax}
+                                        className="flex w-full justify-between text-gray-500 disabled:cursor-default enabled:hover:text-emerald-700"
+                                    >
                                         <span>{row.label} ({row.rate}%)</span>
                                         <span className="tabular-nums text-gray-700">{currency}{row.amount.toLocaleString()}</span>
-                                    </div>
+                                    </button>
                                 ))
                             ) : (
-                                <div className="flex justify-between text-gray-500">
-                                    <span>{taxLabel}</span>
+                                <button
+                                    type="button"
+                                    onClick={onOpenTax}
+                                    disabled={!onOpenTax}
+                                    className="flex w-full justify-between text-gray-500 disabled:cursor-default enabled:hover:text-emerald-700"
+                                >
+                                    <span>{taxLabel}{taxMode && taxMode !== 'standard' ? ` · ${taxMode === 'gst_only' ? 'GST only' : 'Exempt'}` : ''}</span>
                                     <span className="tabular-nums text-gray-700">{currency}{taxAmount.toLocaleString()}</span>
-                                </div>
+                                </button>
                             )}
                             <div className="flex items-center justify-between text-gray-500 gap-2">
                                 <div className="flex items-center gap-1 min-w-0">
@@ -1162,6 +1175,8 @@ export function PosTerminal({
         onOpenLoyalty: customer?.id && posSettings.loyaltyAtTill
             ? () => setShowLoyaltyPanel(true)
             : undefined,
+        onOpenTax: () => setShowTaxPanel(true),
+        taxMode,
     };
 
     const posShellHeader = (
