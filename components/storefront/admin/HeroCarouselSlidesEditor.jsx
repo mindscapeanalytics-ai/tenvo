@@ -219,6 +219,15 @@ function HeroSlideRow({ index, slide, defaultSlide, businessId, onChange, onRemo
           </div>
           <div className="grid gap-2 sm:grid-cols-2">
             <div className="space-y-1">
+              <Label className="text-xs">Eyebrow (optional)</Label>
+              <Input
+                value={slide.eyebrow || ''}
+                onChange={(e) => onChange({ eyebrow: e.target.value })}
+                placeholder={defaultSlide?.eyebrow || 'Small label above headline'}
+                className="h-8 text-sm"
+              />
+            </div>
+            <div className="space-y-1">
               <Label className="text-xs">Headline (optional)</Label>
               <Input
                 value={slide.title || ''}
@@ -233,6 +242,15 @@ function HeroSlideRow({ index, slide, defaultSlide, businessId, onChange, onRemo
                 value={slide.ctaLabel || ''}
                 onChange={(e) => onChange({ ctaLabel: e.target.value })}
                 placeholder={defaultSlide?.ctaLabel || 'Shop Now'}
+                className="h-8 text-sm"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Button link (optional)</Label>
+              <Input
+                value={slide.ctaHref || ''}
+                onChange={(e) => onChange({ ctaHref: e.target.value })}
+                placeholder={defaultSlide?.ctaHref || '/products'}
                 className="h-8 text-sm"
               />
             </div>

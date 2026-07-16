@@ -20,6 +20,7 @@ export function JewellerySignaturePieces({
   subtitle = 'Handcrafted excellence',
   viewAllHref,
   animations = true,
+  currency = 'PKR',
 }) {
   if (!products.length) return null;
 
@@ -126,11 +127,11 @@ export function JewellerySignaturePieces({
                       className="text-base font-bold tabular-nums sm:text-lg"
                       style={{ color: onSale ? accent : '#292524' }}
                     >
-                      {formatCurrency(price, 'PKR')}
+                      {formatCurrency(price, currency)}
                     </span>
                     {onSale && (
                       <span className="text-sm text-stone-400 line-through">
-                        {formatCurrency(comparePrice, 'PKR')}
+                        {formatCurrency(comparePrice, currency)}
                       </span>
                     )}
                   </div>

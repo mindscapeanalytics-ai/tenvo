@@ -50,6 +50,9 @@ import { buildFashionHomeSections } from '@/lib/storefront/fashionHomeSections';
 import { getFashionEditorialConfig, isFashionEditorialStore, formatFashionStoreName, getFashionMetadataCopy } from '@/lib/storefront/fashionEditorial';
 import { supportsFashionGulSections } from '@/lib/storefront/fashionGulSections';
 import { FashionGulAhmedSections } from '@/components/storefront/sections/fashion/FashionGulAhmedSections';
+import { isJewelleryStore, formatJewelleryStoreName, getJewelleryMetadataCopy, getJewelleryHeroSlides, getJewelleryStorefrontConfig, getJewelleryHeroTiles, getJewelleryHeroTrustPills } from '@/lib/storefront/jewelleryStorefront';
+import { buildJewelleryHomeSections } from '@/lib/storefront/jewelleryHomeSections';
+import { JewelleryHomeSections } from '@/components/storefront/sections/jewellery/JewelleryHomeSections';
 import { LazyVerticalHomeSections } from '@/components/storefront/sections/LazyVerticalHomeSections';
 import { RetailHomeHero } from '@/components/storefront/sections/RetailHomeHero';
 import { StoreCatalogEmptyState } from '@/components/storefront/sections/StoreCatalogEmptyState';
@@ -108,6 +111,10 @@ export async function generateMetadata({ params }) {
     const meta = getFashionMetadataCopy(business.category, business.city, storeName);
     description = description || meta.description;
     keywords = `${storeName}, ${meta.keywords}`;
+  } else if (isJewelleryStore(business.category)) {
+    const meta = getJewelleryMetadataCopy(storeName, business.city, business.category);
+    description = description || meta.description;
+    keywords = meta.keywords;
   } else {
     description = description || `Shop online at ${storeName}.`;
   }
@@ -176,11 +183,12 @@ export default async function StoreHomePage({ params }) {
   const fitnessElevatedHero = heroPreset.type === 'fitness-elevated';
   const supermarketElevatedHero = heroPreset.type === 'supermarket-elevated';
   const autoPartsHero = finderHero && isAutoPartsStore(business.category);
-  const skipHomeNavSections = finderHero || editorialHero || dealershipHero || marketplaceHero || pharmacyElevatedHero || furnitureElevatedHero || restaurantElevatedHero || fitnessElevatedHero || supermarketElevatedHero;
+  const jewelleryElevatedHero = heroPreset.type === 'jewellery-elevated';
+  const skipHomeNavSections = finderHero || editorialHero || dealershipHero || marketplaceHero || pharmacyElevatedHero || furnitureElevatedHero || restaurantElevatedHero || fitnessElevatedHero || supermarketElevatedHero || jewelleryElevatedHero;
   const copy = getStoreHomeCopy(business, domainCfg, landing);
   const contact = resolveStoreContact({ business, settings });
 
-  const needsCatalogBackfill = !editorialHero && !dealershipHero && !marketplaceHero && !autoPartsHero && !furnitureElevatedHero && !restaurantElevatedHero && !fitnessElevatedHero && !supermarketElevatedHero;
+  const needsCatalogBackfill = !editorialHero && !dealershipHero && !marketplaceHero && !autoPartsHero && !furnitureElevatedHero && !restaurantElevatedHero && !fitnessElevatedHero && !supermarketElevatedHero && !jewelleryElevatedHero;
 
   const catalogPlan = buildStoreHomeCatalogPlan({
     editorialHero,
@@ -192,6 +200,7 @@ export default async function StoreHomePage({ params }) {
     fitnessElevatedHero,
     supermarketElevatedHero,
     autoPartsHero,
+    jewelleryElevatedHero,
     needsCatalogBackfill,
     restaurantDemo: restaurantElevatedHero && isDemoStoreDomain(businessDomain),
   });
@@ -223,6 +232,7 @@ export default async function StoreHomePage({ params }) {
     fitnessElevatedHero,
     supermarketElevatedHero,
     autoPartsHero,
+    jewelleryElevatedHero,
     needsCatalogBackfill,
   });
 
@@ -261,7 +271,7 @@ export default async function StoreHomePage({ params }) {
   const freeShippingThreshold = settings?.freeShippingThreshold || 2000;
   const returnDays = settings?.returnPolicyDays ?? 7;
   const categoryFallbackImage = domainCfg.categoryImages?.default || domainCfg.heroImage;
-  const topCollections = editorialHero && topCatalogResult.success
+  const topCollections = (editorialHero || jewelleryElevatedHero) && topCatalogResult.success
     ? buildTopCollections({
         products: topCatalogResult.products,
         categories,
@@ -322,6 +332,59 @@ export default async function StoreHomePage({ params }) {
       })()
     : null;
 
+  const jewelleryDepartments = isJewelleryStore(business.category)
+    ? (() => {
+        const built = buildJewelleryHomeSections({
+          businessDomain,
+          businessCategory: business.category,
+          settings,
+          categories,
+          products: catalogSnapshotResult.success ? catalogSnapshotResult.products : [],
+          newArrivalProducts: newArrivalsRaw,
+          offerProducts: onSaleProductsRaw,
+        });
+        if (!built) return built;
+        const jewelleryConfig = getJewelleryStorefrontConfig(settings, businessDomain, business.category);
+        return {
+          ...built,
+          categories: {
+            ...built.categories,
+            title: jewelleryConfig.categoriesTitle || built.categories.title,
+            show: built.categories.show && jewelleryConfig.showCategories,
+          },
+          signaturePieces: {
+            ...built.signaturePieces,
+            title: jewelleryConfig.signaturePiecesTitle.toUpperCase(),
+            subtitle: jewelleryConfig.signaturePiecesSubtitle || built.signaturePieces.subtitle,
+            show: built.signaturePieces.show && jewelleryConfig.showSignaturePieces,
+          },
+          jewelleryEdit: {
+            ...built.jewelleryEdit,
+            title: jewelleryConfig.jewelleryEditTitle || built.jewelleryEdit.title,
+            subtitle: jewelleryConfig.jewelleryEditSubtitle || built.jewelleryEdit.subtitle,
+            show: built.jewelleryEdit.show && jewelleryConfig.showJewelleryEdit,
+          },
+          offers: {
+            ...built.offers,
+            title: jewelleryConfig.offersTitle || built.offers.title,
+            show: built.offers.show && jewelleryConfig.showOffers,
+          },
+          newArrivals: {
+            ...built.newArrivals,
+            title: jewelleryConfig.newArrivalsTitle || built.newArrivals.title,
+            show: built.newArrivals.show && jewelleryConfig.showNewArrivals,
+          },
+          productsCarousel: {
+            ...built.productsCarousel,
+            title: jewelleryConfig.productsCarouselTitle || built.productsCarousel.title,
+            subtitle: jewelleryConfig.productsCarouselSubtitle || built.productsCarousel.subtitle,
+            show: built.productsCarousel.show && jewelleryConfig.showProductsCarousel,
+            scrollSpeed: jewelleryConfig.carouselScrollSpeed,
+          },
+        };
+      })()
+    : null;
+
   const pharmacyProducts = pharmacyCatalogResult.success
     ? pharmacyCatalogResult.products
     : buildTopPicksProducts(featuredProducts, popularityBackfill, 48);
@@ -364,7 +427,31 @@ export default async function StoreHomePage({ params }) {
     ? getTenantMeetingUrl(business, settings)
     : null;
 
-  const immersiveHeroPreset = fitnessElevatedHero
+  const jewelleryStoreName = formatJewelleryStoreName(business.business_name);
+  const jewelleryConfig = jewelleryElevatedHero
+    ? getJewelleryStorefrontConfig(settings, businessDomain, business.category)
+    : null;
+
+  const immersiveHeroPreset = jewelleryElevatedHero
+    ? {
+        ...heroPreset,
+        settings,
+        storeName: jewelleryStoreName,
+        businessCategory: business.category,
+        slides: getJewelleryHeroSlides(heroPreset.base, settings, {
+          coverImage: coverImageUrl,
+        }, business.category),
+        tiles: getJewelleryHeroTiles(heroPreset.base, settings, business.category),
+        trustPills: getJewelleryHeroTrustPills(settings, business.category),
+        hideRating: jewelleryConfig ? !jewelleryConfig.showHeroRating : false,
+        secondaryCtaLabel: jewelleryConfig?.secondaryCtaLabel || heroPreset.secondaryCtaLabel,
+        secondaryCtaHref: jewelleryConfig?.secondaryCtaHref
+          ? (jewelleryConfig.secondaryCtaHref.startsWith('/store/') || jewelleryConfig.secondaryCtaHref.startsWith('http')
+            ? jewelleryConfig.secondaryCtaHref
+            : `${heroPreset.base}${jewelleryConfig.secondaryCtaHref.startsWith('/') ? jewelleryConfig.secondaryCtaHref : `/${jewelleryConfig.secondaryCtaHref}`}`)
+          : heroPreset.secondaryCtaHref,
+      }
+    : fitnessElevatedHero
     ? {
         ...heroPreset,
         settings,
@@ -483,7 +570,7 @@ export default async function StoreHomePage({ params }) {
     )}>
 
       {/* ── Announcement Banner ─────────────────────────────────────────────── */}
-      {hero.banner && !editorialHero && !dealershipHero && !marketplaceHero && !pharmacyElevatedHero && !furnitureElevatedHero && !restaurantElevatedHero && !fitnessElevatedHero && !supermarketElevatedHero ? (
+      {hero.banner && !editorialHero && !dealershipHero && !marketplaceHero && !pharmacyElevatedHero && !furnitureElevatedHero && !restaurantElevatedHero && !fitnessElevatedHero && !supermarketElevatedHero && !jewelleryElevatedHero ? (
         <div
           className="md:hidden text-white text-center py-2 px-4 text-xs font-medium truncate"
           style={{ backgroundColor: accent }}
@@ -550,14 +637,6 @@ export default async function StoreHomePage({ params }) {
           accent={accent}
           placement="after-hero"
         />
-        {skipHomeNavSections ? (
-          <StoreMarketingSections
-            sections={settings?.pageSections}
-            businessDomain={businessDomain}
-            accent={accent}
-            placement="mid-page"
-          />
-        ) : null}
         </>
       ) : (
       <RetailHomeHero
@@ -587,16 +666,7 @@ export default async function StoreHomePage({ params }) {
         />
       ) : null}
 
-      {skipHomeNavSections && !supermarketElevatedHero && !immersiveHero ? (
-        <StoreMarketingSections
-          sections={settings?.pageSections}
-          businessDomain={businessDomain}
-          accent={accent}
-          placement="mid-page"
-        />
-      ) : null}
-
-      {dealershipHero && dealershipCatalogResult.success && (
+      {/* ── Category Chips (skip when parts finder already shows shortcuts) ─ */}
         <LazyVerticalHomeSections
           variant="dealership"
           businessDomain={businessDomain}
@@ -726,16 +796,24 @@ export default async function StoreHomePage({ params }) {
         />
       )}
 
-      {skipHomeNavSections && !supermarketElevatedHero ? (
-        <StoreMarketingSections
-          sections={settings?.pageSections}
+      {isJewelleryStore(business.category) && !editorialHero && jewelleryDepartments && (
+        <JewelleryHomeSections
           businessDomain={businessDomain}
+          businessCategory={business.category}
+          settings={settings}
+          products={catalogSnapshotResult.success ? catalogSnapshotResult.products : featuredProducts}
           accent={accent}
-          placement="before-footer"
+          accentDark={accentDark}
+          storeName={business.business_name}
+          storeCurrency={storeCurrency}
+          topCollections={topCollections}
+          topCollectionsTitle={topCollectionsTitle}
+          jewelleryDepartments={jewelleryDepartments}
+          categories={categories}
         />
-      ) : null}
+      )}
 
-      {supportsFashionGulSections(business.category) && !editorialHero && (
+      {supportsFashionGulSections(business.category) && !isJewelleryStore(business.category) && !editorialHero && (
         <FashionGulAhmedSections
           businessDomain={businessDomain}
           businessCategory={business.category}
@@ -745,6 +823,23 @@ export default async function StoreHomePage({ params }) {
           products={catalogSnapshotResult.success ? catalogSnapshotResult.products : featuredProducts}
         />
       )}
+
+      {skipHomeNavSections && !supermarketElevatedHero ? (
+        <>
+          <StoreMarketingSections
+            sections={settings?.pageSections}
+            businessDomain={businessDomain}
+            accent={accent}
+            placement="mid-page"
+          />
+          <StoreMarketingSections
+            sections={settings?.pageSections}
+            businessDomain={businessDomain}
+            accent={accent}
+            placement="before-footer"
+          />
+        </>
+      ) : null}
 
       {/* ── Category Chips (skip when parts finder already shows shortcuts) ─ */}
       {categories.length > 0 && !skipHomeNavSections && (
@@ -791,7 +886,7 @@ export default async function StoreHomePage({ params }) {
       />
       )}
 
-      {!editorialHero && !dealershipHero && !marketplaceHero && !pharmacyElevatedHero && !furnitureElevatedHero && !restaurantElevatedHero && !fitnessElevatedHero && !supermarketElevatedHero && !autoPartsHero && (
+      {!editorialHero && !dealershipHero && !marketplaceHero && !pharmacyElevatedHero && !furnitureElevatedHero && !restaurantElevatedHero && !fitnessElevatedHero && !supermarketElevatedHero && !autoPartsHero && !jewelleryElevatedHero && (
         <DomainDealStrip dealStrip={landing.dealStrip} accent={accent} accentDark={accentDark} />
       )}
 
@@ -855,7 +950,7 @@ export default async function StoreHomePage({ params }) {
       )}
 
       {/* ── Featured / primary catalog ───────────────────────────────────── */}
-      {featuredRow.length > 0 && !editorialHero && !dealershipHero && !marketplaceHero && !pharmacyElevatedHero && !furnitureElevatedHero && !restaurantElevatedHero && !fitnessElevatedHero && !supermarketElevatedHero && !autoPartsHero && (
+      {featuredRow.length > 0 && !editorialHero && !dealershipHero && !marketplaceHero && !pharmacyElevatedHero && !furnitureElevatedHero && !restaurantElevatedHero && !fitnessElevatedHero && !supermarketElevatedHero && !autoPartsHero && !jewelleryElevatedHero && (
         <section className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-8 py-4 sm:py-10">
           <StoreSectionHeader
             title={copy.featuredTitle}
@@ -875,7 +970,7 @@ export default async function StoreHomePage({ params }) {
         </section>
       )}
 
-      {landing.spotlights?.[0] && !editorialHero && (
+      {landing.spotlights?.[0] && !editorialHero && !jewelleryElevatedHero && (
         <DomainEditorialSpotlight
           spotlight={landing.spotlights[0]}
           accent={accent}
@@ -887,7 +982,7 @@ export default async function StoreHomePage({ params }) {
       )}
 
       {/* ── Fallback primary grid when no featured flag ──────────────────── */}
-      {featuredRow.length === 0 && newArrivalsRaw.length > 0 && !editorialHero && !dealershipHero && !marketplaceHero && !pharmacyElevatedHero && !furnitureElevatedHero && !restaurantElevatedHero && !fitnessElevatedHero && !supermarketElevatedHero && !autoPartsHero && (
+      {featuredRow.length === 0 && newArrivalsRaw.length > 0 && !editorialHero && !dealershipHero && !marketplaceHero && !pharmacyElevatedHero && !furnitureElevatedHero && !restaurantElevatedHero && !fitnessElevatedHero && !supermarketElevatedHero && !autoPartsHero && !jewelleryElevatedHero && (
         <section className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-8 py-4 sm:py-10">
           <StoreSectionHeader
             title={copy.shopAllTitle}
@@ -909,7 +1004,7 @@ export default async function StoreHomePage({ params }) {
       {/* ── On Sale (retail grid). Editorial stores use the fashion Offers rail
              (FashionDepartmentSections) instead, so skip this to avoid a
              duplicate section and a retail-vs-editorial card clash. ───────── */}
-      {onSaleRow.length >= 1 && !editorialHero && !dealershipHero && !marketplaceHero && !pharmacyElevatedHero && !furnitureElevatedHero && !restaurantElevatedHero && !fitnessElevatedHero && !supermarketElevatedHero && !autoPartsHero && (
+      {onSaleRow.length >= 1 && !editorialHero && !dealershipHero && !marketplaceHero && !pharmacyElevatedHero && !furnitureElevatedHero && !restaurantElevatedHero && !fitnessElevatedHero && !supermarketElevatedHero && !autoPartsHero && !jewelleryElevatedHero && (
         <section className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-8 py-4 sm:py-10">
           <StoreSectionHeader
             title={copy.onSaleTitle}
@@ -931,7 +1026,7 @@ export default async function StoreHomePage({ params }) {
       )}
 
       {/* ── Free shipping promo (desktop), skip on editorial (avoids 3rd accent banner) ─ */}
-      {!editorialHero && !dealershipHero && !marketplaceHero && !pharmacyElevatedHero && !furnitureElevatedHero && !restaurantElevatedHero && !fitnessElevatedHero && !supermarketElevatedHero && (
+      {!editorialHero && !dealershipHero && !marketplaceHero && !pharmacyElevatedHero && !furnitureElevatedHero && !restaurantElevatedHero && !fitnessElevatedHero && !supermarketElevatedHero && !jewelleryElevatedHero && (
       <section className="hidden md:block mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
         <div
           className="relative overflow-hidden rounded-3xl p-8 sm:p-12"
@@ -977,7 +1072,7 @@ export default async function StoreHomePage({ params }) {
       ) : null}
 
       {/* ── New Arrivals (only when catalog has more beyond featured) ───────── */}
-      {showNewArrivals && !editorialHero && !dealershipHero && !marketplaceHero && !pharmacyElevatedHero && !furnitureElevatedHero && !restaurantElevatedHero && !fitnessElevatedHero && !supermarketElevatedHero && (
+      {showNewArrivals && !editorialHero && !dealershipHero && !marketplaceHero && !pharmacyElevatedHero && !furnitureElevatedHero && !restaurantElevatedHero && !fitnessElevatedHero && !supermarketElevatedHero && !jewelleryElevatedHero && (
         <section className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-8 py-4 sm:py-10">
           <StoreSectionHeader
             title={copy.newArrivalsTitle}
@@ -997,7 +1092,7 @@ export default async function StoreHomePage({ params }) {
       )}
 
       {/* ── Mobile buyer support ───────────────────────────────────────────── */}
-      {!dealershipHero && !marketplaceHero && !pharmacyElevatedHero && !furnitureElevatedHero && !restaurantElevatedHero && !fitnessElevatedHero && !supermarketElevatedHero && (
+      {!dealershipHero && !marketplaceHero && !pharmacyElevatedHero && !furnitureElevatedHero && !restaurantElevatedHero && !fitnessElevatedHero && !supermarketElevatedHero && !jewelleryElevatedHero && (
       <StoreBuyerSupportStrip businessDomain={businessDomain} accent={accent} />
       )}
 

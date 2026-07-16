@@ -9,11 +9,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { BRAND_PRIMARY } from '@/lib/theme/brandTokens';
 import {
   BANNER_HEIGHT_PRESETS,
-  createEmptyPageSection,
+  MAX_BANNERS_PER_PLACEMENT,
   MAX_PAGE_SECTIONS,
   PAGE_SECTION_PLACEMENTS,
+  canAddSectionAtPlacement,
+  countSectionsForPlacement,
+  createEmptyPageSection,
   getSectionBackgroundStyle,
   isImageOnlyBanner,
+  resolveDefaultPlacement,
 } from '@/lib/storefront/storePageSections';
 import { uploadOptimizedImage } from '@/lib/utils/optimizeImageClient';
 import { ChevronDown, ChevronUp, Image, MapPin, Megaphone, Plus, Trash2, Upload } from 'lucide-react';
@@ -102,15 +106,31 @@ export function MarketingSectionsEditor({ sections = [], brandColor, businessId,
 
   const addSection = (type) => {
     if (sections.length >= MAX_PAGE_SECTIONS) {
-      toast.error(`Maximum ${MAX_PAGE_SECTIONS} sections`);
+      toast.error(`Maximum ${MAX_PAGE_SECTIONS} sections (up to ${MAX_BANNERS_PER_PLACEMENT} per placement)`);
+      return;
+    }
+    const placement = resolveDefaultPlacement(sections);
+    if (!canAddSectionAtPlacement(sections, placement)) {
+      toast.error(`Each placement allows up to ${MAX_BANNERS_PER_PLACEMENT} banners`);
       return;
     }
     const section = createEmptyPageSection(type);
     section.sortOrder = sections.length;
+    section.placement = placement;
     section.gradientFrom = accent;
     section.gradientTo = '#1e3a8a';
     section.backgroundColor = accent;
     onChange([...sections, section]);
+  };
+
+  const updatePlacement = (id, nextPlacement) => {
+    const used = countSectionsForPlacement(sections, nextPlacement, { excludeId: id });
+    if (used >= MAX_BANNERS_PER_PLACEMENT) {
+      const label = PAGE_SECTION_PLACEMENTS.find((p) => p.id === nextPlacement)?.label || nextPlacement;
+      toast.error(`${label} already has ${MAX_BANNERS_PER_PLACEMENT} banners`);
+      return;
+    }
+    updateSection(id, { placement: nextPlacement });
   };
 
   const removeSection = (id) => onChange(sections.filter((s) => s.id !== id));
@@ -118,10 +138,19 @@ export function MarketingSectionsEditor({ sections = [], brandColor, businessId,
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-xs text-gray-500">
-          Add up to {MAX_PAGE_SECTIONS} blocks. Upload a full marketing banner (like a supermarket promo) or a
-          simple promo strip. Choose where each block appears on your homepage.
-        </p>
+        <div className="space-y-1">
+          <p className="text-xs text-gray-500">
+            Add up to {MAX_BANNERS_PER_PLACEMENT} banners per placement ({MAX_PAGE_SECTIONS} total). Upload a full
+            marketing banner or a simple promo strip.
+          </p>
+          <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-gray-400">
+            {PAGE_SECTION_PLACEMENTS.map((slot) => (
+              <span key={slot.id}>
+                {slot.label}: {countSectionsForPlacement(sections, slot.id)}/{MAX_BANNERS_PER_PLACEMENT}
+              </span>
+            ))}
+          </div>
+        </div>
         <div className="flex gap-2">
           <Button type="button" variant="outline" size="sm" onClick={() => addSection('banner')}>
             <Plus className="mr-1 h-3.5 w-3.5" />
@@ -184,13 +213,20 @@ export function MarketingSectionsEditor({ sections = [], brandColor, businessId,
                 <select
                   className="h-9 w-full rounded-md border border-gray-200 bg-white px-3 text-sm"
                   value={section.placement || 'after-hero'}
-                  onChange={(e) => updateSection(section.id, { placement: e.target.value })}
+                  onChange={(e) => updatePlacement(section.id, e.target.value)}
                 >
-                  {PAGE_SECTION_PLACEMENTS.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.label}
-                    </option>
-                  ))}
+                  {PAGE_SECTION_PLACEMENTS.map((p) => {
+                    const atCap =
+                      p.id !== section.placement &&
+                      countSectionsForPlacement(sections, p.id, { excludeId: section.id }) >=
+                        MAX_BANNERS_PER_PLACEMENT;
+                    return (
+                      <option key={p.id} value={p.id} disabled={atCap}>
+                        {p.label}
+                        {atCap ? ` (full — ${MAX_BANNERS_PER_PLACEMENT}/${MAX_BANNERS_PER_PLACEMENT})` : ''}
+                      </option>
+                    );
+                  })}
                 </select>
                 {placementMeta?.description ? (
                   <p className="text-xs text-gray-400">{placementMeta.description}</p>

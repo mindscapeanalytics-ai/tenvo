@@ -21,7 +21,7 @@ export function FashionGulAhmedSections({
   products = [],
 }) {
   const storeBase = `/store/${businessDomain}`;
-  const config = getFashionGulSectionsConfig(settings, businessDomain);
+  const config = getFashionGulSectionsConfig(settings, businessDomain, businessCategory);
   const homeEdit = config.showHomeEdit
     ? resolveFashionHomeEdit(
         settings,

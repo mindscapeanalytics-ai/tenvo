@@ -38,13 +38,14 @@ import { isFitnessElevatedStore } from '@/lib/storefront/fitnessStorefront';
 import { isSupermarketElevatedStore } from '@/lib/storefront/supermarketStorefront';
 import { isFashionEditorialStore } from '@/lib/storefront/fashionEditorial';
 import { supportsFashionGulSections } from '@/lib/storefront/fashionGulSections';
+import { isJewelleryStore } from '@/lib/storefront/jewelleryStorefront';
 
 import { FashionGulSectionsEditor } from '@/components/storefront/admin/FashionGulSectionsEditor';
 import { FashionPromoBannersEditor } from '@/components/storefront/admin/FashionPromoBannersEditor';
 import { FashionCatalogEditor } from '@/components/storefront/admin/FashionCatalogEditor';
 import { HeroCarouselSlidesEditor } from '@/components/storefront/admin/HeroCarouselSlidesEditor';
 import { SupermarketCatalogEditor } from '@/components/storefront/admin/SupermarketCatalogEditor';
-import { getDefaultHeroSlidesTemplate } from '@/lib/storefront/heroPresets';
+import { getHeroPreset } from '@/lib/storefront/heroPresets';
 import { uploadOptimizedImage } from '@/lib/utils/optimizeImageClient';
 import { canConfigureTenantMeetingUrl, normalizeTenantMeetingUrl } from '@/lib/storefront/storefrontBooking';
 
@@ -288,6 +289,38 @@ export function StoreSettingsManager({ business, category }) {
       offersTitle: '',
       newArrivalsTitle: '',
     },
+    jewellery: {
+      animations: true,
+      showHeroRating: true,
+      showCertificationBadges: true,
+      showCollections: true,
+      showSignaturePieces: true,
+      showJewelleryEdit: true,
+      showCategories: true,
+      showNewArrivals: true,
+      showOffers: true,
+      showTrustStrip: true,
+      showBrandsRow: true,
+      showSeoBlock: false,
+      showProductsCarousel: true,
+      carouselScrollSpeed: 30,
+      searchPlaceholder: '',
+      signaturePiecesTitle: '',
+      signaturePiecesSubtitle: '',
+      jewelleryEditTitle: '',
+      jewelleryEditSubtitle: '',
+      categoriesTitle: '',
+      offersTitle: '',
+      newArrivalsTitle: '',
+      productsCarouselTitle: '',
+      productsCarouselSubtitle: '',
+      brandsLabel: '',
+      footerEyebrow: '',
+      collectionCtaLabel: '',
+      consultationCtaLabel: '',
+      secondaryCtaLabel: '',
+      secondaryCtaHref: '',
+    },
   });
 
   const marketplaceStore = isAutoMarketplaceStore(category || business?.category);
@@ -298,11 +331,40 @@ export function StoreSettingsManager({ business, category }) {
   const furnitureStore = isFurnitureElevatedStore(category || business?.category);
   const fitnessStore = isFitnessElevatedStore(category || business?.category);
   const supermarketStore = isSupermarketElevatedStore(category || business?.category);
-  const fashionStore = supportsFashionGulSections(category || business?.category);
-  const defaultHeroSlides = useMemo(() => {
+  const jewelleryStore = isJewelleryStore(category || business?.category);
+  const fashionStore = supportsFashionGulSections(category || business?.category) && !jewelleryStore;
+  const heroPreviewPreset = useMemo(() => {
     const domain = settings.storeDomain || business?.domain || 'preview';
-    return getDefaultHeroSlidesTemplate(category || business?.category, domain, {});
-  }, [settings.storeDomain, business?.domain, category, business?.category]);
+    return getHeroPreset(
+      category || business?.category,
+      domain,
+      settings,
+      {
+        business_name: business?.business_name,
+        cover_image_url: settings.coverImageUrl || business?.cover_image_url,
+        description: settings.description || business?.description,
+        country: settings.country || business?.country,
+      }
+    );
+  }, [
+    settings,
+    settings.storeDomain,
+    settings.coverImageUrl,
+    settings.description,
+    settings.country,
+    business?.domain,
+    business?.business_name,
+    business?.cover_image_url,
+    business?.description,
+    business?.country,
+    category,
+    business?.category,
+  ]);
+  const genericHeroCopyApplies = heroPreviewPreset?.type === 'commerce-carousel';
+  const defaultHeroSlides = useMemo(
+    () => (Array.isArray(heroPreviewPreset?.slides) ? heroPreviewPreset.slides : []),
+    [heroPreviewPreset]
+  );
   const heroMinSlides = Math.min(4, Math.max(1, defaultHeroSlides.length || 4));
   const heroMaxSlides = Math.max(heroMinSlides, defaultHeroSlides.length || 6, 6);
   const businessForBookingGate = useMemo(
@@ -330,7 +392,7 @@ export function StoreSettingsManager({ business, category }) {
         setNewDomain(result.data.storeDomain || '');
         setLoadedPlanTier(result.data.planTier || null);
       }
-      if (supportsFashionGulSections(category || business?.category)) {
+      if (supportsFashionGulSections(category || business?.category) && !isJewelleryStore(category || business?.category)) {
         const categoryResult = await getCategories(business.id);
         if (categoryResult?.success) {
           setFashionCategories(categoryResult.categories || []);
@@ -409,6 +471,11 @@ export function StoreSettingsManager({ business, category }) {
     setSettings((prev) => ({
       ...prev,
       fashion: { ...(prev.fashion || {}), [key]: val },
+    }));
+  const setJewellery = (key, val) =>
+    setSettings((prev) => ({
+      ...prev,
+      jewellery: { ...(prev.jewellery || {}), [key]: val },
     }));
   const setSocialLink = (key, val) => setSettings(prev => ({ ...prev, socialLinks: { ...prev.socialLinks, [key]: val } }));
   const setBrand = (key, val) => setSettings(prev => ({ ...prev, brand: { ...prev.brand, [key]: val } }));
@@ -658,7 +725,8 @@ export function StoreSettingsManager({ business, category }) {
                   <p className="text-sm font-medium text-gray-900">Hero carousel</p>
                   <p className="text-xs text-gray-500">
                     Upload wide banner images for your homepage hero. Empty slots keep template
-                    defaults for your store type. Images are converted to WebP before upload.
+                    defaults for your store type ({heroPreviewPreset?.type || 'commerce-carousel'}).
+                    Images are converted to WebP before upload.
                   </p>
                 </div>
                 <HeroCarouselSlidesEditor
@@ -867,27 +935,43 @@ export function StoreSettingsManager({ business, category }) {
 
           <Card>
             <CardHeader className="pb-4">
-              <CardTitle className="text-sm font-semibold">Hero & Announcement</CardTitle>
-              <CardDescription>Main homepage headline (cover image is under Branding)</CardDescription>
+              <CardTitle className="text-sm font-semibold">
+                {genericHeroCopyApplies ? 'Hero & Announcement' : 'Announcement & Hero Guidance'}
+              </CardTitle>
+              <CardDescription>
+                {genericHeroCopyApplies
+                  ? 'Main homepage headline (cover image is under Branding)'
+                  : 'This store uses a domain-aware hero. Edit hero slides under Branding and domain-specific hero copy in the Marketing tab.'}
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-1.5">
-                <Label>Hero headline</Label>
-                <Input
-                  placeholder="e.g. Shop the best products"
-                  value={settings.heroTitle || ''}
-                  onChange={(e) => set('heroTitle', e.target.value)}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Hero subtext</Label>
-                <Textarea
-                  placeholder="Short line under the headline on your store homepage"
-                  value={settings.heroSubtitle || ''}
-                  onChange={(e) => set('heroSubtitle', e.target.value)}
-                  rows={2}
-                />
-              </div>
+              {genericHeroCopyApplies ? (
+                <>
+                  <div className="space-y-1.5">
+                    <Label>Hero headline</Label>
+                    <Input
+                      placeholder="e.g. Shop the best products"
+                      value={settings.heroTitle || ''}
+                      onChange={(e) => set('heroTitle', e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Hero subtext</Label>
+                    <Textarea
+                      placeholder="Short line under the headline on your store homepage"
+                      value={settings.heroSubtitle || ''}
+                      onChange={(e) => set('heroSubtitle', e.target.value)}
+                      rows={2}
+                    />
+                  </div>
+                </>
+              ) : (
+                <div className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-xs text-blue-900">
+                  Hero headlines and subtext on this template come from your domain-specific hero builder.
+                  Use the hero carousel in Branding for slide-level copy and images. Any extra hero labels for
+                  this domain live in the Marketing tab.
+                </div>
+              )}
               <div className="space-y-1.5">
                 <Label>Top announcement strip</Label>
                 <Input
@@ -895,7 +979,15 @@ export function StoreSettingsManager({ business, category }) {
                   value={settings.announcement || ''}
                   onChange={(e) => set('announcement', e.target.value)}
                 />
-                <p className="text-xs text-gray-400">Thin bar at the very top on mobile.</p>
+                <p className="text-xs text-gray-400">
+                  {pharmacyStore || supermarketStore
+                    ? 'Shown in your store header announcement / delivery notice area.'
+                    : restaurantStore || fitnessStore
+                      ? 'Used as a fallback notice on some store surfaces. Prefer domain-specific delivery or booking copy in the Marketing tab when available.'
+                      : genericHeroCopyApplies
+                        ? 'Shown as a thin bar at the top of your homepage on smaller screens, and in the store header on desktop.'
+                        : 'Shown in the store header when your template includes an announcement bar. Elevated homepage heroes may hide the mobile strip.'}
+                </p>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
@@ -985,6 +1077,14 @@ export function StoreSettingsManager({ business, category }) {
                       value={settings.marketplace?.heroPromo?.image || ''}
                       onChange={(e) => setMarketplace('heroPromo', 'image', e.target.value)}
                       placeholder="https://..."
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>CTA link</Label>
+                    <Input
+                      value={settings.marketplace?.heroPromo?.ctaHref || ''}
+                      onChange={(e) => setMarketplace('heroPromo', 'ctaHref', e.target.value)}
+                      placeholder="/products or https://..."
                     />
                   </div>
                 </div>
@@ -1280,7 +1380,34 @@ export function StoreSettingsManager({ business, category }) {
                       placeholder="Top selling"
                     />
                   </div>
+                  <div className="space-y-1.5">
+                    <Label>Location label</Label>
+                    <Input
+                      value={settings.pharmacy?.locationLabel || ''}
+                      onChange={(e) => setPharmacy('locationLabel', e.target.value)}
+                      placeholder="Deliver to"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Default location hint</Label>
+                    <Input
+                      value={settings.pharmacy?.defaultLocation || ''}
+                      onChange={(e) => setPharmacy('defaultLocation', e.target.value)}
+                      placeholder="Uses store city when empty"
+                    />
+                  </div>
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <Label>Featured rail subtitle</Label>
+                    <Input
+                      value={settings.pharmacy?.featuredRailSubtitle || ''}
+                      onChange={(e) => setPharmacy('featuredRailSubtitle', e.target.value)}
+                      placeholder="Popular medicines and wellness picks"
+                    />
+                  </div>
                 </div>
+                <p className="text-xs text-gray-500">
+                  Hero carousel slides are under Branding. Uploaded slides override pharmacy template defaults.
+                </p>
               </CardContent>
             </Card>
           ) : null}
@@ -1300,7 +1427,7 @@ export function StoreSettingsManager({ business, category }) {
                   {[
                     ['showRoomTiles', 'Room collection tiles', false],
                     ['showTestimonials', 'Customer testimonials', true],
-                    ['showShowroomCta', 'Showroom CTA in hero', false],
+                    ['showShowroomCta', 'Showroom CTA on homepage', false],
                   ].map(([key, label, optIn]) => (
                     <div key={key} className="flex items-center gap-2">
                       <Switch
@@ -1328,7 +1455,26 @@ export function StoreSettingsManager({ business, category }) {
                       placeholder="Visit showroom"
                     />
                   </div>
+                  <div className="space-y-1.5">
+                    <Label>Location label</Label>
+                    <Input
+                      value={settings.furniture?.locationLabel || ''}
+                      onChange={(e) => setFurniture('locationLabel', e.target.value)}
+                      placeholder="Deliver to"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Default location hint</Label>
+                    <Input
+                      value={settings.furniture?.defaultLocation || ''}
+                      onChange={(e) => setFurniture('defaultLocation', e.target.value)}
+                      placeholder="Uses store city when empty"
+                    />
+                  </div>
                 </div>
+                <p className="text-xs text-gray-500">
+                  Hero carousel slides are under Branding. Uploaded slides override furniture template defaults.
+                </p>
               </CardContent>
             </Card>
           ) : null}
@@ -1433,6 +1579,148 @@ export function StoreSettingsManager({ business, category }) {
                 <p className="text-xs text-gray-500">
                   Membership SKUs, PT sessions, and supplement grids read from inventory categories (Memberships, Personal Training, Classes, supplements). Category tile photos use your category image, a product photo from that category, or gym archive art until you upload images in inventory. Enable Meet the coaches only after adding trainer profiles in settings. Use booking meeting URL above for Calendly-style scheduling.
                 </p>
+              </CardContent>
+            </Card>
+          ) : null}
+
+          {jewelleryStore ? (
+            <Card>
+              <CardHeader className="pb-4">
+                <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                  <Palette className="w-4 h-4" />
+                  {category === 'salon-spa' || business?.category === 'salon-spa'
+                    ? 'Beauty storefront'
+                    : 'Jewellery storefront'}
+                </CardTitle>
+                <CardDescription>
+                  Control the elevated homepage below the hero carousel. Sections use your live
+                  categories and inventory; toggle visibility and rename each row.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center gap-2 rounded-lg border border-gray-100 bg-gray-50 p-3">
+                  <Switch
+                    checked={settings.jewellery?.animations !== false}
+                    onCheckedChange={(v) => setJewellery('animations', v)}
+                  />
+                  <div>
+                    <Label className="text-sm">Scroll and motion effects</Label>
+                    <p className="text-xs text-gray-400">
+                      Fade-in sections and auto-scrolling rails. Respects reduced-motion preferences.
+                    </p>
+                  </div>
+                </div>
+                <Separator />
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+                  Homepage sections
+                </p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {[
+                    ['showHeroRating', 'Hero rating / social proof'],
+                    ['showCollections', 'Featured collections carousel'],
+                    ['showCategories', 'Shop by category circles'],
+                    ['showSignaturePieces', 'Signature pieces grid'],
+                    ['showJewelleryEdit', 'Editorial mosaic section'],
+                    ['showOffers', 'Special offers rail'],
+                    ['showNewArrivals', 'New arrivals rail'],
+                    ['showProductsCarousel', 'Featured products carousel'],
+                    ['showTrustStrip', 'Trust pillars strip'],
+                    ['showBrandsRow', 'Shop by brand row'],
+                    ['showSeoBlock', 'SEO content block', true],
+                  ].map(([key, label, optIn]) => (
+                    <div key={key} className="flex items-center gap-2">
+                      <Switch
+                        checked={optIn ? settings.jewellery?.[key] === true : settings.jewellery?.[key] !== false}
+                        onCheckedChange={(v) => setJewellery(key, v)}
+                      />
+                      <Label className="text-sm">{label}</Label>
+                    </div>
+                  ))}
+                </div>
+                <Separator />
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+                  Copy and labels
+                </p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label>Search placeholder</Label>
+                    <Input
+                      value={settings.jewellery?.searchPlaceholder || ''}
+                      onChange={(e) => setJewellery('searchPlaceholder', e.target.value)}
+                      placeholder="Search gold, diamonds, bridal sets…"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Signature section title</Label>
+                    <Input
+                      value={settings.jewellery?.signaturePiecesTitle || ''}
+                      onChange={(e) => setJewellery('signaturePiecesTitle', e.target.value)}
+                      placeholder="Signature Pieces"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Editorial mosaic title</Label>
+                    <Input
+                      value={settings.jewellery?.jewelleryEditTitle || ''}
+                      onChange={(e) => setJewellery('jewelleryEditTitle', e.target.value)}
+                      placeholder="The Jewellery Edit"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Offers rail title</Label>
+                    <Input
+                      value={settings.jewellery?.offersTitle || ''}
+                      onChange={(e) => setJewellery('offersTitle', e.target.value)}
+                      placeholder="SPECIAL OFFERS"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>New arrivals title</Label>
+                    <Input
+                      value={settings.jewellery?.newArrivalsTitle || ''}
+                      onChange={(e) => setJewellery('newArrivalsTitle', e.target.value)}
+                      placeholder="NEW ARRIVALS"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Products carousel title</Label>
+                    <Input
+                      value={settings.jewellery?.productsCarouselTitle || ''}
+                      onChange={(e) => setJewellery('productsCarouselTitle', e.target.value)}
+                      placeholder="Featured Collection"
+                    />
+                  </div>
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <Label>Editorial mosaic subtitle</Label>
+                    <Input
+                      value={settings.jewellery?.jewelleryEditSubtitle || ''}
+                      onChange={(e) => setJewellery('jewelleryEditSubtitle', e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <Label>Products carousel subtitle</Label>
+                    <Input
+                      value={settings.jewellery?.productsCarouselSubtitle || ''}
+                      onChange={(e) => setJewellery('productsCarouselSubtitle', e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Hero secondary button label</Label>
+                    <Input
+                      value={settings.jewellery?.secondaryCtaLabel || ''}
+                      onChange={(e) => setJewellery('secondaryCtaLabel', e.target.value)}
+                      placeholder="Browse collection"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Hero secondary button link</Label>
+                    <Input
+                      value={settings.jewellery?.secondaryCtaHref || ''}
+                      onChange={(e) => setJewellery('secondaryCtaHref', e.target.value)}
+                      placeholder="/products"
+                    />
+                  </div>
+                </div>
               </CardContent>
             </Card>
           ) : null}
@@ -1692,7 +1980,7 @@ export function StoreSettingsManager({ business, category }) {
                 <Megaphone className="w-4 h-4" /> Homepage marketing sections
               </CardTitle>
               <CardDescription>
-                Upload full marketing banners or promo strips. Choose placement on your homepage (after hero, mid-page, or before footer) and adjust banner height. Works on all store templates.
+                Upload full marketing banners or promo strips. Up to 3 per placement (after hero, mid-page, before footer). Works on all elevated store templates.
               </CardDescription>
             </CardHeader>
             <CardContent>

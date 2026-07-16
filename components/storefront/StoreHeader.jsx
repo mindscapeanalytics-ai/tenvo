@@ -100,7 +100,7 @@ export function StoreHeader({ business, categories, settings }) {
   const marketplaceNav = isAutoMarketplaceStore(business?.category);
   const pharmacyNav = isPharmacyElevatedStore(business?.category);
   const searchPlaceholder = jewelleryNav
-    ? resolveJewellerySearchPlaceholder(settings, businessDomain)
+    ? resolveJewellerySearchPlaceholder(settings, businessDomain, business?.category)
     : editorialNav
       ? resolveFashionSearchPlaceholder(settings, business?.category, businessDomain)
       : storeCopy.searchPlaceholder;
@@ -133,31 +133,31 @@ export function StoreHeader({ business, categories, settings }) {
   return (
     <header
         className={cn(
-          (editorialOnHome || dealershipOnHome) ? 'fixed top-0 inset-x-0' : marketplaceOnHome ? 'sticky top-0' : 'sticky top-0',
-          'z-50 transition-colors duration-300'
+          (editorialOnHome || jewelleryOnHome || dealershipOnHome) ? 'fixed inset-x-0 top-0' : 'sticky top-0',
+          'z-50 transition-all duration-300'
         )}
     >
       {/* ── Announcement / Top Bar ─────────────────────────────────────── */}
       {topBarEnabled && !(immersiveNav && isHome && !isScrolled) && (
         <div
-          className="hidden md:block text-white text-xs py-2 px-4"
+          className="hidden text-white text-xs py-2 px-4 md:block"
           style={{ backgroundColor: accent }}
         >
-          <div className="max-w-[1400px] mx-auto flex items-center justify-between gap-4">
+          <div className="mx-auto flex max-w-[1400px] items-center justify-between gap-4">
             {/* Left: contact info */}
-            <div className="flex items-center gap-4 min-w-0">
+            <div className="flex min-w-0 items-center gap-4">
               {contactPhone && (
                 <a
                   href={`tel:${contactPhone}`}
-                  className="flex items-center gap-1 hover:text-white/80 transition-colors whitespace-nowrap"
+                  className="flex items-center gap-1 whitespace-nowrap transition-colors hover:text-white/80"
                 >
-                  <Phone className="w-3 h-3 flex-shrink-0" />
+                  <Phone className="h-3 w-3 flex-shrink-0" />
                   <span className="hidden sm:inline">{contactPhone}</span>
                 </a>
               )}
               {contactCity && (
-                <span className="hidden md:flex items-center gap-1 text-white/80 truncate">
-                  <MapPin className="w-3 h-3 flex-shrink-0" />
+                <span className="hidden truncate text-white/80 md:flex items-center gap-1">
+                  <MapPin className="h-3 w-3 flex-shrink-0" />
                   {contactCity}
                 </span>
               )}
@@ -165,7 +165,7 @@ export function StoreHeader({ business, categories, settings }) {
 
             {/* Center: announcement */}
             {announcement && (
-              <p className="text-center font-medium text-white/95 truncate hidden sm:block">
+              <p className="hidden truncate text-center font-medium text-white/95 sm:block">
                 {announcement}
               </p>
             )}
@@ -173,7 +173,7 @@ export function StoreHeader({ business, categories, settings }) {
             {/* Right: orders link */}
             <Link
               href={`/store/${businessDomain}/orders`}
-              className="whitespace-nowrap hover:text-white/80 transition-colors hidden sm:block"
+              className="hidden whitespace-nowrap transition-colors hover:text-white/80 sm:block"
             >
               Track Order
             </Link>
@@ -188,14 +188,113 @@ export function StoreHeader({ business, categories, settings }) {
           transparentHeader
             ? 'border-transparent bg-transparent'
             : marketplaceNav
-              ? cn('bg-white border-neutral-200', isScrolled ? 'shadow-md' : '')
+              ? cn('border-neutral-200 bg-white', isScrolled && 'shadow-md')
               : cn(
                 'bg-white',
-                isScrolled ? 'shadow-md' : 'shadow-none'
+                isScrolled ? 'shadow-lg' : 'border-stone-200'
               )
         )}
       >
-        <div className="max-w-[1400px] mx-auto px-3 sm:px-6 lg:px-8">
+        {/* Service Strip - Only visible when scrolled (merged into header) */}
+        {isScrolled && showServiceStrip && !dealershipNav && !marketplaceNav && (editorialNav || jewelleryNav) && (
+          <div className="hidden border-b border-stone-200/50 bg-stone-50/80 lg:block">
+            <div className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-8 py-1.5">
+              <nav
+                className="flex flex-wrap items-center justify-center gap-x-5 text-[10px] font-semibold uppercase tracking-wider text-stone-600"
+                aria-label="Store policies"
+              >
+                <Link
+                  href={`${storeRoot}/shipping`}
+                  className="inline-flex items-center gap-1.5 transition-colors hover:text-stone-900"
+                >
+                  <Truck className="h-3 w-3" style={{ color: accent }} aria-hidden />
+                  {typeof freeShip === 'number' && freeShip > 0
+                    ? `Free over ${formatCurrency(freeShip, currency || 'PKR', { maximumFractionDigits: 0 })}`
+                    : 'Shipping'}
+                </Link>
+                <span className="text-stone-300 select-none" aria-hidden>|</span>
+                <Link
+                  href={`${storeRoot}/returns`}
+                  className="inline-flex items-center gap-1.5 transition-colors hover:text-stone-900"
+                >
+                  <RotateCcw className="h-3 w-3" style={{ color: accent }} aria-hidden />
+                  {typeof returnDays === 'number' && returnDays > 0 ? `${returnDays}-day returns` : 'Returns'}
+                </Link>
+                <span className="text-stone-300 select-none" aria-hidden>|</span>
+                <Link
+                  href={`${storeRoot}/faqs`}
+                  className="inline-flex items-center gap-1.5 transition-colors hover:text-stone-900"
+                >
+                  <HelpCircle className="h-3 w-3" style={{ color: accent }} aria-hidden />
+                  FAQs
+                </Link>
+                <span className="text-stone-300 select-none" aria-hidden>|</span>
+                <Link
+                  href={`${storeRoot}/contact`}
+                  className="inline-flex items-center gap-1.5 transition-colors hover:text-stone-900"
+                >
+                  <Mail className="h-3 w-3" style={{ color: accent }} aria-hidden />
+                  Contact
+                </Link>
+                <span className="text-stone-300 select-none" aria-hidden>|</span>
+                <span className="inline-flex items-center gap-1.5 font-medium normal-case tracking-normal text-stone-500">
+                  <Shield className="h-3 w-3" style={{ color: accent }} aria-hidden />
+                  Secure checkout
+                </span>
+              </nav>
+            </div>
+          </div>
+        )}
+
+        {/* Marketplace Service Strip - Only visible when scrolled */}
+        {isScrolled && showServiceStrip && marketplaceNav && (
+          <div className="hidden border-b border-neutral-100 bg-neutral-50/80 lg:block">
+            <div className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-8 py-1.5">
+              <nav
+                className="flex flex-wrap items-center justify-center gap-x-5 text-[10px] font-semibold text-neutral-600"
+                aria-label="Motoring services"
+              >
+                <Link
+                  href={`${storeRoot}#resources`}
+                  className="inline-flex items-center gap-1.5 transition-colors hover:text-neutral-900"
+                >
+                  <Gauge className="h-3 w-3" style={{ color: accent }} aria-hidden />
+                  COE results
+                </Link>
+                <span className="text-neutral-300" aria-hidden>|</span>
+                <Link
+                  href={`${storeRoot}/contact?sell=1`}
+                  className="inline-flex items-center gap-1.5 transition-colors hover:text-neutral-900"
+                >
+                  <Percent className="h-3 w-3" style={{ color: accent }} aria-hidden />
+                  Free valuation
+                </Link>
+                <span className="text-neutral-300" aria-hidden>|</span>
+                <Link
+                  href={`${storeRoot}/contact?finance=1`}
+                  className="inline-flex items-center gap-1.5 transition-colors hover:text-neutral-900"
+                >
+                  <Calendar className="h-3 w-3" style={{ color: accent }} aria-hidden />
+                  Car loan
+                </Link>
+                <span className="text-neutral-300" aria-hidden>|</span>
+                <Link
+                  href={`${storeRoot}/contact?insurance=1`}
+                  className="inline-flex items-center gap-1.5 transition-colors hover:text-neutral-900"
+                >
+                  <Shield className="h-3 w-3" style={{ color: accent }} aria-hidden />
+                  Insurance
+                </Link>
+                <span className="text-neutral-300" aria-hidden>|</span>
+                <span className="inline-flex items-center gap-1.5 text-neutral-500">
+                  <Shield className="h-3 w-3" style={{ color: accent }} aria-hidden />
+                  Verified listings
+                </span>
+              </nav>
+            </div>
+          </div>
+        )}
+        <div className="mx-auto max-w-[1400px] px-3 sm:px-6 lg:px-8">
           {/* Mobile, Zellbury-style on editorial stores */}
           {immersiveNav && (
           <div className="flex h-14 items-center gap-2 lg:hidden">
@@ -912,68 +1011,6 @@ export function StoreHeader({ business, categories, settings }) {
           </div>
         </div>
       </div>
-
-      {/* ── Service strip (desktop): shipping, returns, help, contact ─── */}
-      {showServiceStrip && !dealershipNav && !marketplaceNav && !(editorialOnHome && !isScrolled) && (
-        <div className="hidden md:block bg-slate-50/95 border-b border-slate-200/90">
-          <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-2">
-            <nav
-              className="flex flex-wrap items-center justify-center gap-x-6 gap-y-1.5 text-[11px] sm:text-xs font-semibold uppercase tracking-wide text-slate-600"
-              aria-label="Store policies and help"
-            >
-              <Link
-                href={`${storeRoot}/shipping`}
-                className="inline-flex items-center gap-1.5 hover:text-slate-900 transition-colors"
-              >
-                <Truck className="w-3.5 h-3.5" style={{ color: accent }} aria-hidden />
-                {typeof freeShip === 'number' && freeShip > 0
-                  ? `Free over ${formatCurrency(freeShip, currency || 'PKR', { maximumFractionDigits: 0 })}`
-                  : 'Shipping'}
-              </Link>
-              <span className="text-slate-300 select-none" aria-hidden>
-                |
-              </span>
-              <Link
-                href={`${storeRoot}/returns`}
-                className="inline-flex items-center gap-1.5 hover:text-slate-900 transition-colors"
-              >
-                <RotateCcw className="w-3.5 h-3.5" style={{ color: accent }} aria-hidden />
-                {typeof returnDays === 'number' && returnDays > 0
-                  ? `${returnDays}-day returns`
-                  : 'Returns'}
-              </Link>
-              <span className="text-slate-300 select-none" aria-hidden>
-                |
-              </span>
-              <Link
-                href={`${storeRoot}/faqs`}
-                className="inline-flex items-center gap-1.5 hover:text-slate-900 transition-colors"
-              >
-                <HelpCircle className="w-3.5 h-3.5" style={{ color: accent }} aria-hidden />
-                FAQs
-              </Link>
-              <span className="text-slate-300 select-none" aria-hidden>
-                |
-              </span>
-              <Link
-                href={`${storeRoot}/contact`}
-                className="inline-flex items-center gap-1.5 hover:text-slate-900 transition-colors"
-              >
-                <Mail className="w-3.5 h-3.5" style={{ color: accent }} aria-hidden />
-                Contact
-              </Link>
-              <span className="text-slate-300 select-none" aria-hidden>
-                |
-              </span>
-              <span className="inline-flex items-center gap-1.5 text-slate-500 normal-case font-medium tracking-normal">
-                <Shield className="w-3.5 h-3.5" style={{ color: accent }} aria-hidden />
-                Secure checkout
-              </span>
-            </nav>
-          </div>
-        </div>
-      )}
-
       {/* ── Search Overlay ─────────────────────────────────────────────── */}
       {isSearchOpen && (
         <div className="fixed inset-0 z-[60] bg-black/40 backdrop-blur-sm flex items-start justify-center pt-14 lg:pt-20 px-3 sm:px-4">
@@ -996,43 +1033,6 @@ export function StoreHeader({ business, categories, settings }) {
           </div>
         </div>
       )}
-
-      {marketplaceNav && showServiceStrip && (
-        <div className="hidden md:block border-b border-neutral-100 bg-white">
-          <div className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-8 py-1.5">
-            <nav
-              className="flex flex-wrap items-center justify-center gap-x-5 gap-y-1.5 text-[11px] sm:text-xs font-semibold text-neutral-600"
-              aria-label="Motoring services"
-            >
-              <Link href={`${storeRoot}#resources`} className="inline-flex items-center gap-1.5 hover:text-neutral-900">
-                <Gauge className="h-3.5 w-3.5" style={{ color: accent }} aria-hidden />
-                COE results
-              </Link>
-              <span className="text-neutral-300" aria-hidden>|</span>
-              <Link href={`${storeRoot}/contact?sell=1`} className="inline-flex items-center gap-1.5 hover:text-neutral-900">
-                <Percent className="h-3.5 w-3.5" style={{ color: accent }} aria-hidden />
-                Free valuation
-              </Link>
-              <span className="text-neutral-300" aria-hidden>|</span>
-              <Link href={`${storeRoot}/contact?finance=1`} className="inline-flex items-center gap-1.5 hover:text-neutral-900">
-                <Calendar className="h-3.5 w-3.5" style={{ color: accent }} aria-hidden />
-                Car loan
-              </Link>
-              <span className="text-neutral-300" aria-hidden>|</span>
-              <Link href={`${storeRoot}/contact?insurance=1`} className="inline-flex items-center gap-1.5 hover:text-neutral-900">
-                <Shield className="h-3.5 w-3.5" style={{ color: accent }} aria-hidden />
-                Insurance
-              </Link>
-              <span className="text-neutral-300" aria-hidden>|</span>
-              <span className="inline-flex items-center gap-1.5 text-neutral-500">
-                <Shield className="h-3.5 w-3.5" style={{ color: accent }} aria-hidden />
-                Verified listings
-              </span>
-            </nav>
-          </div>
-        </div>
-      )}
-
       {/* ── Mobile Nav ─────────────────────────────────────────────────── */}
       {jewelleryNav ? (
         <JewelleryMobileNav
@@ -1041,6 +1041,7 @@ export function StoreHeader({ business, categories, settings }) {
           businessDomain={businessDomain}
           business={business}
           categories={categories}
+          settings={settings}
           accent={accent}
           canonical={canonical}
         />

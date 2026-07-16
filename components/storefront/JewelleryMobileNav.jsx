@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { X, ChevronRight, Sparkles, Star, Gift, Package, Circle, Heart, ShoppingBag, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SmartProductImage } from '@/components/storefront/SmartProductImage';
-import { getJewelleryEditorialNav } from '@/lib/storefront/jewelleryStorefront';
+import { getJewelleryEditorialNav, getJewelleryStorefrontConfig, getStoreMode } from '@/lib/storefront/jewelleryStorefront';
 
 const ICONS = {
   sparkles: Sparkles,
@@ -14,12 +14,12 @@ const ICONS = {
   package: Package,
   circle: Circle,
   heart: Heart,
-  gem: Star, // Default gem icon
+  gem: Star,
 };
 
 /**
- * Jewelry mobile navigation — premium slide-in drawer with category tabs,
- * promo banners, and luxury golden accents. Matches fashion nav architecture.
+ * Jewelry / Beauty mobile navigation — premium slide-in drawer with category tabs,
+ * promo banners, and mode-aware quick links.
  */
 export function JewelleryMobileNav({
   isOpen,
@@ -27,29 +27,32 @@ export function JewelleryMobileNav({
   business,
   businessDomain,
   categories = [],
+  settings = {},
   accent = '#c9a227',
   canonical,
 }) {
   const base = `/store/${businessDomain}`;
-  const nav = getJewelleryEditorialNav(base, categories);
-  
+  const businessCategory = business?.category || canonical;
+  const mode = getStoreMode(businessCategory);
+  const config = getJewelleryStorefrontConfig(settings, businessDomain, businessCategory);
+  const nav = getJewelleryEditorialNav(base, categories, businessCategory);
+
   const [activeTab, setActiveTab] = useState(nav.tabs[0]?.id);
   const activeCategories = nav.tabs.find((t) => t.id === activeTab)?.categories || nav.tabs[0]?.categories || [];
+
+  const signatureLabel = config.signaturePiecesTitle || (mode === 'beauty' ? 'Best Sellers' : 'Signature Pieces');
 
   if (!isOpen) return null;
 
   return (
     <>
-      {/* Backdrop */}
       <div
         className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-sm"
         onClick={onClose}
         aria-hidden="true"
       />
 
-      {/* Drawer */}
       <div className="fixed inset-y-0 left-0 z-[101] flex w-full max-w-sm flex-col bg-white shadow-2xl">
-        {/* Header */}
         <div
           className="flex items-center justify-between border-b px-4 py-4"
           style={{ borderColor: `${accent}20` }}
@@ -62,7 +65,7 @@ export function JewelleryMobileNav({
               <Sparkles className="h-4 w-4" style={{ color: accent }} />
             </div>
             <h2 className="text-base font-bold text-stone-900">
-              {business?.business_name || 'Jewelry Store'}
+              {business?.business_name || (mode === 'beauty' ? 'Beauty Store' : 'Jewelry Store')}
             </h2>
           </div>
           <button
@@ -75,9 +78,7 @@ export function JewelleryMobileNav({
           </button>
         </div>
 
-        {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto overscroll-contain">
-          {/* Promo Banners */}
           {nav.promos.length > 0 && (
             <div className="border-b border-stone-100 p-4">
               <div className="grid grid-cols-2 gap-3">
@@ -108,7 +109,6 @@ export function JewelleryMobileNav({
             </div>
           )}
 
-          {/* Tabs */}
           {nav.tabs.length > 1 && (
             <div className="flex border-b border-stone-200 px-4">
               {nav.tabs.map((tab) => (
@@ -133,7 +133,6 @@ export function JewelleryMobileNav({
             </div>
           )}
 
-          {/* Categories */}
           <div className="p-4">
             <div className="space-y-1">
               {activeCategories.map((cat) => {
@@ -166,7 +165,6 @@ export function JewelleryMobileNav({
             </div>
           </div>
 
-          {/* Quick Links */}
           <div className="border-t border-stone-100 p-4">
             <p className="mb-3 text-[10px] font-bold uppercase tracking-wider text-stone-500">Quick Links</p>
             <div className="space-y-1">
@@ -175,34 +173,33 @@ export function JewelleryMobileNav({
                 onClick={onClose}
                 className="block rounded-lg px-3 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-50 hover:text-stone-900"
               >
-                New Arrivals
+                {config.newArrivalsTitle || 'New Arrivals'}
               </Link>
               <Link
                 href={`${base}/products?onSale=true`}
                 onClick={onClose}
                 className="block rounded-lg px-3 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-50 hover:text-stone-900"
               >
-                Special Offers
+                {config.offersTitle || 'Special Offers'}
               </Link>
               <Link
                 href={`${base}/products?sort=featured`}
                 onClick={onClose}
                 className="block rounded-lg px-3 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-50 hover:text-stone-900"
               >
-                Signature Pieces
+                {signatureLabel}
               </Link>
               <Link
                 href={`${base}/contact`}
                 onClick={onClose}
                 className="block rounded-lg px-3 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-50 hover:text-stone-900"
               >
-                Contact Us
+                {config.consultationCtaLabel || 'Contact Us'}
               </Link>
             </div>
           </div>
         </div>
 
-        {/* Footer Actions */}
         <div className="border-t border-stone-200 p-4">
           <div className="grid grid-cols-2 gap-3">
             <Link

@@ -14,6 +14,8 @@ import { getRestaurantConfig } from '../lib/storefront/restaurantStorefront.js';
 import { isFitnessElevatedStore } from '../lib/storefront/fitnessStorefront.js';
 import { isPharmacyElevatedStore } from '../lib/storefront/pharmacyStorefront.js';
 import { isSupermarketElevatedStore } from '../lib/storefront/supermarketStorefront.js';
+import { isJewelleryStore, getJewelleryStorefrontConfig } from '../lib/storefront/jewelleryStorefront.js';
+import { usesFinderHero, getHeroPreset } from '../lib/storefront/heroPresets.js';
 
 dotenv.config({ path: resolve(process.cwd(), '.env.local') });
 dotenv.config();
@@ -36,7 +38,23 @@ function hasHomepageMarketing(settings, category, domain, productCount = 0) {
   if (pageSections.length >= 1) return { kind: 'pageSections', count: pageSections.length };
 
   const canonical = resolveDomainKey(category);
-  if (supportsFashionGulSections(canonical)) {
+
+  if (isJewelleryStore(canonical)) {
+    const cfg = getJewelleryStorefrontConfig(settings, domain, canonical);
+    const sectionFlags = [
+      cfg.showCollections,
+      cfg.showSignaturePieces,
+      cfg.showJewelleryEdit,
+      cfg.showCategories,
+      cfg.showOffers,
+      cfg.showNewArrivals,
+      cfg.showTrustStrip,
+      cfg.showBrandsRow,
+    ].filter(Boolean).length;
+    if (sectionFlags >= 3) return { kind: 'jewellery', count: sectionFlags };
+  }
+
+  if (supportsFashionGulSections(canonical) && !isJewelleryStore(canonical)) {
     const homeEdit = resolveFashionHomeEdit(settings, category, domain, `/store/${domain}`);
     const saleMosaic = resolveFashionSaleMosaic(settings, category, domain, `/store/${domain}`);
     const tiles = (homeEdit?.tiles?.length ?? 0) + (saleMosaic?.columns?.length ?? 0);
@@ -118,23 +136,35 @@ try {
     } else {
       ok(`${spec.domain}: homepage content via ${marketing.kind} (${marketing.count})`);
     }
+
+    if (isJewelleryStore(resolveDomainKey(row.category))) {
+      const hero = getHeroPreset(row.category, spec.domain, settings);
+      if (hero.type !== 'jewellery-elevated') {
+        fail(`${spec.domain}: expected jewellery-elevated hero, got ${hero.type}`);
+      } else {
+        ok(`${spec.domain}: jewellery-elevated hero wired`);
+      }
+    }
   }
 
   for (const demo of FEATURED_DEMO_STORES) {
     const row = byDomain.get(demo.domain.toLowerCase());
     if (!row) continue;
     const placements = new Set(getActivePageSections(row.settings?.pageSections).map((s) => s.placement));
-    const hasFashion = supportsFashionGulSections(resolveDomainKey(row.category));
-    const hasRestaurant = resolveDomainKey(row.category) === 'restaurant-cafe';
+    const productCount = Number(row.products ?? 0);
     const hasElevated =
-      hasFashion ||
-      hasRestaurant ||
+      usesFinderHero(row.category) ||
+      isJewelleryStore(row.category) ||
+      (supportsFashionGulSections(resolveDomainKey(row.category)) && !isJewelleryStore(row.category)) ||
+      resolveDomainKey(row.category) === 'restaurant-cafe' ||
       isFitnessElevatedStore(row.category) ||
       isPharmacyElevatedStore(row.category) ||
       isSupermarketElevatedStore(row.category);
 
-    if (!hasElevated && placements.size < 2) {
-      fail(`${demo.domain}: featured demo needs 2+ pageSection placements, got ${placements.size}`);
+    if (!hasElevated && placements.size < 2 && productCount < 10) {
+      fail(`${demo.domain}: featured demo needs 2+ pageSection placements or elevated homepage, got ${placements.size} placements`);
+    } else if (!hasElevated && placements.size < 2) {
+      ok(`${demo.domain}: featured catalog homepage (${productCount} products)`);
     } else if (!hasElevated) {
       ok(`${demo.domain}: pageSections placements ${[...placements].join(', ')}`);
     }
