@@ -43,15 +43,15 @@ export const PakistanTaxStrategy: TaxStrategy = {
         const taxAmount = Math.round(base * rate * 100) / 100;
         const gstShare = item.gstPercent != null ? Number(item.gstPercent) / 100 : rate;
         const pstShare = item.pstPercent != null ? Number(item.pstPercent) / 100 : 0;
-        const details =
-            pstShare > 0
-                ? {
-                    GST: { rate: gstShare, amount: Math.round(base * gstShare * 100) / 100 },
-                    PST: { rate: pstShare, amount: Math.round(base * pstShare * 100) / 100 },
-                  }
-                : {
-                    'GST/PST': { rate: rate, amount: taxAmount },
-                  };
+        // Build into a typed Record — a ternary widens to a union with optional
+        // `undefined` keys, which is not assignable to Record<string, {...}>.
+        const details: TaxBreakdown['details'] = {};
+        if (pstShare > 0) {
+            details.GST = { rate: gstShare, amount: Math.round(base * gstShare * 100) / 100 };
+            details.PST = { rate: pstShare, amount: Math.round(base * pstShare * 100) / 100 };
+        } else {
+            details['GST/PST'] = { rate: rate, amount: taxAmount };
+        }
 
         return {
             baseAmount: base,
