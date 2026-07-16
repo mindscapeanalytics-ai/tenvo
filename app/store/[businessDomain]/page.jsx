@@ -666,7 +666,7 @@ export default async function StoreHomePage({ params }) {
         />
       ) : null}
 
-      {/* ── Category Chips (skip when parts finder already shows shortcuts) ─ */}
+      {dealershipHero && dealershipCatalogResult.success && (
         <LazyVerticalHomeSections
           variant="dealership"
           businessDomain={businessDomain}
