@@ -441,7 +441,10 @@ export default async function StoreHomePage({ params }) {
         slides: getJewelleryHeroSlides(heroPreset.base, settings, {
           coverImage: coverImageUrl,
         }, business.category),
-        tiles: getJewelleryHeroTiles(heroPreset.base, settings, business.category),
+        tiles: getJewelleryHeroTiles(heroPreset.base, settings, business.category, {
+          categories,
+          products: catalogSnapshotResult.success ? catalogSnapshotResult.products : [],
+        }),
         trustPills: getJewelleryHeroTrustPills(settings, business.category),
         hideRating: jewelleryConfig ? !jewelleryConfig.showHeroRating : false,
         secondaryCtaLabel: jewelleryConfig?.secondaryCtaLabel || heroPreset.secondaryCtaLabel,

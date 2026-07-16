@@ -45,6 +45,7 @@ import { FashionPromoBannersEditor } from '@/components/storefront/admin/Fashion
 import { FashionCatalogEditor } from '@/components/storefront/admin/FashionCatalogEditor';
 import { HeroCarouselSlidesEditor } from '@/components/storefront/admin/HeroCarouselSlidesEditor';
 import { SupermarketCatalogEditor } from '@/components/storefront/admin/SupermarketCatalogEditor';
+import { JewelleryCardsEditor } from '@/components/storefront/admin/JewelleryCardsEditor';
 import { getHeroPreset } from '@/lib/storefront/heroPresets';
 import { uploadOptimizedImage } from '@/lib/utils/optimizeImageClient';
 import { canConfigureTenantMeetingUrl, normalizeTenantMeetingUrl } from '@/lib/storefront/storefrontBooking';
@@ -320,6 +321,8 @@ export function StoreSettingsManager({ business, category }) {
       consultationCtaLabel: '',
       secondaryCtaLabel: '',
       secondaryCtaHref: '',
+      heroTiles: [],
+      jewelleryEdit: { tiles: [] },
     },
   });
 
@@ -392,7 +395,10 @@ export function StoreSettingsManager({ business, category }) {
         setNewDomain(result.data.storeDomain || '');
         setLoadedPlanTier(result.data.planTier || null);
       }
-      if (supportsFashionGulSections(category || business?.category) && !isJewelleryStore(category || business?.category)) {
+      if (
+        (supportsFashionGulSections(category || business?.category) && !isJewelleryStore(category || business?.category))
+        || isJewelleryStore(category || business?.category)
+      ) {
         const categoryResult = await getCategories(business.id);
         if (categoryResult?.success) {
           setFashionCategories(categoryResult.categories || []);
@@ -1721,6 +1727,18 @@ export function StoreSettingsManager({ business, category }) {
                     />
                   </div>
                 </div>
+                <JewelleryCardsEditor
+                  jewellery={settings.jewellery || {}}
+                  setJewellery={setJewellery}
+                  businessCategory={category || business?.category}
+                  businessId={business?.id}
+                  categories={fashionCategories}
+                />
+                <p className="text-xs text-gray-500">
+                  Hero category cards and the editorial mosaic resolve from your live inventory.
+                  Leave a field blank to keep auto-updating from product photos and categories;
+                  fill only the fields you want to pin.
+                </p>
               </CardContent>
             </Card>
           ) : null}
