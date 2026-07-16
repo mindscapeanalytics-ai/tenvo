@@ -966,9 +966,6 @@ export function SuperStorePOS({
                             <button key={p.id} type="button" onClick={() => { addToCart(p); setSearchTerm(''); }} className="flex w-full px-4 py-2 text-left hover:bg-emerald-50/50 text-xs font-bold">{p.name}</button>
                         ))}</div>
                     )}
-                    <div className="shrink-0 px-4 py-1.5 bg-gray-50 border-t text-[10px] font-semibold text-gray-400 text-center">
-                        F1 search · F4 hold · F5 pay · F7 tax · F9 print
-                    </div>
                 </div>
                 <aside className="w-[min(100%,400px)] shrink-0 flex flex-col min-h-0">
                     <CartSummary {...cartSummaryProps} />

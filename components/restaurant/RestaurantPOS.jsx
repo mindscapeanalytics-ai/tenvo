@@ -447,13 +447,15 @@ export function RestaurantPOS({ businessId, products = [], onCompleteSale, onOrd
         <div
             ref={containerRef}
             className={cn(
-                'flex flex-col lg:flex-row bg-gray-50 overflow-hidden border border-gray-200 transition-all min-h-0 touch-manipulation',
+                'flex flex-col bg-gray-50 overflow-hidden border border-gray-200 transition-all min-h-0 touch-manipulation',
                 getPosShellHeightClass(isFullscreen, 'terminal'),
                 isFullscreen ? 'fixed inset-0 z-[100] rounded-none border-0' : 'rounded-xl shadow-sm'
             )}
         >
-            {/* Menu / tables — hidden on mobile when viewing cart */}
-            <div className={cn('flex-1 flex flex-col overflow-hidden min-h-0', mobilePane === 'cart' && 'hidden lg:flex')}>
+            {/* Menu + cart row — dock stays outside so F1–F9 pin to bottom */}
+            <div className="flex flex-1 min-h-0 flex-col lg:flex-row overflow-hidden">
+                {/* Menu / tables — hidden on mobile when viewing cart */}
+                <div className={cn('flex-1 flex flex-col overflow-hidden min-h-0', mobilePane === 'cart' && 'hidden lg:flex')}>
                 {/* Order Type + Table Selection */}
                 <div className="p-4 max-lg:p-3 max-lg:pt-[max(0.75rem,env(safe-area-inset-top))] bg-white border-b border-gray-100 space-y-3 max-lg:space-y-2">
                     <div className="flex items-center justify-between gap-2 max-lg:flex-wrap">
@@ -807,6 +809,7 @@ export function RestaurantPOS({ businessId, products = [], onCompleteSale, onOrd
                         </button>
                     </div>
                 )}
+            </div>
             </div>
 
             <PosHotkeyDock
