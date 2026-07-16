@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
     Select,
     SelectContent,
@@ -160,6 +161,63 @@ export function PosSettingsPanel({ category }) {
                             checked={settings.offlineModeEnabled}
                             onCheckedChange={(v) => patch('offlineModeEnabled', v)}
                         />
+                        <ToggleRow
+                            label="Loyalty at till"
+                            hint="Show points balance and redeem for named customers with an active loyalty program."
+                            checked={settings.loyaltyAtTill !== false}
+                            onCheckedChange={(v) => patch('loyaltyAtTill', v)}
+                        />
+                        <ToggleRow
+                            label="Open cash drawer on cash sale"
+                            hint="Sends an ESC/POS drawer kick to the default printer after cash or split sales."
+                            checked={settings.cashDrawerKickOnCashSale !== false}
+                            onCheckedChange={(v) => patch('cashDrawerKickOnCashSale', v)}
+                        />
+
+                        <div className="space-y-2 p-4 bg-slate-50/80 rounded-2xl border border-slate-100">
+                            <Label className="font-semibold text-slate-900">Manager PIN</Label>
+                            <p className="text-xs text-slate-500 font-medium leading-relaxed">
+                                Optional 4 to 8 digit PIN for clear cart, tax exempt, large discounts, and paid out.
+                                Leave blank to disable prompts.
+                            </p>
+                            <Input
+                                type="password"
+                                inputMode="numeric"
+                                maxLength={8}
+                                value={settings.managerPin || ''}
+                                onChange={(e) => patch('managerPin', e.target.value.replace(/\D/g, ''))}
+                                placeholder="e.g. 1234"
+                                className="h-11 rounded-xl max-w-xs"
+                            />
+                            <div className="flex flex-col gap-2 pt-1">
+                                <ToggleRow
+                                    label="Require PIN to clear cart"
+                                    hint=""
+                                    checked={settings.requirePinForClear !== false}
+                                    onCheckedChange={(v) => patch('requirePinForClear', v)}
+                                />
+                                <ToggleRow
+                                    label="Require PIN for tax exempt"
+                                    hint=""
+                                    checked={settings.requirePinForTaxExempt !== false}
+                                    onCheckedChange={(v) => patch('requirePinForTaxExempt', v)}
+                                />
+                            </div>
+                            <div className="space-y-1">
+                                <Label className="text-[10px] font-semibold uppercase text-gray-400 tracking-widest">
+                                    PIN when discount % exceeds
+                                </Label>
+                                <Input
+                                    type="number"
+                                    min={0}
+                                    max={100}
+                                    value={settings.requirePinForDiscountAbove ?? 15}
+                                    onChange={(e) => patch('requirePinForDiscountAbove', Number(e.target.value) || 0)}
+                                    className="h-10 rounded-xl max-w-[8rem]"
+                                />
+                            </div>
+                        </div>
+
                         {isRestaurant && (
                             <ToggleRow
                                 label="Sync restaurant orders to POS ledger"

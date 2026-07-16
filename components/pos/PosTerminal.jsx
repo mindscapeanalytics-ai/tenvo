@@ -53,11 +53,19 @@ import { getEffectiveProductImageUrl } from '@/lib/storefront/productImageFallba
 import { ProductThumbnail } from '@/components/product/ProductThumbnail';
 import { PosHotkeyDock } from '@/components/pos/shared/PosHotkeyDock';
 import { PosTaxPanel } from '@/components/pos/shared/PosTaxPanel';
+import { usePosManagerGate } from '@/components/pos/shared/PosManagerPinGate';
+import { PosLoyaltyPanel } from '@/components/pos/shared/PosLoyaltyPanel';
+import { PosCashToolsPanel } from '@/components/pos/shared/PosCashToolsPanel';
 import { usePosHotkeys } from '@/lib/hooks/usePosHotkeys';
 import { usePosHeldSales } from '@/lib/hooks/usePosHeldSales';
 import { usePosTaxConfig } from '@/lib/hooks/usePosTaxConfig';
 import { nextPosPaymentMethod } from '@/lib/config/posHotkeys';
 import { computePosCartTax } from '@/lib/utils/posTaxComponents';
+import { openCashDrawer } from '@/lib/utils/posCashDrawer';
+import {
+    earnPosLoyaltyPointsAction,
+    getPosLoyaltySummaryAction,
+} from '@/lib/actions/standard/posOperations';
 import toast from 'react-hot-toast';
 
 // --- Product Grid ------------------------------------------------------------
@@ -306,6 +314,7 @@ function PosCart({
     onBack, hideKeyboardHint = false, businessCategory, onPrintBill, onDownloadBillPdf,
     onHoldSale, onResumeHeldSale, heldOrders = [],
     discountInputRef,
+    onOpenLoyalty,
 }) {
     const subtotal = items.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0);
     
@@ -469,8 +478,22 @@ function PosCart({
                         >
                             <User className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
                             <span className="text-gray-800 truncate flex-1 text-left font-medium">{customer?.name || 'Walk-in Customer'}</span>
+                            {loyaltyBalance > 0 ? (
+                                <span className="text-[10px] font-semibold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded-md tabular-nums">
+                                    {loyaltyBalance} pts
+                                </span>
+                            ) : null}
                             <ChevronDown className="w-3 h-3 text-gray-400 flex-shrink-0" />
                         </button>
+                        {onOpenLoyalty ? (
+                            <button
+                                type="button"
+                                onClick={onOpenLoyalty}
+                                className="w-full text-[10px] font-semibold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-100 rounded-lg py-1.5"
+                            >
+                                Redeem loyalty points
+                            </button>
+                        ) : null}
 
                         <div className="rounded-xl bg-gray-50 border border-gray-100 px-3 py-2.5 space-y-1.5 text-[11px] sm:text-xs" role="region" aria-label="Order totals">
                             <div className="flex justify-between text-gray-500">
@@ -681,6 +704,9 @@ export function PosTerminal({
     const [isStartingSession, setIsStartingSession] = useState(false);
     const [mobilePane, setMobilePane] = useState('browse');
     const [showTaxPanel, setShowTaxPanel] = useState(false);
+    const [showLoyaltyPanel, setShowLoyaltyPanel] = useState(false);
+    const [showCashTools, setShowCashTools] = useState(false);
+    const [loyaltyBalance, setLoyaltyBalance] = useState(0);
     const discountInputRef = useRef(null);
     const {
         taxMode,
@@ -691,6 +717,10 @@ export function PosTerminal({
         posUi,
     } = usePosTaxConfig(category);
     const { heldOrders, holdSale, resumeLastHeld } = usePosHeldSales(businessId || business?.id);
+    const { requestApproval, managerPinDialog } = usePosManagerGate({
+        businessId: businessId || business?.id,
+        posSettings,
+    });
     const { containerRef, isFullscreen, toggleFullscreen } = usePosFullscreen();
     const {
         autoPrintEnabled,
@@ -785,6 +815,19 @@ export function PosTerminal({
             itemCount,
         };
     }, [cart, discount, discountType, taxComponents, cartTax]);
+
+    useEffect(() => {
+        if (!posSettings.loyaltyAtTill || !customer?.id || !businessId) {
+            setLoyaltyBalance(0);
+            return undefined;
+        }
+        let cancelled = false;
+        (async () => {
+            const res = await getPosLoyaltySummaryAction(businessId, customer.id);
+            if (!cancelled && res?.success) setLoyaltyBalance(res.balance || 0);
+        })();
+        return () => { cancelled = true; };
+    }, [customer?.id, businessId, posSettings.loyaltyAtTill]);
 
     const handlePrintBill = useCallback((totalsFromCart) => {
         printBillFromCart({
@@ -905,16 +948,34 @@ export function PosTerminal({
 
     const handleClearCart = useCallback(() => {
         if (cart.length === 0) return;
-        setCart([]);
-        setCustomer(null);
-        setDiscount(0);
-        setDiscountType('fixed');
-        setSplitPayments(null);
-        setTaxMode('standard');
-    }, [cart.length, setTaxMode]);
+        const run = () => {
+            setCart([]);
+            setCustomer(null);
+            setDiscount(0);
+            setDiscountType('fixed');
+            setSplitPayments(null);
+            setTaxMode('standard');
+        };
+        requestApproval('clear', run);
+    }, [cart.length, setTaxMode, requestApproval]);
+
+    const handleTaxModeChange = useCallback((mode) => {
+        if (mode === 'exempt') {
+            requestApproval('tax_exempt', () => setTaxMode('exempt'));
+            return;
+        }
+        setTaxMode(mode);
+    }, [requestApproval, setTaxMode]);
 
     const handleCompleteSale = useCallback(async () => {
         if (cart.length === 0 || isProcessing) return;
+
+        const sub = cartSummary.subtotal || 0;
+        const discPct = discountType === 'percentage'
+            ? Number(discount) || 0
+            : (sub > 0 ? ((Number(discount) || 0) / sub) * 100 : 0);
+
+        const runSale = async () => {
         setIsProcessing(true);
         try {
             const payload = buildPosCheckoutPayload({
@@ -964,6 +1025,32 @@ export function PosTerminal({
                     paymentMethod,
                     hasSession,
                 });
+
+                const tender = splitPayments?.length ? 'split' : paymentMethod;
+                if (
+                    posSettings.cashDrawerKickOnCashSale
+                    && (tender === 'cash' || tender === 'split')
+                ) {
+                    openCashDrawer({ label: 'Sale' });
+                }
+
+                if (posSettings.loyaltyAtTill && customer?.id && payload.total > 0) {
+                    try {
+                        const loyalty = await getPosLoyaltySummaryAction(businessId, customer.id);
+                        if (loyalty?.success && loyalty.program?.id) {
+                            await earnPosLoyaltyPointsAction({
+                                businessId,
+                                programId: loyalty.program.id,
+                                customerId: customer.id,
+                                amount: payload.total,
+                                referenceId: result.transaction?.id || result.transactionId || null,
+                            });
+                        }
+                    } catch {
+                        /* non-blocking */
+                    }
+                }
+
                 setCart([]);
                 setCustomer(null);
                 setDiscount(0);
@@ -981,7 +1068,10 @@ export function PosTerminal({
         } finally {
             setIsProcessing(false);
         }
-    }, [cart, businessId, session, customer, discount, discountType, paymentMethod, splitPayments, isProcessing, onCompleteSale, hasSession, recordSuccessfulSale, formatSaleError, isOnline, posSettings.offlineModeEnabled, queueSale, effectiveTaxRate, taxMode, cartSummary.taxBreakdown, setTaxMode]);
+        };
+
+        requestApproval('discount', () => { void runSale(); }, { discountPercent: discPct });
+    }, [cart, businessId, session, customer, discount, discountType, paymentMethod, splitPayments, isProcessing, onCompleteSale, hasSession, recordSuccessfulSale, formatSaleError, isOnline, posSettings, queueSale, effectiveTaxRate, taxMode, cartSummary, setTaxMode, requestApproval]);
 
     const hotkeyHandlers = useMemo(() => ({
         search: focusScanSearch,
@@ -1061,7 +1151,7 @@ export function PosTerminal({
         taxLabel: taxLabel || posUi.taxLabel,
         taxBreakdown: cartSummary.taxBreakdown,
         selectedPaymentMethod: paymentMethod,
-        loyaltyBalance: 0,
+        loyaltyBalance,
         businessCategory: category,
         onPrintBill: handlePrintBill,
         onDownloadBillPdf: handleDownloadBillPdf,
@@ -1069,6 +1159,9 @@ export function PosTerminal({
         onResumeHeldSale: handleResumeHeldSale,
         heldOrders,
         discountInputRef,
+        onOpenLoyalty: customer?.id && posSettings.loyaltyAtTill
+            ? () => setShowLoyaltyPanel(true)
+            : undefined,
     };
 
     const posShellHeader = (
@@ -1111,6 +1204,17 @@ export function PosTerminal({
                 <span className="text-[10px] font-semibold text-gray-500 mr-1 hidden md:inline tabular-nums">
                     Cart {displayCurrency}{cartSummary.total.toLocaleString()}
                 </span>
+                <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 px-2 text-[10px] font-semibold text-gray-600"
+                    onClick={() => setShowCashTools(true)}
+                    title="Cash drawer / paid in-out"
+                >
+                    <Banknote className="w-3.5 h-3.5 mr-1" />
+                    Cash
+                </Button>
                 <TooltipProvider>
                     <Tooltip>
                         <TooltipTrigger asChild>
@@ -1255,11 +1359,34 @@ export function PosTerminal({
                 open={showTaxPanel}
                 onOpenChange={setShowTaxPanel}
                 taxMode={taxMode}
-                onTaxModeChange={setTaxMode}
+                onTaxModeChange={handleTaxModeChange}
                 components={taxComponents}
                 currency={displayCurrency}
                 sampleTaxAmount={cartSummary.taxAmount}
             />
+
+            <PosLoyaltyPanel
+                open={showLoyaltyPanel}
+                onOpenChange={setShowLoyaltyPanel}
+                businessId={businessId || business?.id}
+                customer={customer}
+                currency={displayCurrency}
+                onRedeemDiscount={(amount, newBalance) => {
+                    setDiscountType('fixed');
+                    setDiscount(amount);
+                    if (newBalance != null) setLoyaltyBalance(newBalance);
+                }}
+            />
+
+            <PosCashToolsPanel
+                open={showCashTools}
+                onOpenChange={setShowCashTools}
+                businessId={businessId || business?.id}
+                sessionId={hasSession ? session?.id : null}
+                onRequirePinForPaidOut={(run) => requestApproval('paid_out', run)}
+            />
+
+            {managerPinDialog}
 
             {/* Sale Success Toast */}
             <AnimatePresence>

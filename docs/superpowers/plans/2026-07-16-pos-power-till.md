@@ -22,11 +22,12 @@
 - [x] `getPosTaxConfigAction` (pos.access)
 - [x] `PosHotkeyDock`, `PosTaxPanel`
 - [x] Wire PosTerminal + SuperStorePOS
-- [ ] Phase 2: Restaurant F-dock subset + tax breakout
-- [ ] Phase 3: Manager PIN, drawer kick, loyalty at till
+- [x] Phase 2: Restaurant F-dock + tax breakout
+- [x] Phase 2: Manager PIN, loyalty at till, cash drawer / paid in-out
+- [ ] Phase 3: Hardware scale protocol, customer pole display, FBR live transmit
 
 ## Test
 
 ```bash
-bunx vitest run tests/unit/posTaxComponents.test.js
+bunx vitest run tests/unit/posTaxComponents.test.js tests/unit/posOperations.test.js
 ```

@@ -46,11 +46,14 @@ import { getEffectiveProductImageUrl } from '@/lib/storefront/productImageFallba
 import { ProductThumbnail } from '@/components/product/ProductThumbnail';
 import { PosHotkeyDock } from '@/components/pos/shared/PosHotkeyDock';
 import { PosTaxPanel } from '@/components/pos/shared/PosTaxPanel';
+import { usePosManagerGate } from '@/components/pos/shared/PosManagerPinGate';
+import { PosCashToolsPanel } from '@/components/pos/shared/PosCashToolsPanel';
 import { usePosHotkeys } from '@/lib/hooks/usePosHotkeys';
 import { usePosHeldSales } from '@/lib/hooks/usePosHeldSales';
 import { usePosTaxConfig } from '@/lib/hooks/usePosTaxConfig';
 import { nextPosPaymentMethod } from '@/lib/config/posHotkeys';
 import { computePosCartTax } from '@/lib/utils/posTaxComponents';
+import { openCashDrawer } from '@/lib/utils/posCashDrawer';
 import toast from 'react-hot-toast';
 
 // --- Department Filter Bar ---------------------------------------------------
@@ -523,6 +526,7 @@ export function SuperStorePOS({
     const [showSplitDialog, setShowSplitDialog] = useState(false);
     const [showCloseShiftDialog, setShowCloseShiftDialog] = useState(false);
     const [showTaxPanel, setShowTaxPanel] = useState(false);
+    const [showCashTools, setShowCashTools] = useState(false);
     const [mobilePane, setMobilePane] = useState('browse');
     const [showCameraScanner, setShowCameraScanner] = useState(false);
     const [pharmacyProduct, setPharmacyProduct] = useState(null);
@@ -533,6 +537,10 @@ export function SuperStorePOS({
     const discountInputRef = useRef(null);
     const { heldOrders, holdSale, resumeLastHeld } = usePosHeldSales(businessId || business?.id);
     const posSettings = usePosSettings();
+    const { requestApproval, managerPinDialog } = usePosManagerGate({
+        businessId: businessId || business?.id,
+        posSettings,
+    });
     const { isOnline, pendingCount, isSyncing, queueSale, syncPending } = usePosOffline(businessId, {
         enabled: posSettings.offlineModeEnabled,
     });
@@ -702,11 +710,22 @@ export function SuperStorePOS({
     }, [cart, customer, discount, taxMode, paymentMethod, holdSale, setTaxMode]);
 
     const handleVoidSale = useCallback(() => {
-        setCart([]);
-        setCustomer(null);
-        setDiscount(0);
-        setTaxMode('standard');
-    }, [setTaxMode]);
+        const run = () => {
+            setCart([]);
+            setCustomer(null);
+            setDiscount(0);
+            setTaxMode('standard');
+        };
+        requestApproval('clear', run);
+    }, [setTaxMode, requestApproval]);
+
+    const handleTaxModeChange = useCallback((mode) => {
+        if (mode === 'exempt') {
+            requestApproval('tax_exempt', () => setTaxMode('exempt'));
+            return;
+        }
+        setTaxMode(mode);
+    }, [requestApproval, setTaxMode]);
 
     const handleResumeLastHeldSale = useCallback(() => {
         if (heldOrders.length === 0 || cart.length > 0) return;
@@ -720,6 +739,10 @@ export function SuperStorePOS({
 
     const handleCompleteSale = useCallback(async () => {
         if (cart.length === 0 || isProcessing) return;
+        const sub = cart.reduce((s, i) => s + i.unitPrice * i.quantity, 0);
+        const discPct = sub > 0 ? ((Number(discount) || 0) / sub) * 100 : 0;
+
+        const runSale = async () => {
         setIsProcessing(true);
         try {
             const payload = buildPosCheckoutPayload({
@@ -745,13 +768,14 @@ export function SuperStorePOS({
                 setDiscount(0);
                 setSplitPayments(null);
                 setPaymentMethod('cash');
+                setTaxMode('standard');
                 setMobilePane('browse');
                 return;
             }
 
             const result = await onCompleteSale?.({
                 ...payload,
-                metadata: { domain: category, taxRate: effectiveTaxRate },
+                metadata: { domain: category, taxRate: effectiveTaxRate, taxMode },
             });
 
             if (result?.success) {
@@ -763,11 +787,19 @@ export function SuperStorePOS({
                     paymentMethod,
                     hasSession,
                 });
+                const tender = splitPayments?.length ? 'split' : paymentMethod;
+                if (
+                    posSettings.cashDrawerKickOnCashSale
+                    && (tender === 'cash' || tender === 'split')
+                ) {
+                    openCashDrawer({ label: 'Sale' });
+                }
                 setCart([]);
                 setCustomer(null);
                 setDiscount(0);
                 setSplitPayments(null);
                 setPaymentMethod('cash');
+                setTaxMode('standard');
                 setMobilePane('browse');
             } else if (result?.error) {
                 toast.error(formatSaleError(result), { id: 'pos-sale-error' });
@@ -778,7 +810,10 @@ export function SuperStorePOS({
         } finally {
             setIsProcessing(false);
         }
-    }, [cart, businessId, session, customer, discount, paymentMethod, splitPayments, isProcessing, onCompleteSale, hasSession, effectiveTaxRate, category, recordSuccessfulSale, formatSaleError, isOnline, posSettings.offlineModeEnabled, queueSale]);
+        };
+
+        requestApproval('discount', () => { void runSale(); }, { discountPercent: discPct });
+    }, [cart, businessId, session, customer, discount, paymentMethod, splitPayments, isProcessing, onCompleteSale, hasSession, effectiveTaxRate, category, recordSuccessfulSale, formatSaleError, isOnline, posSettings, queueSale, taxMode, setTaxMode, requestApproval]);
 
     const cartTax = useMemo(
         () => computePosCartTax(cart, taxComponents),
@@ -897,6 +932,9 @@ export function SuperStorePOS({
                                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowCameraScanner(true)} aria-label="Camera scan"><Camera className="w-4 h-4" /></Button>
                             )}
                             <Badge variant="outline" className={cn('text-[10px] h-7 px-2 font-bold', lastScannedItem?.startsWith('[WARNING]') ? 'border-red-300 text-red-500' : lastScannedItem ? 'border-emerald-300 text-emerald-600' : 'border-gray-200 text-gray-400')}>{lastScannedItem || 'Ready to scan'}</Badge>
+                            <Button variant="ghost" size="sm" onClick={() => setShowCashTools(true)} className="h-8 px-2 text-[10px] text-gray-500">
+                                <Banknote className="w-3.5 h-3.5 mr-1" />Cash
+                            </Button>
                             <Button variant="ghost" size="sm" onClick={toggleAutoPrint} className={cn('h-8 px-2 text-[10px]', autoPrintEnabled ? 'text-emerald-600' : 'text-gray-400')}><Printer className="w-3.5 h-3.5 mr-1" />Auto</Button>
                             <Button variant="ghost" size="icon" onClick={toggleFullscreen} className="h-8 w-8">{isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}</Button>
                         </div>
@@ -978,11 +1016,21 @@ export function SuperStorePOS({
                 open={showTaxPanel}
                 onOpenChange={setShowTaxPanel}
                 taxMode={taxMode}
-                onTaxModeChange={setTaxMode}
+                onTaxModeChange={handleTaxModeChange}
                 components={taxComponents}
                 currency={displayCurrency}
                 sampleTaxAmount={cartSummary.taxAmount}
             />
+
+            <PosCashToolsPanel
+                open={showCashTools}
+                onOpenChange={setShowCashTools}
+                businessId={businessId || business?.id}
+                sessionId={hasSession ? session?.id : null}
+                onRequirePinForPaidOut={(run) => requestApproval('paid_out', run)}
+            />
+
+            {managerPinDialog}
 
             {/* Sale Success Toast */}
             <AnimatePresence>

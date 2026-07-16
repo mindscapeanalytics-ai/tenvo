@@ -11,8 +11,14 @@ import { cn } from '@/lib/utils';
 import { useBusiness } from '@/lib/context/BusinessContext';
 import { getTablesAction, createRestaurantOrderAction, updateTableStatusAction, settleRestaurantOrderAction } from '@/lib/actions/standard/restaurant';
 import { usePosSettings } from '@/lib/hooks/usePosSettings';
+import { usePosTaxConfig } from '@/lib/hooks/usePosTaxConfig';
+import { usePosHotkeys } from '@/lib/hooks/usePosHotkeys';
+import { usePosManagerGate } from '@/components/pos/shared/PosManagerPinGate';
+import { PosHotkeyDock } from '@/components/pos/shared/PosHotkeyDock';
+import { PosTaxPanel } from '@/components/pos/shared/PosTaxPanel';
 import { PosMobileCheckoutBar } from '@/components/pos/shared/PosMobileCheckoutBar';
 import { getPosShellHeightClass } from '@/lib/utils/posLayout';
+import { allocatePosTaxBreakdown, sumPosTaxComponentRates } from '@/lib/utils/posTaxComponents';
 import { Button } from '@/components/ui/button';
 import toast from 'react-hot-toast';
 
@@ -160,11 +166,25 @@ function OrderItemRow({ item, onQty, onRemove, currency }) {
 // MAIN RESTAURANT POS
 // ===============================================================
 
-export function RestaurantPOS({ businessId, products = [], onCompleteSale, onOrderComplete, onOrderSent, currency = 'Rs.', taxConfig, session }) {
+export function RestaurantPOS({ businessId, products = [], onCompleteSale, onOrderComplete, onOrderSent, currency = 'Rs.', taxConfig: taxConfigProp, session }) {
     const { business } = useBusiness();
     const effectiveBusinessId = businessId || business?.id;
     const posSettings = usePosSettings();
+    const {
+        taxMode,
+        setTaxMode,
+        components: taxComponents,
+        effectiveTaxRate: componentTaxRate,
+        taxLabel,
+        taxConfig: loadedTaxConfig,
+    } = usePosTaxConfig('restaurant-cafe');
+    const taxConfig = taxConfigProp || loadedTaxConfig;
+    const { requestApproval, managerPinDialog } = usePosManagerGate({
+        businessId: effectiveBusinessId,
+        posSettings,
+    });
     const [mobilePane, setMobilePane] = useState('menu');
+    const [showTaxPanel, setShowTaxPanel] = useState(false);
 
     // State
     const [orderType, setOrderType] = useState('dine-in');
@@ -181,6 +201,7 @@ export function RestaurantPOS({ businessId, products = [], onCompleteSale, onOrd
     const [currentOrderId, setCurrentOrderId] = useState(null);
     const [isFullscreen, setIsFullscreen] = useState(false);
     const containerRef = React.useRef(null);
+    const searchInputRef = React.useRef(null);
     // Customer info for takeaway/delivery
     const [customerName, setCustomerName] = useState('');
     const [customerPhone, setCustomerPhone] = useState('');
@@ -244,10 +265,19 @@ export function RestaurantPOS({ businessId, products = [], onCompleteSale, onOrd
     const subtotal = useMemo(() =>
         orderItems.reduce((sum, item) => sum + (item.quantity * Number(item.price || item.selling_price || 0)), 0),
         [orderItems]);
-    // Priority: taxConfig.sales_tax_rate -> 16.0 (fallback for restaurant service tax)
-    const effectiveTaxRate = (taxConfig?.sales_tax_rate ?? 16.0) / 100;
-    const tax = Math.round(subtotal * effectiveTaxRate);
+    const packRate = componentTaxRate > 0
+        ? componentTaxRate
+        : Number(taxConfig?.sales_tax_rate ?? 16);
+    const taxBreakdown = useMemo(
+        () => allocatePosTaxBreakdown(subtotal, taxComponents).breakdown,
+        [subtotal, taxComponents]
+    );
+    const taxPct = taxComponents.length
+        ? sumPosTaxComponentRates(taxComponents)
+        : packRate;
+    const tax = Math.round(subtotal * (taxPct / 100) * 100) / 100;
     const total = subtotal + tax + (orderType === 'delivery' ? deliveryFee : 0);
+    const showTaxBreakdown = taxBreakdown.length > 1;
 
     // Handlers
     const addItem = useCallback((product) => {
@@ -308,7 +338,7 @@ export function RestaurantPOS({ businessId, products = [], onCompleteSale, onOrd
                     price: Number(i.price || i.selling_price || 0),
                     notes: '',
                 })),
-                taxPercent: Math.round(effectiveTaxRate * 10000) / 100,
+                taxPercent: taxPct,
                 notes: waiterNote,
             });
 
@@ -373,6 +403,45 @@ export function RestaurantPOS({ businessId, products = [], onCompleteSale, onOrd
 
     const availableTables = tables.filter(t => t.status === 'available' || t.status === 'reserved');
     const occupiedTables = tables.filter(t => t.status === 'occupied');
+
+    const clearOrder = useCallback(() => {
+        requestApproval('clear', () => setOrderItems([]));
+    }, [requestApproval]);
+
+    const handleTaxModeChange = useCallback((mode) => {
+        if (mode === 'exempt') {
+            requestApproval('tax_exempt', () => setTaxMode('exempt'));
+            return;
+        }
+        setTaxMode(mode);
+    }, [requestApproval, setTaxMode]);
+
+    const hotkeyHandlers = useMemo(() => ({
+        search: () => searchInputRef.current?.focus(),
+        customer: () => {
+            /* focus first customer field when takeaway/delivery */
+        },
+        discount: () => {},
+        hold: () => {},
+        pay: () => {
+            if (showPayment) void handlePayment();
+            else void handleSendToKitchen();
+        },
+        payment: () => {
+            const cycle = ['cash', 'card', 'digital_wallet', 'staff_account'];
+            const idx = cycle.indexOf(paymentMethod);
+            setPaymentMethod(cycle[(idx + 1) % cycle.length]);
+            setShowPayment(true);
+        },
+        tax: () => setShowTaxPanel(true),
+        clear: clearOrder,
+        print: () => toast('Use kitchen print from KDS', { id: 'resto-print' }),
+    }), [showPayment, handlePayment, handleSendToKitchen, paymentMethod, clearOrder]);
+
+    usePosHotkeys({
+        enabled: !showTaxPanel,
+        handlers: hotkeyHandlers,
+    });
 
     return (
         <div
@@ -509,8 +578,10 @@ export function RestaurantPOS({ businessId, products = [], onCompleteSale, onOrd
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" />
                         <input
+                            ref={searchInputRef}
+                            data-pos-role="scan"
                             type="text"
-                            placeholder="Search menu items..."
+                            placeholder="Search menu items... (F1)"
                             value={search}
                             onChange={e => setSearch(e.target.value)}
                             className="w-full pl-9 pr-3 py-2 max-lg:h-10 max-lg:text-sm text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 outline-none touch-manipulation"
@@ -574,7 +645,7 @@ export function RestaurantPOS({ businessId, products = [], onCompleteSale, onOrd
                             {orderItems.length > 0 && (
                                 <button
                                     type="button"
-                                    onClick={() => setOrderItems([])}
+                                    onClick={() => requestApproval('clear', () => setOrderItems([]))}
                                     className="text-[10px] text-red-400 font-bold hover:text-red-600 px-2 py-1 touch-manipulation"
                                 >
                                     Clear
@@ -633,10 +704,22 @@ export function RestaurantPOS({ businessId, products = [], onCompleteSale, onOrd
                         <span>Subtotal</span>
                         <span className="font-bold">{currency} {subtotal.toLocaleString()}</span>
                     </div>
-                    <div className="flex justify-between text-xs text-gray-500">
-                        <span>Service Tax ({Math.round(effectiveTaxRate * 100)}%)</span>
-                        <span className="font-bold">{currency} {tax.toLocaleString()}</span>
-                    </div>
+                    {showTaxBreakdown ? (
+                        taxBreakdown.map((row) => (
+                            <div key={row.key} className="flex justify-between text-xs text-gray-500">
+                                <span>{row.label} ({row.rate}%)</span>
+                                <span className="font-bold">{currency} {row.amount.toLocaleString()}</span>
+                            </div>
+                        ))
+                    ) : (
+                        <div className="flex justify-between text-xs text-gray-500">
+                            <span>{taxLabel || 'Tax'} ({Math.round(taxPct)}%)</span>
+                            <span className="font-bold">{currency} {tax.toLocaleString()}</span>
+                        </div>
+                    )}
+                    {taxMode !== 'standard' && (
+                        <p className="text-[10px] text-amber-600 font-medium">Tax mode: {taxMode.replace('_', ' ')}</p>
+                    )}
                     {orderType === 'delivery' && deliveryFee > 0 && (
                         <div className="flex justify-between text-xs text-gray-500">
                             <span>Delivery Fee</span>
@@ -716,6 +799,30 @@ export function RestaurantPOS({ businessId, products = [], onCompleteSale, onOrd
                     </div>
                 )}
             </div>
+
+            <PosHotkeyDock
+                className="hidden lg:block"
+                onAction={(action) => hotkeyHandlers[action]?.()}
+                disabledActions={{
+                    hold: true,
+                    discount: true,
+                    print: true,
+                    clear: orderItems.length === 0,
+                    pay: orderItems.length === 0 || isProcessing,
+                }}
+            />
+
+            <PosTaxPanel
+                open={showTaxPanel}
+                onOpenChange={setShowTaxPanel}
+                taxMode={taxMode}
+                onTaxModeChange={handleTaxModeChange}
+                components={taxComponents}
+                currency={currency}
+                sampleTaxAmount={tax}
+            />
+
+            {managerPinDialog}
         </div>
     );
 }
