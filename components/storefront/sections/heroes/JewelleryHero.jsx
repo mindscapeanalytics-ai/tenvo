@@ -246,7 +246,7 @@ export function JewelleryHero({ preset, accent }) {
           </div>
 
           {count > 1 && (
-            <div className="absolute bottom-[9.5rem] left-5 z-10 flex items-center gap-2 sm:bottom-40 sm:left-10 lg:bottom-44 lg:left-14">
+            <div className="absolute bottom-[9.5rem] left-1/2 z-10 flex -translate-x-1/2 items-center justify-center gap-2 sm:bottom-40 lg:bottom-44">
               {slides.map((_, i) => (
                 <button
                   key={i}
