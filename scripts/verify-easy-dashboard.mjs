@@ -141,8 +141,12 @@ if (!/Promise\.allSettled\(\[\s*fetchAnalytics\(\),\s*fetchFinance\(\),\s*fetchS
 }
 
 const dashboardClient = read('app/business/[category]/DashboardClient.jsx');
-if (!dashboardClient.includes("activeTab === 'dashboard'") || !dashboardClient.includes('fetchInventory()')) {
-  mark('DashboardClient must ensure inventory fetch on dashboard tab');
+if (
+  !dataContext.includes('fetchInventory()') ||
+  (!dashboardClient.includes('fetchInventory()') &&
+    !dashboardClient.includes('DataContext bootstrap already loads'))
+) {
+  mark('Hub must bootstrap inventory via DataContext (dashboard tab must not duplicate fetch)');
 }
 
 const productService = read('lib/services/ProductService.js');

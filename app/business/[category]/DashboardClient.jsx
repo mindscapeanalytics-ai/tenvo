@@ -569,22 +569,7 @@ function BusinessDashboardContent() {
     };
 
     if (activeTab === 'dashboard') {
-      if (!dashboardMetrics && !loadingModules.analytics && !moduleReady.analytics) {
-        fetchAnalytics();
-      }
-      if (!moduleReady.sales && !loadingModules.sales) {
-        fetchSales();
-      }
-      if (!moduleReady.finance && !loadingModules.finance) {
-        fetchFinance();
-      }
-      // Easy/Advanced stock KPIs need inventory in parallel with sales/finance — do not wait for inventory tab.
-      if (!moduleReady.inventory && !loadingModules.inventory) {
-        fetchInventory();
-      }
-      if (!moduleReady.expenses && !loadingModules.expenses) {
-        fetchExpenses();
-      }
+      // DataContext bootstrap already loads sales/finance/inventory/expenses/analytics in parallel.
       return;
     }
 

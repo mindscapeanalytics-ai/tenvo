@@ -78,11 +78,14 @@ export default async function ProductDetailPage({ params }) {
     notFound();
   }
 
-  const { product } = productResult;
+  const { product, related_products: relatedFromSlug } = productResult;
 
-  // Fetch related products
-  const relatedResult = await getRelatedProducts(business.id, product.id, 8);
-  const relatedProducts = relatedResult.success ? relatedResult.products : [];
+  // Prefer related products already loaded with the slug fetch (one DB path on cache miss).
+  let relatedProducts = Array.isArray(relatedFromSlug) ? relatedFromSlug : [];
+  if (relatedProducts.length === 0) {
+    const relatedResult = await getRelatedProducts(business.id, product.id, 8);
+    relatedProducts = relatedResult.success ? relatedResult.products : [];
+  }
   
   return (
     <div className="min-h-screen bg-gray-50">

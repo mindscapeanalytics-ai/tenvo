@@ -5,8 +5,8 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Plus, Trash2, Save, ArrowLeft, Building2, Calendar, FileText, Search, Loader2 } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Plus, Trash2, Save, ArrowLeft, Building2, Calendar, FileText, Loader2 } from 'lucide-react';
 import {
     Dialog,
     DialogContent,
@@ -14,13 +14,7 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
+// Select components reserved for future PO field enhancements
 import { purchaseAPI } from '@/lib/api/purchases';
 import { useBusiness } from '@/lib/context/BusinessContext';
 import { formatCurrency } from '@/lib/currency';
@@ -50,15 +44,15 @@ export default function NewPurchasePage() {
     const [showWarehouseForm, setShowWarehouseForm] = useState(false);
 
     // Form State
-    const [header, setHeader] = useState({
+    const [header, setHeader] = useState(() => ({
         vendorId: '',
         warehouseId: '',
         purchaseNumber: `PO-${new Date().toISOString().slice(2, 4)}${new Date().toISOString().slice(5, 7)}-${Math.floor(1000 + Math.random() * 9000)}`,
         date: new Date().toISOString().split('T')[0],
         notes: ''
-    });
+    }));
 
-    const [items, setItems] = useState([{
+    const [items, setItems] = useState(() => [{
         id: Date.now(),
         productId: '',
         description: '',
@@ -86,7 +80,7 @@ export default function NewPurchasePage() {
                 // Load all in parallel for performance
                 const [vendRes, prodRes, whRes] = await Promise.all([
                     vendorAPI.getAll(bid),
-                    productAPI.getAll(bid),
+                    productAPI.getAll(bid, { includeSerials: false }),
                     warehouseAPI.getLocations(bid)
                 ]);
 
@@ -459,7 +453,7 @@ export default function NewPurchasePage() {
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-50">
-                                        {items.map((item, index) => (
+                                        {items.map((item) => (
                                             <tr key={item.id} className="hover:bg-blue-50/30 transition-colors group">
                                                 <td className="px-6 py-3 align-top">
                                                     <div className="space-y-1">

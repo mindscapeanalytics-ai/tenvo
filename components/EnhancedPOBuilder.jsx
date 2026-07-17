@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import {
     Plus, Trash2, Save, Package, Loader2, X,
     Building2, Warehouse, Hash, CalendarDays,
-    FileText, CheckCircle2, ChevronRight, AlertCircle
+    FileText, CheckCircle2, AlertCircle
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Combobox } from '@/components/ui/combobox';
@@ -40,16 +40,16 @@ export default function EnhancedPOBuilder({ businessId, onSuccess, onCancel, cat
     const [showVendorForm, setShowVendorForm] = useState(false);
     const [showWarehouseForm, setShowWarehouseForm] = useState(false);
 
-    const [header, setHeader] = useState({
+    const [header, setHeader] = useState(() => ({
         vendorId: '',
         warehouseId: '',
         purchaseNumber: `PO-${new Date().toISOString().slice(2, 4)}${new Date().toISOString().slice(5, 7)}-${Math.floor(1000 + Math.random() * 9000)}`,
         date: new Date().toISOString().split('T')[0],
         notes: '',
         status: 'draft',
-    });
+    }));
 
-    const [items, setItems] = useState([{
+    const [items, setItems] = useState(() => [{
         id: Date.now(),
         productId: '',
         description: '',
@@ -68,7 +68,7 @@ export default function EnhancedPOBuilder({ businessId, onSuccess, onCancel, cat
             try {
                 const [vendResult, prodResult, whResult] = await Promise.allSettled([
                     vendorAPI.getAll(businessId),
-                    productAPI.getAll(businessId),
+                    productAPI.getAll(businessId, { includeSerials: false }),
                     warehouseAPI.getLocations(businessId),
                 ]);
                 if (vendResult.status === 'fulfilled') setVendors(vendResult.value || []);
@@ -395,7 +395,7 @@ export default function EnhancedPOBuilder({ businessId, onSuccess, onCancel, cat
 
                         {/* Rows */}
                         <div className="divide-y divide-slate-50">
-                            {items.map((item, idx) => {
+                            {items.map((item) => {
                                 const base = parseFloat(item.quantity || 0) * parseFloat(item.unitCost || 0);
                                 const tax = base * parseFloat(item.taxRate || 0) / 100;
                                 return (
@@ -474,7 +474,7 @@ export default function EnhancedPOBuilder({ businessId, onSuccess, onCancel, cat
                             <div className="py-8 text-center text-slate-400">
                                 <Package className="w-8 h-8 mx-auto mb-2 text-slate-200" />
                                 <p className="text-sm font-medium">No items added</p>
-                                <p className="text-xs mt-0.5">Click "Add Item" to get started</p>
+                                <p className="text-xs mt-0.5">Click &quot;Add Item&quot; to get started</p>
                             </div>
                         )}
                     </div>

@@ -4,39 +4,30 @@ import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import {
   MoreHorizontal,
   Plus,
-  Search,
-  Filter,
-  Download,
-  Upload,
   RefreshCw,
   AlertTriangle,
   Package,
   Layers,
   Hash,
-  ScanBarcode,
   Eye,
   Edit,
-  Trash2,
   Factory,
   Warehouse,
   FileText,
   BarChart3,
   TrendingUp,
   Settings,
-  LayoutDashboard,
   AlertCircle,
   Repeat,
   Tag,
-  DollarSign,
   Archive,
   CheckCircle2,
   XCircle,
 } from 'lucide-react';
 import { DataTable } from './DataTable';
-import { getDomainColors } from '@/lib/domainColors';
 import { cn } from '@/lib/utils';
 import { BusyGrid } from './BusyGrid';
-import { normalizeKey, resolveDomainFieldKey, readDomainFieldValue } from '@/lib/utils/domainHelpers';
+import { readDomainFieldValue } from '@/lib/utils/domainHelpers';
 import { buildInventoryGridColumns, readGridCellValue } from '@/lib/utils/inventoryGridColumns';
 import { inventoryRowsDiffer } from '@/lib/utils/inventoryRowDiff';
 import { mapExcelRowForSave, prepareCompositeUpsertFromRow } from '@/lib/utils/excelProductPayload';
@@ -75,7 +66,7 @@ import { QuotationOrderChallanManager } from './QuotationOrderChallanManager';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import {
   AlertDialog,
@@ -112,7 +103,6 @@ import {
   leanProductPayloadForCreate,
   leanProductPayloadForUpdate,
   formatInventoryActionError,
-  flattenCompositeProductPayload,
 } from '@/lib/utils/productMutationPayload';
 
 import {
@@ -130,12 +120,12 @@ import {
   filterMeaningfulSerials,
 } from '@/lib/utils/inventoryTrackingHelpers';
 import { ProductDetailsDialog } from './ProductDetailsDialog';
-import { CustomParametersManager } from './inventory/CustomParametersManager';
+// CustomParametersManager reserved for future advanced inventory parameters UI
 import { ExcelModeModal } from './ExcelModeModal';
 import { ExcelImportModal } from './ExcelImportModal';
 import { SmartQuickAddModal } from './QuickAddProductModal';
 import { VisualInventoryQuickEdit } from './inventory/VisualInventoryQuickEdit';
-import { buildSparseDomainColumnVisibility, buildSparseHiddenColumnKeys } from '@/lib/utils/inventoryVisualColumnVisibility';
+import { buildSparseDomainColumnVisibility } from '@/lib/utils/inventoryVisualColumnVisibility';
 import {
   consumePendingInventoryFocus,
   consumePendingExcelMode,
@@ -147,7 +137,7 @@ import { resolveInventoryDomainFeatures } from '@/lib/utils/inventoryDomainFeatu
  * Inventory Manager Component
  * A comprehensive dashboard for managing products, batches, serials, and inventory logistics.
  */
-import { getProductsAction, deleteProductAction, createProductAction, updateProductAction, seedBusinessProductsAction, toggleProductActiveAction } from '@/lib/actions/standard/inventory/product';
+import { getProductsAction, getProductAction, deleteProductAction, createProductAction, updateProductAction, toggleProductActiveAction } from '@/lib/actions/standard/inventory/product';
 
 /** Normalize domain_data before merging, JSON strings must not be object-spread or saves corrupt */
 function parseProductDomainData(raw) {
@@ -240,12 +230,9 @@ export function InventoryManager({
   vendors = [],
   businessId,
   category = 'retail-shop',
-  currency: propCurrency, // renamed to avoid conflict with context
   domainKnowledge = {},
-  // Handler overrides (optional)
   onUpdate,
   onAdd,
-  onQuickAdd,
   onEdit,
   onDelete,
   onIssueInvoice,
@@ -253,7 +240,6 @@ export function InventoryManager({
   onLocationUpdate,
   onLocationDelete,
   onStockTransfer,
-  onGeneratePO,
   refreshData,
 }) {
   const { regionalStandards, currency, currencySymbol, regionalPack, business } = useBusiness();
@@ -267,8 +253,6 @@ export function InventoryManager({
     taxIdLabel: regionalPack?.taxIdLabel || 'NTN',
     countryCode: regionalPack?.countryIso || 'PK',
   };
-
-  const colors = getDomainColors(category);
 
   // Helper to strictly deduplicate products and prevent React key errors
   const deduplicateProducts = (items) => {
@@ -289,7 +273,7 @@ export function InventoryManager({
   /** Avoid hydration mismatch: server and client must not render different `Date` / locale strings. */
   const [lastSyncedAt, setLastSyncedAt] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [, setError] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
@@ -324,7 +308,7 @@ export function InventoryManager({
     if (!businessId || (initialProducts?.length > 0) || refreshData) return;
     setLoading(true);
     try {
-      const res = await getProductsAction(businessId);
+      const res = await getProductsAction(businessId, { includeSerials: false });
       if (res.success) {
         setProducts(deduplicateProducts(res.products));
         setLastSyncedAt(new Date());
@@ -353,7 +337,7 @@ export function InventoryManager({
       if (typeof refreshData === 'function') {
         await refreshData();
       } else if (businessId) {
-        const res = await getProductsAction(businessId);
+        const res = await getProductsAction(businessId, { includeSerials: false });
         if (res.success) {
           setProducts(deduplicateProducts(res.products));
         } else {
@@ -377,7 +361,7 @@ export function InventoryManager({
       return;
     }
     if (businessId) {
-      const res = await getProductsAction(businessId);
+      const res = await getProductsAction(businessId, { includeSerials: false });
       if (res.success) {
         setProducts(deduplicateProducts(res.products));
       }
@@ -429,7 +413,6 @@ export function InventoryManager({
         if (!silentToast) {
           notify.compactSave('Created');
         }
-        // Parent handleSaveProduct already patched / refreshed inventory — do not double-fetch.
         onAdd?.(productData);
         if (closeForm) {
           setShowProductFormInternal(false);
@@ -450,10 +433,6 @@ export function InventoryManager({
       setShowProductFormInternal(false);
       setEditingProduct(null);
     }
-  };
-
-  const handleAddProduct = async (productData) => {
-    await handleCreateProduct(productData, { closeForm: false });
   };
 
   // Handlers for CRUD to update local state immediately
@@ -558,7 +537,7 @@ export function InventoryManager({
     const normalized = normalizeInventoryMobileView(mode);
     setMobileViewMode(normalized);
     writeInventoryMobileViewPreference(normalized);
-  }, []);
+  }, [setViewMode, setMobileViewMode]);
 
   const handleMobileViewModeChange = useCallback((mode) => {
     const normalized = normalizeInventoryMobileView(mode);
@@ -567,7 +546,7 @@ export function InventoryManager({
     if (normalized === 'visual' || normalized === 'busy' || normalized === 'cards') {
       setViewMode(normalized);
     }
-  }, []);
+  }, [setViewMode, setMobileViewMode]);
 
   const [showBatchManager, setShowBatchManager] = useState(false);
   const [showSerialScanner, setShowSerialScanner] = useState(false);
@@ -729,7 +708,7 @@ export function InventoryManager({
 
       const useCompositeSave = typeof onUpdate === 'function' && businessId;
       const successfulTempIds = new Set();
-      let compositeSuccess = false;
+      // compositeSuccess tracking removed — bulk results checked via results.created/updated
       let compositeProducts = [];
 
       if (useCompositeSave) {
@@ -773,7 +752,7 @@ export function InventoryManager({
         results.updated = bulkRes.updated ?? 0;
         results.failed = bulkRes.failed?.length ?? 0;
         compositeProducts = Array.isArray(bulkRes.products) ? bulkRes.products : [];
-        compositeSuccess = results.created + results.updated > 0;
+        // results tracked via results.created/updated counters
         changedItems.forEach((item, idx) => {
           if (item._tempId && !bulkRes.failed?.some((f) => f.index === idx)) {
             successfulTempIds.add(item._tempId);
@@ -1141,18 +1120,37 @@ export function InventoryManager({
     }
   }, [onAdd, canCreateInventory]);
 
-  const openProductEdit = useCallback((product) => {
+  const loadFullProductIfDeferred = useCallback(async (product) => {
+    if (!product?._serialsDeferred || !product?.id || !businessId) return product;
+    try {
+      const res = await getProductAction(businessId, product.id);
+      if (res.success && res.product) {
+        return mergeInventoryServerRow(product, res.product);
+      }
+    } catch (error) {
+      console.warn('Deferred serial product hydrate skipped:', error?.message || error);
+    }
+    return product;
+  }, [businessId]);
+
+  const openProductView = useCallback(async (product) => {
+    const hydrated = await loadFullProductIfDeferred(product);
+    setProductToView(hydrated);
+  }, [loadFullProductIfDeferred, setProductToView]);
+
+  const openProductEdit = useCallback(async (product) => {
     if (!canEditInventory) {
-      setProductToView(product);
+      await openProductView(product);
       return;
     }
     if (onEdit) {
       onEdit(product);
       return;
     }
-    setEditingProduct(product);
+    const hydrated = await loadFullProductIfDeferred(product);
+    setEditingProduct(hydrated);
     setShowProductFormInternal(true);
-  }, [onEdit, canEditInventory]);
+  }, [onEdit, canEditInventory, loadFullProductIfDeferred, openProductView, setEditingProduct, setShowProductFormInternal]);
 
   const openBarcodeScanner = useCallback(() => {
     if (!barcodeScanAllowed) {
@@ -1160,7 +1158,7 @@ export function InventoryManager({
       return;
     }
     setShowBarcodeScanner(true);
-  }, [barcodeScanAllowed]);
+  }, [barcodeScanAllowed, setShowBarcodeScanner]);
 
   const handleInventoryBarcodeScan = useCallback(async (code) => {
     await applyScanToInventory(code, {
@@ -1227,7 +1225,7 @@ export function InventoryManager({
     }
   };
 
-  const executeExcelExport = async () => {
+  const executeExcelExport = useCallback(async () => {
     toast.loading("Preparing export...", { id: 'inventory-export' });
     try {
       const result = await productAPI.bulkExport(businessId, {
@@ -1263,7 +1261,7 @@ export function InventoryManager({
         toast.error('Failed to export inventory', { id: 'inventory-export' });
       }
     }
-  };
+  }, [businessId, productsToDisplay]);
 
   // Keyboard Shortcuts for Tab Switching
   useEffect(() => {
@@ -1315,18 +1313,20 @@ export function InventoryManager({
           ? 'expiring items'
           : 'low stock items';
     toast.success(`Showing ${label}`, { duration: 1400 });
-  }, []);
+  }, [setActiveTab, setActiveDomainFilters, setSearchTerm]);
 
   useEffect(() => {
     const pending = consumePendingInventoryFocus();
-    if (pending) applyInventoryStockFocus(pending);
+    if (pending) queueMicrotask(() => applyInventoryStockFocus(pending));
   }, [applyInventoryStockFocus]);
 
   useEffect(() => {
     if (!consumePendingExcelMode()) return;
     if (!canCreateInventory && !canEditInventory) return;
-    setActiveTab('products');
-    setShowExcelMode(true);
+    queueMicrotask(() => {
+      setActiveTab('products');
+      setShowExcelMode(true);
+    });
   }, [canCreateInventory, canEditInventory]);
 
   useEffect(() => {
@@ -1363,17 +1363,9 @@ export function InventoryManager({
       window.removeEventListener('inventory-focus-low-stock', handleInventoryFocusLowStock);
       window.removeEventListener('inventory-open-excel-mode', handleOpenExcelMode);
     };
-  }, [applyInventoryStockFocus, productsToDisplay, canCreateInventory, canEditInventory]);
+  }, [applyInventoryStockFocus, executeExcelExport, productsToDisplay, canCreateInventory, canEditInventory]);
 
   // Demand forecasting (simple moving average)
-  const forecastDemand = (product) => {
-    // Mock: In real app, this would use historical sales data
-    const avgSales = product.avgMonthlySales || 0;
-    const leadTime = product.leadTime || 7; // days
-    const safetyStock = avgSales * (leadTime / 30) * 1.5;
-    return Math.ceil(safetyStock);
-  };
-
   const lowStockItems = useMemo(() => {
     return products.filter((p) => {
       const stock = Number(p.stock || 0);
@@ -1655,7 +1647,7 @@ export function InventoryManager({
       console.error('Inventory cell update error:', error);
       throw error;
     }
-  }, [products, category, domainKnowledge, businessId, onUpdate, handleCreateProduct, reloadProductsSilent, isBatchEnabled, isSerialEnabled, canEditInventory, upsertProductInState, scheduleAnalyticsRefresh]);
+  }, [products, category, domainKnowledge, businessId, onUpdate, handleCreateProduct, reloadProductsSilent, isBatchEnabled, isSerialEnabled, canEditInventory]);
 
   // Column Definitions with Optimized Widths & Alignment
   const columns = useMemo(() => {
@@ -1681,7 +1673,7 @@ export function InventoryManager({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-[180px]">
               <DropdownMenuLabel className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Actions</DropdownMenuLabel>
-              <DropdownMenuItem onClick={() => setProductToView(row.original)} className="text-sm">
+              <DropdownMenuItem onClick={() => openProductView(row.original)} className="text-sm">
                 <Eye className="mr-2 h-3.5 w-3.5" /> View Details
               </DropdownMenuItem>
               {canEditInventory && (
@@ -1755,6 +1747,7 @@ export function InventoryManager({
                 displayValue={
                   <span className="line-clamp-1 text-[11px] font-semibold text-gray-900">{p.name || '-'}</span>
                 }
+                // eslint-disable-next-line react-hooks/refs -- onCommit is an event handler, not called during render
                 onCommit={(value) => handleInventoryCellEdit(p, 'name', value)}
               />
               <div className="mt-0.5 flex min-w-0 items-center gap-1">
@@ -1985,7 +1978,7 @@ export function InventoryManager({
     });
 
     return [actionsCol, ...dataCols];
-  }, [domainKnowledge, isExpiryEnabled, isBatchEnabled, isManufacturingEnabled, isSerialEnabled, isVariantEnabled, category, standards.currency, standards.currencySymbol, business?.category, handleInventoryCellEdit, gridColumnOptions, canEditInventory, canDeleteInventory, openProductEdit, handleToggleActive]);
+  }, [isBatchEnabled, isSerialEnabled, isVariantEnabled, category, standards.currency, business?.category, handleInventoryCellEdit, gridColumnOptions, canEditInventory, canDeleteInventory, openProductEdit, openProductView, handleToggleActive]);
 
   const visualDefaultColumnVisibility = useMemo(() => {
     const sharedCols = buildInventoryGridColumns(category, {
@@ -2060,7 +2053,7 @@ export function InventoryManager({
       pinnedActions,
       ...dataCols,
     ].filter(Boolean);
-  }, [category, columns, standards.currencySymbol, business, gridColumnOptions]);
+  }, [category, columns, gridColumnOptions]);
 
   const mobileBusyColumns = useMemo(() => {
     const essential = resolveExcelMobileEssentialKeys(category, gridColumnOptions);
@@ -2387,7 +2380,7 @@ export function InventoryManager({
                   products={productsToDisplay}
                   currencySymbol={standards.currencySymbol}
                   businessCategory={business?.category}
-                  onView={(p) => setProductToView(p)}
+                  onView={openProductView}
                   onEdit={canEditInventory ? openProductEdit : undefined}
                   onDelete={canDeleteInventory ? (p) => setProductToDelete(p) : undefined}
                   onToggleActive={canEditInventory ? handleToggleActive : undefined}
@@ -2480,7 +2473,7 @@ export function InventoryManager({
                   products={productsToDisplay}
                   currencySymbol={standards.currencySymbol}
                   businessCategory={business?.category}
-                  onView={(p) => setProductToView(p)}
+                  onView={openProductView}
                   onEdit={canEditInventory ? openProductEdit : undefined}
                   onDelete={canDeleteInventory ? (p) => setProductToDelete(p) : undefined}
                   onToggleActive={canEditInventory ? handleToggleActive : undefined}
@@ -2498,7 +2491,7 @@ export function InventoryManager({
                   exportable={false}
                   initialPageSize={25}
                   initialColumnVisibility={visualDefaultColumnVisibility}
-                  onRowClick={canEditInventory ? openProductEdit : (p) => setProductToView(p)}
+                  onRowClick={canEditInventory ? openProductEdit : openProductView}
                   onBulkDelete={canDeleteInventory ? handleBulkDelete : undefined}
                   onExport={async (items) => {
                     const dataToExport = items || productsToDisplay;
@@ -2526,7 +2519,7 @@ export function InventoryManager({
                       } else {
                         toast.success(`Exported ${result.recordCount || dataToExport.length} items successfully`);
                       }
-                    } catch (error) {
+                    } catch {
                       // Fallback keeps export available if server-side export fails.
                       try {
                         await exportProducts(dataToExport, 'excel');
@@ -2765,7 +2758,7 @@ export function InventoryManager({
                   priceLists={[]}
                   products={products}
                   customers={customers}
-                  onSave={(lists) => {
+                  onSave={() => {
                     toast.success('Price lists updated');
                   }}
                   category={category}
@@ -2785,7 +2778,7 @@ export function InventoryManager({
                   schemes={[]}
                   products={products}
                   customers={customers}
-                  onSave={(schemes) => {
+                  onSave={() => {
                     toast.success('Discount schemes updated');
                   }}
                   category={category}

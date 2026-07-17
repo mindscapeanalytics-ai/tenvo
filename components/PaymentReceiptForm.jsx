@@ -63,12 +63,21 @@ export function PaymentReceiptForm({
             try {
                 let result;
                 if (type === 'receipt') {
-                    result = await getInvoicesAction(business.id);
+                    result = await getInvoicesAction(business.id, {
+                        customerId: entityId,
+                        statusIn: [
+                            'pending',
+                            'partial',
+                            'partially_paid',
+                            'payment_pending',
+                            'overdue',
+                            'sent',
+                        ],
+                        limit: 500,
+                        includeItems: false,
+                    });
                     if (result.success) {
-                        // Filter for pending/partial invoices of this customer
-                        const docs = result.invoices
-                            .filter(inv => inv.customer_id === entityId && (inv.status === 'pending' || inv.status === 'partial'))
-                            .map(inv => ({
+                        const docs = result.invoices.map(inv => ({
                                 id: inv.id,
                                 number: inv.invoice_number,
                                 date: inv.date,

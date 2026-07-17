@@ -87,8 +87,9 @@ assert(
 );
 
 assert(
-  resolveSrc.includes('domainRow?.id === redisCached.id'),
-  'Redis cache hit must revalidate domain → tenant mapping via Postgres'
+  resolveSrc.includes('queryBusinessRowById(redisCached.id') &&
+    resolveSrc.includes('expandStorefrontDomainAliasKeys'),
+  'Redis cache hit must revalidate tenant via indexed PK lookup and domain alias check'
 );
 
 assert(
