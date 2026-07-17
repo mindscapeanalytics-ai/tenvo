@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    Landmark, BookOpen, Receipt, CalendarRange, RefreshCcw,
+    BookOpen, Receipt, CalendarRange, RefreshCcw,
     Globe, TrendingUp, TrendingDown,
     LayoutDashboard, ChevronRight, Loader2, FileText, ListTree, PenLine, GitMerge,
 } from 'lucide-react';
@@ -28,7 +28,6 @@ import { getInvoicesAction } from '@/lib/actions/basic/invoice';
 import { toast } from 'react-hot-toast';
 import FinancialReports from '@/components/FinancialReports';
 import { GeneralLedgerReport } from '@/components/reports/GeneralLedgerReport';
-import { MobileTabHeader } from '@/components/mobile/MobileTabHeader';
 import { FinanceMobileNav } from '@/components/finance/FinanceMobileNav';
 import { formatDisplayDate } from '@/lib/utils/formatDisplayDate';
 import { accountingAPI } from '@/lib/api/accounting';
@@ -818,24 +817,6 @@ export default function FinanceHub({ businessId, initialTab, businessCategory = 
 
     return (
         <div className="min-w-0 space-y-4 overflow-x-hidden pb-[calc(5.5rem+env(safe-area-inset-bottom))] touch-manipulation lg:space-y-4 lg:pb-0">
-            <MobileTabHeader
-                icon={Landmark}
-                iconClassName="bg-brand-100 text-brand-primary"
-                title="Finance & Accounting"
-                subtitle="Statements · Books · Cash · Close"
-            />
-
-            {/* Desktop header */}
-            <div className="hidden items-center gap-3 lg:flex">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-primary to-brand-primary-dark flex items-center justify-center">
-                    <Landmark className="w-5 h-5 text-white" />
-                </div>
-                <div>
-                    <h2 className="text-lg font-semibold text-gray-900 tracking-tight">Finance & Accounting</h2>
-                    <p className="text-xs text-gray-400 font-medium">Statements · Books · Cash · Close</p>
-                </div>
-            </div>
-
             <FinanceMobileNav tabs={visibleTabs} activeTab={activeTab} onSelect={navigateFinance} />
 
             <AnimatePresence mode="wait">
