@@ -9,6 +9,8 @@ import { formatCurrency } from '@/lib/currency';
 import { accountingAPI } from '@/lib/api/accounting';
 import { useBusiness } from '@/lib/context/BusinessContext';
 import { AgingReportsPanel } from '@/components/reports/AgingReportsPanel';
+import TrialBalanceView from '@/components/TrialBalanceView';
+import DayBookReport from '@/components/finance/DayBookReport';
 import { generateFinanceStatementPDF, generateSectionedFinancePDF } from '@/lib/pdf/financeStatementPdf';
 import toast from 'react-hot-toast';
 
@@ -36,14 +38,25 @@ const SectionHeader = ({ title, icon: Icon, color }) => (
  * @param {Object} props
  * @param {string} props.businessId
  * @param {string} [props.category] optional, reserved for future domain-specific report chrome
+ * @param {string} [props.initialReport] pl | bs | cf | tb | day-book | aging
  */
-export default function FinancialReports({ businessId }) {
+export default function FinancialReports({ businessId, initialReport = 'pl' }) {
     const { business, currency: businessCurrencyCode, regionalPack } = useBusiness();
     const reportCurrency = businessCurrencyCode || 'PKR';
     const taxIdLabel = regionalPack?.taxIdLabel || 'Tax ID';
     const taxIdLine = business?.ntn ? `${taxIdLabel}: ${business.ntn}` : null;
-    const [activeTab, setActiveTab] = useState('pl');
+    const [activeTab, setActiveTab] = useState(() => {
+        const allowed = new Set(['pl', 'bs', 'cf', 'tb', 'day-book', 'aging']);
+        return allowed.has(initialReport) ? initialReport : 'pl';
+    });
     const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        const allowed = new Set(['pl', 'bs', 'cf', 'tb', 'day-book', 'aging']);
+        if (initialReport && allowed.has(initialReport)) {
+            setActiveTab(initialReport);
+        }
+    }, [initialReport]);
 
     // Date States
     const [startDate, setStartDate] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0]); // First day of month
@@ -252,6 +265,8 @@ export default function FinancialReports({ businessId }) {
                             <TabsTrigger value="pl" className="text-xs sm:text-sm">Profit & Loss</TabsTrigger>
                             <TabsTrigger value="bs" className="text-xs sm:text-sm">Balance Sheet</TabsTrigger>
                             <TabsTrigger value="cf" className="text-xs sm:text-sm">Cash Flow</TabsTrigger>
+                            <TabsTrigger value="tb" className="text-xs sm:text-sm">Trial Balance</TabsTrigger>
+                            <TabsTrigger value="day-book" className="text-xs sm:text-sm">Day Book</TabsTrigger>
                             <TabsTrigger value="aging" className="text-xs sm:text-sm">A/R & A/P Aging</TabsTrigger>
                         </TabsList>
 
@@ -291,7 +306,7 @@ export default function FinancialReports({ businessId }) {
                                     </Button>
                                 </>
                             ) : null}
-                            {activeTab !== 'aging' && (
+                            {activeTab !== 'aging' && activeTab !== 'tb' && activeTab !== 'day-book' && (
                             <>
                             <Button variant="outline" size="sm" onClick={handleDownloadPdf}>
                                 <Download className="w-4 h-4 mr-2" />
@@ -565,6 +580,17 @@ export default function FinancialReports({ businessId }) {
                                 )}
                             </CardContent>
                         </Card>
+                    </TabsContent>
+
+                    <TabsContent value="tb" className="mt-0">
+                        <TrialBalanceView
+                            businessId={businessId}
+                            currency={reportCurrency}
+                        />
+                    </TabsContent>
+
+                    <TabsContent value="day-book" className="mt-0">
+                        <DayBookReport businessId={businessId} />
                     </TabsContent>
 
                     <TabsContent value="aging" className="mt-0">

@@ -53,6 +53,7 @@ const {
   normalizeDashboardTab,
   resolveDashboardTab,
   resolveFinanceViewForTab,
+  resolveFinanceHubNavigation,
 } = tabsMod;
 
 const paymentTypes = await import(pathToFileURL(path.join(root, 'lib/utils/paymentTypes.js')).href);
@@ -63,12 +64,15 @@ console.log('=== Hub tabs / forms integrity ===\n');
 const financeAliasCases = [
   ['expenses', 'finance', 'expenses'],
   ['exp', 'finance', 'expenses'],
-  ['accounting', 'finance', 'overview'],
-  ['acc', 'finance', 'overview'],
+  ['accounting', 'finance', 'accounts'],
+  ['acc', 'finance', 'accounts'],
+  ['accounts', 'finance', 'accounts'],
   ['credit-notes', 'finance', 'credit-notes'],
   ['fiscal', 'finance', 'fiscal'],
   ['exchange-rates', 'finance', 'exchange'],
   ['journal', 'finance', 'journal'],
+  ['trial-balance', 'finance', 'trial-balance'],
+  ['day-book', 'finance', 'day-book'],
 ];
 
 for (const [raw, tab, view] of financeAliasCases) {
@@ -81,6 +85,21 @@ for (const [raw, tab, view] of financeAliasCases) {
     mark(`alias ${raw} → expected financeView ${view}, got ${v}`);
   } else {
     ok(`alias ${raw} → ${tab} + financeView=${view}`);
+  }
+}
+
+const hubNavCases = [
+  ['trial-balance', 'statements', 'tb', false],
+  ['day-book', 'statements', 'day-book', false],
+  ['vouchers', 'overview', null, true],
+  ['accounts', 'accounts', null, false],
+];
+for (const [raw, tab, report, preferPayments] of hubNavCases) {
+  const nav = resolveFinanceHubNavigation(raw);
+  if (nav.tab !== tab || (nav.statementReport || null) !== report || Boolean(nav.preferPayments) !== preferPayments) {
+    mark(`hubNav ${raw} → expected ${tab}/${report}/pay=${preferPayments}, got ${nav.tab}/${nav.statementReport}/pay=${Boolean(nav.preferPayments)}`);
+  } else {
+    ok(`hubNav ${raw} → ${nav.tab}${report ? ` + ${report}` : ''}${preferPayments ? ' → payments' : ''}`);
   }
 }
 

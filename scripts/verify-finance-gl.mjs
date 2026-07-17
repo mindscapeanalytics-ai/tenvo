@@ -46,9 +46,13 @@ includes('components/finance/DayBookReport.jsx', 'Day Book', 'Day Book UI');
 includes('components/FinancialReports.jsx', 'handleDownloadPdf', 'statements PDF download');
 
 // Phase 3
-includes('components/finance/FinanceHub.jsx', "'day-book'", 'FinanceHub day-book tab');
+includes('components/finance/FinanceHub.jsx', 'resolveFinanceHubNavigation', 'FinanceHub navigation aliases');
 includes('components/finance/FinanceHub.jsx', 'getGlCoverage', 'overview coverage load');
-includes('components/finance/FinanceHub.jsx', 'Open full Payments', 'vouchers CTA to payments');
+includes('components/finance/FinanceHub.jsx', 'Payments &amp; vouchers', 'overview CTA to payments');
+includes('components/finance/FinanceHub.jsx', 'goToPaymentsHub', 'payments hub helper');
+includes('components/FinancialReports.jsx', "value=\"tb\"", 'Statements nests Trial Balance');
+includes('components/FinancialReports.jsx', "value=\"day-book\"", 'Statements nests Day Book');
+includes('lib/config/tabs.js', "accounts: 'accounts'", 'accounts deep-link maps to CoA');
 includes('components/TaxComplianceManager.jsx', 'periodPos', 'GST includes POS tax when provided');
 
 if (failed > 0) {

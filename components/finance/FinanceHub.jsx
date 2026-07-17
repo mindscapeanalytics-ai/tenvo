@@ -3,9 +3,9 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    Landmark, BookOpen, Receipt, FileCheck, Calendar, RefreshCcw,
-    Globe, CreditCard, TrendingUp, TrendingDown, DollarSign,
-    BarChart3, ChevronRight, Loader2, FileText, Scale,
+    Landmark, BookOpen, Receipt, CalendarRange, RefreshCcw,
+    Globe, TrendingUp, TrendingDown,
+    LayoutDashboard, ChevronRight, Loader2, FileText, ListTree, PenLine, GitMerge,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -18,44 +18,44 @@ import { getCreditNotesAction, createCreditNoteAction } from '@/lib/actions/basi
 import { getFiscalPeriodsAction } from '@/lib/actions/basic/fiscal';
 import { getExchangeRatesAction } from '@/lib/actions/basic/exchangeRate';
 import { ExpenseManager } from '@/components/finance/ExpenseManager';
-import { PaymentReceiptForm } from '@/components/PaymentReceiptForm';
 import { JournalEntryForm } from '@/components/JournalEntryForm';
 import { JournalEntryList } from '@/components/finance/JournalEntryList';
 import { FiscalPeriodManager } from '@/components/finance/FiscalPeriodManager';
 import { BankReconciliation } from '@/components/finance/BankReconciliation';
 import { ChartOfAccountsManager } from '@/components/finance/ChartOfAccountsManager';
-import { getCustomersAction } from '@/lib/actions/basic/customer';
 import { getVendorsAction } from '@/lib/actions/basic/vendor';
 import { getInvoicesAction } from '@/lib/actions/basic/invoice';
-import { paymentAPI } from '@/lib/api/payments';
-import { isReceiptType, getPaymentTypeLabel } from '@/lib/utils/paymentTypes';
 import { toast } from 'react-hot-toast';
 import FinancialReports from '@/components/FinancialReports';
-import TrialBalanceView from '@/components/TrialBalanceView';
 import { GeneralLedgerReport } from '@/components/reports/GeneralLedgerReport';
-import DayBookReport from '@/components/finance/DayBookReport';
 import { MobileTabHeader } from '@/components/mobile/MobileTabHeader';
 import { FinanceMobileNav } from '@/components/finance/FinanceMobileNav';
 import { formatDisplayDate } from '@/lib/utils/formatDisplayDate';
 import { accountingAPI } from '@/lib/api/accounting';
+import { resolveFinanceHubNavigation } from '@/lib/config/tabs';
 
 // --- Sub-Tab Definitions -----------------------------------------------------
 
 const FINANCE_TABS = [
-    { key: 'overview', label: 'Overview', icon: BarChart3, permission: 'finance.view_reports', feature: null, group: 'Insights' },
+    { key: 'overview', label: 'Overview', icon: LayoutDashboard, permission: 'finance.view_reports', feature: null, group: 'Insights' },
     { key: 'statements', label: 'Statements', icon: FileText, permission: 'finance.view_reports', feature: 'basic_reports', group: 'Statements' },
-    { key: 'trial-balance', label: 'Trial Balance', icon: Scale, permission: 'finance.view_reports', feature: 'basic_reports', group: 'Statements' },
-    { key: 'day-book', label: 'Day Book', icon: Calendar, permission: 'finance.view_reports', feature: 'basic_reports', group: 'Statements' },
-    { key: 'general-ledger', label: 'General Ledger', icon: BookOpen, permission: 'finance.view_gl', feature: 'basic_accounting', group: 'Statements' },
-    { key: 'accounts', label: 'Chart of Accounts', icon: BookOpen, permission: 'finance.view_gl', feature: 'basic_accounting', group: 'Books' },
-    { key: 'journal', label: 'Journal Entries', icon: Landmark, permission: 'finance.view_gl', feature: 'basic_accounting', group: 'Books' },
-    { key: 'reconciliation', label: 'Reconciliation', icon: BarChart3, permission: 'finance.view_gl', feature: 'basic_accounting', group: 'Books' },
+    { key: 'accounts', label: 'Chart of Accounts', icon: ListTree, permission: 'finance.view_gl', feature: 'basic_accounting', group: 'Books' },
+    { key: 'journal', label: 'Journal Entries', icon: PenLine, permission: 'finance.view_gl', feature: 'basic_accounting', group: 'Books' },
+    { key: 'general-ledger', label: 'General Ledger', icon: BookOpen, permission: 'finance.view_gl', feature: 'basic_accounting', group: 'Books' },
+    { key: 'reconciliation', label: 'Bank Reconciliation', icon: GitMerge, permission: 'finance.view_gl', feature: 'basic_accounting', group: 'Books' },
     { key: 'expenses', label: 'Expenses', icon: Receipt, permission: 'finance.manage_expenses', feature: 'expense_tracking', group: 'Cash' },
-    { key: 'vouchers', label: 'Vouchers', icon: CreditCard, permission: 'finance.manage_payments', feature: 'basic_accounting', group: 'Cash' },
     { key: 'credit-notes', label: 'Credit Notes', icon: RefreshCcw, permission: 'finance.credit_notes', feature: 'credit_notes', group: 'Cash' },
-    { key: 'fiscal', label: 'Fiscal Periods', icon: Calendar, permission: 'finance.close_period', feature: 'fiscal_periods', group: 'Close' },
+    { key: 'fiscal', label: 'Fiscal Periods', icon: CalendarRange, permission: 'finance.close_period', feature: 'fiscal_periods', group: 'Close' },
     { key: 'exchange', label: 'Exchange Rates', icon: Globe, permission: 'finance.exchange_rates', feature: 'exchange_rates', group: 'Close' },
 ];
+
+function goToPaymentsHub() {
+    if (typeof window === 'undefined') return;
+    const url = new URL(window.location.href);
+    url.searchParams.set('tab', 'payments');
+    url.searchParams.delete('financeView');
+    window.location.href = url.toString();
+}
 
 // --- KPI Card ----------------------------------------------------------------
 
@@ -486,7 +486,7 @@ function FinanceOverview({
     return (
         <div className="space-y-4">
             <p className="text-xs text-gray-500">
-                Statements and Trial Balance read your books (GL). Sales dashboard KPIs may also include operational channels.
+                Formal statements read your books (GL). Sales dashboard KPIs may also include operational channels.
             </p>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                 <KPICard label="GL Accounts" value={activeAccounts} icon={BookOpen} color="indigo" loading={loading} />
@@ -519,10 +519,24 @@ function FinanceOverview({
             )}
 
             <div className="flex flex-wrap gap-2">
-                <Button variant="outline" size="sm" onClick={() => onNavigate?.('statements')}>Run P&amp;L</Button>
-                <Button variant="outline" size="sm" onClick={() => onNavigate?.('trial-balance')}>Trial Balance</Button>
-                <Button variant="outline" size="sm" onClick={() => onNavigate?.('day-book')}>Day Book</Button>
-                <Button variant="outline" size="sm" onClick={() => onNavigate?.('reconciliation')}>Reconcile bank</Button>
+                <Button variant="outline" size="sm" onClick={() => onNavigate?.('statements', 'pl')}>Run P&amp;L</Button>
+                <Button variant="outline" size="sm" onClick={() => onNavigate?.('statements', 'tb')}>Trial Balance</Button>
+                <Button variant="outline" size="sm" onClick={() => onNavigate?.('statements', 'day-book')}>Day Book</Button>
+                <Button variant="outline" size="sm" onClick={() => onNavigate?.('reconciliation')}>Bank reconciliation</Button>
+                <Button variant="outline" size="sm" onClick={goToPaymentsHub}>Payments &amp; vouchers</Button>
+                <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                        if (typeof window === 'undefined') return;
+                        const url = new URL(window.location.href);
+                        url.searchParams.set('tab', 'gst');
+                        url.searchParams.delete('financeView');
+                        window.location.href = url.toString();
+                    }}
+                >
+                    Tax / GST
+                </Button>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -561,7 +575,9 @@ function FinanceOverview({
 export default function FinanceHub({ businessId, initialTab, businessCategory = 'retail-shop', onInitialTabConsumed }) {
     const { business, currency, currencySymbol } = useBusiness();
     const { can, planCan } = usePermissions();
-    const [activeTab, setActiveTab] = useState(initialTab || 'overview');
+    const initialNav = resolveFinanceHubNavigation(initialTab || 'overview');
+    const [activeTab, setActiveTab] = useState(initialNav.tab);
+    const [statementReport, setStatementReport] = useState(initialNav.statementReport || 'pl');
     const [loading, setLoading] = useState(true);
 
     // Data state
@@ -570,11 +586,7 @@ export default function FinanceHub({ businessId, initialTab, businessCategory = 
     const [creditNotes, setCreditNotes] = useState([]);
     const [periods, setPeriods] = useState([]);
     const [rates, setRates] = useState([]);
-    const [customers, setCustomers] = useState([]);
     const [vendors, setVendors] = useState([]);
-    const [payments, setPayments] = useState([]);
-    const [showVoucherForm, setShowVoucherForm] = useState(false);
-    const [voucherType, setVoucherType] = useState('receipt');
     const [showJournalForm, setShowJournalForm] = useState(false);
     const [coverage, setCoverage] = useState(null);
     const [reconciling, setReconciling] = useState(false);
@@ -582,18 +594,31 @@ export default function FinanceHub({ businessId, initialTab, businessCategory = 
     const effectiveCurrency = currencySymbol || 'Rs.';
     const effectiveBusinessId = businessId || business?.id;
 
+    const navigateFinance = useCallback((tabKey, report = null) => {
+        const nav = resolveFinanceHubNavigation(tabKey);
+        if (nav.preferPayments) {
+            goToPaymentsHub();
+            return;
+        }
+        setActiveTab(nav.tab);
+        if (nav.tab === 'statements') {
+            setStatementReport(report || nav.statementReport || 'pl');
+        } else if (report) {
+            setStatementReport(report);
+        }
+    }, []);
+
     // Load all finance data
     const loadData = useCallback(async () => {
         if (!effectiveBusinessId) return;
         setLoading(true);
         try {
-            const [accRes, expRes, cnRes, fpRes, exRes, payRes, covRes] = await Promise.allSettled([
+            const [accRes, expRes, cnRes, fpRes, exRes, covRes] = await Promise.allSettled([
                 getGLAccountsAction(effectiveBusinessId),
                 getExpensesAction(effectiveBusinessId, { limit: 50 }),
                 getCreditNotesAction(effectiveBusinessId),
                 getFiscalPeriodsAction(effectiveBusinessId),
                 getExchangeRatesAction(effectiveBusinessId, currency || 'PKR'),
-                paymentAPI.getRegister(effectiveBusinessId, { limit: 50 }),
                 accountingAPI.getGlCoverage(effectiveBusinessId),
             ]);
 
@@ -602,15 +627,9 @@ export default function FinanceHub({ businessId, initialTab, businessCategory = 
             if (cnRes.status === 'fulfilled' && cnRes.value.success) setCreditNotes(cnRes.value.creditNotes || cnRes.value.credit_notes || []);
             if (fpRes.status === 'fulfilled' && fpRes.value.success) setPeriods(fpRes.value.periods || []);
             if (exRes.status === 'fulfilled' && exRes.value.success) setRates(exRes.value.rates || []);
-            if (payRes.status === 'fulfilled' && payRes.value.success) setPayments(payRes.value.payments || []);
             if (covRes.status === 'fulfilled' && covRes.value.success) setCoverage(covRes.value.coverage || null);
 
-            // Also fetch basic entities for forms
-            const [custRes, vendRes] = await Promise.all([
-                getCustomersAction(effectiveBusinessId),
-                getVendorsAction(effectiveBusinessId)
-            ]);
-            if (custRes.success) setCustomers(custRes.customers || []);
+            const vendRes = await getVendorsAction(effectiveBusinessId);
             if (vendRes.success) setVendors(vendRes.vendors || []);
         } catch (err) {
             console.error('[FinanceHub] Load failed:', err);
@@ -639,7 +658,14 @@ export default function FinanceHub({ businessId, initialTab, businessCategory = 
     useEffect(() => {
         if (initialTab != null && initialTab !== '') {
             queueMicrotask(() => {
-                setActiveTab(initialTab);
+                const nav = resolveFinanceHubNavigation(initialTab);
+                if (nav.preferPayments) {
+                    onInitialTabConsumed?.();
+                    goToPaymentsHub();
+                    return;
+                }
+                setActiveTab(nav.tab);
+                if (nav.statementReport) setStatementReport(nav.statementReport);
                 onInitialTabConsumed?.();
             });
         }
@@ -647,9 +673,20 @@ export default function FinanceHub({ businessId, initialTab, businessCategory = 
 
     useEffect(() => {
         if (visibleTabKeys.length === 0) return;
-        if (!visibleTabKeys.includes(activeTab)) {
-            queueMicrotask(() => setActiveTab(visibleTabKeys[0]));
-        }
+        if (visibleTabKeys.includes(activeTab)) return;
+        queueMicrotask(() => {
+            const nav = resolveFinanceHubNavigation(activeTab);
+            if (nav.preferPayments) {
+                goToPaymentsHub();
+                return;
+            }
+            if (visibleTabKeys.includes(nav.tab)) {
+                setActiveTab(nav.tab);
+                if (nav.statementReport) setStatementReport(nav.statementReport);
+                return;
+            }
+            setActiveTab(visibleTabKeys[0]);
+        });
     }, [visibleTabKeys, activeTab]);
 
     const renderContent = () => {
@@ -664,7 +701,7 @@ export default function FinanceHub({ businessId, initialTab, businessCategory = 
                         loading={loading}
                         coverage={coverage}
                         reconciling={reconciling}
-                        onNavigate={setActiveTab}
+                        onNavigate={navigateFinance}
                         onReconcileStorefront={async () => {
                             setReconciling(true);
                             try {
@@ -684,25 +721,28 @@ export default function FinanceHub({ businessId, initialTab, businessCategory = 
                     />
                 );
             case 'statements':
+            case 'trial-balance':
+            case 'day-book':
                 return (
                     <div className="rounded-xl border border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-950 p-4 shadow-sm">
-                        <FinancialReports businessId={effectiveBusinessId} category={businessCategory} />
+                        <FinancialReports
+                            businessId={effectiveBusinessId}
+                            category={businessCategory}
+                            initialReport={
+                                activeTab === 'trial-balance'
+                                    ? 'tb'
+                                    : activeTab === 'day-book'
+                                      ? 'day-book'
+                                      : statementReport
+                            }
+                        />
                     </div>
                 );
-            case 'day-book':
-                return <DayBookReport businessId={effectiveBusinessId} />;
             case 'general-ledger':
                 return (
                     <div className="rounded-xl border border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-950 p-4 shadow-sm">
                         <GeneralLedgerReport businessId={effectiveBusinessId} />
                     </div>
-                );
-            case 'trial-balance':
-                return (
-                    <TrialBalanceView
-                        businessId={effectiveBusinessId}
-                        currency={currency || 'PKR'}
-                    />
                 );
             case 'accounts':
                 return <ChartOfAccountsManager businessId={effectiveBusinessId} accounts={accounts} onRefresh={loadData} />;
@@ -719,94 +759,8 @@ export default function FinanceHub({ businessId, initialTab, businessCategory = 
                 );
             case 'vouchers':
                 return (
-                    <div className="space-y-6">
-                        <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
-                            <Button
-                                onClick={() => { setVoucherType('receipt'); setShowVoucherForm(true); }}
-                                className="flex h-20 flex-1 flex-col items-center justify-center gap-2 rounded-2xl bg-emerald-600 text-white shadow-xl shadow-emerald-500/10 transition-all hover:bg-emerald-700 sm:h-24 sm:hover:scale-[1.02]"
-                            >
-                                <DollarSign className="w-6 h-6" />
-                                <span className="font-semibold text-xs uppercase tracking-widest">Customer Receipt</span>
-                            </Button>
-                            <Button
-                                onClick={() => { setVoucherType('payment'); setShowVoucherForm(true); }}
-                                className="flex h-20 flex-1 flex-col items-center justify-center gap-2 rounded-2xl bg-brand-primary text-white shadow-xl shadow-brand-primary/20 transition-all hover:bg-brand-primary-dark sm:h-24 sm:hover:scale-[1.02]"
-                            >
-                                <CreditCard className="w-6 h-6" />
-                                <span className="font-semibold text-xs uppercase tracking-widest">Vendor Payment</span>
-                            </Button>
-                        </div>
-                        
-                        <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-                            <div className="p-4 border-b border-gray-50 flex items-center justify-between gap-2">
-                                <h4 className="text-sm font-semibold text-gray-800">Recent Transactions</h4>
-                                <button
-                                    type="button"
-                                    className="text-xs font-semibold text-brand-primary hover:underline"
-                                    onClick={() => {
-                                        if (typeof window !== 'undefined') {
-                                            const url = new URL(window.location.href);
-                                            url.searchParams.set('tab', 'payments');
-                                            window.location.href = url.toString();
-                                        }
-                                    }}
-                                >
-                                    Open full Payments
-                                </button>
-                            </div>
-                            <div className="divide-y divide-gray-50">
-                                {payments.length === 0 ? (
-                                    <div className="py-12 text-center text-gray-400">
-                                        <CreditCard className="w-10 h-10 mx-auto mb-2 opacity-30" />
-                                        <p className="text-sm font-semibold">No transactions recorded</p>
-                                    </div>
-                                ) : (
-                                    payments.slice(0, 5).map(p => {
-                                        const receipt = isReceiptType(p.payment_type);
-                                        return (
-                                        <div key={p.id} className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors">
-                                            <div className={cn(
-                                                "w-10 h-10 rounded-xl flex items-center justify-center shrink-0",
-                                                receipt ? "bg-emerald-100 text-emerald-600" : "bg-red-100 text-red-600"
-                                            )}>
-                                                {receipt ? <DollarSign className="w-5 h-5" /> : <CreditCard className="w-5 h-5" />}
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-sm font-bold text-gray-900 truncate">
-                                                    {p.party_name || (receipt ? (p.customer_name || 'Customer') : (p.vendor_name || 'Vendor'))}
-                                                </p>
-                                                <div className="flex items-center gap-2 mt-0.5">
-                                                    <span className="text-xs text-gray-500 capitalize">{p.payment_mode}</span>
-                                                    {p.reference_label && (
-                                                        <>
-                                                            <span className="text-gray-300">•</span>
-                                                            <span className="text-xs text-gray-500 font-mono">{p.reference_label}</span>
-                                                        </>
-                                                    )}
-                                                    <span className="text-gray-300">•</span>
-                                                    <span className="text-xs text-gray-500">{formatDisplayDate(p.payment_date)}</span>
-                                                </div>
-                                            </div>
-                                            <div className="text-right shrink-0">
-                                                <p className={cn(
-                                                    "text-sm font-semibold",
-                                                    receipt ? "text-emerald-600" : "text-red-600"
-                                                )}>
-                                                    {receipt ? '+' : '-'}{effectiveCurrency} {Number(p.amount).toLocaleString()}
-                                                </p>
-                                                <span className={cn(
-                                                    "text-[10px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider",
-                                                    receipt ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"
-                                                )}>
-                                                    {getPaymentTypeLabel(p.payment_type)}
-                                                </span>
-                                            </div>
-                                        </div>
-                                        );
-                                    })
-                                )}
-                            </div>
-                        </div>
+                    <div className="rounded-xl border border-gray-100 bg-white p-8 text-center text-sm text-gray-500">
+                        Opening Payments for receipts and vouchers…
                     </div>
                 );
             case 'journal':
@@ -849,7 +803,16 @@ export default function FinanceHub({ businessId, initialTab, businessCategory = 
                     />
                 );
             default:
-                return <FinanceOverview accounts={accounts} expenses={expenses} creditNotes={creditNotes} currency={effectiveCurrency} loading={loading} />;
+                return (
+                    <FinanceOverview
+                        accounts={accounts}
+                        expenses={expenses}
+                        creditNotes={creditNotes}
+                        currency={effectiveCurrency}
+                        loading={loading}
+                        onNavigate={navigateFinance}
+                    />
+                );
         }
     };
 
@@ -859,7 +822,7 @@ export default function FinanceHub({ businessId, initialTab, businessCategory = 
                 icon={Landmark}
                 iconClassName="bg-brand-100 text-brand-primary"
                 title="Finance & Accounting"
-                subtitle="Statements · GL · Expenses · Fiscal"
+                subtitle="Statements · Books · Cash · Close"
             />
 
             {/* Desktop header */}
@@ -869,17 +832,15 @@ export default function FinanceHub({ businessId, initialTab, businessCategory = 
                 </div>
                 <div>
                     <h2 className="text-lg font-semibold text-gray-900 tracking-tight">Finance & Accounting</h2>
-                    <p className="text-xs text-gray-400 font-medium">Statements · Trial balance · GL · Expenses · Fiscal</p>
+                    <p className="text-xs text-gray-400 font-medium">Statements · Books · Cash · Close</p>
                 </div>
             </div>
 
-            {/* Sub-Tab Navigation — wrap on mobile, no horizontal scroll */}
-            <FinanceMobileNav tabs={visibleTabs} activeTab={activeTab} onSelect={setActiveTab} />
+            <FinanceMobileNav tabs={visibleTabs} activeTab={activeTab} onSelect={navigateFinance} />
 
-            {/* Content Area */}
             <AnimatePresence mode="wait">
                 <motion.div
-                    key={activeTab}
+                    key={`${activeTab}:${statementReport}`}
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -8 }}
@@ -888,17 +849,6 @@ export default function FinanceHub({ businessId, initialTab, businessCategory = 
                     {renderContent()}
                 </motion.div>
             </AnimatePresence>
-
-            {/* Global Overlays */}
-            {showVoucherForm && (
-                <PaymentReceiptForm
-                    type={voucherType}
-                    customers={customers}
-                    vendors={vendors}
-                    onClose={() => setShowVoucherForm(false)}
-                    onSave={() => loadData()}
-                />
-            )}
 
             {showJournalForm && (
                 <JournalEntryForm
