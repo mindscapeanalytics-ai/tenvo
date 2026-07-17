@@ -202,12 +202,10 @@ function mergeInventoryServerRow(prev, srv) {
  * @param {any[]} [props.vendors]
  * @param {string} props.businessId
  * @param {string} [props.category]
- * @param {string} [props.currency]
  * @param {any} [props.domainKnowledge]
  * @param {() => void} [props.refreshData]
  * @param {Function} [props.onUpdate]
  * @param {Function} [props.onAdd]
- * @param {Function} [props.onQuickAdd]
  * @param {Function} [props.onEdit]
  * @param {Function} [props.onDelete]
  * @param {Function} [props.onIssueInvoice]
@@ -240,6 +238,7 @@ export function InventoryManager({
   onLocationUpdate,
   onLocationDelete,
   onStockTransfer,
+  onGeneratePO,
   refreshData,
 }) {
   const { regionalStandards, currency, currencySymbol, regionalPack, business } = useBusiness();
@@ -3065,10 +3064,14 @@ export function InventoryManager({
               <AutoReorderManager
                 products={products}
                 vendors={vendors}
-                onGeneratePO={(poData) => {
-                  const product = products.find(p => p.id === poData.productId);
-                  toast.success(`Purchase order generated for ${product?.name || 'product'}`);
-                }}
+                onGeneratePO={
+                  onGeneratePO ||
+                  ((poData) => {
+                    // Standalone fallback (no hub parent handler): acknowledge only.
+                    const product = products.find(p => p.id === poData.productId);
+                    toast.success(`Purchase order generated for ${product?.name || 'product'}`);
+                  })
+                }
                 currency={standards.currency}
               />
             </CardContent>
