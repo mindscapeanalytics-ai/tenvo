@@ -28,7 +28,6 @@ interface InventoryTabProps {
     challans?: any[];
     onIssueInvoice?: (header: any) => void;
     onAdd?: () => void;
-    onQuickAdd?: (data: any) => void;
     onEdit?: (product: Product) => void;
     onUpdate?: (data: any) => void;
     onLocationAdd?: (data: any) => void;
@@ -58,7 +57,6 @@ export function InventoryTab({
     challans,
     onIssueInvoice,
     onAdd,
-    onQuickAdd,
     onEdit,
     onUpdate,
     onLocationAdd,
@@ -103,7 +101,6 @@ export function InventoryTab({
                         challans={challans}
                         onIssueInvoice={onIssueInvoice}
                         onAdd={onAdd}
-                        onQuickAdd={onQuickAdd}
                         onEdit={onEdit}
                         onLocationAdd={onLocationAdd}
                         onLocationUpdate={onLocationUpdate}

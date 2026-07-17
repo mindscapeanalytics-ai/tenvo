@@ -1039,11 +1039,6 @@ function BusinessDashboardContent() {
     URL.revokeObjectURL(url);
   };
 
-  const handleQuickAddProduct = () => {
-    setEditingProduct(null);
-    setShowProductForm(true);
-  };
-
   const handleDateRangePreset = useCallback((preset) => {
     applyDatePreset(preset);
   }, [applyDatePreset]);
@@ -1826,7 +1821,6 @@ function BusinessDashboardContent() {
               handleExportInvoices,
               handleSaveProduct,
               handleDeleteProduct,
-              handleQuickAddProduct,
               handleLocationAdd,
               handleLocationUpdate,
               handleLocationDelete,

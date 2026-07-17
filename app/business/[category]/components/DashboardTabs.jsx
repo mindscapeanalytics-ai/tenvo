@@ -217,7 +217,6 @@ export function DashboardTabs({
         handleExport,
         handleSaveProduct,
         handleDeleteProduct,
-        handleQuickAddProduct,
         handleLocationAdd,
         handleLocationUpdate,
         handleLocationDelete,
@@ -368,7 +367,6 @@ export function DashboardTabs({
                                     setEditingProduct(null);
                                     setShowProductForm(true);
                                 }}
-                                onQuickAdd={handleQuickAddProduct}
                                 onEdit={(product) => {
                                     setEditingProduct(product);
                                     setShowProductForm(true);
