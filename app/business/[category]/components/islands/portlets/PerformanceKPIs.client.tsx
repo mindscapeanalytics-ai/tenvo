@@ -22,6 +22,7 @@ interface PerformanceKPIsProps {
     customersChange: number;
     avgOrderValue: string;
     avgOrderValueChange?: number;
+    className?: string;
 }
 
 export const PerformanceKPIs = memo(function PerformanceKPIs({
@@ -33,6 +34,7 @@ export const PerformanceKPIs = memo(function PerformanceKPIs({
     customersChange,
     avgOrderValue,
     avgOrderValueChange,
+    className,
 }: PerformanceKPIsProps) {
     const kpis: KPIItem[] = [
         {
@@ -66,48 +68,45 @@ export const PerformanceKPIs = memo(function PerformanceKPIs({
     ];
 
     return (
-        <Card className="border-slate-200 shadow-sm bg-white">
-            <CardHeader className="pb-2 pt-3 px-3.5 border-b border-slate-100">
-                <CardTitle className="text-xs font-semibold text-slate-700 uppercase tracking-wider">
+        <Card className={cn('flex h-full flex-col border-slate-200 bg-white shadow-sm', className)}>
+            <CardHeader className="shrink-0 border-b border-slate-100 px-3 py-2">
+                <CardTitle className="text-[11px] font-semibold uppercase tracking-wider text-slate-700">
                     Period Performance
                 </CardTitle>
             </CardHeader>
-            <CardContent className="p-2.5">
-                <div className="grid grid-cols-2 gap-2">
-                    {kpis.map((kpi, idx) => (
+            <CardContent className="flex flex-1 flex-col justify-center p-2">
+                <div className="grid grid-cols-2 gap-1.5">
+                    {kpis.map((kpi) => (
                         <div
-                            key={idx}
-                            className="rounded-lg border border-slate-100 bg-gradient-to-br from-slate-50 to-white p-2 hover:shadow-sm transition-shadow"
+                            key={kpi.label}
+                            className="min-w-0 rounded-lg border border-slate-100 bg-slate-50/60 px-2 py-2"
                         >
-                            <div className="flex items-center justify-between mb-1">
-                                <span className="text-[10px] font-medium text-slate-500 uppercase tracking-tight">
+                            <div className="flex items-center justify-between gap-1">
+                                <span className="truncate text-[9px] font-semibold uppercase tracking-wide text-slate-500">
                                     {kpi.label}
                                 </span>
-                                {kpi.change !== undefined && (
-                                    <div className="flex items-center gap-0.5">
-                                        {kpi.trend === 'up' && (
-                                            <TrendingUp className="w-3 h-3 text-emerald-500" />
+                                {kpi.change !== undefined ? (
+                                    <span
+                                        className={cn(
+                                            'inline-flex shrink-0 items-center gap-0.5 text-[9px] font-semibold tabular-nums',
+                                            kpi.trend === 'up' && 'text-emerald-600',
+                                            kpi.trend === 'down' && 'text-red-600',
+                                            kpi.trend === 'neutral' && 'text-slate-400'
                                         )}
-                                        {kpi.trend === 'down' && (
-                                            <TrendingDown className="w-3 h-3 text-red-500" />
+                                    >
+                                        {kpi.trend === 'up' ? (
+                                            <TrendingUp className="h-2.5 w-2.5" aria-hidden />
+                                        ) : kpi.trend === 'down' ? (
+                                            <TrendingDown className="h-2.5 w-2.5" aria-hidden />
+                                        ) : (
+                                            <Minus className="h-2.5 w-2.5" aria-hidden />
                                         )}
-                                        {kpi.trend === 'neutral' && (
-                                            <Minus className="w-3 h-3 text-slate-400" />
-                                        )}
-                                        <span
-                                            className={cn(
-                                                'text-[9px] font-semibold tabular-nums',
-                                                kpi.trend === 'up' && 'text-emerald-600',
-                                                kpi.trend === 'down' && 'text-red-600',
-                                                kpi.trend === 'neutral' && 'text-slate-400'
-                                            )}
-                                        >
-                                            {kpi.change > 0 ? '+' : ''}{kpi.change.toFixed(1)}%
-                                        </span>
-                                    </div>
-                                )}
+                                        {kpi.change > 0 ? '+' : ''}
+                                        {kpi.change.toFixed(0)}%
+                                    </span>
+                                ) : null}
                             </div>
-                            <p className={cn('text-base font-bold tabular-nums', kpi.colorClass)}>
+                            <p className={cn('mt-0.5 truncate text-sm font-semibold tabular-nums leading-tight', kpi.colorClass)}>
                                 {kpi.value}
                             </p>
                         </div>

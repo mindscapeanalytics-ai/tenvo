@@ -109,30 +109,30 @@ export function DomainMetricCard({
                 )}
                 aria-hidden
             />
-            <CardContent className="relative p-3.5">
+                <CardContent className="relative p-3">
                 <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
-                        <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-1 truncate">
+                        <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-0.5 truncate">
                             {label}
                         </p>
-                        <h3 className="text-xl xl:text-2xl font-bold text-slate-900 leading-tight tabular-nums tracking-tight">
+                        <h3 className="text-lg xl:text-xl font-semibold text-slate-900 leading-tight tabular-nums tracking-tight">
                             {value}
                         </h3>
                         {subValue ? (
-                            <p className="text-[10px] font-medium text-slate-500 mt-1 line-clamp-2">{subValue}</p>
+                            <p className="text-[10px] font-medium text-slate-500 mt-0.5 line-clamp-2">{subValue}</p>
                         ) : null}
                     </div>
                     <div
                         className={cn(
-                            'p-2.5 rounded-xl shadow-md shrink-0 ring-2 ring-white/80',
+                            'p-2 rounded-xl shadow-md shrink-0 ring-2 ring-white/80',
                             colorClass || palette.icon
                         )}
                     >
-                        <Icon className="w-5 h-5 text-white" aria-hidden />
+                        <Icon className="w-4 h-4 text-white" aria-hidden />
                     </div>
                 </div>
 
-                <div className="mt-3 flex items-end justify-between gap-2 min-h-[2rem] border-t border-white/60 pt-2.5">
+                <div className="mt-2 flex items-end justify-between gap-2 min-h-[1.75rem] border-t border-white/60 pt-2">
                     {showTrend ? (
                         <div className="flex items-center gap-1 min-w-0">
                             {!trendHint && trend !== undefined && trend !== 0 ? (

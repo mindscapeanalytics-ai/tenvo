@@ -157,12 +157,14 @@ export function SalesChart({ data = [], colors, currency = 'PKR' }) {
 export function SalesTrendAreaChart({ data = [], colors, currency = 'PKR' }) {
   const primary = colors?.primary || '#3b82f6';
   const accent = colors?.primaryLight || '#8b5cf6';
-  const xKey = data[0] && Object.prototype.hasOwnProperty.call(data[0], 'date') ? 'date' : 'name';
+  const chartData = densifyTrendSeries(data);
+  const xKey = chartData[0] && Object.prototype.hasOwnProperty.call(chartData[0], 'date') ? 'date' : 'name';
   const moneyTick = (v) => formatCurrency(Number(v) || 0, currency, { maximumFractionDigits: 0 });
+  const yDomain = resolveMoneyDomain(chartData, ['revenue']);
 
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <AreaChart data={data} margin={{ top: 8, right: 12, left: 4, bottom: 4 }}>
+      <AreaChart data={chartData} margin={{ top: 8, right: 12, left: 4, bottom: 4 }}>
         <defs>
           <linearGradient id="premiumAreaFill" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor={primary} stopOpacity={0.4} />
@@ -182,6 +184,8 @@ export function SalesTrendAreaChart({ data = [], colors, currency = 'PKR' }) {
           axisLine={{ stroke: '#e2e8f0' }}
         />
         <YAxis
+          domain={yDomain}
+          allowDataOverflow={false}
           tickFormatter={moneyTick}
           width={68}
           tick={{ fontSize: 11, fill: '#64748b' }}
@@ -213,6 +217,42 @@ export function SalesTrendAreaChart({ data = [], colors, currency = 'PKR' }) {
 }
 
 /**
+ * Prefer active months when the series is mostly empty; otherwise keep the full window.
+ * @param {Array<Record<string, unknown>>} data
+ */
+function densifyTrendSeries(data = []) {
+  const rows = Array.isArray(data) ? data : [];
+  const active = rows.filter(
+    (row) => Math.abs(Number(row?.revenue) || 0) > 0 || Math.abs(Number(row?.profit) || 0) > 0
+  );
+  if (active.length === 0) return rows;
+  // Sparse history (one spike month): drop leading zeros so bars fill the plot.
+  if (active.length <= 2 && rows.length > 3) return active;
+  return rows;
+}
+
+/**
+ * Explicit Y domain so sparse/zero months never open a huge negative axis.
+ * @param {Array<Record<string, unknown>>} data
+ * @param {string[]} keys
+ */
+function resolveMoneyDomain(data = [], keys = ['revenue', 'profit']) {
+  const values = data.flatMap((row) =>
+    keys.map((key) => {
+      const n = Number(row?.[key]);
+      return Number.isFinite(n) ? n : 0;
+    })
+  );
+  if (values.length === 0) return [0, 1];
+  const rawMin = Math.min(...values);
+  const rawMax = Math.max(...values);
+  const min = rawMin < 0 ? rawMin : 0;
+  const max = Math.max(rawMax, min === 0 ? 1 : 0);
+  const pad = Math.max(Math.abs(max - min) * 0.12, Math.abs(max) * 0.08, 1);
+  return [min, max + pad];
+}
+
+/**
  * @param {Object} props
  * @param {any[]} props.data
  * @param {any} [props.colors]
@@ -221,11 +261,13 @@ export function SalesTrendAreaChart({ data = [], colors, currency = 'PKR' }) {
 export function RevenueBarChart({ data = [], colors, currency = 'PKR' }) {
   const primary = colors?.primary || '#3b82f6'; // Blue
   const secondary = '#8b5cf6'; // Purple
-  const xKey = data[0] && Object.prototype.hasOwnProperty.call(data[0], 'date') ? 'date' : 'name';
+  const chartData = densifyTrendSeries(data);
+  const xKey = chartData[0] && Object.prototype.hasOwnProperty.call(chartData[0], 'date') ? 'date' : 'name';
+  const yDomain = resolveMoneyDomain(chartData, ['revenue', 'profit']);
 
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <BarChart data={data} margin={{ top: 10, right: 10, left: 10, bottom: 5 }}>
+      <BarChart data={chartData} margin={{ top: 8, right: 8, left: 4, bottom: 4 }}>
         <defs>
           <linearGradient id="barRevenue" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor={primary} stopOpacity={0.9} />
@@ -244,8 +286,10 @@ export function RevenueBarChart({ data = [], colors, currency = 'PKR' }) {
           axisLine={{ stroke: '#e5e7eb' }}
         />
         <YAxis 
+          domain={yDomain}
+          allowDataOverflow={false}
           tickFormatter={(v) => formatCurrency(Number(v) || 0, currency, { maximumFractionDigits: 0 })} 
-          width={70} 
+          width={64} 
           tick={{ fontSize: 11, fill: '#6b7280' }}
           tickLine={{ stroke: '#e5e7eb' }}
           axisLine={{ stroke: '#e5e7eb' }}
@@ -264,7 +308,7 @@ export function RevenueBarChart({ data = [], colors, currency = 'PKR' }) {
         />
         <Legend 
           formatter={(value) => (value === 'revenue' ? 'Revenue' : value === 'profit' ? 'Profit' : value)}
-          wrapperStyle={{ fontSize: 12, paddingTop: 10 }}
+          wrapperStyle={{ fontSize: 12, paddingTop: 8 }}
           iconType="circle"
         />
         <Bar dataKey="revenue" name="revenue" fill="url(#barRevenue)" radius={[8, 8, 0, 0]} />
@@ -306,15 +350,15 @@ export function CategoryPieChart({ data = [], colors }) {
       <PieChart margin={{ top: 10, right: 20, left: 20, bottom: 10 }}>
         <Pie
           data={data}
-          cx="35%"
+          cx="38%"
           cy="50%"
           labelLine={false}
           label={false}
-          outerRadius={85}
-          innerRadius={55}
+          outerRadius="78%"
+          innerRadius="48%"
           fill="#3b82f6"
           dataKey="value"
-          paddingAngle={3}
+          paddingAngle={2}
         >
           {data.map((entry, index) => (
             <Cell 

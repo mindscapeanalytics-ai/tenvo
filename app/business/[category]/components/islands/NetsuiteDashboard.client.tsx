@@ -9,7 +9,10 @@ interface NetsuiteDashboardProps {
 }
 
 /**
- * NetSuite-Inspired Dashboard Grid Layout
+ * Dashboard shell grid.
+ * Desktop Advanced content should live in a single `lg:col-span-12` stacked shell
+ * so sibling bands share spacing. Avoid placing tall/short cards as separate
+ * outer grid rows (that creates column voids).
  */
 export default function NetsuiteDashboard({
     children,
@@ -28,9 +31,8 @@ export default function NetsuiteDashboard({
 
     return (
         <div className={cn("animate-in fade-in duration-500", className)}>
-            {/* Portlet Grid — bottom pad clears AI copilot FAB on desktop + mobile */}
             <div className={cn(
-                "grid gap-3 mt-1 items-start pb-[calc(5.5rem+env(safe-area-inset-bottom))] lg:pb-24",
+                "mt-1 grid items-start gap-2 pb-[calc(5.5rem+env(safe-area-inset-bottom))] lg:pb-16",
                 layout === 'grid' ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-12" : "grid-cols-1"
             )}>
                 {children}

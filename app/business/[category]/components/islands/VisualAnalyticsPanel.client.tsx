@@ -76,23 +76,23 @@ function ChartShell({
                 className
             )}
         >
-            <CardHeader className="pb-2 pt-3.5 px-4 border-b border-white/80 bg-white/50">
-                <div className="flex items-start gap-2.5">
+            <CardHeader className="pb-1.5 pt-3 px-3 border-b border-white/80 bg-white/50">
+                <div className="flex items-start gap-2">
                     <div
                         className={cn(
-                            'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl shadow-md ring-2 ring-white/80',
+                            'flex h-8 w-8 shrink-0 items-center justify-center rounded-xl shadow-md ring-2 ring-white/80',
                             tone.icon
                         )}
                     >
-                        <Icon className="h-4 w-4 text-white" />
+                        <Icon className="h-3.5 w-3.5 text-white" />
                     </div>
                     <div className="min-w-0">
-                        <CardTitle className="text-sm font-bold text-slate-900 tracking-tight">{title}</CardTitle>
-                        <CardDescription className="text-[11px] mt-0.5 text-slate-500">{description}</CardDescription>
+                        <CardTitle className="text-xs font-semibold text-slate-900 tracking-tight">{title}</CardTitle>
+                        <CardDescription className="text-[10px] mt-0.5 text-slate-500 line-clamp-1">{description}</CardDescription>
                     </div>
                 </div>
             </CardHeader>
-            <CardContent className={cn('p-3 pt-4', chartHeight)}>{children}</CardContent>
+            <CardContent className={cn('p-2.5 pt-3', chartHeight)}>{children}</CardContent>
         </Card>
     );
 }
@@ -204,20 +204,20 @@ export function VisualAnalyticsPanel({
     }
 
     return (
-        <div className="space-y-3">
+        <div className="space-y-2">
             <div className="flex flex-col gap-0.5 px-0.5">
-                <p className="text-xs font-bold text-slate-800">{copy.studioSubtitle}</p>
-                <p className="text-[10px] text-slate-500">Modern chart grid — revenue, mix, and top performers for this period.</p>
+                <p className="text-xs font-semibold text-slate-800">{copy.studioSubtitle}</p>
+                <p className="text-[10px] text-slate-500">Revenue, mix, and top performers for this period.</p>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-2">
                 <ChartShell
                     title={copy.revenueTitle}
                     description={copy.revenueDesc}
                     icon={TrendingUp}
                     accent="emerald"
                     className="lg:col-span-8"
-                    chartHeight="h-[260px]"
+                    chartHeight="h-[200px]"
                 >
                     <SalesTrendAreaChart data={salesData} colors={colors} currency={currency} />
                 </ChartShell>
@@ -228,7 +228,7 @@ export function VisualAnalyticsPanel({
                     icon={Package}
                     accent="amber"
                     className="lg:col-span-4"
-                    chartHeight="h-[260px]"
+                    chartHeight="h-[200px]"
                 >
                     <TopProductsChart data={topProducts} colors={colors} currency={currency} />
                 </ChartShell>
@@ -238,7 +238,8 @@ export function VisualAnalyticsPanel({
                     description={copy.categoryDesc}
                     icon={PieChart}
                     accent="violet"
-                    className="lg:col-span-5"
+                    className="lg:col-span-4"
+                    chartHeight="h-[200px]"
                 >
                     <CategoryPieChart data={categoryData} colors={colors} />
                 </ChartShell>
@@ -248,7 +249,8 @@ export function VisualAnalyticsPanel({
                     description={copy.barDesc}
                     icon={BarChart3}
                     accent="cyan"
-                    className="lg:col-span-7"
+                    className="lg:col-span-8"
+                    chartHeight="h-[200px]"
                 >
                     <RevenueBarChart data={salesData} colors={colors} currency={currency} />
                 </ChartShell>

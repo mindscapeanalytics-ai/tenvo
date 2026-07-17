@@ -120,8 +120,8 @@ export function AnalyticsDashboard({
             transition={{ duration: 0.4 }}
         >
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <Card className="min-h-[360px] overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-br from-white via-slate-50/20 to-white shadow-sm">
-                    <CardHeader className="flex flex-col gap-2.5 py-2.5 px-3.5 sm:px-4 border-b border-slate-100 bg-gradient-to-r from-violet-50/30 via-white to-cyan-50/30 space-y-0">
+                <Card className="min-h-0 overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-br from-white via-slate-50/20 to-white shadow-sm h-full">
+                    <CardHeader className="flex flex-col gap-2 py-2 px-3 sm:px-3.5 border-b border-slate-100 bg-gradient-to-r from-violet-50/30 via-white to-cyan-50/30 space-y-0">
                         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                             <div className="flex flex-col min-w-0">
                                 <CardTitle className="text-[10px] font-semibold text-slate-800 uppercase tracking-[0.2em] flex items-center gap-2">
@@ -161,7 +161,7 @@ export function AnalyticsDashboard({
                                 Integrity
                             </TabsTrigger>
                         </TabsList>
-                        <p className="text-[10px] text-slate-500 leading-snug">
+                        <p className="text-[10px] text-slate-500 leading-snug line-clamp-1">
                             {TAB_HINTS[activeTab] ?? 'Analytics for the selected workspace period.'}
                         </p>
                     </CardHeader>
@@ -186,7 +186,7 @@ export function AnalyticsDashboard({
                             />
                         </TabsContent>
 
-                        <TabsContent value="studio" className="m-0 p-3">
+                        <TabsContent value="studio" className="m-0 p-2.5">
                             <VisualAnalyticsPanel
                                 businessId={businessId}
                                 category={category}

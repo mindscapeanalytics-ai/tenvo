@@ -1210,8 +1210,8 @@ export function DomainDashboard({
             />
 
         <NetsuiteDashboard>
-            {/* Desktop header band — full width KPIs & period context */}
-            <div className="hidden lg:block lg:col-span-12 space-y-3">
+            {/* Desktop: one stacked shell so bands share spacing and never leave column voids */}
+            <div className="hidden w-full min-w-0 lg:col-span-12 lg:flex lg:flex-col lg:gap-2">
                 <QuickActionTiles
                     layout="toolbar"
                     onAction={onQuickAction}
@@ -1221,21 +1221,30 @@ export function DomainDashboard({
 
                 {!showQuickSetup ? null : (
                     <Card className="border border-brand-100 bg-brand-50/40 shadow-sm">
-                        <CardContent className="p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                            <div>
+                        <CardContent className="flex flex-col gap-2.5 p-3 md:flex-row md:items-center md:justify-between">
+                            <div className="min-w-0">
                                 <p className="text-[10px] font-semibold uppercase tracking-widest text-brand-primary">Quick Setup</p>
-                                <p className="text-sm font-bold text-slate-800 mt-1">Start by adding products, customers, or your first invoice to unlock richer KPI insights.</p>
+                                <p className="mt-0.5 text-sm font-semibold text-slate-800">
+                                    Start by adding products, customers, or your first invoice to unlock richer KPI insights.
+                                </p>
                             </div>
-                            <div className="flex items-center gap-2">
-                                <Button size="sm" className="h-8 text-[11px] font-bold" onClick={() => onQuickAction?.('add-product')}>Add Product</Button>
-                                <Button size="sm" variant="outline" className="h-8 text-[11px] font-bold" onClick={() => onQuickAction?.('add-customer')}>Add Customer</Button>
-                                <Button size="sm" variant="outline" className="h-8 text-[11px] font-bold" onClick={() => onQuickAction?.('new-invoice')}>New Invoice</Button>
+                            <div className="flex shrink-0 flex-wrap items-center gap-2">
+                                <Button size="sm" className="h-8 text-[11px] font-semibold" onClick={() => onQuickAction?.('add-product')}>
+                                    Add Product
+                                </Button>
+                                <Button size="sm" variant="outline" className="h-8 text-[11px] font-semibold" onClick={() => onQuickAction?.('add-customer')}>
+                                    Add Customer
+                                </Button>
+                                <Button size="sm" variant="outline" className="h-8 text-[11px] font-semibold" onClick={() => onQuickAction?.('new-invoice')}>
+                                    New Invoice
+                                </Button>
                             </div>
                         </CardContent>
                     </Card>
                 )}
 
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-2.5 xl:auto-rows-fr">
+                {/* Band: primary KPIs */}
+                <div className="grid grid-cols-2 gap-2 xl:grid-cols-4">
                     {topStripKpis.map((item) => (
                         <DomainMetricCard
                             key={item.label}
@@ -1251,14 +1260,20 @@ export function DomainDashboard({
                             invertTrendColor={item.invertTrendColor}
                             actionId={item.actionId}
                             onNavigate={handleMetricNavigate}
-                            className="h-full"
+                            className="min-w-0"
                             isLoading={item.isLoading}
                         />
                     ))}
                 </div>
 
-                <FinanceHeroStrip metrics={financeHeroMetrics} onNavigate={handleMetricNavigate} isLoading={isFinanceLoading} />
+                {/* Band: finance metrics */}
+                <FinanceHeroStrip
+                    metrics={financeHeroMetrics}
+                    onNavigate={handleMetricNavigate}
+                    isLoading={isFinanceLoading}
+                />
 
+                {/* Band: period snapshot */}
                 <PeriodSnapshotCard
                     dateFrom={new Date(dateRange.from)}
                     dateTo={new Date(dateRange.to)}
@@ -1268,72 +1283,79 @@ export function DomainDashboard({
                     collapsedCount={6}
                     onMetricClick={handleMetricNavigate}
                 />
-            </div>
 
-            {/* Analytics + contextual right rail (reminders / period KPIs only) */}
-            <div className="hidden lg:block lg:col-span-8 min-h-0">
-                <AnalyticsDashboard
-                    businessId={activeBusinessId}
-                    category={category}
-                    currency={currency}
-                    business={business}
-                    chartData={chartData}
-                    invoices={invoices}
-                    products={products}
-                    colors={colors}
-                    domainKnowledge={domainKnowledge}
-                    dateRange={dateRange}
-                    onQuickAction={onQuickAction}
-                />
-            </div>
-
-            <div className="hidden lg:flex lg:col-span-4 flex-col gap-2 min-h-0 self-stretch">
-                <RemindersPortlet data={remindersData} onItemClick={onQuickAction} />
-
-                <PerformanceKPIs
-                    revenue={formatCurrencyCompact(periodMetrics.currentRevenue)}
-                    revenueChange={Number(revenueTrendSigned)}
-                    orders={periodMetrics.currentOrders}
-                    ordersChange={Number(ordersTrend)}
-                    customers={periodMetrics.currentCustomers}
-                    customersChange={Number(customerTrend)}
-                    avgOrderValue={formatCurrencyCompact(avgOrderValue)}
-                />
-            </div>
-
-            {/* Bottom band — Activity | Efficiency | Alerts+Collections, equal stretch */}
-            <div className="hidden lg:grid lg:col-span-12 grid-cols-12 gap-2 items-stretch min-h-[22rem]">
-                <div className="col-span-5 min-h-0 flex flex-col">
-                    <RecentActivityFeed
+                {/* Band: Visual Studio full width — gutters stay on the 12-col shell */}
+                <div className="min-w-0">
+                    <AnalyticsDashboard
                         businessId={activeBusinessId}
-                        onViewAll={() => onQuickAction?.('reports')}
-                        feedLimit={25}
-                        className="h-full"
-                    />
-                </div>
-                <div className="col-span-3 min-h-0 flex flex-col">
-                    <KPIMeter
-                        title="Domain Efficiency"
-                        value={domainEfficiency}
-                        target={95}
-                        suffix="%"
-                        trendValue={Number(revenueTrendSigned.toFixed(1))}
-                        trendLabel="vs previous period"
-                        className="h-full"
-                    />
-                </div>
-                <div className="col-span-4 min-h-0 flex flex-col gap-2">
-                    <MergedActionInsights
                         category={category}
-                        domainKnowledge={domainKnowledge as Record<string, unknown> | undefined}
-                        operationalInsights={intelligentInsights}
-                        reminders={remindersData}
+                        currency={currency}
+                        business={business}
+                        chartData={chartData}
+                        invoices={invoices}
+                        products={products}
+                        colors={colors}
+                        domainKnowledge={domainKnowledge}
+                        dateRange={dateRange}
                         onQuickAction={onQuickAction}
-                        className="shrink-0"
                     />
+                </div>
 
-                    <div className="min-h-0 flex-1">
+                {/* Band: ops strip — equal thirds (4|4|4) so columns align with the band below */}
+                <div className="grid grid-cols-12 gap-2 items-stretch">
+                    <div className="col-span-4 min-w-0">
+                        <RemindersPortlet data={remindersData} onItemClick={onQuickAction} className="h-full" />
+                    </div>
+                    <div className="col-span-4 min-w-0">
+                        <PerformanceKPIs
+                            className="h-full"
+                            revenue={formatCurrencyCompact(periodMetrics.currentRevenue)}
+                            revenueChange={Number(revenueTrendSigned)}
+                            orders={periodMetrics.currentOrders}
+                            ordersChange={Number(ordersTrend)}
+                            customers={periodMetrics.currentCustomers}
+                            customersChange={Number(customerTrend)}
+                            avgOrderValue={formatCurrencyCompact(avgOrderValue)}
+                        />
+                    </div>
+                    <div className="col-span-4 min-w-0">
+                        <KPIMeter
+                            className="h-full"
+                            title="Domain Efficiency"
+                            value={domainEfficiency}
+                            target={95}
+                            suffix="%"
+                            trendValue={Number(revenueTrendSigned.toFixed(1))}
+                            trendLabel="vs previous period"
+                        />
+                    </div>
+                </div>
+
+                {/* Band: activity · intel · collections — same 4|4|4 spine, equal height, internal scroll */}
+                <div className="grid grid-cols-12 gap-2 items-stretch">
+                    <div className="col-span-4 min-w-0">
+                        <RecentActivityFeed
+                            className="h-full"
+                            businessId={activeBusinessId}
+                            onViewAll={() => onQuickAction?.('reports')}
+                            feedLimit={25}
+                            visibleRows={5}
+                        />
+                    </div>
+                    <div className="col-span-4 min-w-0">
+                        <MergedActionInsights
+                            className="h-full"
+                            category={category}
+                            domainKnowledge={domainKnowledge as Record<string, unknown> | undefined}
+                            operationalInsights={intelligentInsights}
+                            reminders={remindersData}
+                            onQuickAction={onQuickAction}
+                            sections="all"
+                        />
+                    </div>
+                    <div className="col-span-4 min-w-0">
                         <DomainOperationsPanel
+                            className="h-full"
                             businessId={activeBusinessId}
                             business={business}
                             category={category}
@@ -1352,7 +1374,6 @@ export function DomainDashboard({
                             snapshotLoading={advancedOpsSnapshot.loading}
                             snapshotError={advancedOpsSnapshot.error}
                             onSnapshotRetry={advancedOpsSnapshot.reload}
-                            className="h-full"
                         />
                     </div>
                 </div>
@@ -1376,6 +1397,16 @@ export function DomainDashboard({
 
                 <RemindersPortlet data={remindersData} onItemClick={onQuickAction} />
 
+                <PerformanceKPIs
+                    revenue={formatCurrencyCompact(periodMetrics.currentRevenue)}
+                    revenueChange={Number(revenueTrendSigned)}
+                    orders={periodMetrics.currentOrders}
+                    ordersChange={Number(ordersTrend)}
+                    customers={periodMetrics.currentCustomers}
+                    customersChange={Number(customerTrend)}
+                    avgOrderValue={formatCurrencyCompact(avgOrderValue)}
+                />
+
                 <MergedActionInsights
                     category={category}
                     domainKnowledge={domainKnowledge as Record<string, unknown> | undefined}
@@ -1383,6 +1414,23 @@ export function DomainDashboard({
                     reminders={remindersData}
                     onQuickAction={onQuickAction}
                 />
+
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <RecentActivityFeed
+                        businessId={activeBusinessId}
+                        onViewAll={() => onQuickAction?.('reports')}
+                        feedLimit={25}
+                        visibleRows={5}
+                    />
+                    <KPIMeter
+                        title="Domain Efficiency"
+                        value={domainEfficiency}
+                        target={95}
+                        suffix="%"
+                        trendValue={Number(revenueTrendSigned.toFixed(1))}
+                        trendLabel="vs previous period"
+                    />
+                </div>
 
                 <DomainOperationsPanel
                     businessId={activeBusinessId}
@@ -1403,12 +1451,6 @@ export function DomainDashboard({
                     snapshotLoading={advancedOpsSnapshot.loading}
                     snapshotError={advancedOpsSnapshot.error}
                     onSnapshotRetry={advancedOpsSnapshot.reload}
-                />
-
-                <RecentActivityFeed
-                    businessId={activeBusinessId}
-                    onViewAll={() => onQuickAction?.('reports')}
-                    feedLimit={10}
                 />
             </div>
         </NetsuiteDashboard>

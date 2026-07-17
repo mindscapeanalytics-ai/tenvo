@@ -40,27 +40,24 @@ export function PeriodSnapshotCard({
 
     return (
         <Card className="border border-slate-200 shadow-sm bg-gradient-to-br from-white via-white to-slate-50/80">
-            <CardContent className="p-3 md:p-3.5">
+            <CardContent className="p-2.5 md:p-3">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                             <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">
                                 Period snapshot
                             </p>
-                            <span className="inline-flex items-center gap-1 rounded border border-emerald-200/70 bg-emerald-50/80 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-800">
+                            <span className="inline-flex items-center gap-1 rounded border border-emerald-200/70 bg-emerald-50/80 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-800">
                                 <TrendingUp className="h-3 w-3 shrink-0" aria-hidden />
                                 Live
                             </span>
                         </div>
-                        <p className="mt-1 text-[11px] leading-snug text-slate-600">
+                        <p className="mt-0.5 text-[11px] leading-snug text-slate-600">
                             <span className="font-semibold tabular-nums text-slate-800">
                                 {dateFrom.toLocaleDateString()} – {dateTo.toLocaleDateString()}
                             </span>
                             <span className="text-slate-300"> · </span>
                             <span className="font-semibold text-slate-700">{presetLabel}</span>
-                        </p>
-                        <p className="mt-0.5 text-[10px] text-slate-500">
-                            Supporting metrics for the selected date range. Alerts stay in the sidebar.
                         </p>
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 sm:max-w-md">
@@ -109,7 +106,7 @@ export function PeriodSnapshotCard({
                 </div>
 
                 <div
-                    className="mt-3 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-1.5"
+                    className="mt-2 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-1.5"
                     role="group"
                     aria-label="Period metrics"
                 >

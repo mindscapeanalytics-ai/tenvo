@@ -50,9 +50,9 @@ export const KPIMeter = memo(function KPIMeter({
     ];
 
     return (
-        <Portlet title={title} className={cn('flex h-full min-h-[22rem] flex-col', className)}>
-            <div className="flex h-full min-h-0 flex-col items-center justify-between gap-3">
-                <div className="relative flex h-[9.5rem] w-full shrink-0 items-center justify-center sm:h-[11rem]">
+        <Portlet title={title} className={cn('flex flex-col', className)}>
+            <div className="flex flex-col items-center gap-2">
+                <div className="relative flex h-[8rem] w-full shrink-0 items-center justify-center sm:h-[9rem]">
                     <ResponsiveContainer width="100%" height="100%">
                         <RadialBarChart
                             cx="50%"
@@ -85,7 +85,7 @@ export const KPIMeter = memo(function KPIMeter({
                     </div>
                 </div>
 
-                <div className="mt-auto flex w-full items-center justify-between gap-2 border-t border-gray-100 pt-3 sm:justify-center sm:gap-6">
+                <div className="flex w-full items-center justify-between gap-2 border-t border-gray-100 pt-2.5 sm:justify-center sm:gap-6">
                     <div className="min-w-0 flex-1 text-center sm:flex-none">
                         <p className={cn(HUB_MICRO_LABEL, 'mb-1 text-neutral-400')}>Current</p>
                         <p className={cn(HUB_STAT_VALUE, 'text-sm text-neutral-800 tabular-nums')}>{prefix}{safeValue}{suffix}</p>

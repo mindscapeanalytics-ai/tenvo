@@ -16,12 +16,14 @@ interface RemindersPortletProps {
     isLoading?: boolean;
     /** Receives reminder id: low-stock | overdue | pending-orders */
     onItemClick?: (reminderId: string) => void;
+    className?: string;
 }
 
 export const RemindersPortlet = memo(function RemindersPortlet({
     data = {},
     isLoading = false,
-    onItemClick
+    onItemClick,
+    className,
 }: RemindersPortletProps) {
     const reminders = [
         {
@@ -62,6 +64,7 @@ export const RemindersPortlet = memo(function RemindersPortlet({
             title="Reminders"
             description="Operational alerts & tasks"
             isLoading={isLoading}
+            className={className}
         >
             <div className="space-y-1">
                 {reminders.map((item) => (

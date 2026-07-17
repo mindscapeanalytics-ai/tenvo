@@ -14,7 +14,7 @@ export function FinanceHeroStrip({ metrics, onNavigate, isLoading = false }: Fin
 
     if (isLoading) {
         return (
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 {[1, 2, 3].map((i) => (
                     <DomainMetricCard
                         key={i}
@@ -30,7 +30,7 @@ export function FinanceHeroStrip({ metrics, onNavigate, isLoading = false }: Fin
     }
 
     return (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
             {metrics.map((item) => (
                 <DomainMetricCard
                     key={item.id}
