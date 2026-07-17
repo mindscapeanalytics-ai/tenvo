@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     BookOpen, Receipt, CalendarRange, RefreshCcw,
-    Globe, TrendingUp, TrendingDown,
+    Globe, TrendingUp, TrendingDown, ChevronLeft,
     LayoutDashboard, ChevronRight, Loader2, FileText, ListTree, PenLine, GitMerge,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -36,16 +36,16 @@ import { resolveFinanceHubNavigation } from '@/lib/config/tabs';
 // --- Sub-Tab Definitions -----------------------------------------------------
 
 const FINANCE_TABS = [
-    { key: 'overview', label: 'Overview', icon: LayoutDashboard, permission: 'finance.view_reports', feature: null, group: 'Insights' },
-    { key: 'statements', label: 'Statements', icon: FileText, permission: 'finance.view_reports', feature: 'basic_reports', group: 'Statements' },
-    { key: 'accounts', label: 'Chart of Accounts', icon: ListTree, permission: 'finance.view_gl', feature: 'basic_accounting', group: 'Books' },
-    { key: 'journal', label: 'Journal Entries', icon: PenLine, permission: 'finance.view_gl', feature: 'basic_accounting', group: 'Books' },
-    { key: 'general-ledger', label: 'General Ledger', icon: BookOpen, permission: 'finance.view_gl', feature: 'basic_accounting', group: 'Books' },
-    { key: 'reconciliation', label: 'Bank Reconciliation', icon: GitMerge, permission: 'finance.view_gl', feature: 'basic_accounting', group: 'Books' },
-    { key: 'expenses', label: 'Expenses', icon: Receipt, permission: 'finance.manage_expenses', feature: 'expense_tracking', group: 'Cash' },
-    { key: 'credit-notes', label: 'Credit Notes', icon: RefreshCcw, permission: 'finance.credit_notes', feature: 'credit_notes', group: 'Cash' },
-    { key: 'fiscal', label: 'Fiscal Periods', icon: CalendarRange, permission: 'finance.close_period', feature: 'fiscal_periods', group: 'Close' },
-    { key: 'exchange', label: 'Exchange Rates', icon: Globe, permission: 'finance.exchange_rates', feature: 'exchange_rates', group: 'Close' },
+    { key: 'overview', label: 'Overview', shortLabel: 'Overview', icon: LayoutDashboard, permission: 'finance.view_reports', feature: null, group: 'Insights' },
+    { key: 'statements', label: 'Statements', shortLabel: 'Statements', icon: FileText, permission: 'finance.view_reports', feature: 'basic_reports', group: 'Statements' },
+    { key: 'accounts', label: 'Chart of Accounts', shortLabel: 'Accounts', icon: ListTree, permission: 'finance.view_gl', feature: 'basic_accounting', group: 'Books' },
+    { key: 'journal', label: 'Journal Entries', shortLabel: 'Journal', icon: PenLine, permission: 'finance.view_gl', feature: 'basic_accounting', group: 'Books' },
+    { key: 'general-ledger', label: 'General Ledger', shortLabel: 'Ledger', icon: BookOpen, permission: 'finance.view_gl', feature: 'basic_accounting', group: 'Books' },
+    { key: 'reconciliation', label: 'Bank Reconciliation', shortLabel: 'Bank Rec', icon: GitMerge, permission: 'finance.view_gl', feature: 'basic_accounting', group: 'Books' },
+    { key: 'expenses', label: 'Expenses', shortLabel: 'Expenses', icon: Receipt, permission: 'finance.manage_expenses', feature: 'expense_tracking', group: 'Cash' },
+    { key: 'credit-notes', label: 'Credit Notes', shortLabel: 'Credits', icon: RefreshCcw, permission: 'finance.credit_notes', feature: 'credit_notes', group: 'Cash' },
+    { key: 'fiscal', label: 'Fiscal Periods', shortLabel: 'Fiscal', icon: CalendarRange, permission: 'finance.close_period', feature: 'fiscal_periods', group: 'Close' },
+    { key: 'exchange', label: 'Exchange Rates', shortLabel: 'FX Rates', icon: Globe, permission: 'finance.exchange_rates', feature: 'exchange_rates', group: 'Close' },
 ];
 
 function goToPaymentsHub() {
@@ -589,6 +589,8 @@ export default function FinanceHub({ businessId, initialTab, businessCategory = 
     const [showJournalForm, setShowJournalForm] = useState(false);
     const [coverage, setCoverage] = useState(null);
     const [reconciling, setReconciling] = useState(false);
+    /** Mobile: tile menu first; tap opens panel. Desktop always shows dock + content. */
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(true);
 
     const effectiveCurrency = currencySymbol || 'Rs.';
     const effectiveBusinessId = businessId || business?.id;
@@ -605,6 +607,7 @@ export default function FinanceHub({ businessId, initialTab, businessCategory = 
         } else if (report) {
             setStatementReport(report);
         }
+        setMobileMenuOpen(false);
     }, []);
 
     // Load all finance data
@@ -665,6 +668,7 @@ export default function FinanceHub({ businessId, initialTab, businessCategory = 
                 }
                 setActiveTab(nav.tab);
                 if (nav.statementReport) setStatementReport(nav.statementReport);
+                setMobileMenuOpen(false);
                 onInitialTabConsumed?.();
             });
         }
@@ -815,21 +819,61 @@ export default function FinanceHub({ businessId, initialTab, businessCategory = 
         }
     };
 
+    const activeTabMeta = useMemo(
+        () => visibleTabs.find((t) => t.key === activeTab) || FINANCE_TABS.find((t) => t.key === activeTab),
+        [visibleTabs, activeTab]
+    );
+
     return (
         <div className="min-w-0 space-y-4 overflow-x-hidden pb-[calc(5.5rem+env(safe-area-inset-bottom))] touch-manipulation lg:space-y-4 lg:pb-0">
-            <FinanceMobileNav tabs={visibleTabs} activeTab={activeTab} onSelect={navigateFinance} />
+            {/* Mobile app hub: box tiles (no horizontal scroll) */}
+            <div className="lg:hidden">
+                {mobileMenuOpen ? (
+                    <FinanceMobileNav
+                        variant="tiles"
+                        tabs={visibleTabs}
+                        activeTab={activeTab}
+                        onSelect={navigateFinance}
+                    />
+                ) : (
+                    <button
+                        type="button"
+                        onClick={() => setMobileMenuOpen(true)}
+                        className="flex w-full items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-left shadow-sm active:bg-gray-50 dark:border-slate-800 dark:bg-slate-950"
+                    >
+                        <ChevronLeft className="h-4 w-4 shrink-0 text-gray-500" aria-hidden />
+                        <span className="text-xs font-semibold text-gray-500">All sections</span>
+                        <span className="ml-auto truncate text-xs font-semibold text-gray-900 dark:text-gray-100">
+                            {activeTabMeta?.shortLabel || activeTabMeta?.label || 'Finance'}
+                        </span>
+                    </button>
+                )}
+            </div>
 
-            <AnimatePresence mode="wait">
-                <motion.div
-                    key={`${activeTab}:${statementReport}`}
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -8 }}
-                    transition={{ duration: 0.15 }}
-                >
-                    {renderContent()}
-                </motion.div>
-            </AnimatePresence>
+            {/* Desktop dock */}
+            <div className="hidden lg:block">
+                <FinanceMobileNav
+                    variant="dock"
+                    tabs={visibleTabs}
+                    activeTab={activeTab}
+                    onSelect={navigateFinance}
+                />
+            </div>
+
+            {/* Content: on mobile, hide while tile menu is open */}
+            <div className={cn(mobileMenuOpen && 'hidden lg:block')}>
+                <AnimatePresence mode="wait">
+                    <motion.div
+                        key={`${activeTab}:${statementReport}`}
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -8 }}
+                        transition={{ duration: 0.15 }}
+                    >
+                        {renderContent()}
+                    </motion.div>
+                </AnimatePresence>
+            </div>
 
             {showJournalForm && (
                 <JournalEntryForm
