@@ -129,7 +129,9 @@ function BusinessDashboardContent() {
 
   // Clear optimistic tab on pathname change (browser back/forward navigation)
   useEffect(() => {
-    setOptimisticTab(null);
+    queueMicrotask(() => {
+      setOptimisticTab(null);
+    });
   }, [pathname]);
 
   useEffect(() => {
@@ -192,7 +194,9 @@ function BusinessDashboardContent() {
   useEffect(() => {
     const financeView = searchParams.get('financeView');
     if (financeView) {
-      setFinanceInitialTab(financeView);
+      queueMicrotask(() => {
+        setFinanceInitialTab(financeView);
+      });
     }
   }, [searchParams]);
 
@@ -502,6 +506,8 @@ function BusinessDashboardContent() {
     loadingModules,
     upsertProductInState,
     removeProductFromState,
+    upsertInvoiceInState,
+    removeInvoiceFromState,
     scheduleAnalyticsRefresh,
   } = useData();
 
@@ -510,10 +516,8 @@ function BusinessDashboardContent() {
   const dashboardTabLoading =
     activeTab === 'dashboard' &&
     !dashboardMetrics &&
-    Boolean(loadingModules.analytics) &&
-    !moduleReady.sales &&
-    !moduleReady.inventory &&
-    !moduleReady.finance;
+    !moduleReady.finance &&
+    !moduleReady.sales;
 
   useEffect(() => {
     const onRefreshDashboardData = async () => {
@@ -530,20 +534,35 @@ function BusinessDashboardContent() {
     return () => window.removeEventListener('refresh-dashboard-data', onRefreshDashboardData);
   }, [refreshAllData]);
 
-  // Ensure active tab data is loaded even if background bootstrap is still running.
+  // Ensure active tab data is loaded; upgrade lean bootstrap lists when opening heavy tabs.
   useEffect(() => {
     if (!business?.id || !hubReady) return;
+
+    if (activeTab === 'dashboard') {
+      // Lean bootstrap already streams finance/sales/locations; catalog hydrates in background.
+      return;
+    }
+
+    if (['inventory', 'batches', 'warehouses', 'pos'].includes(activeTab)) {
+      if (!moduleReady.inventoryCatalog && !loadingModules.inventory) {
+        void fetchInventory({ fullCatalog: true });
+      }
+      return;
+    }
+
+    if (['invoices', 'customers', 'quotations'].includes(activeTab)) {
+      if (moduleReady.salesListDepth !== 'full' && !loadingModules.sales) {
+        void fetchSales({ mode: 'full' });
+      } else if (!moduleReady.sales && !loadingModules.sales) {
+        void fetchSales({ mode: 'full' });
+      }
+      return;
+    }
 
     const tabFetchers = {
       finance: fetchFinance,
       accounting: fetchFinance,
       expenses: fetchExpenses,
-      inventory: fetchInventory,
-      batches: fetchInventory,
-      warehouses: fetchInventory,
-      invoices: fetchSales,
-      customers: fetchSales,
-      quotations: fetchSales,
       vendors: fetchPurchases,
       purchases: fetchPurchases,
       payroll: fetchPayroll,
@@ -555,23 +574,12 @@ function BusinessDashboardContent() {
       finance: 'finance',
       accounting: 'finance',
       expenses: 'expenses',
-      inventory: 'inventory',
-      batches: 'inventory',
-      warehouses: 'inventory',
-      invoices: 'sales',
-      customers: 'sales',
-      quotations: 'sales',
       vendors: 'purchases',
       purchases: 'purchases',
       payroll: 'payroll',
       approvals: 'approvals',
       manufacturing: 'manufacturing',
     };
-
-    if (activeTab === 'dashboard') {
-      // DataContext bootstrap already loads sales/finance/inventory/expenses/analytics in parallel.
-      return;
-    }
 
     const moduleKey = tabModuleKeys[activeTab];
     if (!moduleKey || moduleReady[moduleKey] || loadingModules[moduleKey]) {
@@ -583,7 +591,6 @@ function BusinessDashboardContent() {
     activeTab,
     business?.id,
     hubReady,
-    dashboardMetrics,
     loadingModules,
     moduleReady,
     fetchFinance,
@@ -594,7 +601,6 @@ function BusinessDashboardContent() {
     fetchPayroll,
     fetchApprovals,
     fetchExpenses,
-    fetchAnalytics,
   ]);
 
   useEffect(() => {
@@ -1056,7 +1062,14 @@ function BusinessDashboardContent() {
 
       if (res.success) {
         toast.success(`${res.count} items deleted`);
-        refreshAllData();
+        if (entityType === 'products') {
+          void fetchInventory({ force: true, fullCatalog: true });
+          scheduleAnalyticsRefresh?.();
+        } else if (['invoices', 'customers', 'quotations'].includes(activeTab)) {
+          void fetchSales({ force: true, mode: 'full' });
+        } else {
+          void refreshAllData();
+        }
       } else {
         toast.error(res.error || 'Bulk delete failed');
       }
@@ -1103,7 +1116,7 @@ function BusinessDashboardContent() {
       );
       if (result.success) {
         toast.success(`Purchase order ${result.purchaseNumber} generated successfully`);
-        refreshAllData();
+        void fetchPurchases({ force: true });
       }
     } catch (error) {
       console.error("Error generating auto PO:", error);
@@ -1166,12 +1179,19 @@ function BusinessDashboardContent() {
         toast.success('Invoice created successfully');
       }
 
-      // 2. Clear state and refresh UI
+      // 2. Clear state and patch UI (avoid full-workspace refresh stall)
       setShowInvoiceBuilder(false);
       setInvoiceInitialData(null);
 
-      // Refresh products as stock might have changed
-      refreshAllData();
+      if (savedInvoice?.id && typeof upsertInvoiceInState === 'function') {
+        upsertInvoiceInState(savedInvoice);
+      }
+      // Stock + KPIs update in background; invoice list already patched.
+      void Promise.allSettled([
+        fetchInventory({ force: true, fullCatalog: true }),
+        fetchFinance({ force: true }),
+      ]);
+      scheduleAnalyticsRefresh?.();
 
       return savedInvoice;
     } catch (error) {
@@ -1192,7 +1212,14 @@ function BusinessDashboardContent() {
       try {
         await invoiceAPI.delete(business.id, invoiceId);
         toast.success('Invoice deleted and stock restored');
-        refreshAllData();
+        if (typeof removeInvoiceFromState === 'function') {
+          removeInvoiceFromState(invoiceId);
+        }
+        void Promise.allSettled([
+          fetchInventory({ force: true, fullCatalog: true }),
+          fetchFinance({ force: true }),
+        ]);
+        scheduleAnalyticsRefresh?.();
       } catch (error) {
         console.error('Error deleting invoice:', error);
         toast.error('Failed to delete invoice: ' + (error.message || 'Unknown error'));
@@ -1228,7 +1255,15 @@ function BusinessDashboardContent() {
         if (result.data?.restoredStock > 0) {
           notify.info(`${result.data.restoredStock} inventory items restored`);
         }
-        refreshAllData();
+        if (typeof removeInvoiceFromState === 'function') {
+          for (const id of invoiceIds) removeInvoiceFromState(id);
+        }
+        void Promise.allSettled([
+          fetchSales({ force: true, mode: moduleReady.salesListDepth === 'full' ? 'full' : 'bootstrap' }),
+          fetchInventory({ force: true, fullCatalog: true }),
+          fetchFinance({ force: true }),
+        ]);
+        scheduleAnalyticsRefresh?.();
       } else {
         toast.error(result.error || 'Bulk delete failed');
       }
@@ -1281,7 +1316,12 @@ function BusinessDashboardContent() {
 
       if (successCount > 0) {
         toast.success(`${successCount} invoice(s) imported successfully`);
-        refreshAllData();
+        void Promise.allSettled([
+          fetchSales({ force: true, mode: 'full' }),
+          fetchInventory({ force: true, fullCatalog: true }),
+          fetchFinance({ force: true }),
+        ]);
+        scheduleAnalyticsRefresh?.();
       }
       if (failCount > 0) {
         toast.error(`${failCount} invoice(s) failed to import`);
@@ -1534,7 +1574,13 @@ function BusinessDashboardContent() {
         }
 
         toast.success('Sale completed successfully', { id: 'pos' });
-        refreshAllData();
+        void Promise.allSettled([
+          fetchSales({ force: true, mode: 'full' }),
+          fetchInventory({ force: true, fullCatalog: true }),
+          fetchFinance({ force: true }),
+          fetchExpenses(),
+        ]);
+        scheduleAnalyticsRefresh?.();
         return {
           success: true,
           transaction: posResult.transaction,
@@ -1569,7 +1615,14 @@ function BusinessDashboardContent() {
 
       const createdInvoice = await invoiceAPI.create(invoiceData, invoiceItems);
       toast.success('Sale completed successfully', { id: 'pos' });
-      refreshAllData();
+      if (createdInvoice?.id && typeof upsertInvoiceInState === 'function') {
+        upsertInvoiceInState(createdInvoice);
+      }
+      void Promise.allSettled([
+        fetchInventory({ force: true, fullCatalog: true }),
+        fetchFinance({ force: true }),
+      ]);
+      scheduleAnalyticsRefresh?.();
       return {
         success: true,
         transaction: {
@@ -1800,10 +1853,12 @@ function BusinessDashboardContent() {
             resourceLimits={resourceLimits}
             domainKnowledge={domainKnowledge}
             isLoading={dashboardTabLoading}
-            inventoryLoading={Boolean(loadingModules.inventory) && !moduleReady.inventory}
-            isAnalyticsLoading={Boolean(loadingModules.analytics) && !moduleReady.analytics}
+            inventoryLoading={Boolean(loadingModules.inventory) && !moduleReady.inventoryCatalog}
+            isAnalyticsLoading={Boolean(loadingModules.analytics) && !moduleReady.analytics && !dashboardMetrics}
             isSalesLoading={Boolean(loadingModules.sales) && !moduleReady.sales}
-            isInventoryLoading={Boolean(loadingModules.inventory) && !moduleReady.inventory}
+            isInventoryLoading={
+              !moduleReady.inventoryCatalog && !dashboardMetrics?.inventory
+            }
             isFinanceLoading={Boolean(loadingModules.finance) && !moduleReady.finance}
             isExpensesLoading={Boolean(loadingModules.expenses) && !moduleReady.expenses}
             financeInitialTab={financeInitialTab}
@@ -1855,7 +1910,8 @@ function BusinessDashboardContent() {
               setEditingVendor,
               setShowPOBuilder,
               handleExpenseSaved: async () => {
-                await Promise.allSettled([fetchExpenses(), refreshAllData()]);
+                await Promise.allSettled([fetchExpenses({ force: true }), fetchFinance({ force: true })]);
+                scheduleAnalyticsRefresh?.();
               },
               // New POS & Restaurant Handlers
               posSession,

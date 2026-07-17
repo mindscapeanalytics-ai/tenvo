@@ -119,13 +119,19 @@ interface ExpenseBreakdownItem {
 }
 
 interface DashboardMetrics {
-    revenue?: number;
-    orders?: { total?: number; pending?: number; paid?: number };
+    revenue?: number | { total?: number; orderCount?: number };
+    orders?: { total?: number; pending?: number; paid?: number; invoices?: number; pos?: number; storefront?: number };
     products?: number;
     customers?: { active?: number; growth?: number };
     cashFlow?: { current?: number; growth?: number };
     growth?: { trend?: 'up' | 'down'; percentage?: number; value?: string };
     alerts?: { lowStock?: number; overdueInvoices?: number };
+    inventory?: {
+        activeProducts?: number;
+        lowStockCount?: number;
+        totalValue?: number;
+        totalStockUnits?: number;
+    };
     timeline?: Array<Record<string, unknown>>;
 }
 
@@ -213,7 +219,8 @@ export function DomainDashboard({
         businessId: activeBusinessId,
         category,
         dateRange,
-        enabled: !isEasyMode && Boolean(activeBusinessId),
+        // Defer heavy ops SQL until core hub modules settle (shell already painted).
+        enabled: !isEasyMode && Boolean(activeBusinessId) && !isFinanceLoading && !isSalesLoading,
     });
     const colors = getDomainColors(category) as Record<string, unknown>;
     const campaignEnabled = isCampaignRelevant(category, domainKnowledge ?? null);
@@ -389,15 +396,20 @@ export function DomainDashboard({
     // Prefer filter-range client counts once modules settle. Avoid Math.max with
     // calendar-month server alerts (different stock field + threshold) that inflate Attention.
     const remindersData = useMemo(() => {
-        const serverLow = dashboardMetrics?.alerts?.lowStock ?? 0;
+        const serverLow = dashboardMetrics?.alerts?.lowStock
+            ?? dashboardMetrics?.inventory?.lowStockCount
+            ?? 0;
         const serverOverdue = dashboardMetrics?.alerts?.overdueInvoices ?? 0;
+        const catalogLoaded = products.length > 0;
         return {
-            lowStock: isInventoryLoading ? serverLow : lowStockFallback,
+            // Lean bootstrap may unlock inventory before products hydrate — keep server KPIs until then.
+            lowStock: (!catalogLoaded || isInventoryLoading) ? serverLow : lowStockFallback,
             overdueInvoices: isSalesLoading ? serverOverdue : overdueInvoicesFallback,
             pendingOrders: pendingOrdersFallback,
         };
     }, [
         dashboardMetrics,
+        products.length,
         isInventoryLoading,
         isSalesLoading,
         lowStockFallback,
@@ -420,6 +432,7 @@ export function DomainDashboard({
 
     const inventoryValue = useMemo(() => {
         const summaryInventory = Number(accountingSummary?.inventoryValue);
+        const metricsInventory = Number(dashboardMetrics?.inventory?.totalValue);
         const catalogValue = products.reduce((sum: number, product: ProductLike) => {
             const stock = resolveProductStock(product);
             const unitCost = Number(product?.cost_price) || Number(product?.purchase_price) || Number(product?.price) || 0;
@@ -429,12 +442,19 @@ export function DomainDashboard({
         if (Number.isFinite(summaryInventory) && summaryInventory > 0) {
             return summaryInventory;
         }
+        if (products.length === 0 && Number.isFinite(metricsInventory) && metricsInventory > 0) {
+            return metricsInventory;
+        }
         return Math.max(0, catalogValue);
-    }, [products, accountingSummary?.inventoryValue]);
+    }, [products, accountingSummary?.inventoryValue, dashboardMetrics?.inventory?.totalValue]);
 
     const inStockUnits = useMemo(() => {
+        if (products.length === 0) {
+            const fromMetrics = Number(dashboardMetrics?.inventory?.totalStockUnits);
+            if (Number.isFinite(fromMetrics) && fromMetrics > 0) return fromMetrics;
+        }
         return products.reduce((sum: number, product: ProductLike) => sum + resolveProductStock(product), 0);
-    }, [products]);
+    }, [products, dashboardMetrics?.inventory?.totalStockUnits]);
 
     const avgOrderValue = useMemo(() => {
         const orders = Math.max(periodMetrics.currentOrders, 1);
@@ -785,7 +805,7 @@ export function DomainDashboard({
                 theme: 'rose' as const,
                 invertTrendColor: true,
                 actionId: metricActionId('overdue'),
-                isLoading: isSalesLoading || isAnalyticsLoading,
+                isLoading: isSalesLoading,
             },
         ];
     }, [
@@ -800,7 +820,6 @@ export function DomainDashboard({
         remindersData.overdueInvoices,
         formatCurrencyCompact,
         periodLabel,
-        isAnalyticsLoading,
         isSalesLoading,
         isInventoryLoading,
         isFinanceLoading,

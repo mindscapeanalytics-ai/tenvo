@@ -127,7 +127,7 @@ const dataContext = read('lib/context/DataContext.js');
 if (!dataContext.includes('markShellReady()')) {
   mark('DataContext must paint shell immediately (markShellReady)');
 }
-if (!dataContext.includes('fetchInventory()')) {
+if (!dataContext.includes('fetchInventory({ fullCatalog: false })') && !dataContext.includes('fetchInventory(')) {
   mark('DataContext bootstrap must fetch inventory in parallel');
 }
 if (!dataContext.includes('fetchGenerationRef')) {
@@ -136,15 +136,24 @@ if (!dataContext.includes('fetchGenerationRef')) {
 if (!dataContext.includes('isStale()')) {
   mark('DataContext fetchers must guard setState with isStale()');
 }
-if (!/Promise\.allSettled\(\[\s*fetchAnalytics\(\),\s*fetchFinance\(\),\s*fetchSales\(\),\s*fetchInventory\(\)/.test(dataContext)) {
-  mark('DataContext must stream analytics/finance/sales/inventory in parallel on bootstrap');
+if (!dataContext.includes('fetchInventory({ fullCatalog: false })') && !dataContext.includes('fullCatalog: false')) {
+  mark('DataContext bootstrap must lean-load inventory (locations/KPIs before full catalog)');
+}
+if (!dataContext.includes("fetchSales({ mode: 'bootstrap' })") && !dataContext.includes("mode: 'bootstrap'")) {
+  mark('DataContext bootstrap must lean-load sales without invoice line items');
+}
+if (!/Promise\.allSettled\(\[\s*fetchFinance\(\),\s*fetchSales\(/.test(dataContext)) {
+  mark('DataContext must stream finance/sales (and lean inventory) in parallel on bootstrap');
+}
+if (!dataContext.includes('buildDashboardMetricsFromSnapshot')) {
+  mark('DataContext must hydrate dashboardMetrics from finance snapshot (avoid duplicate KPI wait)');
 }
 
 const dashboardClient = read('app/business/[category]/DashboardClient.jsx');
 if (
-  !dataContext.includes('fetchInventory()') ||
-  (!dashboardClient.includes('fetchInventory()') &&
-    !dashboardClient.includes('DataContext bootstrap already loads'))
+  !dataContext.includes('fetchInventory(') ||
+  (!dashboardClient.includes('fetchInventory(') &&
+    !dashboardClient.includes('Lean bootstrap already streams'))
 ) {
   mark('Hub must bootstrap inventory via DataContext (dashboard tab must not duplicate fetch)');
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { BarChart3, PieChart, TrendingUp, Package } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import {
@@ -114,36 +114,70 @@ export function VisualAnalyticsPanel({
     const [salesData, setSalesData] = useState<Array<Record<string, unknown>>>([]);
     const [topProducts, setTopProducts] = useState<Array<Record<string, unknown>>>([]);
     const [categoryData, setCategoryData] = useState<Array<Record<string, unknown>>>([]);
-
-    const loadData = useCallback(async () => {
-        if (!businessId) {
-            setLoading(false);
-            return;
-        }
-        setLoading(true);
-        try {
-            const bundle = await getAnalyticsBundleAction(businessId, buildDateFilter(dateRange));
-            if (bundle.success && bundle.data) {
-                setSalesData((bundle.data.salesTrend || []) as Array<Record<string, unknown>>);
-                setTopProducts((bundle.data.topProducts || []) as Array<Record<string, unknown>>);
-                setCategoryData((bundle.data.categoryData || []) as Array<Record<string, unknown>>);
-            }
-        } catch {
-            setSalesData([]);
-            setTopProducts([]);
-            setCategoryData([]);
-        } finally {
-            setLoading(false);
-        }
-    }, [businessId, dateRange]);
+    // Defer the heavy analytics bundle until the panel is near the viewport so it
+    // never competes with the dashboard bootstrap fetches on cold load.
+    const containerRef = useRef<HTMLDivElement | null>(null);
+    const [shouldLoad, setShouldLoad] = useState(false);
+    const requestIdRef = useRef(0);
 
     useEffect(() => {
-        void loadData();
-    }, [loadData]);
+        if (shouldLoad) return undefined;
+        const node = containerRef.current;
+        if (!node || typeof IntersectionObserver === 'undefined') {
+            const timer = setTimeout(() => setShouldLoad(true), 0);
+            return () => clearTimeout(timer);
+        }
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (entries.some((entry) => entry.isIntersecting)) {
+                    setShouldLoad(true);
+                    observer.disconnect();
+                }
+            },
+            { rootMargin: '200px' }
+        );
+        observer.observe(node);
+        return () => observer.disconnect();
+    }, [shouldLoad]);
 
-    if (loading) {
+    useEffect(() => {
+        if (!shouldLoad) return undefined;
+        if (!businessId) {
+            const timer = setTimeout(() => setLoading(false), 0);
+            return () => clearTimeout(timer);
+        }
+
+        const requestId = ++requestIdRef.current;
+        const timer = setTimeout(() => {
+            void (async () => {
+                setLoading(true);
+                try {
+                    const bundle = await getAnalyticsBundleAction(businessId, buildDateFilter(dateRange));
+                    if (requestIdRef.current !== requestId) return;
+                    if (bundle.success && bundle.data) {
+                        setSalesData((bundle.data.salesTrend || []) as Array<Record<string, unknown>>);
+                        setTopProducts((bundle.data.topProducts || []) as Array<Record<string, unknown>>);
+                        setCategoryData((bundle.data.categoryData || []) as Array<Record<string, unknown>>);
+                    }
+                } catch {
+                    if (requestIdRef.current !== requestId) return;
+                    setSalesData([]);
+                    setTopProducts([]);
+                    setCategoryData([]);
+                } finally {
+                    if (requestIdRef.current === requestId) {
+                        setLoading(false);
+                    }
+                }
+            })();
+        }, 0);
+
+        return () => clearTimeout(timer);
+    }, [shouldLoad, businessId, dateRange]);
+
+    if (!shouldLoad || loading) {
         return (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 animate-pulse">
+            <div ref={containerRef} className="grid grid-cols-1 md:grid-cols-2 gap-3 animate-pulse">
                 <div className="md:col-span-2 h-[300px] rounded-2xl bg-gradient-to-br from-slate-100 to-slate-50" />
                 {[1, 2, 3].map((i) => (
                     <div key={i} className="h-[280px] rounded-2xl bg-slate-100" />
