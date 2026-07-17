@@ -97,6 +97,7 @@ export function DashboardTabs({
     isInventoryLoading = false,
     isFinanceLoading = false,
     isExpensesLoading = false,
+    isDataLoaded = false,
 }) {
     const posRelevant = isPosRelevant(category, domainKnowledge);
     const hospitalityDomain = isHospitality(category);
@@ -301,6 +302,7 @@ export function DashboardTabs({
                             isInventoryLoading={isInventoryLoading}
                             isFinanceLoading={isFinanceLoading}
                             isExpensesLoading={isExpensesLoading}
+                            isDataLoaded={isDataLoaded}
                         />
                     )}
                 </TabsContent>

@@ -494,7 +494,6 @@ function BusinessDashboardContent() {
     advancedDashboardSnapshot,
     refreshAllData,
     fetchFinance,
-    fetchAnalytics,
     fetchInventory,
     fetchSales,
     fetchPurchases,
@@ -509,6 +508,7 @@ function BusinessDashboardContent() {
     upsertInvoiceInState,
     removeInvoiceFromState,
     scheduleAnalyticsRefresh,
+    isDataLoaded,
   } = useData();
 
   // Only block the dashboard tab on analytics for Advanced chrome that still needs metrics.
@@ -1861,6 +1861,7 @@ function BusinessDashboardContent() {
             }
             isFinanceLoading={Boolean(loadingModules.finance) && !moduleReady.finance}
             isExpensesLoading={Boolean(loadingModules.expenses) && !moduleReady.expenses}
+            isDataLoaded={Boolean(isDataLoaded)}
             financeInitialTab={financeInitialTab}
             onFinanceInitialTabConsumed={() => setFinanceInitialTab(null)}
             handlers={{

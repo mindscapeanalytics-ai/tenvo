@@ -148,6 +148,25 @@ if (!/Promise\.allSettled\(\[\s*fetchFinance\(\),\s*fetchSales\(/.test(dataConte
 if (!dataContext.includes('buildDashboardMetricsFromSnapshot')) {
   mark('DataContext must hydrate dashboardMetrics from finance snapshot (avoid duplicate KPI wait)');
 }
+if (dataContext.includes('void fetchAnalytics?.()') || /Promise\.allSettled\(\[[\s\S]*fetchAnalytics\(\)/.test(dataContext.split('markShellReady')[1]?.slice(0, 1200) || '')) {
+  // Cold bootstrap must not fire getDashboardMetricsAction in parallel with finance snapshot.
+  if (/isDataLoaded\(true\);\s*[\s\S]{0,80}fetchAnalytics/.test(dataContext)) {
+    mark('DataContext must not cold-load fetchAnalytics after bootstrap (snapshot KPIs already hydrate tiles)');
+  }
+}
+
+const snapshotAction = read('lib/actions/dashboard/advancedDashboardSnapshot.js');
+if (!snapshotAction.includes('skipAuth: true')) {
+  mark('Advanced snapshot must skip nested withGuard on getDashboardKPIs / accounting summary');
+}
+
+const serverGuard = read('lib/rbac/serverGuard.js');
+if (!serverGuard.includes("from 'react'") || !serverGuard.includes('getCachedSession')) {
+  mark('withGuard must request-cache session via React.cache');
+}
+if (!serverGuard.includes('needsOverrides') && !serverGuard.includes('getCachedPlatformOverrides')) {
+  mark('withGuard must skip platform override SQL for permission-only checks');
+}
 
 const dashboardClient = read('app/business/[category]/DashboardClient.jsx');
 if (

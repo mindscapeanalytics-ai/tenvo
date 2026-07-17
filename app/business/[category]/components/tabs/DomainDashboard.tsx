@@ -65,6 +65,8 @@ interface DomainDashboardProps {
     isInventoryLoading?: boolean;
     isFinanceLoading?: boolean;
     isExpensesLoading?: boolean;
+    /** True once lean hub bootstrap settled — used to defer Advanced domain-ops SQL. */
+    isDataLoaded?: boolean;
 }
 
 interface InvoiceItemLike {
@@ -208,6 +210,7 @@ export function DomainDashboard({
     isInventoryLoading = false,
     isFinanceLoading = false,
     isExpensesLoading = false,
+    isDataLoaded = false,
 }: DomainDashboardProps) {
     const { business } = useBusiness() as {
         business?: { id?: string; name?: string; country?: string; city?: string } | null;
@@ -219,8 +222,13 @@ export function DomainDashboard({
         businessId: activeBusinessId,
         category,
         dateRange,
-        // Defer heavy ops SQL until core hub modules settle (shell already painted).
-        enabled: !isEasyMode && Boolean(activeBusinessId) && !isFinanceLoading && !isSalesLoading,
+        // Defer heavy ops SQL until lean bootstrap + core modules settle (no race with Overview KPIs).
+        enabled:
+            !isEasyMode &&
+            Boolean(activeBusinessId) &&
+            isDataLoaded &&
+            !isFinanceLoading &&
+            !isSalesLoading,
     });
     const colors = getDomainColors(category) as Record<string, unknown>;
     const campaignEnabled = isCampaignRelevant(category, domainKnowledge ?? null);
