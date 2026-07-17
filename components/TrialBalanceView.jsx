@@ -8,13 +8,14 @@ import { formatCurrency } from '@/lib/currency';
 import { accountingAPI } from '@/lib/api/accounting';
 import { useBusiness } from '@/lib/context/BusinessContext';
 import toast from 'react-hot-toast';
+import { generateFinanceStatementPDF } from '@/lib/pdf/financeStatementPdf';
 
 /**
  * @param {Object} props
  * @param {string} props.businessId
  */
 export default function TrialBalanceView({ businessId, currency: currencyProp }) {
-    const { currency: contextCurrency } = useBusiness();
+    const { currency: contextCurrency, business } = useBusiness();
     const currency = currencyProp || contextCurrency || 'PKR';
     const [loading, setLoading] = useState(true);
     const [data, setData] = useState({ trialBalance: [], totals: { debit: 0, credit: 0, balanced: false } });
@@ -48,6 +49,39 @@ export default function TrialBalanceView({ businessId, currency: currencyProp })
         window.print();
     };
 
+    const handlePdf = () => {
+        const rows = [
+            ...(data.trialBalance || []),
+            {
+                code: '',
+                name: 'Totals',
+                type: '',
+                total_debit: data.totals?.debit ?? 0,
+                total_credit: data.totals?.credit ?? 0,
+                net_balance: '',
+            },
+        ];
+        generateFinanceStatementPDF(
+            {
+                businessName: business?.business_name || 'Business',
+                title: 'Trial Balance',
+                periodLabel: `As of ${date}`,
+                currency,
+                balanced: data.totals?.balanced,
+            },
+            [
+                { key: 'code', label: 'Code' },
+                { key: 'name', label: 'Account' },
+                { key: 'type', label: 'Type' },
+                { key: 'total_debit', label: 'Debit' },
+                { key: 'total_credit', label: 'Credit' },
+                { key: 'net_balance', label: 'Net' },
+            ],
+            rows,
+            { filename: `Trial-Balance-${date}.pdf` }
+        );
+    };
+
     if (loading && !data.trialBalance.length) {
         return <div className="p-12 flex justify-center"><Loader2 className="w-8 h-8 animate-spin text-gray-400" /></div>;
     }
@@ -69,9 +103,12 @@ export default function TrialBalanceView({ businessId, currency: currencyProp })
                     <Button variant="outline" size="icon" onClick={fetchReport}>
                         <RefreshCw className="w-4 h-4" />
                     </Button>
-                    <Button variant="outline" className="flex-1 sm:flex-none" onClick={handlePrint}>
+                    <Button variant="outline" className="flex-1 sm:flex-none" onClick={handlePdf}>
                         <Download className="mr-2 h-4 w-4" />
-                        Export / Print
+                        PDF
+                    </Button>
+                    <Button variant="outline" className="flex-1 sm:flex-none" onClick={handlePrint}>
+                        Print
                     </Button>
                 </div>
             </CardHeader>

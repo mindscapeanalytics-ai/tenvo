@@ -68,7 +68,7 @@ const financeAliasCases = [
   ['credit-notes', 'finance', 'credit-notes'],
   ['fiscal', 'finance', 'fiscal'],
   ['exchange-rates', 'finance', 'exchange'],
-  ['journal', 'finance', 'general-ledger'],
+  ['journal', 'finance', 'journal'],
 ];
 
 for (const [raw, tab, view] of financeAliasCases) {

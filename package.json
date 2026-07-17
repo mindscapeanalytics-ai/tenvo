@@ -61,6 +61,7 @@
     "verify:mvp-launch": "node scripts/verify-mvp-launch.mjs",
     "verify:hub-tabs-forms": "bun scripts/verify-hub-tabs-forms.mjs",
     "verify:easy-dashboard": "node scripts/verify-easy-dashboard.mjs",
+    "verify:finance-gl": "node scripts/verify-finance-gl.mjs",
     "verify:domain-operations": "node scripts/verify-domain-operations.mjs",
     "verify:storefront-operations-db": "node scripts/verify-storefront-operations-db.mjs",
     "verify:storefront-order-emails": "node scripts/verify-storefront-order-emails.mjs",

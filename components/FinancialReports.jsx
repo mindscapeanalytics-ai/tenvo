@@ -4,11 +4,12 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, Download, RefreshCw, Calendar, TrendingUp, TrendingDown, Scale, ArrowDownLeft, ArrowUpRight, Banknote } from 'lucide-react';
+import { Loader2, Download, RefreshCw, Calendar, TrendingUp, TrendingDown, Scale, ArrowUpRight, Banknote } from 'lucide-react';
 import { formatCurrency } from '@/lib/currency';
 import { accountingAPI } from '@/lib/api/accounting';
 import { useBusiness } from '@/lib/context/BusinessContext';
 import { AgingReportsPanel } from '@/components/reports/AgingReportsPanel';
+import { generateFinanceStatementPDF, generateSectionedFinancePDF } from '@/lib/pdf/financeStatementPdf';
 import toast from 'react-hot-toast';
 
 // Helper for row rendering
@@ -79,86 +80,23 @@ export default function FinancialReports({ businessId }) {
     const fetchCashFlow = async () => {
         setLoading(true);
         try {
-            // Derive cash flow using indirect method from P&L and Balance Sheet data
-            const [plRes, bsEndRes, bsStartRes] = await Promise.all([
-                accountingAPI.getProfitLoss(businessId, cfStartDate, cfEndDate),
-                accountingAPI.getBalanceSheet(businessId, cfEndDate),
-                accountingAPI.getBalanceSheet(businessId, cfStartDate),
-            ]);
-
-            if (!plRes.success || !bsEndRes.success || !bsStartRes.success) {
-                toast.error('Failed to load data for Cash Flow Statement');
+            const res = await accountingAPI.getCashFlow(businessId, cfStartDate, cfEndDate);
+            if (!res.success) {
+                toast.error(res.error || 'Failed to load Cash Flow Statement');
                 return;
             }
-
-            const pl = plRes.statement;
-            const bsEnd = bsEndRes.statement;
-            const bsStart = bsStartRes.statement;
-
-            const netIncome = Number(pl.netIncome || 0);
-
-            // Helper: find account balance change between periods
-            const findBalance = (accounts, namePattern) => {
-                const acc = (accounts || []).find(a =>
-                    a.name?.toLowerCase().includes(namePattern.toLowerCase()) ||
-                    a.code?.toLowerCase().includes(namePattern.toLowerCase())
-                );
-                return Number(acc?.balance || acc?.amount || 0);
-            };
-
-            // Operating Activities (Indirect Method)
-            const arEnd = findBalance(bsEnd.assets, 'receivable');
-            const arStart = findBalance(bsStart.assets, 'receivable');
-            const changeInAR = arEnd - arStart;
-
-            const invEnd = findBalance(bsEnd.assets, 'inventory');
-            const invStart = findBalance(bsStart.assets, 'inventory');
-            const changeInInventory = invEnd - invStart;
-
-            const apEnd = findBalance(bsEnd.liabilities, 'payable');
-            const apStart = findBalance(bsStart.liabilities, 'payable');
-            const changeInAP = apEnd - apStart;
-
-            const taxEnd = findBalance(bsEnd.liabilities, 'tax');
-            const taxStart = findBalance(bsStart.liabilities, 'tax');
-            const changeInTax = taxEnd - taxStart;
-
-            const operatingItems = [
-                { label: 'Net Income', amount: netIncome },
-                { label: 'Change in Accounts Receivable', amount: -changeInAR },
-                { label: 'Change in Inventory', amount: -changeInInventory },
-                { label: 'Change in Accounts Payable', amount: changeInAP },
-                { label: 'Change in Tax Liabilities', amount: changeInTax },
-            ];
-            const operatingTotal = operatingItems.reduce((s, i) => s + i.amount, 0);
-
-            // Investing Activities (simplified” fixed assets changes)
-            const faEnd = findBalance(bsEnd.assets, 'fixed') + findBalance(bsEnd.assets, 'equipment') + findBalance(bsEnd.assets, 'property');
-            const faStart = findBalance(bsStart.assets, 'fixed') + findBalance(bsStart.assets, 'equipment') + findBalance(bsStart.assets, 'property');
-            const investingItems = [
-                { label: 'Purchase of Fixed Assets', amount: -(faEnd - faStart) },
-            ];
-            const investingTotal = investingItems.reduce((s, i) => s + i.amount, 0);
-
-            // Financing Activities (equity + long-term debt changes)
-            const equityEnd = Number(bsEnd.totalEquity || 0) - netIncome; // Remove net income already captured
-            const equityStart = Number(bsStart.totalEquity || 0);
-            const financingItems = [
-                { label: 'Change in Equity / Capital', amount: equityEnd - equityStart },
-            ];
-            const financingTotal = financingItems.reduce((s, i) => s + i.amount, 0);
-
-            const netChange = operatingTotal + investingTotal + financingTotal;
-            const cashEnd = findBalance(bsEnd.assets, 'cash') + findBalance(bsEnd.assets, 'bank');
-            const cashStart = findBalance(bsStart.assets, 'cash') + findBalance(bsStart.assets, 'bank');
-
+            const s = res.statement;
             setCfData({
-                operatingItems, operatingTotal,
-                investingItems, investingTotal,
-                financingItems, financingTotal,
-                netChange,
-                cashStart,
-                cashEnd,
+                netIncome: s.netIncome,
+                arChange: s.adjustments?.accountsReceivable || 0,
+                inventoryChange: s.adjustments?.inventory || 0,
+                apChange: s.adjustments?.accountsPayable || 0,
+                taxChange: s.adjustments?.taxPayable || 0,
+                operatingCashFlow: s.operatingCashFlow,
+                investingFinancingNet: s.investingFinancingNet,
+                netChangeInCash: s.netChangeInCash,
+                cashStart: s.openingCash,
+                cashEnd: s.closingCash,
             });
         } catch { toast.error('Error loading Cash Flow'); }
         finally { setLoading(false); }
@@ -176,6 +114,126 @@ export default function FinancialReports({ businessId }) {
     }, [businessId, activeTab]);
 
     const handlePrint = () => window.print();
+
+    const handleDownloadPdf = async () => {
+        try {
+            const baseMeta = {
+                businessName: business?.business_name || 'Business',
+                currency: reportCurrency,
+                generatedAt: new Date().toISOString(),
+            };
+            if (activeTab === 'pl' && plData) {
+                generateSectionedFinancePDF(
+                    {
+                        ...baseMeta,
+                        title: 'Profit & Loss Statement',
+                        periodLabel: `${startDate} to ${endDate}`,
+                    },
+                    [
+                        {
+                            heading: 'Income',
+                            rows: (plData.income || []).map((a) => ({ label: a.name, amount: a.amount })),
+                            totalLabel: 'Total Income',
+                            totalAmount: plData.totalIncome,
+                        },
+                        {
+                            heading: 'Cost of Goods Sold',
+                            rows: (plData.cogs || []).map((a) => ({ label: a.name, amount: a.amount })),
+                            totalLabel: 'Total COGS',
+                            totalAmount: plData.totalCOGS,
+                        },
+                        {
+                            heading: 'Gross Profit',
+                            rows: [
+                                {
+                                    label: `Gross Margin ${Number(plData.grossMargin || 0).toFixed(1)}%`,
+                                    amount: plData.grossProfit,
+                                },
+                            ],
+                            totalLabel: 'Gross Profit',
+                            totalAmount: plData.grossProfit,
+                        },
+                        {
+                            heading: 'Operating Expenses',
+                            rows: (plData.otherExpenses || []).map((a) => ({ label: a.name, amount: a.amount })),
+                            totalLabel: 'Total Operating Expenses',
+                            totalAmount: Number(plData.totalExpense || 0) - Number(plData.totalCOGS || 0),
+                        },
+                        {
+                            heading: 'Net Income',
+                            rows: [],
+                            totalLabel: 'Net Income',
+                            totalAmount: plData.netIncome,
+                        },
+                    ],
+                    { filename: `Profit-Loss-${startDate}-${endDate}.pdf` }
+                );
+            } else if (activeTab === 'bs' && bsData) {
+                generateSectionedFinancePDF(
+                    {
+                        ...baseMeta,
+                        title: 'Balance Sheet',
+                        periodLabel: `As of ${asOfDate}`,
+                        balanced: bsData.isBalanced,
+                    },
+                    [
+                        {
+                            heading: 'Assets',
+                            rows: (bsData.assets || []).map((a) => ({ label: a.name, amount: a.balance })),
+                            totalLabel: 'Total Assets',
+                            totalAmount: bsData.totalAssets,
+                        },
+                        {
+                            heading: 'Liabilities',
+                            rows: (bsData.liabilities || []).map((a) => ({ label: a.name, amount: a.balance })),
+                            totalLabel: 'Total Liabilities',
+                            totalAmount: bsData.totalLiabilities,
+                        },
+                        {
+                            heading: 'Equity',
+                            rows: [
+                                ...(bsData.equity || []).map((a) => ({ label: a.name, amount: a.balance })),
+                                { label: 'Retained Earnings', amount: bsData.retainedEarnings },
+                            ],
+                            totalLabel: 'Total Equity',
+                            totalAmount: bsData.totalEquity,
+                        },
+                    ],
+                    { filename: `Balance-Sheet-${asOfDate}.pdf` }
+                );
+            } else if (activeTab === 'cf' && cfData) {
+                generateFinanceStatementPDF(
+                    {
+                        ...baseMeta,
+                        title: 'Cash Flow Statement',
+                        periodLabel: `${cfStartDate} to ${cfEndDate}`,
+                    },
+                    [
+                        { key: 'label', label: 'Line' },
+                        { key: 'amount', label: 'Amount' },
+                    ],
+                    [
+                        { label: 'Net Income', amount: cfData.netIncome },
+                        { label: 'Change in AR', amount: cfData.arChange },
+                        { label: 'Change in Inventory', amount: cfData.inventoryChange },
+                        { label: 'Change in AP', amount: cfData.apChange },
+                        { label: 'Change in Tax Payable', amount: cfData.taxChange },
+                        { label: 'Operating Cash Flow', amount: cfData.operatingCashFlow },
+                        { label: 'Investing / Financing (net)', amount: cfData.investingFinancingNet },
+                        { label: 'Net Change in Cash', amount: cfData.netChangeInCash },
+                        { label: 'Opening Cash', amount: cfData.cashStart },
+                        { label: 'Closing Cash', amount: cfData.cashEnd },
+                    ],
+                    { filename: `Cash-Flow-${cfStartDate}-${cfEndDate}.pdf` }
+                );
+            } else {
+                toast.error('Load the report before downloading PDF');
+            }
+        } catch (err) {
+            console.error(err);
+            toast.error('PDF export failed');
+        }
+    };
 
     return (
         <Card className="border-none shadow-none bg-transparent">
@@ -234,10 +292,15 @@ export default function FinancialReports({ businessId }) {
                                 </>
                             ) : null}
                             {activeTab !== 'aging' && (
-                            <Button variant="outline" size="sm" onClick={handlePrint}>
+                            <>
+                            <Button variant="outline" size="sm" onClick={handleDownloadPdf}>
                                 <Download className="w-4 h-4 mr-2" />
-                                Export
+                                PDF
                             </Button>
+                            <Button variant="outline" size="sm" onClick={handlePrint}>
+                                Print
+                            </Button>
+                            </>
                             )}
                         </div>
                     </div>
@@ -454,61 +517,46 @@ export default function FinancialReports({ businessId }) {
                                     <div className="flex justify-center p-12"><Loader2 className="w-8 h-8 animate-spin text-gray-300" /></div>
                                 ) : cfData ? (
                                     <div className="max-w-3xl mx-auto space-y-8">
-                                        {/* Operating Activities */}
                                         <section>
                                             <SectionHeader title="Cash from Operating Activities" icon={Banknote} color="bg-green-500" />
                                             <div className="space-y-1">
-                                                {cfData.operatingItems.map((item, idx) => (
-                                                    <ReportRow currency={reportCurrency} key={idx} label={item.label} amount={item.amount} indent={idx > 0} />
-                                                ))}
-                                                <ReportRow currency={reportCurrency} label="Net Cash from Operations" amount={cfData.operatingTotal} type="total" />
+                                                <ReportRow currency={reportCurrency} label="Net Income" amount={cfData.netIncome} />
+                                                <ReportRow currency={reportCurrency} label="Change in Accounts Receivable" amount={cfData.arChange} indent />
+                                                <ReportRow currency={reportCurrency} label="Change in Inventory" amount={cfData.inventoryChange} indent />
+                                                <ReportRow currency={reportCurrency} label="Change in Accounts Payable" amount={cfData.apChange} indent />
+                                                <ReportRow currency={reportCurrency} label="Change in Tax Payable" amount={cfData.taxChange} indent />
+                                                <ReportRow currency={reportCurrency} label="Net Cash from Operations" amount={cfData.operatingCashFlow} type="total" />
                                             </div>
                                         </section>
 
-                                        {/* Investing Activities */}
                                         <section>
-                                            <SectionHeader title="Cash from Investing Activities" icon={ArrowDownLeft} color="bg-blue-500" />
+                                            <SectionHeader title="Investing and Financing (net)" icon={ArrowUpRight} color="bg-wine-500" />
                                             <div className="space-y-1">
-                                                {cfData.investingItems.map((item, idx) => (
-                                                    <ReportRow currency={reportCurrency} key={idx} label={item.label} amount={item.amount} />
-                                                ))}
-                                                <ReportRow currency={reportCurrency} label="Net Cash from Investing" amount={cfData.investingTotal} type="total" />
+                                                <ReportRow currency={reportCurrency} label="Residual to match cash movement" amount={cfData.investingFinancingNet} />
                                             </div>
                                         </section>
 
-                                        {/* Financing Activities */}
-                                        <section>
-                                            <SectionHeader title="Cash from Financing Activities" icon={ArrowUpRight} color="bg-wine-500" />
-                                            <div className="space-y-1">
-                                                {cfData.financingItems.map((item, idx) => (
-                                                    <ReportRow currency={reportCurrency} key={idx} label={item.label} amount={item.amount} />
-                                                ))}
-                                                <ReportRow currency={reportCurrency} label="Net Cash from Financing" amount={cfData.financingTotal} type="total" />
-                                            </div>
-                                        </section>
-
-                                        {/* Net Change */}
                                         <section className={`p-6 rounded-xl border mt-8 space-y-4 ${
-                                            cfData.netChange >= 0 
-                                                ? 'bg-emerald-50/50 border-emerald-100 dark:bg-emerald-950/20 dark:border-emerald-900/30' 
+                                            cfData.netChangeInCash >= 0
+                                                ? 'bg-emerald-50/50 border-emerald-100 dark:bg-emerald-950/20 dark:border-emerald-900/30'
                                                 : 'bg-red-50/50 border-red-100 dark:bg-red-950/20 dark:border-red-900/30'
                                         }`}>
                                             <div className="flex items-center justify-between">
                                                 <div>
-                                                    <h3 className={`text-lg font-bold ${cfData.netChange >= 0 ? 'text-emerald-900 dark:text-emerald-300' : 'text-red-900 dark:text-red-300'}`}>Net Change in Cash</h3>
-                                                    <p className={`${cfData.netChange >= 0 ? 'text-emerald-700/80 dark:text-emerald-400/80' : 'text-red-700/80 dark:text-red-400/80'} text-xs mt-0.5`}>Operating + Investing + Financing</p>
+                                                    <h3 className={`text-lg font-semibold ${cfData.netChangeInCash >= 0 ? 'text-emerald-900 dark:text-emerald-300' : 'text-red-900 dark:text-red-300'}`}>Net Change in Cash</h3>
+                                                    <p className={`${cfData.netChangeInCash >= 0 ? 'text-emerald-700/80 dark:text-emerald-400/80' : 'text-red-700/80 dark:text-red-400/80'} text-xs mt-0.5`}>From GL cash and bank accounts</p>
                                                 </div>
-                                                <div className={`text-2xl font-bold ${cfData.netChange >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                                                    {formatCurrency(cfData.netChange, reportCurrency)}
+                                                <div className={`text-2xl font-semibold ${cfData.netChangeInCash >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                                                    {formatCurrency(cfData.netChangeInCash, reportCurrency)}
                                                 </div>
                                             </div>
-                                            <div className={`border-t pt-3 flex justify-between text-sm ${cfData.netChange >= 0 ? 'border-emerald-100/50 dark:border-emerald-900/30' : 'border-red-100/50 dark:border-red-900/30'}`}>
-                                                <span className={cfData.netChange >= 0 ? 'text-emerald-700/80 dark:text-emerald-400/80' : 'text-red-700/80 dark:text-red-400/80'}>Beginning Cash Balance</span>
-                                                <span className={`font-mono ${cfData.netChange >= 0 ? 'text-emerald-900/90 dark:text-emerald-300/90' : 'text-red-900/90 dark:text-red-300/90'}`}>{formatCurrency(cfData.cashStart, reportCurrency)}</span>
+                                            <div className={`border-t pt-3 flex justify-between text-sm ${cfData.netChangeInCash >= 0 ? 'border-emerald-100/50 dark:border-emerald-900/30' : 'border-red-100/50 dark:border-red-900/30'}`}>
+                                                <span className={cfData.netChangeInCash >= 0 ? 'text-emerald-700/80 dark:text-emerald-400/80' : 'text-red-700/80 dark:text-red-400/80'}>Beginning Cash Balance</span>
+                                                <span className={`font-mono ${cfData.netChangeInCash >= 0 ? 'text-emerald-900/90 dark:text-emerald-300/90' : 'text-red-900/90 dark:text-red-300/90'}`}>{formatCurrency(cfData.cashStart, reportCurrency)}</span>
                                             </div>
                                             <div className="flex justify-between text-sm">
-                                                <span className={cfData.netChange >= 0 ? 'text-emerald-700/80 dark:text-emerald-400/80' : 'text-red-700/80 dark:text-red-400/80'}>Ending Cash Balance</span>
-                                                <span className={`font-mono font-bold ${cfData.netChange >= 0 ? 'text-emerald-950 dark:text-emerald-200' : 'text-red-950 dark:text-red-200'}`}>{formatCurrency(cfData.cashEnd, reportCurrency)}</span>
+                                                <span className={cfData.netChangeInCash >= 0 ? 'text-emerald-700/80 dark:text-emerald-400/80' : 'text-red-700/80 dark:text-red-400/80'}>Ending Cash Balance</span>
+                                                <span className={`font-mono font-semibold ${cfData.netChangeInCash >= 0 ? 'text-emerald-950 dark:text-emerald-200' : 'text-red-950 dark:text-red-200'}`}>{formatCurrency(cfData.cashEnd, reportCurrency)}</span>
                                             </div>
                                         </section>
                                     </div>

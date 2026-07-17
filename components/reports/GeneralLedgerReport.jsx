@@ -12,6 +12,7 @@ import { formatCurrency } from '@/lib/currency';
 import { format } from 'date-fns';
 import { BookOpen, Filter, Download } from 'lucide-react';
 import { useBusiness } from '@/lib/context/BusinessContext';
+import { generateFinanceStatementPDF } from '@/lib/pdf/financeStatementPdf';
 
 import Link from 'next/link';
 
@@ -22,7 +23,7 @@ import Link from 'next/link';
  * @param {string} props.businessId - Business UUID
  */
 export function GeneralLedgerReport({ businessId }) {
-    const { currency: businessCurrency } = useBusiness();
+    const { business, currency: businessCurrency } = useBusiness();
     const displayCurrency = businessCurrency || 'PKR';
     const [accounts, setAccounts] = useState([]);
 
@@ -57,7 +58,8 @@ export function GeneralLedgerReport({ businessId }) {
             const result = await getGLEntriesAction(businessId, {
                 startDate,
                 endDate,
-                accountId: selectedAccount
+                accountId: selectedAccount,
+                limit: 10000,
             });
 
             if (!result.success) throw new Error(result.error);
@@ -111,6 +113,19 @@ export function GeneralLedgerReport({ businessId }) {
             ? ['date', 'account_code', 'account_name', 'description', 'reference_type', 'reference_id', 'debit', 'credit', 'running_balance']
             : ['date', 'account_code', 'account_name', 'description', 'reference_type', 'reference_id', 'debit', 'credit'];
         const lines = [headers.join(',')];
+        if (isSingleAccount) {
+            lines.push([
+                startDate,
+                '',
+                '',
+                'Opening Balance',
+                '',
+                '',
+                '',
+                '',
+                Math.round(Number(openingBalance || 0) * 100) / 100,
+            ].map(escapeCsvCell).join(','));
+        }
         for (const entry of entriesWithBalance) {
             const row = [
                 format(new Date(entry.transaction_date), 'yyyy-MM-dd'),
@@ -133,7 +148,7 @@ export function GeneralLedgerReport({ businessId }) {
         a.download = `general-ledger_${accLabel}_${startDate}_to_${endDate}.csv`;
         a.click();
         URL.revokeObjectURL(url);
-    }, [entriesWithBalance, isSingleAccount, startDate, endDate, selectedAccount]);
+    }, [entriesWithBalance, isSingleAccount, openingBalance, startDate, endDate, selectedAccount]);
 
     const getReferenceLink = (type, id) => {
         if (!type || !id) return null;
@@ -145,8 +160,53 @@ export function GeneralLedgerReport({ businessId }) {
         }
     };
 
+    const handleExportPdf = useCallback(() => {
+        const pdfRows = [];
+        if (isSingleAccount) {
+            pdfRows.push({
+                transaction_date: startDate,
+                account_code: '',
+                account_name: '',
+                description: 'Opening Balance',
+                debit: '',
+                credit: '',
+                running_balance: Math.round(Number(openingBalance || 0) * 100) / 100,
+            });
+        }
+        for (const entry of entriesWithBalance) {
+            pdfRows.push({
+                transaction_date: entry.transaction_date ? format(new Date(entry.transaction_date), 'yyyy-MM-dd') : '',
+                account_code: entry.account?.code || '',
+                account_name: entry.account?.name || '',
+                description: entry.description || '',
+                debit: Number(entry.debit || 0),
+                credit: Number(entry.credit || 0),
+                running_balance: entry.runningBalance,
+            });
+        }
+        generateFinanceStatementPDF(
+            {
+                businessName: business?.business_name || 'Business',
+                title: 'General Ledger',
+                periodLabel: `${startDate} to ${endDate}`,
+                currency: displayCurrency,
+            },
+            [
+                { key: 'transaction_date', label: 'Date' },
+                { key: 'account_code', label: 'Code' },
+                { key: 'account_name', label: 'Account' },
+                { key: 'description', label: 'Description' },
+                { key: 'debit', label: 'Debit' },
+                { key: 'credit', label: 'Credit' },
+                ...(isSingleAccount ? [{ key: 'running_balance', label: 'Balance' }] : []),
+            ],
+            pdfRows,
+            { filename: `General-Ledger-${startDate}-${endDate}.pdf` }
+        );
+    }, [business?.business_name, displayCurrency, endDate, entriesWithBalance, isSingleAccount, openingBalance, startDate]);
+
     return (
-        <Card className="w-full min-w-0 overflow-x-hidden border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-950 shadow-sm">
+        <Card className="w-full min-w-0 overflow-x-hidden border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-950 shadow-sm print:shadow-none">
             <CardHeader className="bg-gray-50/50 dark:bg-slate-900/20 border-b border-gray-100 dark:border-slate-850 pb-4">
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                     <div className="min-w-0">
@@ -155,13 +215,31 @@ export function GeneralLedgerReport({ businessId }) {
                             General Ledger
                         </CardTitle>
                         <CardDescription className="text-gray-500 dark:text-gray-400">Double-entry accounting records with full audit trail</CardDescription>
+                        <div className="mt-3 hidden text-sm text-gray-700 print:block">
+                            <p className="font-semibold">{business?.business_name || 'Business'}</p>
+                            <p>{startDate} to {endDate}</p>
+                        </div>
                     </div>
+                    <div className="flex flex-wrap gap-2 print:hidden">
                     <Button type="button" variant="outline" className="w-full gap-2 sm:w-auto" onClick={handleExportCsv} disabled={entries.length === 0}>
-                        <Download className="h-4 w-4" /> Export CSV
+                        <Download className="h-4 w-4" /> CSV
                     </Button>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full gap-2 sm:w-auto"
+                        disabled={entries.length === 0}
+                        onClick={handleExportPdf}
+                    >
+                        <Download className="h-4 w-4" /> PDF
+                    </Button>
+                    <Button type="button" variant="outline" className="w-full gap-2 sm:w-auto" onClick={() => window.print()}>
+                        Print
+                    </Button>
+                    </div>
                 </div>
 
-                <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+                <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end print:hidden">
                     <div className="w-full sm:w-[200px]">
                         <Select value={selectedAccount} onValueChange={setSelectedAccount}>
                             <SelectTrigger className="bg-white dark:bg-slate-900 border-gray-250 dark:border-slate-800 text-gray-900 dark:text-gray-100">

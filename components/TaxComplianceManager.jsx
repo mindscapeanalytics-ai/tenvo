@@ -28,7 +28,7 @@ import toast from 'react-hot-toast';
 /**
  * Tax Compliance Manager, regional output/input tax summary, filings, calculator, settings.
  */
-export function TaxComplianceManager({ invoices = [], purchaseOrders = [], business = {} }) {
+export function TaxComplianceManager({ invoices = [], purchaseOrders = [], posTransactions = [], business = {} }) {
     const { regionalStandards, currency, regionalPack } = useBusiness();
     const standards = regionalStandards || { taxLabel: 'Tax', taxIdLabel: 'Tax ID', currency, countryCode: regionalPack?.countryIso || 'PK' };
     const regionalDefaultRate = standards.defaultTaxRate ?? regionalPack?.defaultTaxRate ?? 0;
@@ -96,9 +96,18 @@ export function TaxComplianceManager({ invoices = [], purchaseOrders = [], busin
         return () => { cancelled = true; };
     }, [business?.id]);
 
+    const periodPos = useMemo(
+        () => filterRecordsByPeriod(posTransactions || [], 'created_at', selectedPeriod),
+        [posTransactions, selectedPeriod]
+    );
+
     const taxMetrics = useMemo(() => {
-        const totalSales = periodInvoices.reduce((sum, inv) => sum + (Number(inv.subtotal ?? inv.grand_total) || 0), 0);
-        const outputTax = periodInvoices.reduce((sum, inv) => sum + (Number(inv.tax_total ?? inv.total_tax) || 0), 0);
+        const invoiceSales = periodInvoices.reduce((sum, inv) => sum + (Number(inv.subtotal ?? inv.grand_total) || 0), 0);
+        const invoiceTax = periodInvoices.reduce((sum, inv) => sum + (Number(inv.tax_total ?? inv.total_tax) || 0), 0);
+        const posSales = periodPos.reduce((sum, tx) => sum + (Number(tx.subtotal ?? tx.net_amount ?? tx.total_amount) || 0), 0);
+        const posTax = periodPos.reduce((sum, tx) => sum + (Number(tx.tax_amount ?? tx.total_tax) || 0), 0);
+        const totalSales = invoiceSales + posSales;
+        const outputTax = invoiceTax + posTax;
         const totalPurchases = periodPurchases.reduce((sum, po) => sum + (Number(po.subtotal ?? po.total_amount) || 0), 0);
         const inputTax = periodPurchases.reduce((sum, po) => sum + (Number(po.tax_total) || 0), 0);
 
@@ -115,9 +124,10 @@ export function TaxComplianceManager({ invoices = [], purchaseOrders = [], busin
             details: taxBreakdown.details,
             payable: Math.max(0, outputTax - inputTax),
             invoiceCount: periodInvoices.length,
+            posCount: periodPos.length,
             purchaseCount: periodPurchases.length,
         };
-    }, [periodInvoices, periodPurchases, strategy, standards, taxSettings.defaultRate]);
+    }, [periodInvoices, periodPurchases, periodPos, strategy, standards, taxSettings.defaultRate, regionalDefaultRate]);
 
     const periodReturns = useMemo(
         () => buildTaxPeriodSummaries(invoices, purchaseOrders.filter((po) => po.status === 'received' || !po.status)),
@@ -126,14 +136,27 @@ export function TaxComplianceManager({ invoices = [], purchaseOrders = [], busin
 
     const formatMoney = (value) => formatCurrency(value, currency);
 
-    const buildSalesExportRows = () => periodInvoices.map((inv) => ({
-        invoice_number: inv.invoice_number || '-',
-        date: formatDisplayDate(inv.date),
-        customer_name: inv.customer_name || inv.customer?.name || 'Walk-in',
-        subtotal: formatMoney(Number(inv.subtotal) || 0),
-        tax_total: formatMoney(Number(inv.tax_total) || 0),
-        grand_total: formatMoney(Number(inv.grand_total) || 0),
-    }));
+    const buildSalesExportRows = () => {
+        const invRows = periodInvoices.map((inv) => ({
+            invoice_number: inv.invoice_number || inv.number,
+            date: formatDisplayDate(inv.date),
+            customer_name: inv.customer_name || 'Walk-in',
+            subtotal: inv.subtotal,
+            tax_total: inv.tax_total ?? inv.total_tax,
+            grand_total: inv.grand_total ?? inv.total_amount,
+            channel: 'Invoice',
+        }));
+        const posRows = periodPos.map((tx) => ({
+            invoice_number: tx.transaction_number || tx.receipt_number || tx.id,
+            date: formatDisplayDate(tx.created_at || tx.transaction_date),
+            customer_name: tx.customer_name || 'POS',
+            subtotal: tx.subtotal ?? tx.net_amount,
+            tax_total: tx.tax_amount ?? tx.total_tax,
+            grand_total: tx.total_amount,
+            channel: 'POS',
+        }));
+        return [...invRows, ...posRows];
+    };
 
     const buildPurchaseExportRows = () => periodPurchases.map((po) => ({
         purchase_number: po.purchase_number || '-',
@@ -165,7 +188,11 @@ export function TaxComplianceManager({ invoices = [], purchaseOrders = [], busin
                     { label: 'Taxable', key: 'subtotal' },
                     { label: 'Input Tax', key: 'tax_total' },
                     { label: 'Total', key: 'total_amount' },
-                ]);
+                ], {
+                    businessName: business?.business_name || business?.name,
+                    periodLabel: periodMeta.label,
+                    currency,
+                });
                 doc.save(`${standards.taxLabel}_purchase_register_${stamp}.pdf`);
                 toast.success('Purchase register exported');
                 return;
@@ -190,14 +217,20 @@ export function TaxComplianceManager({ invoices = [], purchaseOrders = [], busin
                 { metric: 'Input Tax Credit', value: formatMoney(taxMetrics.inputTax) },
                 { metric: 'Net Payable', value: formatMoney(taxMetrics.payable) },
                 { metric: 'Invoices', value: String(taxMetrics.invoiceCount) },
+                { metric: 'POS sales', value: String(taxMetrics.posCount || 0) },
                 { metric: 'Purchase Bills', value: String(taxMetrics.purchaseCount) },
             ];
 
+            const pdfMeta = {
+                businessName: business?.business_name || business?.name,
+                periodLabel: periodMeta.label,
+                currency,
+            };
             const doc = type === 'Summary'
                 ? generateReportPDF(`${standards.taxLabel} Summary, ${periodMeta.label}`, summaryRows, [
                     { label: 'Metric', key: 'metric' },
                     { label: 'Value', key: 'value' },
-                ])
+                ], pdfMeta)
                 : generateReportPDF(`${standards.taxLabel} Sales Register, ${periodMeta.label}`, rows, [
                     { label: 'Invoice No', key: 'invoice_number' },
                     { label: 'Date', key: 'date' },
@@ -205,7 +238,7 @@ export function TaxComplianceManager({ invoices = [], purchaseOrders = [], busin
                     { label: 'Taxable', key: 'subtotal' },
                     { label: 'Output Tax', key: 'tax_total' },
                     { label: 'Total', key: 'grand_total' },
-                ]);
+                ], pdfMeta);
 
             doc.save(`${standards.taxLabel}_${type.toLowerCase()}_${stamp}.pdf`);
             toast.success(`${type} exported successfully`);
@@ -263,10 +296,11 @@ export function TaxComplianceManager({ invoices = [], purchaseOrders = [], busin
                 actions={[
                     { id: 'csv', label: 'CSV', icon: Download, onClick: () => handleTaxExport('Statement', 'csv') },
                     { id: 'pdf', label: 'Summary', icon: FileText, onClick: () => handleTaxExport('Summary') },
+                    { id: 'print', label: 'Print', icon: FileText, onClick: () => window.print() },
                 ]}
             />
 
-            <div className="lg:hidden">
+            <div className="lg:hidden print:hidden">
                 <div className="mb-2 flex items-center gap-2">
                     <select
                         value={selectedPeriod}
@@ -293,7 +327,7 @@ export function TaxComplianceManager({ invoices = [], purchaseOrders = [], busin
                 />
             </div>
 
-            <div className="hidden flex-col gap-4 md:flex-row md:items-center md:justify-between lg:flex">
+            <div className="hidden flex-col gap-4 md:flex-row md:items-center md:justify-between lg:flex print:hidden">
                 <div>
                     <h2 className="text-xl font-bold text-gray-900">{standards.taxLabel} & Compliance</h2>
                     <p className="text-gray-500 font-medium">Output tax, input credit, and filing summaries for {periodMeta.label}</p>
@@ -321,11 +355,14 @@ export function TaxComplianceManager({ invoices = [], purchaseOrders = [], busin
                         <ShieldCheck className="w-4 h-4 mr-2" />
                         {standards.taxLabel} Summary PDF
                     </Button>
+                    <Button variant="outline" onClick={() => window.print()} className="border-wine/20 text-wine hover:bg-wine/5 font-bold">
+                        Print
+                    </Button>
                 </div>
             </div>
 
             <Tabs defaultValue="overview" className="w-full">
-                <TabsList className={cn(MOBILE_TAB_LIST, 'rounded-xl bg-gray-100/50 lg:grid lg:grid-cols-4')}>
+                <TabsList className={cn(MOBILE_TAB_LIST, 'rounded-xl bg-gray-100/50 lg:grid lg:grid-cols-4 print:hidden')}>
                     <TabsTrigger value="overview" className="rounded-lg text-[11px] sm:text-sm">Summary</TabsTrigger>
                     <TabsTrigger value="returns" className="rounded-lg text-[11px] sm:text-sm">Filings</TabsTrigger>
                     <TabsTrigger value="calculator" className="rounded-lg text-[11px] sm:text-sm">Calculator</TabsTrigger>

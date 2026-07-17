@@ -15,7 +15,7 @@ import { useBusiness } from '@/lib/context/BusinessContext';
  * Checks three gates IN ORDER:
  *   1. Domain relevance  (optional `domainCheck` prop -- a boolean)
  *   2. RBAC / role        (permission key from NAV_PERMISSION_MAP or explicit)
- *   3. Subscription tier  (feature key from NAV_PERMISSION_MAP or explicit)
+ *   3. Subscription tier  (feature key / featuresAny from NAV_PERMISSION_MAP or explicit)
  *
  * Platform owner bypasses ALL gates automatically.
  *
@@ -50,7 +50,12 @@ export function TabGuard({
     // Derive from NAV_PERMISSION_MAP if not overridden
     const mapping = tabKey ? NAV_PERMISSION_MAP[tabKey] : null;
     const permission = permissionOverride || mapping?.permission;
-    const featureKey = featureOverride ?? mapping?.feature; // null = no plan gate
+    const featureKeys = featureOverride
+        ? [featureOverride]
+        : (Array.isArray(mapping?.featuresAny) && mapping.featuresAny.length > 0
+            ? mapping.featuresAny
+            : (mapping?.feature ? [mapping.feature] : []));
+    const featureKey = featureKeys[0] || null;
 
     // -- Gate 1: Domain Relevance --------------------------------------------
     if (domainCheck === false) {
@@ -77,8 +82,11 @@ export function TabGuard({
         );
     }
 
-    // -- Gate 3: Subscription Plan -------------------------------------------
-    if (featureKey && !planHasFeatureWithPackaging(planTier, featureKey, businessSettings, business?.platformFeatureOverrides)) {
+    // -- Gate 3: Subscription Plan (OR across featuresAny when present) ------
+    const planUnlocked = featureKeys.length === 0 || featureKeys.some((fk) =>
+        planHasFeatureWithPackaging(planTier, fk, businessSettings, business?.platformFeatureOverrides)
+    );
+    if (!planUnlocked) {
         const resolvedRequired =
             requiredPlanOverride || (featureKey ? FEATURE_MIN_PLAN[featureKey] : null) || 'starter';
         return (

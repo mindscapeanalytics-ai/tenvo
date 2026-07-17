@@ -33,25 +33,28 @@ import { toast } from 'react-hot-toast';
 import FinancialReports from '@/components/FinancialReports';
 import TrialBalanceView from '@/components/TrialBalanceView';
 import { GeneralLedgerReport } from '@/components/reports/GeneralLedgerReport';
+import DayBookReport from '@/components/finance/DayBookReport';
 import { MobileTabHeader } from '@/components/mobile/MobileTabHeader';
 import { FinanceMobileNav } from '@/components/finance/FinanceMobileNav';
 import { formatDisplayDate } from '@/lib/utils/formatDisplayDate';
+import { accountingAPI } from '@/lib/api/accounting';
 
 // --- Sub-Tab Definitions -----------------------------------------------------
 
 const FINANCE_TABS = [
-    { key: 'overview', label: 'Overview', icon: BarChart3, permission: 'finance.view_reports', feature: null },
-    { key: 'statements', label: 'Statements', icon: FileText, permission: 'finance.view_reports', feature: 'basic_reports' },
-    { key: 'general-ledger', label: 'General Ledger', icon: BookOpen, permission: 'finance.view_gl', feature: 'basic_accounting' },
-    { key: 'trial-balance', label: 'Trial Balance', icon: Scale, permission: 'finance.view_reports', feature: 'basic_reports' },
-    { key: 'accounts', label: 'Chart of Accounts', icon: BookOpen, permission: 'finance.view_gl', feature: 'basic_accounting' },
-    { key: 'journal', label: 'Journal Entries', icon: Landmark, permission: 'finance.view_gl', feature: 'basic_accounting' },
-    { key: 'reconciliation', label: 'Reconciliation', icon: BarChart3, permission: 'finance.view_gl', feature: 'basic_accounting' },
-    { key: 'expenses', label: 'Expenses', icon: Receipt, permission: 'finance.manage_expenses', feature: 'expense_tracking' },
-    { key: 'vouchers', label: 'Vouchers', icon: CreditCard, permission: 'finance.manage_payments', feature: 'basic_accounting' },
-    { key: 'credit-notes', label: 'Credit Notes', icon: RefreshCcw, permission: 'finance.credit_notes', feature: 'credit_notes' },
-    { key: 'fiscal', label: 'Fiscal Periods', icon: Calendar, permission: 'finance.close_period', feature: 'fiscal_periods' },
-    { key: 'exchange', label: 'Exchange Rates', icon: Globe, permission: 'finance.exchange_rates', feature: 'exchange_rates' },
+    { key: 'overview', label: 'Overview', icon: BarChart3, permission: 'finance.view_reports', feature: null, group: 'Insights' },
+    { key: 'statements', label: 'Statements', icon: FileText, permission: 'finance.view_reports', feature: 'basic_reports', group: 'Statements' },
+    { key: 'trial-balance', label: 'Trial Balance', icon: Scale, permission: 'finance.view_reports', feature: 'basic_reports', group: 'Statements' },
+    { key: 'day-book', label: 'Day Book', icon: Calendar, permission: 'finance.view_reports', feature: 'basic_reports', group: 'Statements' },
+    { key: 'general-ledger', label: 'General Ledger', icon: BookOpen, permission: 'finance.view_gl', feature: 'basic_accounting', group: 'Statements' },
+    { key: 'accounts', label: 'Chart of Accounts', icon: BookOpen, permission: 'finance.view_gl', feature: 'basic_accounting', group: 'Books' },
+    { key: 'journal', label: 'Journal Entries', icon: Landmark, permission: 'finance.view_gl', feature: 'basic_accounting', group: 'Books' },
+    { key: 'reconciliation', label: 'Reconciliation', icon: BarChart3, permission: 'finance.view_gl', feature: 'basic_accounting', group: 'Books' },
+    { key: 'expenses', label: 'Expenses', icon: Receipt, permission: 'finance.manage_expenses', feature: 'expense_tracking', group: 'Cash' },
+    { key: 'vouchers', label: 'Vouchers', icon: CreditCard, permission: 'finance.manage_payments', feature: 'basic_accounting', group: 'Cash' },
+    { key: 'credit-notes', label: 'Credit Notes', icon: RefreshCcw, permission: 'finance.credit_notes', feature: 'credit_notes', group: 'Cash' },
+    { key: 'fiscal', label: 'Fiscal Periods', icon: Calendar, permission: 'finance.close_period', feature: 'fiscal_periods', group: 'Close' },
+    { key: 'exchange', label: 'Exchange Rates', icon: Globe, permission: 'finance.exchange_rates', feature: 'exchange_rates', group: 'Close' },
 ];
 
 // --- KPI Card ----------------------------------------------------------------
@@ -160,10 +163,10 @@ function CreditNotesPanel({ businessId, creditNotes, currency, onRefresh }) {
                 setItems([]);
                 onRefresh?.();
             } else {
-                alert(res.error || 'Failed to create credit note');
+                toast.error(res.error || 'Failed to create credit note');
             }
         } catch (err) {
-            alert(err.message || 'Error creating credit note');
+            toast.error(err.message || 'Error creating credit note');
         } finally { setSubmitting(false); }
     };
 
@@ -451,7 +454,17 @@ function ExchangeRatesPanel({ businessId, rates, baseCurrencyCode, onRefresh }) 
 
 // --- Finance Overview Panel --------------------------------------------------
 
-function FinanceOverview({ accounts, expenses, creditNotes, currency, loading }) {
+function FinanceOverview({
+    accounts,
+    expenses,
+    creditNotes,
+    currency,
+    loading,
+    coverage,
+    reconciling,
+    onNavigate,
+    onReconcileStorefront,
+}) {
     const totalExpenses = useMemo(() =>
         expenses.reduce((sum, e) => sum + Number(e.amount || 0), 0), [expenses]
     );
@@ -467,8 +480,14 @@ function FinanceOverview({ accounts, expenses, creditNotes, currency, loading })
             .reduce((sum, e) => sum + Number(e.amount || 0), 0);
     }, [expenses]);
 
+    const pendingSf = coverage?.storefrontPending || 0;
+    const pendingRest = coverage?.restaurantMissingGl || 0;
+
     return (
         <div className="space-y-4">
+            <p className="text-xs text-gray-500">
+                Statements and Trial Balance read your books (GL). Sales dashboard KPIs may also include operational channels.
+            </p>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                 <KPICard label="GL Accounts" value={activeAccounts} icon={BookOpen} color="indigo" loading={loading} />
                 <KPICard label="Total Expenses" value={`${currency} ${totalExpenses.toLocaleString()}`} icon={Receipt} color="red" loading={loading} />
@@ -476,29 +495,56 @@ function FinanceOverview({ accounts, expenses, creditNotes, currency, loading })
                 <KPICard label="Credit Notes" value={`${currency} ${totalCreditNotes.toLocaleString()}`} icon={RefreshCcw} color="blue" loading={loading} />
             </div>
 
-            {/* Quick summary cards */}
+            {(pendingSf > 0 || pendingRest > 0) && (
+                <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <p className="text-sm font-semibold text-amber-900">Books coverage gap</p>
+                        <p className="text-xs text-amber-800 mt-0.5">
+                            {pendingSf > 0 && `${pendingSf} paid storefront order${pendingSf === 1 ? '' : 's'} not in GL. `}
+                            {pendingRest > 0 && `${pendingRest} paid restaurant order${pendingRest === 1 ? '' : 's'} missing GL.`}
+                        </p>
+                    </div>
+                    {pendingSf > 0 && (
+                        <Button
+                            size="sm"
+                            className="bg-amber-700 hover:bg-amber-800 text-white"
+                            disabled={reconciling}
+                            onClick={onReconcileStorefront}
+                        >
+                            {reconciling ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
+                            Post storefront to books
+                        </Button>
+                    )}
+                </div>
+            )}
+
+            <div className="flex flex-wrap gap-2">
+                <Button variant="outline" size="sm" onClick={() => onNavigate?.('statements')}>Run P&amp;L</Button>
+                <Button variant="outline" size="sm" onClick={() => onNavigate?.('trial-balance')}>Trial Balance</Button>
+                <Button variant="outline" size="sm" onClick={() => onNavigate?.('day-book')}>Day Book</Button>
+                <Button variant="outline" size="sm" onClick={() => onNavigate?.('reconciliation')}>Reconcile bank</Button>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {/* Recent Expenses */}
                 <div className="bg-white rounded-xl border border-gray-100 p-4">
-                    <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Recent Expenses</h4>
+                    <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Recent Expenses</h4>
                     {expenses.slice(0, 5).map(e => (
                         <div key={e.id} className="flex items-center justify-between py-1.5 text-sm">
                             <span className="text-gray-600 truncate flex-1">{e.category || 'Uncategorized'}</span>
-                            <span className="text-gray-800 font-bold shrink-0">{currency} {Number(e.amount).toLocaleString()}</span>
+                            <span className="text-gray-800 font-semibold shrink-0">{currency} {Number(e.amount).toLocaleString()}</span>
                         </div>
                     ))}
                     {expenses.length === 0 && <p className="text-xs text-gray-400 text-center py-4">No expenses recorded</p>}
                 </div>
 
-                {/* Account Types Summary */}
                 <div className="bg-white rounded-xl border border-gray-100 p-4">
-                    <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Account Categories</h4>
+                    <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Account Categories</h4>
                     {['asset', 'liability', 'equity', 'income', 'expense'].map(type => {
                         const count = accounts.filter(a => a.type === type && a.is_active !== false).length;
                         return (
                             <div key={type} className="flex items-center justify-between py-1.5 text-sm">
                                 <span className="text-gray-600 capitalize">{type}s</span>
-                                <span className="text-gray-800 font-bold">{count} accounts</span>
+                                <span className="text-gray-800 font-semibold">{count} accounts</span>
                             </div>
                         );
                     })}
@@ -530,6 +576,8 @@ export default function FinanceHub({ businessId, initialTab, businessCategory = 
     const [showVoucherForm, setShowVoucherForm] = useState(false);
     const [voucherType, setVoucherType] = useState('receipt');
     const [showJournalForm, setShowJournalForm] = useState(false);
+    const [coverage, setCoverage] = useState(null);
+    const [reconciling, setReconciling] = useState(false);
 
     const effectiveCurrency = currencySymbol || 'Rs.';
     const effectiveBusinessId = businessId || business?.id;
@@ -539,13 +587,14 @@ export default function FinanceHub({ businessId, initialTab, businessCategory = 
         if (!effectiveBusinessId) return;
         setLoading(true);
         try {
-            const [accRes, expRes, cnRes, fpRes, exRes, payRes] = await Promise.allSettled([
+            const [accRes, expRes, cnRes, fpRes, exRes, payRes, covRes] = await Promise.allSettled([
                 getGLAccountsAction(effectiveBusinessId),
                 getExpensesAction(effectiveBusinessId, { limit: 50 }),
                 getCreditNotesAction(effectiveBusinessId),
                 getFiscalPeriodsAction(effectiveBusinessId),
                 getExchangeRatesAction(effectiveBusinessId, currency || 'PKR'),
-                paymentAPI.getRegister(effectiveBusinessId, { limit: 50 })
+                paymentAPI.getRegister(effectiveBusinessId, { limit: 50 }),
+                accountingAPI.getGlCoverage(effectiveBusinessId),
             ]);
 
             if (accRes.status === 'fulfilled' && accRes.value.success) setAccounts(accRes.value.accounts || []);
@@ -554,6 +603,7 @@ export default function FinanceHub({ businessId, initialTab, businessCategory = 
             if (fpRes.status === 'fulfilled' && fpRes.value.success) setPeriods(fpRes.value.periods || []);
             if (exRes.status === 'fulfilled' && exRes.value.success) setRates(exRes.value.rates || []);
             if (payRes.status === 'fulfilled' && payRes.value.success) setPayments(payRes.value.payments || []);
+            if (covRes.status === 'fulfilled' && covRes.value.success) setCoverage(covRes.value.coverage || null);
 
             // Also fetch basic entities for forms
             const [custRes, vendRes] = await Promise.all([
@@ -605,13 +655,42 @@ export default function FinanceHub({ businessId, initialTab, businessCategory = 
     const renderContent = () => {
         switch (activeTab) {
             case 'overview':
-                return <FinanceOverview accounts={accounts} expenses={expenses} creditNotes={creditNotes} currency={effectiveCurrency} loading={loading} />;
+                return (
+                    <FinanceOverview
+                        accounts={accounts}
+                        expenses={expenses}
+                        creditNotes={creditNotes}
+                        currency={effectiveCurrency}
+                        loading={loading}
+                        coverage={coverage}
+                        reconciling={reconciling}
+                        onNavigate={setActiveTab}
+                        onReconcileStorefront={async () => {
+                            setReconciling(true);
+                            try {
+                                const res = await accountingAPI.reconcilePendingStorefrontGl(effectiveBusinessId);
+                                if (res.success) {
+                                    toast.success(`Posted ${res.successful || 0} of ${res.total || 0} orders to books`);
+                                    loadData();
+                                } else {
+                                    toast.error(res.error || 'Reconcile failed');
+                                }
+                            } catch (e) {
+                                toast.error(e.message || 'Reconcile failed');
+                            } finally {
+                                setReconciling(false);
+                            }
+                        }}
+                    />
+                );
             case 'statements':
                 return (
                     <div className="rounded-xl border border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-950 p-4 shadow-sm">
                         <FinancialReports businessId={effectiveBusinessId} category={businessCategory} />
                     </div>
                 );
+            case 'day-book':
+                return <DayBookReport businessId={effectiveBusinessId} />;
             case 'general-ledger':
                 return (
                     <div className="rounded-xl border border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-950 p-4 shadow-sm">
@@ -659,9 +738,21 @@ export default function FinanceHub({ businessId, initialTab, businessCategory = 
                         </div>
                         
                         <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-                            <div className="p-4 border-b border-gray-50 flex items-center justify-between">
-                                <h4 className="text-sm font-bold text-gray-800">Recent Transactions</h4>
-                                <span className="text-xs text-gray-400 font-medium">All receipts & payments</span>
+                            <div className="p-4 border-b border-gray-50 flex items-center justify-between gap-2">
+                                <h4 className="text-sm font-semibold text-gray-800">Recent Transactions</h4>
+                                <button
+                                    type="button"
+                                    className="text-xs font-semibold text-brand-primary hover:underline"
+                                    onClick={() => {
+                                        if (typeof window !== 'undefined') {
+                                            const url = new URL(window.location.href);
+                                            url.searchParams.set('tab', 'payments');
+                                            window.location.href = url.toString();
+                                        }
+                                    }}
+                                >
+                                    Open full Payments
+                                </button>
                             </div>
                             <div className="divide-y divide-gray-50">
                                 {payments.length === 0 ? (

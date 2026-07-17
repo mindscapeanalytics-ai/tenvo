@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Loader2, RefreshCw, Download } from 'lucide-react';
 import { formatCurrency } from '@/lib/currency';
 import { generateReportPDF, exportToCSV } from '@/lib/pdf';
+import { useBusiness } from '@/lib/context/BusinessContext';
 import {
     getAccountsReceivableAgingAction,
     getAccountsPayableAgingAction,
@@ -127,6 +128,7 @@ function AgingTable({ rows, currency, type }) {
 
 /** AR/AP aging reports for Finance Hub → Statements. */
 export function AgingReportsPanel({ businessId, currency = 'PKR' }) {
+    const { business } = useBusiness();
     const [activeTab, setActiveTab] = useState('ar');
     const [loading, setLoading] = useState(false);
     const [arData, setArData] = useState(null);
@@ -166,20 +168,25 @@ export function AgingReportsPanel({ businessId, currency = 'PKR' }) {
         else fetchAp();
     }, [businessId, activeTab, fetchAr, fetchAp]);
 
-    const handleExport = (type) => {
+    const buildExportRows = (type) => {
         const isAr = type === 'ar';
         const rows = isAr ? arData?.invoices : apData?.purchases;
-        if (!rows?.length) {
-            toast.error('No data to export');
-            return;
-        }
-        const exportRows = rows.map((r) => ({
+        return (rows || []).map((r) => ({
             party: isAr ? r.customer_name : r.vendor_name,
             document: isAr ? r.invoice_number : r.purchase_number,
             date: r.date ? new Date(r.date).toLocaleDateString() : '',
             days_overdue: r.days_overdue ?? 0,
             balance: r.balance ?? 0,
         }));
+    };
+
+    const handleExportPdf = (type) => {
+        const exportRows = buildExportRows(type);
+        if (!exportRows.length) {
+            toast.error('No data to export');
+            return;
+        }
+        const isAr = type === 'ar';
         const title = isAr ? 'Accounts_Receivable_Aging' : 'Accounts_Payable_Aging';
         const doc = generateReportPDF(title.replace(/_/g, ' '), exportRows, [
             { label: 'Party', key: 'party' },
@@ -187,28 +194,47 @@ export function AgingReportsPanel({ businessId, currency = 'PKR' }) {
             { label: 'Date', key: 'date' },
             { label: 'Days', key: 'days_overdue' },
             { label: 'Balance', key: 'balance' },
-        ]);
+        ], {
+            businessName: business?.business_name || 'Business',
+            currency,
+        });
         doc.save(`${title}.pdf`);
+        toast.success('Aging PDF exported');
+    };
+
+    const handleExportCsv = (type) => {
+        const exportRows = buildExportRows(type);
+        if (!exportRows.length) {
+            toast.error('No data to export');
+            return;
+        }
+        const title = type === 'ar' ? 'Accounts_Receivable_Aging' : 'Accounts_Payable_Aging';
         exportToCSV(exportRows, title);
-        toast.success('Aging report exported');
+        toast.success('Aging CSV exported');
     };
 
     return (
-        <Card className="border shadow-sm bg-white">
+        <Card className="border shadow-sm bg-white print:shadow-none">
             <CardHeader className="pb-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div>
                         <CardTitle className="text-lg">A/R & A/P Aging</CardTitle>
                         <CardDescription>Outstanding customer invoices and vendor bills by age bucket</CardDescription>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 print:hidden">
                         <Button variant="outline" size="sm" onClick={() => (activeTab === 'ar' ? fetchAr() : fetchAp())} disabled={loading}>
                             <RefreshCw className={`w-4 h-4 mr-1 ${loading ? 'animate-spin' : ''}`} />
                             Refresh
                         </Button>
-                        <Button variant="outline" size="sm" onClick={() => handleExport(activeTab)}>
+                        <Button variant="outline" size="sm" onClick={() => handleExportPdf(activeTab)}>
                             <Download className="w-4 h-4 mr-1" />
-                            Export
+                            PDF
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => handleExportCsv(activeTab)}>
+                            CSV
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => window.print()}>
+                            Print
                         </Button>
                     </div>
                 </div>
