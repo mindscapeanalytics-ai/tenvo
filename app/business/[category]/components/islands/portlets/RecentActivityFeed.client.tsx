@@ -1,10 +1,11 @@
 ﻿'use client';
 
-import React, { useEffect, useState, memo } from 'react';
+import { useEffect, useState, memo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Clock, FileText, CreditCard, UserPlus, AlertTriangle, RefreshCw } from 'lucide-react';
 import { getUnifiedActivityFeedAction } from '@/lib/actions/basic/audit';
+import { useResolvedBusinessId } from '@/lib/hooks/useResolvedBusinessId';
 import { cn } from '@/lib/utils';
 
 const VISIBLE_ACTIVITY_ROWS = 5;
@@ -44,6 +45,7 @@ export const RecentActivityFeed = memo(function RecentActivityFeed({
     initialActivities,
     awaitBootstrap = false,
 }: RecentActivityFeedProps) {
+    const resolvedBusinessId = useResolvedBusinessId(businessId);
     const hasInitial = initialActivities !== undefined && initialActivities !== null;
     const [activities, setActivities] = useState<ActivityItem[]>(
         hasInitial ? initialActivities : []
@@ -63,12 +65,12 @@ export const RecentActivityFeed = memo(function RecentActivityFeed({
     }, [hasInitial, initialActivities]);
 
     useEffect(() => {
-        if (!businessId || hasInitial || awaitBootstrap) return;
+        if (!resolvedBusinessId || hasInitial || awaitBootstrap) return;
 
         let cancelled = false;
         const fetchActivity = async () => {
             try {
-                const res = await getUnifiedActivityFeedAction(businessId, feedLimit);
+                const res = await getUnifiedActivityFeedAction(resolvedBusinessId, feedLimit);
                 if (cancelled) return;
                 if (res.success) {
                     setActivities(res.data);
@@ -84,13 +86,13 @@ export const RecentActivityFeed = memo(function RecentActivityFeed({
         return () => {
             cancelled = true;
         };
-    }, [businessId, feedLimit, hasInitial, awaitBootstrap]);
+    }, [resolvedBusinessId, feedLimit, hasInitial, awaitBootstrap]);
 
     const refresh = async () => {
-        if (!businessId || refreshing) return;
+        if (!resolvedBusinessId || refreshing) return;
         setRefreshing(true);
         try {
-            const res = await getUnifiedActivityFeedAction(businessId, feedLimit);
+            const res = await getUnifiedActivityFeedAction(resolvedBusinessId, feedLimit);
             if (res.success) {
                 setActivities(res.data);
             }

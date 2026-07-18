@@ -35,6 +35,7 @@ import toast from 'react-hot-toast';
 import { EntityDetailsDialog } from '@/components/EntityDetailsDialog';
 import { getNavItemAccess } from '@/lib/rbac/permissions';
 import { isPosRelevant } from '@/lib/config/domains';
+import { useResolvedBusinessId } from '@/lib/hooks/useResolvedBusinessId';
 
 export function ActionModals({
     // Visibility States
@@ -103,6 +104,7 @@ export function ActionModals({
     // User
     user
 }) {
+    const activeBusinessId = useResolvedBusinessId(business?.id);
     const posRelevant = isPosRelevant(category, domainKnowledge);
 
     const canOpenTab = (tabKey) => {
@@ -264,7 +266,7 @@ export function ActionModals({
                 isOpen={showQuickInvoice}
                 onClose={() => setShowQuickInvoice(false)}
                 onSave={onSaveInvoice}
-                businessId={business?.id}
+                businessId={activeBusinessId}
                 category={category}
                 products={products}
                 customers={customers}
@@ -304,7 +306,7 @@ export function ActionModals({
                         <DialogTitle>Purchase Order Builder</DialogTitle>
                     </div>
                     <EnhancedPOBuilder
-                        businessId={business?.id}
+                        businessId={activeBusinessId}
                         category={category}
                         colors={colors}
                         onSuccess={() => {
@@ -329,7 +331,7 @@ export function ActionModals({
                     onRecordPayment={async (paymentData) => {
                         const { recordInvoicePaymentAction } = await import('@/lib/actions/standard/invoice-payments');
                         const result = await recordInvoicePaymentAction({
-                            businessId: business?.id,
+                            businessId: activeBusinessId,
                             invoiceId: selectedInvoiceForPayment.id,
                             amount: paymentData.amount,
                             paymentMethod: paymentData.paymentMethod,

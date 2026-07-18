@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { cn } from '@/lib/utils';
 import { getAnalyticsBundleAction } from '@/lib/actions/premium/ai/analytics';
 import { formatCurrency } from '@/lib/currency';
+import { useResolvedBusinessId } from '@/lib/hooks/useResolvedBusinessId';
 
 const REPORT_BUILDER_STORAGE_PREFIX = 'tenvo_report_builder_v1_';
 
@@ -335,6 +336,7 @@ function WidgetPreview({ widget, onRemove, liveSnapshot, currency }) {
 }
 
 export function ReportBuilder({ businessId, currency = 'PKR', dateRange: dashboardDateRange }) {
+    const resolvedBusinessId = useResolvedBusinessId(businessId);
     const [widgets, setWidgets] = useState([]);
     const [showAddWidget, setShowAddWidget] = useState(false);
     const idCounterRef = useRef(1);
@@ -346,22 +348,22 @@ export function ReportBuilder({ businessId, currency = 'PKR', dateRange: dashboa
 
     useEffect(() => {
         void Promise.resolve().then(() => {
-            if (businessId && typeof window !== 'undefined') {
-                setSavedLayouts(loadSavedReports(businessId));
+            if (resolvedBusinessId && typeof window !== 'undefined') {
+                setSavedLayouts(loadSavedReports(resolvedBusinessId));
             }
         });
-    }, [businessId]);
+    }, [resolvedBusinessId]);
 
     useEffect(() => {
         let cancelled = false;
         void (async () => {
-            if (!businessId) {
+            if (!resolvedBusinessId) {
                 if (!cancelled) setLiveSnapshot(null);
                 return;
             }
             try {
                 const filter = mergeReportWindowFilter(dashboardDateRange, reportWindow);
-                const bundle = await getAnalyticsBundleAction(businessId, filter);
+                const bundle = await getAnalyticsBundleAction(resolvedBusinessId, filter);
                 if (cancelled) return;
                 if (bundle.success && bundle.data) {
                     const months = bundle.data.salesTrend || [];
@@ -384,7 +386,7 @@ export function ReportBuilder({ businessId, currency = 'PKR', dateRange: dashboa
         return () => {
             cancelled = true;
         };
-    }, [businessId, dashboardDateRange, reportWindow]);
+    }, [resolvedBusinessId, dashboardDateRange, reportWindow]);
 
     const handleAddWidget = (type) => {
         const newWidget = {
@@ -417,7 +419,7 @@ export function ReportBuilder({ businessId, currency = 'PKR', dateRange: dashboa
     };
 
     const handleSaveLayout = () => {
-        if (!businessId || typeof window === 'undefined') return;
+        if (!resolvedBusinessId || typeof window === 'undefined') return;
         const trimmed = reportName.trim() || 'Untitled report';
         const entry = {
             id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `r-${Date.now()}`,
@@ -426,9 +428,9 @@ export function ReportBuilder({ businessId, currency = 'PKR', dateRange: dashboa
             reportWindow,
             updatedAt: new Date().toISOString(),
         };
-        const list = loadSavedReports(businessId);
+        const list = loadSavedReports(resolvedBusinessId);
         const next = [entry, ...list.filter((x) => x.name !== trimmed)].slice(0, 20);
-        persistSavedReports(businessId, next);
+        persistSavedReports(resolvedBusinessId, next);
         setSavedLayouts(next);
     };
 
@@ -449,7 +451,7 @@ export function ReportBuilder({ businessId, currency = 'PKR', dateRange: dashboa
             reportName,
             reportWindow,
             widgets,
-            businessId,
+            businessId: resolvedBusinessId,
             exportedAt: new Date().toISOString(),
         };
         const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
@@ -477,7 +479,7 @@ export function ReportBuilder({ businessId, currency = 'PKR', dateRange: dashboa
 
     return (
         <div className="min-w-0 space-y-6 overflow-x-hidden">
-            {businessId && liveSnapshot?.kpi && (
+            {resolvedBusinessId && liveSnapshot?.kpi && (
                 <Card className="border-emerald-100 bg-gradient-to-r from-emerald-50/80 to-white shadow-sm">
                     <CardHeader className="py-3 px-4">
                         <CardTitle className="text-xs font-semibold uppercase tracking-wider text-emerald-800">
@@ -517,7 +519,7 @@ export function ReportBuilder({ businessId, currency = 'PKR', dateRange: dashboa
                 </Card>
             )}
 
-            {businessId && (
+            {resolvedBusinessId && (
                 <div className="flex min-w-0 flex-wrap items-center gap-2 rounded-xl border border-gray-200 bg-muted/30 p-3">
                     <Button type="button" variant="outline" size="sm" className="h-9 flex-1 text-xs font-bold sm:flex-none" onClick={handleSaveLayout}>
                         Save layout

@@ -10,6 +10,7 @@ import {
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useBusiness } from '@/lib/context/BusinessContext';
+import { useResolvedBusinessId } from '@/lib/hooks/useResolvedBusinessId';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { getGLAccountsAction } from '@/lib/actions/basic/accounting';
 import { setExchangeRateAction } from '@/lib/actions/basic/exchangeRate';
@@ -593,7 +594,7 @@ export default function FinanceHub({ businessId, initialTab, businessCategory = 
     const [mobileMenuOpen, setMobileMenuOpen] = useState(true);
 
     const effectiveCurrency = currencySymbol || 'Rs.';
-    const effectiveBusinessId = businessId || business?.id;
+    const effectiveBusinessId = useResolvedBusinessId(businessId);
 
     const navigateFinance = useCallback((tabKey, report = null) => {
         const nav = resolveFinanceHubNavigation(tabKey);

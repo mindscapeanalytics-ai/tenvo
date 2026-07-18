@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { useBusiness } from '@/lib/context/BusinessContext';
 import { useAppMode } from '@/lib/context/BusyModeContext';
 import { useFilters } from '@/lib/context/FilterContext';
+import { useResolvedBusinessId } from '@/lib/hooks/useResolvedBusinessId';
 import { getDomainColors } from '@/lib/domainColors';
 import { isCampaignRelevant } from '@/lib/config/domains';
 import { getDomainKnowledge } from '@/lib/domainKnowledge';
@@ -226,7 +227,7 @@ export function DomainDashboard({
     };
     const { isEasyMode, modeReady } = useAppMode();
     const { datePresetKey } = useFilters();
-    const activeBusinessId = businessId || business?.id;
+    const activeBusinessId = useResolvedBusinessId(businessId);
     const advancedOpsSnapshot = useDomainOperationsSnapshot({
         businessId: activeBusinessId,
         category,

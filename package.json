@@ -63,6 +63,7 @@
     "verify:easy-dashboard": "node scripts/verify-easy-dashboard.mjs",
     "verify:hub-shell-bootstrap": "node scripts/verify-hub-shell-bootstrap.mjs",
     "verify:marketing-demo-heroes": "bun scripts/verify-marketing-demo-heroes.mjs",
+    "verify:hub-business-id": "bun scripts/verify-hub-business-id.mjs",
     "verify:finance-gl": "node scripts/verify-finance-gl.mjs",
     "verify:domain-operations": "node scripts/verify-domain-operations.mjs",
     "verify:storefront-operations-db": "node scripts/verify-storefront-operations-db.mjs",

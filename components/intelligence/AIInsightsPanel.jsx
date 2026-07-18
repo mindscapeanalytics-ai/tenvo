@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useBusiness } from '@/lib/context/BusinessContext';
+import { useResolvedBusinessId } from '@/lib/hooks/useResolvedBusinessId';
 import { getDomainKnowledgeForBusiness } from '@/lib/utils/businessRegionalContext';
 import { EMPTY_VALUE } from '@/lib/utils/copyTypography';
 import {
@@ -152,7 +153,7 @@ function MiniBarChart({ data, valueKey = 'revenue', labelKey = 'date' }) {
 
 export function AIInsightsPanel({ businessId, category = 'retail-shop', dateRange }) {
     const { business, currencySymbol } = useBusiness();
-    const effectiveBusinessId = businessId || business?.id;
+    const effectiveBusinessId = useResolvedBusinessId(businessId);
     const currency = currencySymbol || 'Rs.';
 
     const [salesTrend, setSalesTrend] = useState([]);
@@ -211,7 +212,7 @@ export function AIInsightsPanel({ businessId, category = 'retail-shop', dateRang
         void Promise.resolve().then(() => loadAll());
     }, [loadAll]);
 
-    if (loading) {
+    if (!effectiveBusinessId || loading) {
         return (
             <div className="text-center py-16 text-gray-400">
                 <Brain className="w-10 h-10 mx-auto mb-3 opacity-20 animate-pulse" />

@@ -5,6 +5,7 @@ import { Portlet } from '@/components/ui/portlet';
 import { Send, Sparkles, User, Bot, Loader2, Maximize2, Minimize2, Trash2 } from 'lucide-react';
 import { askBusinessAnalystAction } from '@/lib/actions/premium/ai/agentic';
 import { useBusiness } from '@/lib/context/BusinessContext';
+import { useResolvedBusinessId } from '@/lib/hooks/useResolvedBusinessId';
 import { formatBusinessAnalystReply } from '@/lib/utils/formatBusinessAnalystReply';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -19,7 +20,8 @@ export const AgenticAnalystChat = memo(function AgenticAnalystChat({ businessId:
     const { business } = useBusiness() as {
         business?: { id?: string; business_name?: string; category?: string } | null;
     };
-    const businessId = business?.id;
+    // Prop + context — do not unmount when prop/context briefly disagree during hydrate.
+    const businessId = useResolvedBusinessId(businessIdProp);
     const [messages, setMessages] = useState<Message[]>([
         { role: 'assistant', content: "Hello! I'm your Agentic AI Analyst. Ask me anything about your inventory, sales trends, or financial health.", timestamp: new Date() }
     ]);
@@ -34,7 +36,7 @@ export const AgenticAnalystChat = memo(function AgenticAnalystChat({ businessId:
         }
     }, [messages, loading]);
 
-    if (!businessId || (businessIdProp && businessIdProp !== businessId)) return null;
+    if (!businessId) return null;
 
     const handleSend = async () => {
         if (!input.trim() || loading) return;
