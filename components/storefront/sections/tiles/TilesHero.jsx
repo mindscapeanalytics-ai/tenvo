@@ -35,7 +35,7 @@ export function TilesHero({ preset, businessDomain, accent, accentDark, contactC
         <HeroCarousel
           slides={preset.slides || []}
           accent={accent}
-          variant="furniture"
+          variant="tiles"
           storeName={storeName}
           minHeight="min-h-[240px] sm:min-h-[320px] lg:min-h-[440px]"
           className="tiles-hero-carousel"

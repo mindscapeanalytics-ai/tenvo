@@ -718,26 +718,26 @@ export default async function StoreHomePage({ params }) {
         />
       ) : null}
 
-      {dealershipHero && dealershipCatalogResult.success && (
+      {dealershipHero && (
         <LazyVerticalHomeSections
           variant="dealership"
           businessDomain={businessDomain}
           businessCategory={business.category}
           business={business}
           settings={settings}
-          products={dealershipCatalogResult.products}
+          products={dealershipCatalogResult.success ? dealershipCatalogResult.products : []}
           currency={storeCurrency}
           accent={accent}
           base={heroPreset.base}
         />
       )}
 
-      {marketplaceHero && marketplaceCatalogResult.success && (
+      {marketplaceHero && (
         <LazyVerticalHomeSections
           variant="marketplace"
           businessDomain={businessDomain}
           businessCategory={business.category}
-          products={marketplaceCatalogResult.products}
+          products={marketplaceCatalogResult.success ? marketplaceCatalogResult.products : []}
           currency={storeCurrency}
           accent={accent}
           base={heroPreset.base}
@@ -745,7 +745,7 @@ export default async function StoreHomePage({ params }) {
         />
       )}
 
-      {autoPartsHero && autoPartsProducts.length > 0 && (
+      {autoPartsHero && (
         <LazyVerticalHomeSections
           variant="auto-parts"
           businessDomain={businessDomain}

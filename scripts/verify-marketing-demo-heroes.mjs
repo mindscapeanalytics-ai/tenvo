@@ -146,10 +146,12 @@ if (gallerySrc.includes('photo-1492144534655-ae79c964c9d7')) {
 
 const heroCount = getHeroDemoGalleryItems().length;
 const liveStat = MARKETING_HONEST_STATS.find((s) => String(s.label).toLowerCase().includes('live demo'));
-if (liveStat && String(liveStat.value) !== '17') {
-  fail(`MARKETING_HONEST_STATS live demos should stay 17 (got ${liveStat.value})`);
+if (liveStat && String(liveStat.value) !== String(heroCount)) {
+  fail(
+    `MARKETING_HONEST_STATS live demos (${liveStat.value}) must match hero carousel count (${heroCount})`
+  );
 } else {
-  ok(`honest live-demo stat is 17; hero carousel has ${heroCount} slides`);
+  ok(`honest live-demo stat is ${heroCount}; hero carousel has ${heroCount} slides`);
 }
 
 if (!CANONICAL_DEMO_HEROES['demo-showroom'] || !CANONICAL_DEMO_HEROES['demo-fmcg']) {

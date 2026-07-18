@@ -5,11 +5,11 @@ import Link from 'next/link';
 import { ChevronLeft, ChevronRight, ArrowRight } from 'lucide-react';
 import { SmartProductImage } from '@/components/storefront/SmartProductImage';
 import { cn } from '@/lib/utils';
-import { resolveAutomotiveTileImage } from '@/lib/storefront/storefrontImagePlaceholders';
+import { resolveHeroCarouselFallback } from '@/lib/storefront/storefrontImagePlaceholders';
 
 /**
  * Auto-advancing hero background carousel with manual controls.
- * @param {{ slides: Array<{ title: string; subtitle?: string; image: string; eyebrow?: string; ctaLabel?: string; ctaHref?: string }>; accent: string; className?: string; minHeight?: string; variant?: 'default' | 'luxury' | 'pharmacy' | 'parts' | 'furniture' | 'restaurant'; contentClassName?: string; storeName?: string }} props
+ * @param {{ slides: Array<{ title: string; subtitle?: string; image: string; eyebrow?: string; ctaLabel?: string; ctaHref?: string }>; accent: string; className?: string; minHeight?: string; variant?: 'default' | 'luxury' | 'pharmacy' | 'parts' | 'furniture' | 'restaurant' | 'tiles'; contentClassName?: string; storeName?: string }} props
  */
 export function HeroCarousel({ slides = [], accent, className, minHeight = 'min-h-[280px] sm:min-h-[360px] lg:min-h-[420px]', variant = 'default', contentClassName, storeName = '' }) {
   const [index, setIndex] = useState(0);
@@ -28,6 +28,7 @@ export function HeroCarousel({ slides = [], accent, className, minHeight = 'min-
   const isLuxury = variant === 'luxury';
   const isPharmacy = variant === 'pharmacy';
   const isFurniture = variant === 'furniture';
+  const isTiles = variant === 'tiles';
   const isRestaurant = variant === 'restaurant';
   const isParts = variant === 'parts';
   const slideAccent = slide?.accent || accent;
@@ -48,7 +49,7 @@ export function HeroCarousel({ slides = [], accent, className, minHeight = 'min-
             fill
             className="object-cover"
             priority={i === 0}
-            fallbackSrc={resolveAutomotiveTileImage(s.title || String(i))}
+            fallbackSrc={resolveHeroCarouselFallback(variant, s.title || String(i))}
           />
           <div
             className={cn(
@@ -57,7 +58,7 @@ export function HeroCarousel({ slides = [], accent, className, minHeight = 'min-
                 ? 'bg-gradient-to-t from-stone-950/95 via-stone-950/55 to-stone-900/25'
                 : isPharmacy
                   ? 'bg-gradient-to-r from-emerald-950/95 via-emerald-900/80 to-emerald-900/45'
-                  : isFurniture
+                  : isFurniture || isTiles
                     ? 'bg-gradient-to-r from-stone-950/95 via-amber-950/75 to-amber-900/40'
                     : isRestaurant
                       ? 'bg-gradient-to-r from-neutral-950/95 via-red-950/75 to-neutral-900/35'
@@ -69,7 +70,7 @@ export function HeroCarousel({ slides = [], accent, className, minHeight = 'min-
           <div
             className={cn(
               'absolute inset-0',
-              isLuxury ? 'bg-black/15' : isPharmacy ? 'bg-black/20' : isFurniture ? 'bg-black/18' : isRestaurant ? 'bg-black/20' : isParts ? 'bg-black/10' : 'bg-black/25'
+              isLuxury ? 'bg-black/15' : isPharmacy ? 'bg-black/20' : isFurniture || isTiles ? 'bg-black/18' : isRestaurant ? 'bg-black/20' : isParts ? 'bg-black/10' : 'bg-black/25'
             )}
           />
           {isParts ? (
@@ -97,13 +98,13 @@ export function HeroCarousel({ slides = [], accent, className, minHeight = 'min-
               className={cn(
                 'store-hero-eyebrow mb-2 text-xs font-semibold uppercase tracking-[0.22em] sm:text-sm',
                 isPharmacy && 'text-emerald-300',
-                isFurniture && 'text-amber-200',
+                (isFurniture || isTiles) && 'text-amber-200',
                 isRestaurant && 'text-red-200/90',
                 (isLuxury || isParts) && 'text-white/90'
               )}
               style={(isLuxury || isParts) && slideAccent ? { color: slideAccent } : undefined}
             >
-              {slide.eyebrow || (isLuxury ? 'Curated collection' : isPharmacy ? (storeName || 'Pharmacy') : isFurniture ? (storeName || 'Furniture') : isRestaurant ? (storeName || 'Restaurant') : isParts ? 'Auto parts' : 'Welcome')}
+              {slide.eyebrow || (isLuxury ? 'Curated collection' : isPharmacy ? (storeName || 'Pharmacy') : isFurniture ? (storeName || 'Furniture') : isTiles ? (storeName || 'Tiles & marble') : isRestaurant ? (storeName || 'Restaurant') : isParts ? 'Auto parts' : 'Welcome')}
             </p>
             <h1
               className={cn(
@@ -113,7 +114,7 @@ export function HeroCarousel({ slides = [], accent, className, minHeight = 'min-
                   ? 'store-heading store-heading--inverse text-3xl tracking-wide sm:text-5xl lg:text-6xl'
                   : isPharmacy
                     ? 'text-2xl tracking-tight sm:text-[2rem] lg:text-4xl'
-                    : isFurniture
+                    : isFurniture || isTiles
                       ? 'text-2xl tracking-tight sm:text-[2rem] lg:text-4xl'
                       : isRestaurant
                         ? 'text-2xl tracking-tight sm:text-[2rem] lg:text-4xl'
@@ -140,10 +141,10 @@ export function HeroCarousel({ slides = [], accent, className, minHeight = 'min-
                 href={slide.ctaHref}
                 className={cn(
                   'mt-5 inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-semibold transition hover:opacity-95 sm:px-7',
-                  isPharmacy ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-900/30 hover:bg-emerald-400' : isFurniture ? 'bg-amber-800 text-white shadow-lg shadow-amber-950/30 hover:bg-amber-700' : 'text-white shadow-lg',
+                  isPharmacy ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-900/30 hover:bg-emerald-400' : (isFurniture || isTiles) ? 'bg-amber-800 text-white shadow-lg shadow-amber-950/30 hover:bg-amber-700' : 'text-white shadow-lg',
                   isParts && 'hover:shadow-xl motion-safe:hover:scale-[1.02]'
                 )}
-                style={!isPharmacy && !isFurniture ? { backgroundColor: slideAccent || accent } : undefined}
+                style={!isPharmacy && !isFurniture && !isTiles ? { backgroundColor: slideAccent || accent } : undefined}
               >
                 {slide.ctaLabel}
                 <ArrowRight className="h-4 w-4" aria-hidden />
