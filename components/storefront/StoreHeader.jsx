@@ -23,11 +23,10 @@ import { getStoreHomeCopy } from '@/lib/storefront/storeCopy';
 import { isFashionEditorialStore, resolveFashionSearchPlaceholder } from '@/lib/storefront/fashionEditorial';
 import { isJewelleryStore, resolveJewellerySearchPlaceholder } from '@/lib/storefront/jewelleryStorefront';
 import { isAutoDealershipStore, getDealershipNavLinks, getDealershipNavGroups } from '@/lib/storefront/autoDealership';
-import { resolveStorefrontLogo } from '@/lib/storefront/resolveStorefrontLogo';
+import { StorefrontBrandMark } from '@/components/storefront/StorefrontBrandMark';
 import { isAutoMarketplaceStore, getMarketplaceNavLinks } from '@/lib/storefront/autoMarketplace';
 import { isPharmacyElevatedStore, getPharmacyNavLinks, formatPharmacyStoreName } from '@/lib/storefront/pharmacyStorefront';
 import { resolveDomainKey } from '@/lib/config/domainKeyAliases';
-import { SmartProductImage } from '@/components/storefront/SmartProductImage';
 import { resolveStoreContact } from '@/lib/storefront/businessContact';
 
 function EditorialMenuIcon({ className }) {
@@ -128,7 +127,6 @@ export function StoreHeader({ business, categories, settings }) {
   const marketplaceLinks = marketplaceNav ? getMarketplaceNavLinks(storeRoot) : [];
   const pharmacyLinks = pharmacyNav ? getPharmacyNavLinks(storeRoot) : [];
   const pharmacyDisplayName = pharmacyNav ? formatPharmacyStoreName(business?.business_name) : '';
-  const storeLogoUrl = resolveStorefrontLogo(business, settings);
 
   const visibleCategories = categories?.slice(0, 5) || [];
   const extraCategories = categories?.slice(5) || [];
@@ -270,21 +268,17 @@ export function StoreHeader({ business, categories, settings }) {
               )}
               aria-label={business?.business_name || 'Store home'}
             >
-              {dealershipNav && storeLogoUrl ? (
-                <SmartProductImage
-                  src={storeLogoUrl}
-                  alt=""
-                  width={32}
-                  height={32}
-                  className="h-8 w-8 shrink-0 object-contain"
-                />
-              ) : null}
-              <span className={cn(
-                'truncate text-sm font-bold uppercase tracking-[0.22em]',
-                !(dealershipNav && storeLogoUrl) && 'flex-1 text-center'
-              )}>
-                {business?.business_name}
-              </span>
+              <StorefrontBrandMark
+                business={business}
+                settings={settings}
+                accent={accent}
+                size="sm"
+                nameClassName={cn(
+                  'truncate text-sm font-bold uppercase tracking-[0.22em]',
+                  transparentHeader ? 'text-white' : 'text-gray-900'
+                )}
+                logoClassName="rounded-lg object-contain"
+              />
             </Link>
 
             <div className="flex shrink-0 items-center">
@@ -339,22 +333,14 @@ export function StoreHeader({ business, categories, settings }) {
               className="flex shrink-0 items-center"
               aria-label={business?.business_name || 'Store home'}
             >
-              {storeLogoUrl ? (
-                <SmartProductImage
-                  src={storeLogoUrl}
-                  alt={business.business_name}
-                  width={32}
-                  height={32}
-                  className="h-8 w-8 rounded-lg object-cover"
-                />
-              ) : (
-                <div
-                  className="flex h-8 w-8 items-center justify-center rounded-lg text-sm font-black text-white"
-                  style={{ backgroundColor: accent }}
-                >
-                  {business?.business_name?.charAt(0)?.toUpperCase()}
-                </div>
-              )}
+              <StorefrontBrandMark
+                business={business}
+                settings={settings}
+                accent={accent}
+                size="sm"
+                compact
+                logoClassName="rounded-lg object-cover"
+              />
             </Link>
 
             <button
@@ -408,24 +394,17 @@ export function StoreHeader({ business, categories, settings }) {
             {dealershipNav ? (
               <>
                 <Link href={storeRoot} className="flex shrink-0 items-center gap-2">
-                  {storeLogoUrl ? (
-                    <SmartProductImage
-                      src={storeLogoUrl}
-                      alt={business.business_name}
-                      width={120}
-                      height={36}
-                      className="h-9 w-9 object-contain sm:h-8 sm:w-auto"
-                    />
-                  ) : (
-                    <span
-                      className={cn(
-                        'text-sm font-bold uppercase tracking-[0.2em]',
-                        transparentHeader ? 'text-white' : 'text-gray-900'
-                      )}
-                    >
-                      {business?.business_name}
-                    </span>
-                  )}
+                  <StorefrontBrandMark
+                    business={business}
+                    settings={settings}
+                    accent={accent}
+                    size="md"
+                    nameClassName={cn(
+                      'text-sm font-bold uppercase tracking-[0.2em]',
+                      transparentHeader ? 'text-white' : 'text-gray-900'
+                    )}
+                    logoClassName="object-contain sm:h-8 sm:w-auto"
+                  />
                 </Link>
 
                 <nav className="hidden flex-1 items-center justify-center gap-0.5 lg:flex">
@@ -520,19 +499,14 @@ export function StoreHeader({ business, categories, settings }) {
             ) : marketplaceNav ? (
               <>
                 <Link href={storeRoot} className="flex shrink-0 items-center gap-2">
-                  {storeLogoUrl ? (
-                    <SmartProductImage
-                      src={storeLogoUrl}
-                      alt={business.business_name}
-                      width={140}
-                      height={40}
-                      className="h-9 w-auto object-contain"
-                    />
-                  ) : (
-                    <span className="text-base font-black tracking-tight text-[#E30613]">
-                      {business?.business_name}
-                    </span>
-                  )}
+                  <StorefrontBrandMark
+                    business={business}
+                    settings={settings}
+                    accent="#E30613"
+                    size="md"
+                    nameClassName="text-base font-bold tracking-tight text-[#E30613]"
+                    logoClassName="h-9 w-auto object-contain"
+                  />
                 </Link>
 
                 <nav className="hidden flex-1 items-center justify-center gap-0.5 lg:flex" style={{ '--store-accent': accent }}>
@@ -588,19 +562,15 @@ export function StoreHeader({ business, categories, settings }) {
             ) : pharmacyNav ? (
               <>
                 <Link href={storeRoot} className="flex shrink-0 items-center gap-2">
-                  {storeLogoUrl ? (
-                    <SmartProductImage
-                      src={storeLogoUrl}
-                      alt={business.business_name}
-                      width={140}
-                      height={40}
-                      className="h-9 w-auto object-contain"
-                    />
-                  ) : (
-                    <span className="text-base font-bold tracking-tight text-emerald-700">
-                      {pharmacyDisplayName}
-                    </span>
-                  )}
+                  <StorefrontBrandMark
+                    business={business}
+                    settings={settings}
+                    displayName={pharmacyDisplayName}
+                    accent={accent}
+                    size="md"
+                    nameClassName="text-base font-bold tracking-tight text-emerald-700"
+                    logoClassName="h-9 w-auto object-contain"
+                  />
                 </Link>
 
                 {!pharmacyOnHome ? (
@@ -686,11 +656,20 @@ export function StoreHeader({ business, categories, settings }) {
                 <Link
                   href={storeRoot}
                   className={cn(
-                    'absolute left-1/2 -translate-x-1/2 text-base font-bold uppercase tracking-[0.28em]',
+                    'absolute left-1/2 -translate-x-1/2',
                     transparentHeader ? 'text-white' : 'text-gray-900'
                   )}
                 >
-                  {business?.business_name}
+                  <StorefrontBrandMark
+                    business={business}
+                    settings={settings}
+                    accent={accent}
+                    size="sm"
+                    nameClassName={cn(
+                      'text-base font-bold uppercase tracking-[0.28em]',
+                      transparentHeader ? 'text-white' : 'text-gray-900'
+                    )}
+                  />
                 </Link>
 
                 <div className="ml-auto flex items-center gap-1">
@@ -752,11 +731,20 @@ export function StoreHeader({ business, categories, settings }) {
                 <Link
                   href={storeRoot}
                   className={cn(
-                    'absolute left-1/2 -translate-x-1/2 text-base font-bold uppercase tracking-[0.28em]',
+                    'absolute left-1/2 -translate-x-1/2',
                     transparentHeader ? 'text-white' : 'text-gray-900'
                   )}
                 >
-                  {business?.business_name}
+                  <StorefrontBrandMark
+                    business={business}
+                    settings={settings}
+                    accent={accent}
+                    size="sm"
+                    nameClassName={cn(
+                      'text-base font-bold uppercase tracking-[0.28em]',
+                      transparentHeader ? 'text-white' : 'text-gray-900'
+                    )}
+                  />
                 </Link>
 
                 <div className="ml-auto flex items-center gap-1">
@@ -808,36 +796,20 @@ export function StoreHeader({ business, categories, settings }) {
               href={`/store/${businessDomain}`}
               className="flex items-center gap-2.5 flex-shrink-0 group"
             >
-              {storeLogoUrl ? (
-                <SmartProductImage
-                  src={storeLogoUrl}
-                  alt={business.business_name}
-                  width={120}
-                  height={36}
-                  className={cn(
-                    'w-auto object-contain transition-all duration-200',
-                    isScrolled ? 'h-7' : 'h-9'
-                  )}
-                />
-              ) : (
-                <div
-                  className={cn(
-                    'rounded-xl flex items-center justify-center text-white font-black transition-all duration-200',
-                    isScrolled ? 'w-7 h-7 text-sm' : 'w-9 h-9 text-base'
-                  )}
-                  style={{ backgroundColor: accent }}
-                >
-                  {business?.business_name?.charAt(0)?.toUpperCase()}
-                </div>
-              )}
-              <span
-                className={cn(
-                  'font-black text-gray-900 truncate transition-all duration-200 group-hover:opacity-80',
+              <StorefrontBrandMark
+                business={business}
+                settings={settings}
+                accent={accent}
+                size={isScrolled ? 'sm' : 'md'}
+                nameClassName={cn(
+                  'truncate text-gray-900 transition-all duration-200 group-hover:opacity-80',
                   isScrolled ? 'text-base' : 'text-lg'
                 )}
-              >
-                {business?.business_name}
-              </span>
+                logoClassName={cn(
+                  'w-auto object-contain transition-all duration-200',
+                  isScrolled ? 'h-7' : 'h-9'
+                )}
+              />
             </Link>
 
             {/* ── Desktop Category Nav ──────────────────────────────────── */}

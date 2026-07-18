@@ -8,9 +8,8 @@ import { cn } from '@/lib/utils';
 import { useStorefront } from '@/lib/context/StorefrontContext';
 import { useCart } from '@/lib/hooks/storefront/useCart';
 import { SearchBar } from '@/components/storefront/SearchBar';
-import { SmartProductImage } from '@/components/storefront/SmartProductImage';
+import { StorefrontBrandMark } from '@/components/storefront/StorefrontBrandMark';
 import { resolveStoreContact } from '@/lib/storefront/businessContact';
-import { resolveStorefrontLogo } from '@/lib/storefront/resolveStorefrontLogo';
 import {
   formatRestaurantStoreName,
   getRestaurantConfig,
@@ -52,10 +51,6 @@ export function RestaurantSiteHeader({ business, settings }) {
   const storeRoot = `/store/${businessDomain}`;
   const productsUrl = `${storeRoot}/products`;
   const displayName = formatRestaurantStoreName(business?.business_name);
-  const nameParts = displayName.split(/\s+/);
-  const namePrimary = nameParts[0] || displayName;
-  const nameSecondary = nameParts.slice(1).join(' ') || '';
-  const storeLogoUrl = resolveStorefrontLogo(business, settings);
   const contact = resolveStoreContact({ business, settings });
   const config = getRestaurantConfig(settings, businessDomain);
   const deliveryNotice = config.deliveryNotice;
@@ -90,24 +85,15 @@ export function RestaurantSiteHeader({ business, settings }) {
           </button>
 
           <Link href={storeRoot} className="flex shrink-0 items-center">
-            {storeLogoUrl ? (
-              <SmartProductImage
-                src={storeLogoUrl}
-                alt={displayName}
-                width={100}
-                height={28}
-                className="h-7 w-auto max-w-[96px] object-contain sm:max-w-[120px]"
-              />
-            ) : (
-              <span className="text-sm font-semibold tracking-tight">
-                <span className="text-zinc-900">{namePrimary}</span>
-                {nameSecondary ? (
-                  <span className="ml-0.5" style={{ color: accent }}>
-                    {nameSecondary}
-                  </span>
-                ) : null}
-              </span>
-            )}
+            <StorefrontBrandMark
+              business={business}
+              settings={settings}
+              displayName={displayName}
+              accent={accent}
+              size="sm"
+              nameClassName="text-sm font-semibold tracking-tight text-zinc-900"
+              logoClassName="h-7 w-auto max-w-[96px] object-contain sm:max-w-[120px]"
+            />
           </Link>
 
           <div className="hidden shrink-0 border-l border-zinc-200 pl-2.5 md:block">
@@ -212,24 +198,15 @@ export function RestaurantSiteHeader({ business, settings }) {
       <div className="mx-auto max-w-[1400px] px-3 sm:px-6 lg:px-8">
         <div className="flex items-center gap-2 py-2 sm:gap-2.5 lg:py-2.5">
           <Link href={storeRoot} className="flex min-w-0 shrink-0 items-center gap-2">
-            {storeLogoUrl ? (
-              <SmartProductImage
-                src={storeLogoUrl}
-                alt={displayName}
-                width={120}
-                height={32}
-                className="h-7 w-auto max-w-[108px] object-contain sm:max-w-[132px] sm:h-8"
-              />
-            ) : (
-              <span className="truncate text-sm font-semibold tracking-tight sm:text-lg">
-                <span className="text-zinc-900">{namePrimary}</span>
-                {nameSecondary ? (
-                  <span className="ml-1" style={{ color: accent }}>
-                    {nameSecondary}
-                  </span>
-                ) : null}
-              </span>
-            )}
+            <StorefrontBrandMark
+              business={business}
+              settings={settings}
+              displayName={displayName}
+              accent={accent}
+              size="sm"
+              nameClassName="truncate text-sm font-semibold tracking-tight text-zinc-900 sm:text-lg"
+              logoClassName="h-7 w-auto max-w-[108px] object-contain sm:max-w-[132px] sm:h-8"
+            />
           </Link>
 
           <div className="hidden min-w-0 flex-1 lg:block lg:max-w-xl xl:max-w-2xl lg:px-2">

@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils';
 import { useStorefront } from '@/lib/context/StorefrontContext';
 import { useCart } from '@/lib/hooks/storefront/useCart';
 import { SearchBar } from '@/components/storefront/SearchBar';
-import { SmartProductImage } from '@/components/storefront/SmartProductImage';
+import { StorefrontBrandMark } from '@/components/storefront/StorefrontBrandMark';
 import { formatCurrency } from '@/lib/currency';
 import { resolveStoreContact } from '@/lib/storefront/businessContact';
 import { getStoreAccentColor } from '@/lib/config/storefrontDomains';
@@ -20,7 +20,6 @@ import {
   resolvePharmacyCategoryNav,
 } from '@/lib/storefront/pharmacyStorefront';
 import { PharmacyMobileMenu } from '@/components/storefront/pharmacy/PharmacyMobileMenu';
-import { resolveStorefrontLogo } from '@/lib/storefront/resolveStorefrontLogo';
 import { usePharmacyChrome } from '@/components/storefront/pharmacy/PharmacyChromeContext';
 
 /**
@@ -47,7 +46,6 @@ export function PharmacySiteHeader({ business, settings }) {
   const contact = resolveStoreContact({ business, settings });
   const storeRoot = `/store/${businessDomain}`;
   const displayName = formatPharmacyStoreName(business?.business_name);
-  const storeLogoUrl = resolveStorefrontLogo(business, settings);
   const announcement = settings?.announcement || 'Genuine medicines · Pharmacist support';
   const freeShip = settings?.freeShippingThreshold;
   const categoryItems = resolvePharmacyCategoryNav(settings, storeRoot);
@@ -150,17 +148,15 @@ export function PharmacySiteHeader({ business, settings }) {
           <div className="space-y-2 py-2 lg:hidden">
             <div className="flex items-center gap-2">
               <Link href={storeRoot} className="flex min-w-0 shrink-0 items-center gap-2">
-                {storeLogoUrl ? (
-                  <SmartProductImage
-                    src={storeLogoUrl}
-                    alt={displayName}
-                    width={96}
-                    height={28}
-                    className="h-7 w-auto object-contain"
-                  />
-                ) : (
-                  <span className="text-sm font-bold text-emerald-800">{displayName}</span>
-                )}
+                <StorefrontBrandMark
+                  business={business}
+                  settings={settings}
+                  displayName={displayName}
+                  accent={accent}
+                  size="sm"
+                  nameClassName="font-bold text-emerald-800"
+                  logoClassName="h-7 w-auto object-contain"
+                />
               </Link>
               <Link
                 href={`${storeRoot}/contact?prescription=1`}
@@ -188,17 +184,15 @@ export function PharmacySiteHeader({ business, settings }) {
           {/* Desktop main bar */}
           <div className="hidden h-[60px] items-center gap-4 lg:flex">
             <Link href={storeRoot} className="flex shrink-0 items-center gap-2.5">
-              {storeLogoUrl ? (
-                <SmartProductImage
-                  src={storeLogoUrl}
-                  alt={displayName}
-                  width={132}
-                  height={36}
-                  className="h-8 w-auto object-contain"
-                />
-              ) : (
-                <span className="text-lg font-bold tracking-tight text-emerald-800">{displayName}</span>
-              )}
+              <StorefrontBrandMark
+                business={business}
+                settings={settings}
+                displayName={displayName}
+                accent={accent}
+                size="md"
+                nameClassName="text-lg font-bold tracking-tight text-emerald-800"
+                logoClassName="h-8 w-auto object-contain"
+              />
             </Link>
 
             <div className="min-w-0 max-w-2xl flex-1">

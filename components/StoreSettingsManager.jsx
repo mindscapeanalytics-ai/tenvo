@@ -50,6 +50,13 @@ import { JewelleryCardsEditor } from '@/components/storefront/admin/JewelleryCar
 import { getHeroPreset } from '@/lib/storefront/heroPresets';
 import { uploadOptimizedImage } from '@/lib/utils/optimizeImageClient';
 import { canConfigureTenantMeetingUrl, normalizeTenantMeetingUrl } from '@/lib/storefront/storefrontBooking';
+import {
+  STOREFRONT_BRAND_MODES,
+  STOREFRONT_BRAND_TEXT_STYLES,
+  STOREFRONT_BRAND_ICON_KEYS,
+  normalizeStorefrontBrandingForForm,
+} from '@/lib/storefront/storefrontBrandMark';
+import { StorefrontBrandMark } from '@/components/storefront/StorefrontBrandMark';
 
 // ── Image Upload Field ────────────────────────────────────────────────────────
 function ImageUploadField({ label, hint, value, onChange, businessId, purpose = 'product' }) {
@@ -144,6 +151,12 @@ export function StoreSettingsManager({ business, category }) {
     announcement: '',
     pageSections: [],
     brand: { primaryColor: '' },
+    branding: {
+      mode: 'text',
+      textStyle: 'classic',
+      iconKey: 'initial',
+      iconUrl: '',
+    },
     socialLinks: { facebook: '', instagram: '', twitter: '', youtube: '' },
     logoUrl: '',
     coverImageUrl: '',
@@ -438,7 +451,11 @@ export function StoreSettingsManager({ business, category }) {
     try {
       const result = await getStorefrontSettings(business.id);
       if (result.success && result.data) {
-        setSettings(prev => ({ ...prev, ...result.data }));
+        setSettings((prev) => ({
+          ...prev,
+          ...result.data,
+          branding: normalizeStorefrontBrandingForForm(result.data.branding || prev.branding),
+        }));
         setNewDomain(result.data.storeDomain || '');
         setLoadedPlanTier(result.data.planTier || null);
       }
@@ -537,6 +554,11 @@ export function StoreSettingsManager({ business, category }) {
     }));
   const setSocialLink = (key, val) => setSettings(prev => ({ ...prev, socialLinks: { ...prev.socialLinks, [key]: val } }));
   const setBrand = (key, val) => setSettings(prev => ({ ...prev, brand: { ...prev.brand, [key]: val } }));
+  const setBranding = (key, val) =>
+    setSettings((prev) => ({
+      ...prev,
+      branding: normalizeStorefrontBrandingForForm({ ...(prev.branding || {}), [key]: val }),
+    }));
 
   const handleSave = async () => {
     if (!business?.id) return;
@@ -755,19 +777,155 @@ export function StoreSettingsManager({ business, category }) {
           <Card>
             <CardHeader className="pb-4">
               <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                <Store className="w-4 h-4" /> Brand mark
+              </CardTitle>
+              <CardDescription>
+                Choose how your store name, icon, or logo appears in the header, footer, and navigation.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              <div className="space-y-2">
+                <Label className="text-xs">Display mode</Label>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {STOREFRONT_BRAND_MODES.map((mode) => {
+                    const active = (settings.branding?.mode || 'text') === mode.value;
+                    return (
+                      <button
+                        key={mode.value}
+                        type="button"
+                        onClick={() => setBranding('mode', mode.value)}
+                        className={cn(
+                          'rounded-xl border px-3 py-2.5 text-left transition-colors',
+                          active
+                            ? 'border-gray-900 bg-gray-50 ring-1 ring-gray-900'
+                            : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                        )}
+                      >
+                        <span className="block text-sm font-semibold text-gray-900">{mode.label}</span>
+                        <span className="mt-0.5 block text-xs text-gray-500">{mode.hint}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {(settings.branding?.mode === 'text'
+                || settings.branding?.mode === 'icon-text'
+                || settings.branding?.mode === 'logo-text') && (
+                <div className="space-y-2">
+                  <Label className="text-xs">Text style</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {STOREFRONT_BRAND_TEXT_STYLES.map((style) => {
+                      const active = (settings.branding?.textStyle || 'classic') === style.value;
+                      return (
+                        <button
+                          key={style.value}
+                          type="button"
+                          onClick={() => setBranding('textStyle', style.value)}
+                          className={cn(
+                            'rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors',
+                            active
+                              ? 'border-gray-900 bg-gray-900 text-white'
+                              : 'border-gray-200 text-gray-700 hover:bg-gray-50'
+                          )}
+                        >
+                          {style.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {(settings.branding?.mode === 'icon' || settings.branding?.mode === 'icon-text') && (
+                <div className="space-y-3">
+                  <div className="space-y-2">
+                    <Label className="text-xs">Icon</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {STOREFRONT_BRAND_ICON_KEYS.map((icon) => {
+                        const active = (settings.branding?.iconKey || 'initial') === icon.value;
+                        return (
+                          <button
+                            key={icon.value}
+                            type="button"
+                            onClick={() => setBranding('iconKey', icon.value)}
+                            className={cn(
+                              'rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors',
+                              active
+                                ? 'border-gray-900 bg-gray-900 text-white'
+                                : 'border-gray-200 text-gray-700 hover:bg-gray-50'
+                            )}
+                          >
+                            {icon.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <ImageUploadField
+                    label="Custom icon (optional)"
+                    hint="Small square mark. Overrides the preset icon when set. Converted to WebP on upload."
+                    value={settings.branding?.iconUrl || ''}
+                    onChange={(v) => setBranding('iconUrl', v)}
+                    businessId={business?.id}
+                    purpose="logo"
+                  />
+                </div>
+              )}
+
+              {(settings.branding?.mode === 'logo' || settings.branding?.mode === 'logo-text') && (
+                <ImageUploadField
+                  label="Store logo image"
+                  hint="Shown as your brand mark. Recommended: square WebP. Converted on upload."
+                  value={settings.logoUrl}
+                  onChange={(v) => set('logoUrl', v)}
+                  businessId={business?.id}
+                  purpose="logo"
+                />
+              )}
+
+              <div className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
+                <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-gray-500">Preview</p>
+                <StorefrontBrandMark
+                  business={{
+                    business_name: business?.business_name || 'Your Store',
+                    logo_url: settings.logoUrl,
+                    category: category || business?.category,
+                  }}
+                  settings={{
+                    storefront: { branding: settings.branding },
+                    logoUrl: settings.logoUrl,
+                  }}
+                  accent={settings.brand?.primaryColor || BRAND_PRIMARY}
+                  size="md"
+                  nameClassName="text-gray-900"
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-4">
+              <CardTitle className="text-sm font-semibold flex items-center gap-2">
                 <Image className="w-4 h-4" /> Store Images
               </CardTitle>
               <CardDescription>Logo and hero banner shown on your public store</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <ImageUploadField
-                label="Store Logo"
-                hint="Shown in header and emails. Recommended: 200×200px square. Converted to WebP on upload."
-                value={settings.logoUrl}
-                onChange={(v) => set('logoUrl', v)}
-                businessId={business?.id}
-                purpose="logo"
-              />
+              {(settings.branding?.mode !== 'logo' && settings.branding?.mode !== 'logo-text') ? (
+                <ImageUploadField
+                  label="Store Logo"
+                  hint="Optional upload kept for logo modes and emails. Switch display mode above to Logo image to use it in the header."
+                  value={settings.logoUrl}
+                  onChange={(v) => set('logoUrl', v)}
+                  businessId={business?.id}
+                  purpose="logo"
+                />
+              ) : (
+                <p className="text-xs text-gray-500">
+                  Logo image is managed in Brand mark above. Cover and hero carousel stay here.
+                </p>
+              )}
               <Separator />
               <ImageUploadField
                 label="Hero / Cover Image"

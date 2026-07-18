@@ -662,6 +662,7 @@ export default async function StoreHomePage({ params }) {
         accent={accent}
         accentDark={accentDark}
         business={business}
+        settings={settings}
         hero={hero}
         heroCta={copy.heroCta}
         businessDomain={businessDomain}

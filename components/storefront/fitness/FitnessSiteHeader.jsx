@@ -4,14 +4,13 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  Search, Menu, ShoppingBag, User, X, Calendar, Dumbbell,
+  Search, Menu, ShoppingBag, User, X, Calendar,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useStorefront } from '@/lib/context/StorefrontContext';
 import { useCart } from '@/lib/hooks/storefront/useCart';
 import { SearchBar } from '@/components/storefront/SearchBar';
-import { SmartProductImage } from '@/components/storefront/SmartProductImage';
-import { resolveStorefrontLogo } from '@/lib/storefront/resolveStorefrontLogo';
+import { StorefrontBrandMark } from '@/components/storefront/StorefrontBrandMark';
 import { getStoreAccentColor } from '@/lib/config/storefrontDomains';
 import {
   formatFitnessStoreName,
@@ -47,7 +46,6 @@ export function FitnessSiteHeader({ business, settings, categories = [] }) {
   const isHome = pathname === storeRoot || pathname === `${storeRoot}/`;
   const transparent = isHome && !isScrolled;
   const displayName = formatFitnessStoreName(business?.business_name);
-  const storeLogoUrl = resolveStorefrontLogo(business, settings);
   const navLinks = getFitnessNavLinks(storeRoot, categories);
   const meetingUrl = shouldOfferTenantMeetingLink(business, business?.category, settings)
     ? getTenantMeetingUrl(business, settings)
@@ -75,30 +73,17 @@ export function FitnessSiteHeader({ business, settings, categories = [] }) {
       >
         <div className="mx-auto flex h-14 max-w-[1400px] items-center justify-between gap-3 px-4 sm:h-16 sm:px-6 lg:px-8">
           <Link href={storeRoot} className="flex min-w-0 items-center gap-2.5">
-            {storeLogoUrl ? (
-              <SmartProductImage
-                src={storeLogoUrl}
-                alt=""
-                width={36}
-                height={36}
-                className="h-9 w-9 rounded-lg object-cover"
-              />
-            ) : (
-              <span
-                className="flex h-9 w-9 items-center justify-center rounded-lg text-white"
-                style={{ backgroundColor: accent }}
-              >
-                <Dumbbell className="h-5 w-5" aria-hidden />
-              </span>
-            )}
-            <span
-              className={cn(
-                'truncate text-sm font-semibold sm:text-base',
-                transparent ? 'text-white' : 'text-white'
+            <StorefrontBrandMark
+              business={business}
+              settings={settings}
+              displayName={displayName}
+              accent={accent}
+              size="md"
+              nameClassName={cn(
+                'truncate text-sm font-semibold sm:text-base text-white'
               )}
-            >
-              {displayName}
-            </span>
+              logoClassName="rounded-lg object-cover"
+            />
           </Link>
 
           <nav className="hidden items-center gap-1 lg:flex" aria-label="Fitness store">

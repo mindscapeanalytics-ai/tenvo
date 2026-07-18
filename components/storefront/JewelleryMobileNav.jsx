@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { X, ChevronRight, Sparkles, Star, Gift, Package, Circle, Heart, ShoppingBag, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SmartProductImage } from '@/components/storefront/SmartProductImage';
+import { StorefrontBrandMark } from '@/components/storefront/StorefrontBrandMark';
 import { getJewelleryEditorialNav, getJewelleryStorefrontConfig, getStoreMode } from '@/lib/storefront/jewelleryStorefront';
 
 const ICONS = {
@@ -41,6 +42,7 @@ export function JewelleryMobileNav({
   const activeCategories = nav.tabs.find((t) => t.id === activeTab)?.categories || nav.tabs[0]?.categories || [];
 
   const signatureLabel = config.signaturePiecesTitle || (mode === 'beauty' ? 'Best Sellers' : 'Signature Pieces');
+  const displayName = business?.business_name || (mode === 'beauty' ? 'Beauty Store' : 'Jewelry Store');
 
   if (!isOpen) return null;
 
@@ -57,17 +59,14 @@ export function JewelleryMobileNav({
           className="flex items-center justify-between border-b px-4 py-4"
           style={{ borderColor: `${accent}20` }}
         >
-          <div className="flex items-center gap-2">
-            <div
-              className="flex h-8 w-8 items-center justify-center rounded-lg"
-              style={{ backgroundColor: `${accent}15` }}
-            >
-              <Sparkles className="h-4 w-4" style={{ color: accent }} />
-            </div>
-            <h2 className="text-base font-bold text-stone-900">
-              {business?.business_name || (mode === 'beauty' ? 'Beauty Store' : 'Jewelry Store')}
-            </h2>
-          </div>
+          <StorefrontBrandMark
+            business={business}
+            settings={settings}
+            displayName={displayName}
+            accent={accent}
+            size="sm"
+            nameClassName="text-base font-bold text-stone-900"
+          />
           <button
             type="button"
             onClick={onClose}

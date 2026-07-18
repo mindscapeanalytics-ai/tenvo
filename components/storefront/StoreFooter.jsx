@@ -10,13 +10,13 @@ import {
 import { useStorefront } from '@/lib/context/StorefrontContext';
 import { getStoreAccentColor } from '@/lib/config/storefrontDomains';
 import { toast } from 'react-hot-toast';
-import { SmartProductImage } from '@/components/storefront/SmartProductImage';
 import { formatCurrency } from '@/lib/currency';
 import { cn } from '@/lib/utils';
 import { resolveStoreContact } from '@/lib/storefront/businessContact';
 import { getStoreFooterCopy } from '@/lib/storefront/storeFooterCopy';
 import { isAutoDealershipStore, getDealershipFooterColumns } from '@/lib/storefront/autoDealership';
 import { isAutoMarketplaceStore, getMarketplaceFooterColumns } from '@/lib/storefront/autoMarketplace';
+import { StorefrontBrandMark } from '@/components/storefront/StorefrontBrandMark';
 import { isPharmacyElevatedStore, getPharmacyFooterColumns, formatPharmacyStoreName } from '@/lib/storefront/pharmacyStorefront';
 import { isFitnessElevatedStore, getFitnessFooterColumns, formatFitnessStoreName } from '@/lib/storefront/fitnessStorefront';
 import {
@@ -27,7 +27,6 @@ import {
 } from '@/lib/storefront/supermarketStorefront';
 import { SupermarketFooterTrustStrip } from '@/components/storefront/supermarket/SupermarketFooterTrustStrip';
 import { getTenantMeetingUrl, shouldOfferTenantMeetingLink } from '@/lib/storefront/storefrontBooking';
-import { resolveStorefrontLogo } from '@/lib/storefront/resolveStorefrontLogo';
 
 const TRUST_ICONS = {
   truck: Truck,
@@ -127,7 +126,6 @@ export function StoreFooter({ business, settings }) {
       : supermarketFooter
         ? formatSupermarketStoreName(storeName)
         : storeName;
-  const storeLogoUrl = resolveStorefrontLogo(business, settings);
 
   const handleNewsletter = async (e) => {
     e.preventDefault();
@@ -338,29 +336,19 @@ export function StoreFooter({ business, settings }) {
           {/* Brand */}
           <div className={cn('col-span-2 space-y-3', pharmacyFooter ? 'lg:col-span-3' : fitnessFooter ? 'lg:col-span-4' : 'space-y-4 lg:col-span-4')}>
             <div className="flex items-center gap-2.5">
-              {storeLogoUrl ? (
-                <SmartProductImage
-                  src={storeLogoUrl}
-                  alt={displayStoreName}
-                  width={120}
-                  height={36}
-                  className="h-9 w-9 shrink-0 object-contain sm:h-8 sm:w-auto"
-                />
-              ) : (
-                <div
-                  className="flex h-8 w-8 items-center justify-center rounded-lg text-sm font-semibold text-white"
-                  style={{ backgroundColor: accent }}
-                >
-                  {displayStoreName.charAt(0)?.toUpperCase()}
-                </div>
-              )}
-              <span className={cn(
-                'truncate font-semibold',
-                pharmacyFooter ? 'text-base text-emerald-900' : 'text-lg',
-                darkPortalFooter ? 'text-white' : 'text-slate-900'
-              )}>
-                {displayStoreName}
-              </span>
+              <StorefrontBrandMark
+                business={business}
+                settings={settings}
+                displayName={displayStoreName}
+                accent={accent}
+                size="md"
+                nameClassName={cn(
+                  'truncate font-semibold',
+                  pharmacyFooter ? 'text-base text-emerald-900' : 'text-lg',
+                  darkPortalFooter ? 'text-white' : 'text-slate-900'
+                )}
+                logoClassName="h-9 w-9 shrink-0 object-contain sm:h-8 sm:w-auto"
+              />
             </div>
 
             <p className={cn(

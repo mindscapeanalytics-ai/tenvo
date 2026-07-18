@@ -10,10 +10,9 @@ import { cn } from '@/lib/utils';
 import { useStorefront } from '@/lib/context/StorefrontContext';
 import { useCart } from '@/lib/hooks/storefront/useCart';
 import { SearchBar } from '@/components/storefront/SearchBar';
-import { SmartProductImage } from '@/components/storefront/SmartProductImage';
+import { StorefrontBrandMark } from '@/components/storefront/StorefrontBrandMark';
 import { formatCurrency } from '@/lib/currency';
 import { resolveStoreContact } from '@/lib/storefront/businessContact';
-import { resolveStorefrontLogo } from '@/lib/storefront/resolveStorefrontLogo';
 import {
   formatSupermarketStoreName,
   getSupermarketConfig,
@@ -41,7 +40,6 @@ export function SupermarketSiteHeader({ business, settings }) {
   const promoBar = SUPERMARKET_THEME.promoBar;
   const storeRoot = `/store/${businessDomain}`;
   const displayName = formatSupermarketStoreName(business?.business_name);
-  const storeLogoUrl = resolveStorefrontLogo(business, settings);
   const contact = resolveStoreContact({ business, settings });
   const config = getSupermarketConfig(settings, businessDomain, business?.category);
   const freeShip = settings?.freeShippingThreshold;
@@ -116,17 +114,16 @@ export function SupermarketSiteHeader({ business, settings }) {
               <LayoutGrid className="h-5 w-5" />
             </button>
             <Link href={storeRoot} className="min-w-0 flex-1">
-              {storeLogoUrl ? (
-                <SmartProductImage
-                  src={storeLogoUrl}
-                  alt={displayName}
-                  width={120}
-                  height={32}
-                  className="mx-auto h-7 w-auto max-w-[140px] object-contain"
-                />
-              ) : (
-                <span className="block truncate text-center text-sm font-bold text-slate-900">{displayName}</span>
-              )}
+              <StorefrontBrandMark
+                business={business}
+                settings={settings}
+                displayName={displayName}
+                accent={accent}
+                size="sm"
+                className="mx-auto justify-center"
+                nameClassName="truncate text-center text-sm font-bold text-slate-900"
+                logoClassName="mx-auto h-7 w-auto max-w-[140px] object-contain"
+              />
             </Link>
             <Link
               href={`${storeRoot}/cart`}
@@ -161,17 +158,15 @@ export function SupermarketSiteHeader({ business, settings }) {
           {/* Desktop */}
           <div className="hidden h-[68px] items-center gap-5 lg:flex">
             <Link href={storeRoot} className="flex shrink-0 items-center gap-2">
-              {storeLogoUrl ? (
-                <SmartProductImage
-                  src={storeLogoUrl}
-                  alt={displayName}
-                  width={148}
-                  height={40}
-                  className="h-9 w-auto object-contain"
-                />
-              ) : (
-                <span className="text-xl font-bold tracking-tight text-slate-900">{displayName}</span>
-              )}
+              <StorefrontBrandMark
+                business={business}
+                settings={settings}
+                displayName={displayName}
+                accent={accent}
+                size="md"
+                nameClassName="text-xl font-bold tracking-tight text-slate-900"
+                logoClassName="h-9 w-auto object-contain"
+              />
             </Link>
 
             <button

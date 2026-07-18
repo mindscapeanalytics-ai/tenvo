@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { ChevronRight, Package, RotateCcw, ShoppingBag, Truck } from 'lucide-react';
 import { SmartProductImage } from '@/components/storefront/SmartProductImage';
+import { StorefrontBrandMark } from '@/components/storefront/StorefrontBrandMark';
 import { HeroCarousel } from '@/components/storefront/sections/heroes/HeroCarousel';
 import { formatCurrency } from '@/lib/currency';
 import { getEffectiveProductImageUrl } from '@/lib/storefront/productImageFallback';
@@ -62,26 +63,18 @@ function HeroQuickStats({ productCount, freeShippingThreshold, returnDays, store
   );
 }
 
-function HeroStoreBadge({ business, accent }) {
+function HeroStoreBadge({ business, settings, accent }) {
   return (
     <div className="mb-4 inline-flex max-w-full items-center gap-2 rounded-full border border-white/20 bg-white/15 px-3 py-1 backdrop-blur-sm sm:mb-6">
-      {business?.logo_url ? (
-        <SmartProductImage
-          src={business.logo_url}
-          alt=""
-          className="h-4 w-4 rounded-full object-cover sm:h-5 sm:w-5"
-          width={20}
-          height={20}
-        />
-      ) : (
-        <div
-          className="flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-bold text-white sm:h-5 sm:w-5 sm:text-xs"
-          style={{ backgroundColor: accent }}
-        >
-          {business?.business_name?.charAt(0)}
-        </div>
-      )}
-      <span className="truncate text-xs font-medium text-white/90 sm:text-sm">{business?.business_name}</span>
+      <StorefrontBrandMark
+        business={business}
+        settings={settings}
+        accent={accent}
+        size="sm"
+        nameClassName="truncate text-xs font-medium text-white/90 sm:text-sm"
+        logoClassName="h-4 w-4 rounded-full object-cover sm:h-5 sm:w-5"
+        iconClassName="h-4 w-4 rounded-full sm:h-5 sm:w-5"
+      />
       {business?.is_verified ? (
         <span className="hidden rounded-full bg-white/20 px-2 py-0.5 text-xs text-white sm:inline">
           Verified
@@ -122,6 +115,7 @@ export function RetailHomeHero({
   accent,
   accentDark,
   business,
+  settings,
   hero,
   heroCta,
   businessDomain,
@@ -186,7 +180,7 @@ export function RetailHomeHero({
 
       <div className="relative mx-auto max-w-[1400px] px-4 py-8 sm:px-6 sm:py-16 lg:px-8 lg:py-28">
         <div className="max-w-2xl">
-          <HeroStoreBadge business={business} accent={accent} />
+          <HeroStoreBadge business={business} settings={settings} accent={accent} />
 
           <h1 className="store-heading store-heading--inverse mb-2 text-2xl font-black leading-tight tracking-tight sm:mb-4 sm:text-5xl lg:text-6xl">
             {hero.title}
