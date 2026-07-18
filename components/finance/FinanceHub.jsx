@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     BookOpen, Receipt, CalendarRange, RefreshCcw,
@@ -572,6 +572,9 @@ function FinanceOverview({
 // MAIN FINANCE HUB
 // ===============================================================================
 
+/** Session-scoped finance payload cache — survives Radix tab remount (enterprise keep-alive). */
+const financeHubSessionCache = new Map();
+
 export default function FinanceHub({ businessId, initialTab, businessCategory = 'retail-shop', onInitialTabConsumed }) {
     const { business, currency, currencySymbol } = useBusiness();
     const { can, planCan } = usePermissions();
@@ -592,9 +595,21 @@ export default function FinanceHub({ businessId, initialTab, businessCategory = 
     const [reconciling, setReconciling] = useState(false);
     /** Mobile: tile menu first; tap opens panel. Desktop always shows dock + content. */
     const [mobileMenuOpen, setMobileMenuOpen] = useState(true);
+    const inFlightRef = useRef(false);
 
     const effectiveCurrency = currencySymbol || 'Rs.';
     const effectiveBusinessId = useResolvedBusinessId(businessId);
+
+    const applyFinanceCache = useCallback((cached) => {
+        if (!cached) return;
+        setAccounts(cached.accounts || []);
+        setExpenses(cached.expenses || []);
+        setCreditNotes(cached.creditNotes || []);
+        setPeriods(cached.periods || []);
+        setRates(cached.rates || []);
+        setVendors(cached.vendors || []);
+        setCoverage(cached.coverage ?? null);
+    }, []);
 
     const navigateFinance = useCallback((tabKey, report = null) => {
         const nav = resolveFinanceHubNavigation(tabKey);
@@ -611,9 +626,23 @@ export default function FinanceHub({ businessId, initialTab, businessCategory = 
         setMobileMenuOpen(false);
     }, []);
 
-    // Load all finance data
-    const loadData = useCallback(async () => {
+    // Load all finance data once per business; remount hydrates from session cache first.
+    const loadData = useCallback(async ({ force = false } = {}) => {
         if (!effectiveBusinessId) return;
+        if (inFlightRef.current && !force) return;
+
+        const cached = financeHubSessionCache.get(effectiveBusinessId);
+        if (!force && cached) {
+            applyFinanceCache(cached);
+            setLoading(false);
+            return;
+        }
+
+        if (force) {
+            financeHubSessionCache.delete(effectiveBusinessId);
+        }
+
+        inFlightRef.current = true;
         setLoading(true);
         try {
             const [accRes, expRes, cnRes, fpRes, exRes, covRes] = await Promise.allSettled([
@@ -625,21 +654,42 @@ export default function FinanceHub({ businessId, initialTab, businessCategory = 
                 accountingAPI.getGlCoverage(effectiveBusinessId),
             ]);
 
-            if (accRes.status === 'fulfilled' && accRes.value.success) setAccounts(accRes.value.accounts || []);
-            if (expRes.status === 'fulfilled' && expRes.value.success) setExpenses(expRes.value.expenses || []);
-            if (cnRes.status === 'fulfilled' && cnRes.value.success) setCreditNotes(cnRes.value.creditNotes || cnRes.value.credit_notes || []);
-            if (fpRes.status === 'fulfilled' && fpRes.value.success) setPeriods(fpRes.value.periods || []);
-            if (exRes.status === 'fulfilled' && exRes.value.success) setRates(exRes.value.rates || []);
-            if (covRes.status === 'fulfilled' && covRes.value.success) setCoverage(covRes.value.coverage || null);
+            const nextAccounts = accRes.status === 'fulfilled' && accRes.value.success ? (accRes.value.accounts || []) : [];
+            const nextExpenses = expRes.status === 'fulfilled' && expRes.value.success ? (expRes.value.expenses || []) : [];
+            const nextCreditNotes = cnRes.status === 'fulfilled' && cnRes.value.success
+                ? (cnRes.value.creditNotes || cnRes.value.credit_notes || [])
+                : [];
+            const nextPeriods = fpRes.status === 'fulfilled' && fpRes.value.success ? (fpRes.value.periods || []) : [];
+            const nextRates = exRes.status === 'fulfilled' && exRes.value.success ? (exRes.value.rates || []) : [];
+            const nextCoverage = covRes.status === 'fulfilled' && covRes.value.success ? (covRes.value.coverage || null) : null;
+
+            if (accRes.status === 'fulfilled' && accRes.value.success) setAccounts(nextAccounts);
+            if (expRes.status === 'fulfilled' && expRes.value.success) setExpenses(nextExpenses);
+            if (cnRes.status === 'fulfilled' && cnRes.value.success) setCreditNotes(nextCreditNotes);
+            if (fpRes.status === 'fulfilled' && fpRes.value.success) setPeriods(nextPeriods);
+            if (exRes.status === 'fulfilled' && exRes.value.success) setRates(nextRates);
+            if (covRes.status === 'fulfilled' && covRes.value.success) setCoverage(nextCoverage);
 
             const vendRes = await getVendorsAction(effectiveBusinessId);
-            if (vendRes.success) setVendors(vendRes.vendors || []);
+            const nextVendors = vendRes.success ? (vendRes.vendors || []) : [];
+            if (vendRes.success) setVendors(nextVendors);
+
+            financeHubSessionCache.set(effectiveBusinessId, {
+                accounts: nextAccounts,
+                expenses: nextExpenses,
+                creditNotes: nextCreditNotes,
+                periods: nextPeriods,
+                rates: nextRates,
+                vendors: nextVendors,
+                coverage: nextCoverage,
+            });
         } catch (err) {
             console.error('[FinanceHub] Load failed:', err);
         } finally {
+            inFlightRef.current = false;
             setLoading(false);
         }
-    }, [effectiveBusinessId, currency]);
+    }, [effectiveBusinessId, currency, applyFinanceCache]);
 
     useEffect(() => {
         queueMicrotask(() => {
@@ -712,7 +762,7 @@ export default function FinanceHub({ businessId, initialTab, businessCategory = 
                                 const res = await accountingAPI.reconcilePendingStorefrontGl(effectiveBusinessId);
                                 if (res.success) {
                                     toast.success(`Posted ${res.successful || 0} of ${res.total || 0} orders to books`);
-                                    loadData();
+                                    loadData({ force: true });
                                 } else {
                                     toast.error(res.error || 'Reconcile failed');
                                 }
@@ -749,14 +799,14 @@ export default function FinanceHub({ businessId, initialTab, businessCategory = 
                     </div>
                 );
             case 'accounts':
-                return <ChartOfAccountsManager businessId={effectiveBusinessId} accounts={accounts} onRefresh={loadData} />;
+                return <ChartOfAccountsManager businessId={effectiveBusinessId} accounts={accounts} onRefresh={() => loadData({ force: true })} />;
             case 'expenses':
                 return (
                     <ExpenseManager
                         businessId={effectiveBusinessId}
                         expenses={expenses}
-                        onCreateExpense={() => loadData()}
-                        onDeleteExpense={() => loadData()}
+                        onCreateExpense={() => loadData({ force: true })}
+                        onDeleteExpense={() => loadData({ force: true })}
                         currency={effectiveCurrency}
                         vendors={vendors}
                     />
@@ -787,14 +837,14 @@ export default function FinanceHub({ businessId, initialTab, businessCategory = 
                     />
                 );
             case 'credit-notes':
-                return <CreditNotesPanel businessId={effectiveBusinessId} creditNotes={creditNotes} currency={effectiveCurrency} onRefresh={loadData} />;
+                return <CreditNotesPanel businessId={effectiveBusinessId} creditNotes={creditNotes} currency={effectiveCurrency} onRefresh={() => loadData({ force: true })} />;
             case 'fiscal':
                 return (
                     <FiscalPeriodManager
                         businessId={effectiveBusinessId}
                         currency={effectiveCurrency}
                         periods={periods}
-                        onRefresh={loadData}
+                        onRefresh={() => loadData({ force: true })}
                     />
                 );
             case 'exchange':
@@ -803,7 +853,7 @@ export default function FinanceHub({ businessId, initialTab, businessCategory = 
                         businessId={effectiveBusinessId}
                         rates={rates}
                         baseCurrencyCode={currency || 'PKR'}
-                        onRefresh={loadData}
+                        onRefresh={() => loadData({ force: true })}
                     />
                 );
             default:
@@ -879,7 +929,7 @@ export default function FinanceHub({ businessId, initialTab, businessCategory = 
             {showJournalForm && (
                 <JournalEntryForm
                     onClose={() => setShowJournalForm(false)}
-                    onSave={() => loadData()}
+                    onSave={() => loadData({ force: true })}
                 />
             )}
         </div>

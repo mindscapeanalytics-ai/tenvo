@@ -154,6 +154,37 @@ if (!exists(constantsPath)) {
   }
 }
 
+// Phase 2: lean KPIs, slim product list, sales headers-only, finance session cache
+{
+  const bootstrap = exists(bootstrapPath) ? read(bootstrapPath) : '';
+  if (bootstrap && !bootstrap.includes("detailLevel: 'list'")) {
+    mark('hubShellBootstrap products must request detailLevel list');
+  }
+
+  const dashboardKpis = read('lib/actions/basic/dashboard.js');
+  if (/SELECT \* FROM invoices/.test(dashboardKpis)) {
+    mark('getDashboardKPIs must not SELECT * FROM invoices (use column-minimal CTEs)');
+  }
+
+  const productService = read('lib/services/ProductService.js');
+  if (!productService.includes('detailLevel') || !productService.includes('_detailLevel')) {
+    mark('ProductService.getProducts must support detailLevel / _detailLevel');
+  }
+
+  const dataCtx = read('lib/context/DataContext.js');
+  if (!dataCtx.includes('includeItems: false')) {
+    mark('DataContext fetchSales must keep includeItems false for list modes');
+  }
+  if (!dataCtx.includes('inventoryPendingForceRef')) {
+    mark('DataContext must coalesce inventory force refreshes (inventoryPendingForceRef)');
+  }
+
+  const financeHub = read('components/finance/FinanceHub.jsx');
+  if (!financeHub.includes('financeHubSessionCache')) {
+    mark('FinanceHub must use session cache to avoid remount refetch storms');
+  }
+}
+
 if (!failed) {
   console.log('PASS: hub shell bootstrap wiring checks');
   process.exit(0);

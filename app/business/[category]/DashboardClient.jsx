@@ -512,6 +512,8 @@ function BusinessDashboardContent() {
     removeProductFromState,
     upsertInvoiceInState,
     removeInvoiceFromState,
+    upsertLocationsInState,
+    upsertCustomerInState,
     scheduleAnalyticsRefresh,
     isDataLoaded,
   } = useData();
@@ -555,7 +557,15 @@ function BusinessDashboardContent() {
 
     if (['inventory', 'batches', 'warehouses', 'pos'].includes(activeTab)) {
       if (!moduleReady.inventoryCatalog && !loadingModules.inventory) {
-        void fetchInventory({ fullCatalog: true });
+        void fetchInventory({ fullCatalog: true, detailLevel: 'grid' });
+      } else if (
+        moduleReady.inventoryCatalog &&
+        !loadingModules.inventory &&
+        Array.isArray(products) &&
+        products.some((p) => p?._detailLevel === 'list' || p?._batchesDeferred)
+      ) {
+        // Progressive enrichment: shell used slim list; upgrade for grid/batch UI without blanking.
+        void fetchInventory({ force: true, fullCatalog: true, detailLevel: 'grid' });
       }
       return;
     }
@@ -603,6 +613,7 @@ function BusinessDashboardContent() {
     hubReady,
     loadingModules,
     moduleReady,
+    products,
     fetchFinance,
     fetchSales,
     fetchInventory,
@@ -904,7 +915,8 @@ function BusinessDashboardContent() {
         scheduleAnalyticsRefresh?.();
       } else {
         // Safety fallback when save response cannot be merged into state.
-        await fetchInventory({ force: true, includeSerials: true });
+        // Never pull serials on list refresh — edit path loads them on demand.
+        void fetchInventory({ force: true, detailLevel: 'grid' });
         scheduleAnalyticsRefresh?.();
       }
 
@@ -934,7 +946,7 @@ function BusinessDashboardContent() {
       if (typeof removeProductFromState === 'function') {
         removeProductFromState(productId);
       } else {
-        await fetchInventory({ force: true });
+        void fetchInventory({ force: true, detailLevel: 'grid' });
       }
       scheduleAnalyticsRefresh?.();
       if (!alreadyDeleted) {
@@ -951,17 +963,23 @@ function BusinessDashboardContent() {
 
   const handleSaveCustomer = async (customerData) => {
     try {
+      let saved;
       if (customerData.id) {
-        await customerAPI.update(customerData.id, { ...customerData, business_id: business.id });
+        saved = await customerAPI.update(customerData.id, { ...customerData, business_id: business.id });
         toast.success('Customer updated successfully');
       } else {
-        await customerAPI.create({
+        saved = await customerAPI.create({
           ...customerData,
           business_id: business.id
         });
         toast.success('Customer added successfully');
       }
-      await fetchSales({ force: true });
+      const row = saved?.id ? saved : (saved?.customer || saved?.data || saved);
+      if (row?.id && typeof upsertCustomerInState === 'function') {
+        upsertCustomerInState(row);
+      } else {
+        void fetchSales({ force: true, mode: 'full' });
+      }
       setShowCustomerForm(false);
       setEditingCustomer(null);
       return { success: true };
@@ -1418,7 +1436,7 @@ function BusinessDashboardContent() {
       await fetchPurchases({ force: true });
 
       if (status === PURCHASE_STATUSES.RECEIVED && business?.id) {
-        await fetchInventory({ force: true });
+        void fetchInventory({ force: true, detailLevel: 'grid' });
         toast.success('Inventory updated automatically');
       } else {
         toast.success(`Order marked as ${getPurchaseStatusLabel(status)}`);
@@ -1456,8 +1474,12 @@ function BusinessDashboardContent() {
 
   const handleLocationAdd = async (data) => {
     try {
-      await warehouseAPI.createLocation({ ...data, business_id: business.id });
-      await fetchInventory({ force: true });
+      const location = await warehouseAPI.createLocation({ ...data, business_id: business.id });
+      if (location?.id && typeof upsertLocationsInState === 'function') {
+        upsertLocationsInState([...(Array.isArray(locations) ? locations : []), location]);
+      } else {
+        void fetchInventory({ force: true, detailLevel: 'list', fullCatalog: false });
+      }
       toast.success('Warehouse location added');
     } catch (error) {
       console.error('Add Location Error:', error);
@@ -1474,8 +1496,15 @@ function BusinessDashboardContent() {
 
   const handleLocationUpdate = async (locationId, updates) => {
     try {
-      await warehouseAPI.updateLocation(business.id, locationId, updates);
-      await fetchInventory({ force: true });
+      const location = await warehouseAPI.updateLocation(business.id, locationId, updates);
+      if (location?.id && typeof upsertLocationsInState === 'function') {
+        const list = Array.isArray(locations) ? locations : [];
+        upsertLocationsInState(
+          list.map((loc) => (loc?.id === locationId ? { ...loc, ...location } : loc))
+        );
+      } else {
+        void fetchInventory({ force: true, detailLevel: 'list', fullCatalog: false });
+      }
       toast.success('Location updated successfully');
     } catch (error) {
       console.error('Update Location Error:', error);
@@ -1487,7 +1516,12 @@ function BusinessDashboardContent() {
   const handleLocationDelete = async (locationId) => {
     try {
       await warehouseAPI.deleteLocation(business.id, locationId);
-      await fetchInventory({ force: true });
+      if (typeof upsertLocationsInState === 'function') {
+        const list = Array.isArray(locations) ? locations : [];
+        upsertLocationsInState(list.filter((loc) => loc?.id !== locationId));
+      } else {
+        void fetchInventory({ force: true, detailLevel: 'list', fullCatalog: false });
+      }
       toast.success('Location deleted successfully');
     } catch (error) {
       console.error('Delete Location Error:', error);
@@ -1499,8 +1533,8 @@ function BusinessDashboardContent() {
     try {
       await warehouseAPI.createTransfer({ ...data, business_id: business.id });
       toast.success('Stock transfer initiated');
-      // Refresh inventory via DataProvider to reflect stock changes
-      await fetchInventory({ force: true });
+      // Non-blocking catalog refresh — UI already confirmed transfer.
+      void fetchInventory({ force: true, detailLevel: 'grid' });
     } catch (error) {
       console.error('Stock Transfer Error:', error);
       toast.error('Failed to transfer stock');

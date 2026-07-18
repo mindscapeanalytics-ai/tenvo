@@ -307,7 +307,7 @@ export function InventoryManager({
     if (!businessId || (initialProducts?.length > 0) || refreshData) return;
     setLoading(true);
     try {
-      const res = await getProductsAction(businessId, { includeSerials: false });
+      const res = await getProductsAction(businessId, { includeSerials: false, detailLevel: 'grid' });
       if (res.success) {
         setProducts(deduplicateProducts(res.products));
         setLastSyncedAt(new Date());
@@ -336,7 +336,7 @@ export function InventoryManager({
       if (typeof refreshData === 'function') {
         await refreshData();
       } else if (businessId) {
-        const res = await getProductsAction(businessId, { includeSerials: false });
+        const res = await getProductsAction(businessId, { includeSerials: false, detailLevel: 'grid' });
         if (res.success) {
           setProducts(deduplicateProducts(res.products));
         } else {
@@ -360,7 +360,7 @@ export function InventoryManager({
       return;
     }
     if (businessId) {
-      const res = await getProductsAction(businessId, { includeSerials: false });
+      const res = await getProductsAction(businessId, { includeSerials: false, detailLevel: 'grid' });
       if (res.success) {
         setProducts(deduplicateProducts(res.products));
       }
@@ -1120,14 +1120,20 @@ export function InventoryManager({
   }, [onAdd, canCreateInventory]);
 
   const loadFullProductIfDeferred = useCallback(async (product) => {
-    if (!product?._serialsDeferred || !product?.id || !businessId) return product;
+    if (!product?.id || !businessId) return product;
+    const needsHydrate =
+      product._serialsDeferred ||
+      product._batchesDeferred ||
+      product._variantsDeferred ||
+      product._detailLevel === 'list';
+    if (!needsHydrate) return product;
     try {
       const res = await getProductAction(businessId, product.id);
       if (res.success && res.product) {
         return mergeInventoryServerRow(product, res.product);
       }
     } catch (error) {
-      console.warn('Deferred serial product hydrate skipped:', error?.message || error);
+      console.warn('Deferred product hydrate skipped:', error?.message || error);
     }
     return product;
   }, [businessId]);
