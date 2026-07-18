@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import {
   buildClothingAttributeRows,
   buildPartsAttributeRows,
+  buildMarinePartsAttributeRows,
   buildStorefrontFilterHref,
 } from '@/lib/storefront/productAttributeChips';
 
@@ -16,14 +17,17 @@ export function ProductAttributeList({
   businessDomain,
   showFashionMeta = false,
   showPartsMeta = false,
+  showMarineMeta = false,
   /** Keys already rendered as top-level badges (e.g. sourcing on ProductInfo). */
   hideBadgeKeys = [],
 }) {
   const rows = showFashionMeta
     ? buildClothingAttributeRows(product)
-    : showPartsMeta
-      ? buildPartsAttributeRows(product)
-      : [];
+    : showMarineMeta
+      ? buildMarinePartsAttributeRows(product)
+      : showPartsMeta
+        ? buildPartsAttributeRows(product)
+        : [];
 
   const visibleRows = rows.filter(
     (row) => !(row.badge && hideBadgeKeys.includes(row.key))

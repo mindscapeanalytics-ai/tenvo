@@ -119,7 +119,7 @@ const DOMAIN_CATEGORY_BLUEPRINTS = [
         id: 'industrial',
         name: 'Manufacturing',
         icon: Factory,
-        domains: ['chemical', 'paper-mill', 'paint', 'plastic-manufacturing', 'textile-mill', 'printing-packaging', 'furniture', 'ceramics-tiles', 'flour-mill', 'rice-mill', 'sugar-mill', 'steel-industry', 'industrial-parts']
+        domains: ['chemical', 'paper-mill', 'paint', 'plastic-manufacturing', 'textile-mill', 'printing-packaging', 'furniture', 'ceramics-tiles', 'flour-mill', 'rice-mill', 'sugar-mill', 'steel-industry', 'industrial-parts', 'marine-parts']
     },
     {
         id: 'services',

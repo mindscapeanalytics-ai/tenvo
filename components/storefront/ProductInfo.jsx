@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { formatCurrency } from '@/lib/currency';
 import { useStorefront } from '@/lib/context/StorefrontContext';
 import { isAutoPartsFinderStore } from '@/lib/storefront/partsFinder';
+import { isMarinePartsFinderStore } from '@/lib/storefront/marinePartsFinder';
 import { isFashionEditorialStore } from '@/lib/storefront/fashionEditorial';
 import { isPharmacyElevatedStore } from '@/lib/storefront/pharmacyStorefront';
 import { resolvePharmacyProductMeta } from '@/lib/storefront/pharmacyProducts';
@@ -22,6 +23,7 @@ export function ProductInfo({ product, businessDomain }) {
 
   const categoryKey = business?.category;
   const showPartsMeta = isAutoPartsFinderStore(categoryKey);
+  const showMarineMeta = isMarinePartsFinderStore(categoryKey);
   const showFashionMeta = isFashionEditorialStore(categoryKey);
   const pharmacyStore = isPharmacyElevatedStore(categoryKey);
   const pharmacyMeta = pharmacyStore ? resolvePharmacyProductMeta(product) : null;
@@ -119,12 +121,13 @@ export function ProductInfo({ product, businessDomain }) {
         <p className="text-gray-600 leading-relaxed">{product.description}</p>
       ) : null}
 
-      {(showFashionMeta || showPartsMeta || product.sku) ? (
+      {(showFashionMeta || showPartsMeta || showMarineMeta || product.sku) ? (
         <ProductAttributeList
           product={product}
           businessDomain={businessDomain}
           showFashionMeta={showFashionMeta}
           showPartsMeta={showPartsMeta}
+          showMarineMeta={showMarineMeta}
           hideBadgeKeys={sourcingBadge ? ['sourcing'] : []}
         />
       ) : null}

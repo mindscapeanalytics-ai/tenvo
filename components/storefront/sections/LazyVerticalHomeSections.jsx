@@ -28,6 +28,9 @@ const MarketplaceHomeSections = dynamicSection(() =>
 const AutoPartsHomeSections = dynamicSection(() =>
   import('./autoparts/AutoPartsHomeSections').then((m) => ({ default: m.AutoPartsHomeSections }))
 );
+const MarineHomeSections = dynamicSection(() =>
+  import('./marine/MarineHomeSections').then((m) => ({ default: m.MarineHomeSections }))
+);
 const PharmacyHomeSections = dynamicSection(() =>
   import('./pharmacy/PharmacyHomeSections').then((m) => ({ default: m.PharmacyHomeSections }))
 );
@@ -55,6 +58,8 @@ export function LazyVerticalHomeSections({ variant, ...props }) {
       return <MarketplaceHomeSections {...props} />;
     case 'auto-parts':
       return <AutoPartsHomeSections {...props} />;
+    case 'marine-parts':
+      return <MarineHomeSections {...props} />;
     case 'pharmacy':
       return <PharmacyHomeSections {...props} />;
     case 'furniture':

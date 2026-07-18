@@ -68,6 +68,7 @@
     "verify:storefront-order-emails": "node scripts/verify-storefront-order-emails.mjs",
     "extract:autoparts-archive": "node scripts/extract-autoparts-archive-seed.mjs",
     "verify:autoparts-seed": "bun scripts/verify-autoparts-seed.mjs",
+    "verify:marine-parts-seed": "bun scripts/verify-marine-parts-seed.mjs",
     "verify:fitness-seed": "bun scripts/verify-fitness-seed.mjs",
     "verify:pharmacy-seed": "bun scripts/verify-pharmacy-seed.mjs",
     "verify:restaurant-seed": "bun scripts/verify-restaurant-seed.mjs",

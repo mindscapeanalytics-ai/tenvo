@@ -13,6 +13,7 @@ import { useStorefront } from '@/lib/context/StorefrontContext';
 import { getStoreAccentColor } from '@/lib/config/storefrontDomains';
 import { getEffectiveProductImageUrl, getFallbackProductImageUrl } from '@/lib/storefront/productImageFallback';
 import { isAutoPartsFinderStore } from '@/lib/storefront/partsFinder';
+import { isMarinePartsFinderStore } from '@/lib/storefront/marinePartsFinder';
 import { isFashionEditorialStore } from '@/lib/storefront/fashionEditorial';
 import {
   isFitnessElevatedStore,
@@ -75,12 +76,16 @@ export function ProductCard({ product, businessDomain, variant = 'default' }) {
   const categoryLabel = product.category_name || product.category;
   const brandLabel = product.brand?.trim();
   const showPartsMeta = isAutoPartsFinderStore(business?.category);
+  const showMarineMeta = isMarinePartsFinderStore(business?.category);
   const showFashionMeta = isFashionEditorialStore(business?.category);
   const sourcingBadge = showFashionMeta ? resolveSourcingBadge(product.domain_data) : null;
   const partNumber = product.domain_data?.partnumber;
   const fitmentHint = showPartsMeta
     ? [product.domain_data?.vehiclemake, product.domain_data?.vehiclemodel].filter(Boolean).join(' ')
-    : '';
+    : showMarineMeta
+      ? [product.domain_data?.equipmenttype, product.domain_data?.systemcondition].filter(Boolean).join(' · ')
+      : '';
+  const showMetaChips = showPartsMeta || showMarineMeta;
 
   // Preview/seed rows and any non-UUID ref are not real DB products: they can't be
   // added to cart or opened at /products/{slug} (would 404). Route them to a real
@@ -373,7 +378,7 @@ export function ProductCard({ product, businessDomain, variant = 'default' }) {
           </h3>
         </Link>
 
-        {showPartsMeta && (partNumber || fitmentHint) && !isDense && (
+        {showMetaChips && (partNumber || fitmentHint) && !isDense && (
           <p className="truncate text-[10px] text-slate-500">
             {partNumber ? <span className="font-medium text-slate-600">{partNumber}</span> : null}
             {partNumber && fitmentHint ? ' · ' : null}

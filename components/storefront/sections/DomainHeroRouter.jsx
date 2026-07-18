@@ -1,6 +1,7 @@
 'use client';
 
 import { PartsFinderHero } from './heroes/PartsFinderHero';
+import { MarinePartsFinderHero } from './heroes/MarinePartsFinderHero';
 import {
   PharmacyFinderHero,
   FashionFinderHero,
@@ -29,6 +30,15 @@ export function DomainHeroRouter({ preset, businessDomain, accent, accentDark })
     case 'parts-finder':
       return (
         <PartsFinderHero
+          preset={preset}
+          businessDomain={businessDomain}
+          accent={accent}
+          accentDark={accentDark}
+        />
+      );
+    case 'marine-parts-finder':
+      return (
+        <MarinePartsFinderHero
           preset={preset}
           businessDomain={businessDomain}
           accent={accent}

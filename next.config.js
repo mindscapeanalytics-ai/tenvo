@@ -89,6 +89,10 @@ const nextConfig = {
       { protocol: 'https', hostname: '**.shopify.com' },
       { protocol: 'https', hostname: '**.eatx.pk' },
       { protocol: 'https', hostname: '**.naheed.pk' },
+      { protocol: 'https', hostname: 'c11cbcde.delivery.rocketcdn.me' },
+      { protocol: 'https', hostname: '**.rocketcdn.me' },
+      { protocol: 'https', hostname: 'www.wartsila.com' },
+      { protocol: 'https', hostname: 'wartsila.com' },
     ],
     // Keep unoptimized in development to avoid 504/500 when optimizing remote images locally.
     // Production uses Next image optimization (WebP/AVIF) for LCP.

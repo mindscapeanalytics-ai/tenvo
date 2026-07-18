@@ -60,6 +60,7 @@ import { resolveStorefrontHeroSlides } from '@/lib/storefront/heroSlides';
 import { SupermarketHomeSections } from '@/components/storefront/sections/supermarket/SupermarketHomeSections';
 import { SupermarketFeedLayout } from '@/components/storefront/supermarket/SupermarketFeedLayout';
 import { isAutoPartsStore } from '@/lib/storefront/autoParts';
+import { isMarinePartsStore, MARINE_ACCENT } from '@/lib/storefront/marineParts';
 import { cn } from '@/lib/utils';
 import {
   ArrowRight, Sparkles,
@@ -183,12 +184,13 @@ export default async function StoreHomePage({ params }) {
   const fitnessElevatedHero = heroPreset.type === 'fitness-elevated';
   const supermarketElevatedHero = heroPreset.type === 'supermarket-elevated';
   const autoPartsHero = finderHero && isAutoPartsStore(business.category);
+  const marinePartsHero = finderHero && isMarinePartsStore(business.category);
   const jewelleryElevatedHero = heroPreset.type === 'jewellery-elevated';
-  const skipHomeNavSections = finderHero || editorialHero || dealershipHero || marketplaceHero || pharmacyElevatedHero || furnitureElevatedHero || restaurantElevatedHero || fitnessElevatedHero || supermarketElevatedHero || jewelleryElevatedHero;
+  const skipHomeNavSections = finderHero || editorialHero || dealershipHero || marketplaceHero || pharmacyElevatedHero || furnitureElevatedHero || restaurantElevatedHero || fitnessElevatedHero || supermarketElevatedHero || jewelleryElevatedHero || marinePartsHero;
   const copy = getStoreHomeCopy(business, domainCfg, landing);
   const contact = resolveStoreContact({ business, settings });
 
-  const needsCatalogBackfill = !editorialHero && !dealershipHero && !marketplaceHero && !autoPartsHero && !furnitureElevatedHero && !restaurantElevatedHero && !fitnessElevatedHero && !supermarketElevatedHero && !jewelleryElevatedHero;
+  const needsCatalogBackfill = !editorialHero && !dealershipHero && !marketplaceHero && !autoPartsHero && !marinePartsHero && !furnitureElevatedHero && !restaurantElevatedHero && !fitnessElevatedHero && !supermarketElevatedHero && !jewelleryElevatedHero;
 
   const catalogPlan = buildStoreHomeCatalogPlan({
     editorialHero,
@@ -200,6 +202,7 @@ export default async function StoreHomePage({ params }) {
     fitnessElevatedHero,
     supermarketElevatedHero,
     autoPartsHero,
+    marinePartsHero,
     jewelleryElevatedHero,
     needsCatalogBackfill,
     restaurantDemo: restaurantElevatedHero && isDemoStoreDomain(businessDomain),
@@ -221,6 +224,7 @@ export default async function StoreHomePage({ params }) {
     fitnessCatalogResult,
     supermarketCatalogResult,
     autoPartsCatalogResult,
+    marinePartsCatalogResult,
     catalogBackfillResult,
   } = mapStoreHomeCatalogRails(catalogBundle, catalogPlan, {
     editorialHero,
@@ -232,6 +236,7 @@ export default async function StoreHomePage({ params }) {
     fitnessElevatedHero,
     supermarketElevatedHero,
     autoPartsHero,
+    marinePartsHero,
     jewelleryElevatedHero,
     needsCatalogBackfill,
   });
@@ -555,6 +560,10 @@ export default async function StoreHomePage({ params }) {
     ? autoPartsCatalogResult.products
     : buildTopPicksProducts(featuredProducts, popularityBackfill, 48);
 
+  const marinePartsProducts = marinePartsCatalogResult.success
+    ? marinePartsCatalogResult.products
+    : buildTopPicksProducts(featuredProducts, popularityBackfill, 48);
+
   const hasGenericRetailProducts =
     featuredProducts.length > 0 || newArrivalsRaw.length > 0 || onSaleProducts.length > 0;
 
@@ -565,7 +574,7 @@ export default async function StoreHomePage({ params }) {
         ? 'bg-black text-white'
         : editorialHero
           ? 'bg-stone-50 text-slate-900'
-          : dealershipHero || marketplaceHero || pharmacyElevatedHero || furnitureElevatedHero || restaurantElevatedHero || supermarketElevatedHero || autoPartsHero
+          : dealershipHero || marketplaceHero || pharmacyElevatedHero || furnitureElevatedHero || restaurantElevatedHero || supermarketElevatedHero || autoPartsHero || marinePartsHero
             ? restaurantElevatedHero
               ? 'bg-zinc-50 text-zinc-900'
               : 'bg-white text-slate-900'
@@ -573,7 +582,7 @@ export default async function StoreHomePage({ params }) {
     )}>
 
       {/* ── Announcement Banner ─────────────────────────────────────────────── */}
-      {hero.banner && !editorialHero && !dealershipHero && !marketplaceHero && !pharmacyElevatedHero && !furnitureElevatedHero && !restaurantElevatedHero && !fitnessElevatedHero && !supermarketElevatedHero && !jewelleryElevatedHero ? (
+      {hero.banner && !editorialHero && !dealershipHero && !marketplaceHero && !pharmacyElevatedHero && !furnitureElevatedHero && !restaurantElevatedHero && !fitnessElevatedHero && !supermarketElevatedHero && !jewelleryElevatedHero && !marinePartsHero ? (
         <div
           className="md:hidden text-white text-center py-2 px-4 text-xs font-medium truncate"
           style={{ backgroundColor: accent }}
@@ -706,6 +715,20 @@ export default async function StoreHomePage({ params }) {
           accent={accent}
           base={heroPreset.base}
           settings={settings}
+        />
+      )}
+
+      {marinePartsHero && (
+        <LazyVerticalHomeSections
+          variant="marine-parts"
+          businessDomain={businessDomain}
+          businessCategory={business.category}
+          products={marinePartsProducts}
+          currency={storeCurrency}
+          accent={accent || MARINE_ACCENT}
+          base={heroPreset.base}
+          settings={settings}
+          storeName={business.name}
         />
       )}
 
@@ -889,7 +912,7 @@ export default async function StoreHomePage({ params }) {
       />
       )}
 
-      {!editorialHero && !dealershipHero && !marketplaceHero && !pharmacyElevatedHero && !furnitureElevatedHero && !restaurantElevatedHero && !fitnessElevatedHero && !supermarketElevatedHero && !autoPartsHero && !jewelleryElevatedHero && (
+      {!editorialHero && !dealershipHero && !marketplaceHero && !pharmacyElevatedHero && !furnitureElevatedHero && !restaurantElevatedHero && !fitnessElevatedHero && !supermarketElevatedHero && !autoPartsHero && !marinePartsHero && !jewelleryElevatedHero && (
         <DomainDealStrip dealStrip={landing.dealStrip} accent={accent} accentDark={accentDark} />
       )}
 
@@ -953,7 +976,7 @@ export default async function StoreHomePage({ params }) {
       )}
 
       {/* ── Featured / primary catalog ───────────────────────────────────── */}
-      {featuredRow.length > 0 && !editorialHero && !dealershipHero && !marketplaceHero && !pharmacyElevatedHero && !furnitureElevatedHero && !restaurantElevatedHero && !fitnessElevatedHero && !supermarketElevatedHero && !autoPartsHero && !jewelleryElevatedHero && (
+      {featuredRow.length > 0 && !editorialHero && !dealershipHero && !marketplaceHero && !pharmacyElevatedHero && !furnitureElevatedHero && !restaurantElevatedHero && !fitnessElevatedHero && !supermarketElevatedHero && !autoPartsHero && !marinePartsHero && !jewelleryElevatedHero && (
         <section className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-8 py-4 sm:py-10">
           <StoreSectionHeader
             title={copy.featuredTitle}
@@ -985,7 +1008,7 @@ export default async function StoreHomePage({ params }) {
       )}
 
       {/* ── Fallback primary grid when no featured flag ──────────────────── */}
-      {featuredRow.length === 0 && newArrivalsRaw.length > 0 && !editorialHero && !dealershipHero && !marketplaceHero && !pharmacyElevatedHero && !furnitureElevatedHero && !restaurantElevatedHero && !fitnessElevatedHero && !supermarketElevatedHero && !autoPartsHero && !jewelleryElevatedHero && (
+      {featuredRow.length === 0 && newArrivalsRaw.length > 0 && !editorialHero && !dealershipHero && !marketplaceHero && !pharmacyElevatedHero && !furnitureElevatedHero && !restaurantElevatedHero && !fitnessElevatedHero && !supermarketElevatedHero && !autoPartsHero && !marinePartsHero && !jewelleryElevatedHero && (
         <section className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-8 py-4 sm:py-10">
           <StoreSectionHeader
             title={copy.shopAllTitle}
@@ -1007,7 +1030,7 @@ export default async function StoreHomePage({ params }) {
       {/* ── On Sale (retail grid). Editorial stores use the fashion Offers rail
              (FashionDepartmentSections) instead, so skip this to avoid a
              duplicate section and a retail-vs-editorial card clash. ───────── */}
-      {onSaleRow.length >= 1 && !editorialHero && !dealershipHero && !marketplaceHero && !pharmacyElevatedHero && !furnitureElevatedHero && !restaurantElevatedHero && !fitnessElevatedHero && !supermarketElevatedHero && !autoPartsHero && !jewelleryElevatedHero && (
+      {onSaleRow.length >= 1 && !editorialHero && !dealershipHero && !marketplaceHero && !pharmacyElevatedHero && !furnitureElevatedHero && !restaurantElevatedHero && !fitnessElevatedHero && !supermarketElevatedHero && !autoPartsHero && !marinePartsHero && !jewelleryElevatedHero && (
         <section className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-8 py-4 sm:py-10">
           <StoreSectionHeader
             title={copy.onSaleTitle}
