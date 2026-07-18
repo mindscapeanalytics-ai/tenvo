@@ -69,6 +69,17 @@ includes('components/reports/AgingReportsPanel.jsx', 'AgingReportsPanel', 'Aging
 includes('components/FinancialReports.jsx', 'AgingReportsPanel', 'Statements hosts aging panel');
 includes('prisma/migrations/20260718_invoice_aging_view/migration.sql', 'CREATE OR REPLACE VIEW invoice_aging', 'Prisma invoice_aging view migration');
 
+// Statements accuracy: exclude draft journals; keep reversed + posted
+includes('lib/utils/glReportSql.js', 'GL_EXCLUDE_DRAFT_JOURNAL_SQL', 'shared draft-exclusion SQL fragment');
+includes('lib/actions/standard/report.js', 'GL_EXCLUDE_DRAFT_JOURNAL_SQL', 'report actions use draft exclusion');
+includes('lib/actions/standard/report.js', 'grossMargin', 'P&L returns grossMargin for PDF/UI');
+includes('lib/actions/standard/report.js', 'a.business_id = je.business_id', 'Day Book scopes accounts by business');
+assert(
+  read('lib/actions/standard/report.js').includes("<> 'draft'") ||
+    read('lib/utils/glReportSql.js').includes("<> 'draft'"),
+  'draft journals excluded from statement balances'
+);
+
 if (failed > 0) {
   console.error(`\n${failed} check(s) failed`);
   process.exit(1);

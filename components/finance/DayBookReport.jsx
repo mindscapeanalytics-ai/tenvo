@@ -80,7 +80,7 @@ export default function DayBookReport({ businessId }) {
       <CardHeader className="flex flex-col gap-3 border-b border-gray-100 dark:border-slate-800 pb-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <CardTitle className="text-xl font-semibold text-gray-900 dark:text-gray-100">Day Book</CardTitle>
-          <CardDescription>Posted journal lines for the selected date</CardDescription>
+          <CardDescription>Non-draft journal lines for the selected date (posted and reversed)</CardDescription>
         </div>
         <div className="flex flex-wrap items-center gap-2 print:hidden">
           <input
