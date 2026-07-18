@@ -1002,7 +1002,7 @@ export default async function StoreHomePage({ params }) {
         </section>
       )}
 
-      {landing.spotlights?.[0] && !editorialHero && !jewelleryElevatedHero && (
+      {landing.spotlights?.[0] && !editorialHero && !jewelleryElevatedHero && !marinePartsHero && !autoPartsHero && (
         <DomainEditorialSpotlight
           spotlight={landing.spotlights[0]}
           accent={accent}
@@ -1057,8 +1057,8 @@ export default async function StoreHomePage({ params }) {
         </section>
       )}
 
-      {/* ── Free shipping promo (desktop), skip on editorial (avoids 3rd accent banner) ─ */}
-      {!editorialHero && !dealershipHero && !marketplaceHero && !pharmacyElevatedHero && !furnitureElevatedHero && !restaurantElevatedHero && !fitnessElevatedHero && !supermarketElevatedHero && !jewelleryElevatedHero && (
+      {/* ── Free shipping promo (desktop), skip elevated / B2B parts templates ─ */}
+      {!editorialHero && !dealershipHero && !marketplaceHero && !pharmacyElevatedHero && !furnitureElevatedHero && !restaurantElevatedHero && !fitnessElevatedHero && !supermarketElevatedHero && !jewelleryElevatedHero && !marinePartsHero && !autoPartsHero && (
       <section className="hidden md:block mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
         <div
           className="relative overflow-hidden rounded-3xl p-8 sm:p-12"

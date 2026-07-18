@@ -17,6 +17,7 @@ import {
 } from '@/lib/storefront/marineParts';
 import { buildMarineProductsUrl } from '@/lib/storefront/marinePartsFinder';
 import { StoreConnectionCtaBanner } from '@/components/storefront/StoreConnectionCtaBanner';
+import { getAboutStorefrontConfig } from '@/lib/storefront/aboutStorefront';
 
 /**
  * Tenvo Marine elevated homepage — industrial KPIs, expertise pillars, equipment grid, insights.
@@ -62,7 +63,11 @@ export function MarineHomeSections({
               <h2 className={cn(STORE_SECTION_HEADING, 'text-neutral-900')}>{config.kpiTitle}</h2>
               <p className="mt-3 text-sm leading-relaxed text-neutral-600">{kpiSubtitle}</p>
               <Link
-                href={`${storeBase}/about`}
+                href={
+                  getAboutStorefrontConfig(settings, { category: 'marine-parts' }).enabled
+                    ? `${storeBase}/about`
+                    : `${storeBase}/contact`
+                }
                 className="mt-5 inline-flex items-center gap-1 text-sm font-semibold"
                 style={{ color: accent }}
               >

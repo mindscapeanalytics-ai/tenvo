@@ -17,6 +17,7 @@ import { getStoreFooterCopy } from '@/lib/storefront/storeFooterCopy';
 import { isAutoDealershipStore, getDealershipFooterColumns } from '@/lib/storefront/autoDealership';
 import { isAutoMarketplaceStore, getMarketplaceFooterColumns } from '@/lib/storefront/autoMarketplace';
 import { StorefrontBrandMark } from '@/components/storefront/StorefrontBrandMark';
+import { getAboutStorefrontConfig } from '@/lib/storefront/aboutStorefront';
 import { isPharmacyElevatedStore, getPharmacyFooterColumns, formatPharmacyStoreName } from '@/lib/storefront/pharmacyStorefront';
 import { isFitnessElevatedStore, getFitnessFooterColumns, formatFitnessStoreName } from '@/lib/storefront/fitnessStorefront';
 import {
@@ -95,8 +96,22 @@ export function StoreFooter({ business, settings }) {
   const dealershipColumns = dealershipFooter
     ? getDealershipFooterColumns(`/store/${businessDomain}`, { country: business?.country, settings })
     : [];
+  const aboutCfg = getAboutStorefrontConfig(settings, { category: business?.category });
   const marketplaceColumns = marketplaceFooter
-    ? getMarketplaceFooterColumns(`/store/${businessDomain}`)
+    ? getMarketplaceFooterColumns(`/store/${businessDomain}`).map((col) => ({
+        ...col,
+        links: (col.links || [])
+          .map((link) => {
+            if (String(link.label || '').toLowerCase() === 'about us' && aboutCfg.enabled) {
+              return { ...link, href: `/store/${businessDomain}/about` };
+            }
+            return link;
+          })
+          .filter((link) => {
+            if (!String(link.href || '').endsWith('/about')) return true;
+            return aboutCfg.enabled && aboutCfg.showInFooter;
+          }),
+      }))
     : [];
   const pharmacyColumns = pharmacyFooter
     ? getPharmacyFooterColumns(`/store/${businessDomain}`)
@@ -105,7 +120,13 @@ export function StoreFooter({ business, settings }) {
     ? getFitnessFooterColumns(`/store/${businessDomain}`, categories || [])
     : [];
   const supermarketColumns = supermarketFooter
-    ? getSupermarketFooterColumns(`/store/${businessDomain}`)
+    ? getSupermarketFooterColumns(`/store/${businessDomain}`).map((col) => ({
+        ...col,
+        links: (col.links || []).filter((link) => {
+          if (!String(link.href || '').endsWith('/about')) return true;
+          return aboutCfg.enabled && aboutCfg.showInFooter;
+        }),
+      }))
     : [];
   const darkPortalFooter = dealershipFooter || marketplaceFooter || fitnessFooter || supermarketFooter;
   // Generic trust badges (Fast delivery, secure payment, etc.) removed from all storefront footers.
@@ -173,6 +194,9 @@ export function StoreFooter({ business, settings }) {
     }));
 
   const supportLinks = [
+    ...(aboutCfg.enabled && aboutCfg.showInFooter
+      ? [{ label: 'About Us', href: `/store/${businessDomain}/about` }]
+      : []),
     { label: 'Track Order', href: `/store/${businessDomain}/orders` },
     { label: 'Shipping Info', href: `/store/${businessDomain}/shipping` },
     { label: 'Returns', href: `/store/${businessDomain}/returns` },

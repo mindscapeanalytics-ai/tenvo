@@ -57,6 +57,8 @@ import {
   normalizeStorefrontBrandingForForm,
 } from '@/lib/storefront/storefrontBrandMark';
 import { StorefrontBrandMark } from '@/components/storefront/StorefrontBrandMark';
+import { AboutPageSettingsEditor } from '@/components/storefront/admin/AboutPageSettingsEditor';
+import { normalizeAboutStorefrontConfig } from '@/lib/storefront/aboutStorefront';
 import { supportsStoreConnectionButtons } from '@/lib/storefront/storeConnectionActions';
 
 // ── Image Upload Field ────────────────────────────────────────────────────────
@@ -167,6 +169,25 @@ export function StoreSettingsManager({ business, category }) {
       quoteLabel: '',
       callLabel: '',
       mailLabel: '',
+    },
+    about: {
+      enabled: true,
+      showInFooter: true,
+      showInNav: false,
+      headline: '',
+      story: '',
+      mission: '',
+      values: [],
+      foundedYear: '',
+      headquarters: '',
+      registrationId: '',
+      ownerName: '',
+      ownerTitle: 'Founder',
+      ownerPhotoUrl: '',
+      ownerBio: '',
+      team: [],
+      heroImageUrl: '',
+      ctaLabel: '',
     },
     socialLinks: { facebook: '', instagram: '', twitter: '', youtube: '' },
     logoUrl: '',
@@ -467,6 +488,9 @@ export function StoreSettingsManager({ business, category }) {
           ...prev,
           ...result.data,
           branding: normalizeStorefrontBrandingForForm(result.data.branding || prev.branding),
+          about: normalizeAboutStorefrontConfig(result.data.about || prev.about, {
+            category: category || business?.category,
+          }),
         }));
         setNewDomain(result.data.storeDomain || '');
         setLoadedPlanTier(result.data.planTier || null);
@@ -1041,6 +1065,23 @@ export function StoreSettingsManager({ business, category }) {
                 />
                 <p className="text-xs text-gray-400">Shown on your store page and used for SEO meta description.</p>
               </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-4">
+              <CardTitle className="text-sm font-semibold">About page</CardTitle>
+              <CardDescription>
+                Fully customizable company page for customers. Toggle visibility, story, leadership, and team.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <AboutPageSettingsEditor
+                about={settings.about}
+                onChange={(next) => set('about', next)}
+                businessId={business?.id}
+                ImageUpload={ImageUploadField}
+              />
             </CardContent>
           </Card>
 

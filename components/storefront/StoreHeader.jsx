@@ -115,7 +115,11 @@ export function StoreHeader({ business, categories, settings }) {
     !compactLuxuryHeader;
   const canonical = resolveDomainKey(business?.category);
   const dealershipLinks = dealershipNav
-    ? getDealershipNavLinks(storeRoot, { country: business?.country, settings })
+    ? getDealershipNavLinks(storeRoot, {
+        country: business?.country,
+        settings,
+        category: business?.category,
+      })
     : [];
   const dealershipNavGroups = dealershipNav
     ? getDealershipNavGroups(storeRoot, { country: business?.country, settings })

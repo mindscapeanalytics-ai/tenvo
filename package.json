@@ -66,6 +66,7 @@
     "verify:marketing-demo-heroes": "bun scripts/verify-marketing-demo-heroes.mjs",
     "verify:storefront-brand-mark": "bun scripts/verify-storefront-brand-mark.mjs",
     "verify:storefront-connection-actions": "bun scripts/verify-storefront-connection-actions.mjs",
+    "verify:about-storefront": "bun scripts/verify-about-storefront.mjs",
     "verify:hub-business-id": "bun scripts/verify-hub-business-id.mjs",
     "verify:finance-gl": "node scripts/verify-finance-gl.mjs",
     "verify:domain-operations": "node scripts/verify-domain-operations.mjs",
