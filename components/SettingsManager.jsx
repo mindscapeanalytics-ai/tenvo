@@ -27,7 +27,7 @@ import {
 } from '@/lib/actions/basic/business';
 import { useBusiness } from '@/lib/context/BusinessContext';
 import { PLAN_TIERS, PLAN_FEATURE_TOGGLE_KEYS, resolvePlanTier, FEATURE_LABELS, PLAN_ORDER, FEATURE_MIN_PLAN } from '@/lib/config/plans';
-import { getPackagingFromSettings } from '@/lib/subscription/effectivePlanAccess';
+import { getPackagingFromSettings, planHasFeatureWithPackaging } from '@/lib/subscription/effectivePlanAccess';
 import {
   PLAN_LIMIT_OVERRIDE_KEYS,
   LIMIT_OVERRIDE_LABELS,
@@ -36,13 +36,14 @@ import {
 } from '@/lib/utils/businessLimitOverrides';
 import { updateOwnerBusinessPackagingAction } from '@/lib/actions/basic/business';
 import { resetTeamMemberPassword, createTeamMemberWithPassword } from '@/lib/actions/admin/teamManagement';
+import { STAFF_ACCESS_MODULES, getDefaultModulesForRole } from '@/lib/rbac/moduleAccess';
 import useSubscription from '@/lib/hooks/useSubscription';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { CityAutocomplete } from './CityAutocomplete';
 import {
   Database, PlusCircle, LayoutGrid, ArrowLeftRight, Loader2, Sparkles, Trash2,
   HardDriveDownload, Save, Building2, Shield, Globe, Zap, CreditCard, Users, UserCog,
-  KeyRound, UserPlus, Mail,
+  KeyRound, UserPlus, Mail, ChevronDown, ChevronUp,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { getBookMeetingHref } from '@/lib/marketing/salesLinks';
@@ -51,6 +52,55 @@ import CryptoBillingPanel from '@/components/billing/CryptoBillingPanel';
 import DomainPackageBillingCards from '@/components/billing/DomainPackageBillingCards';
 import { PosSettingsPanel } from '@/components/pos/PosSettingsPanel';
 import { isPosRelevant } from '@/lib/config/domains';
+
+const ASSIGNABLE_TEAM_ROLES = [
+  'admin',
+  'manager',
+  'accountant',
+  'cashier',
+  'salesperson',
+  'warehouse_manager',
+  'waiter',
+  'viewer',
+];
+
+function resolveMemberModules(member) {
+  if (member?.module_access != null && typeof member.module_access === 'object') {
+    return { ...member.module_access, dashboard: true };
+  }
+  return getDefaultModulesForRole(member?.role);
+}
+
+function formatModuleAccessSummary(modules) {
+  const labels = STAFF_ACCESS_MODULES
+    .filter((m) => modules?.[m.id] === true)
+    .map((m) => m.label);
+  if (labels.length === 0) return 'Can open: none';
+  return `Can open: ${labels.join(', ')}`;
+}
+
+/** Plan packaging lock for staff module toggles (true = locked / disable toggle). */
+function isStaffModulePlanLocked(moduleId, planTier, settings) {
+  switch (moduleId) {
+    case 'dashboard':
+      return false;
+    case 'pos':
+      return !planHasFeatureWithPackaging(planTier, 'pos', settings);
+    case 'orders':
+      return !planHasFeatureWithPackaging(planTier, 'storefront_orders', settings);
+    case 'crm':
+      return !planHasFeatureWithPackaging(planTier, 'loyalty_programs', settings);
+    case 'hr':
+      return !planHasFeatureWithPackaging(planTier, 'payroll', settings);
+    case 'finance':
+      return !(
+        planHasFeatureWithPackaging(planTier, 'basic_reports', settings) ||
+        planHasFeatureWithPackaging(planTier, 'basic_accounting', settings)
+      );
+    default:
+      return false;
+  }
+}
 
 function buildProfileFormData(b) {
   if (!b?.id) {
@@ -97,7 +147,11 @@ export function SettingsManager({ category }) {
   const [createName, setCreateName] = useState('');
   const [createPassword, setCreatePassword] = useState('');
   const [createRole, setCreateRole] = useState('salesperson');
+  const [createModules, setCreateModules] = useState(() => getDefaultModulesForRole('salesperson'));
   const [createBusy, setCreateBusy] = useState(false);
+  const [accessEditUserId, setAccessEditUserId] = useState(null);
+  const [accessDraftModules, setAccessDraftModules] = useState(null);
+  const [accessDraftRole, setAccessDraftRole] = useState(null);
   const [pwdMember, setPwdMember] = useState(null);
   const [pwdValue, setPwdValue] = useState('');
   const [pwdSetBusy, setPwdSetBusy] = useState(false);
@@ -136,9 +190,14 @@ export function SettingsManager({ category }) {
   const [removeSampleOpen, setRemoveSampleOpen] = useState(false);
   const normalizedRole = role || 'viewer';
   const canManageUsers = isPlatformOwner || ['owner', 'admin'].includes(normalizedRole);
+  const canManageRoles = isPlatformOwner || normalizedRole === 'owner';
   const canManageBilling = isPlatformOwner || normalizedRole === 'owner';
   const canOwnerPackaging = isPlatformOwner || normalizedRole === 'owner';
   const canManageAdvancedTools = canManageUsers;
+
+  useEffect(() => {
+    setCreateModules(getDefaultModulesForRole(createRole));
+  }, [createRole]);
   const roleLabel = normalizedRole.replace(/_/g, ' ');
   const activeTeamCount = team.filter(member => member.status === 'active').length;
 
@@ -264,17 +323,70 @@ export function SettingsManager({ category }) {
   };
 
   const handleRoleUpdate = async (member, nextRole) => {
-    if (!business?.id || !member?.user_id) return;
+    if (!canManageRoles || !business?.id || !member?.user_id) return;
     setTeamBusy(true);
     try {
       await businessAPI.updateUserRole(member.user_id, business.id, nextRole);
       toast.success('Role updated');
+      if (accessEditUserId === member.user_id) {
+        setAccessDraftRole(nextRole);
+        setAccessDraftModules(getDefaultModulesForRole(nextRole));
+      }
       await refreshTeam();
     } catch (error) {
       toast.error(error.message || 'Failed to update role');
     } finally {
       setTeamBusy(false);
     }
+  };
+
+  const openMemberAccessEdit = (member) => {
+    if (!canManageRoles || member.role === 'owner') return;
+    setAccessEditUserId(member.user_id);
+    setAccessDraftRole(member.role);
+    setAccessDraftModules(resolveMemberModules(member));
+  };
+
+  const closeMemberAccessEdit = () => {
+    setAccessEditUserId(null);
+    setAccessDraftModules(null);
+    setAccessDraftRole(null);
+  };
+
+  const handleSaveMemberAccess = async (member) => {
+    if (!canManageRoles || !business?.id || !member?.user_id || !accessDraftModules) return;
+    const nextRole = accessDraftRole || member.role;
+    setTeamBusy(true);
+    try {
+      await businessAPI.updateUserRole(member.user_id, business.id, nextRole, accessDraftModules);
+      toast.success('Access updated');
+      closeMemberAccessEdit();
+      await refreshTeam();
+    } catch (error) {
+      toast.error(error.message || 'Failed to update access');
+    } finally {
+      setTeamBusy(false);
+    }
+  };
+
+  const toggleCreateModule = (moduleId) => {
+    if (moduleId === 'dashboard') return;
+    if (isStaffModulePlanLocked(moduleId, planTier, business?.settings)) return;
+    setCreateModules((prev) => ({
+      ...prev,
+      dashboard: true,
+      [moduleId]: !prev?.[moduleId],
+    }));
+  };
+
+  const toggleAccessDraftModule = (moduleId) => {
+    if (moduleId === 'dashboard') return;
+    if (isStaffModulePlanLocked(moduleId, planTier, business?.settings)) return;
+    setAccessDraftModules((prev) => ({
+      ...prev,
+      dashboard: true,
+      [moduleId]: !prev?.[moduleId],
+    }));
   };
 
   const handleRemoveMember = async (member) => {
@@ -303,19 +415,24 @@ export function SettingsManager({ category }) {
     }
     setCreateBusy(true);
     try {
-      const res = await createTeamMemberWithPassword({
+      const payload = {
         businessId: business.id,
         email: createEmail.trim(),
         password: createPassword,
         name: createName.trim(),
         role: createRole,
-      });
+      };
+      if (canManageRoles) {
+        payload.modules = { ...createModules, dashboard: true };
+      }
+      const res = await createTeamMemberWithPassword(payload);
       if (res.success) {
         toast.success(res.message || 'Login created');
         setCreateEmail('');
         setCreateName('');
         setCreatePassword('');
         setCreateRole('salesperson');
+        setCreateModules(getDefaultModulesForRole('salesperson'));
         await refreshTeam();
       } else {
         toast.error(res.error || 'Failed to create login');
@@ -826,7 +943,11 @@ export function SettingsManager({ category }) {
               <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Active team</p>
               <p className="mt-1 text-lg font-bold text-slate-900 tabular-nums">{activeTeamCount}</p>
               <p className="mt-1.5 text-xs text-slate-600 leading-snug">
-                {canManageUsers ? 'Roles and seats are managed in the Team tab.' : 'Visible to admins and owners only.'}
+                {canManageRoles
+                  ? 'Owners assign roles and module access in the Team tab.'
+                  : canManageUsers
+                    ? 'Invite and remove members in the Team tab. Owners assign roles and module access.'
+                    : 'Visible to admins and owners only.'}
               </p>
             </div>
           </CardContent>
@@ -1216,7 +1337,7 @@ export function SettingsManager({ category }) {
                   <Users className="w-5 h-5" aria-hidden />
                 </div>
                 <div className="min-w-0 flex-1 space-y-1">
-                  <CardTitle className="text-base sm:text-lg font-bold tracking-tight text-slate-900">Team management</CardTitle>
+                  <CardTitle className="text-base sm:text-lg font-semibold tracking-tight text-slate-900">Team management</CardTitle>
                   <CardDescription className="text-sm text-slate-600 font-medium leading-relaxed">
                     Invite members, assign roles, and control who can administer this workspace.
                   </CardDescription>
@@ -1228,9 +1349,9 @@ export function SettingsManager({ category }) {
                 <div className="rounded-2xl border border-wine/10 bg-wine/5 px-4 py-3">
                   <p className="text-xs font-semibold uppercase tracking-widest text-wine/70">Access Control</p>
                   <p className="mt-1 text-sm font-medium text-gray-700">
-                    {canManageBilling
-                      ? 'Owners can assign operational roles, manage active seats, and control who administers this business.'
-                      : 'Admins can invite users, change operational roles, and remove members. Owner membership and billing remain protected.'}
+                    {canManageRoles
+                      ? 'Owners assign roles and module access, and control who administers this business. Admins can invite and remove members only.'
+                      : 'Admins can invite and remove members. Owners assign roles and module access. Owner membership and billing remain protected.'}
                   </p>
                 </div>
 
@@ -1242,7 +1363,7 @@ export function SettingsManager({ category }) {
                       Add a team member
                     </h4>
                     <p className="text-xs text-slate-500 font-medium">
-                      Set the member&apos;s email and a password yourself. They can sign in immediately — no email confirmation or OTP needed. Share the password with them securely.
+                      Set the member&apos;s email and a password yourself. They can sign in immediately (no email confirmation or OTP needed). Share the password with them securely.
                     </p>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
@@ -1279,12 +1400,49 @@ export function SettingsManager({ category }) {
                         onChange={(e) => setCreateRole(e.target.value)}
                         className="h-10 w-full px-3 bg-white border border-gray-200 rounded-xl text-sm font-medium"
                       >
-                        {['admin', 'manager', 'accountant', 'cashier', 'salesperson', 'warehouse_manager', 'waiter', 'viewer'].map(role => (
-                          <option key={role} value={role}>{role.replace('_', ' ')}</option>
+                        {ASSIGNABLE_TEAM_ROLES.map((r) => (
+                          <option key={r} value={r}>{r.replace('_', ' ')}</option>
                         ))}
                       </select>
                     </div>
                   </div>
+                  {canManageRoles ? (
+                    <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50/80 p-3">
+                      <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">Module access</p>
+                      <p className="text-xs text-slate-500 font-medium">
+                        Choose which hub areas this member can open. Dashboard is always included.
+                      </p>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                        {STAFF_ACCESS_MODULES.map((mod) => {
+                          const planLocked = isStaffModulePlanLocked(mod.id, planTier, business?.settings);
+                          const checked = mod.id === 'dashboard' || createModules?.[mod.id] === true;
+                          const disabled = mod.id === 'dashboard' || planLocked;
+                          return (
+                            <label
+                              key={mod.id}
+                              className={`flex items-center gap-2 rounded-lg border px-2.5 py-2 text-xs font-medium ${
+                                disabled
+                                  ? 'border-slate-100 bg-slate-100/80 text-slate-400 cursor-not-allowed'
+                                  : 'border-slate-200 bg-white text-slate-800 cursor-pointer hover:border-wine/30'
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                className="rounded border-slate-300"
+                                checked={checked}
+                                disabled={disabled}
+                                onChange={() => toggleCreateModule(mod.id)}
+                              />
+                              <span className="truncate">{mod.label}</span>
+                              {planLocked && mod.id !== 'dashboard' ? (
+                                <span className="ml-auto shrink-0 text-[9px] font-semibold uppercase text-amber-700">Plan</span>
+                              ) : null}
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : null}
                   <div className="flex justify-end">
                     <Button
                       size="sm"
@@ -1313,7 +1471,10 @@ export function SettingsManager({ category }) {
                   </button>
                   {showEmailInvite && (
                     <div className="space-y-3">
-                      <p className="text-xs text-slate-500 font-medium">Sends a secure invite link. The member sets their own password when they accept.</p>
+                      <p className="text-xs text-slate-500 font-medium">
+                        Sends a secure invite link. The member sets their own password when they accept.
+                        After they join, set module access from the team list.
+                      </p>
                       <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
                         <Input
                           placeholder="member@company.com"
@@ -1326,8 +1487,8 @@ export function SettingsManager({ category }) {
                           onChange={(e) => setInviteRole(e.target.value)}
                           className="h-10 px-3 bg-white border border-gray-200 rounded-xl text-sm font-medium"
                         >
-                          {['admin', 'manager', 'accountant', 'cashier', 'salesperson', 'warehouse_manager', 'waiter', 'viewer'].map(role => (
-                            <option key={role} value={role}>{role.replace('_', ' ')}</option>
+                          {ASSIGNABLE_TEAM_ROLES.map((r) => (
+                            <option key={r} value={r}>{r.replace('_', ' ')}</option>
                           ))}
                         </select>
                         <Button
@@ -1356,63 +1517,163 @@ export function SettingsManager({ category }) {
                       </tr>
                     </thead>
                     <tbody className="divide-y">
-                      {team.length > 0 ? team.filter(m => m.status === 'active').map((member) => (
-                        <tr key={member.id} className="hover:bg-gray-50/50 transition-colors">
-                          <td className="px-6 py-4 font-bold text-gray-900 text-sm">{member.user?.email || 'Unknown User'}</td>
-                          <td className="px-6 py-4">
-                            {member.role === 'owner' ? (
-                              <Badge variant="outline" className="capitalize font-semibold text-[10px] py-1 px-3 rounded-full border-wine/20 text-wine bg-wine/5">
-                                {member.role}
-                              </Badge>
-                            ) : (
-                              <select
-                                value={member.role}
-                                onChange={(e) => handleRoleUpdate(member, e.target.value)}
-                                disabled={teamBusy}
-                                className="h-9 px-2 bg-white border border-gray-200 rounded-lg text-xs font-bold"
-                              >
-                                {['admin', 'manager', 'accountant', 'cashier', 'salesperson', 'warehouse_manager', 'waiter', 'viewer'].map(role => (
-                                  <option key={role} value={role}>{role.replace('_', ' ')}</option>
-                                ))}
-                              </select>
-                            )}
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className="flex items-center gap-2">
-                              <div className="w-2 h-2 rounded-full bg-green-500 shadow-sm shadow-green-200" />
-                              <span className="text-xs font-bold text-gray-600 capitalize">{member.status}</span>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4">
-                            {member.role === 'owner' ? (
-                              <span className="text-[10px] font-semibold uppercase text-gray-400">Protected</span>
-                            ) : (
-                              <div className="flex items-center gap-1">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  disabled={teamBusy}
-                                  onClick={() => { setPwdMember(member); setPwdValue(''); }}
-                                  className="text-blue-600 font-semibold text-[10px] uppercase hover:bg-blue-50"
-                                  title="Set password"
+                      {team.length > 0 ? team.filter(m => m.status === 'active').map((member) => {
+                        const memberModules = resolveMemberModules(member);
+                        const isAccessEditing = accessEditUserId === member.user_id;
+                        const draftModules = isAccessEditing && accessDraftModules
+                          ? accessDraftModules
+                          : memberModules;
+                        return (
+                          <tr key={member.id} className="hover:bg-gray-50/50 transition-colors align-top">
+                            <td className="px-6 py-4 font-semibold text-gray-900 text-sm">
+                              <div>{member.user?.email || 'Unknown User'}</div>
+                              {member.role !== 'owner' ? (
+                                <p className="mt-1 text-[11px] font-medium text-slate-500">
+                                  {formatModuleAccessSummary(memberModules)}
+                                  {member.module_access == null ? (
+                                    <span className="text-slate-400"> (role defaults)</span>
+                                  ) : null}
+                                </p>
+                              ) : null}
+                              {canManageRoles && member.role !== 'owner' && isAccessEditing ? (
+                                <div className="mt-3 space-y-2 rounded-xl border border-slate-200 bg-white p-3 max-w-md">
+                                  <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">Access modules</p>
+                                  <div className="grid grid-cols-2 gap-1.5">
+                                    {STAFF_ACCESS_MODULES.map((mod) => {
+                                      const planLocked = isStaffModulePlanLocked(mod.id, planTier, business?.settings);
+                                      const checked = mod.id === 'dashboard' || draftModules?.[mod.id] === true;
+                                      const disabled = mod.id === 'dashboard' || planLocked;
+                                      return (
+                                        <label
+                                          key={mod.id}
+                                          className={`flex items-center gap-2 rounded-lg border px-2 py-1.5 text-[11px] font-medium ${
+                                            disabled
+                                              ? 'border-slate-100 bg-slate-50 text-slate-400 cursor-not-allowed'
+                                              : 'border-slate-200 text-slate-800 cursor-pointer'
+                                          }`}
+                                        >
+                                          <input
+                                            type="checkbox"
+                                            className="rounded border-slate-300"
+                                            checked={checked}
+                                            disabled={disabled}
+                                            onChange={() => toggleAccessDraftModule(mod.id)}
+                                          />
+                                          <span className="truncate">{mod.label}</span>
+                                          {planLocked && mod.id !== 'dashboard' ? (
+                                            <span className="ml-auto text-[9px] font-semibold uppercase text-amber-700">Plan</span>
+                                          ) : null}
+                                        </label>
+                                      );
+                                    })}
+                                  </div>
+                                  <div className="flex flex-wrap gap-2 pt-1">
+                                    <Button
+                                      size="sm"
+                                      disabled={teamBusy}
+                                      onClick={() => handleSaveMemberAccess(member)}
+                                      className="bg-wine hover:bg-wine/90 text-[10px] font-semibold uppercase h-8"
+                                    >
+                                      {teamBusy ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Save className="w-3 h-3 mr-1" />}
+                                      Save access
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      disabled={teamBusy}
+                                      onClick={closeMemberAccessEdit}
+                                      className="text-[10px] font-semibold uppercase h-8"
+                                    >
+                                      Cancel
+                                    </Button>
+                                  </div>
+                                </div>
+                              ) : null}
+                            </td>
+                            <td className="px-6 py-4">
+                              {member.role === 'owner' ? (
+                                <Badge variant="outline" className="capitalize font-semibold text-[10px] py-1 px-3 rounded-full border-wine/20 text-wine bg-wine/5">
+                                  {member.role}
+                                </Badge>
+                              ) : (
+                                <select
+                                  value={isAccessEditing && accessDraftRole ? accessDraftRole : member.role}
+                                  onChange={(e) => {
+                                    const nextRole = e.target.value;
+                                    if (isAccessEditing) {
+                                      setAccessDraftRole(nextRole);
+                                      setAccessDraftModules(getDefaultModulesForRole(nextRole));
+                                    } else {
+                                      handleRoleUpdate(member, nextRole);
+                                    }
+                                  }}
+                                  disabled={teamBusy || !canManageRoles}
+                                  className="h-9 px-2 bg-white border border-gray-200 rounded-lg text-xs font-semibold disabled:bg-slate-50 disabled:text-slate-500"
                                 >
-                                  <KeyRound className="w-3 h-3 mr-1" />
-                                  Set password
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  disabled={teamBusy}
-                                  onClick={() => handleRemoveMember(member)}
-                                  className="text-rose-600 font-semibold text-[10px] uppercase hover:bg-rose-50"
-                                >
-                                  Remove
-                                </Button>
+                                  {ASSIGNABLE_TEAM_ROLES.map((r) => (
+                                    <option key={r} value={r}>{r.replace('_', ' ')}</option>
+                                  ))}
+                                </select>
+                              )}
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 rounded-full bg-green-500 shadow-sm shadow-green-200" />
+                                <span className="text-xs font-semibold text-gray-600 capitalize">{member.status}</span>
                               </div>
-                            )}
-                          </td>
-                        </tr>
-                      )) : (
+                            </td>
+                            <td className="px-6 py-4">
+                              {member.role === 'owner' ? (
+                                <span className="text-[10px] font-semibold uppercase text-gray-400">Protected</span>
+                              ) : (
+                                <div className="flex flex-col items-start gap-1">
+                                  {canManageRoles ? (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      disabled={teamBusy}
+                                      onClick={() => {
+                                        if (isAccessEditing) closeMemberAccessEdit();
+                                        else openMemberAccessEdit(member);
+                                      }}
+                                      className="text-slate-700 font-semibold text-[10px] uppercase hover:bg-slate-100"
+                                    >
+                                      {isAccessEditing ? (
+                                        <ChevronUp className="w-3 h-3 mr-1" />
+                                      ) : (
+                                        <ChevronDown className="w-3 h-3 mr-1" />
+                                      )}
+                                      {isAccessEditing ? 'Hide access' : 'Edit access'}
+                                    </Button>
+                                  ) : null}
+                                  <div className="flex items-center gap-1">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      disabled={teamBusy}
+                                      onClick={() => { setPwdMember(member); setPwdValue(''); }}
+                                      className="text-blue-600 font-semibold text-[10px] uppercase hover:bg-blue-50"
+                                      title="Set password"
+                                    >
+                                      <KeyRound className="w-3 h-3 mr-1" />
+                                      Set password
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      disabled={teamBusy}
+                                      onClick={() => handleRemoveMember(member)}
+                                      className="text-rose-600 font-semibold text-[10px] uppercase hover:bg-rose-50"
+                                    >
+                                      Remove
+                                    </Button>
+                                  </div>
+                                </div>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      }) : (
                         <tr>
                           <td colSpan="4" className="px-6 py-12 text-center text-gray-400 font-medium">
                             No team members found. Only the business owner is active.
@@ -1434,7 +1695,7 @@ export function SettingsManager({ category }) {
                   Set password
                 </DialogTitle>
                 <DialogDescription>
-                  Set a new password for {pwdMember?.user?.email || 'this member'}. They can sign in with it immediately — useful when email or OTP delivery fails.
+                  Set a new password for {pwdMember?.user?.email || 'this member'}. They can sign in with it immediately, useful when email or OTP delivery fails.
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-2 py-2">
