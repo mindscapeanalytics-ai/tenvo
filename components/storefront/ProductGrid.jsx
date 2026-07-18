@@ -25,8 +25,9 @@ import { catalogProductNeedsVariantPage } from '@/lib/storefront/storefrontProdu
 /** @type {Record<string, string>} */
 const GRID_DENSITY_CLASSES = {
   default: 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-3 sm:gap-4',
-  catalog: 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4',
-  /** Professional storefront, 6 cards per row on xl (Glovida / Amazon-style density) */
+  /** Sidebar catalog: readable titles — avoid 6-up beside a filter rail */
+  catalog: 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-4',
+  /** Homepage / rail showcase density (no sidebar) */
   showcase: 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 sm:gap-3 lg:gap-3.5',
 };
 

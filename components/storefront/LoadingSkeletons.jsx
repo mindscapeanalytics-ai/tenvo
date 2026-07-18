@@ -9,7 +9,7 @@ export function ProductsSkeleton({ count = 12, density = 'default' }) {
     density === 'showcase'
       ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 sm:gap-3'
       : density === 'catalog'
-        ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4'
+        ? 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-4'
         : 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4';
 
   return (

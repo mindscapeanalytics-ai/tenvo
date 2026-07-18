@@ -8,7 +8,6 @@ import { getProducts, getCategories } from '@/lib/actions/storefront/products';
 import { ProductGrid } from '@/components/storefront/ProductGrid';
 import { ProductFilters } from '@/components/storefront/ProductFilters';
 import { SearchBar } from '@/components/storefront/SearchBar';
-import { CategoryNav } from '@/components/storefront/CategoryNav';
 import { ProductsSkeleton } from '@/components/storefront/LoadingSkeletons';
 import { SortDropdown, ActiveFilters, ViewToggle } from '@/components/storefront/ProductsToolbar';
 import { isDemoStoreDomain } from '@/lib/storefront/elevatedStorefrontTenant';
@@ -225,37 +224,8 @@ export default async function ProductsPage({ params, searchParams }) {
         storeBase={storeBase}
       >
         <div className="flex flex-col gap-6 lg:flex-row">
-          <aside className="lg:w-64 lg:shrink-0">
-            <div className="sticky top-28 space-y-4">
-              <div className="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm">
-                <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Browse</p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <Link
-                    href={`${storeBase}/products`}
-                    className="rounded-full border border-emerald-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-emerald-50"
-                  >
-                    All
-                  </Link>
-                  <Link
-                    href={`${storeBase}/products?otc=true`}
-                    className="rounded-full border border-emerald-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-emerald-50"
-                  >
-                    OTC only
-                  </Link>
-                  <Link
-                    href={`${storeBase}/products?rx=true`}
-                    className="rounded-full border border-emerald-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-emerald-50"
-                  >
-                    Prescription
-                  </Link>
-                  <Link
-                    href={`${storeBase}/products?onSale=true`}
-                    className="rounded-full border border-emerald-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-emerald-50"
-                  >
-                    Deals
-                  </Link>
-                </div>
-              </div>
+          <aside className="lg:w-72 lg:shrink-0">
+            <div className="sticky top-24 space-y-4">
               <ProductFilters
                 filters={filters}
                 categories={categories}
@@ -266,8 +236,10 @@ export default async function ProductsPage({ params, searchParams }) {
 
           <main className="min-w-0 flex-1">
             <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
-              <div className="flex-1">
-                <SearchBar businessDomain={businessDomain} initialQuery={filters.search} />
+              <div className="flex min-w-0 flex-1 items-center gap-2">
+                <div className="min-w-0 flex-1">
+                  <SearchBar businessDomain={businessDomain} initialQuery={filters.search} />
+                </div>
               </div>
               <div className="flex items-center gap-2">
                 <SortDropdown currentSort={filters.sort} businessDomain={businessDomain} />
@@ -310,7 +282,7 @@ export default async function ProductsPage({ params, searchParams }) {
               </>
             )}
           </nav>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">{heroTitle}</h1>
+          <h1 className="mb-2 text-3xl font-semibold text-gray-900">{heroTitle}</h1>
           <p className="text-gray-600">
             {bookableCategoryRequested
               ? 'Memberships and personal training are booked from the gym homepage, not the supplement shop.'
@@ -323,37 +295,22 @@ export default async function ProductsPage({ params, searchParams }) {
         </div>
       </div>
       
-      {/* Category Navigation */}
-      <div className="bg-white border-b sticky top-16 z-30">
-        <div className="max-w-7xl mx-auto px-4">
-          <CategoryNav 
-            categories={categories} 
-            activeCategory={filters.category}
-            businessDomain={businessDomain}
-          />
-        </div>
-      </div>
-      
-      {/* Main Content */}
+      {/* Main Content — categories + filters live in the sidebar only */}
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="flex flex-col lg:flex-row gap-8">
-          {/* Sidebar Filters */}
-          <aside className="lg:w-64 flex-shrink-0">
-            <div className="sticky top-40">
+          <aside className="lg:w-72 flex-shrink-0">
+            <div className="sticky top-24">
               <ProductFilters
                 filters={filters}
                 categories={categories}
                 businessDomain={businessDomain}
-                hideCategories
               />
             </div>
           </aside>
           
-          {/* Product Grid */}
-          <main className="flex-1">
-            {/* Search and Sort Bar */}
-            <div className="flex flex-col sm:flex-row gap-3 mb-6">
-              <div className="flex-1">
+          <main className="min-w-0 flex-1">
+            <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center">
+              <div className="min-w-0 flex-1">
                 <SearchBar 
                   businessDomain={businessDomain}
                   initialQuery={filters.search}

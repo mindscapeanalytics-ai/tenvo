@@ -11,6 +11,13 @@ import { formatCurrency } from '@/lib/currency';
 import { useStorefront } from '@/lib/context/StorefrontContext';
 import { getStoreAccentColor } from '@/lib/config/storefrontDomains';
 import { isFashionEditorialStore } from '@/lib/storefront/fashionEditorial';
+import {
+  isMarinePartsFinderStore,
+  MARINE_EQUIPMENT_TYPES,
+  MARINE_VESSEL_TYPES,
+  MARINE_SYSTEM_CONDITIONS,
+} from '@/lib/storefront/marinePartsFinder';
+import { isPharmacyElevatedStore } from '@/lib/storefront/pharmacyStorefront';
 import { getBrandsForMarket } from '@/lib/regionalMarket/index.js';
 import { getDomainKnowledge } from '@/lib/domainKnowledge';
 import {
@@ -27,13 +34,14 @@ function FilterSection({ title, expanded, onToggle, children, count }) {
   return (
     <div className="border-b border-gray-100 last:border-0">
       <button
+        type="button"
         onClick={onToggle}
         className="w-full flex items-center justify-between py-3.5 text-left"
       >
         <span className="text-sm font-semibold text-gray-900 flex items-center gap-2">
           {title}
           {count > 0 && (
-            <span className="w-4 h-4 rounded-full bg-gray-900 text-white text-[9px] font-bold flex items-center justify-center">
+            <span className="w-4 h-4 rounded-full bg-gray-900 text-white text-[9px] font-semibold flex items-center justify-center">
               {count}
             </span>
           )}
@@ -45,29 +53,74 @@ function FilterSection({ title, expanded, onToggle, children, count }) {
   );
 }
 
-function FilterOptionList({ options, filterKey, currentValue, accent, onSelect }) {
+function FilterOptionList({ options, filterKey, currentValue, accent, onSelect, formatLabel }) {
   return (
-    <div className="space-y-1 max-h-52 overflow-y-auto">
-      {options.map((opt) => (
-        <label key={opt} className="flex items-center gap-2.5 cursor-pointer hover:bg-gray-50 px-1 py-1.5 rounded-lg group">
-          <Checkbox
-            checked={currentValue === opt}
-            onCheckedChange={(checked) => onSelect(filterKey, checked ? opt : null)}
-            style={currentValue === opt ? { backgroundColor: accent, borderColor: accent } : {}}
-          />
-          <span className="text-sm text-gray-700 flex-1 group-hover:text-gray-900 capitalize">{opt}</span>
-        </label>
-      ))}
+    <div className="space-y-0.5 max-h-52 overflow-y-auto pr-0.5">
+      {options.map((opt) => {
+        const label = formatLabel ? formatLabel(opt) : opt;
+        return (
+          <label key={opt} className="flex items-center gap-2.5 cursor-pointer hover:bg-gray-50 px-1 py-1.5 rounded-lg group">
+            <Checkbox
+              checked={currentValue === opt}
+              onCheckedChange={(checked) => onSelect(filterKey, checked ? opt : null)}
+              style={currentValue === opt ? { backgroundColor: accent, borderColor: accent } : {}}
+            />
+            <span className="text-sm text-gray-700 flex-1 group-hover:text-gray-900 capitalize">{label}</span>
+          </label>
+        );
+      })}
     </div>
   );
 }
 
-function FiltersBody({ filters, categories, businessDomain, onClose, hideCategories = false }) {
+function CategoryNavList({ categories, filters, accent, onSelect }) {
+  return (
+    <div className="space-y-0.5 max-h-64 overflow-y-auto pr-0.5">
+      <button
+        type="button"
+        onClick={() => onSelect('category', null)}
+        className={cn(
+          'flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left text-sm transition-colors',
+          !filters.category ? 'font-semibold' : 'font-medium text-gray-700 hover:bg-gray-50'
+        )}
+        style={!filters.category ? { color: accent, backgroundColor: `${accent}12` } : undefined}
+      >
+        <span>All products</span>
+      </button>
+      {categories.map((cat) => {
+        const active =
+          storefrontCategoriesMatch(filters.category, cat.slug) ||
+          storefrontCategoriesMatch(filters.category, cat.name);
+        return (
+          <button
+            type="button"
+            key={cat.id}
+            onClick={() => onSelect('category', cat.slug || cat.name)}
+            className={cn(
+              'flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-left text-sm transition-colors',
+              active ? 'font-semibold' : 'font-medium text-gray-700 hover:bg-gray-50'
+            )}
+            style={active ? { color: accent, backgroundColor: `${accent}12` } : undefined}
+          >
+            <span className="min-w-0 truncate">{cat.name}</span>
+            {cat.product_count !== undefined && (
+              <span className="shrink-0 text-xs tabular-nums text-gray-400">{cat.product_count}</span>
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function FiltersBody({ filters, categories, businessDomain, onClose }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { currency, settings, business } = useStorefront();
   const accent = getStoreAccentColor(settings, business?.category);
   const clothingStore = isFashionEditorialStore(business?.category);
+  const marineStore = isMarinePartsFinderStore(business?.category);
+  const pharmacyStore = isPharmacyElevatedStore(business?.category);
 
   const countryIso =
     settings?.storefront?.countryIso ||
@@ -102,11 +155,15 @@ function FiltersBody({ filters, categories, businessDomain, onClose, hideCategor
     filters.maxPrice || 50000,
   ]);
   const [expanded, setExpanded] = useState({
+    browse: true,
     categories: true,
     brand: clothingStore,
     fabric: clothingStore,
     sourcing: clothingStore,
     size: false,
+    equipment: Boolean(filters.equipmentType),
+    vessel: Boolean(filters.vesselType),
+    condition: Boolean(filters.systemCondition),
     price: true,
     availability: true,
     special: true,
@@ -115,7 +172,6 @@ function FiltersBody({ filters, categories, businessDomain, onClose, hideCategor
   const toggle = (k) => setExpanded((p) => ({ ...p, [k]: !p[k] }));
 
   const updateFilter = (key, value) => {
-    // Category navigation replaces attribute filters so counts match the grid.
     if (key === 'category') {
       router.push(
         buildStoreProductsHref(businessDomain, {
@@ -128,6 +184,21 @@ function FiltersBody({ filters, categories, businessDomain, onClose, hideCategor
       onClose?.();
       return;
     }
+
+    // Pharmacy browse modes use short URL keys (otc / rx), mutually exclusive.
+    if (key === 'otcOnly' || key === 'rxOnly') {
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete('page');
+      params.delete('otc');
+      params.delete('rx');
+      params.delete('onSale');
+      if (key === 'otcOnly' && value) params.set('otc', 'true');
+      if (key === 'rxOnly' && value) params.set('rx', 'true');
+      router.push(`/store/${businessDomain}/products?${params.toString()}`);
+      onClose?.();
+      return;
+    }
+
     const params = new URLSearchParams(searchParams.toString());
     if (value === null || value === false || value === '') params.delete(key);
     else params.set(key, String(value));
@@ -138,8 +209,8 @@ function FiltersBody({ filters, categories, businessDomain, onClose, hideCategor
 
   const applyPrice = () => {
     const params = new URLSearchParams(searchParams.toString());
-    params.set('minPrice', priceRange[0]);
-    params.set('maxPrice', priceRange[1]);
+    params.set('minPrice', String(priceRange[0]));
+    params.set('maxPrice', String(priceRange[1]));
     params.delete('page');
     router.push(`/store/${businessDomain}/products?${params.toString()}`);
     onClose?.();
@@ -183,48 +254,94 @@ function FiltersBody({ filters, categories, businessDomain, onClose, hideCategor
     filters.search,
   ].filter(Boolean).length;
 
+  const pharmacyBrowseActive = filters.otcOnly || filters.rxOnly || filters.onSale;
+
   return (
     <div className="space-y-0">
-      {/* Header row */}
-      <div className="flex items-center justify-between pb-3 mb-1 border-b border-gray-100">
-        <h3 className="font-bold text-gray-900 text-sm">Filters {activeCount > 0 && <span className="text-gray-400 font-normal">({activeCount} active)</span>}</h3>
+      <div className="mb-1 flex items-center justify-between border-b border-gray-100 pb-3">
+        <h3 className="text-sm font-semibold text-gray-900">
+          Browse &amp; filters
+          {activeCount > 0 && (
+            <span className="ml-1 font-normal text-gray-400">({activeCount} active)</span>
+          )}
+        </h3>
         {activeCount > 0 && (
-          <button onClick={clearAll} className="text-xs text-red-500 hover:text-red-700 font-medium flex items-center gap-1">
-            <X className="w-3.5 h-3.5" /> Clear all
+          <button
+            type="button"
+            onClick={clearAll}
+            className="flex items-center gap-1 text-xs font-medium text-red-500 hover:text-red-700"
+          >
+            <X className="h-3.5 w-3.5" /> Clear all
           </button>
         )}
       </div>
 
-      {/* Categories — optional when sticky CategoryNav already handles browsing */}
-      {!hideCategories && categories.length > 0 && (
-        <FilterSection title="Categories" expanded={expanded.categories} onToggle={() => toggle('categories')} count={filters.category ? 1 : 0}>
-          <div className="space-y-1">
-            <label className="flex items-center gap-2.5 cursor-pointer hover:bg-gray-50 px-1 py-1.5 rounded-lg group">
-              <Checkbox
-                checked={!filters.category}
-                onCheckedChange={() => updateFilter('category', null)}
-                className="data-[state=checked]:bg-gray-900 data-[state=checked]:border-gray-900"
-              />
-              <span className="text-sm text-gray-700 flex-1 group-hover:text-gray-900">All Products</span>
-            </label>
-            {categories.map((cat) => {
-              const active = storefrontCategoriesMatch(filters.category, cat.slug)
-                || storefrontCategoriesMatch(filters.category, cat.name);
-              return (
-                <label key={cat.id} className="flex items-center gap-2.5 cursor-pointer hover:bg-gray-50 px-1 py-1.5 rounded-lg group">
-                  <Checkbox
-                    checked={active}
-                    onCheckedChange={(checked) => updateFilter('category', checked ? (cat.slug || cat.name) : null)}
-                    style={active ? { backgroundColor: accent, borderColor: accent } : {}}
-                  />
-                  <span className="text-sm text-gray-700 flex-1 group-hover:text-gray-900">{cat.name}</span>
-                  {cat.product_count !== undefined && (
-                    <span className="text-xs text-gray-400 tabular-nums">{cat.product_count}</span>
-                  )}
-                </label>
-              );
-            })}
+      {pharmacyStore && (
+        <FilterSection
+          title="Pharmacy"
+          expanded={expanded.browse}
+          onToggle={() => toggle('browse')}
+          count={pharmacyBrowseActive ? 1 : 0}
+        >
+          <div className="space-y-0.5">
+            {[
+              { key: 'all', label: 'All medicines', active: !filters.otcOnly && !filters.rxOnly && !filters.onSale },
+              { key: 'otcOnly', label: 'OTC only', active: !!filters.otcOnly },
+              { key: 'rxOnly', label: 'Prescription (Rx)', active: !!filters.rxOnly },
+              { key: 'onSale', label: 'Deals & offers', active: !!filters.onSale && !filters.otcOnly && !filters.rxOnly },
+            ].map((item) => (
+              <button
+                type="button"
+                key={item.key}
+                onClick={() => {
+                  if (item.key === 'all') {
+                    const params = new URLSearchParams(searchParams.toString());
+                    params.delete('page');
+                    params.delete('otc');
+                    params.delete('rx');
+                    params.delete('onSale');
+                    router.push(`/store/${businessDomain}/products?${params.toString()}`);
+                    onClose?.();
+                    return;
+                  }
+                  if (item.key === 'onSale') {
+                    const params = new URLSearchParams(searchParams.toString());
+                    params.delete('page');
+                    params.delete('otc');
+                    params.delete('rx');
+                    params.set('onSale', 'true');
+                    router.push(`/store/${businessDomain}/products?${params.toString()}`);
+                    onClose?.();
+                    return;
+                  }
+                  updateFilter(item.key, true);
+                }}
+                className={cn(
+                  'flex w-full items-center rounded-lg px-2.5 py-2 text-left text-sm transition-colors',
+                  item.active ? 'font-semibold' : 'font-medium text-gray-700 hover:bg-gray-50'
+                )}
+                style={item.active ? { color: accent, backgroundColor: `${accent}12` } : undefined}
+              >
+                {item.label}
+              </button>
+            ))}
           </div>
+        </FilterSection>
+      )}
+
+      {categories.length > 0 && (
+        <FilterSection
+          title="Categories"
+          expanded={expanded.categories}
+          onToggle={() => toggle('categories')}
+          count={filters.category ? 1 : 0}
+        >
+          <CategoryNavList
+            categories={categories}
+            filters={filters}
+            accent={accent}
+            onSelect={updateFilter}
+          />
         </FilterSection>
       )}
 
@@ -296,9 +413,56 @@ function FiltersBody({ filters, categories, businessDomain, onClose, hideCategor
         </FilterSection>
       )}
 
-      {/* Price Range */}
+      {marineStore && (
+        <>
+          <FilterSection
+            title="Equipment type"
+            expanded={expanded.equipment}
+            onToggle={() => toggle('equipment')}
+            count={filters.equipmentType ? 1 : 0}
+          >
+            <FilterOptionList
+              options={MARINE_EQUIPMENT_TYPES}
+              filterKey="equipmentType"
+              currentValue={filters.equipmentType}
+              accent={accent}
+              onSelect={updateFilter}
+            />
+          </FilterSection>
+          <FilterSection
+            title="Vessel type"
+            expanded={expanded.vessel}
+            onToggle={() => toggle('vessel')}
+            count={filters.vesselType ? 1 : 0}
+          >
+            <FilterOptionList
+              options={MARINE_VESSEL_TYPES}
+              filterKey="vesselType"
+              currentValue={filters.vesselType}
+              accent={accent}
+              onSelect={updateFilter}
+            />
+          </FilterSection>
+          <FilterSection
+            title="Condition"
+            expanded={expanded.condition}
+            onToggle={() => toggle('condition')}
+            count={filters.systemCondition ? 1 : 0}
+          >
+            <FilterOptionList
+              options={MARINE_SYSTEM_CONDITIONS}
+              filterKey="systemCondition"
+              currentValue={filters.systemCondition}
+              accent={accent}
+              onSelect={updateFilter}
+              formatLabel={(v) => v.charAt(0).toUpperCase() + v.slice(1)}
+            />
+          </FilterSection>
+        </>
+      )}
+
       <FilterSection
-        title="Price Range"
+        title="Price range"
         expanded={expanded.price}
         onToggle={() => toggle('price')}
         count={filters.minPrice !== undefined || filters.maxPrice !== undefined ? 1 : 0}
@@ -313,47 +477,58 @@ function FiltersBody({ filters, categories, businessDomain, onClose, hideCategor
             className="mt-2"
           />
           <div className="flex items-center gap-2">
-            <div className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 bg-gray-50">
+            <div className="flex-1 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700 tabular-nums">
               {formatCurrency(priceRange[0], currency)}
             </div>
-            <span className="text-gray-400 text-sm">to</span>
-            <div className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 bg-gray-50">
+            <span className="text-sm text-gray-400">to</span>
+            <div className="flex-1 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700 tabular-nums">
               {formatCurrency(priceRange[1], currency)}
             </div>
           </div>
           <button
+            type="button"
             onClick={applyPrice}
-            className="w-full py-2 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
+            className="w-full rounded-xl py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
             style={{ backgroundColor: accent }}
           >
-            Apply Price Filter
+            Apply price filter
           </button>
         </div>
       </FilterSection>
 
-      {/* Availability */}
-      <FilterSection title="Availability" expanded={expanded.availability} onToggle={() => toggle('availability')} count={filters.inStock ? 1 : 0}>
-        <label className="flex items-center gap-2.5 cursor-pointer hover:bg-gray-50 px-1 py-1.5 rounded-lg group">
+      <FilterSection
+        title="Availability"
+        expanded={expanded.availability}
+        onToggle={() => toggle('availability')}
+        count={filters.inStock ? 1 : 0}
+      >
+        <label className="flex cursor-pointer items-center gap-2.5 rounded-lg px-1 py-1.5 group hover:bg-gray-50">
           <Checkbox
             checked={!!filters.inStock}
             onCheckedChange={(checked) => updateFilter('inStock', checked || null)}
             style={filters.inStock ? { backgroundColor: accent, borderColor: accent } : {}}
           />
-          <span className="text-sm text-gray-700 group-hover:text-gray-900">In Stock Only</span>
+          <span className="text-sm text-gray-700 group-hover:text-gray-900">In stock only</span>
         </label>
       </FilterSection>
 
-      {/* Special Offers */}
-      <FilterSection title="Special Offers" expanded={expanded.special} onToggle={() => toggle('special')} count={filters.onSale ? 1 : 0}>
-        <label className="flex items-center gap-2.5 cursor-pointer hover:bg-gray-50 px-1 py-1.5 rounded-lg group">
-          <Checkbox
-            checked={!!filters.onSale}
-            onCheckedChange={(checked) => updateFilter('onSale', checked || null)}
-            style={filters.onSale ? { backgroundColor: accent, borderColor: accent } : {}}
-          />
-          <span className="text-sm text-gray-700 group-hover:text-gray-900">On Sale</span>
-        </label>
-      </FilterSection>
+      {!pharmacyStore && (
+        <FilterSection
+          title="Special offers"
+          expanded={expanded.special}
+          onToggle={() => toggle('special')}
+          count={filters.onSale ? 1 : 0}
+        >
+          <label className="flex cursor-pointer items-center gap-2.5 rounded-lg px-1 py-1.5 group hover:bg-gray-50">
+            <Checkbox
+              checked={!!filters.onSale}
+              onCheckedChange={(checked) => updateFilter('onSale', checked || null)}
+              style={filters.onSale ? { backgroundColor: accent, borderColor: accent } : {}}
+            />
+            <span className="text-sm text-gray-700 group-hover:text-gray-900">On sale</span>
+          </label>
+        </FilterSection>
+      )}
     </div>
   );
 }
@@ -370,13 +545,13 @@ function uniqueFilterOptions(values) {
   return out;
 }
 
-export function ProductFilters({ filters, categories, businessDomain, hideCategories = false }) {
+export function ProductFilters({ filters, categories, businessDomain }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { settings, business } = useStorefront();
   const accent = getStoreAccentColor(settings, business?.category);
 
   const activeCount = [
-    !hideCategories && filters.category,
+    filters.category,
     filters.brand,
     filters.fabric,
     filters.sourcing,
@@ -396,17 +571,17 @@ export function ProductFilters({ filters, categories, businessDomain, hideCatego
 
   return (
     <>
-      {/* ── Mobile trigger ───────────────────────────────────────────── */}
       <div className="lg:hidden">
         <button
+          type="button"
           onClick={() => setMobileOpen(true)}
-          className="flex items-center gap-2 w-full px-4 py-2.5 border border-gray-200 rounded-xl bg-white text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
+          className="flex w-full items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50"
         >
-          <SlidersHorizontal className="w-4 h-4" />
-          Filters
+          <SlidersHorizontal className="h-4 w-4" />
+          Browse &amp; filters
           {activeCount > 0 && (
             <span
-              className="ml-auto text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold"
+              className="ml-auto flex h-5 w-5 items-center justify-center rounded-full text-xs font-semibold text-white"
               style={{ backgroundColor: accent }}
             >
               {activeCount}
@@ -415,31 +590,27 @@ export function ProductFilters({ filters, categories, businessDomain, hideCatego
         </button>
       </div>
 
-      {/* ── Mobile Sheet ─────────────────────────────────────────────── */}
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-        <SheetContent side="left" className="w-full sm:max-w-xs p-0 flex flex-col">
-          <SheetHeader className="px-5 py-4 border-b border-gray-100 flex-shrink-0">
-            <SheetTitle className="text-base font-bold">Filter Products</SheetTitle>
+        <SheetContent side="left" className="flex w-full flex-col p-0 sm:max-w-xs">
+          <SheetHeader className="flex-shrink-0 border-b border-gray-100 px-5 py-4">
+            <SheetTitle className="text-base font-semibold">Browse &amp; filters</SheetTitle>
           </SheetHeader>
           <div className="flex-1 overflow-y-auto px-5 py-4">
             <FiltersBody
               filters={filters}
               categories={categories}
               businessDomain={businessDomain}
-              hideCategories={hideCategories}
               onClose={() => setMobileOpen(false)}
             />
           </div>
         </SheetContent>
       </Sheet>
 
-      {/* ── Desktop Sidebar ──────────────────────────────────────────── */}
-      <div className="hidden lg:block bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+      <div className="hidden max-h-[calc(100vh-7rem)] overflow-y-auto rounded-2xl border border-gray-100 bg-white p-4 shadow-sm lg:block">
         <FiltersBody
           filters={filters}
           categories={categories}
           businessDomain={businessDomain}
-          hideCategories={hideCategories}
         />
       </div>
     </>

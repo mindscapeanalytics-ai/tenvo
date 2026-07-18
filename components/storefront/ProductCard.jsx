@@ -366,7 +366,7 @@ export function ProductCard({ product, businessDomain, variant = 'default' }) {
           </p>
         )}
 
-        <Link href={productHref} className="flex-1">
+        <Link href={productHref} className="flex-1" title={product.name}>
           <h3
             className={cn(
               'fitness-product-title line-clamp-2 leading-snug transition-colors',
@@ -399,7 +399,7 @@ export function ProductCard({ product, businessDomain, variant = 'default' }) {
         <div className={cn('flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5', isDense ? 'pt-0.5' : 'pt-0.5')}>
           <span
             className={cn(
-              'store-price font-extrabold tabular-nums',
+              'store-price font-semibold tabular-nums',
               fitnessStore ? 'text-white' : 'text-slate-900',
               isDense ? 'text-xs sm:text-sm' : 'text-sm sm:text-base'
             )}
