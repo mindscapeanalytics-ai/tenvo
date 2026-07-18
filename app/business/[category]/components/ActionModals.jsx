@@ -92,6 +92,8 @@ export function ActionModals({
     poInitialData,
     setPoInitialData,
     refreshData,
+    upsertInvoiceInState,
+    onPaymentRecorded,
     business,
     role = 'owner',
     planTier = 'free',
@@ -344,9 +346,24 @@ export function ActionModals({
                         });
 
                         if (result.success) {
+                            const paidInvoice = result.invoice;
+                            if (paidInvoice?.id && typeof upsertInvoiceInState === 'function') {
+                                const patch = { id: paidInvoice.id };
+                                if (paidInvoice.payment_status != null) patch.payment_status = paidInvoice.payment_status;
+                                if (paidInvoice.status != null) patch.status = paidInvoice.status;
+                                const nextBalance = paidInvoice.balance ?? paidInvoice.new_balance;
+                                if (nextBalance !== undefined && nextBalance !== null) patch.balance = nextBalance;
+                                if (paidInvoice.grand_total != null) patch.grand_total = paidInvoice.grand_total;
+                                if (paidInvoice.invoice_number) patch.invoice_number = paidInvoice.invoice_number;
+                                if (selectedInvoiceForPayment.customer_name) {
+                                    patch.customer_name = selectedInvoiceForPayment.customer_name;
+                                }
+                                upsertInvoiceInState(patch);
+                            }
                             setShowPaymentModal(false);
                             setSelectedInvoiceForPayment(null);
-                            refreshData?.();
+                            onPaymentRecorded?.(paidInvoice);
+                            // Do not refresh inventory here — sales list is already patched.
                         } else {
                             throw new Error(result.error || 'Failed to record payment');
                         }

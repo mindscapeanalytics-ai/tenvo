@@ -1208,21 +1208,59 @@ function BusinessDashboardContent() {
         toast.success('Invoice created successfully');
       }
 
-      // 2. Clear state and patch UI (avoid full-workspace refresh stall)
+      // 2. Patch list immediately with list-ready row (customer name / balance / items).
       setShowInvoiceBuilder(false);
       setInvoiceInitialData(null);
 
-      if (savedInvoice?.id && typeof upsertInvoiceInState === 'function') {
-        upsertInvoiceInState(savedInvoice);
+      const customerName =
+        header.customer?.name ||
+        header.customer_name ||
+        customers?.find?.((c) => c.id === (header.customer_id || header.customer?.id))?.name ||
+        null;
+
+      const listReadyInvoice = savedInvoice?.id
+        ? {
+            ...savedInvoice,
+            customer_name: savedInvoice.customer_name || customerName,
+            customer_id: savedInvoice.customer_id || header.customer_id || header.customer?.id || null,
+            items: savedInvoice.items?.length ? savedInvoice.items : mappedItems,
+            balance:
+              savedInvoice.balance !== undefined && savedInvoice.balance !== null
+                ? Number(savedInvoice.balance)
+                : String(savedInvoice.payment_status || '').toLowerCase() === 'paid'
+                  ? 0
+                  : Number(savedInvoice.grand_total) || computedGrandTotal,
+          }
+        : null;
+
+      if (listReadyInvoice?.id && typeof upsertInvoiceInState === 'function') {
+        upsertInvoiceInState(listReadyInvoice);
       }
-      // Stock + KPIs update in background; invoice list already patched.
-      void Promise.allSettled([
-        fetchInventory({ force: true, fullCatalog: true }),
-        fetchFinance({ force: true }),
-      ]);
+
+      // Patch sold product stock in hub state on create — avoid fullCatalog inventory reload.
+      // Updates reverse+re-deduct on the server; skip optimistic stock math to avoid double-counting.
+      if (!isUpdate && typeof upsertProductInState === 'function') {
+        for (const item of mappedItems) {
+          if (!item.product_id) continue;
+          const existing = products?.find?.((p) => p.id === item.product_id);
+          if (!existing) continue;
+          const qty = Number(item.quantity) || 0;
+          const nextStock = Math.max(0, Number(existing.stock || existing.quantity || 0) - qty);
+          upsertProductInState({
+            id: item.product_id,
+            stock: nextStock,
+            quantity: nextStock,
+          });
+        }
+      } else if (isUpdate) {
+        // Soft refresh inventory page only (not full catalog) so stock stays accurate after edit.
+        void fetchInventory({ force: true });
+      }
+
+      // KPIs refresh in background (debounced analytics); skip forced full finance/inventory.
       scheduleAnalyticsRefresh?.();
 
-      return savedInvoice;
+      return listReadyInvoice || savedInvoice;
     } catch (error) {
       console.error('Error saving invoice:', error);
       if (isEntitlementError(error)) {
@@ -1262,7 +1300,10 @@ function BusinessDashboardContent() {
   const [selectedInvoiceForPayment, setSelectedInvoiceForPayment] = useState(null);
 
   const handleRecordPayment = (invoice) => {
-    setSelectedInvoiceForPayment(invoice);
+    setSelectedInvoiceForPayment({
+      ...invoice,
+      business_id: invoice?.business_id || business?.id || null,
+    });
     setShowPaymentModal(true);
   };
 
@@ -1645,12 +1686,23 @@ function BusinessDashboardContent() {
       const createdInvoice = await invoiceAPI.create(invoiceData, invoiceItems);
       toast.success('Sale completed successfully', { id: 'pos' });
       if (createdInvoice?.id && typeof upsertInvoiceInState === 'function') {
-        upsertInvoiceInState(createdInvoice);
+        upsertInvoiceInState({
+          ...createdInvoice,
+          balance: 0,
+          payment_status: 'paid',
+          status: createdInvoice.status || 'paid',
+        });
       }
-      void Promise.allSettled([
-        fetchInventory({ force: true, fullCatalog: true }),
-        fetchFinance({ force: true }),
-      ]);
+      if (typeof upsertProductInState === 'function') {
+        for (const item of invoiceItems) {
+          if (!item.product_id) continue;
+          const existing = products?.find?.((p) => p.id === item.product_id);
+          if (!existing) continue;
+          const qty = Number(item.quantity) || 0;
+          const nextStock = Math.max(0, Number(existing.stock || existing.quantity || 0) - qty);
+          upsertProductInState({ id: item.product_id, stock: nextStock, quantity: nextStock });
+        }
+      }
       scheduleAnalyticsRefresh?.();
       return {
         success: true,
@@ -2031,6 +2083,10 @@ function BusinessDashboardContent() {
         poInitialData={poInitialData}
         setPoInitialData={setPoInitialData}
         refreshData={() => fetchInventory({ force: true })}
+        upsertInvoiceInState={upsertInvoiceInState}
+        onPaymentRecorded={() => {
+          scheduleAnalyticsRefresh?.();
+        }}
         business={business}
         role={role}
         planTier={business?.plan_tier || 'free'}

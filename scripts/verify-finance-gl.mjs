@@ -98,6 +98,12 @@ includes('lib/utils/businessRegionalContext.js', 'taxEnabled', 'regional pack ex
 includes('components/SettingsManager.jsx', 'taxEnabled: checked', 'Settings Financials tax toggle persists');
 includes('lib/hooks/usePosTaxConfig.js', 'taxEnabled', 'POS tax config respects taxEnabled');
 
+includes('lib/services/InvoiceService.js', 'hydrateInvoiceForList', 'create/update returns list-ready invoice');
+includes('lib/services/InvoiceService.js', 'product_id = ANY($2::uuid[])', 'batched stock prevalidation');
+includes('lib/services/InventoryService.js', 'skip_low_stock_notify', 'invoice create skips per-line low-stock notify');
+includes('app/business/[category]/components/ActionModals.jsx', 'upsertInvoiceInState', 'payment success patches invoice state');
+includes('lib/actions/basic/invoice.js', 'amount_paid', 'list balance enrichment uses payment sum join');
+
 if (failed > 0) {
   console.error(`\n${failed} check(s) failed`);
   process.exit(1);

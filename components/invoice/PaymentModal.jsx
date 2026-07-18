@@ -60,11 +60,23 @@ export function PaymentModal({
     const balance = liveBalance !== null ? liveBalance : fallbackBalance;
     const alreadyPaid = Math.max(0, total - balance);
 
-    // Fetch live balance when modal opens
+    // Prefer list balance when present; only hit the network when balance is unknown.
     useEffect(() => {
         if (!invoice?.id || !invoice?.business_id || !isOpen) return;
         let cancelled = false;
         const fb = coerceMoney(invoice.balance, coerceMoney(invoice.grand_total, 0));
+        const hasTrustedBalance =
+            invoice.balance !== undefined &&
+            invoice.balance !== null &&
+            Number.isFinite(Number(invoice.balance));
+
+        if (hasTrustedBalance) {
+            setLiveBalance(fb);
+            setIsFetchingBalance(false);
+            setAmount(String(fb));
+            return undefined;
+        }
+
         setIsFetchingBalance(true);
         setLiveBalance(null);
         (async () => {
@@ -72,17 +84,21 @@ export function PaymentModal({
                 const { getInvoicePaymentSummaryAction } = await import('@/lib/actions/standard/invoice-payments');
                 const result = await getInvoicePaymentSummaryAction(invoice.business_id, invoice.id);
                 if (!cancelled && result.success && result.summary) {
-                    setLiveBalance(
-                        coerceMoney(
-                            result.summary.balance ?? result.summary.remaining,
-                            fb
-                        )
+                    const next = coerceMoney(
+                        result.summary.balance ?? result.summary.remaining,
+                        fb
                     );
+                    setLiveBalance(next);
+                    setAmount(String(next));
                 } else if (!cancelled) {
                     setLiveBalance(fb);
+                    setAmount(String(fb));
                 }
             } catch {
-                if (!cancelled) setLiveBalance(fb);
+                if (!cancelled) {
+                    setLiveBalance(fb);
+                    setAmount(String(fb));
+                }
             } finally {
                 if (!cancelled) setIsFetchingBalance(false);
             }
@@ -117,11 +133,12 @@ export function PaymentModal({
                 amount: Number(amount),
                 paymentMethod,
                 referenceNumber: referenceNumber || null,
-                notes: notes || null
+                notes: notes || null,
+                paymentDate: new Date().toISOString(),
             });
 
             toast.success('Payment recorded successfully!');
-            onClose();
+            // Parent closes the modal after a successful patch; avoid double onClose races.
         } catch (error) {
             console.error('Payment recording failed:', error);
             toast.error(error.message || 'Failed to record payment');
