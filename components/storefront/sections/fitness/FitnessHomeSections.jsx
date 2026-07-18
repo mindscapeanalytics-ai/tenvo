@@ -23,6 +23,7 @@ import {
   resolveFitnessTrustPillars,
   formatFitnessStoreName,
   resolveFitnessBookingItems,
+  resolveFitnessImageFallback,
 } from '@/lib/storefront/fitnessStorefront';
 import {
   getTenantMeetingUrl,
@@ -64,6 +65,7 @@ function ProgramCard({ program, accent, productsUrl, className }) {
             src={program.image}
             alt=""
             fill
+            fallbackSrc={resolveFitnessImageFallback(program.title || program.id || 'program')}
             className="object-contain object-bottom drop-shadow-[0_12px_32px_rgba(225,29,72,0.35)]"
           />
         </div>
@@ -195,6 +197,7 @@ export function FitnessHomeSections({
                       src={cat.image}
                       alt={cat.label}
                       fill
+                      fallbackSrc={resolveFitnessImageFallback(cat.label || cat.id || 'category')}
                       className="object-cover"
                       sizes="80px"
                     />
@@ -226,6 +229,7 @@ export function FitnessHomeSections({
                       src={cat.image}
                       alt={cat.label}
                       fill
+                      fallbackSrc={resolveFitnessImageFallback(cat.label || cat.id || 'category')}
                       className="object-cover transition duration-300 motion-safe:group-hover:scale-105"
                       sizes="96px"
                     />
@@ -457,6 +461,7 @@ export function FitnessHomeSections({
                       src={trainer.image}
                       alt={trainer.name}
                       fill
+                      fallbackSrc={resolveFitnessImageFallback(trainer.name || trainer.id || 'trainer')}
                       className="object-cover transition duration-500 group-hover:scale-105"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />

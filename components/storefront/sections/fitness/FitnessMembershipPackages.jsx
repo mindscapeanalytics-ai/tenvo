@@ -16,6 +16,7 @@ import {
   resolveFitnessMembershipsCategoryHref,
   resolveFitnessMembershipSectionCopy,
   resolveFitnessBookHref,
+  resolveFitnessImageFallback,
 } from '@/lib/storefront/fitnessStorefront';
 import { FitnessMarqueeRow } from '@/components/storefront/sections/fitness/FitnessMarqueeRow';
 
@@ -164,6 +165,7 @@ export function FitnessMembershipPackages({
           alt=""
           width={420}
           height={500}
+          fallbackSrc={resolveFitnessImageFallback('pricing-athlete')}
           className="h-full w-full object-contain object-bottom"
         />
       </div>
@@ -299,6 +301,7 @@ export function FitnessMembershipPackages({
                     src={trial.image_url}
                     alt=""
                     fill
+                    fallbackSrc={resolveFitnessImageFallback(trial.name || 'trial')}
                     className="object-cover"
                   />
                 </div>

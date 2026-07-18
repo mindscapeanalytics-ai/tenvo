@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 import {
   dedupeFitnessServices,
   resolveFitnessBookHref,
+  resolveFitnessImageFallback,
 } from '@/lib/storefront/fitnessStorefront';
 import { isStorefrontProductUuid } from '@/lib/utils/storefrontProductRef';
 
@@ -108,6 +109,7 @@ function TrainingOverlayCard({
         src={product.image_url}
         alt={product.name}
         fill
+        fallbackSrc={resolveFitnessImageFallback(product.name || product.id || 'training')}
         className="object-cover object-center transition duration-700 group-hover:scale-[1.05]"
         sizes="560px"
       />

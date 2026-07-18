@@ -93,6 +93,21 @@ const nextConfig = {
       { protocol: 'https', hostname: '**.rocketcdn.me' },
       { protocol: 'https', hostname: 'www.wartsila.com' },
       { protocol: 'https', hostname: 'wartsila.com' },
+      // Fitness demo (Webflow archive + Synergize supplement CDN)
+      { protocol: 'https', hostname: 'assets.website-files.com' },
+      { protocol: 'https', hostname: 'cdn.prod.website-files.com' },
+      { protocol: 'https', hostname: '**.website-files.com' },
+      { protocol: 'https', hostname: 'www.synergize.pk' },
+      { protocol: 'https', hostname: 'synergize.pk' },
+      // Furniture demo catalog CDN
+      { protocol: 'https', hostname: 'comfy.sg' },
+      { protocol: 'https', hostname: 'www.comfy.sg' },
+      { protocol: 'https', hostname: '**.comfy.sg' },
+      // Marine archive / restaurant secondary hosts
+      { protocol: 'https', hostname: 'dwgtrading.com' },
+      { protocol: 'https', hostname: 'www.dwgtrading.com' },
+      { protocol: 'https', hostname: 'rollinnbbq.pk' },
+      { protocol: 'https', hostname: 'www.rollinnbbq.pk' },
     ],
     // Keep unoptimized in development to avoid 504/500 when optimizing remote images locally.
     // Production uses Next image optimization (WebP/AVIF) for LCP.

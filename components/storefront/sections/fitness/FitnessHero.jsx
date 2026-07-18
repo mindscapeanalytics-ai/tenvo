@@ -13,7 +13,9 @@ import {
   formatFitnessStoreName,
   resolveFitnessHeroQuickLinks,
   resolveFitnessSupplementsShopUrl,
+  resolveFitnessImageFallback,
 } from '@/lib/storefront/fitnessStorefront';
+import { isDeadImageUrl } from '@/lib/storefront/deadImageHosts';
 import { FitnessTrendingMarquee } from '@/components/storefront/sections/fitness/FitnessTrendingMarquee';
 
 /** Full viewport on desktop; immersive scrollable stack on mobile. */
@@ -88,6 +90,7 @@ function FitnessHeroBackdrop({ accent }) {
           alt=""
           width={120}
           height={120}
+          fallbackSrc={resolveFitnessImageFallback('spark-1')}
           className="fitness-hero-spark absolute left-[4%] top-[16%] w-11 opacity-75 sm:left-[6%] sm:w-[4.5rem] motion-reduce:opacity-60"
           style={{ animationDelay: '0s' }}
         />
@@ -96,6 +99,7 @@ function FitnessHeroBackdrop({ accent }) {
           alt=""
           width={100}
           height={100}
+          fallbackSrc={resolveFitnessImageFallback('spark-2')}
           className="fitness-hero-spark absolute left-[18%] top-[6%] hidden w-14 opacity-50 md:block motion-reduce:opacity-40"
           style={{ animationDelay: '-2.5s' }}
         />
@@ -104,6 +108,7 @@ function FitnessHeroBackdrop({ accent }) {
           alt=""
           width={100}
           height={100}
+          fallbackSrc={resolveFitnessImageFallback('spark-3')}
           className="fitness-hero-spark absolute right-[4%] top-[18%] w-10 opacity-65 md:right-[8%] md:w-14 motion-reduce:opacity-50"
           style={{ animationDelay: '-4s' }}
         />
@@ -147,6 +152,7 @@ function FitnessAthleteVisual({ brandAccent, heroImageSrc, className, compact = 
             src={FITNESS_ASSETS.heroCircle}
             alt=""
             fill
+            fallbackSrc={resolveFitnessImageFallback('hero-circle')}
             className="object-contain opacity-95"
           />
         </div>
@@ -195,6 +201,7 @@ function FitnessAthleteVisual({ brandAccent, heroImageSrc, className, compact = 
           width={560}
           height={700}
           priority
+          fallbackSrc={resolveFitnessImageFallback(heroImageSrc || 'hero-athlete')}
           className={cn(
             'h-auto w-auto max-w-full object-contain object-center',
             compact
@@ -239,10 +246,13 @@ export function FitnessHero({
   const supplementsHref = resolveFitnessSupplementsShopUrl(base, categories);
   const title = normalizeProseCopy(config.heroTitle);
   const subtitle = normalizeProseCopy(config.heroSubtitle);
-  const heroImageSrc =
+  const rawHeroImage =
     preset.slides?.find((slide) => slide?.image)?.image ||
     preset.coverImage ||
     null;
+  // Prefer curated athlete art when cover/slide is missing, dead, or wrong-vertical stock
+  const heroImageSrc =
+    rawHeroImage && !isDeadImageUrl(rawHeroImage) ? rawHeroImage : FITNESS_ASSETS.heroAthlete;
   const brandAccent = accent || '#e11d48';
   const brandAccentDark = accentDark || '#9f1239';
 
