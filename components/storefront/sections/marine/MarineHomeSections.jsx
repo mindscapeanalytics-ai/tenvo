@@ -12,12 +12,18 @@ import {
   formatMarineStoreName,
   MARINE_EXPERTISE_CARDS,
   MARINE_EQUIPMENT_CATEGORIES,
-  MARINE_ABOUT_IMAGE,
-  MARINE_SERVICE_IMAGE,
 } from '@/lib/storefront/marineParts';
 import { buildMarineProductsUrl } from '@/lib/storefront/marinePartsFinder';
 import { StoreConnectionCtaBanner } from '@/components/storefront/StoreConnectionCtaBanner';
 import { getAboutStorefrontConfig } from '@/lib/storefront/aboutStorefront';
+
+function storeHref(storeBase, href) {
+  if (!href) return storeBase;
+  if (href.startsWith('http')) return href;
+  const path = href.startsWith('/') ? href : `/${href}`;
+  if (path.startsWith('/store/')) return path;
+  return `${storeBase}${path}`;
+}
 
 /**
  * Tenvo Marine elevated homepage — industrial KPIs, expertise pillars, equipment grid, insights.
@@ -77,7 +83,7 @@ export function MarineHomeSections({
             </div>
             <div className="grid grid-cols-2 gap-6 sm:grid-cols-4 lg:col-span-8">
               {config.trustStats.map((stat) => (
-                <div key={stat.label} className="border-l-2 border-teal-600/30 pl-4">
+                <div key={`${stat.value}-${stat.label}`} className="border-l-2 border-teal-600/30 pl-4">
                   <p className="text-3xl font-semibold tabular-nums tracking-tight text-neutral-900 lg:text-4xl">
                     {stat.value}
                   </p>
@@ -109,7 +115,9 @@ export function MarineHomeSections({
                       src={card.image}
                       alt={card.title}
                       fill
+                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
                       className="object-cover transition-transform duration-500 group-hover:scale-[1.04]"
+                      placeholderLabel={card.title}
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/35 to-transparent opacity-60" />
                   </div>
@@ -157,7 +165,9 @@ export function MarineHomeSections({
                         src={item.image}
                         alt={item.label}
                         fill
+                        sizes="(max-width: 640px) 50vw, 20vw"
                         className="object-contain p-2 transition-transform duration-300 group-hover:scale-105"
+                        placeholderLabel={item.label}
                       />
                     </div>
                     <div className="border-t border-neutral-100 px-3 py-3">
@@ -169,6 +179,25 @@ export function MarineHomeSections({
                 );
               })}
             </div>
+          </div>
+        </section>
+      )}
+
+      {config.showBrandChips && config.brandChips?.length > 0 && (
+        <section className="border-y border-neutral-100 bg-neutral-50/80">
+          <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-2 px-4 py-5 sm:px-6 lg:gap-3 lg:px-8">
+            <p className="mr-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-neutral-400">
+              OEM focus
+            </p>
+            {config.brandChips.map((chip) => (
+              <Link
+                key={chip.id}
+                href={storeHref(storeBase, chip.href)}
+                className="rounded-full border border-neutral-200 bg-white px-3.5 py-1.5 text-xs font-semibold text-neutral-700 transition-colors hover:border-teal-600/40 hover:text-teal-800"
+              >
+                {chip.label}
+              </Link>
+            ))}
           </div>
         </section>
       )}
@@ -202,15 +231,18 @@ export function MarineHomeSections({
       {config.showStayAhead && (
         <section className="bg-white">
           <div className="mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:px-6 lg:grid-cols-2 lg:items-center lg:gap-12 lg:px-8 lg:py-16">
-            <div className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-neutral-100 lg:aspect-[5/4]">
+            <div className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-neutral-100 shadow-sm ring-1 ring-neutral-200/60 lg:aspect-[5/4]">
               <SmartProductImage
-                src={MARINE_ABOUT_IMAGE}
-                alt="Marine propulsion specialist"
+                src={config.stayAheadImageUrl}
+                fallbackSrc={config.stayAheadFallbackUrl}
+                alt={config.stayAheadTitle || 'Marine propulsion specialist'}
                 fill
+                sizes="(max-width: 1024px) 100vw, 50vw"
                 className="object-cover"
+                placeholderLabel="Marine"
               />
               <div
-                className="pointer-events-none absolute inset-y-0 right-0 w-1/3 bg-gradient-to-l from-white/20 to-transparent"
+                className="pointer-events-none absolute inset-y-0 right-0 w-1/3 bg-gradient-to-l from-white/15 to-transparent"
                 aria-hidden
               />
             </div>
@@ -245,18 +277,30 @@ export function MarineHomeSections({
               {config.insights.map((item) => (
                 <Link
                   key={item.id}
-                  href={`${storeBase}${item.hrefSuffix || '/contact'}`}
-                  className="group flex flex-col rounded-2xl border border-neutral-200 bg-white p-5 transition-all hover:-translate-y-0.5 hover:shadow-md"
+                  href={storeHref(storeBase, item.hrefSuffix || '/contact')}
+                  className="group flex flex-col overflow-hidden rounded-2xl border border-neutral-200 bg-white transition-all hover:-translate-y-0.5 hover:shadow-md"
                 >
-                  <span className="text-xs font-semibold uppercase tracking-wide text-teal-700">
-                    {item.tag}
-                  </span>
-                  <h3 className="mt-3 text-base font-semibold text-neutral-900">{item.title}</h3>
-                  <p className="mt-2 flex-1 text-sm text-neutral-500">{item.excerpt}</p>
-                  <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold" style={{ color: accent }}>
-                    Read more
-                    <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
-                  </span>
+                  <div className="relative aspect-[16/10] bg-neutral-100">
+                    <SmartProductImage
+                      src={item.image}
+                      alt={item.title}
+                      fill
+                      sizes="(max-width: 768px) 100vw, 33vw"
+                      className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                      placeholderLabel={item.tag}
+                    />
+                  </div>
+                  <div className="flex flex-1 flex-col p-5">
+                    <span className="text-xs font-semibold uppercase tracking-wide text-teal-700">
+                      {item.tag}
+                    </span>
+                    <h3 className="mt-2 text-base font-semibold text-neutral-900">{item.title}</h3>
+                    <p className="mt-2 flex-1 text-sm text-neutral-500">{item.excerpt}</p>
+                    <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold" style={{ color: accent }}>
+                      Read more
+                      <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+                    </span>
+                  </div>
                 </Link>
               ))}
             </div>
@@ -272,7 +316,7 @@ export function MarineHomeSections({
           storeBase={storeBase}
           title={config.ctaTitle}
           subtitle={config.ctaSubtitle}
-          imageUrl={MARINE_SERVICE_IMAGE}
+          imageUrl={config.ctaImageUrl}
           accent="#0d9488"
           force
         />

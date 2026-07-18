@@ -255,6 +255,7 @@ export function StoreSettingsManager({ business, category }) {
       showSpareRail: true,
       showBottomCta: true,
       showMarketingBanners: true,
+      showBrandChips: true,
       heroVideoUrl: MARINE_HERO_VIDEO_URL,
       heroPosterUrl: MARINE_HERO_POSTER,
       heroEyebrow: '',
@@ -270,12 +271,33 @@ export function StoreSettingsManager({ business, category }) {
       stayAheadTitle: '',
       stayAheadSubtitle: '',
       stayAheadCtaLabel: '',
+      stayAheadImageUrl: '',
+      ctaImageUrl: '',
       featuredRailTitle: '',
       spareRailTitle: '',
       insightsTitle: '',
       insightsSubtitle: '',
       trustTitle: '',
       trustSubtitle: '',
+      trustStats: [
+        { value: '45+', label: 'Years of propulsion expertise' },
+        { value: '10', label: 'Core equipment families' },
+        { value: '24/7', label: 'RFQ and parts enquiry desk' },
+        { value: 'NL', label: 'European maritime logistics hub' },
+      ],
+      quickLinks: [
+        { id: 'new', label: 'New systems', href: '/products?systemCondition=new' },
+        { id: 'used', label: 'Used systems', href: '/products?systemCondition=used' },
+        { id: 'spare', label: 'Spare parts', href: '/products?category=spare-parts' },
+        { id: 'rfq', label: 'RFQ', href: '/contact?subject=quotation' },
+      ],
+      brandChips: [
+        { id: 'schottel', label: 'Schottel', href: '/products?search=Schottel' },
+        { id: 'wartsila', label: 'Wärtsilä', href: '/products?search=Wartsila' },
+        { id: 'veth', label: 'Veth', href: '/products?search=Veth' },
+        { id: 'zf', label: 'ZF', href: '/products?search=ZF' },
+        { id: 'kawasaki', label: 'Kawasaki', href: '/products?search=Kawasaki' },
+      ],
       ctaTitle: '',
       ctaSubtitle: '',
       ctaLabel: '',
@@ -1717,7 +1739,7 @@ export function StoreSettingsManager({ business, category }) {
                   <Megaphone className="w-4 h-4" /> Tenvo Marine storefront
                 </CardTitle>
                 <CardDescription>
-                  Hero video (looping MP4), finder panel, and homepage section toggles for the marine spare-parts template.
+                  Hero media, parts finder, KPIs, OEM chips, Stay Ahead imagery, and homepage section toggles.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -1728,9 +1750,6 @@ export function StoreSettingsManager({ business, category }) {
                     onChange={(e) => setMarine('heroVideoUrl', e.target.value)}
                     placeholder={MARINE_HERO_VIDEO_URL}
                   />
-                  <p className="text-xs text-gray-500">
-                    Direct MP4 link recommended (e.g. Wärtsilä home hero). Plays autoplay, muted, and loop behind the finder.
-                  </p>
                 </div>
                 <div className="space-y-1.5">
                   <Label>Hero poster image URL</Label>
@@ -1746,7 +1765,7 @@ export function StoreSettingsManager({ business, category }) {
                     <Input
                       value={settings.marine?.heroEyebrow || ''}
                       onChange={(e) => setMarine('heroEyebrow', e.target.value)}
-                      placeholder="Tenvo Marine"
+                      placeholder="Marine propulsion"
                     />
                   </div>
                   <div className="space-y-1.5">
@@ -1772,16 +1791,17 @@ export function StoreSettingsManager({ business, category }) {
                     rows={2}
                     value={settings.marine?.heroSubtitle || ''}
                     onChange={(e) => setMarine('heroSubtitle', e.target.value)}
-                    placeholder="Find thrusters, rudder propellers, seals…"
+                    placeholder="New and used thrusters, rudder propellers…"
                   />
                 </div>
                 <Separator />
                 <div className="grid gap-3 sm:grid-cols-2">
                   {[
-                    ['showFinder', 'Parts finder panel'],
+                    ['showFinder', 'Parts finder dock / panel'],
                     ['showKpis', 'KPI / stats strip'],
                     ['showExpertise', 'New / used / parts / repair cards'],
                     ['showEquipmentGrid', 'Shop by equipment grid'],
+                    ['showBrandChips', 'OEM brand chips'],
                     ['showFeaturedRails', 'Featured product rail'],
                     ['showSpareRail', 'Spare parts rail'],
                     ['showStayAhead', 'Stay ahead editorial'],
@@ -1816,11 +1836,141 @@ export function StoreSettingsManager({ business, category }) {
                   </div>
                 </div>
                 <div className="space-y-1.5">
+                  <Label>KPI section subtitle</Label>
+                  <Textarea
+                    rows={2}
+                    value={settings.marine?.kpiSubtitle || ''}
+                    onChange={(e) => setMarine('kpiSubtitle', e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>KPI stats (up to 4)</Label>
+                  {(settings.marine?.trustStats || []).slice(0, 4).map((stat, idx) => (
+                    <div key={`stat-${idx}`} className="grid gap-2 sm:grid-cols-2">
+                      <Input
+                        value={stat.value || ''}
+                        placeholder="45+"
+                        onChange={(e) => {
+                          const next = [...(settings.marine?.trustStats || [])];
+                          next[idx] = { ...next[idx], value: e.target.value };
+                          setMarine('trustStats', next);
+                        }}
+                      />
+                      <Input
+                        value={stat.label || ''}
+                        placeholder="Years of experience"
+                        onChange={(e) => {
+                          const next = [...(settings.marine?.trustStats || [])];
+                          next[idx] = { ...next[idx], label: e.target.value };
+                          setMarine('trustStats', next);
+                        }}
+                      />
+                    </div>
+                  ))}
+                </div>
+                <Separator />
+                <div className="space-y-1.5">
+                  <Label>Stay ahead title</Label>
+                  <Input
+                    value={settings.marine?.stayAheadTitle || ''}
+                    onChange={(e) => setMarine('stayAheadTitle', e.target.value)}
+                    placeholder="Decide smarter on propulsion stock"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Stay ahead body</Label>
+                  <Textarea
+                    rows={3}
+                    value={settings.marine?.stayAheadSubtitle || ''}
+                    onChange={(e) => setMarine('stayAheadSubtitle', e.target.value)}
+                  />
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label>Stay ahead CTA</Label>
+                    <Input
+                      value={settings.marine?.stayAheadCtaLabel || ''}
+                      onChange={(e) => setMarine('stayAheadCtaLabel', e.target.value)}
+                      placeholder="Start browsing"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Stay ahead image URL</Label>
+                    <Input
+                      value={settings.marine?.stayAheadImageUrl || ''}
+                      onChange={(e) => setMarine('stayAheadImageUrl', e.target.value)}
+                      placeholder="https://…"
+                    />
+                  </div>
+                </div>
+                {business?.id ? (
+                  <ImageUploadField
+                    label="Upload Stay ahead image"
+                    hint="Shown in the Decide smarter section. WebP optimized like other store media."
+                    value={settings.marine?.stayAheadImageUrl || ''}
+                    onChange={(url) => setMarine('stayAheadImageUrl', url)}
+                    businessId={business.id}
+                    purpose="banner"
+                  />
+                ) : null}
+                <Separator />
+                <div className="space-y-2">
+                  <Label>Hero dock quick links</Label>
+                  {(settings.marine?.quickLinks || []).slice(0, 6).map((link, idx) => (
+                    <div key={`ql-${idx}`} className="grid gap-2 sm:grid-cols-2">
+                      <Input
+                        value={link.label || ''}
+                        placeholder="New systems"
+                        onChange={(e) => {
+                          const next = [...(settings.marine?.quickLinks || [])];
+                          next[idx] = { ...next[idx], label: e.target.value };
+                          setMarine('quickLinks', next);
+                        }}
+                      />
+                      <Input
+                        value={link.href || ''}
+                        placeholder="/products?systemCondition=new"
+                        onChange={(e) => {
+                          const next = [...(settings.marine?.quickLinks || [])];
+                          next[idx] = { ...next[idx], href: e.target.value };
+                          setMarine('quickLinks', next);
+                        }}
+                      />
+                    </div>
+                  ))}
+                </div>
+                <div className="space-y-2">
+                  <Label>OEM brand chips</Label>
+                  {(settings.marine?.brandChips || []).slice(0, 6).map((chip, idx) => (
+                    <div key={`bc-${idx}`} className="grid gap-2 sm:grid-cols-2">
+                      <Input
+                        value={chip.label || ''}
+                        placeholder="Schottel"
+                        onChange={(e) => {
+                          const next = [...(settings.marine?.brandChips || [])];
+                          next[idx] = { ...next[idx], label: e.target.value };
+                          setMarine('brandChips', next);
+                        }}
+                      />
+                      <Input
+                        value={chip.href || ''}
+                        placeholder="/products?search=Schottel"
+                        onChange={(e) => {
+                          const next = [...(settings.marine?.brandChips || [])];
+                          next[idx] = { ...next[idx], href: e.target.value };
+                          setMarine('brandChips', next);
+                        }}
+                      />
+                    </div>
+                  ))}
+                </div>
+                <Separator />
+                <div className="space-y-1.5">
                   <Label>Bottom CTA title</Label>
                   <Input
                     value={settings.marine?.ctaTitle || ''}
                     onChange={(e) => setMarine('ctaTitle', e.target.value)}
-                    placeholder="Need a propulsion solution fast?"
+                    placeholder="Thruster spare parts"
                   />
                 </div>
                 <div className="space-y-1.5">
@@ -1831,14 +1981,34 @@ export function StoreSettingsManager({ business, category }) {
                     onChange={(e) => setMarine('ctaSubtitle', e.target.value)}
                   />
                 </div>
-                <div className="space-y-1.5">
-                  <Label>Bottom CTA button label</Label>
-                  <Input
-                    value={settings.marine?.ctaLabel || ''}
-                    onChange={(e) => setMarine('ctaLabel', e.target.value)}
-                    placeholder="Make a request"
-                  />
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label>Bottom CTA button label</Label>
+                    <Input
+                      value={settings.marine?.ctaLabel || ''}
+                      onChange={(e) => setMarine('ctaLabel', e.target.value)}
+                      placeholder="Receive Quotation"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Bottom CTA image URL</Label>
+                    <Input
+                      value={settings.marine?.ctaImageUrl || ''}
+                      onChange={(e) => setMarine('ctaImageUrl', e.target.value)}
+                      placeholder="https://…"
+                    />
+                  </div>
                 </div>
+                {business?.id ? (
+                  <ImageUploadField
+                    label="Upload bottom CTA image"
+                    hint="Background photo for the RFQ banner."
+                    value={settings.marine?.ctaImageUrl || ''}
+                    onChange={(url) => setMarine('ctaImageUrl', url)}
+                    businessId={business.id}
+                    purpose="banner"
+                  />
+                ) : null}
                 <p className="text-xs text-gray-500">
                   Cover image under Branding is used as the hero poster when poster URL is empty. Part number, OEM, and equipment fields are edited per SKU in inventory.
                 </p>

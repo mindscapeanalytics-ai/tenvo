@@ -14,6 +14,7 @@ import {
   buildMarineProductsUrl,
 } from '@/lib/storefront/marinePartsFinder';
 import { MARINE_ACCENT, MARINE_HERO_POSTER } from '@/lib/storefront/marinePartsArchiveMap';
+import { getMarinePartsStorefrontConfig } from '@/lib/storefront/marineParts';
 import { StoreConnectionButtons } from '@/components/storefront/StoreConnectionButtons';
 import { resolveStoreConnectionActions } from '@/lib/storefront/storeConnectionActions';
 import {
@@ -87,43 +88,31 @@ function MarineHeroVideoBackdrop({ videoUrl, poster }) {
   );
 }
 
-function MarineQuickLinks({ productsBase, storeBase, accent, className, muted = false }) {
+function MarineQuickLinks({ links, storeBase, accent, className, muted = false }) {
   const linkClass = muted
     ? 'font-semibold text-white/75 transition-colors hover:text-white'
     : 'font-semibold transition-opacity hover:opacity-80';
+  if (!links?.length) return null;
   return (
     <div className={cn('flex flex-wrap items-center gap-x-3 gap-y-1 text-xs', className)}>
       <span className={muted ? 'font-medium text-white/45' : 'font-medium text-neutral-400'}>
         Quick
       </span>
-      <Link
-        href={`${productsBase}?systemCondition=new`}
-        className={linkClass}
-        style={muted ? undefined : { color: accent }}
-      >
-        New systems
-      </Link>
-      <Link
-        href={`${productsBase}?systemCondition=used`}
-        className={linkClass}
-        style={muted ? undefined : { color: accent }}
-      >
-        Used systems
-      </Link>
-      <Link
-        href={`${productsBase}?category=spare-parts`}
-        className={linkClass}
-        style={muted ? undefined : { color: accent }}
-      >
-        Spare parts
-      </Link>
-      <Link
-        href={`${storeBase}/contact?subject=quotation`}
-        className={linkClass}
-        style={muted ? undefined : { color: accent }}
-      >
-        RFQ
-      </Link>
+      {links.map((link) => {
+        const href = link.href?.startsWith('http')
+          ? link.href
+          : `${storeBase}${link.href?.startsWith('/') ? link.href : `/${link.href || ''}`}`;
+        return (
+          <Link
+            key={link.id || link.label}
+            href={href}
+            className={linkClass}
+            style={muted ? undefined : { color: accent }}
+          >
+            {link.label}
+          </Link>
+        );
+      })}
     </div>
   );
 }
@@ -145,8 +134,8 @@ function MarinePartsSearchPanel({
   onSearch,
   accent,
   accentDark,
-  productsBase,
   storeBase,
+  quickLinks,
 }) {
   return (
     <div className="flex h-full flex-col">
@@ -254,7 +243,7 @@ function MarinePartsSearchPanel({
         </button>
 
         <MarineQuickLinks
-          productsBase={productsBase}
+          links={quickLinks}
           storeBase={storeBase}
           accent={accent}
           className="border-t border-neutral-100 pt-4"
@@ -285,6 +274,9 @@ export function MarinePartsFinderHero({
   const videoUrl = slide.videoUrl || preset?.videoUrl || '';
   const poster = slide.image || MARINE_HERO_POSTER;
   const showFinder = preset?.showFinder !== false;
+  const marineConfig = getMarinePartsStorefrontConfig(settings || {});
+  const quickLinks = marineConfig.quickLinks || [];
+  const brandChips = marineConfig.showBrandChips ? marineConfig.brandChips || [] : [];
   const connectionActions = resolveStoreConnectionActions({
     business: business || { category: 'marine-parts' },
     settings: settings || {},
@@ -480,35 +472,53 @@ export function MarinePartsFinderHero({
               </div>
               <div className="flex flex-wrap items-center justify-between gap-2 border-t border-white/10 px-3.5 py-2.5">
                 <MarineQuickLinks
-                  productsBase={productsBase}
+                  links={quickLinks}
                   storeBase={storeBase}
                   accent={brandAccent}
                   muted
                 />
-                <div className="hidden items-center gap-1.5 text-[11px] text-white/45 sm:flex">
-                  <button
-                    type="button"
-                    onClick={() => openAdvanced('oem')}
-                    className="rounded-md px-2 py-1 transition-colors hover:bg-white/10 hover:text-white"
-                  >
-                    OEM
-                  </button>
-                  <span aria-hidden>·</span>
-                  <button
-                    type="button"
-                    onClick={() => openAdvanced('equipment')}
-                    className="rounded-md px-2 py-1 transition-colors hover:bg-white/10 hover:text-white"
-                  >
-                    Equipment
-                  </button>
-                  <span aria-hidden>·</span>
-                  <button
-                    type="button"
-                    onClick={() => openAdvanced('vessel')}
-                    className="rounded-md px-2 py-1 transition-colors hover:bg-white/10 hover:text-white"
-                  >
-                    Vessel
-                  </button>
+                <div className="hidden flex-wrap items-center gap-1.5 text-[11px] text-white/45 sm:flex">
+                  {brandChips.slice(0, 5).map((chip) => {
+                    const href = chip.href?.startsWith('http')
+                      ? chip.href
+                      : `${storeBase}${chip.href?.startsWith('/') ? chip.href : `/${chip.href || ''}`}`;
+                    return (
+                      <Link
+                        key={chip.id}
+                        href={href}
+                        className="rounded-md px-2 py-1 transition-colors hover:bg-white/10 hover:text-white"
+                      >
+                        {chip.label}
+                      </Link>
+                    );
+                  })}
+                  {!brandChips.length ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => openAdvanced('oem')}
+                        className="rounded-md px-2 py-1 transition-colors hover:bg-white/10 hover:text-white"
+                      >
+                        OEM
+                      </button>
+                      <span aria-hidden>·</span>
+                      <button
+                        type="button"
+                        onClick={() => openAdvanced('equipment')}
+                        className="rounded-md px-2 py-1 transition-colors hover:bg-white/10 hover:text-white"
+                      >
+                        Equipment
+                      </button>
+                      <span aria-hidden>·</span>
+                      <button
+                        type="button"
+                        onClick={() => openAdvanced('vessel')}
+                        className="rounded-md px-2 py-1 transition-colors hover:bg-white/10 hover:text-white"
+                      >
+                        Vessel
+                      </button>
+                    </>
+                  ) : null}
                 </div>
               </div>
             </div>
@@ -541,8 +551,8 @@ export function MarinePartsFinderHero({
             onSearch={goSearch}
             accent={brandAccent}
             accentDark={brandAccentDark}
-            productsBase={productsBase}
             storeBase={storeBase}
+            quickLinks={quickLinks}
           />
         </SheetContent>
       </Sheet>
