@@ -114,6 +114,7 @@ export default function DayBookReport({ businessId }) {
                   <th className="px-4 py-2 font-semibold">JE #</th>
                   <th className="px-4 py-2 font-semibold">Account</th>
                   <th className="px-4 py-2 font-semibold">Narration</th>
+                  <th className="px-4 py-2 font-semibold">Status</th>
                   <th className="px-4 py-2 font-semibold text-right">Debit</th>
                   <th className="px-4 py-2 font-semibold text-right">Credit</th>
                 </tr>
@@ -121,12 +122,15 @@ export default function DayBookReport({ businessId }) {
               <tbody>
                 {rows.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-4 py-10 text-center text-gray-400">
-                      No posted entries for this date
+                    <td colSpan={6} className="px-4 py-10 text-center text-gray-400">
+                      No journal entries for this date
                     </td>
                   </tr>
                 ) : (
-                  rows.map((r, idx) => (
+                  rows.map((r, idx) => {
+                    const statusLabel = String(r.status || 'posted').toLowerCase();
+                    const isReversed = statusLabel === 'reversed';
+                    return (
                     <tr key={`${r.journalId}-${r.accountCode}-${idx}`} className="border-t border-gray-100 dark:border-slate-800">
                       <td className="px-4 py-2 font-mono text-xs">{r.journalNumber}</td>
                       <td className="px-4 py-2">
@@ -134,15 +138,27 @@ export default function DayBookReport({ businessId }) {
                         {r.accountName}
                       </td>
                       <td className="px-4 py-2 text-gray-600 dark:text-gray-400 max-w-xs truncate">{r.description}</td>
+                      <td className="px-4 py-2">
+                        <span
+                          className={`inline-flex rounded px-1.5 py-0.5 text-xs font-medium capitalize ${
+                            isReversed
+                              ? 'bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-200'
+                              : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200'
+                          }`}
+                        >
+                          {statusLabel}
+                        </span>
+                      </td>
                       <td className="px-4 py-2 text-right tabular-nums">{r.debit ? formatCurrency(r.debit, currency) : ''}</td>
                       <td className="px-4 py-2 text-right tabular-nums">{r.credit ? formatCurrency(r.credit, currency) : ''}</td>
                     </tr>
-                  ))
+                    );
+                  })
                 )}
               </tbody>
               <tfoot>
                 <tr className="border-t-2 border-gray-200 dark:border-slate-700 font-semibold">
-                  <td colSpan={3} className="px-4 py-3">
+                  <td colSpan={4} className="px-4 py-3">
                     Totals {totals.balanced ? '' : '(imbalance)'}
                   </td>
                   <td className="px-4 py-3 text-right tabular-nums">{formatCurrency(totals.debit, currency)}</td>

@@ -324,10 +324,10 @@ if (!productActions.includes('hasLedgerPayload') || !productActions.includes('up
 }
 
 const dataContext = read('lib/context/DataContext.js');
-if (!dataContext.includes('productAPI.getAll') || !dataContext.includes('fetchInventory')) {
-  fail('DataContext missing inventory productAPI.getAll path');
+if (!dataContext.includes('getProductsAction') || !dataContext.includes('fetchInventory')) {
+  fail('DataContext missing inventory getProductsAction path');
 } else {
-  pass('DataContext inventory loads via productAPI.getAll');
+  pass('DataContext inventory loads via getProductsAction');
 }
 if (!dataContext.includes('isStale()')) {
   fail('DataContext missing generation stale guards');

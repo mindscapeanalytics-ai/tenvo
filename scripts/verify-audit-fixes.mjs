@@ -39,9 +39,9 @@ function read(relPath) {
 
 const resolveSrc = read('lib/tenancy/resolveStorefrontBusiness.js');
 assert(
-  resolveSrc.includes('const domainRow = await queryBusinessByDomainSegment(normalizedDomain, client)') &&
-    resolveSrc.includes('domainRow?.id === redisCached.id'),
-  'Redis cache hit must revalidate domain → tenant mapping via Postgres'
+  resolveSrc.includes('queryBusinessByDomainSegment(normalizedDomain, client)') &&
+    resolveSrc.includes('segmentRow?.id === redisCached.id'),
+  'Redis cache hit must revalidate domain → tenant mapping via Postgres (primary + custom domains)'
 );
 
 const widgetsSrc = read('lib/actions/dashboard/widgets.js');
