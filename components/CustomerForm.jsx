@@ -46,21 +46,37 @@ export function CustomerForm({
     const [isLoading, setIsLoading] = useState(false);
     const [activeTab, setActiveTab] = useState('basic');
     const [errors, setErrors] = useState({});
-    const [formData, setFormData] = useState({
-        name: '',
-        email: '',
-        phone: '',
-        ntn: '',
-        cnic: '',
-        srn: '',
-        address: '',
-        city: business?.city || '',
-        market_location: '',
-        credit_limit: 0,
-        opening_balance: 0,
-        filer_status: 'none',
-        domain_data: initialData?.domain_data || {},
-        ...initialData
+    const [formData, setFormData] = useState(() => {
+        const domain = initialData?.domain_data && typeof initialData.domain_data === 'object'
+            ? initialData.domain_data
+            : {};
+        return {
+            name: '',
+            email: '',
+            phone: '',
+            ntn: '',
+            cnic: '',
+            srn: '',
+            address: '',
+            city: business?.city || '',
+            market_location: domain.market_location || domain.marketlocation || '',
+            credit_limit: 0,
+            opening_balance: 0,
+            filer_status: 'none',
+            domain_data: domain,
+            ...initialData,
+            market_location:
+                initialData?.market_location
+                || domain.market_location
+                || domain.marketlocation
+                || '',
+            domain_data: {
+                ...domain,
+                ...(initialData?.domain_data && typeof initialData.domain_data === 'object'
+                    ? initialData.domain_data
+                    : {}),
+            },
+        };
     });
 
     const [countryCode, setCountryCode] = useState(standards.phoneCode || '+92');
@@ -90,13 +106,30 @@ export function CustomerForm({
         }
     }, [countryCode, localPhone]);
 
-    const domainFields = getDomainCustomerFields(category);
+    const domainFields = getDomainCustomerFields(category).filter((field) => {
+        const key = normalizeKey(field);
+        // Column already exists on customers — avoid duplicate domain_data credit fields
+        return key !== 'creditlimit' && key !== 'credit_limit';
+    });
 
     useEffect(() => {
         if (initialData) {
-            setFormData(prev => ({ ...prev, ...initialData }));
-        } else if (business?.city && !formData.city) {
-            setFormData(prev => ({ ...prev, city: business.city }));
+            const domain = initialData.domain_data && typeof initialData.domain_data === 'object'
+                ? initialData.domain_data
+                : {};
+            setFormData((prev) => ({
+                ...prev,
+                ...initialData,
+                market_location:
+                    initialData.market_location
+                    || domain.market_location
+                    || domain.marketlocation
+                    || prev.market_location
+                    || '',
+                domain_data: { ...domain },
+            }));
+        } else if (business?.city) {
+            setFormData((prev) => (prev.city ? prev : { ...prev, city: business.city }));
         }
     }, [initialData, business?.city]);
 
@@ -124,15 +157,16 @@ export function CustomerForm({
     };
 
     const validateLocalInputs = () => {
-        if (!formData.name) {
+        if (!String(formData.name || '').trim()) {
             toast.error('Customer name is required');
             return false;
         }
-        if (formData.phone && formData.phone.length < 8) {
+        if (formData.phone && String(formData.phone).replace(/\D/g, '').length > 0
+            && String(formData.phone).replace(/\D/g, '').length < 7) {
             toast.error('Phone number seems too short');
             return false;
         }
-        if (formData.cnic && !isValidCNIC(formData.cnic)) {
+        if (formData.cnic && String(formData.cnic).replace(/\D/g, '').length >= 13 && !isValidCNIC(formData.cnic)) {
             toast.error('Invalid CNIC format (e.g. 42201-1234567-1)');
             return false;
         }
@@ -154,12 +188,32 @@ export function CustomerForm({
 
         setIsLoading(true);
         try {
+            const marketLoc = String(formData.market_location || '').trim();
+            const domain_data = {
+                ...(formData.domain_data && typeof formData.domain_data === 'object' ? formData.domain_data : {}),
+            };
+            if (marketLoc) {
+                domain_data.market_location = marketLoc;
+                domain_data.marketlocation = marketLoc;
+            }
+
             const payload = {
-                ...formData,
+                id: formData.id,
+                name: String(formData.name || '').trim(),
+                email: formData.email || '',
+                phone: formData.phone || '',
+                address: formData.address || '',
+                city: formData.city || '',
+                market_location: marketLoc,
+                ntn: formData.ntn || '',
+                cnic: formData.cnic || '',
+                srn: formData.srn || '',
                 credit_limit: Number(formData.credit_limit) || 0,
                 opening_balance: Number(formData.opening_balance) || 0,
-                srn: formData.srn || null,
-                domain_data: formData.domain_data || {}
+                filer_status: formData.filer_status || 'none',
+                type: formData.type || 'individual',
+                notes: formData.notes || '',
+                domain_data,
             };
 
             const result = await onSave(payload);
@@ -244,7 +298,7 @@ export function CustomerForm({
                             )}
                         </CardTitle>
                         <CardDescription className="text-xs text-wine/60">
-                            Manage client details and tax information
+                            Only name is required — add phone, location, and tax details when you need them
                         </CardDescription>
                     </div>
                     {onClose && (
@@ -294,7 +348,7 @@ export function CustomerForm({
                                 {errors?.name && <FormError message={errors.name} />}
                             </div>
                             <div className="space-y-1.5">
-                                <Label className={MOBILE_LABEL_CLASS}>Phone *</Label>
+                                <Label className={MOBILE_LABEL_CLASS}>Phone</Label>
                                 <div className="flex gap-2">
                                     <Select value={countryCode} onValueChange={setCountryCode}>
                                         <SelectTrigger className="h-9 w-[100px] rounded-lg">
@@ -319,7 +373,7 @@ export function CustomerForm({
                                 {errors?.email && <FormError message={errors.email} />}
                             </div>
                             <div className="space-y-1.5">
-                                <CityAutocomplete value={formData.city} onChange={(val) => handleInputChange('city', val)} required />
+                                <CityAutocomplete value={formData.city} onChange={(val) => handleInputChange('city', val)} required={false} />
                                 {errors?.city && <FormError message={errors.city} />}
                             </div>
                             <div className="space-y-1.5 md:col-span-2">

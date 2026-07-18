@@ -23,11 +23,12 @@ import { ProductDetailsDialog } from './ProductDetailsDialog';
 import { CustomerForm } from './CustomerForm';
 import { VendorForm } from './VendorForm';
 import { EnhancedInvoiceBuilder } from './EnhancedInvoiceBuilder';
+import { customerAPI, vendorAPI } from '@/lib/api';
 import toast from 'react-hot-toast';
 import { HUB_ENTITY_DIALOG } from '@/lib/utils/formMobileStyles';
 
 export function EntityDetailsDialog({ item: initialItem, type, open, onClose, category = 'retail-shop' }) {
-    const { currency: businessCurrency } = useBusiness();
+    const { business, currency: businessCurrency } = useBusiness();
     const currency = businessCurrency || 'PKR';
     const [isEditing, setIsEditing] = useState(false);
     const [item, setItem] = useState(initialItem);
@@ -51,7 +52,51 @@ export function EntityDetailsDialog({ item: initialItem, type, open, onClose, ca
         setItem(updatedData);
         setIsEditing(false);
         toast.success(`${type.charAt(0).toUpperCase() + type.slice(1).replace('_', ' ')} updated successfully`);
-        return updatedData;
+        return { success: true };
+    };
+
+    const handleCustomerSave = async (customerData) => {
+        if (!business?.id) {
+            return { success: false, error: 'No business selected' };
+        }
+        try {
+            const saved = customerData.id
+                ? await customerAPI.update(customerData.id, { ...customerData, business_id: business.id })
+                : await customerAPI.create({ ...customerData, business_id: business.id });
+            setItem(saved);
+            setIsEditing(false);
+            toast.success('Customer updated successfully');
+            return { success: true };
+        } catch (error) {
+            return {
+                success: false,
+                error: error.message || 'Failed to save customer',
+                code: error.code || null,
+                errors: error.validationErrors || error.errors || null,
+            };
+        }
+    };
+
+    const handleVendorSave = async (vendorData) => {
+        if (!business?.id) {
+            return { success: false, error: 'No business selected' };
+        }
+        try {
+            const saved = vendorData.id
+                ? await vendorAPI.update(vendorData.id, { ...vendorData, business_id: business.id })
+                : await vendorAPI.create({ ...vendorData, business_id: business.id });
+            setItem(saved);
+            setIsEditing(false);
+            toast.success('Vendor updated successfully');
+            return { success: true };
+        } catch (error) {
+            return {
+                success: false,
+                error: error.message || 'Failed to save vendor',
+                code: error.code || null,
+                errors: error.validationErrors || error.errors || null,
+            };
+        }
     };
 
     const copyToClipboard = (text, label) => {
@@ -252,8 +297,8 @@ export function EntityDetailsDialog({ item: initialItem, type, open, onClose, ca
                         {isEditing ? (
                             <div className="px-1">
                                 {type === 'invoice' && <EnhancedInvoiceBuilder initialData={item} category={category} onSave={handleUpdateSuccess} onClose={() => setIsEditing(false)} />}
-                                {type === 'customer' && <CustomerForm embedded initialData={item} category={category} onSave={handleUpdateSuccess} onEntitlementError={() => setIsEditing(false)} onClose={() => setIsEditing(false)} />}
-                                {type === 'vendor' && <VendorForm embedded initialData={item} category={category} onSave={handleUpdateSuccess} onEntitlementError={() => setIsEditing(false)} onClose={() => setIsEditing(false)} />}
+                                {type === 'customer' && <CustomerForm embedded initialData={item} category={category} onSave={handleCustomerSave} onEntitlementError={() => setIsEditing(false)} onClose={() => setIsEditing(false)} />}
+                                {type === 'vendor' && <VendorForm embedded initialData={item} category={category} onSave={handleVendorSave} onEntitlementError={() => setIsEditing(false)} onClose={() => setIsEditing(false)} />}
                                 {(type !== 'invoice' && type !== 'customer' && type !== 'vendor') && (
                                     <div className="p-8 text-center bg-gray-50 rounded-3xl border-2 border-dashed border-gray-100">
                                         <AlertTriangle className="w-8 h-8 text-amber-500 mx-auto mb-2" />
