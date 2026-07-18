@@ -247,6 +247,7 @@ export function StoreSettingsManager({ business, category }) {
     marine: {
       showFinder: true,
       showKpis: true,
+      showSectorOverview: true,
       showExpertise: true,
       showEquipmentGrid: true,
       showStayAhead: true,
@@ -256,6 +257,29 @@ export function StoreSettingsManager({ business, category }) {
       showBottomCta: true,
       showMarketingBanners: true,
       showBrandChips: true,
+      sectorLayout: 'skewed',
+      sectorEyebrow: '',
+      sectorTitle: '',
+      sectorCards: [
+        {
+          id: 'propulsion',
+          icon: 'ship',
+          title: 'Propulsion systems',
+          body: '',
+          ctaLabel: 'Explore systems',
+          href: '/products?category=new-systems',
+          image: '',
+        },
+        {
+          id: 'lifecycle',
+          icon: 'wrench',
+          title: 'Parts & lifecycle service',
+          body: '',
+          ctaLabel: 'Browse parts & service',
+          href: '/products?category=spare-parts',
+          image: '',
+        },
+      ],
       heroVideoUrl: MARINE_HERO_VIDEO_URL,
       heroPosterUrl: MARINE_HERO_POSTER,
       heroEyebrow: '',
@@ -1799,6 +1823,7 @@ export function StoreSettingsManager({ business, category }) {
                   {[
                     ['showFinder', 'Parts finder dock / panel'],
                     ['showKpis', 'KPI / stats strip'],
+                    ['showSectorOverview', 'Sector overview (systems & lifecycle)'],
                     ['showExpertise', 'New / used / parts / repair cards'],
                     ['showEquipmentGrid', 'Shop by equipment grid'],
                     ['showBrandChips', 'OEM brand chips'],
@@ -1815,6 +1840,127 @@ export function StoreSettingsManager({ business, category }) {
                         onCheckedChange={(v) => setMarine(key, v)}
                       />
                       <Label className="text-sm">{label}</Label>
+                    </div>
+                  ))}
+                </div>
+                <Separator />
+                <div className="space-y-3 rounded-xl border border-gray-100 bg-gray-50/80 p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900">Sector overview</p>
+                      <p className="text-xs text-gray-500">
+                        Dual cards shown before New / used / parts / repair. Skewed frames match premium industrial sites.
+                      </p>
+                    </div>
+                    <select
+                      className="h-9 rounded-md border border-gray-200 bg-white px-3 text-sm"
+                      value={settings.marine?.sectorLayout === 'standard' ? 'standard' : 'skewed'}
+                      onChange={(e) => setMarine('sectorLayout', e.target.value)}
+                    >
+                      <option value="skewed">Skewed (premium)</option>
+                      <option value="standard">Standard rectangles</option>
+                    </select>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label>Section eyebrow</Label>
+                      <Input
+                        value={settings.marine?.sectorEyebrow || ''}
+                        onChange={(e) => setMarine('sectorEyebrow', e.target.value)}
+                        placeholder="What we deliver"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Section title</Label>
+                      <Input
+                        value={settings.marine?.sectorTitle || ''}
+                        onChange={(e) => setMarine('sectorTitle', e.target.value)}
+                        placeholder="Systems and lifecycle support…"
+                      />
+                    </div>
+                  </div>
+                  {(settings.marine?.sectorCards || []).slice(0, 2).map((card, idx) => (
+                    <div key={card.id || `sector-${idx}`} className="space-y-2 rounded-lg border border-gray-200 bg-white p-3">
+                      <p className="text-xs font-semibold text-gray-700">Card {idx + 1}</p>
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        <Input
+                          value={card.title || ''}
+                          placeholder="Propulsion systems"
+                          onChange={(e) => {
+                            const next = [...(settings.marine?.sectorCards || [])];
+                            next[idx] = { ...next[idx], title: e.target.value };
+                            setMarine('sectorCards', next);
+                          }}
+                        />
+                        <select
+                          className="h-9 rounded-md border border-gray-200 bg-white px-3 text-sm"
+                          value={card.icon || 'ship'}
+                          onChange={(e) => {
+                            const next = [...(settings.marine?.sectorCards || [])];
+                            next[idx] = { ...next[idx], icon: e.target.value };
+                            setMarine('sectorCards', next);
+                          }}
+                        >
+                          <option value="ship">Ship icon</option>
+                          <option value="wrench">Wrench icon</option>
+                          <option value="package">Package icon</option>
+                          <option value="anchor">Anchor icon</option>
+                          <option value="zap">Energy icon</option>
+                        </select>
+                      </div>
+                      <Textarea
+                        rows={2}
+                        value={card.body || ''}
+                        placeholder="Short accurate description for this sector…"
+                        onChange={(e) => {
+                          const next = [...(settings.marine?.sectorCards || [])];
+                          next[idx] = { ...next[idx], body: e.target.value };
+                          setMarine('sectorCards', next);
+                        }}
+                      />
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        <Input
+                          value={card.ctaLabel || ''}
+                          placeholder="Explore systems"
+                          onChange={(e) => {
+                            const next = [...(settings.marine?.sectorCards || [])];
+                            next[idx] = { ...next[idx], ctaLabel: e.target.value };
+                            setMarine('sectorCards', next);
+                          }}
+                        />
+                        <Input
+                          value={card.href || ''}
+                          placeholder="/products?category=new-systems"
+                          onChange={(e) => {
+                            const next = [...(settings.marine?.sectorCards || [])];
+                            next[idx] = { ...next[idx], href: e.target.value };
+                            setMarine('sectorCards', next);
+                          }}
+                        />
+                      </div>
+                      <Input
+                        value={card.image || ''}
+                        placeholder="Image URL"
+                        onChange={(e) => {
+                          const next = [...(settings.marine?.sectorCards || [])];
+                          next[idx] = { ...next[idx], image: e.target.value };
+                          setMarine('sectorCards', next);
+                        }}
+                      />
+                      {business?.id ? (
+                        <ImageUploadField
+                          label={`Upload card ${idx + 1} image`}
+                          hint="Wide industrial / vessel photo works best."
+                          value={card.image || ''}
+                          onChange={(url) => {
+                            const next = [...(settings.marine?.sectorCards || [])];
+                            next[idx] = { ...next[idx], image: url };
+                            setMarine('sectorCards', next);
+                          }}
+                          businessId={business.id}
+                          purpose="banner"
+                        />
+                      ) : null}
                     </div>
                   ))}
                 </div>

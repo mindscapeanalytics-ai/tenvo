@@ -16,6 +16,7 @@ import {
 import { buildMarineProductsUrl } from '@/lib/storefront/marinePartsFinder';
 import { StoreConnectionCtaBanner } from '@/components/storefront/StoreConnectionCtaBanner';
 import { getAboutStorefrontConfig } from '@/lib/storefront/aboutStorefront';
+import { MarineSectorOverview } from '@/components/storefront/sections/marine/MarineSectorOverview';
 
 function storeHref(storeBase, href) {
   if (!href) return storeBase;
@@ -57,7 +58,7 @@ export function MarineHomeSections({
     `${displayName} helps fleets source propulsion systems and spare parts with accurate OEM fitment and practical lead times.`;
   const stayAheadBody =
     config.stayAheadSubtitle ||
-    'Match OEM numbers, interchange codes, and equipment type before you commit. Whether you need a complete thruster or a seal kit for the next docking, keep critical A-items available without overstocking C-class consumables.';
+    'Are you stocking the propulsion parts that keep your fleet competitive tomorrow? Match OEM numbers and equipment type before you commit.';
 
   return (
     <>
@@ -94,6 +95,17 @@ export function MarineHomeSections({
           </div>
         </section>
       )}
+
+      {config.showSectorOverview && config.sectorCards?.length > 0 ? (
+        <MarineSectorOverview
+          storeBase={storeBase}
+          accent={accent}
+          eyebrow={config.sectorEyebrow}
+          title={config.sectorTitle}
+          layout={config.sectorLayout}
+          cards={config.sectorCards}
+        />
+      ) : null}
 
       {config.showExpertise && (
         <section className="bg-neutral-50">
