@@ -38,7 +38,7 @@ export function TabGuard({
     onUpgrade,
     children,
 }) {
-    const { isPlatformOwner, business } = useBusiness();
+    const { isPlatformOwner, business, moduleAccess } = useBusiness();
     const businessSettings = business?.settings;
     const effectiveRole = role || 'viewer';
 
@@ -69,7 +69,7 @@ export function TabGuard({
     }
 
     // -- Gate 2: RBAC Permission ---------------------------------------------
-    if (permission && !hasPermission(effectiveRole, permission)) {
+    if (permission && !hasPermission(effectiveRole, permission, moduleAccess)) {
         return (
             <Card className="p-12 text-center border-none shadow-sm">
                 <ShieldAlert className="w-12 h-12 text-red-400 mx-auto mb-4" />

@@ -206,7 +206,7 @@ const NAV_SECTIONS = ADVANCED_NAV_SECTIONS;
 
 export function Sidebar({ isOpen, onClose, isSidebarCollapsed, setIsSidebarCollapsed }) {
   const { user } = useAuth();
-  const { business, role, planTier: contextPlanTier, isLoading: businessLoading, isPlatformOwner, isPlatformAdmin } = useBusiness();
+  const { business, role, planTier: contextPlanTier, isLoading: businessLoading, isPlatformOwner, isPlatformAdmin, moduleAccess } = useBusiness();
   const { language } = useLanguage();
   const { appMode, setAppMode, isEasyMode } = useAppMode();
   const t = translations[language];
@@ -317,7 +317,7 @@ export function Sidebar({ isOpen, onClose, isSidebarCollapsed, setIsSidebarColla
     }
 
     // RBAC + Subscription check via the permissions system
-    return getNavItemAccess(item.key, effectiveRole, planTier, business?.settings, business?.platformFeatureOverrides);
+    return getNavItemAccess(item.key, effectiveRole, planTier, business?.settings, business?.platformFeatureOverrides, moduleAccess);
   };
 
   return (

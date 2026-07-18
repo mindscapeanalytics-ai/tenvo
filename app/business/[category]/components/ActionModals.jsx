@@ -34,6 +34,7 @@ import { CustomerForm } from '@/components/CustomerForm';
 import toast from 'react-hot-toast';
 import { EntityDetailsDialog } from '@/components/EntityDetailsDialog';
 import { getNavItemAccess } from '@/lib/rbac/permissions';
+import { useBusiness } from '@/lib/context/BusinessContext';
 import { isPosRelevant } from '@/lib/config/domains';
 import { useResolvedBusinessId } from '@/lib/hooks/useResolvedBusinessId';
 
@@ -106,9 +107,10 @@ export function ActionModals({
 }) {
     const activeBusinessId = useResolvedBusinessId(business?.id);
     const posRelevant = isPosRelevant(category, domainKnowledge);
+    const { moduleAccess } = useBusiness();
 
     const canOpenTab = (tabKey) => {
-        const access = getNavItemAccess(tabKey, role, planTier, business?.settings);
+        const access = getNavItemAccess(tabKey, role, planTier, business?.settings, business?.platformFeatureOverrides, moduleAccess);
         if (!access.visible) return false;
         if (access.locked) {
             toast.error(`Requires ${access.requiredPlan || 'higher'} plan`);
