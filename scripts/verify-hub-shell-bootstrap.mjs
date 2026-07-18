@@ -48,8 +48,11 @@ if (!exists(bootstrapPath)) {
   if (!bootstrap.includes('limit: HUB_SHELL_PRODUCT_PAGE_LIMIT') && !bootstrap.includes('offset: 0')) {
     mark('hubShellBootstrap must request paginated products (limit + offset 0)');
   }
-  if (!bootstrap.includes('skipAuth: true')) {
-    mark('hubShellBootstrap nested helpers must use skipAuth: true');
+  if (!bootstrap.includes('runWithTrustedAuthBypass')) {
+    mark('hubShellBootstrap nested helpers must use runWithTrustedAuthBypass (not client skipAuth)');
+  }
+  if (bootstrap.includes('skipAuth: true')) {
+    mark('hubShellBootstrap must not pass skipAuth: true (use runWithTrustedAuthBypass)');
   }
   if (!bootstrap.includes('getUnifiedActivityFeedAction')) {
     mark('hubShellBootstrap must include activity feed');
@@ -59,34 +62,53 @@ if (!exists(bootstrapPath)) {
   }
 }
 
+const trustedBypass = 'lib/actions/_shared/trustedAuthBypass.js';
+if (!exists(trustedBypass)) {
+  mark(`${trustedBypass} must exist`);
+} else {
+  const bypass = read(trustedBypass);
+  if (!bypass.includes('isTrustedAuthBypassActive') || !bypass.includes('runWithTrustedAuthBypass')) {
+    mark('trustedAuthBypass must export isTrustedAuthBypassActive + runWithTrustedAuthBypass');
+  }
+  if (!bypass.includes('withBusinessContext')) {
+    mark('trustedAuthBypass must nest withBusinessContext for Prisma auto-scope');
+  }
+}
+
 const invoice = read('lib/actions/basic/invoice.js');
-if (!invoice.includes('skipAuth')) {
-  mark('getInvoicesAction must support skipAuth');
+if (!invoice.includes('isTrustedAuthBypassActive')) {
+  mark('getInvoicesAction must honor trusted auth bypass ALS (not client skipAuth)');
+}
+if (/if \(options\.skipAuth\)/.test(invoice) || /skipAuth\s*=\s*false/.test(invoice)) {
+  mark('invoice.js must not accept client-supplied skipAuth');
 }
 
 const product = read('lib/actions/standard/inventory/product.js');
-if (!product.includes('skipAuth')) {
-  mark('getProductsAction must support skipAuth');
+if (!product.includes('isTrustedAuthBypassActive')) {
+  mark('getProductsAction must honor trusted auth bypass ALS');
+}
+if (/options\.skipAuth/.test(product) && !product.includes('_ignoredSkipAuth')) {
+  mark('product.js must ignore client skipAuth (use ALS only)');
 }
 
 const warehouse = read('lib/actions/standard/inventory/warehouse.js');
-if (!warehouse.includes('skipAuth')) {
-  mark('getWarehouseLocationsAction must support skipAuth');
+if (!warehouse.includes('isTrustedAuthBypassActive')) {
+  mark('getWarehouseLocationsAction must honor trusted auth bypass ALS');
 }
 
 const audit = read('lib/actions/basic/audit.js');
-if (!audit.includes('skipAuth')) {
-  mark('getUnifiedActivityFeedAction must support skipAuth');
+if (!audit.includes('isTrustedAuthBypassActive')) {
+  mark('getUnifiedActivityFeedAction must honor trusted auth bypass ALS');
 }
 
 const report = read('lib/actions/standard/report.js');
-if (!report.includes('getMonthlyFinancialsAction') || !report.includes('options.skipAuth')) {
-  mark('getMonthlyFinancialsAction must support skipAuth');
+if (!report.includes('getMonthlyFinancialsAction') || !report.includes('isTrustedAuthBypassActive')) {
+  mark('getMonthlyFinancialsAction must honor trusted auth bypass ALS');
 }
 
 const analytics = read('lib/actions/premium/ai/analytics.js');
-if (!analytics.includes('skipAuth')) {
-  mark('getExpenseBreakdownAction must support skipAuth');
+if (!analytics.includes('isTrustedAuthBypassActive')) {
+  mark('getExpenseBreakdownAction must honor trusted auth bypass ALS');
 }
 
 if (exists('lib/context/HubQueryProvider.jsx')) {

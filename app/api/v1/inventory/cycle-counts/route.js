@@ -97,9 +97,9 @@ export const POST = withApiAuth(async (request, { businessId, parsedBody }) => {
         for (const item of items) {
             await client.query(`
                 INSERT INTO cycle_count_items
-                    (cycle_count_id, product_id, sku, product_name, system_quantity, unit_price)
-                VALUES ($1, $2, $3, $4, $5, $6)
-            `, [cycleCount.id, item.id, item.sku, item.name, item.system_quantity || 0, item.price || 0]);
+                    (cycle_count_id, product_id, sku, product_name, system_quantity, unit_price, business_id)
+                VALUES ($1, $2, $3, $4, $5, $6, $7)
+            `, [cycleCount.id, item.id, item.sku, item.name, item.system_quantity || 0, item.price || 0, businessId]);
         }
 
         await client.query('COMMIT');

@@ -39,6 +39,7 @@
     "clear:caches": "powershell -ExecutionPolicy Bypass -File scripts/clear-all-caches.ps1",
     "test:pool": "node scripts/test-pool-connection.mjs",
     "verify:storefront-tenancy": "node scripts/verify-storefront-tenancy.mjs",
+    "verify:child-tables-business-id": "node scripts/verify-child-tables-business-id.mjs",
     "verify:storefront-cache": "node scripts/verify-storefront-cache.mjs",
     "verify:cache-wiring": "node scripts/verify-cache-wiring.mjs",
     "test:upstash-redis": "node --env-file=.env.local scripts/test-upstash-redis.mjs",

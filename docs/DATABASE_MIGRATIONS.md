@@ -4,6 +4,8 @@ The Prisma schema in this repo must match your Postgres database. If you see err
 
 **Connection URL:** `prisma.config.ts` loads **`.env`** first, then **`.env.local`** (overrides), then uses **`DIRECT_URL` or `DATABASE_URL`** for the migration datasource. Run CLI commands from the **repository root**.
 
+**Child tables `business_id` (tenant hardening):** Apply Prisma migration **`20260718_child_tables_business_id_complete`** (`bun run db:migrate`) or run **`lib/db/migrations/047_child_tables_business_id_complete.sql`**. Adds/backfills/enforces `business_id` on child tables (specs, cycle counts, bank lines, line items, etc.). See **`docs/analysis/tenant_hardening_rollout_checklist.md`**. Verify with **`bun run verify:child-tables-business-id`**.
+
 **`gl_accounts.sub_type` / `gl_accounts.updated_at`:** Server actions and the chart-of-accounts UI expect these columns. Apply Prisma migration **`20260609_gl_accounts_sub_type_updated_at`** (`bun run db:migrate`) so inserts/updates and Prisma stay aligned.
 
 **Supabase:** Prefer a **direct** Postgres URL on port **5432** for `DIRECT_URL` when applying migrations; `DATABASE_URL` may use the **6543** pooler for the app. Both must point to a reachable host or you will see **P1001**.

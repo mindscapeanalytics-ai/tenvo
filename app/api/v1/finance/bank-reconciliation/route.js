@@ -78,8 +78,8 @@ export const POST = withApiAuth(async (request, { businessId, parsedBody }) => {
         for (const line of lines) {
             await client.query(
                 `INSERT INTO bank_statement_lines
-                    (session_id, statement_date, description, debit, credit, matched, gl_entry_id)
-                 VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+                    (session_id, statement_date, description, debit, credit, matched, gl_entry_id, business_id)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
                 [
                     session.id,
                     line.statement_date || statement_date,
@@ -88,6 +88,7 @@ export const POST = withApiAuth(async (request, { businessId, parsedBody }) => {
                     line.credit || 0,
                     line.matched     || false,
                     line.gl_entry_id || null,
+                    businessId,
                 ]
             );
         }

@@ -168,8 +168,11 @@ if (dataContext.includes('void fetchAnalytics?.()') || /Promise\.allSettled\(\[[
 }
 
 const snapshotAction = read('lib/actions/dashboard/advancedDashboardSnapshot.js');
-if (!snapshotAction.includes('skipAuth: true')) {
-  mark('Advanced snapshot must skip nested withGuard on getDashboardKPIs / accounting summary');
+if (!snapshotAction.includes('runWithTrustedAuthBypass')) {
+  mark('Advanced snapshot must wrap nested KPI/GL reads in runWithTrustedAuthBypass');
+}
+if (snapshotAction.includes('skipAuth: true')) {
+  mark('Advanced snapshot must not pass skipAuth: true (use runWithTrustedAuthBypass)');
 }
 
 const serverGuard = read('lib/rbac/serverGuard.js');

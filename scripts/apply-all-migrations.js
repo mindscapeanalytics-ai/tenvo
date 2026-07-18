@@ -30,6 +30,8 @@ const MIGRATIONS = [
   'prisma/migrations/20260205_schema_hardening.sql',
   'prisma/migrations/20260303_child_tables_business_id_hardening.sql',
   'prisma/migrations/20260303_child_tables_business_id_enforce_not_null.sql',
+  'prisma/migrations/20260718_child_tables_business_id_complete/migration.sql',
+  'lib/db/migrations/047_child_tables_business_id_complete.sql',
   'prisma/migrations/manual_add_sales_orders_challans_payments.sql',
   'prisma/migrations/20260517_audit_fixes/migration.sql',
   // supabase/migrations (key ones)

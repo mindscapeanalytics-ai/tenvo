@@ -282,8 +282,12 @@ model businesses {
   low_stock_alerts             low_stock_alerts[]
   inventory_abc_analysis       inventory_abc_analysis[]
   cycle_counts                 cycle_counts[]
+  cycle_count_items            cycle_count_items[]
+  inventory_adjustments        inventory_adjustments[]
   bank_reconciliation_sessions bank_reconciliation_sessions[]
+  bank_statement_lines         bank_statement_lines[]
   product_reviews              product_reviews[]
+  product_specifications       product_specifications[]
   membership_plans             membership_plans[]
   customer_memberships         customer_memberships[]
   membership_events            membership_events[]
@@ -666,33 +670,36 @@ model product_variants {
 }
 
 model product_specifications {
-  id              String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  product_id      String    @db.Uuid
-  attribute_name  String    @db.VarChar(255)
+  id              String     @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  business_id     String     @db.Uuid
+  product_id      String     @db.Uuid
+  attribute_name  String     @db.VarChar(255)
   attribute_value String?
-  display_order   Int?      @default(0)
-  created_at      DateTime? @default(now()) @db.Timestamptz(6)
-  products        products  @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  display_order   Int?       @default(0)
+  created_at      DateTime?  @default(now()) @db.Timestamptz(6)
+  businesses      businesses @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  products        products   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([product_id], map: "idx_product_specs_product_id")
+  @@index([business_id], map: "idx_product_specs_business_id")
 }
 
 /// Storefront product reviews (created by migration 20260617_storefront_product_columns).
 model product_reviews {
-  id             String      @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  product_id     String      @db.Uuid
-  business_id    String?     @db.Uuid
-  reviewer_name  String      @db.VarChar(255)
-  reviewer_email String?     @db.VarChar(255)
+  id             String     @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  product_id     String     @db.Uuid
+  business_id    String     @db.Uuid
+  reviewer_name  String     @db.VarChar(255)
+  reviewer_email String?    @db.VarChar(255)
   rating         Int
-  title          String?     @db.VarChar(255)
+  title          String?    @db.VarChar(255)
   body           String?
-  is_approved    Boolean?    @default(false)
-  helpful_count  Int?        @default(0)
-  created_at     DateTime?   @default(now()) @db.Timestamptz(6)
-  updated_at     DateTime?   @default(now()) @db.Timestamptz(6)
-  products       products    @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  businesses     businesses? @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  is_approved    Boolean?   @default(false)
+  helpful_count  Int?       @default(0)
+  created_at     DateTime?  @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime?  @default(now()) @db.Timestamptz(6)
+  products       products   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  businesses     businesses @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([product_id], map: "idx_product_reviews_product_id")
   @@index([product_id, is_approved], map: "idx_product_reviews_approved")
@@ -891,17 +898,19 @@ model stock_movements {
 }
 
 model tax_configurations {
-  id                      String      @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  business_id             String?     @db.Uuid
+  id                      String     @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  business_id             String     @db.Uuid
   domain                  String
-  default_sales_tax_rate  Decimal?    @default(17.00) @db.Decimal(5, 2)
-  withholding_tax_percent Decimal?    @default(0.00) @db.Decimal(5, 2)
-  fbr_integration_enabled Boolean?    @default(false)
-  ntn_required            Boolean?    @default(true)
-  strn_required           Boolean?    @default(false)
-  created_at              DateTime?   @default(now()) @db.Timestamptz(6)
-  updated_at              DateTime?   @default(now()) @db.Timestamptz(6)
-  businesses              businesses? @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  default_sales_tax_rate  Decimal?   @default(17.00) @db.Decimal(5, 2)
+  withholding_tax_percent Decimal?   @default(0.00) @db.Decimal(5, 2)
+  fbr_integration_enabled Boolean?   @default(false)
+  ntn_required            Boolean?   @default(true)
+  strn_required           Boolean?   @default(false)
+  created_at              DateTime?  @default(now()) @db.Timestamptz(6)
+  updated_at              DateTime?  @default(now()) @db.Timestamptz(6)
+  businesses              businesses @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([business_id], map: "idx_tax_configurations_business_id")
 }
 
 model vendors {
@@ -1006,20 +1015,20 @@ model warehouse_locations {
 }
 
 model purchase_items {
-  id           String      @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  business_id  String?     @db.Uuid
-  purchase_id  String      @db.Uuid
-  product_id   String?     @db.Uuid
+  id           String     @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  business_id  String     @db.Uuid
+  purchase_id  String     @db.Uuid
+  product_id   String?    @db.Uuid
   description  String?
-  quantity     Decimal?    @default(1) @db.Decimal(12, 2)
-  unit_cost    Decimal?    @default(0) @db.Decimal(12, 2)
-  tax_rate     Decimal?    @default(0) @db.Decimal(5, 2)
-  total_amount Decimal?    @default(0) @db.Decimal(12, 2)
-  batch_id     String?     @db.Uuid
-  created_at   DateTime?   @default(now()) @db.Timestamptz(6)
-  businesses   businesses? @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  products     products?   @relation(fields: [product_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  purchases    purchases   @relation(fields: [purchase_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  quantity     Decimal?   @default(1) @db.Decimal(12, 2)
+  unit_cost    Decimal?   @default(0) @db.Decimal(12, 2)
+  tax_rate     Decimal?   @default(0) @db.Decimal(5, 2)
+  total_amount Decimal?   @default(0) @db.Decimal(12, 2)
+  batch_id     String?    @db.Uuid
+  created_at   DateTime?  @default(now()) @db.Timestamptz(6)
+  businesses   businesses @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  products     products?  @relation(fields: [product_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  purchases    purchases  @relation(fields: [purchase_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([business_id], map: "idx_purchase_items_business_id")
   @@index([product_id], map: "idx_purchase_items_product_id")
@@ -1178,16 +1187,17 @@ model sales_order_items {
   unit_price     Decimal      @default(0) @db.Decimal(12, 2)
   tax_amount     Decimal?     @default(0) @db.Decimal(12, 2)
   total_amount   Decimal?     @default(0) @db.Decimal(12, 2)
-  business_id    String?      @db.Uuid
+  business_id    String       @db.Uuid
   batch_number   String?
   serial_number  String?
   expiry_date    DateTime?    @db.Date
-  businesses     businesses?  @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  businesses     businesses   @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   products       products?    @relation(fields: [product_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
   sales_orders   sales_orders @relation(fields: [sales_order_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([sales_order_id], map: "idx_sales_order_items_order_id")
   @@index([product_id], map: "idx_sales_order_items_product_id")
+  @@index([business_id], map: "idx_sales_order_items_business_id")
   @@index([batch_number], map: "idx_so_items_batch")
   @@index([serial_number], map: "idx_so_items_serial")
 }
@@ -1229,7 +1239,7 @@ model delivery_challans {
 
 model challan_items {
   id                String            @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  business_id       String?           @db.Uuid
+  business_id       String            @db.Uuid
   challan_id        String            @db.Uuid
   product_id        String?           @db.Uuid
   batch_id          String?           @db.Uuid
@@ -1237,7 +1247,7 @@ model challan_items {
   quantity          Decimal?          @default(1) @db.Decimal(12, 2)
   serial_numbers    String[]
   created_at        DateTime?         @default(now()) @db.Timestamptz(6)
-  businesses        businesses?       @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  businesses        businesses        @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   product_batches   product_batches?  @relation(fields: [batch_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   delivery_challans delivery_challans @relation(fields: [challan_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   products          products?         @relation(fields: [product_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -1309,15 +1319,16 @@ model quotation_items {
   unit_price    Decimal     @default(0) @db.Decimal(12, 2)
   tax_amount    Decimal?    @default(0) @db.Decimal(12, 2)
   total_amount  Decimal?    @default(0) @db.Decimal(12, 2)
-  business_id   String?     @db.Uuid
+  business_id   String      @db.Uuid
   batch_number  String?
   serial_number String?
-  businesses    businesses? @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  businesses    businesses  @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   products      products?   @relation(fields: [product_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
   quotations    quotations  @relation(fields: [quotation_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([product_id], map: "idx_quotation_items_product_id")
   @@index([quotation_id], map: "idx_quotation_items_quotation_id")
+  @@index([business_id], map: "idx_quotation_items_business_id")
 }
 
 model workflow_rules {
@@ -1404,13 +1415,13 @@ model promotions {
 }
 
 model promotion_products {
-  id           String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  business_id  String?     @db.Uuid
-  promotion_id String      @db.Uuid
-  product_id   String      @db.Uuid
-  businesses   businesses? @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  promotions   promotions  @relation(fields: [promotion_id], references: [id], onDelete: Cascade)
-  products     products    @relation(fields: [product_id], references: [id], onDelete: Cascade)
+  id           String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  business_id  String     @db.Uuid
+  promotion_id String     @db.Uuid
+  product_id   String     @db.Uuid
+  businesses   businesses @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  promotions   promotions @relation(fields: [promotion_id], references: [id], onDelete: Cascade)
+  products     products   @relation(fields: [product_id], references: [id], onDelete: Cascade)
 
   @@unique([promotion_id, product_id])
   @@index([business_id], map: "idx_promotion_products_business_id")
@@ -1439,18 +1450,18 @@ model campaigns {
 }
 
 model campaign_messages {
-  id           String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  business_id  String?     @db.Uuid
-  campaign_id  String      @db.Uuid
-  customer_id  String      @db.Uuid
-  status       String      @default("pending") // pending, sent, delivered, opened, failed
+  id           String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  business_id  String     @db.Uuid
+  campaign_id  String     @db.Uuid
+  customer_id  String     @db.Uuid
+  status       String     @default("pending") // pending, sent, delivered, opened, failed
   external_id  String?
   error        String?
-  sent_at      DateTime?   @db.Timestamptz(6)
-  delivered_at DateTime?   @db.Timestamptz(6)
-  opened_at    DateTime?   @db.Timestamptz(6)
-  businesses   businesses? @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  campaigns    campaigns   @relation(fields: [campaign_id], references: [id], onDelete: Cascade)
+  sent_at      DateTime?  @db.Timestamptz(6)
+  delivered_at DateTime?  @db.Timestamptz(6)
+  opened_at    DateTime?  @db.Timestamptz(6)
+  businesses   businesses @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  campaigns    campaigns  @relation(fields: [campaign_id], references: [id], onDelete: Cascade)
 
   @@index([business_id], map: "idx_campaign_messages_business_id")
   @@index([campaign_id])
@@ -1475,11 +1486,11 @@ model customer_segments {
 
 model segment_customers {
   id          String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  business_id String?           @db.Uuid
+  business_id String            @db.Uuid
   segment_id  String            @db.Uuid
   customer_id String            @db.Uuid
   created_at  DateTime          @default(now()) @db.Timestamptz(6)
-  businesses  businesses?       @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  businesses  businesses        @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   segments    customer_segments @relation(fields: [segment_id], references: [id], onDelete: Cascade)
 
   @@unique([segment_id, customer_id])
@@ -1553,12 +1564,12 @@ model price_lists {
 
 model price_list_items {
   id            String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  business_id   String?     @db.Uuid
+  business_id   String      @db.Uuid
   price_list_id String      @db.Uuid
   product_id    String      @db.Uuid
   price         Decimal     @db.Decimal(12, 2)
   min_quantity  Decimal     @default(1) @db.Decimal(12, 2)
-  businesses    businesses? @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  businesses    businesses  @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   price_lists   price_lists @relation(fields: [price_list_id], references: [id], onDelete: Cascade)
   products      products    @relation(fields: [product_id], references: [id], onDelete: Cascade)
 
@@ -1709,7 +1720,7 @@ model credit_notes {
 
 model credit_note_items {
   id             String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  business_id    String?      @db.Uuid
+  business_id    String       @db.Uuid
   credit_note_id String       @db.Uuid
   product_id     String?      @db.Uuid
   description    String?
@@ -1718,7 +1729,7 @@ model credit_note_items {
   tax_amount     Decimal?     @default(0) @db.Decimal(12, 2)
   total_amount   Decimal?     @default(0) @db.Decimal(12, 2)
   created_at     DateTime?    @default(now()) @db.Timestamptz(6)
-  businesses     businesses?  @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  businesses     businesses   @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   credit_notes   credit_notes @relation(fields: [credit_note_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   products       products?    @relation(fields: [product_id], references: [id], onUpdate: NoAction)
 
@@ -1807,7 +1818,7 @@ model pos_transactions {
 
 model pos_transaction_items {
   id               String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  business_id      String?          @db.Uuid
+  business_id      String           @db.Uuid
   transaction_id   String           @db.Uuid
   product_id       String           @db.Uuid
   variant_id       String?          @db.Uuid
@@ -1820,7 +1831,7 @@ model pos_transaction_items {
   total_amount     Decimal          @db.Decimal(12, 2)
   promotion_id     String?          @db.Uuid
   created_at       DateTime?        @default(now()) @db.Timestamptz(6)
-  businesses       businesses?      @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  businesses       businesses       @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   pos_transactions pos_transactions @relation(fields: [transaction_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   products         products         @relation(fields: [product_id], references: [id], onUpdate: NoAction)
 
@@ -1831,13 +1842,13 @@ model pos_transaction_items {
 
 model pos_payments {
   id               String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  business_id      String?          @db.Uuid
+  business_id      String           @db.Uuid
   transaction_id   String           @db.Uuid
   method           String           @db.VarChar(50)
   amount           Decimal          @db.Decimal(12, 2)
   reference        String?          @db.VarChar(255)
   created_at       DateTime?        @default(now()) @db.Timestamptz(6)
-  businesses       businesses?      @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  businesses       businesses       @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   pos_transactions pos_transactions @relation(fields: [transaction_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([business_id], map: "idx_pos_payments_business_id")
@@ -1871,7 +1882,7 @@ model pos_refunds {
 
 model pos_refund_items {
   id            String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  business_id   String?     @db.Uuid
+  business_id   String      @db.Uuid
   refund_id     String      @db.Uuid
   product_id    String?     @db.Uuid
   product_name  String
@@ -1880,7 +1891,7 @@ model pos_refund_items {
   refund_amount Decimal     @db.Decimal(12, 2)
   restock       Boolean     @default(true)
   created_at    DateTime?   @default(now()) @db.Timestamptz(6)
-  businesses    businesses? @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  businesses    businesses  @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   pos_refunds   pos_refunds @relation(fields: [refund_id], references: [id], onDelete: Cascade)
 
   @@index([business_id], map: "idx_pos_refund_items_business_id")
@@ -1977,7 +1988,7 @@ model restaurant_orders {
 
 model restaurant_order_items {
   id                   String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  business_id          String?           @db.Uuid
+  business_id          String            @db.Uuid
   order_id             String            @db.Uuid
   product_id           String?           @db.Uuid
   item_name            String
@@ -1987,7 +1998,7 @@ model restaurant_order_items {
   special_instructions String?
   status               String            @default("pending") @db.VarChar(20) // pending | sent_to_kitchen | preparing | ready | served | cancelled
   created_at           DateTime?         @default(now()) @db.Timestamptz(6)
-  businesses           businesses?       @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  businesses           businesses        @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   restaurant_orders    restaurant_orders @relation(fields: [order_id], references: [id], onDelete: Cascade)
 
   @@index([business_id], map: "idx_restaurant_order_items_business_id")
@@ -2089,7 +2100,7 @@ model payroll_runs {
 
 model payroll_items {
   id                String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  business_id       String?           @db.Uuid
+  business_id       String            @db.Uuid
   run_id            String            @db.Uuid
   employee_id       String            @db.Uuid
   base_salary       Decimal           @db.Decimal(12, 2)
@@ -2105,7 +2116,7 @@ model payroll_items {
   payment_status    String            @default("pending") @db.VarChar(20) // pending | paid
   payment_method    String?           @db.VarChar(20) // cash | bank_transfer
   created_at        DateTime?         @default(now()) @db.Timestamptz(6)
-  businesses        businesses?       @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  businesses        businesses        @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   payroll_runs      payroll_runs      @relation(fields: [run_id], references: [id], onDelete: Cascade)
   payroll_employees payroll_employees @relation(fields: [employee_id], references: [id])
 
@@ -2225,7 +2236,7 @@ model storefront_orders {
 model storefront_order_items {
   id           Int               @id @default(autoincrement())
   order_id     Int
-  business_id  String?           @db.Uuid
+  business_id  String            @db.Uuid
   product_id   String?           @db.Uuid
   product_name String?
   product_sku  String?           @db.VarChar(255)
@@ -2236,7 +2247,7 @@ model storefront_order_items {
   total_price  Decimal?          @default(0) @db.Decimal(12, 2)
   metadata     Json?
   order        storefront_orders @relation(fields: [order_id], references: [id], onDelete: Cascade)
-  businesses   businesses?       @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  businesses   businesses        @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([order_id])
   @@index([business_id])
@@ -2600,6 +2611,7 @@ model cycle_counts {
 
 model cycle_count_items {
   id               String       @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  business_id      String       @db.Uuid
   cycle_count_id   String       @db.Uuid
   product_id       String       @db.Uuid
   sku              String?      @db.VarChar(120)
@@ -2609,24 +2621,29 @@ model cycle_count_items {
   unit_price       Decimal      @default(0) @db.Decimal(12, 2)
   created_at       DateTime     @default(now()) @db.Timestamptz(6)
   updated_at       DateTime     @default(now()) @db.Timestamptz(6)
+  businesses       businesses   @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   cycle_counts     cycle_counts @relation(fields: [cycle_count_id], references: [id], onDelete: Cascade)
   products         products     @relation(fields: [product_id], references: [id], onDelete: Cascade)
 
   @@unique([cycle_count_id, product_id], map: "idx_cycle_count_items_unique_product")
   @@index([cycle_count_id], map: "idx_cycle_count_items_count")
+  @@index([business_id], map: "idx_cycle_count_items_business_id")
 }
 
 model inventory_adjustments {
   id             String        @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  business_id    String        @db.Uuid
   cycle_count_id String?       @db.Uuid
   product_id     String        @db.Uuid
   adjustment_qty Decimal       @db.Decimal(12, 2)
   reason         String?
   created_at     DateTime      @default(now()) @db.Timestamptz(6)
+  businesses     businesses    @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   cycle_counts   cycle_counts? @relation(fields: [cycle_count_id], references: [id], onDelete: SetNull)
   products       products      @relation(fields: [product_id], references: [id], onDelete: Cascade)
 
   @@index([product_id, created_at(sort: Desc)], map: "idx_inventory_adjustments_product_date")
+  @@index([business_id], map: "idx_inventory_adjustments_business_id")
 }
 
 // ─── Bank reconciliation tables ───────────────────────────────────────────────
@@ -2654,6 +2671,7 @@ model bank_reconciliation_sessions {
 
 model bank_statement_lines {
   id                           String                       @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  business_id                  String                       @db.Uuid
   session_id                   String                       @db.Uuid
   statement_date               DateTime                     @db.Date
   description                  String?
@@ -2662,12 +2680,14 @@ model bank_statement_lines {
   matched                      Boolean                      @default(false)
   gl_entry_id                  String?                      @db.Uuid
   created_at                   DateTime                     @default(now()) @db.Timestamptz(6)
+  businesses                   businesses                   @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   bank_reconciliation_sessions bank_reconciliation_sessions @relation(fields: [session_id], references: [id], onDelete: Cascade)
   gl_entries                   gl_entries?                  @relation(fields: [gl_entry_id], references: [id], onDelete: SetNull)
 
   @@index([session_id], map: "idx_bank_stmt_lines_session_id")
   @@index([session_id, matched], map: "idx_bank_stmt_lines_matched")
   @@index([gl_entry_id], map: "idx_bank_stmt_lines_gl_entry")
+  @@index([business_id], map: "idx_bank_stmt_lines_business_id")
 }
 
 // ═══════════════════════════════════════════════════════════════════════
