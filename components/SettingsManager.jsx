@@ -240,6 +240,12 @@ export function SettingsManager({ category }) {
     return !!(d && typeof d === 'object' && d.multiCurrency);
   }, [business?.settings?.domain_defaults]);
 
+  const taxCollectionEnabled = useMemo(() => {
+    const fin = business?.settings?.financials;
+    if (!fin || typeof fin !== 'object') return true;
+    return fin.taxEnabled !== false;
+  }, [business?.settings?.financials]);
+
   const availableSectionValues = useMemo(() => visibleSections.map(s => s.value), [visibleSections]);
 
   const sectionFromUrl = searchParams.get('section');
@@ -611,6 +617,15 @@ export function SettingsManager({ category }) {
       s.domain_defaults = {
         ...(s.domain_defaults && typeof s.domain_defaults === 'object' ? s.domain_defaults : {}),
         multiCurrency: checked,
+      };
+    });
+  };
+
+  const setTaxCollectionPref = (checked) => {
+    persistSettingsPatch((s) => {
+      s.financials = {
+        ...(s.financials && typeof s.financials === 'object' ? s.financials : {}),
+        taxEnabled: checked,
       };
     });
   };
@@ -1320,6 +1335,19 @@ export function SettingsManager({ category }) {
                         checked={multiCurrencyEnabled}
                         disabled={settingsPrefBusy}
                         onCheckedChange={setMultiCurrencyPref}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
+                      <div className="min-w-0">
+                        <Label className="font-semibold text-slate-950 text-xs">Collect sales tax (GST / PST / VAT)</Label>
+                        <p className="text-[10px] text-slate-600 leading-snug">
+                          When off, tax is hidden on invoices, bills, POS, and print, and new documents use 0% tax.
+                        </p>
+                      </div>
+                      <Switch
+                        checked={taxCollectionEnabled}
+                        disabled={settingsPrefBusy}
+                        onCheckedChange={setTaxCollectionPref}
                       />
                     </div>
                   </div>

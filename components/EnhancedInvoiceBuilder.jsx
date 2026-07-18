@@ -67,6 +67,7 @@ export function EnhancedInvoiceBuilder({
     currencySymbol: ctxCurrencySymbol,
     registry: regionalStandards,
     defaultTaxRate,
+    taxEnabled,
     isPakistanMarket,
     domainKnowledge,
     taxLabel: regionalTaxLabel,
@@ -76,6 +77,8 @@ export function EnhancedInvoiceBuilder({
   const strategy = getTaxStrategy(standards);
   const colors = getDomainColors(category);
   const isPakistaniDomain = isPakistanMarket;
+  const showTaxUi = taxEnabled !== false;
+  const lineDefaultTaxRate = showTaxUi ? defaultTaxRate : 0;
   const currencySymbol = business?.settings?.financials?.currencySymbol || ctxCurrencySymbol || standards.currencySymbol;
 
   const normalizeProvince = (value = 'punjab') => {
@@ -160,7 +163,9 @@ export function EnhancedInvoiceBuilder({
       const mappedItems = (initialData.items || []).map(item => {
         const rate = item.unit_price || item.rate || 0;
         const discount = item.discount_amount || item.discount || 0;
-        const taxPercent = item.tax_percent || item.taxPercent || (isPakistaniDomain ? defaultTaxRate : 0);
+        const taxPercent = showTaxUi
+          ? (item.tax_percent || item.taxPercent || (isPakistaniDomain ? lineDefaultTaxRate : 0))
+          : 0;
         const quantity = item.quantity || 1;
 
         // Calculate line amount
@@ -336,7 +341,9 @@ export function EnhancedInvoiceBuilder({
               updated.name = product.name;
               updated.hsn = product.hsn || product.hsnCode || '';
               updated.rate = Number(product.price) || 0;
-              updated.taxPercent = Number(product.taxPercent) || (isPakistaniDomain ? defaultTaxRate : 0);
+              updated.taxPercent = showTaxUi
+                ? (Number(product.taxPercent) || (isPakistaniDomain ? lineDefaultTaxRate : 0))
+                : 0;
               updated.unit = product.unit || 'pcs';
 
               // Auto-fill domain metadata if available
@@ -434,15 +441,17 @@ export function EnhancedInvoiceBuilder({
 
       return {
         amount: itemTaxable * globalDiscountFactor,
-        taxPercent: item.taxPercent,
+        taxPercent: showTaxUi ? item.taxPercent : 0,
         category: item.taxCategory,
         domain: category
       };
     });
 
-    const taxResult = strategy.calculateBulk(itemsForTax, standards);
+    const taxResult = showTaxUi
+      ? strategy.calculateBulk(itemsForTax, standards)
+      : { totalTax: 0, taxAmount: 0, details: {} };
     // taxResult.totalTax is the canonical field; fall back to taxAmount for safety
-    const totalTax = Number(taxResult.totalTax ?? taxResult.taxAmount ?? 0);
+    const totalTax = showTaxUi ? Number(taxResult.totalTax ?? taxResult.taxAmount ?? 0) : 0;
 
     const total = Number((finalSubtotal + totalTax).toFixed(2));
     const manualRoundOff = Number(invoice.roundOff || 0) || 0;
@@ -462,7 +471,7 @@ export function EnhancedInvoiceBuilder({
       seasonalDiscount: seasonalDiscountAmount,
       seasonalDiscountDetails,
     };
-  }, [invoice.items, invoice.discount, invoice.discountType, invoice.roundOff, standards, category, seasonalPricingEnabled, currentSeason, products]);
+  }, [invoice.items, invoice.discount, invoice.discountType, invoice.roundOff, standards, category, seasonalPricingEnabled, currentSeason, products, showTaxUi, strategy]);
 
   // Credit limit warning
   const creditWarning = useCreditLimitCheck(selectedCustomerData, calculateTotals.total);
@@ -499,7 +508,9 @@ export function EnhancedInvoiceBuilder({
         unit: product.unit || 'pcs',
         rate: product.price,
         discount: 0,
-        taxPercent: product.taxPercent || product.tax_percent || (isPakistaniDomain ? defaultTaxRate : 0),
+        taxPercent: showTaxUi
+          ? (product.taxPercent || product.tax_percent || (isPakistaniDomain ? lineDefaultTaxRate : 0))
+          : 0,
         amount: product.price,
         taxCategory: isPakistaniDomain ? getTaxCategoryForDomain(category) : 'retail-standard',
       };
@@ -514,7 +525,8 @@ export function EnhancedInvoiceBuilder({
     invoice.items,
     updateItem,
     isPakistaniDomain,
-    defaultTaxRate,
+    lineDefaultTaxRate,
+    showTaxUi,
     category,
   ]);
 
@@ -614,7 +626,9 @@ export function EnhancedInvoiceBuilder({
       unit: lastItem?.unit || 'pcs',
       rate: 0,
       discount: 0,
-      taxPercent: lastItem?.taxPercent ?? (isPakistaniDomain ? defaultTaxRate : 0),
+      taxPercent: showTaxUi
+        ? (lastItem?.taxPercent ?? (isPakistaniDomain ? lineDefaultTaxRate : 0))
+        : 0,
       amount: 0,
       taxCategory: isPakistaniDomain ? getTaxCategoryForDomain(category) : 'retail-standard',
     };
@@ -671,7 +685,9 @@ export function EnhancedInvoiceBuilder({
     const suggestedItems = candidateProducts.map((product, index) => {
       const quantity = 1;
       const rate = Number(product?.price || product?.selling_price || 0) || 0;
-      const taxPercent = Number(product?.taxPercent || product?.tax_percent || (isPakistaniDomain ? defaultTaxRate : 0)) || 0;
+      const taxPercent = showTaxUi
+        ? (Number(product?.taxPercent || product?.tax_percent || (isPakistaniDomain ? lineDefaultTaxRate : 0)) || 0)
+        : 0;
       const amount = rate + ((rate * taxPercent) / 100);
 
       return {
@@ -843,7 +859,7 @@ export function EnhancedInvoiceBuilder({
         name: item.name || item.description || 'Item',
         quantity: Number(item.quantity || 0),
         unit_price: Number(item.rate || item.unit_price || 0),
-        tax_percent: Number(item.taxPercent || 17),
+        tax_percent: Number(item.taxPercent || (showTaxUi ? lineDefaultTaxRate : 0) || 0),
         discount_amount: ((Number(item.quantity || 0) * Number(item.rate || 0)) * Number(item.discount || 0)) / 100,
       })),
       subtotal: totals.subtotal || 0,
@@ -892,15 +908,30 @@ export function EnhancedInvoiceBuilder({
           ? [item.serialNumber]
           : [];
 
+        const quantity = Number(item.quantity || 0);
+        const unitPrice = Number(item.rate || item.unit_price || 0);
+        const discountPct = Number(item.discount || 0);
+        const taxPercent = Number(item.taxPercent || item.tax_percent || 0);
+        const lineBase = quantity * unitPrice;
+        const discountAmount = (lineBase * discountPct) / 100;
+        const taxable = Math.max(0, lineBase - discountAmount);
+        const taxAmount = Number.isFinite(Number(item.tax_amount ?? item.taxAmount))
+          ? Number(item.tax_amount ?? item.taxAmount)
+          : Math.round((taxable * taxPercent) / 100 * 100) / 100;
+
         return {
           ...item,
-          quantity: Number(item.quantity || 0),
-          rate: Number(item.rate || item.unit_price || 0),
-          unit_price: Number(item.rate || item.unit_price || 0),
-          discount: Number(item.discount || 0),
-          taxPercent: Number(item.taxPercent || 0),
-          tax_percent: Number(item.taxPercent || 0),
-          amount: Number(item.amount || 0),
+          quantity,
+          rate: unitPrice,
+          unit_price: unitPrice,
+          discount: discountPct,
+          discount_amount: discountAmount,
+          taxPercent,
+          tax_percent: taxPercent,
+          tax_amount: taxAmount,
+          taxAmount,
+          amount: Number(item.amount || taxable + taxAmount),
+          total_amount: Number(item.amount || taxable + taxAmount),
           batch_number: item.batch_number || item.batchNumber || '',
           batch_id: item.batch_id || item.batchId || null,
           serial_numbers: serialNumbers,
@@ -916,11 +947,20 @@ export function EnhancedInvoiceBuilder({
         };
       });
 
+      const taxTotal = Number(totals.totalTax || totals.tax_total || 0);
+
       // Generate FBR-compliant invoice for Pakistani domains
       let finalInvoice = {
         ...invoice,
         items: normalizedItems,
-        totals,
+        totals: {
+          ...totals,
+          totalTax: taxTotal,
+          tax_total: taxTotal,
+          total_tax: taxTotal,
+        },
+        tax_total: taxTotal,
+        total_tax: taxTotal,
         business_id: business?.id // Ensure business_id is present
       };
 
@@ -1346,7 +1386,7 @@ export function EnhancedInvoiceBuilder({
                   />
                 </div>
                 <div className="flex gap-2">
-                {isPakistaniDomain && (
+                {isPakistaniDomain && showTaxUi && (
                   <Button
                     variant="outline"
                     size="sm"
@@ -1366,7 +1406,7 @@ export function EnhancedInvoiceBuilder({
             </div>
 
             {/* Tax Calculator - Pakistani domains */}
-            {isPakistaniDomain && showTaxCalculator && (
+            {isPakistaniDomain && showTaxUi && showTaxCalculator && (
               <div className="mb-4">
                 <PakistaniTaxCalculator
                   amount={totals.subtotal}
@@ -1393,6 +1433,7 @@ export function EnhancedInvoiceBuilder({
                   onEnterLastRow={addItem}
                   business={business}
                   onScanBarcode={handleBarcodeScan}
+                  showTax={showTaxUi}
                 />
               </div>
 
@@ -1418,7 +1459,9 @@ export function EnhancedInvoiceBuilder({
                         <th className="px-4 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wider" style={{minWidth:'96px'}}>Qty</th>
                         <th className="px-4 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wider" style={{minWidth:'110px'}}>Rate</th>
                         <th className="px-4 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wider" style={{minWidth:'80px'}}>Disc%</th>
-                        <th className="px-4 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wider" style={{minWidth:'80px'}}>Tax%</th>
+                        {showTaxUi && (
+                          <th className="px-4 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wider" style={{minWidth:'80px'}}>Tax%</th>
+                        )}
                         <th className="px-4 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wider" style={{minWidth:'130px'}}>Amount</th>
                         <th className="px-4 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wider" style={{minWidth:'64px'}}>Expert</th>
                         <th className="px-4 py-2.5" style={{minWidth:'40px'}}></th>
@@ -1485,6 +1528,7 @@ export function EnhancedInvoiceBuilder({
                               className="h-8 text-xs w-full"
                             />
                           </td>
+                          {showTaxUi && (
                           <td className="px-3 py-2" style={{minWidth:'80px'}}>
                             <Input
                               type="number"
@@ -1500,6 +1544,7 @@ export function EnhancedInvoiceBuilder({
                               className="h-8 text-xs focus:ring-wine/20 w-full"
                             />
                           </td>
+                          )}
                           <td className="px-3 py-2" style={{minWidth:'130px'}}>
                             <Input
                               type="number"
@@ -1514,12 +1559,14 @@ export function EnhancedInvoiceBuilder({
                                 const qty = Number(item.quantity || 0);
                                 const rate = Number(item.rate || 0);
                                 const discountPct = Number(item.discount || 0);
-                                const taxPct = Number(item.taxPercent || 0);
+                                const taxPct = showTaxUi ? Number(item.taxPercent || 0) : 0;
                                 const base = qty * rate;
                                 const discountValue = (base * discountPct) / 100;
                                 const taxable = base - discountValue;
                                 const taxValue = (taxable * taxPct) / 100;
-                                return `${formatCurrency(taxable, currency)} + ${formatCurrency(taxValue, currency)} tax`;
+                                return showTaxUi
+                                  ? `${formatCurrency(taxable, currency)} + ${formatCurrency(taxValue, currency)} tax`
+                                  : formatCurrency(taxable, currency);
                               })()}
                             </div>
                           </td>
@@ -1592,7 +1639,7 @@ export function EnhancedInvoiceBuilder({
                   </div>
                 )}
                 {/* Render dynamic tax breakdown from strategy */}
-                {Object.entries(totals.taxDetails || {}).map(([label, detail]) => {
+                {showTaxUi && Object.entries(totals.taxDetails || {}).map(([label, detail]) => {
                   // detail.amount is already the computed tax amount (not a base)
                   const taxVal = Number(detail?.amount ?? 0);
                   if (taxVal <= 0) return null;
@@ -1603,6 +1650,12 @@ export function EnhancedInvoiceBuilder({
                     </div>
                   );
                 })}
+                {showTaxUi && Number(totals.totalTax || 0) > 0 && !Object.keys(totals.taxDetails || {}).length && (
+                  <div className="flex justify-between text-sm text-slate-600">
+                    <span>{regionalTaxLabel || 'Tax'}:</span>
+                    <span>{formatCurrency(totals.totalTax, currency || 'PKR')}</span>
+                  </div>
+                )}
                 {totals.roundOff !== 0 && (
                   <div className="flex justify-between text-gray-600">
                     <span>Round Off:</span>

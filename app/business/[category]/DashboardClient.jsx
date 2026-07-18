@@ -1172,10 +1172,29 @@ function BusinessDashboardContent() {
         discount_total: computedDiscountTotal
       };
 
-      const mappedItems = items.map(item => ({
-        ...item,
-        total_amount: item.total || item.amount || 0
-      }));
+      const mappedItems = items.map(item => {
+        const quantity = toNumber(item.quantity, 0);
+        const unitPrice = toNumber(item.rate || item.unit_price, 0);
+        const discountAmount = toNumber(
+          item.discount_amount,
+          (quantity * unitPrice * toNumber(item.discount, 0)) / 100
+        );
+        const taxPercent = toNumber(item.tax_percent ?? item.taxPercent, 0);
+        const taxable = Math.max(0, quantity * unitPrice - discountAmount);
+        const taxAmount = toNumber(
+          item.tax_amount ?? item.taxAmount,
+          Math.round((taxable * taxPercent) / 100 * 100) / 100
+        );
+        return {
+          ...item,
+          quantity,
+          unit_price: unitPrice,
+          tax_percent: taxPercent,
+          tax_amount: taxAmount,
+          discount_amount: discountAmount,
+          total_amount: toNumber(item.total || item.amount || item.total_amount, taxable + taxAmount),
+        };
+      });
 
       // 1. Actually call the API to persist data
       const isUpdate = invoiceInitialData?.id && typeof invoiceInitialData.id === 'string' && invoiceInitialData.id.length > 20;

@@ -26,6 +26,7 @@ export function InvoiceMobileLineItems({
   addItem,
   onEnterLastRow,
   onScanBarcode,
+  showTax = true,
 }) {
   const domainColumns = getDomainInvoiceColumns(category);
 
@@ -192,6 +193,7 @@ export function InvoiceMobileLineItems({
                     className={cn(MOBILE_INPUT_CLASS, 'text-right tabular-nums')}
                   />
                 </div>
+                {showTax && (
                 <div className="space-y-1.5">
                   <Label className="text-[11px] font-semibold text-slate-500">Tax %</Label>
                   <Input
@@ -211,6 +213,7 @@ export function InvoiceMobileLineItems({
                     className={cn(MOBILE_INPUT_CLASS, 'text-right tabular-nums')}
                   />
                 </div>
+                )}
               </div>
 
               <div className="space-y-1.5">
@@ -225,7 +228,9 @@ export function InvoiceMobileLineItems({
                   className={cn(MOBILE_INPUT_CLASS, 'text-right font-semibold tabular-nums')}
                 />
                 <p className="text-right text-[10px] text-slate-400 tabular-nums">
-                  {formatCurrency(taxable, currency)} + {formatCurrency(taxValue, currency)} tax
+                  {showTax
+                    ? `${formatCurrency(taxable, currency)} + ${formatCurrency(taxValue, currency)} tax`
+                    : formatCurrency(taxable, currency)}
                 </p>
               </div>
             </div>

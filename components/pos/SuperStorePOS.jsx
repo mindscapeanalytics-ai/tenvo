@@ -284,7 +284,7 @@ function CartSummary({
     onCompleteSale, onHoldSale, onVoidSale, isProcessing,
     currency = 'Rs.', heldOrders = [], onResumeHeldSale, onPrintBill, onDownloadBillPdf,
     onBack, taxLabel = 'Tax', taxBreakdown = [], discountInputRef,
-    onOpenTax, taxMode = 'standard',
+    onOpenTax, taxMode = 'standard', taxEnabled = true,
 }) {
     const itemCount = items.reduce((sum, i) => sum + (i.isWeightItem ? 1 * i.quantity : i.quantity), 0);
     const subtotal = items.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0);
@@ -345,7 +345,7 @@ function CartSummary({
                                 <span>Subtotal ({items.length} items)</span>
                                 <span>{currency}{subtotal.toLocaleString()}</span>
                             </div>
-                            {showBreakdown ? (
+                            {taxEnabled && showBreakdown ? (
                                 taxBreakdown.map((row) => (
                                     <button
                                         key={row.key}
@@ -358,7 +358,7 @@ function CartSummary({
                                         <span>{currency}{row.amount.toLocaleString()}</span>
                                     </button>
                                 ))
-                            ) : (
+                            ) : taxEnabled ? (
                                 <button
                                     type="button"
                                     onClick={onOpenTax}
@@ -368,7 +368,7 @@ function CartSummary({
                                     <span>{taxLabel}{taxMode && taxMode !== 'standard' ? ` · ${taxMode === 'gst_only' ? 'GST only' : 'Exempt'}` : ''}</span>
                                     <span>{currency}{taxAmount.toLocaleString()}</span>
                                 </button>
-                            )}
+                            ) : null}
                             <div className="flex items-center justify-between text-gray-400">
                                 <span>Discount</span>
                                 <Input
@@ -513,6 +513,7 @@ export function SuperStorePOS({
         components: taxComponents,
         effectiveTaxRate,
         taxLabel,
+        taxEnabled,
         taxConfig: loadedTaxConfig,
         posUi,
     } = usePosTaxConfig(category);
@@ -866,7 +867,7 @@ export function SuperStorePOS({
             if (cart.length > 0 && !isProcessing) handleCompleteSale();
         },
         payment: () => handlePaymentMethodSelect(nextPosPaymentMethod(paymentMethod)),
-        tax: () => setShowTaxPanel(true),
+        tax: () => { if (taxEnabled) setShowTaxPanel(true); },
         clear: handleVoidSale,
         print: () => handlePrintBill({
             subtotal: cartSummary.subtotal,
@@ -922,8 +923,9 @@ export function SuperStorePOS({
         taxLabel: taxLabel || posUi.taxLabel,
         taxBreakdown: cartSummary.taxBreakdown,
         discountInputRef,
-        onOpenTax: () => setShowTaxPanel(true),
+        onOpenTax: taxEnabled ? () => setShowTaxPanel(true) : undefined,
         taxMode,
+        taxEnabled,
     };
     return (
         <div
@@ -1020,9 +1022,11 @@ export function SuperStorePOS({
                     pay: cart.length === 0 || isProcessing,
                     print: cart.length === 0,
                     clear: cart.length === 0,
+                    tax: !taxEnabled,
                 }}
             />
 
+            {taxEnabled && (
             <PosTaxPanel
                 open={showTaxPanel}
                 onOpenChange={setShowTaxPanel}
@@ -1032,6 +1036,7 @@ export function SuperStorePOS({
                 currency={displayCurrency}
                 sampleTaxAmount={cartSummary.taxAmount}
             />
+            )}
 
             <PosCashToolsPanel
                 open={showCashTools}

@@ -37,14 +37,26 @@ export function InvoiceTab({
     category = 'retail-shop',
     colors = { primary: '#000' }
 }: InvoiceTabProps) {
-    // Server-side calculations
+    const isPaid = (inv: Invoice) => {
+        const status = String(inv.status || '').toLowerCase();
+        const paymentStatus = String((inv as any).payment_status || '').toLowerCase();
+        const balance = Number((inv as any).balance);
+        if (Number.isFinite(balance) && balance <= 0.009 && Number(inv.grand_total) > 0) return true;
+        return status === 'paid' || paymentStatus === 'paid';
+    };
+
+    // Prefer payment_status / live balance over status-only (cash sales often keep status draft/sent).
     const stats = {
         total: invoices.length,
-        paid: invoices.filter(inv => inv.status === 'paid').length,
-        pending: invoices.filter(inv => ['pending', 'draft', 'sent'].includes(inv.status as string)).length,
-        overdue: invoices.filter(inv => inv.status === 'overdue').length,
+        paid: invoices.filter(isPaid).length,
+        pending: invoices.filter(inv => {
+            if (isPaid(inv)) return false;
+            const status = String(inv.status || '').toLowerCase();
+            return ['pending', 'draft', 'sent', 'viewed', 'payment_pending', 'partially_paid'].includes(status);
+        }).length,
+        overdue: invoices.filter(inv => String(inv.status || '').toLowerCase() === 'overdue').length,
         totalAmount: invoices.reduce((sum, inv) => sum + (Number(inv.grand_total) || 0), 0),
-        paidAmount: invoices.filter(inv => inv.status === 'paid').reduce((sum, inv) => sum + (Number(inv.grand_total) || 0), 0),
+        paidAmount: invoices.filter(isPaid).reduce((sum, inv) => sum + (Number(inv.grand_total) || 0), 0),
     };
 
     return (

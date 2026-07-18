@@ -181,6 +181,7 @@ export function RestaurantPOS({ businessId, products = [], onCompleteSale, onOrd
         setTaxMode,
         components: taxComponents,
         taxLabel,
+        taxEnabled,
         taxConfig: loadedTaxConfig,
     } = usePosTaxConfig('restaurant-cafe');
     const taxConfig = taxConfigProp || loadedTaxConfig;
@@ -550,7 +551,7 @@ export function RestaurantPOS({ businessId, products = [], onCompleteSale, onOrd
             }
             toast('Send order first (F5), then cycle tender (F6)', { id: 'resto-tender' });
         },
-        tax: () => setShowTaxPanel(true),
+        tax: () => { if (taxEnabled) setShowTaxPanel(true); },
         clear: clearOrder,
         print: handlePrintBill,
     }), [
@@ -854,7 +855,7 @@ export function RestaurantPOS({ businessId, products = [], onCompleteSale, onOrd
                         <span>Subtotal</span>
                         <span className="font-bold">{currency} {subtotal.toLocaleString()}</span>
                     </div>
-                    {taxMode === 'exempt' ? (
+                    {taxEnabled && taxMode === 'exempt' ? (
                         <button
                             type="button"
                             onClick={() => setShowTaxPanel(true)}
@@ -863,7 +864,7 @@ export function RestaurantPOS({ businessId, products = [], onCompleteSale, onOrd
                             <span>Tax exempt</span>
                             <span className="font-bold">{currency} 0</span>
                         </button>
-                    ) : showTaxBreakdown ? (
+                    ) : taxEnabled && showTaxBreakdown ? (
                         taxBreakdown.map((row) => (
                             <button
                                 key={row.key}
@@ -875,7 +876,7 @@ export function RestaurantPOS({ businessId, products = [], onCompleteSale, onOrd
                                 <span className="font-bold">{currency} {row.amount.toLocaleString()}</span>
                             </button>
                         ))
-                    ) : (
+                    ) : taxEnabled ? (
                         <button
                             type="button"
                             onClick={() => setShowTaxPanel(true)}
@@ -884,8 +885,8 @@ export function RestaurantPOS({ businessId, products = [], onCompleteSale, onOrd
                             <span>{taxLabel || 'Tax'} ({Math.round(taxPct)}%)</span>
                             <span className="font-bold">{currency} {tax.toLocaleString()}</span>
                         </button>
-                    )}
-                    {taxMode !== 'standard' && (
+                    ) : null}
+                    {taxEnabled && taxMode !== 'standard' && (
                         <p className="text-[10px] text-amber-600 font-medium">Tax mode: {taxMode.replace('_', ' ')}</p>
                     )}
                     {orderType === 'delivery' && deliveryFee > 0 && (
@@ -979,9 +980,11 @@ export function RestaurantPOS({ businessId, products = [], onCompleteSale, onOrd
                     clear: orderItems.length === 0,
                     pay: orderItems.length === 0 || isProcessing,
                     payment: orderItems.length === 0 || isProcessing,
+                    tax: !taxEnabled,
                 }}
             />
 
+            {taxEnabled && (
             <PosTaxPanel
                 open={showTaxPanel}
                 onOpenChange={setShowTaxPanel}
@@ -991,6 +994,7 @@ export function RestaurantPOS({ businessId, products = [], onCompleteSale, onOrd
                 currency={currency}
                 sampleTaxAmount={tax}
             />
+            )}
 
             {managerPinDialog}
         </div>

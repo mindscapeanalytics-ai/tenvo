@@ -71,14 +71,32 @@ includes('prisma/migrations/20260718_invoice_aging_view/migration.sql', 'CREATE 
 
 // Statements accuracy: exclude draft journals; keep reversed + posted
 includes('lib/utils/glReportSql.js', 'GL_EXCLUDE_DRAFT_JOURNAL_SQL', 'shared draft-exclusion SQL fragment');
+includes('lib/utils/glReportSql.js', 'GL_EXCLUDE_DRAFT_JOURNAL_SQL_GE', 'ledger alias draft-exclusion fragment');
 includes('lib/actions/standard/report.js', 'GL_EXCLUDE_DRAFT_JOURNAL_SQL', 'report actions use draft exclusion');
+includes('lib/actions/basic/accounting.js', 'GL_EXCLUDE_DRAFT_JOURNAL_SQL_GE', 'GL ledger/balance exclude drafts');
+assert(
+  !read('lib/actions/basic/accounting.js').includes('export async function getTrialBalanceAction'),
+  'duplicate Trial Balance action removed from basic/accounting (canonical is standard/report)'
+);
+includes('lib/services/PaymentService.js', 'FROM invoice_payments ip', 'customer AR reconcile uses invoice_payments');
+includes('lib/storefront/storefrontDisplayStock.js', 'Variant SKUs sell from variant stock', 'storefront stock stays variant-first for checkout');
 includes('lib/actions/standard/report.js', 'grossMargin', 'P&L returns grossMargin for PDF/UI');
 includes('lib/actions/standard/report.js', 'a.business_id = je.business_id', 'Day Book scopes accounts by business');
+includes('components/finance/DayBookReport.jsx', 'statusLabel', 'Day Book shows journal status');
 assert(
   read('lib/actions/standard/report.js').includes("<> 'draft'") ||
     read('lib/utils/glReportSql.js').includes("<> 'draft'"),
   'draft journals excluded from statement balances'
 );
+
+// Invoice tax wiring + tax enable toggle
+includes('lib/validation/schemas.js', 'tax_total', 'invoiceSchema accepts tax_total alias');
+includes('lib/actions/basic/invoice.js', 'validated.tax_total = validated.total_tax', 'createInvoiceAction bridges total_tax → tax_total');
+includes('lib/services/InvoiceService.js', 'total_tax, discount_total, grand_total', 'createInvoice persists both tax columns');
+includes('lib/services/InvoiceService.js', 'transaction.tax_amount', 'POS convert maps tax_amount');
+includes('lib/utils/businessRegionalContext.js', 'taxEnabled', 'regional pack exposes taxEnabled');
+includes('components/SettingsManager.jsx', 'taxEnabled: checked', 'Settings Financials tax toggle persists');
+includes('lib/hooks/usePosTaxConfig.js', 'taxEnabled', 'POS tax config respects taxEnabled');
 
 if (failed > 0) {
   console.error(`\n${failed} check(s) failed`);

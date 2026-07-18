@@ -72,8 +72,9 @@ export function PurchaseDocumentForm({
     initialData = null,
     category = 'retail-shop'
 }) {
-    const { business, currency, countryIso, defaultTaxRate } = useFormRegionalContext(category);
+    const { business, currency, countryIso, defaultTaxRate, taxEnabled } = useFormRegionalContext(category);
     const domainTaxOpts = { countryIso };
+    const showTaxUi = taxEnabled !== false;
     const { language } = useLanguage();
     const t = translations[language];
 
@@ -121,14 +122,16 @@ export function PurchaseDocumentForm({
             return sum + (item.quantity * item.unit_cost);
         }, 0);
 
-        const tax_total = formData.items.reduce((sum, item) => {
-            return sum + (item.quantity * item.unit_cost * (item.tax_rate / 100));
-        }, 0);
+        const tax_total = showTaxUi
+            ? formData.items.reduce((sum, item) => {
+                return sum + (item.quantity * item.unit_cost * (item.tax_rate / 100));
+            }, 0)
+            : 0;
 
         const total_amount = subtotal + tax_total;
 
         return { subtotal, tax_total, total_amount };
-    }, [formData.items]);
+    }, [formData.items, showTaxUi]);
 
     const addItem = () => {
         setFormData(prev => ({
@@ -143,7 +146,7 @@ export function PurchaseDocumentForm({
                     unit_cost: 0,
                     batch_number: '',
                     expiry_date: null,
-                    tax_rate: getDomainDefaultTax(domainCategory, domainTaxOpts)
+                    tax_rate: showTaxUi ? getDomainDefaultTax(domainCategory, domainTaxOpts) : 0
                 }
             ]
         }));
@@ -168,7 +171,9 @@ export function PurchaseDocumentForm({
                         if (product) {
                             updated.unit_cost = product.cost_price || 0;
                             updated.name = product.name;
-                            updated.tax_rate = product.tax_percent || getDomainDefaultTax(domainCategory, domainTaxOpts);
+                            updated.tax_rate = showTaxUi
+                                ? (product.tax_percent || getDomainDefaultTax(domainCategory, domainTaxOpts) || defaultTaxRate || 0)
+                                : 0;
                         }
                     }
 
@@ -386,7 +391,9 @@ export function PurchaseDocumentForm({
                                         <th className="px-6 py-4 text-left text-[10px] font-semibold text-gray-400 uppercase tracking-widest">Product / Service</th>
                                         <th className="px-6 py-4 text-right text-[10px] font-semibold text-gray-400 uppercase tracking-widest w-24">Qty</th>
                                         <th className="px-6 py-4 text-right text-[10px] font-semibold text-gray-400 uppercase tracking-widest w-32">Unit Cost</th>
-                                        <th className="px-6 py-4 text-right text-[10px] font-semibold text-gray-400 uppercase tracking-widest w-24">Tax%</th>
+                                        {showTaxUi && (
+                                          <th className="px-6 py-4 text-right text-[10px] font-semibold text-gray-400 uppercase tracking-widest w-24">Tax%</th>
+                                        )}
                                         <th className="px-6 py-4 text-right text-[10px] font-semibold text-gray-400 uppercase tracking-widest w-32">Line Total</th>
                                         <th className="px-6 py-4 w-12"></th>
                                     </tr>
@@ -394,7 +401,7 @@ export function PurchaseDocumentForm({
                                 <tbody className="divide-y divide-gray-100">
                                     {formData.items.length === 0 ? (
                                         <tr>
-                                            <td colSpan={6} className="px-6 py-12 text-center">
+                                            <td colSpan={showTaxUi ? 6 : 5} className="px-6 py-12 text-center">
                                                 <div className="flex flex-col items-center gap-2">
                                                     <div className="w-12 h-12 rounded-2xl bg-gray-50 flex items-center justify-center">
                                                         <ShoppingCart className="w-6 h-6 text-gray-300" />
@@ -440,6 +447,7 @@ export function PurchaseDocumentForm({
                                                         />
                                                     </div>
                                                 </td>
+                                                {showTaxUi && (
                                                 <td className="px-6 py-4 px-2">
                                                     <Input
                                                         type="number"
@@ -448,8 +456,12 @@ export function PurchaseDocumentForm({
                                                         onChange={(e) => updateItem(item.id, 'tax_rate', parseFloat(e.target.value) || 0)}
                                                     />
                                                 </td>
+                                                )}
                                                 <td className="px-6 py-4 text-right font-semibold text-gray-900">
-                                                    {formatCurrency(item.quantity * item.unit_cost * (1 + item.tax_rate / 100), currency)}
+                                                    {formatCurrency(
+                                                      item.quantity * item.unit_cost * (1 + (showTaxUi ? item.tax_rate : 0) / 100),
+                                                      currency
+                                                    )}
                                                 </td>
                                                 <td className="px-6 py-4">
                                                     <Button
@@ -488,10 +500,12 @@ export function PurchaseDocumentForm({
                                 <span className="font-bold uppercase tracking-widest text-[10px]">Net Subtotal</span>
                                 <span className="font-bold">{formatCurrency(totals.subtotal, currency)}</span>
                             </div>
+                            {showTaxUi && (
                             <div className="flex justify-between items-center text-gray-500 text-sm">
                                 <span className="font-bold uppercase tracking-widest text-[10px]">Tax Amount</span>
                                 <span className="font-bold">{formatCurrency(totals.tax_total, currency)}</span>
                             </div>
+                            )}
                             <div className="pt-4 mt-4 border-t border-dashed flex justify-between items-end">
                                 <div>
                                     <span className="block text-[10px] font-semibold uppercase tracking-[0.2em] text-gray-400 leading-none mb-2">Grand Total</span>

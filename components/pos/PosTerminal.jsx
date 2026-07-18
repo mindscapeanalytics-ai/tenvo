@@ -317,6 +317,7 @@ function PosCart({
     onOpenLoyalty,
     onOpenTax,
     taxMode = 'standard',
+    taxEnabled = true,
 }) {
     const subtotal = items.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0);
     
@@ -502,7 +503,7 @@ function PosCart({
                                 <span>Subtotal ({itemQty})</span>
                                 <span className="tabular-nums text-gray-700">{currency}{subtotal.toLocaleString()}</span>
                             </div>
-                            {showBreakdown ? (
+                            {taxEnabled && showBreakdown ? (
                                 taxBreakdown.map((row) => (
                                     <button
                                         key={row.key}
@@ -515,7 +516,7 @@ function PosCart({
                                         <span className="tabular-nums text-gray-700">{currency}{row.amount.toLocaleString()}</span>
                                     </button>
                                 ))
-                            ) : (
+                            ) : taxEnabled ? (
                                 <button
                                     type="button"
                                     onClick={onOpenTax}
@@ -525,7 +526,7 @@ function PosCart({
                                     <span>{taxLabel}{taxMode && taxMode !== 'standard' ? ` · ${taxMode === 'gst_only' ? 'GST only' : 'Exempt'}` : ''}</span>
                                     <span className="tabular-nums text-gray-700">{currency}{taxAmount.toLocaleString()}</span>
                                 </button>
-                            )}
+                            ) : null}
                             <div className="flex items-center justify-between text-gray-500 gap-2">
                                 <div className="flex items-center gap-1 min-w-0">
                                     <span>Discount</span>
@@ -727,6 +728,7 @@ export function PosTerminal({
         components: taxComponents,
         effectiveTaxRate,
         taxLabel,
+        taxEnabled,
         posUi,
     } = usePosTaxConfig(category);
     const { heldOrders, holdSale, resumeLastHeld } = usePosHeldSales(businessId || business?.id);
@@ -1095,7 +1097,7 @@ export function PosTerminal({
             if (cart.length > 0 && !isProcessing) handleCompleteSale();
         },
         payment: () => handlePaymentMethodSelect(nextPosPaymentMethod(paymentMethod)),
-        tax: () => setShowTaxPanel(true),
+        tax: () => { if (taxEnabled) setShowTaxPanel(true); },
         clear: handleClearCart,
         print: () => handlePrintBill({
             subtotal: cartSummary.subtotal,
@@ -1175,8 +1177,9 @@ export function PosTerminal({
         onOpenLoyalty: customer?.id && posSettings.loyaltyAtTill
             ? () => setShowLoyaltyPanel(true)
             : undefined,
-        onOpenTax: () => setShowTaxPanel(true),
+        onOpenTax: taxEnabled ? () => setShowTaxPanel(true) : undefined,
         taxMode,
+        taxEnabled,
     };
 
     const posShellHeader = (
@@ -1367,9 +1370,11 @@ export function PosTerminal({
                     pay: cart.length === 0 || isProcessing,
                     print: cart.length === 0,
                     clear: cart.length === 0,
+                    tax: !taxEnabled,
                 }}
             />
 
+            {taxEnabled && (
             <PosTaxPanel
                 open={showTaxPanel}
                 onOpenChange={setShowTaxPanel}
@@ -1379,6 +1384,7 @@ export function PosTerminal({
                 currency={displayCurrency}
                 sampleTaxAmount={cartSummary.taxAmount}
             />
+            )}
 
             <PosLoyaltyPanel
                 open={showLoyaltyPanel}

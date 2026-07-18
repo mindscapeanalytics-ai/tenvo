@@ -45,9 +45,10 @@ export function QuickInvoiceModal({
     recentTransactions = [],
     currency: currencyProp,
 }) {
-    const { currency: ctxCurrency, defaultTaxRate, domainKnowledge } = useFormRegionalContext(category);
+    const { currency: ctxCurrency, defaultTaxRate, taxEnabled, taxLabel, domainKnowledge } = useFormRegionalContext(category);
     const currency = currencyProp || ctxCurrency;
-    const defaultTax = defaultTaxRate;
+    const showTaxUi = taxEnabled !== false;
+    const defaultTax = showTaxUi ? defaultTaxRate : 0;
     
     // Focus refs for keyboard navigation
     const customerInputRef = useRef(null);
@@ -325,6 +326,7 @@ export function QuickInvoiceModal({
             subtotal: totals.subtotal,
             discount_total: totals.discount,
             tax_total: totals.tax,
+            total_tax: totals.tax,
             grand_total: totals.total,
             payment_method: paymentMethod,
             payment_status: paymentStatus,
@@ -650,10 +652,12 @@ export function QuickInvoiceModal({
                                     <span>-{formatCurrency(totals.discount, currency)}</span>
                                 </div>
                             )}
+                            {showTaxUi && Number(totals.tax) > 0 && (
                             <div className="flex justify-between text-gray-600">
-                                <span>Tax ({defaultTax}%):</span>
+                                <span>{taxLabel || 'Tax'} ({defaultTax}%):</span>
                                 <span className="font-semibold">{formatCurrency(totals.tax, currency)}</span>
                             </div>
+                            )}
                             <div className="flex justify-between border-t pt-2 text-lg font-semibold text-wine">
                                 <span>TOTAL:</span>
                                 <span>{formatCurrency(totals.total, currency)}</span>

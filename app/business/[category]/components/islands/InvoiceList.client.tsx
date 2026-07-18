@@ -55,26 +55,29 @@ export function InvoiceList({
         const now = new Date();
         const totals = invoices.reduce((acc, inv) => {
             const total = Number(inv.grand_total) || 0;
-            // Balance is calculated from invoice_payments (will be available via API)
-            const balance = (inv as any).balance || total;
-            const paid = total - balance;
+            const rawBalance = (inv as any).balance;
+            const balance = Number.isFinite(Number(rawBalance)) ? Number(rawBalance) : total;
+            const paid = Math.max(0, total - balance);
+            const paymentStatus = String((inv as any).payment_status || '').toLowerCase();
+            const status = String(inv.status || '').toLowerCase();
+            const isPaid = paymentStatus === 'paid' || status === 'paid' || (total > 0 && balance <= 0.009);
 
             acc.total += 1;
             acc.totalAmount += total;
             acc.totalPaid += paid;
-            acc.totalBalance += balance;
+            acc.totalBalance += Math.max(0, balance);
 
-            // Payment status
-            if (inv.payment_status === 'paid' || inv.status === 'paid') {
+            // Payment status — prefer live balance + payment_status over status alone
+            if (isPaid) {
                 acc.paid += 1;
-            } else if (inv.payment_status === 'partial' || (paid > 0 && paid < total)) {
+            } else if (paymentStatus === 'partial' || status === 'partially_paid' || (paid > 0.009 && paid < total - 0.009)) {
                 acc.partial += 1;
             } else {
                 acc.unpaid += 1;
             }
 
             // Overdue calculation
-            if (inv.due_date && inv.status !== 'paid' && inv.status !== 'voided') {
+            if (inv.due_date && !isPaid && status !== 'voided' && status !== 'cancelled') {
                 const dueDate = new Date(inv.due_date);
                 const daysOverdue = Math.floor((now.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
                 
