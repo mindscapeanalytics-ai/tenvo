@@ -53,7 +53,7 @@ function buildHeroSlides(domain, images) {
     {
       eyebrow: 'New arrivals',
       title: 'Press-Ons & Pedi Sets',
-      subtitle: 'Salon finish in minutes — soft almonds, french tips, and beach nudes.',
+      subtitle: 'Salon finish in minutes: soft almonds, french tips, and beach nudes.',
       image: images[1] || 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=1600&q=85&auto=format&fit=crop',
       ctaLabel: 'Shop Press-Ons',
       ctaHref: `${products}?category=press-ons`,

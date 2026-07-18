@@ -85,6 +85,8 @@ const nextConfig = {
       { protocol: 'https', hostname: 'www.autostore.pk' },
       { protocol: 'https', hostname: '**.autostore.pk' },
       { protocol: 'https', hostname: '**.unsplash.com' },
+      { protocol: 'https', hostname: 'cdn.shopify.com' },
+      { protocol: 'https', hostname: '**.shopify.com' },
       { protocol: 'https', hostname: '**.eatx.pk' },
       { protocol: 'https', hostname: '**.naheed.pk' },
     ],
