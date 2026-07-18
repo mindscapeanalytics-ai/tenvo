@@ -1,0 +1,427 @@
+{
+  "generatedAt": "2026-07-17T22:04:39.571Z",
+  "sources": [
+    {
+      "file": "archive/nails1.html",
+      "role": "CJ wholesale nail kits (SKU/price anchors)",
+      "skuCount": 60
+    },
+    {
+      "file": "archive/nails-2.html",
+      "role": "Best Nails USA categories + lifestyle",
+      "mediaCount": 1
+    },
+    {
+      "file": "archive/nails.html",
+      "role": "Olive & June hero/marketing media",
+      "mediaCount": 27
+    },
+    {
+      "file": "https://taobao.com/",
+      "role": "Marketplace assortment reference (no live scrape dependency)"
+    }
+  ],
+  "cjSkus": [
+    {
+      "id": "1707021717920550912",
+      "sku": "CJMJ1857781",
+      "wholesaleUsd": 1.93,
+      "source": "cjdropshipping"
+    },
+    {
+      "id": "1544581479253159936",
+      "sku": "CJMJ1518991",
+      "wholesaleUsd": 2.14,
+      "source": "cjdropshipping"
+    },
+    {
+      "id": "1588767279368646656",
+      "sku": "CJYD1605437",
+      "wholesaleUsd": 0.69,
+      "source": "cjdropshipping"
+    },
+    {
+      "id": "1407575935661772800",
+      "sku": "CJMJ1187589",
+      "wholesaleUsd": 1.36,
+      "source": "cjdropshipping"
+    },
+    {
+      "id": "D0F2BB36-FE64-492E-B952-B3BBE3C33E2E",
+      "sku": "CJBJZJMJ00021",
+      "wholesaleUsd": 0.19,
+      "source": "cjdropshipping"
+    },
+    {
+      "id": "1797935487953408000",
+      "sku": "CJYD2053405",
+      "wholesaleUsd": 1.19,
+      "source": "cjdropshipping"
+    },
+    {
+      "id": "1516776807989784576",
+      "sku": "CJMJ1467837",
+      "wholesaleUsd": 0.5,
+      "source": "cjdropshipping"
+    },
+    {
+      "id": "1758486661593309184",
+      "sku": "CJYD1969803",
+      "wholesaleUsd": 0.69,
+      "source": "cjdropshipping"
+    },
+    {
+      "id": "1789978280632782848",
+      "sku": "CJYD2034595",
+      "wholesaleUsd": 2.97,
+      "source": "cjdropshipping"
+    },
+    {
+      "id": "1738821481179652096",
+      "sku": "CJYD1928857",
+      "wholesaleUsd": 2.6,
+      "source": "cjdropshipping"
+    },
+    {
+      "id": "1914886176958468097",
+      "sku": "CJMJ2360463",
+      "wholesaleUsd": 16.53,
+      "source": "cjdropshipping"
+    },
+    {
+      "id": "1574600385493479424",
+      "sku": "CJMJ1573410",
+      "wholesaleUsd": 2.99,
+      "source": "cjdropshipping"
+    },
+    {
+      "id": "1387638452572524544",
+      "sku": "CJMJ1105592",
+      "wholesaleUsd": 0.67,
+      "source": "cjdropshipping"
+    },
+    {
+      "id": "2406281358201601200",
+      "sku": "CJYD2071174",
+      "wholesaleUsd": 2.99,
+      "source": "cjdropshipping"
+    },
+    {
+      "id": "2406130803351615300",
+      "sku": "CJYD2059593",
+      "wholesaleUsd": 1.65,
+      "source": "cjdropshipping"
+    },
+    {
+      "id": "2411130240361602700",
+      "sku": "CJYD2193062",
+      "wholesaleUsd": 1.07,
+      "source": "cjdropshipping"
+    },
+    {
+      "id": "1740566998783897600",
+      "sku": "CJYD1933450",
+      "wholesaleUsd": 3.86,
+      "source": "cjdropshipping"
+    },
+    {
+      "id": "2406170843201621200",
+      "sku": "CJYD2062374",
+      "wholesaleUsd": 36.31,
+      "source": "cjdropshipping"
+    },
+    {
+      "id": "2411130524451609200",
+      "sku": "CJYD2193335",
+      "wholesaleUsd": 0.48,
+      "source": "cjdropshipping"
+    },
+    {
+      "id": "2406110322571615700",
+      "sku": "CJYD2057645",
+      "wholesaleUsd": 0.64,
+      "source": "cjdropshipping"
+    },
+    {
+      "id": "2406170738031628500",
+      "sku": "CJYD2062296",
+      "wholesaleUsd": 3.07,
+      "source": "cjdropshipping"
+    },
+    {
+      "id": "2406070622291619500",
+      "sku": "CJYD2055341",
+      "wholesaleUsd": 16.48,
+      "source": "cjdropshipping"
+    },
+    {
+      "id": "2406180449161621300",
+      "sku": "CJYD2062826",
+      "wholesaleUsd": 1.15,
+      "source": "cjdropshipping"
+    },
+    {
+      "id": "2406180507451625800",
+      "sku": "CJYD2062843",
+      "wholesaleUsd": 1.46,
+      "source": "cjdropshipping"
+    },
+    {
+      "id": "2501050312461616700",
+      "sku": "CJYD2261500",
+      "wholesaleUsd": 0.51,
+      "source": "cjdropshipping"
+    },
+    {
+      "id": "2406170731381614700",
+      "sku": "CJYD2062282",
+      "wholesaleUsd": 4.61,
+      "source": "cjdropshipping"
+    },
+    {
+      "id": "2406110657341625000",
+      "sku": "CJYD2057868",
+      "wholesaleUsd": 1.15,
+      "source": "cjdropshipping"
+    },
+    {
+      "id": "2508310836451616700",
+      "sku": "CJYD2474043",
+      "wholesaleUsd": 1.51,
+      "source": "cjdropshipping"
+    },
+    {
+      "id": "2406250805311603000",
+      "sku": "CJYD2068478",
+      "wholesaleUsd": 6.09,
+      "source": "cjdropshipping"
+    },
+    {
+      "id": "2406170718581624500",
+      "sku": "CJYD2062262",
+      "wholesaleUsd": 3.05,
+      "source": "cjdropshipping"
+    },
+    {
+      "id": "2406180519361602900",
+      "sku": "CJYD2062856",
+      "wholesaleUsd": 0.7,
+      "source": "cjdropshipping"
+    },
+    {
+      "id": "2406290658281601800",
+      "sku": "CJYD2071504",
+      "wholesaleUsd": 6.09,
+      "source": "cjdropshipping"
+    },
+    {
+      "id": "2406150633201620800",
+      "sku": "CJYD2060993",
+      "wholesaleUsd": 59.19,
+      "source": "cjdropshipping"
+    },
+    {
+      "id": "2406170723501624900",
+      "sku": "CJYD2062270",
+      "wholesaleUsd": 10.66,
+      "source": "cjdropshipping"
+    },
+    {
+      "id": "2406150638271625300",
+      "sku": "CJYD2061002",
+      "wholesaleUsd": 112.94,
+      "source": "cjdropshipping"
+    },
+    {
+      "id": "2406110244431622000",
+      "sku": "CJYD2057569",
+      "wholesaleUsd": 0.64,
+      "source": "cjdropshipping"
+    },
+    {
+      "id": "2411131325331622000",
+      "sku": "CJYD2194218",
+      "wholesaleUsd": 1.34,
+      "source": "cjdropshipping"
+    },
+    {
+      "id": "2406090318191625800",
+      "sku": "CJYD2056471",
+      "wholesaleUsd": 0.64,
+      "source": "cjdropshipping"
+    },
+    {
+      "id": "2406100659291624800",
+      "sku": "CJYD2057143",
+      "wholesaleUsd": 10.66,
+      "source": "cjdropshipping"
+    },
+    {
+      "id": "2411190844221615600",
+      "sku": "CJYD2200683",
+      "wholesaleUsd": 2.19,
+      "source": "cjdropshipping"
+    },
+    {
+      "id": "2406150642011614900",
+      "sku": "CJYD2061009",
+      "wholesaleUsd": 71.56,
+      "source": "cjdropshipping"
+    },
+    {
+      "id": "1796512747409121280",
+      "sku": "CJYD2050925",
+      "wholesaleUsd": 1.25,
+      "source": "cjdropshipping"
+    },
+    {
+      "id": "2406090834121629700",
+      "sku": "CJYD2056743",
+      "wholesaleUsd": 0.97,
+      "source": "cjdropshipping"
+    },
+    {
+      "id": "2406100744371624200",
+      "sku": "CJYD2057207",
+      "wholesaleUsd": 11.59,
+      "source": "cjdropshipping"
+    },
+    {
+      "id": "2508310822311617100",
+      "sku": "CJYD2474021",
+      "wholesaleUsd": 2.27,
+      "source": "cjdropshipping"
+    },
+    {
+      "id": "2406240337031629800",
+      "sku": "CJYD2067128",
+      "wholesaleUsd": 0.13,
+      "source": "cjdropshipping"
+    },
+    {
+      "id": "2406151440371607300",
+      "sku": "CJYD2061337",
+      "wholesaleUsd": 1.16,
+      "source": "cjdropshipping"
+    },
+    {
+      "id": "2406081342341629200",
+      "sku": "CJYD2056366",
+      "wholesaleUsd": 0.9,
+      "source": "cjdropshipping"
+    },
+    {
+      "id": "2508310834531627300",
+      "sku": "CJYD2474042",
+      "wholesaleUsd": 2.25,
+      "source": "cjdropshipping"
+    },
+    {
+      "id": "2508310840071625800",
+      "sku": "CJYD2474047",
+      "wholesaleUsd": 2.77,
+      "source": "cjdropshipping"
+    },
+    {
+      "id": "2406180454071604300",
+      "sku": "CJYD2062827",
+      "wholesaleUsd": 1.14,
+      "source": "cjdropshipping"
+    },
+    {
+      "id": "2406100724381614200",
+      "sku": "CJYD2057175",
+      "wholesaleUsd": 10.66,
+      "source": "cjdropshipping"
+    },
+    {
+      "id": "2406100813091619600",
+      "sku": "CJYD2057236",
+      "wholesaleUsd": 10.66,
+      "source": "cjdropshipping"
+    },
+    {
+      "id": "2406100805581623900",
+      "sku": "CJYD2057217",
+      "wholesaleUsd": 2.67,
+      "source": "cjdropshipping"
+    },
+    {
+      "id": "2406100731121619100",
+      "sku": "CJYD2057185",
+      "wholesaleUsd": 10.66,
+      "source": "cjdropshipping"
+    },
+    {
+      "id": "2411120546241604500",
+      "sku": "CJYD2191970",
+      "wholesaleUsd": 0.76,
+      "source": "cjdropshipping"
+    },
+    {
+      "id": "2411050226041621800",
+      "sku": "CJYD2181957",
+      "wholesaleUsd": 0.46,
+      "source": "cjdropshipping"
+    },
+    {
+      "id": "2411270200451609100",
+      "sku": "CJYD2225239",
+      "wholesaleUsd": 1.17,
+      "source": "cjdropshipping"
+    },
+    {
+      "id": "2406100714161622200",
+      "sku": "CJYD2057160",
+      "wholesaleUsd": 10.66,
+      "source": "cjdropshipping"
+    },
+    {
+      "id": "1798902789339488256",
+      "sku": "CJYD2055065",
+      "wholesaleUsd": 5.02,
+      "source": "cjdropshipping"
+    }
+  ],
+  "marketingImages": [
+    "https://cdn.shopify.com/s/files/1/2665/7478/files/Pedi-Web-Banner-Desktop.png?v=1782858324",
+    "https://cdn.shopify.com/s/files/1/2665/7478/files/Background-Desktop_7cb9b477-01ca-49be-bb11-1b7836624731.png?v=1767742066",
+    "https://cdn.shopify.com/s/files/1/2665/7478/files/summer-vibes-poster.jpg?v=1779132253",
+    "https://cdn.shopify.com/s/files/1/2665/7478/files/Hero-Desktop_55e0bb0e-a49e-4ae1-98c7-9eb0854e6811.png?v=1777058530",
+    "https://cdn.shopify.com/s/files/1/2665/7478/files/Heading-Desktop_b6c68cf8-b7b8-4595-a601-51675ecb8d33.png?v=1777571809",
+    "https://cdn.shopify.com/s/files/1/0606/8751/5766/files/main_page.jpg?v=1743360147"
+  ],
+  "oliveMedia": [
+    "https://cdn.shopify.com/s/files/1/2665/7478/files/Pedi-Web-Banner-Desktop.png?v=1782858324",
+    "https://cdn.shopify.com/s/files/1/2665/7478/files/Pedi-Web-Banner-Mobile.png?v=1782858323",
+    "https://cdn.shopify.com/s/files/1/2665/7478/files/Background-Desktop_7cb9b477-01ca-49be-bb11-1b7836624731.png?v=1767742066",
+    "https://cdn.shopify.com/s/files/1/2665/7478/files/Background-Mobile_a8042dac-fc06-4b4f-a44d-fe0a902c1ad0.png?v=1767742066",
+    "https://cdn.shopify.com/s/files/1/2665/7478/files/summer-vibes-poster.jpg?v=1779132253",
+    "https://cdn.shopify.com/s/files/1/2665/7478/files/Hero-Mobile_b27cc6df-bd1b-4ed8-a530-adc980cca3d8.png?v=1777058529",
+    "https://cdn.shopify.com/s/files/1/2665/7478/files/Hero-Desktop_55e0bb0e-a49e-4ae1-98c7-9eb0854e6811.png?v=1777058530",
+    "https://cdn.shopify.com/s/files/1/2665/7478/files/Heading-Desktop_b6c68cf8-b7b8-4595-a601-51675ecb8d33.png?v=1777571809",
+    "https://cdn.shopify.com/s/files/1/2665/7478/files/Heading-Mobile_218529da-f234-4b92-90bf-8dd6ea6dbedd.png?v=1777571809",
+    "https://cdn.shopify.com/s/files/1/2665/7478/files/Cyber24-Phase1-HP-Desktop-Background.png?v=1783542566",
+    "https://cdn.shopify.com/s/files/1/2665/7478/files/Cyber24-Phase1-HP-Mobile-Background.png?v=1783542566",
+    "https://cdn.shopify.com/s/files/1/2665/7478/files/Cyber24-Phase1-HP-Desktop-Text.png?v=1783542704",
+    "https://cdn.shopify.com/s/files/1/2665/7478/files/Cyber24-Phase1-HP-Mobile-Text.png?v=1783542704",
+    "https://cdn.shopify.com/s/files/1/2665/7478/files/Mando-Longlastingmanisystem-PDP-1copy_3eb3ffd8-8498-4e4d-9239-0fcb7469c12a.png?v=1781109173",
+    "https://cdn.shopify.com/s/files/1/2665/7478/files/7-JUST-IN-CASE-GEL-SYSTEM-IMAGEE-2_1_21c2e898-211f-4b31-9d88-0a0369a2e32e.png?v=1780068112",
+    "https://cdn.shopify.com/s/files/1/2665/7478/files/check-mark_5b03aaf2-d460-49c6-b1e0-c185629904bf.png?v=1665182631",
+    "https://cdn.shopify.com/s/files/1/2665/7478/files/OJ_Tools_BP.jpg?v=1701385231",
+    "https://cdn.shopify.com/s/files/1/2665/7478/files/240913_OliveAndJune_Editorial-1748-2.png?v=1731448127",
+    "https://cdn.shopify.com/s/files/1/2665/7478/files/Polish-Tile.png?v=1697216368",
+    "https://cdn.shopify.com/s/files/1/2665/7478/files/quick-dry-hp.jpg?v=1699393271",
+    "https://cdn.shopify.com/s/files/1/2665/7478/files/Press-Ons-Glue-Tile.png?v=1697216368",
+    "https://cdn.shopify.com/s/files/1/2665/7478/files/Press-Ons-Tabs-Tile.png?v=1697216369",
+    "https://cdn.shopify.com/s/files/1/2665/7478/files/Care-Tile.png?v=1697216368",
+    "https://cdn.shopify.com/s/files/1/2665/7478/files/Gel-System.jpg?v=1729267845",
+    "https://cdn.shopify.com/s/files/1/2665/7478/files/National-Polish-Day-cart_pop_up-Background_a677ab97-c670-4e8a-bcaf-4077185867e2.png?v=1781026196",
+    "https://cdn.shopify.com/s/files/1/2665/7478/files/Heading_4.png?v=1770848750",
+    "https://cdn.shopify.com/s/files/1/2665/7478/files/Background_170600a6-ca7f-4f9c-b395-ae572ab58b6b.png?v=1741845229"
+  ],
+  "bestMedia": [
+    "https://cdn.shopify.com/s/files/1/0606/8751/5766/files/main_page.jpg?v=1743360147"
+  ],
+  "productCount": 46
+}
