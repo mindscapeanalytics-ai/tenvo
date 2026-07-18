@@ -35,6 +35,7 @@ import { isMarinePartsStore, MARINE_HERO_VIDEO_URL, MARINE_HERO_POSTER } from '@
 import { isRestaurantElevatedStore } from '@/lib/storefront/restaurantStorefront';
 import { isPharmacyElevatedStore } from '@/lib/storefront/pharmacyStorefront';
 import { isFurnitureElevatedStore } from '@/lib/storefront/furnitureStorefront';
+import { isTilesElevatedStore } from '@/lib/storefront/tilesStorefront';
 import { isFitnessElevatedStore } from '@/lib/storefront/fitnessStorefront';
 import { isSupermarketElevatedStore } from '@/lib/storefront/supermarketStorefront';
 import { isFashionEditorialStore } from '@/lib/storefront/fashionEditorial';
@@ -363,6 +364,18 @@ export function StoreSettingsManager({ business, category }) {
       featuredRailTitle: '',
       featuredRailSubtitle: '',
     },
+    tiles: {
+      showRoomTiles: true,
+      showTestimonials: false,
+      showShowroomCta: true,
+      showMarketingBanners: true,
+      locationLabel: 'Deliver to',
+      defaultLocation: '',
+      searchPlaceholder: '',
+      showroomLabel: 'Visit emporium',
+      featuredRailTitle: '',
+      featuredRailSubtitle: '',
+    },
     fitness: {
       showPrograms: true,
       showMemberships: true,
@@ -474,6 +487,7 @@ export function StoreSettingsManager({ business, category }) {
   const restaurantStore = isRestaurantElevatedStore(category || business?.category);
   const pharmacyStore = isPharmacyElevatedStore(category || business?.category);
   const furnitureStore = isFurnitureElevatedStore(category || business?.category);
+  const tilesStore = isTilesElevatedStore(category || business?.category);
   const fitnessStore = isFitnessElevatedStore(category || business?.category);
   const supermarketStore = isSupermarketElevatedStore(category || business?.category);
   const jewelleryStore = isJewelleryStore(category || business?.category);
@@ -611,6 +625,11 @@ export function StoreSettingsManager({ business, category }) {
     setSettings((prev) => ({
       ...prev,
       furniture: { ...(prev.furniture || {}), [key]: val },
+    }));
+  const setTiles = (key, val) =>
+    setSettings((prev) => ({
+      ...prev,
+      tiles: { ...(prev.tiles || {}), [key]: val },
     }));
   const setFitness = (key, val) =>
     setSettings((prev) => ({
@@ -2324,6 +2343,75 @@ export function StoreSettingsManager({ business, category }) {
                 </div>
                 <p className="text-xs text-gray-500">
                   Hero carousel slides are under Branding. Uploaded slides override furniture template defaults.
+                </p>
+              </CardContent>
+            </Card>
+          ) : null}
+
+          {tilesStore ? (
+            <Card>
+              <CardHeader className="pb-4">
+                <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                  <Megaphone className="w-4 h-4" /> Tiles & marble storefront
+                </CardTitle>
+                <CardDescription>
+                  Toggle homepage sections below the tiles hero. Space tiles and rails use your catalog categories.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {[
+                    ['showRoomTiles', 'Space collection tiles', false],
+                    ['showTestimonials', 'Customer testimonials', true],
+                    ['showShowroomCta', 'Emporium CTA on homepage', false],
+                    ['showMarketingBanners', 'Custom marketing banners', false],
+                  ].map(([key, label, optIn]) => (
+                    <div key={key} className="flex items-center gap-2">
+                      <Switch
+                        checked={optIn ? settings.tiles?.[key] === true : settings.tiles?.[key] !== false}
+                        onCheckedChange={(v) => setTiles(key, v)}
+                      />
+                      <Label className="text-sm">{label}</Label>
+                    </div>
+                  ))}
+                </div>
+                <Separator />
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label>Search placeholder</Label>
+                    <Input
+                      value={settings.tiles?.searchPlaceholder || ''}
+                      onChange={(e) => setTiles('searchPlaceholder', e.target.value)}
+                      placeholder="Search floor tiles, wall tiles, marble…"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Emporium link label</Label>
+                    <Input
+                      value={settings.tiles?.showroomLabel || ''}
+                      onChange={(e) => setTiles('showroomLabel', e.target.value)}
+                      placeholder="Visit emporium"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Location label</Label>
+                    <Input
+                      value={settings.tiles?.locationLabel || ''}
+                      onChange={(e) => setTiles('locationLabel', e.target.value)}
+                      placeholder="Deliver to"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Default location hint</Label>
+                    <Input
+                      value={settings.tiles?.defaultLocation || ''}
+                      onChange={(e) => setTiles('defaultLocation', e.target.value)}
+                      placeholder="Uses store city when empty"
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500">
+                  Hero carousel slides are under Branding. Uploaded slides override tiles template defaults.
                 </p>
               </CardContent>
             </Card>

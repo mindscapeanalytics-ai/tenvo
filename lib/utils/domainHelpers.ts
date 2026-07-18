@@ -671,7 +671,7 @@ export function getDomainDisplayName(category: string): string {
     'wholesale-distribution': 'Wholesale Distribution',
     'plastic-manufacturing': 'Plastic Manufacturing',
     'leather-footwear': 'Leather & Footwear',
-    'ceramics-tiles': 'Ceramics & Tiles',
+    'ceramics-tiles': 'Tiles, Marble & Stone',
     'printing-packaging': 'Printing & Packaging',
     'petrol-pump': 'Petrol Pump & Oil',
     'cold-storage': 'Cold Storage',
