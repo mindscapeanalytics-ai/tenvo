@@ -1,9 +1,11 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Search, Anchor, Ship, Wrench, Package, ArrowRight } from 'lucide-react';
+import {
+  Search, Anchor, Ship, Wrench, Package, ArrowRight, SlidersHorizontal,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   MARINE_EQUIPMENT_TYPES,
@@ -14,6 +16,26 @@ import {
 import { MARINE_ACCENT, MARINE_HERO_POSTER } from '@/lib/storefront/marinePartsArchiveMap';
 import { StoreConnectionButtons } from '@/components/storefront/StoreConnectionButtons';
 import { resolveStoreConnectionActions } from '@/lib/storefront/storeConnectionActions';
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
+
+const SEARCH_MODES = [
+  { id: 'partNumber', label: 'Part number', icon: Package },
+  { id: 'oem', label: 'OEM number', icon: Wrench },
+  { id: 'equipment', label: 'Equipment', icon: Anchor },
+  { id: 'vessel', label: 'Vessel type', icon: Ship },
+];
+
+const HERO_INTELLIGENCE = [
+  { label: 'New & used systems', hint: 'Install-ready and yard stock' },
+  { label: 'OEM cross-reference', hint: 'Part and interchange lookup' },
+  { label: 'RFQ-ready quoting', hint: 'Lead times on request' },
+];
 
 /**
  * Full-bleed looping hero video with poster fallback.
@@ -65,8 +87,185 @@ function MarineHeroVideoBackdrop({ videoUrl, poster }) {
   );
 }
 
+function MarineQuickLinks({ productsBase, storeBase, accent, className, muted = false }) {
+  const linkClass = muted
+    ? 'font-semibold text-white/75 transition-colors hover:text-white'
+    : 'font-semibold transition-opacity hover:opacity-80';
+  return (
+    <div className={cn('flex flex-wrap items-center gap-x-3 gap-y-1 text-xs', className)}>
+      <span className={muted ? 'font-medium text-white/45' : 'font-medium text-neutral-400'}>
+        Quick
+      </span>
+      <Link
+        href={`${productsBase}?systemCondition=new`}
+        className={linkClass}
+        style={muted ? undefined : { color: accent }}
+      >
+        New systems
+      </Link>
+      <Link
+        href={`${productsBase}?systemCondition=used`}
+        className={linkClass}
+        style={muted ? undefined : { color: accent }}
+      >
+        Used systems
+      </Link>
+      <Link
+        href={`${productsBase}?category=spare-parts`}
+        className={linkClass}
+        style={muted ? undefined : { color: accent }}
+      >
+        Spare parts
+      </Link>
+      <Link
+        href={`${storeBase}/contact?subject=quotation`}
+        className={linkClass}
+        style={muted ? undefined : { color: accent }}
+      >
+        RFQ
+      </Link>
+    </div>
+  );
+}
+
 /**
- * Industrial marine finder hero: looping video backdrop + part / OEM / equipment / vessel search.
+ * Full multi-mode marine parts finder (used inside the side panel).
+ */
+function MarinePartsSearchPanel({
+  mode,
+  setMode,
+  query,
+  setQuery,
+  equipmentType,
+  setEquipmentType,
+  vesselType,
+  setVesselType,
+  systemCondition,
+  setSystemCondition,
+  onSearch,
+  accent,
+  accentDark,
+  productsBase,
+  storeBase,
+}) {
+  return (
+    <div className="flex h-full flex-col">
+      <div className="flex flex-wrap gap-1 border-b border-neutral-100 bg-neutral-50/90 p-2">
+        {SEARCH_MODES.map((m) => {
+          const Icon = m.icon;
+          const active = mode === m.id;
+          return (
+            <button
+              key={m.id}
+              type="button"
+              onClick={() => setMode(m.id)}
+              className={cn(
+                'inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition-colors sm:text-sm',
+                active ? 'text-white shadow-sm' : 'text-neutral-600 hover:bg-white'
+              )}
+              style={active ? { backgroundColor: accent } : undefined}
+            >
+              <Icon className="h-3.5 w-3.5" aria-hidden />
+              {m.label}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="flex flex-1 flex-col gap-4 p-4 sm:p-5">
+        <div className="grid gap-3 sm:grid-cols-2">
+          {(mode === 'partNumber' || mode === 'oem') && (
+            <label className="block sm:col-span-2">
+              <span className="mb-1.5 block text-xs font-semibold text-neutral-500">
+                {mode === 'oem' ? 'OEM number' : 'Part number'}
+              </span>
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && onSearch()}
+                placeholder={mode === 'oem' ? 'e.g. OEM-TT-1650-SK' : 'e.g. TM-SRP-1215'}
+                className="w-full rounded-xl border border-neutral-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-neutral-400"
+                autoFocus
+              />
+            </label>
+          )}
+
+          {(mode === 'equipment' || mode === 'partNumber' || mode === 'oem') && (
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-semibold text-neutral-500">Equipment type</span>
+              <select
+                value={equipmentType}
+                onChange={(e) => setEquipmentType(e.target.value)}
+                className="w-full rounded-xl border border-neutral-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-neutral-400"
+              >
+                <option value="">Any equipment</option>
+                {MARINE_EQUIPMENT_TYPES.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+
+          {(mode === 'vessel' || mode === 'equipment') && (
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-semibold text-neutral-500">Vessel type</span>
+              <select
+                value={vesselType}
+                onChange={(e) => setVesselType(e.target.value)}
+                className="w-full rounded-xl border border-neutral-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-neutral-400"
+              >
+                <option value="">Any vessel</option>
+                {MARINE_VESSEL_TYPES.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+
+          <label className="block">
+            <span className="mb-1.5 block text-xs font-semibold text-neutral-500">Condition</span>
+            <select
+              value={systemCondition}
+              onChange={(e) => setSystemCondition(e.target.value)}
+              className="w-full rounded-xl border border-neutral-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-neutral-400"
+            >
+              <option value="">Any</option>
+              {MARINE_SYSTEM_CONDITIONS.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        <button
+          type="button"
+          onClick={onSearch}
+          className="inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-95"
+          style={{ backgroundColor: accentDark }}
+        >
+          <Search className="h-4 w-4" aria-hidden />
+          Search catalogue
+        </button>
+
+        <MarineQuickLinks
+          productsBase={productsBase}
+          storeBase={storeBase}
+          accent={accent}
+          className="border-t border-neutral-100 pt-4"
+        />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Industrial marine finder hero: cinematic messaging + glass dock + side panel search.
  */
 export function MarinePartsFinderHero({
   preset,
@@ -77,6 +276,7 @@ export function MarinePartsFinderHero({
   settings = null,
 }) {
   const router = useRouter();
+  const titleId = useId();
   const productsBase = `/store/${businessDomain}/products`;
   const storeBase = `/store/${businessDomain}`;
   const brandAccent = accent || MARINE_ACCENT;
@@ -93,6 +293,7 @@ export function MarinePartsFinderHero({
     force: true,
   });
 
+  const [panelOpen, setPanelOpen] = useState(false);
   const [mode, setMode] = useState('partNumber');
   const [query, setQuery] = useState('');
   const [equipmentType, setEquipmentType] = useState('');
@@ -111,6 +312,7 @@ export function MarinePartsFinderHero({
         vesselType: vesselType || undefined,
         systemCondition: systemCondition || undefined,
       });
+      setPanelOpen(false);
       return;
     }
     if (mode === 'vessel') {
@@ -120,6 +322,7 @@ export function MarinePartsFinderHero({
         equipmentType: equipmentType || undefined,
         systemCondition: systemCondition || undefined,
       });
+      setPanelOpen(false);
       return;
     }
     const term = String(query || '').trim();
@@ -131,189 +334,218 @@ export function MarinePartsFinderHero({
       vesselType: vesselType || undefined,
       systemCondition: systemCondition || undefined,
     });
+    setPanelOpen(false);
   };
 
-  const modes = [
-    { id: 'partNumber', label: 'Part number', icon: Package },
-    { id: 'oem', label: 'OEM number', icon: Wrench },
-    { id: 'equipment', label: 'Equipment', icon: Anchor },
-    { id: 'vessel', label: 'Vessel type', icon: Ship },
-  ];
+  const goQuickPartSearch = () => {
+    const term = String(query || '').trim();
+    if (!term) {
+      setMode('partNumber');
+      setPanelOpen(true);
+      return;
+    }
+    setMode('partNumber');
+    navigate({
+      search: term,
+      searchMode: 'partNumber',
+      equipmentType: equipmentType || undefined,
+      systemCondition: systemCondition || undefined,
+    });
+  };
+
+  const openAdvanced = (nextMode) => {
+    if (nextMode) setMode(nextMode);
+    setPanelOpen(true);
+  };
 
   return (
     <section className="relative w-full overflow-hidden bg-[#001122] text-white">
       <div className="absolute inset-0" aria-hidden>
         <MarineHeroVideoBackdrop videoUrl={videoUrl} poster={poster} />
-        <div className="absolute inset-0 bg-gradient-to-r from-[#001122]/96 via-[#001122]/78 to-[#001122]/28" />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#001122] via-transparent to-[#001122]/45" />
-        {/* Subtle engineered angle accent */}
+        <div className="absolute inset-0 bg-gradient-to-r from-[#001122]/97 via-[#001122]/72 to-[#001122]/25" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#001122] via-[#001122]/20 to-[#001122]/50" />
         <div
-          className="pointer-events-none absolute -right-16 bottom-0 hidden h-[55%] w-[42%] skew-x-[-12deg] bg-teal-500/10 lg:block"
+          className="pointer-events-none absolute -right-20 bottom-0 hidden h-[58%] w-[40%] skew-x-[-12deg] bg-teal-400/10 lg:block"
           aria-hidden
         />
       </div>
 
-      <div className="relative mx-auto flex min-h-[min(92svh,820px)] max-w-7xl flex-col justify-end gap-8 px-4 pb-12 pt-28 sm:px-6 lg:justify-center lg:gap-10 lg:px-8 lg:pb-20 lg:pt-32">
-        <div className="max-w-2xl">
-          <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.22em] text-teal-300/95 sm:text-xs">
-            {slide.eyebrow || preset?.accentLabel || 'Tenvo Marine'}
-          </p>
-          <h1 className="text-[2rem] font-semibold leading-[1.12] tracking-tight text-white sm:text-4xl lg:text-5xl xl:text-[3.25rem]">
-            {slide.title || 'Shaping reliable power at sea'}
-          </h1>
-          <p className="mt-4 max-w-xl text-sm leading-relaxed text-white/80 sm:text-base lg:text-lg">
-            {slide.subtitle ||
-              'Find thrusters, rudder propellers, seals, and lifecycle spare parts by part number, OEM, or equipment type.'}
-          </p>
-          {connectionActions.length > 0 ? (
-            <StoreConnectionButtons
-              actions={connectionActions}
-              accent={brandAccentDark}
-              className="mt-6"
-            />
-          ) : (
-            <div className="mt-6 flex flex-wrap items-center gap-3">
-              <Link
-                href={slide.ctaHref || productsBase}
-                className="inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-black/20 transition-opacity hover:opacity-95"
-                style={{ backgroundColor: brandAccentDark }}
-              >
-                {slide.ctaLabel || 'Browse catalogue'}
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-              <Link
-                href={`${storeBase}/contact`}
-                className="inline-flex items-center gap-2 rounded-xl border border-white/25 bg-white/5 px-5 py-2.5 text-sm font-semibold text-white backdrop-blur-sm transition-colors hover:bg-white/10"
-              >
-                Request quote
-              </Link>
-            </div>
-          )}
-        </div>
+      <div className="relative mx-auto flex min-h-[min(88svh,780px)] max-w-7xl flex-col px-4 pt-28 sm:px-6 lg:px-8 lg:pt-32">
+        {/* Hero messaging — first viewport stays brand-first */}
+        <div className="flex flex-1 flex-col justify-center pb-8 lg:pb-10">
+          <div className="max-w-2xl">
+            <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.22em] text-teal-300/95 sm:text-xs">
+              {slide.eyebrow || preset?.accentLabel || 'Marine propulsion'}
+            </p>
+            <h1
+              id={titleId}
+              className="text-[2.15rem] font-semibold leading-[1.1] tracking-tight text-white sm:text-4xl lg:text-5xl xl:text-[3.35rem]"
+            >
+              {slide.title || 'Shaping reliable power at sea'}
+            </h1>
+            <p className="mt-4 max-w-xl text-sm leading-relaxed text-white/80 sm:text-base lg:text-[1.05rem]">
+              {slide.subtitle ||
+                'New and used thrusters, rudder propellers, seals, and lifecycle spare parts for fleet and yard teams.'}
+            </p>
 
-        {showFinder ? (
-          <div className="w-full max-w-3xl overflow-hidden rounded-2xl border border-white/20 bg-white/97 text-neutral-900 shadow-2xl shadow-black/35 backdrop-blur-md">
-            <div className="flex flex-wrap gap-1 border-b border-neutral-100 bg-neutral-50/80 p-2">
-              {modes.map((m) => {
-                const Icon = m.icon;
-                const active = mode === m.id;
-                return (
-                  <button
-                    key={m.id}
-                    type="button"
-                    onClick={() => setMode(m.id)}
-                    className={cn(
-                      'inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition-colors sm:text-sm',
-                      active ? 'text-white shadow-sm' : 'text-neutral-600 hover:bg-white'
-                    )}
-                    style={active ? { backgroundColor: brandAccent } : undefined}
-                  >
-                    <Icon className="h-3.5 w-3.5" />
-                    {m.label}
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-12 lg:items-end">
-              {(mode === 'partNumber' || mode === 'oem') && (
-                <label className="block lg:col-span-5">
-                  <span className="mb-1 block text-xs font-semibold text-neutral-500">
-                    {mode === 'oem' ? 'OEM number' : 'Part number'}
-                  </span>
-                  <input
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && goSearch()}
-                    placeholder={mode === 'oem' ? 'e.g. OEM-TT-1650-SK' : 'e.g. TM-SRP-1215'}
-                    className="w-full rounded-xl border border-neutral-200 bg-white px-3 py-2.5 text-sm outline-none ring-0 focus:border-neutral-400"
-                  />
-                </label>
-              )}
-
-              {(mode === 'equipment' || mode === 'partNumber' || mode === 'oem') && (
-                <label className={cn('block', mode === 'equipment' ? 'lg:col-span-5' : 'lg:col-span-3')}>
-                  <span className="mb-1 block text-xs font-semibold text-neutral-500">Equipment type</span>
-                  <select
-                    value={equipmentType}
-                    onChange={(e) => setEquipmentType(e.target.value)}
-                    className="w-full rounded-xl border border-neutral-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-neutral-400"
-                  >
-                    <option value="">Any equipment</option>
-                    {MARINE_EQUIPMENT_TYPES.map((t) => (
-                      <option key={t} value={t}>
-                        {t}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              )}
-
-              {(mode === 'vessel' || mode === 'equipment') && (
-                <label className={cn('block', mode === 'vessel' ? 'lg:col-span-5' : 'lg:col-span-3')}>
-                  <span className="mb-1 block text-xs font-semibold text-neutral-500">Vessel type</span>
-                  <select
-                    value={vesselType}
-                    onChange={(e) => setVesselType(e.target.value)}
-                    className="w-full rounded-xl border border-neutral-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-neutral-400"
-                  >
-                    <option value="">Any vessel</option>
-                    {MARINE_VESSEL_TYPES.map((t) => (
-                      <option key={t} value={t}>
-                        {t}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              )}
-
-              <label className="block lg:col-span-2">
-                <span className="mb-1 block text-xs font-semibold text-neutral-500">Condition</span>
-                <select
-                  value={systemCondition}
-                  onChange={(e) => setSystemCondition(e.target.value)}
-                  className="w-full rounded-xl border border-neutral-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-neutral-400"
+            <ul className="mt-6 flex flex-wrap gap-2" aria-label="Catalogue strengths">
+              {HERO_INTELLIGENCE.map((item) => (
+                <li
+                  key={item.label}
+                  className="rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-[11px] font-medium text-white/90 backdrop-blur-sm sm:text-xs"
+                  title={item.hint}
                 >
-                  <option value="">Any</option>
-                  {MARINE_SYSTEM_CONDITIONS.map((t) => (
-                    <option key={t} value={t}>
-                      {t}
-                    </option>
-                  ))}
-                </select>
-              </label>
+                  {item.label}
+                </li>
+              ))}
+            </ul>
 
-              <div className="flex gap-2 lg:col-span-2">
+            <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+              {connectionActions.length > 0 ? (
+                <StoreConnectionButtons
+                  actions={connectionActions}
+                  accent={brandAccentDark}
+                />
+              ) : (
+                <div className="flex flex-wrap items-center gap-3">
+                  <Link
+                    href={slide.ctaHref || productsBase}
+                    className="inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-black/20 transition-opacity hover:opacity-95"
+                    style={{ backgroundColor: brandAccentDark }}
+                  >
+                    {slide.ctaLabel || 'Browse catalogue'}
+                    <ArrowRight className="h-4 w-4" aria-hidden />
+                  </Link>
+                  <Link
+                    href={`${storeBase}/contact`}
+                    className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/5 px-5 py-2.5 text-sm font-semibold text-white backdrop-blur-sm transition-colors hover:bg-white/10"
+                  >
+                    Request quote
+                  </Link>
+                </div>
+              )}
+
+              {showFinder ? (
                 <button
                   type="button"
-                  onClick={goSearch}
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-95"
-                  style={{ backgroundColor: brandAccentDark }}
+                  onClick={() => openAdvanced('partNumber')}
+                  className="inline-flex items-center justify-center gap-2 rounded-full border border-teal-300/40 bg-teal-400/10 px-5 py-2.5 text-sm font-semibold text-teal-100 backdrop-blur-sm transition-colors hover:bg-teal-400/20"
                 >
-                  <Search className="h-4 w-4" />
-                  Search
+                  <Search className="h-4 w-4" aria-hidden />
+                  Parts search
                 </button>
-              </div>
+              ) : null}
             </div>
+          </div>
+        </div>
 
-            <div className="flex flex-wrap items-center gap-3 border-t border-neutral-100 px-4 py-3 text-xs text-neutral-500">
-              <span className="font-medium text-neutral-400">Quick links</span>
-              <Link href={`${productsBase}?systemCondition=new`} className="font-semibold hover:underline" style={{ color: brandAccent }}>
-                New systems
-              </Link>
-              <Link href={`${productsBase}?systemCondition=used`} className="font-semibold hover:underline" style={{ color: brandAccent }}>
-                Used systems
-              </Link>
-              <Link href={`${productsBase}?category=spare-parts`} className="font-semibold hover:underline" style={{ color: brandAccent }}>
-                Spare parts
-              </Link>
-              <Link href={`${storeBase}/contact`} className="font-semibold hover:underline" style={{ color: brandAccent }}>
-                RFQ
-              </Link>
+        {/* Slim glass dock — always available, does not dominate the hero */}
+        {showFinder ? (
+          <div className="pb-6 lg:pb-8">
+            <div className="overflow-hidden rounded-2xl border border-white/15 bg-[#001830]/72 shadow-2xl shadow-black/40 backdrop-blur-xl">
+              <div className="flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:gap-2 sm:p-3.5">
+                <div className="flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5">
+                  <Package className="h-4 w-4 shrink-0 text-teal-300/90" aria-hidden />
+                  <label className="sr-only" htmlFor={`${titleId}-dock-query`}>
+                    Part number
+                  </label>
+                  <input
+                    id={`${titleId}-dock-query`}
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && goQuickPartSearch()}
+                    placeholder="Search by part number…"
+                    className="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-white/40"
+                  />
+                </div>
+                <div className="flex shrink-0 gap-2">
+                  <button
+                    type="button"
+                    onClick={goQuickPartSearch}
+                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-95 sm:flex-none"
+                    style={{ backgroundColor: brandAccentDark }}
+                  >
+                    <Search className="h-4 w-4" aria-hidden />
+                    Search
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => openAdvanced()}
+                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/20 bg-white/5 px-3.5 py-2.5 text-sm font-semibold text-white/90 transition-colors hover:bg-white/10"
+                  >
+                    <SlidersHorizontal className="h-4 w-4" aria-hidden />
+                    <span className="hidden sm:inline">Advanced</span>
+                  </button>
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center justify-between gap-2 border-t border-white/10 px-3.5 py-2.5">
+                <MarineQuickLinks
+                  productsBase={productsBase}
+                  storeBase={storeBase}
+                  accent={brandAccent}
+                  muted
+                />
+                <div className="hidden items-center gap-1.5 text-[11px] text-white/45 sm:flex">
+                  <button
+                    type="button"
+                    onClick={() => openAdvanced('oem')}
+                    className="rounded-md px-2 py-1 transition-colors hover:bg-white/10 hover:text-white"
+                  >
+                    OEM
+                  </button>
+                  <span aria-hidden>·</span>
+                  <button
+                    type="button"
+                    onClick={() => openAdvanced('equipment')}
+                    className="rounded-md px-2 py-1 transition-colors hover:bg-white/10 hover:text-white"
+                  >
+                    Equipment
+                  </button>
+                  <span aria-hidden>·</span>
+                  <button
+                    type="button"
+                    onClick={() => openAdvanced('vessel')}
+                    className="rounded-md px-2 py-1 transition-colors hover:bg-white/10 hover:text-white"
+                  >
+                    Vessel
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         ) : null}
       </div>
+
+      <Sheet open={panelOpen} onOpenChange={setPanelOpen}>
+        <SheetContent
+          side="right"
+          className="flex w-full flex-col gap-0 overflow-y-auto border-neutral-200 p-0 sm:max-w-lg"
+        >
+          <SheetHeader className="space-y-1 border-b border-neutral-100 px-5 py-4 text-left">
+            <SheetTitle className="text-base font-semibold text-neutral-900">Parts search</SheetTitle>
+            <SheetDescription className="text-sm text-neutral-500">
+              Look up by part number, OEM, equipment, or vessel type.
+            </SheetDescription>
+          </SheetHeader>
+          <MarinePartsSearchPanel
+            mode={mode}
+            setMode={setMode}
+            query={query}
+            setQuery={setQuery}
+            equipmentType={equipmentType}
+            setEquipmentType={setEquipmentType}
+            vesselType={vesselType}
+            setVesselType={setVesselType}
+            systemCondition={systemCondition}
+            setSystemCondition={setSystemCondition}
+            onSearch={goSearch}
+            accent={brandAccent}
+            accentDark={brandAccentDark}
+            productsBase={productsBase}
+            storeBase={storeBase}
+          />
+        </SheetContent>
+      </Sheet>
     </section>
   );
 }
