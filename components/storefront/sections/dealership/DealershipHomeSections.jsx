@@ -11,6 +11,7 @@ import { SmartProductImage } from '@/components/storefront/SmartProductImage';
 import { formatCurrency } from '@/lib/currency';
 import { cn } from '@/lib/utils';
 import { formatDisplayDate } from '@/lib/utils/formatDisplayDate';
+import { getEffectiveProductImageUrl, getFallbackProductImageUrl } from '@/lib/storefront/productImageFallback';
 import { DealershipVehicleRail } from './DealershipVehicleRail';
 import { DealershipBookingStrip } from './DealershipBookingStrip';
 import { AutoBrandMarquee } from '@/components/storefront/sections/shared/AutoBrandMarquee';
@@ -34,7 +35,6 @@ import {
   filterSaleExcludingBestSellers,
 } from '@/lib/storefront/dealershipBooking';
 import { getTenantMeetingUrl, shouldOfferTenantMeetingLink } from '@/lib/storefront/storefrontBooking';
-import { getEffectiveProductImageUrl } from '@/lib/storefront/productImageFallback';
 import {
   resolveAutomotiveTileImage,
   resolveBodyTypeTileImage,
@@ -122,6 +122,11 @@ function AccessoryCard({ product, businessDomain, businessCategory, currency, ac
   const onSale = compare > price;
   const discount = onSale ? Math.round(((compare - price) / compare) * 100) : 0;
   const imageSrc = getEffectiveProductImageUrl(product, businessCategory);
+  const imageFallback = getFallbackProductImageUrl(
+    product,
+    businessCategory || 'vehicle-dealership',
+    product.category_name || product.category
+  );
 
   return (
     <Link
@@ -129,7 +134,14 @@ function AccessoryCard({ product, businessDomain, businessCategory, currency, ac
       className="w-[200px] shrink-0 snap-start overflow-hidden rounded-lg border border-neutral-100 bg-white transition hover:shadow-md sm:w-[220px]"
     >
       <div className="relative aspect-square bg-neutral-50">
-        <SmartProductImage src={imageSrc} alt={product.name} fill className="object-cover" placeholderLabel={product.name} />
+        <SmartProductImage
+          src={imageSrc || imageFallback}
+          alt={product.name}
+          fill
+          className="object-cover"
+          fallbackSrc={imageFallback && imageFallback !== imageSrc ? imageFallback : undefined}
+          placeholderLabel={product.name}
+        />
         {onSale ? (
           <span className="absolute left-2 top-2 rounded bg-neutral-900 px-2 py-0.5 text-[10px] font-bold uppercase text-white">
             {discount}% off

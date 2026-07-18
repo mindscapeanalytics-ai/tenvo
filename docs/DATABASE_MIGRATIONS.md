@@ -12,6 +12,8 @@ The Prisma schema in this repo must match your Postgres database. If you see err
 
 **Legacy SQL** under `scripts/migrations/` is **not** applied by `prisma migrate deploy`. See **`scripts/migrations/README.md`** for how it relates to `prisma/migrations/` and recovery steps. For inventory / manufacturing / RBAC drift and duplicate-path notes, see **`docs/AUDIT_INVENTORY_MANUFACTURING_RBAC_2026.md`**. For a local **validate** checklist (schema, migrate, build, tests), see **`docs/VALIDATION.md`**.
 
+**A/R aging (`relation "invoice_aging" does not exist`):** Finance Hub Statements → A/R & A/P Aging no longer depends on the view at runtime (`InvoicePaymentService.getAgingReport` queries invoices + `calculate_invoice_balance`). Apply Prisma migration **`20260718_invoice_aging_view`** (`bun run db:migrate`) or run **`lib/db/migrations/048_invoice_aging_view.sql`** so the corrected balance-based `invoice_aging` view still exists for diagnostics/SQL.
+
 **Invoice payments (P1011 / `ip.is_deleted` / balance modal):** If Postgres errors on `invoice_payments.is_deleted` or `calculate_invoice_balance` disagrees with payments, apply **`bun run db:migrate`** so Prisma applies **`20260604_invoice_payments_soft_delete_and_balance`** (adds `is_deleted` / `deleted_at` / `deleted_by`, refreshes `calculate_invoice_balance` and `update_invoice_payment_status` triggers).
 
 **Manual SQL (Supabase editor / psql):** Same DDL is in **`lib/db/migrations/034_calculate_invoice_balance_no_is_deleted.sql`** (idempotent). **`lib/db/migrations/033_invoice_payments_soft_delete_columns.sql`** also adds columns and replaces `calculate_invoice_balance`; prefer **034** or Prisma if you need trigger functions recreated too.

@@ -74,12 +74,12 @@ function AgingTable({ rows, currency, type }) {
                                 {type === 'ar' ? row.invoice_number : row.purchase_number}
                             </td>
                             <td className="px-4 py-2.5 text-gray-600">
-                                {row.date ? new Date(row.date).toLocaleDateString() : ', '}
+                                {row.date ? new Date(row.date).toLocaleDateString() : '-'}
                             </td>
                             <td className="px-4 py-2.5 text-right font-medium">{row.days_overdue ?? 0}</td>
                             {BUCKET_COLUMNS.map((c) => (
                                 <td key={c.key} className="px-3 py-2.5 text-right font-mono text-xs">
-                                    {Number(row[c.key] || 0) > 0 ? formatCurrency(row[c.key], currency) : ', '}
+                                    {Number(row[c.key] || 0) > 0 ? formatCurrency(row[c.key], currency) : '-'}
                                 </td>
                             ))}
                             <td className="px-4 py-2.5 text-right font-semibold">{formatCurrency(row.balance, currency)}</td>
@@ -176,9 +176,27 @@ export function AgingReportsPanel({ businessId, currency = 'PKR' }) {
             document: isAr ? r.invoice_number : r.purchase_number,
             date: r.date ? new Date(r.date).toLocaleDateString() : '',
             days_overdue: r.days_overdue ?? 0,
+            current: r.current_amount ?? 0,
+            days_1_30: r.days_1_30 ?? 0,
+            days_31_60: r.days_31_60 ?? 0,
+            days_61_90: r.days_61_90 ?? 0,
+            days_over_90: r.days_over_90 ?? 0,
             balance: r.balance ?? 0,
         }));
     };
+
+    const agingExportColumns = [
+        { label: 'Party', key: 'party' },
+        { label: 'Document', key: 'document' },
+        { label: 'Date', key: 'date' },
+        { label: 'Days', key: 'days_overdue' },
+        { label: 'Current', key: 'current' },
+        { label: '1-30', key: 'days_1_30' },
+        { label: '31-60', key: 'days_31_60' },
+        { label: '61-90', key: 'days_61_90' },
+        { label: '90+', key: 'days_over_90' },
+        { label: 'Balance', key: 'balance' },
+    ];
 
     const handleExportPdf = (type) => {
         const exportRows = buildExportRows(type);
@@ -188,13 +206,7 @@ export function AgingReportsPanel({ businessId, currency = 'PKR' }) {
         }
         const isAr = type === 'ar';
         const title = isAr ? 'Accounts_Receivable_Aging' : 'Accounts_Payable_Aging';
-        const doc = generateReportPDF(title.replace(/_/g, ' '), exportRows, [
-            { label: 'Party', key: 'party' },
-            { label: 'Document', key: 'document' },
-            { label: 'Date', key: 'date' },
-            { label: 'Days', key: 'days_overdue' },
-            { label: 'Balance', key: 'balance' },
-        ], {
+        const doc = generateReportPDF(title.replace(/_/g, ' '), exportRows, agingExportColumns, {
             businessName: business?.business_name || 'Business',
             currency,
         });

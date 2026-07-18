@@ -55,6 +55,20 @@ includes('components/FinancialReports.jsx', "value=\"day-book\"", 'Statements ne
 includes('lib/config/tabs.js', "accounts: 'accounts'", 'accounts deep-link maps to CoA');
 includes('components/TaxComplianceManager.jsx', 'periodPos', 'GST includes POS tax when provided');
 
+// A/R & A/P aging (Statements)
+includes('lib/utils/agingBuckets.js', 'bucketAgingRows', 'shared aging bucket helper');
+includes('lib/services/InvoicePaymentService.js', 'calculate_invoice_balance(i.id)', 'AR aging uses invoice balance function');
+includes('lib/services/InvoicePaymentService.js', 'bucketAgingRows', 'AR aging buckets outstanding balance');
+assert(
+  !read('lib/services/InvoicePaymentService.js').includes('FROM invoice_aging'),
+  'AR aging does not depend on invoice_aging view at runtime'
+);
+includes('lib/actions/standard/agingReports.js', 'getAccountsPayableAgingAction', 'AP aging server action');
+includes('lib/actions/standard/agingReports.js', 'pay.is_deleted', 'AP aging ignores voided vendor payments');
+includes('components/reports/AgingReportsPanel.jsx', 'AgingReportsPanel', 'Aging panel UI');
+includes('components/FinancialReports.jsx', 'AgingReportsPanel', 'Statements hosts aging panel');
+includes('prisma/migrations/20260718_invoice_aging_view/migration.sql', 'CREATE OR REPLACE VIEW invoice_aging', 'Prisma invoice_aging view migration');
+
 if (failed > 0) {
   console.error(`\n${failed} check(s) failed`);
   process.exit(1);

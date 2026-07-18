@@ -81,9 +81,16 @@ const nextConfig = {
       // Allow any https source by specifying explicit allowed domains and wildcards
       { protocol: 'https', hostname: 'services.eatx.pk' },
       { protocol: 'https', hostname: 'media.naheed.pk' },
+      { protocol: 'https', hostname: 'www.dsmonline.pk' },
+      { protocol: 'https', hostname: 'dsmonline.pk' },
+      { protocol: 'https', hostname: '**.dsmonline.pk' },
       { protocol: 'https', hostname: 'autostore.pk' },
       { protocol: 'https', hostname: 'www.autostore.pk' },
       { protocol: 'https', hostname: '**.autostore.pk' },
+      // Vehicle dealership demo CDN (Sehgal Motors)
+      { protocol: 'https', hostname: 'sehgalmotorsports.pk' },
+      { protocol: 'https', hostname: 'www.sehgalmotorsports.pk' },
+      { protocol: 'https', hostname: '**.sehgalmotorsports.pk' },
       { protocol: 'https', hostname: '**.unsplash.com' },
       { protocol: 'https', hostname: 'cdn.shopify.com' },
       { protocol: 'https', hostname: '**.shopify.com' },

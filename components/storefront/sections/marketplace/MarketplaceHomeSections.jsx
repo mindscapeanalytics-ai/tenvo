@@ -612,7 +612,13 @@ export function MarketplaceHomeSections({
             <SectionHeader title="Articles" href={`${storeBase}#articles`} />
             <div className="mb-6 overflow-hidden rounded-lg">
               <Link href={MARKETPLACE_ARTICLES[0]?.href || '#'} className="group relative block aspect-[21/9] bg-neutral-900">
-                <SmartProductImage src={MARKETPLACE_ARTICLES[0]?.image} alt="" fill className="object-cover opacity-80" />
+                <SmartProductImage
+                  src={MARKETPLACE_ARTICLES[0]?.image}
+                  alt=""
+                  fill
+                  className="object-cover opacity-80"
+                  fallbackSrc={resolveAutomotiveTileImage('article-hero')}
+                />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
                 <div className="absolute bottom-0 left-0 p-6">
                   <p className="text-xs font-semibold uppercase tracking-wider text-[#ffd700]">Featured</p>
@@ -625,7 +631,13 @@ export function MarketplaceHomeSections({
               {MARKETPLACE_ARTICLES.slice(1).map((article) => (
                 <article key={article.id} className="overflow-hidden rounded-lg border border-neutral-100 bg-white">
                   <div className="relative aspect-[16/10]">
-                    <SmartProductImage src={article.image} alt="" fill className="object-cover" />
+                    <SmartProductImage
+                      src={article.image}
+                      alt=""
+                      fill
+                      className="object-cover"
+                      fallbackSrc={resolveAutomotiveTileImage(article.title || article.id || 'article')}
+                    />
                   </div>
                   <div className="p-3">
                     <p className="text-[10px] font-semibold uppercase text-neutral-400">{formatDisplayDate(article.date)}</p>

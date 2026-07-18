@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { ArrowRight, Phone, Fuel, Calendar, Gauge, MapPin } from 'lucide-react';
 import { SmartProductImage } from '@/components/storefront/SmartProductImage';
 import { formatCurrency } from '@/lib/currency';
-import { getEffectiveProductImageUrl } from '@/lib/storefront/productImageFallback';
+import { getEffectiveProductImageUrl, getFallbackProductImageUrl } from '@/lib/storefront/productImageFallback';
 import { estimateVehicleMonthlyPayment, isShowroomVehicleProduct } from '@/lib/storefront/autoDealership';
 import { buildVehicleBookingHref } from '@/lib/storefront/dealershipBooking';
 import { cn } from '@/lib/utils';
@@ -12,6 +12,7 @@ import {
   STORE_VEHICLE_RAIL_TRACK_CLASS,
   STORE_PRODUCT_RAIL_ITEM_CLASS,
 } from '@/lib/utils/storefrontProductRail';
+import { resolveAutomotiveTileImage } from '@/lib/storefront/storefrontImagePlaceholders';
 
 function MetaChip({ icon: Icon, children }) {
   if (!children) return null;
@@ -47,6 +48,12 @@ export function DealershipVehicleRail({
       {products.map((product) => {
         const href = `/store/${businessDomain}/products/${product.slug || product.id}`;
         const image = getEffectiveProductImageUrl(product, businessCategory);
+        const imageFallback =
+          getFallbackProductImageUrl(
+            product,
+            businessCategory || 'vehicle-dealership',
+            product.category_name || product.category
+          ) || resolveAutomotiveTileImage(product.name || product.id);
         const price = Number(product.display_price ?? product.price ?? 0);
         const monthly = estimateVehicleMonthlyPayment(price);
         const dd = product.domain_data || {};
@@ -69,9 +76,19 @@ export function DealershipVehicleRail({
                     src={image}
                     alt={product.name}
                     fill
+                    fallbackSrc={imageFallback && imageFallback !== image ? imageFallback : undefined}
+                    placeholderLabel={product.name || 'Vehicle'}
                     className="object-cover transition duration-500 group-hover:scale-105"
                   />
-                ) : null}
+                ) : (
+                  <SmartProductImage
+                    src={imageFallback}
+                    alt={product.name}
+                    fill
+                    placeholderLabel={product.name || 'Vehicle'}
+                    className="object-cover"
+                  />
+                )}
               </div>
               <div className="p-4">
                 <h3 className="line-clamp-2 text-sm font-semibold leading-snug text-neutral-900">
