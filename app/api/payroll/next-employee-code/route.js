@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
 import { getNextEmployeeCodeAction } from '@/lib/actions/standard/payroll';
+import { pickBusinessIdFromSearchParams } from '@/lib/utils/pickBusinessId';
 
 export async function GET(request) {
     try {
         const { searchParams } = new URL(request.url);
-        const businessId = searchParams.get('businessId');
+        const businessId = pickBusinessIdFromSearchParams(searchParams);
 
         if (!businessId) {
             return NextResponse.json(

@@ -7,6 +7,7 @@ import { assertUserHasBusinessAccess } from '@/lib/tenancy/businessAccess';
 import { getSubscription, listStripeCustomerInvoices } from '@/lib/payments/stripe';
 import { shouldUseDevInstantBilling, isStripeCheckoutEnabled } from '@/lib/config/billingMode';
 import { getManualPaymentRequestState } from '@/lib/payments/manualPaymentRequests';
+import { pickBusinessIdFromSearchParams } from '@/lib/utils/pickBusinessId';
 
 /**
  * GET /api/billing/subscription?business_id=...
@@ -20,8 +21,7 @@ export async function GET(request) {
     }
 
     const { searchParams } = new URL(request.url);
-    const businessId =
-      searchParams.get('business_id') || searchParams.get('businessId');
+    const businessId = pickBusinessIdFromSearchParams(searchParams);
     if (!businessId) {
       return NextResponse.json(
         {

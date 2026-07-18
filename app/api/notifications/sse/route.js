@@ -4,6 +4,7 @@ import { prismaBase } from '@/lib/db';
 import { headers } from 'next/headers';
 import { auth } from '@/lib/auth';
 import { verifyBusinessAccess } from '@/lib/auth/access';
+import { pickBusinessIdFromSearchParams } from '@/lib/utils/pickBusinessId';
 
 /** Poll interval — longer cadence reduces DB load (was 5s). */
 const POLL_MS = 15000;
@@ -26,7 +27,7 @@ export async function GET(request) {
   }
 
   const { searchParams } = new URL(request.url);
-  const businessId = searchParams.get('businessId');
+  const businessId = pickBusinessIdFromSearchParams(searchParams);
 
   if (!businessId) {
     return new Response('Business ID required', { status: 400 });

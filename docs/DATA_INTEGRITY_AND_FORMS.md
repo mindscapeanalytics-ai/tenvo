@@ -8,6 +8,19 @@ This document ties **tenant isolation**, **mutations**, and **UI refresh** to co
 - **`findUnique` is not auto-scoped** (Prisma extension limitation, noted in `tenantExtension.js`). For any read by primary key on tenant data, prefer **`findFirst({ where: { id, business_id } })`** or **`assertEntityBelongsToBusiness`** (`lib/actions/_shared/tenant.js`) before `update` / `delete` by id.
 - **Cross-tenant tables** (auth, `businesses`, etc.) use **`prismaBase`**, not `db`, per `AGENTS.md` / `docs/AUDIT_SCHEMA_AND_INTEGRATIONS.md`.
 
+### Naming: `business_id` vs `businessId`
+
+There is **one** tenant key: `businesses.id`. Layers use different *spellings* on purpose — this is not a conflict:
+
+| Layer | Name | Notes |
+|--------|------|--------|
+| Postgres / Prisma columns | `business_id` | SQL `WHERE` / Prisma `create` / `where` field maps |
+| JS action args, React props, `withApiAuth` context | `businessId` | e.g. `getProductsAction(businessId, …)` |
+| Hub `BusinessContext` row | `business.id` | Never `business.business_id` |
+| API query/body at edges | either | Normalize once via `lib/utils/pickBusinessId.js` |
+
+At API and action edges, accept snake or camel and normalize to a single UUID string (`pickBusinessId`, `pickBusinessIdFromSearchParams`, `pickBusinessIdFromBody`). Do not invent alternate spellings (`BusinessID`, `businessId_id`, etc.). After the edge, map into SQL/Prisma as `business_id`.
+
 ## Server actions (insert / update / delete)
 
 - **Auth + plan**: `withGuard` / `checkPlanFeature` at the start of actions that mutate or read sensitive aggregates.

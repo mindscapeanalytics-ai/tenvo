@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import { withGuard } from '@/lib/rbac/serverGuard';
+import { pickBusinessIdFromSearchParams } from '@/lib/utils/pickBusinessId';
 
 // Export orders to CSV or JSON
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
-    const businessId = searchParams.get('businessId');
+    const businessId = pickBusinessIdFromSearchParams(searchParams);
     const format = searchParams.get('format') || 'csv'; // csv or json
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');

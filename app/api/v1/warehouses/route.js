@@ -3,16 +3,17 @@ import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import { WarehouseService } from '@/lib/services/WarehouseService';
 import { withGuard } from '@/lib/rbac/serverGuard';
+import { pickBusinessIdFromBody, pickBusinessIdFromSearchParams } from '@/lib/utils/pickBusinessId';
 
 /**
- * GET /api/v1/warehouses?businessId=xxx
+ * GET /api/v1/warehouses?business_id=xxx | ?businessId=xxx
  * List all warehouses for a business
  */
 export async function GET(request) {
     try {
         const { searchParams } = new URL(request.url);
-        const businessId = searchParams.get('businessId');
-        if (!businessId) return NextResponse.json({ error: 'businessId required' }, { status: 400 });
+        const businessId = pickBusinessIdFromSearchParams(searchParams);
+        if (!businessId) return NextResponse.json({ error: 'business_id required' }, { status: 400 });
 
         await withGuard(businessId, { permission: 'warehouses.view' });
 
@@ -31,7 +32,8 @@ export async function GET(request) {
 export async function POST(request) {
     try {
         const body = await request.json();
-        const { business_id: businessId, ...warehouseData } = body;
+        const businessId = pickBusinessIdFromBody(body);
+        const { business_id: _snake, businessId: _camel, ...warehouseData } = body;
         if (!businessId) return NextResponse.json({ error: 'business_id required' }, { status: 400 });
 
         // Count current warehouses for plan limit check

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/auth/session';
 import { assertUserHasBusinessAccess } from '@/lib/tenancy/businessAccess';
 import { getPaymentStatus } from '@/lib/payments/nowpayments';
+import { pickBusinessIdFromSearchParams } from '@/lib/utils/pickBusinessId';
 
 /**
  * GET /api/billing/crypto/status?paymentId=…&business_id=…
@@ -19,7 +20,7 @@ export async function GET(request) {
 
     const { searchParams } = new URL(request.url);
     const paymentId = searchParams.get('paymentId');
-    const businessId = searchParams.get('business_id') || searchParams.get('businessId');
+    const businessId = pickBusinessIdFromSearchParams(searchParams);
 
     if (!paymentId) {
       return NextResponse.json(

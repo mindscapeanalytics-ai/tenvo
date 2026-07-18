@@ -3,6 +3,7 @@ import { headers } from 'next/headers';
 import pool from '@/lib/db';
 import { auth } from '@/lib/auth';
 import { verifyBusinessAccess } from '@/lib/auth/access';
+import { pickBusinessIdFromSearchParams } from '@/lib/utils/pickBusinessId';
 
 async function assertNotificationBusinessAccess(session, businessId, client = null) {
   await verifyBusinessAccess(session.user.id, businessId, [], client, session.user);
@@ -17,7 +18,7 @@ export async function GET(request) {
     }
 
     const { searchParams } = new URL(request.url);
-    const businessId = searchParams.get('businessId');
+    const businessId = pickBusinessIdFromSearchParams(searchParams);
     const unreadOnly = searchParams.get('unread') === 'true';
     const limit = parseInt(searchParams.get('limit') || '50', 10);
 
@@ -130,7 +131,7 @@ export async function DELETE(request) {
 
     const { searchParams } = new URL(request.url);
     const notificationId = searchParams.get('id');
-    const businessId = searchParams.get('businessId');
+    const businessId = pickBusinessIdFromSearchParams(searchParams);
     const clearAll = searchParams.get('all') === 'true';
 
     if (!notificationId && !(clearAll && businessId)) {

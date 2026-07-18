@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import { withGuard } from '@/lib/rbac/serverGuard';
+import { pickBusinessIdFromSearchParams } from '@/lib/utils/pickBusinessId';
 
 // Advanced reporting & analytics for orders
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
-    const businessId = searchParams.get('businessId');
+    const businessId = pickBusinessIdFromSearchParams(searchParams);
     const period = searchParams.get('period') || '30d'; // 7d, 30d, 90d, 1y
 
     if (!businessId) {

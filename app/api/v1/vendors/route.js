@@ -2,16 +2,17 @@ export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import { withGuard } from '@/lib/rbac/serverGuard';
+import { pickBusinessIdFromBody, pickBusinessIdFromSearchParams } from '@/lib/utils/pickBusinessId';
 
 /**
- * GET /api/v1/vendors?businessId=xxx
+ * GET /api/v1/vendors?business_id=xxx | ?businessId=xxx
  * List all active vendors for a business
  */
 export async function GET(request) {
     try {
         const { searchParams } = new URL(request.url);
-        const businessId = searchParams.get('businessId');
-        if (!businessId) return NextResponse.json({ error: 'businessId required' }, { status: 400 });
+        const businessId = pickBusinessIdFromSearchParams(searchParams);
+        if (!businessId) return NextResponse.json({ error: 'business_id required' }, { status: 400 });
 
         await withGuard(businessId, { permission: 'vendors.view' });
 
@@ -74,7 +75,8 @@ export async function GET(request) {
 export async function POST(request) {
     try {
         const body = await request.json();
-        const { business_id: businessId, ...vendorData } = body;
+        const businessId = pickBusinessIdFromBody(body);
+        const { business_id: _snake, businessId: _camel, ...vendorData } = body;
         if (!businessId) return NextResponse.json({ error: 'business_id required' }, { status: 400 });
         if (!vendorData.name?.trim()) {
             return NextResponse.json({ error: 'Supplier name is required' }, { status: 400 });

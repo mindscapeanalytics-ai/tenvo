@@ -1,17 +1,9 @@
 'use client';
 
 import { useBusiness } from '@/lib/context/BusinessContext';
+import { normalizeBusinessId } from '@/lib/utils/pickBusinessId';
 
-/**
- * Normalize a business UUID/string id from props or context.
- * @param {unknown} value
- * @returns {string | undefined}
- */
-export function normalizeBusinessId(value: unknown): string | undefined {
-  if (typeof value !== 'string') return undefined;
-  const trimmed = value.trim();
-  return trimmed || undefined;
-}
+export { normalizeBusinessId } from '@/lib/utils/pickBusinessId';
 
 /**
  * Resolve the active hub tenant id from an optional prop or BusinessContext.
