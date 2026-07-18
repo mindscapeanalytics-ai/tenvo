@@ -873,7 +873,7 @@ export function StoreSettingsManager({ business, category }) {
             <CardHeader className="pb-4">
               <CardTitle className="text-sm font-semibold">Public Contact</CardTitle>
               <CardDescription>
-                Phone, email, and location shown in your store header, footer, and contact page.
+                Phone, email, WhatsApp, hours, and location shown on your store header, footer, and contact page.
                 {settings.ownerLoginEmail ? (
                   <span className="mt-1 block text-amber-700">
                     Login email ({settings.ownerLoginEmail}) is not shown publicly.
@@ -907,7 +907,9 @@ export function StoreSettingsManager({ business, category }) {
                     value={settings.whatsapp || ''}
                     onChange={(e) => set('whatsapp', e.target.value)}
                   />
-                  <p className="text-xs text-gray-400">Leave blank to use the customer phone number.</p>
+                  <p className="text-xs text-gray-400">
+                    Shown on the contact page and footer as a chat link. Leave blank to reuse the customer phone number.
+                  </p>
                 </div>
                 <div className="space-y-1.5">
                   <Label>Website (optional)</Label>

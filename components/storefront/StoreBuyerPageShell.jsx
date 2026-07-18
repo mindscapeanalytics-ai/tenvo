@@ -10,13 +10,16 @@ export function StoreBuyerPageShell({
   subtitle,
   children,
   backHref,
+  /** Wider content for contact / multi-column support pages */
+  wide = false,
 }) {
   const home = backHref || `/store/${businessDomain}`;
+  const maxW = wide ? 'max-w-5xl' : 'max-w-3xl';
 
   return (
     <div className="min-h-screen bg-gray-50 pb-[calc(3.5rem+env(safe-area-inset-bottom))] lg:pb-8">
       <div className="border-b bg-white">
-        <div className="mx-auto max-w-3xl px-4 py-4 sm:py-6">
+        <div className={`mx-auto ${maxW} px-4 py-4 sm:py-6`}>
           <Link
             href={home}
             className="mb-3 inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 transition-colors hover:text-gray-800 sm:text-sm"
@@ -30,7 +33,7 @@ export function StoreBuyerPageShell({
           ) : null}
         </div>
       </div>
-      <div className="mx-auto max-w-3xl px-4 py-4 sm:py-8">{children}</div>
+      <div className={`mx-auto ${maxW} px-4 py-4 sm:py-8`}>{children}</div>
     </div>
   );
 }

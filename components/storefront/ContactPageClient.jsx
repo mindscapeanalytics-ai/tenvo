@@ -61,15 +61,41 @@ const PHARMACY_SUBJECT_OPTIONS = [
 
 function ContactCard({ icon: Icon, label, children, accent }) {
   return (
-    <div className="flex items-start gap-3 rounded-xl border border-gray-100 bg-white p-4 shadow-sm sm:gap-4 sm:rounded-2xl sm:p-5">
+    <div className="flex items-start gap-3 rounded-xl border border-gray-100 bg-white p-3.5 shadow-sm sm:p-4">
       <div
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg sm:h-10 sm:w-10 sm:rounded-xl"
-        style={{ backgroundColor: `${accent}20` }}
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
+        style={{ backgroundColor: `${accent}18` }}
       >
-        <Icon className="h-4 w-4 sm:h-5 sm:w-5" style={{ color: accent }} aria-hidden />
+        <Icon className="h-4 w-4" style={{ color: accent }} aria-hidden />
       </div>
       <div className="min-w-0 flex-1">
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 sm:text-xs">{label}</p>
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">{label}</p>
+        <div className="mt-0.5 text-sm font-medium leading-snug text-gray-900">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+function ContactRow({ icon: Icon, label, children, accent, iconTone }) {
+  const isWhatsApp = iconTone === 'whatsapp';
+  return (
+    <div className="flex items-start gap-3 py-2.5 first:pt-0 last:pb-0">
+      <div
+        className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
+        style={
+          isWhatsApp
+            ? { backgroundColor: 'rgba(37, 211, 102, 0.15)', color: '#25D366' }
+            : { backgroundColor: `${accent}18` }
+        }
+      >
+        <Icon
+          className="h-3.5 w-3.5"
+          style={{ color: isWhatsApp ? '#25D366' : accent }}
+          aria-hidden
+        />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">{label}</p>
         <div className="mt-0.5 text-sm font-medium text-gray-900">{children}</div>
       </div>
     </div>
@@ -224,63 +250,89 @@ export function ContactPageClient() {
       businessDomain={businessDomain}
       title={pageTitle}
       subtitle={pageSubtitle}
+      wide
     >
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:gap-8">
-        {/* Store info */}
-        <div className="space-y-3 lg:space-y-4">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-5 lg:gap-8">
+        {/* Store info — compact stacked cards */}
+        <aside className="space-y-3 lg:col-span-2">
           {contact.description ? (
-            <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm sm:rounded-2xl sm:p-5">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 sm:text-xs">About</p>
+            <div className="rounded-xl border border-gray-100 bg-white p-3.5 shadow-sm sm:p-4">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">About</p>
               <p className="mt-1 text-sm leading-relaxed text-gray-600">{contact.description}</p>
             </div>
           ) : null}
 
-          {contact.email ? (
-            <ContactCard icon={Mail} label="Email" accent={accent}>
-              <a href={`mailto:${contact.email}`} className="break-all hover:underline">
-                {contact.email}
-              </a>
-            </ContactCard>
-          ) : null}
-
-          {contact.phone ? (
-            <ContactCard icon={Phone} label="Phone" accent={accent}>
-              <a href={`tel:${contact.phone}`} className="hover:underline">
-                {contact.phone}
-              </a>
-            </ContactCard>
-          ) : null}
-
-          {contact.whatsappUrl ? (
-            <ContactCard icon={MessageCircle} label="WhatsApp" accent={accent}>
-              <a
-                href={contact.whatsappUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 hover:underline"
-              >
-                Chat on WhatsApp
-                <ExternalLink className="h-3 w-3" aria-hidden />
-              </a>
-            </ContactCard>
-          ) : null}
-
-          {contact.fullAddress ? (
-            <ContactCard icon={MapPin} label="Address" accent={accent}>
-              <p className="whitespace-pre-line">{contact.fullAddress}</p>
-              {mapQuery ? (
-                <a
-                  href={`https://www.google.com/maps/search/?api=1&query=${mapQuery}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-1 inline-flex items-center gap-1 text-xs font-semibold hover:underline"
-                  style={{ color: accent }}
-                >
-                  Open in Maps
-                  <ExternalLink className="h-3 w-3" aria-hidden />
-                </a>
+          {(contact.email || contact.phone || contact.whatsappUrl) ? (
+            <div className="divide-y divide-gray-100 rounded-xl border border-gray-100 bg-white px-3.5 py-3 shadow-sm sm:px-4">
+              <p className="pb-2 text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+                Reach us
+              </p>
+              {contact.email ? (
+                <ContactRow icon={Mail} label="Email" accent={accent}>
+                  <a href={`mailto:${contact.email}`} className="break-all hover:underline">
+                    {contact.email}
+                  </a>
+                </ContactRow>
               ) : null}
-            </ContactCard>
+              {contact.phone ? (
+                <ContactRow icon={Phone} label="Phone" accent={accent}>
+                  <a href={`tel:${contact.phone}`} className="hover:underline">
+                    {contact.phone}
+                  </a>
+                </ContactRow>
+              ) : null}
+              {contact.whatsappUrl ? (
+                <ContactRow
+                  icon={MessageCircle}
+                  label="WhatsApp"
+                  accent={accent}
+                  iconTone="whatsapp"
+                >
+                  <a
+                    href={contact.whatsappUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex flex-wrap items-center gap-x-2 gap-y-1"
+                  >
+                    <span className="hover:underline">{contact.whatsapp}</span>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-[#25D366]/10 px-2 py-0.5 text-[11px] font-semibold text-[#128C7E]">
+                      Chat
+                      <ExternalLink className="h-3 w-3" aria-hidden />
+                    </span>
+                  </a>
+                </ContactRow>
+              ) : null}
+            </div>
+          ) : null}
+
+          {(contact.fullAddress || contact.businessHours) ? (
+            <div className="divide-y divide-gray-100 rounded-xl border border-gray-100 bg-white px-3.5 py-3 shadow-sm sm:px-4">
+              <p className="pb-2 text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+                Location
+              </p>
+              {contact.fullAddress ? (
+                <ContactRow icon={MapPin} label="Address" accent={accent}>
+                  <p className="whitespace-pre-line">{contact.fullAddress}</p>
+                  {mapQuery ? (
+                    <a
+                      href={`https://www.google.com/maps/search/?api=1&query=${mapQuery}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-1.5 inline-flex items-center gap-1 text-xs font-semibold hover:underline"
+                      style={{ color: accent }}
+                    >
+                      Open in Maps
+                      <ExternalLink className="h-3 w-3" aria-hidden />
+                    </a>
+                  ) : null}
+                </ContactRow>
+              ) : null}
+              {contact.businessHours ? (
+                <ContactRow icon={Clock} label="Business hours" accent={accent}>
+                  <p className="whitespace-pre-line">{contact.businessHours}</p>
+                </ContactRow>
+              ) : null}
+            </div>
           ) : null}
 
           {contact.website ? (
@@ -296,13 +348,9 @@ export function ContactPageClient() {
             </ContactCard>
           ) : null}
 
-          <ContactCard icon={Clock} label="Business hours" accent={accent}>
-            {contact.businessHours}
-          </ContactCard>
-
           {socialEntries.length > 0 ? (
-            <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm sm:rounded-2xl sm:p-5">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 sm:text-xs">Follow us</p>
+            <div className="rounded-xl border border-gray-100 bg-white p-3.5 shadow-sm sm:p-4">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">Follow us</p>
               <div className="mt-2 flex flex-wrap gap-2">
                 {socialEntries.map(({ icon: Icon, href, label }) => (
                   <a
@@ -320,28 +368,31 @@ export function ContactPageClient() {
             </div>
           ) : null}
 
-          <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm sm:rounded-2xl sm:p-5">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 sm:text-xs">Quick links</p>
-            <div className="mt-2 space-y-2 text-sm">
-              <Link href={`/store/${businessDomain}/orders`} className="block text-gray-600 hover:text-gray-900">
-                Track my order →
-              </Link>
-              <Link href={`/store/${businessDomain}/shipping`} className="block text-gray-600 hover:text-gray-900">
-                Shipping info →
-              </Link>
-              <Link href={`/store/${businessDomain}/returns`} className="block text-gray-600 hover:text-gray-900">
-                Returns & exchanges →
-              </Link>
-              <Link href={`/store/${businessDomain}/faqs`} className="block text-gray-600 hover:text-gray-900">
-                FAQs →
-              </Link>
+          <div className="rounded-xl border border-gray-100 bg-white p-3.5 shadow-sm sm:p-4">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">Quick links</p>
+            <div className="mt-2 space-y-1.5 text-sm">
+              {[
+                ['orders', 'Track my order'],
+                ['shipping', 'Shipping info'],
+                ['returns', 'Returns & exchanges'],
+                ['faqs', 'FAQs'],
+              ].map(([slug, label]) => (
+                <Link
+                  key={slug}
+                  href={`/store/${businessDomain}/${slug}`}
+                  className="flex items-center justify-between rounded-lg px-1 py-1.5 text-gray-600 transition-colors hover:bg-gray-50 hover:text-gray-900"
+                >
+                  <span>{label}</span>
+                  <span className="text-gray-300" aria-hidden>→</span>
+                </Link>
+              ))}
             </div>
           </div>
-        </div>
+        </aside>
 
         {/* Form */}
-        <div className="lg:col-span-2">
-          <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm sm:rounded-2xl sm:p-6">
+        <div className="lg:col-span-3">
+          <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm sm:p-6">
             {submitted ? (
               <div className="py-10 text-center sm:py-16">
                 <CheckCircle className="mx-auto mb-4 h-14 w-14 text-green-500 sm:h-16 sm:w-16" />
@@ -403,6 +454,23 @@ export function ContactPageClient() {
                       This store has not published direct contact details yet. Your message will still be delivered to
                       the store owner when email is configured.
                     </span>
+                  </div>
+                ) : null}
+
+                {contact.whatsappUrl ? (
+                  <div className="flex flex-col gap-2 rounded-xl border border-[#25D366]/25 bg-[#25D366]/5 px-3.5 py-3 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-sm text-gray-700">
+                      Prefer chat? Message {contact.storeName} on WhatsApp.
+                    </p>
+                    <a
+                      href={contact.whatsappUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg bg-[#25D366] px-3.5 py-2 text-xs font-semibold text-white transition hover:bg-[#20BD5A]"
+                    >
+                      <MessageCircle className="h-3.5 w-3.5" aria-hidden />
+                      Open WhatsApp
+                    </a>
                   </div>
                 ) : null}
 
@@ -608,7 +676,7 @@ export function ContactPageClient() {
                   type="submit"
                   disabled={submitting}
                   className={cn(
-                    'flex w-full items-center justify-center gap-2 rounded-xl py-3 font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-60'
+                    'flex w-full items-center justify-center gap-2 rounded-xl py-3 font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60'
                   )}
                   style={{ backgroundColor: accent }}
                 >
