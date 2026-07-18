@@ -18,6 +18,10 @@ import {
   PK_SIZE_OPTIONS,
   PK_SOURCING_OPTIONS,
 } from '@/lib/utils/inventoryFieldSuggestions';
+import {
+  buildStoreProductsHref,
+  storefrontCategoriesMatch,
+} from '@/lib/storefront/storefrontCategoryNav';
 
 function FilterSection({ title, expanded, onToggle, children, count }) {
   return (
@@ -58,7 +62,7 @@ function FilterOptionList({ options, filterKey, currentValue, accent, onSelect }
   );
 }
 
-function FiltersBody({ filters, categories, businessDomain, onClose }) {
+function FiltersBody({ filters, categories, businessDomain, onClose, hideCategories = false }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { currency, settings, business } = useStorefront();
@@ -111,6 +115,19 @@ function FiltersBody({ filters, categories, businessDomain, onClose }) {
   const toggle = (k) => setExpanded((p) => ({ ...p, [k]: !p[k] }));
 
   const updateFilter = (key, value) => {
+    // Category navigation replaces attribute filters so counts match the grid.
+    if (key === 'category') {
+      router.push(
+        buildStoreProductsHref(businessDomain, {
+          category: value,
+          searchParams,
+          preserveSortView: true,
+          clearAttributeFilters: true,
+        })
+      );
+      onClose?.();
+      return;
+    }
     const params = new URLSearchParams(searchParams.toString());
     if (value === null || value === false || value === '') params.delete(key);
     else params.set(key, String(value));
@@ -129,7 +146,12 @@ function FiltersBody({ filters, categories, businessDomain, onClose }) {
   };
 
   const clearAll = () => {
-    router.push(`/store/${businessDomain}/products`);
+    router.push(
+      buildStoreProductsHref(businessDomain, {
+        searchParams,
+        preserveSortView: true,
+      })
+    );
     onClose?.();
   };
 
@@ -143,6 +165,22 @@ function FiltersBody({ filters, categories, businessDomain, onClose }) {
     filters.maxPrice !== undefined,
     filters.inStock,
     filters.onSale,
+    filters.equipmentType,
+    filters.vesselType,
+    filters.systemCondition,
+    filters.manufacturer,
+    filters.otcOnly,
+    filters.rxOnly,
+    filters.model,
+    filters.year,
+    filters.engine,
+    filters.engineNo,
+    filters.vehicleClass,
+    filters.vehicleType,
+    filters.body,
+    filters.fuel,
+    filters.condition,
+    filters.search,
   ].filter(Boolean).length;
 
   return (
@@ -157,8 +195,8 @@ function FiltersBody({ filters, categories, businessDomain, onClose }) {
         )}
       </div>
 
-      {/* Categories */}
-      {categories.length > 0 && (
+      {/* Categories — optional when sticky CategoryNav already handles browsing */}
+      {!hideCategories && categories.length > 0 && (
         <FilterSection title="Categories" expanded={expanded.categories} onToggle={() => toggle('categories')} count={filters.category ? 1 : 0}>
           <div className="space-y-1">
             <label className="flex items-center gap-2.5 cursor-pointer hover:bg-gray-50 px-1 py-1.5 rounded-lg group">
@@ -169,19 +207,23 @@ function FiltersBody({ filters, categories, businessDomain, onClose }) {
               />
               <span className="text-sm text-gray-700 flex-1 group-hover:text-gray-900">All Products</span>
             </label>
-            {categories.map((cat) => (
-              <label key={cat.id} className="flex items-center gap-2.5 cursor-pointer hover:bg-gray-50 px-1 py-1.5 rounded-lg group">
-                <Checkbox
-                  checked={filters.category === cat.slug}
-                  onCheckedChange={(checked) => updateFilter('category', checked ? cat.slug : null)}
-                  style={filters.category === cat.slug ? { backgroundColor: accent, borderColor: accent } : {}}
-                />
-                <span className="text-sm text-gray-700 flex-1 group-hover:text-gray-900">{cat.name}</span>
-                {cat.product_count !== undefined && (
-                  <span className="text-xs text-gray-400 tabular-nums">{cat.product_count}</span>
-                )}
-              </label>
-            ))}
+            {categories.map((cat) => {
+              const active = storefrontCategoriesMatch(filters.category, cat.slug)
+                || storefrontCategoriesMatch(filters.category, cat.name);
+              return (
+                <label key={cat.id} className="flex items-center gap-2.5 cursor-pointer hover:bg-gray-50 px-1 py-1.5 rounded-lg group">
+                  <Checkbox
+                    checked={active}
+                    onCheckedChange={(checked) => updateFilter('category', checked ? (cat.slug || cat.name) : null)}
+                    style={active ? { backgroundColor: accent, borderColor: accent } : {}}
+                  />
+                  <span className="text-sm text-gray-700 flex-1 group-hover:text-gray-900">{cat.name}</span>
+                  {cat.product_count !== undefined && (
+                    <span className="text-xs text-gray-400 tabular-nums">{cat.product_count}</span>
+                  )}
+                </label>
+              );
+            })}
           </div>
         </FilterSection>
       )}
@@ -328,13 +370,13 @@ function uniqueFilterOptions(values) {
   return out;
 }
 
-export function ProductFilters({ filters, categories, businessDomain }) {
+export function ProductFilters({ filters, categories, businessDomain, hideCategories = false }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { settings, business } = useStorefront();
   const accent = getStoreAccentColor(settings, business?.category);
 
   const activeCount = [
-    filters.category,
+    !hideCategories && filters.category,
     filters.brand,
     filters.fabric,
     filters.sourcing,
@@ -343,6 +385,13 @@ export function ProductFilters({ filters, categories, businessDomain }) {
     filters.maxPrice !== undefined,
     filters.inStock,
     filters.onSale,
+    filters.equipmentType,
+    filters.vesselType,
+    filters.systemCondition,
+    filters.manufacturer,
+    filters.otcOnly,
+    filters.rxOnly,
+    filters.search,
   ].filter(Boolean).length;
 
   return (
@@ -373,14 +422,25 @@ export function ProductFilters({ filters, categories, businessDomain }) {
             <SheetTitle className="text-base font-bold">Filter Products</SheetTitle>
           </SheetHeader>
           <div className="flex-1 overflow-y-auto px-5 py-4">
-            <FiltersBody filters={filters} categories={categories} businessDomain={businessDomain} onClose={() => setMobileOpen(false)} />
+            <FiltersBody
+              filters={filters}
+              categories={categories}
+              businessDomain={businessDomain}
+              hideCategories={hideCategories}
+              onClose={() => setMobileOpen(false)}
+            />
           </div>
         </SheetContent>
       </Sheet>
 
       {/* ── Desktop Sidebar ──────────────────────────────────────────── */}
       <div className="hidden lg:block bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
-        <FiltersBody filters={filters} categories={categories} businessDomain={businessDomain} />
+        <FiltersBody
+          filters={filters}
+          categories={categories}
+          businessDomain={businessDomain}
+          hideCategories={hideCategories}
+        />
       </div>
     </>
   );

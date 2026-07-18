@@ -8,6 +8,10 @@ import { useStorefront } from '@/lib/context/StorefrontContext';
 import { getStoreAccentColor } from '@/lib/config/storefrontDomains';
 import { isFashionEditorialStore } from '@/lib/storefront/fashionEditorial';
 import { formatCurrency } from '@/lib/currency';
+import {
+  buildStoreProductsHref,
+  findStorefrontCategory,
+} from '@/lib/storefront/storefrontCategoryNav';
 
 const SORT_OPTIONS = [
   { value: 'featured',   label: 'Featured' },
@@ -118,7 +122,8 @@ export function ActiveFilters({ filters, businessDomain }) {
 
   const activeFilters = [];
   if (filters.category) {
-    const catLabel = categories?.find((c) => c.slug === filters.category)?.name || filters.category;
+    const catLabel =
+      findStorefrontCategory(categories, filters.category)?.name || filters.category;
     activeFilters.push({ key: 'category', label: `Category: ${catLabel}` });
   }
   if (filters.minPrice !== undefined || filters.maxPrice !== undefined) {
@@ -135,6 +140,7 @@ export function ActiveFilters({ filters, businessDomain }) {
     else if (mode === 'partsize') label = `Part size: ${filters.search}`;
     else if (mode === 'plate') label = `Plate: ${filters.search}`;
     else if (mode === 'vin') label = `VIN / chassis: ${filters.search}`;
+    else if (mode === 'oem') label = `OEM: ${filters.search}`;
     activeFilters.push({ key: 'search', label });
   }
   if (filters.brand) {
@@ -161,6 +167,20 @@ export function ActiveFilters({ filters, businessDomain }) {
   if (filters.body)      activeFilters.push({ key: 'body', label: `Body: ${filters.body}` });
   if (filters.fuel)      activeFilters.push({ key: 'fuel', label: `Fuel: ${filters.fuel}` });
   if (filters.condition) activeFilters.push({ key: 'condition', label: `Condition: ${filters.condition}` });
+  if (filters.equipmentType) {
+    activeFilters.push({ key: 'equipmentType', label: `Equipment: ${filters.equipmentType}` });
+  }
+  if (filters.vesselType) {
+    activeFilters.push({ key: 'vesselType', label: `Vessel: ${filters.vesselType}` });
+  }
+  if (filters.systemCondition) {
+    activeFilters.push({ key: 'systemCondition', label: `System: ${filters.systemCondition}` });
+  }
+  if (filters.manufacturer) {
+    activeFilters.push({ key: 'manufacturer', label: `Manufacturer: ${filters.manufacturer}` });
+  }
+  if (filters.otcOnly) activeFilters.push({ key: 'otc', label: 'OTC only' });
+  if (filters.rxOnly) activeFilters.push({ key: 'rx', label: 'Prescription' });
 
   if (activeFilters.length === 0) return null;
 
@@ -197,14 +217,19 @@ export function ActiveFilters({ filters, businessDomain }) {
           </button>
         </span>
       ))}
-      {activeFilters.length > 1 && (
-        <button
-          onClick={() => router.push(`/store/${businessDomain}/products`)}
-          className="text-xs text-gray-500 hover:text-gray-900 underline transition-colors"
-        >
-          Clear all
-        </button>
-      )}
+      <button
+        onClick={() =>
+          router.push(
+            buildStoreProductsHref(businessDomain, {
+              searchParams,
+              preserveSortView: true,
+            })
+          )
+        }
+        className="text-xs text-gray-500 hover:text-gray-900 underline transition-colors"
+      >
+        Clear all
+      </button>
     </div>
   );
 }

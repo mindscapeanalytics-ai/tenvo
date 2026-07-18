@@ -280,7 +280,7 @@ export function MarinePartsFinderHero({ preset, businessDomain, accent, accentDa
               <Link href={`${productsBase}?systemCondition=used`} className="font-semibold hover:underline" style={{ color: brandAccent }}>
                 Used systems
               </Link>
-              <Link href={`${productsBase}?category=Spare%20Parts`} className="font-semibold hover:underline" style={{ color: brandAccent }}>
+              <Link href={`${productsBase}?category=spare-parts`} className="font-semibold hover:underline" style={{ color: brandAccent }}>
                 Spare parts
               </Link>
               <Link href={`${storeBase}/contact`} className="font-semibold hover:underline" style={{ color: brandAccent }}>

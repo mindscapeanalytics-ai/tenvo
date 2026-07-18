@@ -33,6 +33,7 @@ import {
 } from '@/lib/dataLab/restaurantSeedHelpers';
 import { RestaurantMenuLayout } from '@/components/storefront/restaurant/RestaurantMenuLayout';
 import { RestaurantMenuCatalog } from '@/components/storefront/restaurant/RestaurantMenuCatalog';
+import { findStorefrontCategory } from '@/lib/storefront/storefrontCategoryNav';
 
 export async function generateMetadata({ params, searchParams }) {
   const { businessDomain } = await params;
@@ -50,7 +51,7 @@ export async function generateMetadata({ params, searchParams }) {
   if (catSlug) {
     const cats = await getCategories(business.id);
     if (cats.success) {
-      categoryTitle = cats.categories.find((c) => c.slug === catSlug)?.name || catSlug;
+      categoryTitle = findStorefrontCategory(cats.categories, catSlug)?.name || catSlug;
     }
   }
 
@@ -133,7 +134,7 @@ export default async function ProductsPage({ params, searchParams }) {
       ? enrichRestaurantCategoriesWithSeedImages(categoriesRaw)
       : categoriesRaw;
 
-  const categoryMeta = filters.category ? categories.find((c) => c.slug === filters.category) : null;
+  const categoryMeta = findStorefrontCategory(categories, filters.category);
   const bookableCategoryRequested =
     fitnessStore &&
     filters.category &&
@@ -339,10 +340,11 @@ export default async function ProductsPage({ params, searchParams }) {
           {/* Sidebar Filters */}
           <aside className="lg:w-64 flex-shrink-0">
             <div className="sticky top-40">
-              <ProductFilters 
+              <ProductFilters
                 filters={filters}
                 categories={categories}
                 businessDomain={businessDomain}
+                hideCategories
               />
             </div>
           </aside>

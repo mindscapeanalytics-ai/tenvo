@@ -183,7 +183,7 @@ export function MarineHomeSections({
         <StoreProductRail
           title={config.spareRailTitle}
           subtitle="Kits and components for dry-dock and in-service maintenance"
-          href={buildMarineProductsUrl(productsUrl, { category: 'Spare Parts' })}
+          href={buildMarineProductsUrl(productsUrl, { category: 'spare-parts' })}
           linkLabel="Browse spares"
           products={(spareRail.length ? spareRail : [...seals, ...thrusters]).slice(0, 12)}
           catalogPool={products}

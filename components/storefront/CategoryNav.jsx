@@ -2,14 +2,20 @@
 
 import Link from 'next/link';
 import { useState, useRef, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useStorefront } from '@/lib/context/StorefrontContext';
 import { getStoreAccentColor } from '@/lib/config/storefrontDomains';
+import {
+  buildStoreProductsHref,
+  storefrontCategoriesMatch,
+} from '@/lib/storefront/storefrontCategoryNav';
 
 export function CategoryNav({ categories, activeCategory, businessDomain }) {
   const [isOpen, setIsOpen] = useState(false);
   const ref = useRef(null);
+  const searchParams = useSearchParams();
   const { settings, business } = useStorefront();
   const accent = getStoreAccentColor(settings, business?.category);
 
@@ -23,11 +29,22 @@ export function CategoryNav({ categories, activeCategory, businessDomain }) {
   const extraCategories = categories?.slice(6) || [];
 
   const activeLinkStyle = { color: accent, backgroundColor: accent + '12' };
+  const allHref = buildStoreProductsHref(businessDomain, {
+    searchParams,
+    preserveSortView: true,
+  });
+
+  const categoryHref = (category) =>
+    buildStoreProductsHref(businessDomain, {
+      category: category.slug || category.name,
+      searchParams,
+      preserveSortView: true,
+    });
 
   return (
     <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide py-1">
       <Link
-        href={`/store/${businessDomain}/products`}
+        href={allHref}
         className={cn(
           'px-4 py-2 text-sm font-semibold rounded-lg transition-colors whitespace-nowrap flex-shrink-0',
           !activeCategory ? '' : 'text-gray-700 hover:bg-gray-100'
@@ -37,19 +54,23 @@ export function CategoryNav({ categories, activeCategory, businessDomain }) {
         All Products
       </Link>
 
-      {visibleCategories.map((category) => (
-        <Link
-          key={category.id}
-          href={`/store/${businessDomain}/products?category=${category.slug}`}
-          className={cn(
-            'px-4 py-2 text-sm font-medium rounded-lg transition-colors whitespace-nowrap flex-shrink-0',
-            activeCategory === category.slug ? '' : 'text-gray-700 hover:bg-gray-100'
-          )}
-          style={activeCategory === category.slug ? activeLinkStyle : {}}
-        >
-          {category.name}
-        </Link>
-      ))}
+      {visibleCategories.map((category) => {
+        const active = storefrontCategoriesMatch(activeCategory, category.slug)
+          || storefrontCategoriesMatch(activeCategory, category.name);
+        return (
+          <Link
+            key={category.id}
+            href={categoryHref(category)}
+            className={cn(
+              'px-4 py-2 text-sm font-medium rounded-lg transition-colors whitespace-nowrap flex-shrink-0',
+              active ? '' : 'text-gray-700 hover:bg-gray-100'
+            )}
+            style={active ? activeLinkStyle : {}}
+          >
+            {category.name}
+          </Link>
+        );
+      })}
 
       {extraCategories.length > 0 && (
         <div className="relative flex-shrink-0" ref={ref}>
@@ -63,23 +84,27 @@ export function CategoryNav({ categories, activeCategory, businessDomain }) {
 
           {isOpen && (
             <div className="absolute top-full left-0 mt-1 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-1.5 z-50">
-              {extraCategories.map((category) => (
-                <Link
-                  key={category.id}
-                  href={`/store/${businessDomain}/products?category=${category.slug}`}
-                  className={cn(
-                    'flex items-center justify-between px-4 py-2.5 text-sm transition-colors',
-                    activeCategory === category.slug ? 'font-semibold' : 'text-gray-700 hover:bg-gray-50'
-                  )}
-                  style={activeCategory === category.slug ? { color: accent } : {}}
-                  onClick={() => setIsOpen(false)}
-                >
-                  <span>{category.name}</span>
-                  {category.product_count !== undefined && (
-                    <span className="text-xs text-gray-400 tabular-nums ml-2">{category.product_count}</span>
-                  )}
-                </Link>
-              ))}
+              {extraCategories.map((category) => {
+                const active = storefrontCategoriesMatch(activeCategory, category.slug)
+                  || storefrontCategoriesMatch(activeCategory, category.name);
+                return (
+                  <Link
+                    key={category.id}
+                    href={categoryHref(category)}
+                    className={cn(
+                      'flex items-center justify-between px-4 py-2.5 text-sm transition-colors',
+                      active ? 'font-semibold' : 'text-gray-700 hover:bg-gray-50'
+                    )}
+                    style={active ? { color: accent } : {}}
+                    onClick={() => setIsOpen(false)}
+                  >
+                    <span>{category.name}</span>
+                    {category.product_count !== undefined && (
+                      <span className="text-xs text-gray-400 tabular-nums ml-2">{category.product_count}</span>
+                    )}
+                  </Link>
+                );
+              })}
             </div>
           )}
         </div>
