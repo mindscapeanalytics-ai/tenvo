@@ -31,6 +31,7 @@ import { MarketingSectionsEditor } from '@/components/storefront/admin/Marketing
 import { isAutoMarketplaceStore } from '@/lib/storefront/autoMarketplace';
 import { isAutoDealershipStore } from '@/lib/storefront/autoDealership';
 import { isAutoPartsStore } from '@/lib/storefront/autoParts';
+import { isMarinePartsStore, MARINE_HERO_VIDEO_URL, MARINE_HERO_POSTER } from '@/lib/storefront/marineParts';
 import { isRestaurantElevatedStore } from '@/lib/storefront/restaurantStorefront';
 import { isPharmacyElevatedStore } from '@/lib/storefront/pharmacyStorefront';
 import { isFurnitureElevatedStore } from '@/lib/storefront/furnitureStorefront';
@@ -193,6 +194,42 @@ export function StoreSettingsManager({ business, category }) {
       ctaSubtitle: '',
       ctaLabel: '',
     },
+    marine: {
+      showFinder: true,
+      showKpis: true,
+      showExpertise: true,
+      showEquipmentGrid: true,
+      showStayAhead: true,
+      showInsights: true,
+      showFeaturedRails: true,
+      showSpareRail: true,
+      showBottomCta: true,
+      showMarketingBanners: true,
+      heroVideoUrl: MARINE_HERO_VIDEO_URL,
+      heroPosterUrl: MARINE_HERO_POSTER,
+      heroEyebrow: '',
+      heroTitle: '',
+      heroSubtitle: '',
+      heroCtaLabel: '',
+      kpiTitle: '',
+      kpiSubtitle: '',
+      expertiseTitle: '',
+      expertiseSubtitle: '',
+      equipmentTitle: '',
+      equipmentSubtitle: '',
+      stayAheadTitle: '',
+      stayAheadSubtitle: '',
+      stayAheadCtaLabel: '',
+      featuredRailTitle: '',
+      spareRailTitle: '',
+      insightsTitle: '',
+      insightsSubtitle: '',
+      trustTitle: '',
+      trustSubtitle: '',
+      ctaTitle: '',
+      ctaSubtitle: '',
+      ctaLabel: '',
+    },
     restaurant: {
       showCuisineCarousel: true,
       showSuperPicks: true,
@@ -329,6 +366,7 @@ export function StoreSettingsManager({ business, category }) {
   const marketplaceStore = isAutoMarketplaceStore(category || business?.category);
   const dealershipStore = isAutoDealershipStore(category || business?.category);
   const autoPartsStore = isAutoPartsStore(category || business?.category);
+  const marineStore = isMarinePartsStore(category || business?.category);
   const restaurantStore = isRestaurantElevatedStore(category || business?.category);
   const pharmacyStore = isPharmacyElevatedStore(category || business?.category);
   const furnitureStore = isFurnitureElevatedStore(category || business?.category);
@@ -442,6 +480,11 @@ export function StoreSettingsManager({ business, category }) {
     setSettings((prev) => ({
       ...prev,
       autoParts: { ...(prev.autoParts || {}), [key]: val },
+    }));
+  const setMarine = (key, val) =>
+    setSettings((prev) => ({
+      ...prev,
+      marine: { ...(prev.marine || {}), [key]: val },
     }));
   const setRestaurant = (key, val) =>
     setSettings((prev) => ({
@@ -1315,6 +1358,142 @@ export function StoreSettingsManager({ business, category }) {
                 </div>
                 <p className="text-xs text-gray-500">
                   Hero slides use your cover image on slide one, with template defaults for the rest. Product metadata (part number, OEM, fitment) is edited per SKU in inventory.
+                </p>
+              </CardContent>
+            </Card>
+          ) : null}
+
+          {marineStore ? (
+            <Card>
+              <CardHeader className="pb-4">
+                <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                  <Megaphone className="w-4 h-4" /> Tenvo Marine storefront
+                </CardTitle>
+                <CardDescription>
+                  Hero video (looping MP4), finder panel, and homepage section toggles for the marine spare-parts template.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label>Hero video URL (MP4, loops muted)</Label>
+                  <Input
+                    value={settings.marine?.heroVideoUrl || ''}
+                    onChange={(e) => setMarine('heroVideoUrl', e.target.value)}
+                    placeholder={MARINE_HERO_VIDEO_URL}
+                  />
+                  <p className="text-xs text-gray-500">
+                    Direct MP4 link recommended (e.g. Wärtsilä home hero). Plays autoplay, muted, and loop behind the finder.
+                  </p>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Hero poster image URL</Label>
+                  <Input
+                    value={settings.marine?.heroPosterUrl || ''}
+                    onChange={(e) => setMarine('heroPosterUrl', e.target.value)}
+                    placeholder={MARINE_HERO_POSTER}
+                  />
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label>Hero eyebrow</Label>
+                    <Input
+                      value={settings.marine?.heroEyebrow || ''}
+                      onChange={(e) => setMarine('heroEyebrow', e.target.value)}
+                      placeholder="Tenvo Marine"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Hero CTA label</Label>
+                    <Input
+                      value={settings.marine?.heroCtaLabel || ''}
+                      onChange={(e) => setMarine('heroCtaLabel', e.target.value)}
+                      placeholder="Browse catalogue"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Hero title</Label>
+                  <Input
+                    value={settings.marine?.heroTitle || ''}
+                    onChange={(e) => setMarine('heroTitle', e.target.value)}
+                    placeholder="Shaping reliable power at sea"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Hero subtitle</Label>
+                  <Textarea
+                    rows={2}
+                    value={settings.marine?.heroSubtitle || ''}
+                    onChange={(e) => setMarine('heroSubtitle', e.target.value)}
+                    placeholder="Find thrusters, rudder propellers, seals…"
+                  />
+                </div>
+                <Separator />
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {[
+                    ['showFinder', 'Parts finder panel'],
+                    ['showKpis', 'KPI / stats strip'],
+                    ['showExpertise', 'New / used / parts / repair cards'],
+                    ['showEquipmentGrid', 'Shop by equipment grid'],
+                    ['showFeaturedRails', 'Featured product rail'],
+                    ['showSpareRail', 'Spare parts rail'],
+                    ['showStayAhead', 'Stay ahead editorial'],
+                    ['showInsights', 'Insights knowledgebase'],
+                    ['showBottomCta', 'Bottom RFQ CTA'],
+                    ['showMarketingBanners', 'Custom marketing banners'],
+                  ].map(([key, label]) => (
+                    <div key={key} className="flex items-center gap-2">
+                      <Switch
+                        checked={settings.marine?.[key] !== false}
+                        onCheckedChange={(v) => setMarine(key, v)}
+                      />
+                      <Label className="text-sm">{label}</Label>
+                    </div>
+                  ))}
+                </div>
+                <Separator />
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label>KPI section title</Label>
+                    <Input
+                      value={settings.marine?.kpiTitle || ''}
+                      onChange={(e) => setMarine('kpiTitle', e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Equipment section title</Label>
+                    <Input
+                      value={settings.marine?.equipmentTitle || ''}
+                      onChange={(e) => setMarine('equipmentTitle', e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Bottom CTA title</Label>
+                  <Input
+                    value={settings.marine?.ctaTitle || ''}
+                    onChange={(e) => setMarine('ctaTitle', e.target.value)}
+                    placeholder="Need a propulsion solution fast?"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Bottom CTA subtitle</Label>
+                  <Textarea
+                    rows={2}
+                    value={settings.marine?.ctaSubtitle || ''}
+                    onChange={(e) => setMarine('ctaSubtitle', e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Bottom CTA button label</Label>
+                  <Input
+                    value={settings.marine?.ctaLabel || ''}
+                    onChange={(e) => setMarine('ctaLabel', e.target.value)}
+                    placeholder="Make a request"
+                  />
+                </div>
+                <p className="text-xs text-gray-500">
+                  Cover image under Branding is used as the hero poster when poster URL is empty. Part number, OEM, and equipment fields are edited per SKU in inventory.
                 </p>
               </CardContent>
             </Card>
