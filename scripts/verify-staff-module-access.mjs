@@ -3,6 +3,9 @@
  * Staff module access RBAC verification.
  * Run: bun run verify:staff-module-access
  */
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
     STAFF_ACCESS_MODULE_IDS,
     extractModuleAccess,
@@ -16,6 +19,8 @@ import {
     NAV_PERMISSION_MAP,
 } from '../lib/rbac/permissions.js';
 
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+
 let passed = 0;
 let failed = 0;
 
@@ -27,6 +32,10 @@ function assert(condition, label) {
         failed += 1;
         console.error(`FAIL: ${label}`);
     }
+}
+
+function readRepoFile(relativePath) {
+    return readFileSync(join(ROOT, relativePath), 'utf8');
 }
 
 // 1. Role-only: cashier pos.access
@@ -105,6 +114,37 @@ assert(
     buildPermissionsPayload(getDefaultModulesForRole('cashier')).modules.pos === true,
     'buildPermissionsPayload(cashier defaults).modules.pos === true'
 );
+
+// 11. Static wiring: serverGuard loads permissions + hasPermission with moduleAccess
+{
+    const serverGuard = readRepoFile('lib/rbac/serverGuard.js');
+    assert(
+        /SELECT\s+role,\s*status,\s*permissions\s+FROM\s+business_users/i.test(serverGuard),
+        'serverGuard.js SELECT includes permissions'
+    );
+    assert(
+        /hasPermission\s*\(\s*role\s*,\s*permission\s*,\s*moduleAccess\s*\)/.test(serverGuard),
+        'serverGuard.js calls hasPermission(role, permission, moduleAccess)'
+    );
+}
+
+// 12. Static wiring: BusinessContext exposes/sets moduleAccess
+{
+    const businessContext = readRepoFile('lib/context/BusinessContext.js');
+    assert(
+        /setModuleAccess\s*\(/.test(businessContext) && /moduleAccess/.test(businessContext),
+        'BusinessContext.js exposes/sets moduleAccess'
+    );
+}
+
+// 13. Static wiring: SettingsManager imports module access helpers
+{
+    const settingsManager = readRepoFile('components/SettingsManager.jsx');
+    assert(
+        /getDefaultModulesForRole|STAFF_ACCESS_MODULES/.test(settingsManager),
+        'SettingsManager.jsx imports getDefaultModulesForRole or STAFF_ACCESS_MODULES'
+    );
+}
 
 console.log(`\n${passed} passed, ${failed} failed`);
 if (failed > 0) {
