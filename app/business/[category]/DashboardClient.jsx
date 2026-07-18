@@ -492,7 +492,12 @@ function BusinessDashboardContent() {
     expenseBreakdown,
     expenses,
     advancedDashboardSnapshot,
+    activityFeed,
+    productTotal,
+    hasMoreProducts,
+    fetchMoreProducts,
     refreshAllData,
+    fetchHubShell,
     fetchFinance,
     fetchInventory,
     fetchSales,
@@ -513,6 +518,11 @@ function BusinessDashboardContent() {
 
   // Only block the dashboard tab on analytics for Advanced chrome that still needs metrics.
   // Easy mode unlocks from sales/inventory/finance; do not skeleton the whole tab on analytics.
+  const hasBootstrapKpis = Boolean(
+    dashboardMetrics?.revenue != null ||
+      dashboardMetrics?.orders != null ||
+      dashboardMetrics?.inventory != null
+  );
   const dashboardTabLoading =
     activeTab === 'dashboard' &&
     !dashboardMetrics &&
@@ -1855,12 +1865,23 @@ function BusinessDashboardContent() {
             isLoading={dashboardTabLoading}
             inventoryLoading={Boolean(loadingModules.inventory) && !moduleReady.inventoryCatalog}
             isAnalyticsLoading={Boolean(loadingModules.analytics) && !moduleReady.analytics && !dashboardMetrics}
-            isSalesLoading={Boolean(loadingModules.sales) && !moduleReady.sales}
+            isSalesLoading={
+              Boolean(loadingModules.sales) && !moduleReady.sales && !hasBootstrapKpis
+            }
             isInventoryLoading={
               !moduleReady.inventoryCatalog && !dashboardMetrics?.inventory
             }
-            isFinanceLoading={Boolean(loadingModules.finance) && !moduleReady.finance}
+            isFinanceLoading={
+              Boolean(loadingModules.finance) &&
+              !moduleReady.finance &&
+              !advancedDashboardSnapshot?.finance &&
+              !hasBootstrapKpis
+            }
             isExpensesLoading={Boolean(loadingModules.expenses) && !moduleReady.expenses}
+            activityFeed={activityFeed}
+            productTotal={productTotal}
+            hasMoreProducts={hasMoreProducts}
+            onLoadMoreProducts={fetchMoreProducts}
             isDataLoaded={Boolean(isDataLoaded)}
             financeInitialTab={financeInitialTab}
             onFinanceInitialTabConsumed={() => setFinanceInitialTab(null)}

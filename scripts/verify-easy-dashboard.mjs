@@ -136,14 +136,26 @@ if (!dataContext.includes('fetchGenerationRef')) {
 if (!dataContext.includes('isStale()')) {
   mark('DataContext fetchers must guard setState with isStale()');
 }
-if (!dataContext.includes('fetchInventory({ fullCatalog: false })') && !dataContext.includes('fullCatalog: false')) {
-  mark('DataContext bootstrap must lean-load inventory (locations/KPIs before full catalog)');
+if (
+  !dataContext.includes('getHubShellBootstrapAction') &&
+  !dataContext.includes('fetchInventory({ fullCatalog: false })') &&
+  !dataContext.includes('fullCatalog: false')
+) {
+  mark('DataContext bootstrap must use hub shell bootstrap or lean-load inventory');
 }
-if (!dataContext.includes("fetchSales({ mode: 'bootstrap' })") && !dataContext.includes("mode: 'bootstrap'")) {
+if (
+  !dataContext.includes('getHubShellBootstrapAction') &&
+  !dataContext.includes("fetchSales({ mode: 'bootstrap' })") &&
+  !dataContext.includes("mode: 'bootstrap'")
+) {
   mark('DataContext bootstrap must lean-load sales without invoice line items');
 }
-if (!/Promise\.allSettled\(\[\s*fetchFinance\(\),\s*fetchSales\(/.test(dataContext)) {
-  mark('DataContext must stream finance/sales (and lean inventory) in parallel on bootstrap');
+if (
+  !dataContext.includes('getHubShellBootstrapAction') &&
+  !dataContext.includes('fetchHubShell') &&
+  !/Promise\.allSettled\(\[\s*fetchFinance\(\),\s*fetchSales\(/.test(dataContext)
+) {
+  mark('DataContext must use hub shell bootstrap or stream finance/sales in parallel');
 }
 if (!dataContext.includes('buildDashboardMetricsFromSnapshot')) {
   mark('DataContext must hydrate dashboardMetrics from finance snapshot (avoid duplicate KPI wait)');
@@ -201,7 +213,11 @@ if (!easyHelpers.includes('min_stock_level') || !/reorder_point[\s\S]*min_stock_
   mark('resolveSafetyStock must match analytics SQL threshold order');
 }
 
-if (!dataContext.includes('includeSerials: false')) {
+if (
+  !dataContext.includes('includeSerials: false') &&
+  !dataContext.includes('includeSerials: loadSerials') &&
+  !read('lib/actions/dashboard/hubShellBootstrap.js').includes('includeSerials: false')
+) {
   mark('DataContext must fast-path inventory without serials for dashboard KPIs');
 }
 if (!dataContext.includes('includeSerials === true') && !dataContext.includes('includeSerials: true')) {

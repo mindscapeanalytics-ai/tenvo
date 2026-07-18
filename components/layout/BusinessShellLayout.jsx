@@ -6,6 +6,7 @@ import { Header } from '@/components/layout/Header';
 import { useLanguage } from '@/lib/context/LanguageContext';
 import { FilterProvider } from '@/lib/context/FilterContext';
 import { DataProvider } from '@/lib/context/DataContext';
+import { HubQueryProvider } from '@/lib/context/HubQueryProvider';
 import { LazyCommandPalette } from '@/components/layout/LazyCommandPalette';
 import { AgenticFloatingChatbot } from '@/components/layout/AgenticFloatingChatbot';
 import { SubscriptionBillingBanner } from '@/components/billing/SubscriptionBillingBanner';
@@ -24,6 +25,7 @@ export function BusinessShellLayout({ children }) {
 
     return (
         <FilterProvider>
+            <HubQueryProvider>
             <DataProvider>
                 {/* Single Ctrl/Cmd+K palette — hub ?tab= routes only (no GlobalCommandPalette path forks). */}
                 <LazyCommandPalette />
@@ -48,6 +50,7 @@ export function BusinessShellLayout({ children }) {
                 <UpgradeNudgeBanner />
                 <AgenticFloatingChatbot />
             </DataProvider>
+            </HubQueryProvider>
         </FilterProvider>
     );
 }

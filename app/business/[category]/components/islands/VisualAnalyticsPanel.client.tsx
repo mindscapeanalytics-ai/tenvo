@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { BarChart3, PieChart, TrendingUp, Package } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import {
@@ -29,6 +30,11 @@ function buildDateFilter(dateRange?: { from: Date; to: Date }) {
     const from = dateRange.from instanceof Date ? dateRange.from.toISOString() : String(dateRange.from);
     const to = dateRange.to instanceof Date ? dateRange.to.toISOString() : String(dateRange.to);
     return { from, to };
+}
+
+function hubAnalyticsQueryKey(businessId?: string, dateRange?: { from: Date; to: Date }) {
+    const filter = buildDateFilter(dateRange);
+    return ['hubAnalytics', businessId || '', filter.from || '', filter.to || ''];
 }
 
 const CHART_ACCENTS = {
@@ -110,15 +116,11 @@ export function VisualAnalyticsPanel({
         () => getVisualAnalyticsCopy(resolveOperationsProfile(category, domainKnowledge || undefined, business)),
         [category, domainKnowledge, business]
     );
-    const [loading, setLoading] = useState(true);
-    const [salesData, setSalesData] = useState<Array<Record<string, unknown>>>([]);
-    const [topProducts, setTopProducts] = useState<Array<Record<string, unknown>>>([]);
-    const [categoryData, setCategoryData] = useState<Array<Record<string, unknown>>>([]);
     // Defer the heavy analytics bundle until the panel is near the viewport so it
     // never competes with the dashboard bootstrap fetches on cold load.
     const containerRef = useRef<HTMLDivElement | null>(null);
     const [shouldLoad, setShouldLoad] = useState(false);
-    const requestIdRef = useRef(0);
+    const dateFilter = useMemo(() => buildDateFilter(dateRange), [dateRange]);
 
     useEffect(() => {
         if (shouldLoad) return undefined;
@@ -140,42 +142,28 @@ export function VisualAnalyticsPanel({
         return () => observer.disconnect();
     }, [shouldLoad]);
 
-    useEffect(() => {
-        if (!shouldLoad) return undefined;
-        if (!businessId) {
-            const timer = setTimeout(() => setLoading(false), 0);
-            return () => clearTimeout(timer);
-        }
+    const analyticsQuery = useQuery({
+        queryKey: hubAnalyticsQueryKey(businessId, dateRange),
+        enabled: Boolean(shouldLoad && businessId),
+        queryFn: async () => {
+            const bundle = await getAnalyticsBundleAction(businessId, dateFilter);
+            if (!bundle?.success) {
+                return { salesTrend: [], topProducts: [], categoryData: [] };
+            }
+            return bundle.data || { salesTrend: [], topProducts: [], categoryData: [] };
+        },
+        staleTime: 60_000,
+    });
 
-        const requestId = ++requestIdRef.current;
-        const timer = setTimeout(() => {
-            void (async () => {
-                setLoading(true);
-                try {
-                    const bundle = await getAnalyticsBundleAction(businessId, buildDateFilter(dateRange));
-                    if (requestIdRef.current !== requestId) return;
-                    if (bundle.success && bundle.data) {
-                        setSalesData((bundle.data.salesTrend || []) as Array<Record<string, unknown>>);
-                        setTopProducts((bundle.data.topProducts || []) as Array<Record<string, unknown>>);
-                        setCategoryData((bundle.data.categoryData || []) as Array<Record<string, unknown>>);
-                    }
-                } catch {
-                    if (requestIdRef.current !== requestId) return;
-                    setSalesData([]);
-                    setTopProducts([]);
-                    setCategoryData([]);
-                } finally {
-                    if (requestIdRef.current === requestId) {
-                        setLoading(false);
-                    }
-                }
-            })();
-        }, 0);
+    const loading =
+        !shouldLoad ||
+        analyticsQuery.isLoading ||
+        (analyticsQuery.isFetching && !analyticsQuery.data);
+    const salesData = (analyticsQuery.data?.salesTrend || []) as Array<Record<string, unknown>>;
+    const topProducts = (analyticsQuery.data?.topProducts || []) as Array<Record<string, unknown>>;
+    const categoryData = (analyticsQuery.data?.categoryData || []) as Array<Record<string, unknown>>;
 
-        return () => clearTimeout(timer);
-    }, [shouldLoad, businessId, dateRange]);
-
-    if (!shouldLoad || loading) {
+    if (loading) {
         return (
             <div ref={containerRef} className="grid grid-cols-1 md:grid-cols-2 gap-3 animate-pulse">
                 <div className="md:col-span-2 h-[300px] rounded-2xl bg-gradient-to-br from-slate-100 to-slate-50" />

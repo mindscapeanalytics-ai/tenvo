@@ -67,6 +67,11 @@ interface DomainDashboardProps {
     isExpensesLoading?: boolean;
     /** True once lean hub bootstrap settled — used to defer Advanced domain-ops SQL. */
     isDataLoaded?: boolean;
+    /** Recent Activity rows from hub shell bootstrap (skips feed self-fetch when provided). */
+    activityFeed?: Array<Record<string, unknown>>;
+    productTotal?: number;
+    hasMoreProducts?: boolean;
+    onLoadMoreProducts?: () => void | Promise<void>;
 }
 
 interface InvoiceItemLike {
@@ -211,6 +216,10 @@ export function DomainDashboard({
     isFinanceLoading = false,
     isExpensesLoading = false,
     isDataLoaded = false,
+    activityFeed,
+    productTotal = 0,
+    hasMoreProducts = false,
+    onLoadMoreProducts,
 }: DomainDashboardProps) {
     const { business } = useBusiness() as {
         business?: { id?: string; name?: string; country?: string; city?: string } | null;
@@ -278,14 +287,19 @@ export function DomainDashboard({
         // Fallback to client-side invoice-only calculation for backward compatibility
         const serverOrderCount = dashboardMetrics?.orders?.total;
         const clientInvoiceCount = billableInvoices.filter(inv => inRange(inv?.date, currentFrom, currentTo)).length;
-        const currentOrders = serverOrderCount !== undefined ? serverOrderCount : clientInvoiceCount;
+        const currentOrders = serverOrderCount !== undefined && serverOrderCount !== null
+            ? Number(serverOrderCount)
+            : clientInvoiceCount;
         
         // Previous period: use server snapshot if available, else calculate from invoices
         const previousOrders = billableInvoices.filter(inv => inRange(inv?.date, prevFrom, prevTo)).length;
 
-        const currentRevenue = billableInvoices
-            .filter(inv => inRange(inv?.date, currentFrom, currentTo))
-            .reduce((sum, inv) => sum + (Number(inv?.grand_total) || Number(inv?.amount) || 0), 0);
+        const serverRevenue = dashboardMetrics?.revenue?.total;
+        const currentRevenue = serverRevenue !== undefined && serverRevenue !== null
+            ? Number(serverRevenue)
+            : billableInvoices
+                .filter(inv => inRange(inv?.date, currentFrom, currentTo))
+                .reduce((sum, inv) => sum + (Number(inv?.grand_total) || Number(inv?.amount) || 0), 0);
         const previousRevenue = billableInvoices
             .filter(inv => inRange(inv?.date, prevFrom, prevTo))
             .reduce((sum, inv) => sum + (Number(inv?.grand_total) || Number(inv?.amount) || 0), 0);
@@ -1340,6 +1354,12 @@ export function DomainDashboard({
                             onViewAll={() => onQuickAction?.('reports')}
                             feedLimit={25}
                             visibleRows={5}
+                            awaitBootstrap
+                            initialActivities={
+                                isDataLoaded || (!isSalesLoading && !isFinanceLoading)
+                                    ? ((activityFeed as Array<Record<string, unknown>> | undefined) ?? [])
+                                    : undefined
+                            }
                         />
                     </div>
                     <div className="col-span-4 min-w-0">
@@ -1421,6 +1441,12 @@ export function DomainDashboard({
                         onViewAll={() => onQuickAction?.('reports')}
                         feedLimit={25}
                         visibleRows={5}
+                        awaitBootstrap
+                        initialActivities={
+                            isDataLoaded || (!isSalesLoading && !isFinanceLoading)
+                                ? ((activityFeed as Array<Record<string, unknown>> | undefined) ?? [])
+                                : undefined
+                        }
                     />
                     <KPIMeter
                         title="Domain Efficiency"

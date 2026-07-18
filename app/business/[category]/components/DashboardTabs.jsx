@@ -98,6 +98,10 @@ export function DashboardTabs({
     isFinanceLoading = false,
     isExpensesLoading = false,
     isDataLoaded = false,
+    activityFeed,
+    productTotal = 0,
+    hasMoreProducts = false,
+    onLoadMoreProducts,
 }) {
     const posRelevant = isPosRelevant(category, domainKnowledge);
     const hospitalityDomain = isHospitality(category);
@@ -303,6 +307,10 @@ export function DashboardTabs({
                             isFinanceLoading={isFinanceLoading}
                             isExpensesLoading={isExpensesLoading}
                             isDataLoaded={isDataLoaded}
+                            activityFeed={activityFeed}
+                            productTotal={productTotal}
+                            hasMoreProducts={hasMoreProducts}
+                            onLoadMoreProducts={onLoadMoreProducts}
                         />
                     )}
                 </TabsContent>
@@ -342,6 +350,20 @@ export function DashboardTabs({
                         isAtLimit={resourceLimits?.limitReached?.('products')}
                         onUpgrade={handlers?.handleUpgrade}
                     />
+                    {hasMoreProducts ? (
+                        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600">
+                            <span>
+                                Showing {products.length} of {productTotal || products.length} products
+                            </span>
+                            <button
+                                type="button"
+                                className="rounded-md bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-800"
+                                onClick={() => void onLoadMoreProducts?.()}
+                            >
+                                Load more
+                            </button>
+                        </div>
+                    ) : null}
                     {wrapTab(
                         <TabGuard tabKey="inventory" role={role} planTier={planTier} featureName="Inventory" onUpgrade={() => handleTabChange('settings')}>
                             <InventoryTab
