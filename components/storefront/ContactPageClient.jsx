@@ -43,6 +43,7 @@ import { resizeImageToWebP } from '@/lib/utils/optimizeImageClient';
 
 const SUBJECT_OPTIONS = [
   { value: 'general', label: 'General inquiry' },
+  { value: 'quotation', label: 'Request quotation' },
   { value: 'order', label: 'Order question' },
   { value: 'product', label: 'Product question' },
   { value: 'return', label: 'Return or exchange' },
@@ -141,7 +142,7 @@ export function ContactPageClient() {
     name: '',
     email: '',
     phone: '',
-    subject: intent?.subject || 'general',
+    subject: intent?.subject || (searchParams.get('subject') === 'quote' ? 'quotation' : searchParams.get('subject')) || 'general',
     orderNumber: '',
     preferredDate: '',
     preferredTime: '',
@@ -162,21 +163,33 @@ export function ContactPageClient() {
   const [prescriptionFileName, setPrescriptionFileName] = useState('');
 
   const vehicleParam = searchParams.get('vehicle') || '';
+  const subjectParam = searchParams.get('subject') || '';
+  const normalizedSubjectParam =
+    subjectParam === 'quote' ? 'quotation' : subjectParam;
 
   useEffect(() => {
     const vehicle = intent?.vehiclePrefill || vehicleParam || '';
+    const nextSubject = intent?.subject || normalizedSubjectParam || undefined;
     setForm((f) => ({
       ...f,
-      subject: intent?.subject || f.subject,
+      subject: nextSubject || f.subject,
       vehicleInterest: vehicle || f.vehicleInterest,
       message: f.message || intent?.messagePrefill || '',
     }));
-  }, [intent?.subject, intent?.vehiclePrefill, intent?.messagePrefill, vehicleParam]);
+  }, [intent?.subject, intent?.vehiclePrefill, intent?.messagePrefill, vehicleParam, normalizedSubjectParam]);
 
-  const pageTitle = intent?.title || 'Contact us';
+  const pageTitle =
+    intent?.title ||
+    (normalizedSubjectParam === 'quotation' ? 'Request a quotation' : 'Contact us');
   const pageSubtitle = intent?.subtitle
-    || `Reach ${contact.storeName}, we typically reply within 1-2 business days.`;
-  const messagePlaceholder = intent?.messagePlaceholder || 'How can we help?';
+    || (normalizedSubjectParam === 'quotation'
+      ? `Send your part list or requirements to ${contact.storeName}. We will reply with availability and options.`
+      : `Reach ${contact.storeName}, we typically reply within 1-2 business days.`);
+  const messagePlaceholder =
+    intent?.messagePlaceholder ||
+    (normalizedSubjectParam === 'quotation'
+      ? 'List part numbers, OEM codes, vessel or equipment type, and quantity needed.'
+      : 'How can we help?');
 
   const mapQuery = contact.fullAddress
     ? encodeURIComponent(contact.fullAddress)

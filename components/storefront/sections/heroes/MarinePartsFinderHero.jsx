@@ -12,6 +12,8 @@ import {
   buildMarineProductsUrl,
 } from '@/lib/storefront/marinePartsFinder';
 import { MARINE_ACCENT, MARINE_HERO_POSTER } from '@/lib/storefront/marinePartsArchiveMap';
+import { StoreConnectionButtons } from '@/components/storefront/StoreConnectionButtons';
+import { resolveStoreConnectionActions } from '@/lib/storefront/storeConnectionActions';
 
 /**
  * Full-bleed looping hero video with poster fallback.
@@ -66,7 +68,14 @@ function MarineHeroVideoBackdrop({ videoUrl, poster }) {
 /**
  * Industrial marine finder hero: looping video backdrop + part / OEM / equipment / vessel search.
  */
-export function MarinePartsFinderHero({ preset, businessDomain, accent, accentDark }) {
+export function MarinePartsFinderHero({
+  preset,
+  businessDomain,
+  accent,
+  accentDark,
+  business = null,
+  settings = null,
+}) {
   const router = useRouter();
   const productsBase = `/store/${businessDomain}/products`;
   const storeBase = `/store/${businessDomain}`;
@@ -76,6 +85,13 @@ export function MarinePartsFinderHero({ preset, businessDomain, accent, accentDa
   const videoUrl = slide.videoUrl || preset?.videoUrl || '';
   const poster = slide.image || MARINE_HERO_POSTER;
   const showFinder = preset?.showFinder !== false;
+  const connectionActions = resolveStoreConnectionActions({
+    business: business || { category: 'marine-parts' },
+    settings: settings || {},
+    businessDomain,
+    storeBase,
+    force: true,
+  });
 
   const [mode, setMode] = useState('partNumber');
   const [query, setQuery] = useState('');
@@ -149,22 +165,30 @@ export function MarinePartsFinderHero({ preset, businessDomain, accent, accentDa
             {slide.subtitle ||
               'Find thrusters, rudder propellers, seals, and lifecycle spare parts by part number, OEM, or equipment type.'}
           </p>
-          <div className="mt-6 flex flex-wrap items-center gap-3">
-            <Link
-              href={slide.ctaHref || productsBase}
-              className="inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-black/20 transition-opacity hover:opacity-95"
-              style={{ backgroundColor: brandAccentDark }}
-            >
-              {slide.ctaLabel || 'Browse catalogue'}
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-            <Link
-              href={`${storeBase}/contact`}
-              className="inline-flex items-center gap-2 rounded-xl border border-white/25 bg-white/5 px-5 py-2.5 text-sm font-semibold text-white backdrop-blur-sm transition-colors hover:bg-white/10"
-            >
-              Request quote
-            </Link>
-          </div>
+          {connectionActions.length > 0 ? (
+            <StoreConnectionButtons
+              actions={connectionActions}
+              accent={brandAccentDark}
+              className="mt-6"
+            />
+          ) : (
+            <div className="mt-6 flex flex-wrap items-center gap-3">
+              <Link
+                href={slide.ctaHref || productsBase}
+                className="inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-black/20 transition-opacity hover:opacity-95"
+                style={{ backgroundColor: brandAccentDark }}
+              >
+                {slide.ctaLabel || 'Browse catalogue'}
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+              <Link
+                href={`${storeBase}/contact`}
+                className="inline-flex items-center gap-2 rounded-xl border border-white/25 bg-white/5 px-5 py-2.5 text-sm font-semibold text-white backdrop-blur-sm transition-colors hover:bg-white/10"
+              >
+                Request quote
+              </Link>
+            </div>
+          )}
         </div>
 
         {showFinder ? (

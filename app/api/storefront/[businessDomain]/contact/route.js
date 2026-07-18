@@ -28,7 +28,8 @@ export async function POST(request, { params }) {
   const name = clip(body.name, 120);
   const email = clip(body.email, 320);
   const phone = clip(body.phone, 40);
-  const subjectKey = clip(body.subject, 64) || 'general';
+  const rawSubject = clip(body.subject, 64) || 'general';
+  const subjectKey = rawSubject === 'quote' ? 'quotation' : rawSubject;
   const message = clip(body.message, 2000);
   const orderNumber = clip(body.orderNumber, 64);
   const preferredDate = clip(body.preferredDate, 32);

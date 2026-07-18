@@ -23,7 +23,14 @@ import { JewelleryHero } from './heroes/JewelleryHero';
  * Renders the domain-appropriate immersive hero (parts finder, pharmacy, fashion, etc.).
  * @param {{ preset: object; businessDomain: string; accent: string; accentDark: string }} props
  */
-export function DomainHeroRouter({ preset, businessDomain, accent, accentDark }) {
+export function DomainHeroRouter({
+  preset,
+  businessDomain,
+  accent,
+  accentDark,
+  business = null,
+  settings = null,
+}) {
   if (!preset?.type) return null;
 
   switch (preset.type) {
@@ -34,6 +41,8 @@ export function DomainHeroRouter({ preset, businessDomain, accent, accentDark })
           businessDomain={businessDomain}
           accent={accent}
           accentDark={accentDark}
+          business={business}
+          settings={settings}
         />
       );
     case 'marine-parts-finder':
@@ -43,6 +52,8 @@ export function DomainHeroRouter({ preset, businessDomain, accent, accentDark })
           businessDomain={businessDomain}
           accent={accent}
           accentDark={accentDark}
+          business={business}
+          settings={settings}
         />
       );
     case 'pharmacy-finder':

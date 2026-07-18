@@ -16,6 +16,7 @@ import {
   MARINE_SERVICE_IMAGE,
 } from '@/lib/storefront/marineParts';
 import { buildMarineProductsUrl } from '@/lib/storefront/marinePartsFinder';
+import { StoreConnectionCtaBanner } from '@/components/storefront/StoreConnectionCtaBanner';
 
 /**
  * Tenvo Marine elevated homepage — industrial KPIs, expertise pillars, equipment grid, insights.
@@ -28,6 +29,7 @@ export function MarineHomeSections({
   base,
   settings = {},
   storeName = '',
+  business = null,
 }) {
   const storeBase = base || `/store/${businessDomain}`;
   const productsUrl = `${storeBase}/products`;
@@ -258,25 +260,17 @@ export function MarineHomeSections({
       )}
 
       {config.showBottomCta && (
-        <section className="relative overflow-hidden bg-[#001122] text-white">
-          <div className="absolute inset-0 opacity-35" aria-hidden>
-            <SmartProductImage src={MARINE_SERVICE_IMAGE} alt="" fill className="object-cover" />
-            <div className="absolute inset-0 bg-gradient-to-r from-[#001122] via-[#001122]/92 to-[#001122]/72" />
-          </div>
-          <div className="relative mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8 lg:py-20">
-            <h2 className="max-w-xl text-3xl font-semibold tracking-tight sm:text-4xl">
-              {config.ctaTitle}
-            </h2>
-            <p className="mt-3 max-w-xl text-sm text-white/75 sm:text-base">{config.ctaSubtitle}</p>
-            <Link
-              href={`${storeBase}/contact`}
-              className="mt-8 inline-flex items-center gap-2 rounded-xl bg-teal-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-teal-500"
-            >
-              {config.ctaLabel}
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-          </div>
-        </section>
+        <StoreConnectionCtaBanner
+          business={business || { category: 'marine-parts', business_name: storeName }}
+          settings={settings}
+          businessDomain={businessDomain}
+          storeBase={storeBase}
+          title={config.ctaTitle}
+          subtitle={config.ctaSubtitle}
+          imageUrl={MARINE_SERVICE_IMAGE}
+          accent="#0d9488"
+          force
+        />
       )}
     </>
   );

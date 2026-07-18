@@ -57,6 +57,7 @@ import {
   normalizeStorefrontBrandingForForm,
 } from '@/lib/storefront/storefrontBrandMark';
 import { StorefrontBrandMark } from '@/components/storefront/StorefrontBrandMark';
+import { supportsStoreConnectionButtons } from '@/lib/storefront/storeConnectionActions';
 
 // ── Image Upload Field ────────────────────────────────────────────────────────
 function ImageUploadField({ label, hint, value, onChange, businessId, purpose = 'product' }) {
@@ -156,6 +157,16 @@ export function StoreSettingsManager({ business, category }) {
       textStyle: 'classic',
       iconKey: 'initial',
       iconUrl: '',
+    },
+    connection: {
+      enabled: true,
+      showQuote: true,
+      showCall: true,
+      showMail: true,
+      preferWhatsApp: false,
+      quoteLabel: '',
+      callLabel: '',
+      mailLabel: '',
     },
     socialLinks: { facebook: '', instagram: '', twitter: '', youtube: '' },
     logoUrl: '',
@@ -389,6 +400,7 @@ export function StoreSettingsManager({ business, category }) {
   const dealershipStore = isAutoDealershipStore(category || business?.category);
   const autoPartsStore = isAutoPartsStore(category || business?.category);
   const marineStore = isMarinePartsStore(category || business?.category);
+  const connectionStore = supportsStoreConnectionButtons(category || business?.category);
   const restaurantStore = isRestaurantElevatedStore(category || business?.category);
   const pharmacyStore = isPharmacyElevatedStore(category || business?.category);
   const furnitureStore = isFurnitureElevatedStore(category || business?.category);
@@ -558,6 +570,11 @@ export function StoreSettingsManager({ business, category }) {
     setSettings((prev) => ({
       ...prev,
       branding: normalizeStorefrontBrandingForForm({ ...(prev.branding || {}), [key]: val }),
+    }));
+  const setConnection = (key, val) =>
+    setSettings((prev) => ({
+      ...prev,
+      connection: { ...(prev.connection || {}), [key]: val },
     }));
 
   const handleSave = async () => {
@@ -1066,7 +1083,7 @@ export function StoreSettingsManager({ business, category }) {
                     onChange={(e) => set('whatsapp', e.target.value)}
                   />
                   <p className="text-xs text-gray-400">
-                    Shown on the contact page and footer as a chat link. Leave blank to reuse the customer phone number.
+                    Used for Call / WhatsApp connection buttons and the contact page. Leave blank to reuse the customer phone number.
                   </p>
                 </div>
                 <div className="space-y-1.5">
@@ -1124,6 +1141,91 @@ export function StoreSettingsManager({ business, category }) {
               </div>
             </CardContent>
           </Card>
+
+          {connectionStore ? (
+            <Card>
+              <CardHeader className="pb-4">
+                <CardTitle className="text-sm font-semibold">Connection buttons</CardTitle>
+                <CardDescription>
+                  Quote, call, and email pills on your homepage hero and contact banner. Links use the public contact
+                  details above (`tel:`, `mailto:`, or WhatsApp).
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between gap-3 rounded-lg border border-gray-100 px-3 py-2.5">
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">Show connection buttons</p>
+                    <p className="text-xs text-gray-500">Receive Quotation, Call us, Mail us</p>
+                  </div>
+                  <Switch
+                    checked={settings.connection?.enabled !== false}
+                    onCheckedChange={(v) => setConnection('enabled', v)}
+                  />
+                </div>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <div className="flex items-center justify-between gap-2 rounded-lg border border-gray-100 px-3 py-2">
+                    <span className="text-xs font-medium text-gray-700">Quotation</span>
+                    <Switch
+                      checked={settings.connection?.showQuote !== false}
+                      onCheckedChange={(v) => setConnection('showQuote', v)}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between gap-2 rounded-lg border border-gray-100 px-3 py-2">
+                    <span className="text-xs font-medium text-gray-700">Call</span>
+                    <Switch
+                      checked={settings.connection?.showCall !== false}
+                      onCheckedChange={(v) => setConnection('showCall', v)}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between gap-2 rounded-lg border border-gray-100 px-3 py-2">
+                    <span className="text-xs font-medium text-gray-700">Email</span>
+                    <Switch
+                      checked={settings.connection?.showMail !== false}
+                      onCheckedChange={(v) => setConnection('showMail', v)}
+                    />
+                  </div>
+                </div>
+                <div className="flex items-center justify-between gap-3 rounded-lg border border-gray-100 px-3 py-2.5">
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">Prefer WhatsApp for Call</p>
+                    <p className="text-xs text-gray-500">
+                      Opens WhatsApp when a WhatsApp number is set; otherwise uses the phone dialer.
+                    </p>
+                  </div>
+                  <Switch
+                    checked={settings.connection?.preferWhatsApp === true}
+                    onCheckedChange={(v) => setConnection('preferWhatsApp', v)}
+                  />
+                </div>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Quote label</Label>
+                    <Input
+                      value={settings.connection?.quoteLabel || ''}
+                      onChange={(e) => setConnection('quoteLabel', e.target.value)}
+                      placeholder="Receive Quotation"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Call label</Label>
+                    <Input
+                      value={settings.connection?.callLabel || ''}
+                      onChange={(e) => setConnection('callLabel', e.target.value)}
+                      placeholder="Call us"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Mail label</Label>
+                    <Input
+                      value={settings.connection?.mailLabel || ''}
+                      onChange={(e) => setConnection('mailLabel', e.target.value)}
+                      placeholder="Mail us"
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ) : null}
 
           {showMeetingUrlField ? (
             <Card>

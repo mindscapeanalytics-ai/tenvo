@@ -605,6 +605,8 @@ export default async function StoreHomePage({ params }) {
             businessDomain={businessDomain}
             accent={accent}
             accentDark={accentDark}
+            business={business}
+            settings={settings}
           />
           <StoreMarketingSections
             sections={settings?.pageSections}
@@ -647,6 +649,8 @@ export default async function StoreHomePage({ params }) {
           businessDomain={businessDomain}
           accent={accent}
           accentDark={accentDark}
+          business={business}
+          settings={settings}
         />
         <StoreMarketingSections
           sections={settings?.pageSections}
@@ -736,7 +740,8 @@ export default async function StoreHomePage({ params }) {
           accent={accent || MARINE_ACCENT}
           base={heroPreset.base}
           settings={settings}
-          storeName={business.name}
+          storeName={business.business_name || business.name}
+          business={business}
         />
       )}
 

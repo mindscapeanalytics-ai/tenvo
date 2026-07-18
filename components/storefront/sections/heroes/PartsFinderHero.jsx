@@ -20,6 +20,11 @@ import {
   buildPartsProductsUrl,
 } from '@/lib/storefront/partsFinder';
 import { AutoBrandMarquee } from '@/components/storefront/sections/shared/AutoBrandMarquee';
+import { StoreConnectionButtons } from '@/components/storefront/StoreConnectionButtons';
+import {
+  resolveStoreConnectionActions,
+  supportsStoreConnectionButtons,
+} from '@/lib/storefront/storeConnectionActions';
 import { cn } from '@/lib/utils';
 
 const ICON_MAP = {
@@ -78,12 +83,31 @@ function FinderCard({ children, className, imageUrl, imageAlt = '', accent }) {
 /**
  * Autoparts-style finder hero: part #, part size, vehicle drill-down, plate, VIN.
  */
-export function PartsFinderHero({ preset, businessDomain, accent, accentDark }) {
+export function PartsFinderHero({
+  preset,
+  businessDomain,
+  accent,
+  accentDark,
+  business = null,
+  settings = null,
+}) {
   const router = useRouter();
   const base = `/store/${businessDomain}/products`;
+  const storeBase = `/store/${businessDomain}`;
   const showVehicleFinder = preset?.finderMode !== 'hardware';
   const brandAccent = accent || '#cd232a';
   const brandAccentDark = accentDark || brandAccent;
+  const showConnection =
+    !showVehicleFinder || supportsStoreConnectionButtons(business?.category);
+  const connectionActions = showConnection
+    ? resolveStoreConnectionActions({
+        business,
+        settings,
+        businessDomain,
+        storeBase,
+        force: !showVehicleFinder,
+      })
+    : [];
 
   const [partTab, setPartTab] = useState('number');
   const [partQuery, setPartQuery] = useState('');
@@ -556,6 +580,18 @@ export function PartsFinderHero({ preset, businessDomain, accent, accentDark }) 
               className="mb-0"
             />
           </div>
+          ) : null}
+
+          {connectionActions.length > 0 ? (
+            <div className="mt-5 rounded-2xl border border-white/25 bg-black/25 px-4 py-4 backdrop-blur-sm sm:px-6">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-white/70">
+                Get in touch
+              </p>
+              <StoreConnectionButtons
+                actions={connectionActions}
+                accent={brandAccentDark}
+              />
+            </div>
           ) : null}
         </div>
       </div>
