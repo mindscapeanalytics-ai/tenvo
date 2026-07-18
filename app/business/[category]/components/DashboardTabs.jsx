@@ -1078,6 +1078,9 @@ export function DashboardTabs({
                             <StorefrontTabShell activeTab="refunds">
                             <PosRefundPanel businessId={activeBusinessId} />
                             <div className="mt-6 pt-6 border-t border-gray-100">
+                                <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                    Manager void
+                                </p>
                                 <PosVoidPanel businessId={activeBusinessId} currency={currency} />
                             </div>
                             </StorefrontTabShell>

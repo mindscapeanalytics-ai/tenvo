@@ -9,6 +9,8 @@ import { posAPI } from '@/lib/api/pos';
 import { getRecentPosTransactionsForRefundAction } from '@/lib/actions/standard/posRefund';
 import { MobileTabHeader } from '@/components/mobile/MobileTabHeader';
 import { cn } from '@/lib/utils';
+import { useBusiness } from '@/lib/context/BusinessContext';
+import { formatCurrency } from '@/lib/currency';
 
 const VOID_REASONS = [
     'Wrong item scanned',
@@ -19,23 +21,78 @@ const VOID_REASONS = [
     'Other',
 ];
 
-export function PosVoidPanel({ businessId, currency = '₨' }) {
+function resolveTxNumber(tx) {
+    return tx?.transactionNumber || tx?.transaction_number || '';
+}
+
+function resolveTxTotal(tx) {
+    const n = Number(tx?.totalAmount ?? tx?.total_amount);
+    return Number.isFinite(n) ? n : 0;
+}
+
+function resolveTxDate(tx) {
+    const raw = tx?.createdAt || tx?.created_at;
+    if (!raw) return null;
+    const d = raw instanceof Date ? raw : new Date(raw);
+    return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function formatTxWhen(tx) {
+    const d = resolveTxDate(tx);
+    if (!d) return '—';
+    try {
+        return d.toLocaleString(undefined, {
+            dateStyle: 'medium',
+            timeStyle: 'short',
+        });
+    } catch {
+        return d.toLocaleString();
+    }
+}
+
+export function PosVoidPanel({ businessId, currency: currencyProp }) {
+    const { currency: businessCurrency, currencySymbol } = useBusiness();
+    const currencyCode = currencyProp || businessCurrency || 'PKR';
+
     const [recent, setRecent] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState(null);
     const [lookupId, setLookupId] = useState('');
     const [selected, setSelected] = useState(null);
     const [reason, setReason] = useState(VOID_REASONS[0]);
     const [customReason, setCustomReason] = useState('');
     const [submitting, setSubmitting] = useState(false);
 
+    const formatMoney = useCallback(
+        (amount) => {
+            try {
+                return formatCurrency(resolveTxTotal({ totalAmount: amount }), currencyCode);
+            } catch {
+                const n = Number(amount);
+                const safe = Number.isFinite(n) ? n : 0;
+                return `${currencySymbol || currencyCode}${safe.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+            }
+        },
+        [currencyCode, currencySymbol]
+    );
+
     const loadRecent = useCallback(async () => {
         if (!businessId) return;
         setLoading(true);
+        setLoadError(null);
         try {
             const res = await getRecentPosTransactionsForRefundAction(businessId, 15);
             if (res?.success) {
-                setRecent((res.transactions || []).filter((t) => !t.is_voided));
+                setRecent(
+                    (res.transactions || []).filter((t) => !t.isVoided && !t.is_voided)
+                );
+            } else {
+                setRecent([]);
+                setLoadError(res?.error || 'Could not load transactions');
             }
+        } catch (err) {
+            setRecent([]);
+            setLoadError(err?.message || 'Could not load transactions');
         } finally {
             setLoading(false);
         }
@@ -48,11 +105,11 @@ export function PosVoidPanel({ businessId, currency = '₨' }) {
     const filtered = useMemo(() => {
         const q = lookupId.trim().toLowerCase();
         if (!q) return recent;
-        return recent.filter(
-            (t) =>
-                String(t.transaction_number || '').toLowerCase().includes(q) ||
-                String(t.id || '').toLowerCase().includes(q)
-        );
+        return recent.filter((t) => {
+            const number = String(resolveTxNumber(t)).toLowerCase();
+            const id = String(t.id || '').toLowerCase();
+            return number.includes(q) || id.includes(q);
+        });
     }, [recent, lookupId]);
 
     const handleVoid = async () => {
@@ -70,7 +127,7 @@ export function PosVoidPanel({ businessId, currency = '₨' }) {
                 reason: finalReason,
             });
             if (res?.success) {
-                toast.success(`Voided ${selected.transaction_number}`);
+                toast.success(`Voided ${resolveTxNumber(selected)}`);
                 setSelected(null);
                 loadRecent();
             } else {
@@ -107,6 +164,19 @@ export function PosVoidPanel({ businessId, currency = '₨' }) {
                 />
             </div>
 
+            {loadError ? (
+                <div className="rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-xs text-red-700 flex items-center justify-between gap-2">
+                    <span>{loadError}</span>
+                    <button
+                        type="button"
+                        onClick={() => loadRecent()}
+                        className="font-semibold underline"
+                    >
+                        Retry
+                    </button>
+                </div>
+            ) : null}
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                 <div className="rounded-xl border border-gray-100 bg-white divide-y max-h-72 overflow-y-auto">
                     {loading && <p className="p-4 text-xs text-gray-400">Loading…</p>}
@@ -123,9 +193,9 @@ export function PosVoidPanel({ businessId, currency = '₨' }) {
                                 selected?.id === tx.id && 'bg-brand-primary/5'
                             )}
                         >
-                            <p className="text-xs font-bold text-gray-900">{tx.transaction_number}</p>
-                            <p className="text-[10px] text-gray-500">
-                                {currency}{Number(tx.total_amount).toLocaleString()} · {new Date(tx.created_at).toLocaleString()}
+                            <p className="text-xs font-bold text-gray-900">{resolveTxNumber(tx) || 'Receipt'}</p>
+                            <p className="text-[10px] text-gray-500 tabular-nums">
+                                {formatMoney(resolveTxTotal(tx))} · {formatTxWhen(tx)}
                             </p>
                         </button>
                     ))}
@@ -135,10 +205,11 @@ export function PosVoidPanel({ businessId, currency = '₨' }) {
                     {selected ? (
                         <>
                             <div>
-                                <p className="text-sm font-bold">{selected.transaction_number}</p>
+                                <p className="text-sm font-bold">{resolveTxNumber(selected)}</p>
                                 <p className="text-lg font-bold text-emerald-600 tabular-nums">
-                                    {currency}{Number(selected.total_amount).toLocaleString()}
+                                    {formatMoney(resolveTxTotal(selected))}
                                 </p>
+                                <p className="text-[10px] text-gray-400 mt-0.5">{formatTxWhen(selected)}</p>
                             </div>
                             <div className="space-y-1.5">
                                 <p className="text-xs font-semibold text-gray-600">Reason</p>

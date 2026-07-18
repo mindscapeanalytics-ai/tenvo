@@ -18,6 +18,7 @@ import {
 import toast from 'react-hot-toast';
 import { MobileTabHeader, MobileStatStrip } from '@/components/mobile/MobileTabHeader';
 import { useStorefrontEmbedded } from '@/lib/context/StorefrontMobileContext';
+import { formatCurrency } from '@/lib/currency';
 
 // ===============================================================
 // REASON CODES
@@ -41,7 +42,7 @@ function money(n) {
 // REFUND HISTORY CARD
 // ===============================================================
 
-function RefundHistoryCard({ refund, currency }) {
+function RefundHistoryCard({ refund, formatMoney }) {
     return (
         <div className="bg-white rounded-xl border border-gray-100 p-3 hover:shadow-sm transition-all">
             <div className="flex items-center justify-between mb-2">
@@ -56,7 +57,7 @@ function RefundHistoryCard({ refund, currency }) {
                 </div>
                 <div className="text-right">
                     <p className="text-sm font-semibold text-red-600 tabular-nums">
-                        -{currency} {money(refund.total_amount).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                        -{formatMoney(refund.total_amount)}
                     </p>
                     <span className={cn(
                         'text-[10px] px-1.5 py-0.5 rounded-full font-bold uppercase',
@@ -71,7 +72,7 @@ function RefundHistoryCard({ refund, currency }) {
             <div className="flex items-center gap-3 text-[10px] text-gray-400">
                 {refund.reason && <span>💬 {refund.reason}</span>}
                 <span>· {refund.refund_method}</span>
-                <span>· {refund.created_at ? new Date(refund.created_at).toLocaleDateString() : ', '}</span>
+                <span>· {refund.created_at ? new Date(refund.created_at).toLocaleDateString() : '—'}</span>
             </div>
         </div>
     );
@@ -82,9 +83,21 @@ function RefundHistoryCard({ refund, currency }) {
 // ===============================================================
 
 export function PosRefundPanel({ businessId }) {
-    const { business, currencySymbol } = useBusiness();
+    const { business, currency: businessCurrency, currencySymbol } = useBusiness();
     const effectiveBusinessId = businessId || business?.id;
+    const currencyCode = businessCurrency || 'PKR';
     const currency = currencySymbol || 'Rs.';
+
+    const formatMoney = useCallback(
+        (amount) => {
+            try {
+                return formatCurrency(money(amount), currencyCode);
+            } catch {
+                return `${currency} ${money(amount).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+            }
+        },
+        [currency, currencyCode]
+    );
 
     // State
     const [view, setView] = useState('history'); // history | lookup | process
@@ -311,7 +324,7 @@ export function PosRefundPanel({ businessId }) {
                 <MobileStatStrip
                     items={[
                         { label: 'Refunds', value: loading ? '…' : kpi.count },
-                        { label: 'Total', value: loading ? '…' : `${currency} ${kpi.totalRefunded.toLocaleString(undefined, { maximumFractionDigits: 0 })}`, valueTone: 'text-red-600' },
+                        { label: 'Total', value: loading ? '…' : formatMoney(kpi.totalRefunded), valueTone: 'text-red-600' },
                         { label: 'Partial', value: loading ? '…' : kpi.partialCount, valueTone: 'text-amber-600' },
                     ]}
                 />
@@ -396,8 +409,8 @@ export function PosRefundPanel({ businessId }) {
                 </div>
                 <div className="bg-amber-50 border border-amber-100 rounded-xl p-3">
                     <Receipt className="w-4 h-4 text-amber-400 mb-1" />
-                    <p className="text-xl font-semibold text-amber-600">
-                        {loading ? '…' : `${currency} ${kpi.totalRefunded.toLocaleString(undefined, { maximumFractionDigits: 2 })}`}
+                    <p className="text-xl font-semibold text-amber-600 tabular-nums">
+                        {loading ? '…' : formatMoney(kpi.totalRefunded)}
                     </p>
                     <p className="text-[10px] font-bold text-amber-400">Total Refunded</p>
                 </div>
@@ -446,16 +459,15 @@ export function PosRefundPanel({ businessId }) {
                                             type="button"
                                             disabled={isProcessing}
                                             onClick={() => {
-                                                setTransactionId(tx.transactionNumber || tx.id);
-                                                handleLookup(tx.transactionNumber || tx.id);
+                                                setTransactionId(tx.transactionNumber || tx.transaction_number || tx.id);
+                                                handleLookup(tx.transactionNumber || tx.transaction_number || tx.id);
                                             }}
                                             className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-left text-xs font-bold text-gray-800 transition hover:border-red-200 hover:bg-red-50 disabled:opacity-50"
                                         >
                                             <Receipt className="w-3.5 h-3.5 shrink-0 text-gray-400" />
-                                            <span className="font-mono">{tx.transactionNumber}</span>
-                                            <span className="text-[10px] font-semibold text-gray-500">
-                                                {currency}
-                                                {tx.totalAmount.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                            <span className="font-mono">{tx.transactionNumber || tx.transaction_number}</span>
+                                            <span className="text-[10px] font-semibold text-gray-500 tabular-nums">
+                                                {formatMoney(tx.totalAmount ?? tx.total_amount)}
                                             </span>
                                         </button>
                                     ))}
@@ -517,8 +529,7 @@ export function PosRefundPanel({ businessId }) {
                                 <div>
                                     <p className="text-sm font-semibold text-gray-900">Transaction {selectedTx.transaction_number}</p>
                                     <p className="text-[10px] text-gray-400">
-                                        Original total: {currency}{' '}
-                                        {money(selectedTx.total_amount).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                                        Original total: {formatMoney(selectedTx.total_amount)}
                                     </p>
                                 </div>
                                 <span className="text-[10px] px-2 py-0.5 bg-brand-50 text-brand-primary rounded-full font-bold">ORIGINAL</span>
@@ -557,8 +568,7 @@ export function PosRefundPanel({ businessId }) {
                                             <div className="flex-1">
                                                 <p className="text-sm font-bold text-gray-800">{item.productName}</p>
                                                 <p className="text-[10px] text-gray-400">
-                                                    {money(item.quantity)}× @ {currency}{' '}
-                                                    {money(item.unitPrice).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                                                    {money(item.quantity)}× @ {formatMoney(item.unitPrice)}
                                                 </p>
                                             </div>
 
@@ -594,13 +604,12 @@ export function PosRefundPanel({ businessId }) {
                                                 </div>
                                             )}
 
-                                            <span className="text-sm font-bold text-gray-600 w-24 text-right tabular-nums">
-                                                {currency}{' '}
-                                                {(
+                                            <span className="text-sm font-bold text-gray-600 w-28 text-right tabular-nums">
+                                                {formatMoney(
                                                     isSelected
                                                         ? money(ri.refundQty) * money(ri.unitPrice)
                                                         : money(item.quantity) * money(item.unitPrice)
-                                                ).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                                                )}
                                             </span>
                                         </div>
                                     );
@@ -664,10 +673,10 @@ export function PosRefundPanel({ businessId }) {
                             <div className="flex items-center justify-between mb-3">
                                 <div>
                                     <p className="text-xs font-bold text-red-600 uppercase">Refund Summary</p>
-                                    <p className="text-[10px] text-red-400">{refundItems.length} item(s) selected * {refundItems.filter(ri => ri.restock).length} to restock</p>
+                                    <p className="text-[10px] text-red-400">{refundItems.length} item(s) selected · {refundItems.filter(ri => ri.restock).length} to restock</p>
                                 </div>
                                 <p className="text-xl font-semibold text-red-700 tabular-nums">
-                                    {currency} {refundTotal.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                                    {formatMoney(refundTotal)}
                                 </p>
                             </div>
                             <button
@@ -681,8 +690,7 @@ export function PosRefundPanel({ businessId }) {
                                 ) : (
                                     <>
                                         <ShieldCheck className="w-4 h-4" />
-                                        Process refund · {currency}{' '}
-                                        {refundTotal.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                                        Process refund · {formatMoney(refundTotal)}
                                     </>
                                 )}
                             </button>
@@ -708,7 +716,7 @@ export function PosRefundPanel({ businessId }) {
                             </div>
                         ) : (
                             refunds.map((refund) => (
-                                <RefundHistoryCard key={refund.id} refund={refund} currency={currency} />
+                                <RefundHistoryCard key={refund.id} refund={refund} formatMoney={formatMoney} />
                             ))
                         )}
                     </motion.div>
