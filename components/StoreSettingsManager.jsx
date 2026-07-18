@@ -168,6 +168,8 @@ export function StoreSettingsManager({ business, category }) {
       showForum: false,
       showArticles: false,
       showEShop: true,
+      showMarketingBanners: true,
+      showTrustStrip: true,
     },
     dealership: {
       profile: 'tenvo-vehicles',
@@ -236,6 +238,7 @@ export function StoreSettingsManager({ business, category }) {
       showOrderModes: true,
       showRewardsCta: false,
       showDeliveryInfo: true,
+      showMarketingBanners: true,
       locationLabel: 'Deliver to',
       defaultLocation: '',
       searchPlaceholder: '',
@@ -247,6 +250,7 @@ export function StoreSettingsManager({ business, category }) {
       showRefillPromo: true,
       showBrandsRow: true,
       showSeoBlock: false,
+      showMarketingBanners: true,
       locationLabel: 'Deliver to',
       defaultLocation: '',
       searchPlaceholder: '',
@@ -257,6 +261,7 @@ export function StoreSettingsManager({ business, category }) {
       showRoomTiles: true,
       showTestimonials: false,
       showShowroomCta: true,
+      showMarketingBanners: true,
       locationLabel: 'Deliver to',
       defaultLocation: '',
       searchPlaceholder: '',
@@ -271,6 +276,7 @@ export function StoreSettingsManager({ business, category }) {
       showTrainers: false,
       showBookingStrip: true,
       showPromoBanners: true,
+      showMarketingBanners: true,
       showTrustPillars: false,
       heroTitle: '',
       heroSubtitle: '',
@@ -289,6 +295,7 @@ export function StoreSettingsManager({ business, category }) {
       showBrandsRow: true,
       showTrustStrip: true,
       showPromoBanners: true,
+      showMarketingBanners: true,
       showDeliveryBanner: true,
       showWeeklyEssentials: false,
       locationLabel: 'Deliver to',
@@ -313,6 +320,7 @@ export function StoreSettingsManager({ business, category }) {
       showOffers: true,
       showNewArrivals: true,
       showTrustStrip: true,
+      showMarketingBanners: true,
       showBrandsRow: true,
       showPromoBanners: true,
       showSeoBlock: true,
@@ -338,6 +346,7 @@ export function StoreSettingsManager({ business, category }) {
       showNewArrivals: true,
       showOffers: true,
       showTrustStrip: true,
+      showMarketingBanners: true,
       showBrandsRow: true,
       showSeoBlock: false,
       showProductsCarousel: true,
@@ -1537,6 +1546,7 @@ export function StoreSettingsManager({ business, category }) {
                     ['showRefillPromo', 'Refill reminder CTA', false],
                     ['showBrandsRow', 'Trusted brands row', false],
                     ['showSeoBlock', 'SEO content block', true],
+                    ['showMarketingBanners', 'Custom marketing banners', false],
                   ].map(([key, label, optIn]) => (
                     <div key={key} className="flex items-center gap-2">
                       <Switch
@@ -1613,6 +1623,7 @@ export function StoreSettingsManager({ business, category }) {
                     ['showRoomTiles', 'Room collection tiles', false],
                     ['showTestimonials', 'Customer testimonials', true],
                     ['showShowroomCta', 'Showroom CTA on homepage', false],
+                    ['showMarketingBanners', 'Custom marketing banners', false],
                   ].map(([key, label, optIn]) => (
                     <div key={key} className="flex items-center gap-2">
                       <Switch
@@ -1684,6 +1695,7 @@ export function StoreSettingsManager({ business, category }) {
                     ['showBookingStrip', 'Book your slot strip', false],
                     ['showPromoBanners', 'Promo banner row', false],
                     ['showTrustPillars', 'Trust pillars strip', true],
+                    ['showMarketingBanners', 'Custom marketing banners', false],
                   ].map(([key, label, optIn]) => (
                     <div key={key} className="flex items-center gap-2">
                       <Switch
@@ -1810,6 +1822,7 @@ export function StoreSettingsManager({ business, category }) {
                     ['showNewArrivals', 'New arrivals rail'],
                     ['showProductsCarousel', 'Featured products carousel'],
                     ['showTrustStrip', 'Trust pillars strip'],
+                    ['showMarketingBanners', 'Custom marketing banners'],
                     ['showBrandsRow', 'Shop by brand row'],
                     ['showSeoBlock', 'SEO content block', true],
                   ].map(([key, label, optIn]) => (
@@ -1963,6 +1976,7 @@ export function StoreSettingsManager({ business, category }) {
                     ['showOffers', 'Offers / sale rail'],
                     ['showNewArrivals', 'New arrivals rail'],
                     ['showTrustStrip', 'Trust pillars strip'],
+                    ['showMarketingBanners', 'Custom marketing banners'],
                     ['showBrandsRow', 'Trusted brands row'],
                     ['showPromoBanners', 'Promo banner row'],
                     ['showHomeEdit', 'The Home Edit grid'],
@@ -2095,6 +2109,7 @@ export function StoreSettingsManager({ business, category }) {
                     ['showSuperPicks', 'Featured picks rail', false],
                     ['showOrderModes', 'Delivery / pickup / dine-in tiles', false],
                     ['showTrustStrip', 'Trust pillars strip', false],
+                    ['showMarketingBanners', 'Custom marketing banners', false],
                     ['showUpperPromoTiles', 'Wide promo banner row', false],
                     ['showDeliveryBanner', 'Free delivery threshold band', false],
                     ['showRewardsCta', 'Rewards signup CTA', true],
@@ -2177,7 +2192,9 @@ export function StoreSettingsManager({ business, category }) {
                 <Megaphone className="w-4 h-4" /> Homepage marketing sections
               </CardTitle>
               <CardDescription>
-                Upload full marketing banners or promo strips. Up to 3 per placement (after hero, mid-page, before footer). Works on all elevated store templates.
+                Upload full marketing banners or promo strips for any homepage slot: after hero,
+                mid-page, or before footer (up to 3 each). Available on every domain storefront —
+                use the vertical toggle above if you want to hide them for a specific template.
               </CardDescription>
             </CardHeader>
             <CardContent>

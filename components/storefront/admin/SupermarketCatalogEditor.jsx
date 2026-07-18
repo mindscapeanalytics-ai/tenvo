@@ -230,6 +230,7 @@ export function SupermarketCatalogEditor({ supermarket = {}, businessId, onChang
           ['showHomeRails', 'Product carousel sections'],
           ['homeRailsAutoScroll', 'Auto-scroll product carousels'],
           ['showTrustStrip', 'Homepage trust strip'],
+          ['showMarketingBanners', 'Custom marketing banners'],
           ['showFooterTrustStrip', 'Footer trust bar'],
           ['showDeliveryBanner', 'Free delivery banner'],
           ['showWeeklyEssentials', 'Weekly essentials CTA', true],

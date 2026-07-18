@@ -212,7 +212,7 @@ export function MarketingSectionsEditor({ sections = [], brandColor, businessId,
                 <Label>Homepage placement</Label>
                 <select
                   className="h-9 w-full rounded-md border border-gray-200 bg-white px-3 text-sm"
-                  value={section.placement || 'after-hero'}
+                  value={section.placement || 'mid-page'}
                   onChange={(e) => updatePlacement(section.id, e.target.value)}
                 >
                   {PAGE_SECTION_PLACEMENTS.map((p) => {

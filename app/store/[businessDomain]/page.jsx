@@ -61,6 +61,7 @@ import { SupermarketHomeSections } from '@/components/storefront/sections/superm
 import { SupermarketFeedLayout } from '@/components/storefront/supermarket/SupermarketFeedLayout';
 import { isAutoPartsStore } from '@/lib/storefront/autoParts';
 import { isMarinePartsStore, MARINE_ACCENT } from '@/lib/storefront/marineParts';
+import { resolveOwnerMarketingBannersEnabled } from '@/lib/storefront/ownerMarketingBanners';
 import { cn } from '@/lib/utils';
 import {
   ArrowRight, Sparkles,
@@ -170,6 +171,7 @@ export default async function StoreHomePage({ params }) {
   const accent = getStoreAccentColor(settings, business.category);
   const accentDark = domainCfg.accentDark;
   const accentLight = domainCfg.accentLight;
+  const ownerMarketingBanners = resolveOwnerMarketingBannersEnabled(business.category, settings);
   const hero = getMergedStorefrontHero({ settings, domainCfg, business });
   const landing = getDomainLanding(business.category, businessDomain, settings, business);
   const heroPreset = getHeroPreset(business.category, businessDomain, settings, business);
@@ -609,12 +611,7 @@ export default async function StoreHomePage({ params }) {
             businessDomain={businessDomain}
             accent={accent}
             placement="after-hero"
-          />
-          <StoreMarketingSections
-            sections={settings?.pageSections}
-            businessDomain={businessDomain}
-            accent={accent}
-            placement="mid-page"
+            enabled={ownerMarketingBanners}
           />
           <SupermarketHomeSections
             businessDomain={businessDomain}
@@ -632,7 +629,15 @@ export default async function StoreHomePage({ params }) {
             sections={settings?.pageSections}
             businessDomain={businessDomain}
             accent={accent}
+            placement="mid-page"
+            enabled={ownerMarketingBanners}
+          />
+          <StoreMarketingSections
+            sections={settings?.pageSections}
+            businessDomain={businessDomain}
+            accent={accent}
             placement="before-footer"
+            enabled={ownerMarketingBanners}
           />
         </SupermarketFeedLayout>
       ) : immersiveHero ? (
@@ -648,6 +653,7 @@ export default async function StoreHomePage({ params }) {
           businessDomain={businessDomain}
           accent={accent}
           placement="after-hero"
+          enabled={ownerMarketingBanners}
         />
         </>
       ) : (
@@ -675,6 +681,7 @@ export default async function StoreHomePage({ params }) {
           businessDomain={businessDomain}
           accent={accent}
           placement="after-hero"
+          enabled={ownerMarketingBanners}
         />
       ) : null}
 
@@ -857,12 +864,14 @@ export default async function StoreHomePage({ params }) {
             businessDomain={businessDomain}
             accent={accent}
             placement="mid-page"
+            enabled={ownerMarketingBanners}
           />
           <StoreMarketingSections
             sections={settings?.pageSections}
             businessDomain={businessDomain}
             accent={accent}
             placement="before-footer"
+            enabled={ownerMarketingBanners}
           />
         </>
       ) : null}
@@ -915,15 +924,6 @@ export default async function StoreHomePage({ params }) {
       {!editorialHero && !dealershipHero && !marketplaceHero && !pharmacyElevatedHero && !furnitureElevatedHero && !restaurantElevatedHero && !fitnessElevatedHero && !supermarketElevatedHero && !autoPartsHero && !marinePartsHero && !jewelleryElevatedHero && (
         <DomainDealStrip dealStrip={landing.dealStrip} accent={accent} accentDark={accentDark} />
       )}
-
-      {!skipHomeNavSections ? (
-      <StoreMarketingSections
-        sections={settings?.pageSections}
-        businessDomain={businessDomain}
-        accent={accent}
-        placement="mid-page"
-      />
-      ) : null}
 
       {/* ── Category Cards Grid (tablet+) ─────────────────────────────────── */}
       {categories.length >= 3 && !skipHomeNavSections && (
@@ -1093,7 +1093,18 @@ export default async function StoreHomePage({ params }) {
         sections={settings?.pageSections}
         businessDomain={businessDomain}
         accent={accent}
+        placement="mid-page"
+        enabled={ownerMarketingBanners}
+      />
+      ) : null}
+
+      {!skipHomeNavSections ? (
+      <StoreMarketingSections
+        sections={settings?.pageSections}
+        businessDomain={businessDomain}
+        accent={accent}
         placement="before-footer"
+        enabled={ownerMarketingBanners}
       />
       ) : null}
 

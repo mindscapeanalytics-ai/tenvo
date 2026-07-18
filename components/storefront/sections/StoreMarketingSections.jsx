@@ -19,6 +19,7 @@ import {
  *   accent?: string;
  *   placement?: 'after-hero' | 'mid-page' | 'before-footer';
  *   className?: string;
+ *   enabled?: boolean;
  * }} props
  */
 export function StoreMarketingSections({
@@ -27,7 +28,9 @@ export function StoreMarketingSections({
   accent = '#2563eb',
   placement,
   className,
+  enabled = true,
 }) {
+  if (!enabled) return null;
   const active = placement
     ? filterPageSectionsByPlacement(sections, placement)
     : getActivePageSections(sections);
