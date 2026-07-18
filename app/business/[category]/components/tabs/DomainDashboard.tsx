@@ -218,10 +218,13 @@ export function DomainDashboard({
     isExpensesLoading = false,
     isDataLoaded = false,
     activityFeed,
-    productTotal = 0,
-    hasMoreProducts = false,
-    onLoadMoreProducts,
+    productTotal: _productTotal = 0,
+    hasMoreProducts: _hasMoreProducts = false,
+    onLoadMoreProducts: _onLoadMoreProducts,
 }: DomainDashboardProps) {
+    void _productTotal;
+    void _hasMoreProducts;
+    void _onLoadMoreProducts;
     const { business } = useBusiness() as {
         business?: { id?: string; name?: string; country?: string; city?: string } | null;
     };
@@ -295,7 +298,13 @@ export function DomainDashboard({
         // Previous period: use server snapshot if available, else calculate from invoices
         const previousOrders = billableInvoices.filter(inv => inRange(inv?.date, prevFrom, prevTo)).length;
 
-        const serverRevenue = dashboardMetrics?.revenue?.total;
+        const serverRevenueRaw = dashboardMetrics?.revenue;
+        const serverRevenue =
+            typeof serverRevenueRaw === 'number'
+                ? serverRevenueRaw
+                : serverRevenueRaw && typeof serverRevenueRaw === 'object'
+                  ? serverRevenueRaw.total
+                  : undefined;
         const currentRevenue = serverRevenue !== undefined && serverRevenue !== null
             ? Number(serverRevenue)
             : billableInvoices

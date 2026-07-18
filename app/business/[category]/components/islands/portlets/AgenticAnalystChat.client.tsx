@@ -4,7 +4,6 @@ import { useState, useRef, useEffect, memo } from 'react';
 import { Portlet } from '@/components/ui/portlet';
 import { Send, Sparkles, User, Bot, Loader2, Maximize2, Minimize2, Trash2 } from 'lucide-react';
 import { askBusinessAnalystAction } from '@/lib/actions/premium/ai/agentic';
-import { useBusiness } from '@/lib/context/BusinessContext';
 import { useResolvedBusinessId } from '@/lib/hooks/useResolvedBusinessId';
 import { formatBusinessAnalystReply } from '@/lib/utils/formatBusinessAnalystReply';
 import { cn } from '@/lib/utils';
@@ -17,9 +16,6 @@ interface Message {
 }
 
 export const AgenticAnalystChat = memo(function AgenticAnalystChat({ businessId: businessIdProp }: { businessId?: string }) {
-    const { business } = useBusiness() as {
-        business?: { id?: string; business_name?: string; category?: string } | null;
-    };
     // Prop + context — do not unmount when prop/context briefly disagree during hydrate.
     const businessId = useResolvedBusinessId(businessIdProp);
     const [messages, setMessages] = useState<Message[]>([
