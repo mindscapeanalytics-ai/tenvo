@@ -36,7 +36,14 @@ if (!exists(bootstrapPath)) {
     mark('hubShellBootstrap must call withGuard');
   }
   if (!bootstrap.includes('HUB_SHELL_PRODUCT_PAGE_LIMIT')) {
-    mark('hubShellBootstrap must define HUB_SHELL_PRODUCT_PAGE_LIMIT');
+    mark('hubShellBootstrap must use HUB_SHELL_PRODUCT_PAGE_LIMIT');
+  }
+  if (!bootstrap.includes("from '@/lib/dashboard/hubShellBootstrapConstants'") &&
+      !bootstrap.includes('from "@/lib/dashboard/hubShellBootstrapConstants"')) {
+    mark('hubShellBootstrap must import limits from hubShellBootstrapConstants (not export sync consts from use server)');
+  }
+  if (/export const HUB_SHELL_/.test(bootstrap)) {
+    mark('hubShellBootstrap must not export sync constants from a use server module');
   }
   if (!bootstrap.includes('limit: HUB_SHELL_PRODUCT_PAGE_LIMIT') && !bootstrap.includes('offset: 0')) {
     mark('hubShellBootstrap must request paginated products (limit + offset 0)');
@@ -102,6 +109,26 @@ if (exists('lib/context/DataContext.js')) {
     if (dataCtx.includes('fetchInventory({ fullCatalog: true })')) {
       mark('DataContext must not background-load fullCatalog after bootstrap');
     }
+    if (
+      dataCtx.includes("HUB_SHELL_PRODUCT_PAGE_LIMIT } from '@/lib/actions/dashboard/hubShellBootstrap'") ||
+      dataCtx.includes('HUB_SHELL_PRODUCT_PAGE_LIMIT } from "@/lib/actions/dashboard/hubShellBootstrap"') ||
+      /HUB_SHELL_PRODUCT_PAGE_LIMIT[\s\S]*from ['"]@\/lib\/actions\/dashboard\/hubShellBootstrap['"]/.test(dataCtx)
+    ) {
+      mark('DataContext must import HUB_SHELL_PRODUCT_PAGE_LIMIT from hubShellBootstrapConstants, not the use server module');
+    }
+    if (!dataCtx.includes('hubShellBootstrapConstants')) {
+      mark('DataContext must import HUB_SHELL_PRODUCT_PAGE_LIMIT from hubShellBootstrapConstants');
+    }
+  }
+}
+
+const constantsPath = 'lib/dashboard/hubShellBootstrapConstants.js';
+if (!exists(constantsPath)) {
+  mark(`${constantsPath} must exist`);
+} else {
+  const constants = read(constantsPath);
+  if (!constants.includes('export const HUB_SHELL_PRODUCT_PAGE_LIMIT')) {
+    mark('hubShellBootstrapConstants must export HUB_SHELL_PRODUCT_PAGE_LIMIT');
   }
 }
 
