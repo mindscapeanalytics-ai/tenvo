@@ -863,23 +863,15 @@ export default async function StoreHomePage({ params }) {
         />
       )}
 
+      {/* Mid-page banners for elevated templates (after vertical home sections) */}
       {skipHomeNavSections && !supermarketElevatedHero ? (
-        <>
-          <StoreMarketingSections
-            sections={settings?.pageSections}
-            businessDomain={businessDomain}
-            accent={accent}
-            placement="mid-page"
-            enabled={ownerMarketingBanners}
-          />
-          <StoreMarketingSections
-            sections={settings?.pageSections}
-            businessDomain={businessDomain}
-            accent={accent}
-            placement="before-footer"
-            enabled={ownerMarketingBanners}
-          />
-        </>
+        <StoreMarketingSections
+          sections={settings?.pageSections}
+          businessDomain={businessDomain}
+          accent={accent}
+          placement="mid-page"
+          enabled={ownerMarketingBanners}
+        />
       ) : null}
 
       {/* ── Category Chips (skip when parts finder already shows shortcuts) ─ */}
@@ -1057,6 +1049,16 @@ export default async function StoreHomePage({ params }) {
         </section>
       )}
 
+      {!skipHomeNavSections ? (
+      <StoreMarketingSections
+        sections={settings?.pageSections}
+        businessDomain={businessDomain}
+        accent={accent}
+        placement="mid-page"
+        enabled={ownerMarketingBanners}
+      />
+      ) : null}
+
       {/* ── Free shipping promo (desktop), skip elevated / B2B parts templates ─ */}
       {!editorialHero && !dealershipHero && !marketplaceHero && !pharmacyElevatedHero && !furnitureElevatedHero && !restaurantElevatedHero && !fitnessElevatedHero && !supermarketElevatedHero && !jewelleryElevatedHero && !marinePartsHero && !autoPartsHero && (
       <section className="hidden md:block mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
@@ -1094,26 +1096,6 @@ export default async function StoreHomePage({ params }) {
       </section>
       )}
 
-      {!skipHomeNavSections ? (
-      <StoreMarketingSections
-        sections={settings?.pageSections}
-        businessDomain={businessDomain}
-        accent={accent}
-        placement="mid-page"
-        enabled={ownerMarketingBanners}
-      />
-      ) : null}
-
-      {!skipHomeNavSections ? (
-      <StoreMarketingSections
-        sections={settings?.pageSections}
-        businessDomain={businessDomain}
-        accent={accent}
-        placement="before-footer"
-        enabled={ownerMarketingBanners}
-      />
-      ) : null}
-
       {/* ── New Arrivals (only when catalog has more beyond featured) ───────── */}
       {showNewArrivals && !editorialHero && !dealershipHero && !marketplaceHero && !pharmacyElevatedHero && !furnitureElevatedHero && !restaurantElevatedHero && !fitnessElevatedHero && !supermarketElevatedHero && !jewelleryElevatedHero && (
         <section className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-8 py-4 sm:py-10">
@@ -1148,6 +1130,17 @@ export default async function StoreHomePage({ params }) {
           body={copy.emptyBody}
           storeName={copy.storeName}
           contact={contact}
+        />
+      ) : null}
+
+      {/* Before-footer banners: last content slot on every domain (supermarket has its own) */}
+      {!supermarketElevatedHero ? (
+        <StoreMarketingSections
+          sections={settings?.pageSections}
+          businessDomain={businessDomain}
+          accent={accent}
+          placement="before-footer"
+          enabled={ownerMarketingBanners}
         />
       ) : null}
 

@@ -13,6 +13,8 @@ import { SearchBar } from '@/components/storefront/SearchBar';
 import { StorefrontBrandMark } from '@/components/storefront/StorefrontBrandMark';
 import { formatCurrency } from '@/lib/currency';
 import { resolveStoreContact } from '@/lib/storefront/businessContact';
+import { resolveStoreTopBarConfig } from '@/lib/storefront/storeTopBar';
+import { formatTelHref } from '@/lib/storefront/storeConnectionActions';
 import { getStoreAccentColor } from '@/lib/config/storefrontDomains';
 import { getStoreHomeCopy } from '@/lib/storefront/storeCopy';
 import {
@@ -44,6 +46,10 @@ export function PharmacySiteHeader({ business, settings }) {
   const accent = getStoreAccentColor(settings, business?.category);
   const storeCopy = getStoreHomeCopy(business, {});
   const contact = resolveStoreContact({ business, settings });
+  const topBar = resolveStoreTopBarConfig(settings);
+  const topBarPhone = topBar.showPhone ? contact.phone : '';
+  const topBarPhoneHref = topBarPhone ? formatTelHref(topBarPhone) : null;
+  const topBarCity = topBar.showCity ? contact.city : '';
   const storeRoot = `/store/${businessDomain}`;
   const displayName = formatPharmacyStoreName(business?.business_name);
   const announcement = settings?.announcement || 'Genuine medicines · Pharmacist support';
@@ -87,10 +93,15 @@ export function PharmacySiteHeader({ business, settings }) {
       {/* Mobile utility strip */}
       <div className="border-b border-emerald-800/20 text-white lg:hidden" style={{ backgroundColor: accent }}>
         <div className="flex h-7 items-center justify-between gap-2 px-3 text-[10px] font-medium">
-          {contact.city ? (
+          {topBarPhone && topBarPhoneHref ? (
+            <a href={topBarPhoneHref} className="inline-flex min-w-0 items-center gap-1 truncate">
+              <Phone className="h-3 w-3 shrink-0" aria-hidden />
+              <span className="truncate">{topBarPhone}</span>
+            </a>
+          ) : topBarCity ? (
             <span className="inline-flex min-w-0 items-center gap-1 truncate">
               <MapPin className="h-3 w-3 shrink-0" aria-hidden />
-              {contact.city}
+              {topBarCity}
             </span>
           ) : (
             <span className="truncate opacity-90">{announcement}</span>
@@ -105,17 +116,17 @@ export function PharmacySiteHeader({ business, settings }) {
       <div className="hidden border-b border-emerald-800/20 text-white lg:block" style={{ backgroundColor: accent }}>
         <div className="mx-auto flex h-8 max-w-[1400px] items-center justify-between gap-3 px-4 text-[11px] font-medium sm:px-6 lg:px-8">
           <div className="flex min-w-0 items-center gap-3">
-            {contact.city ? (
+            {topBarPhone && topBarPhoneHref ? (
+              <a href={topBarPhoneHref} className="inline-flex items-center gap-1 text-white/85 hover:text-white">
+                <Phone className="h-3 w-3" aria-hidden />
+                {topBarPhone}
+              </a>
+            ) : null}
+            {topBarCity ? (
               <span className="inline-flex items-center gap-1 truncate text-white/90">
                 <MapPin className="h-3 w-3 shrink-0" aria-hidden />
-                {contact.city}
+                {topBarCity}
               </span>
-            ) : null}
-            {contact.phone ? (
-              <a href={`tel:${contact.phone}`} className="hidden items-center gap-1 text-white/85 hover:text-white xl:inline-flex">
-                <Phone className="h-3 w-3" aria-hidden />
-                {contact.phone}
-              </a>
             ) : null}
           </div>
           <p className="hidden min-w-0 flex-1 truncate text-center text-white/95 sm:block">{announcement}</p>

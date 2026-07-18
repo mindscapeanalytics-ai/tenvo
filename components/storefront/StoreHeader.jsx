@@ -28,6 +28,8 @@ import { isAutoMarketplaceStore, getMarketplaceNavLinks } from '@/lib/storefront
 import { isPharmacyElevatedStore, getPharmacyNavLinks, formatPharmacyStoreName } from '@/lib/storefront/pharmacyStorefront';
 import { resolveDomainKey } from '@/lib/config/domainKeyAliases';
 import { resolveStoreContact } from '@/lib/storefront/businessContact';
+import { resolveStoreTopBarConfig } from '@/lib/storefront/storeTopBar';
+import { formatTelHref } from '@/lib/storefront/storeConnectionActions';
 
 function EditorialMenuIcon({ className }) {
   return (
@@ -59,12 +61,14 @@ export function StoreHeader({ business, categories, settings }) {
   const storeCopy = getStoreHomeCopy(business, domainCfg);
 
   // Top bar settings
-  const topBarEnabled = settings?.storefront?.showTopBar !== false;
+  const topBar = resolveStoreTopBarConfig(settings);
+  const topBarEnabled = topBar.enabled;
   const showServiceStrip = settings?.storefront?.showServiceStrip !== false;
   const announcement = settings?.announcement || domainCfg.bannerText;
   const contact = resolveStoreContact({ business, settings });
-  const contactPhone = contact.phone;
-  const contactCity = contact.city || settings?.contact?.city;
+  const contactPhone = topBar.showPhone ? contact.phone : '';
+  const contactPhoneHref = contactPhone ? formatTelHref(contactPhone) : null;
+  const contactCity = topBar.showCity ? (contact.city || settings?.contact?.city) : '';
 
   useEffect(() => {
     const onScroll = () => setIsScrolled(window.scrollY > 40);
@@ -151,21 +155,21 @@ export function StoreHeader({ business, categories, settings }) {
           <div className="mx-auto flex max-w-[1400px] items-center justify-between gap-4">
             {/* Left: contact info */}
             <div className="flex min-w-0 items-center gap-4">
-              {contactPhone && (
+              {contactPhone && contactPhoneHref ? (
                 <a
-                  href={`tel:${contactPhone}`}
-                  className="flex items-center gap-1 whitespace-nowrap transition-colors hover:text-white/80"
+                  href={contactPhoneHref}
+                  className="flex items-center gap-1.5 whitespace-nowrap transition-colors hover:text-white/80"
                 >
-                  <Phone className="h-3 w-3 flex-shrink-0" />
-                  <span className="hidden sm:inline">{contactPhone}</span>
+                  <Phone className="h-3 w-3 flex-shrink-0" aria-hidden />
+                  <span>{contactPhone}</span>
                 </a>
-              )}
-              {contactCity && (
+              ) : null}
+              {contactCity ? (
                 <span className="hidden truncate text-white/80 md:flex items-center gap-1">
-                  <MapPin className="h-3 w-3 flex-shrink-0" />
+                  <MapPin className="h-3 w-3 flex-shrink-0" aria-hidden />
                   {contactCity}
                 </span>
-              )}
+              ) : null}
             </div>
 
             {/* Center: announcement */}

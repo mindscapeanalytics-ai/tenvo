@@ -3,13 +3,15 @@
 import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { Search, MapPin, X, ShoppingBag, PanelLeft } from 'lucide-react';
+import { Search, MapPin, X, ShoppingBag, PanelLeft, Phone } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useStorefront } from '@/lib/context/StorefrontContext';
 import { useCart } from '@/lib/hooks/storefront/useCart';
 import { SearchBar } from '@/components/storefront/SearchBar';
 import { StorefrontBrandMark } from '@/components/storefront/StorefrontBrandMark';
 import { resolveStoreContact } from '@/lib/storefront/businessContact';
+import { resolveStoreTopBarConfig } from '@/lib/storefront/storeTopBar';
+import { formatTelHref } from '@/lib/storefront/storeConnectionActions';
 import {
   formatRestaurantStoreName,
   getRestaurantConfig,
@@ -52,6 +54,10 @@ export function RestaurantSiteHeader({ business, settings }) {
   const productsUrl = `${storeRoot}/products`;
   const displayName = formatRestaurantStoreName(business?.business_name);
   const contact = resolveStoreContact({ business, settings });
+  const topBar = resolveStoreTopBarConfig(settings);
+  const topBarPhone = topBar.showPhone ? contact.phone : '';
+  const topBarPhoneHref = topBarPhone ? formatTelHref(topBarPhone) : null;
+  const topBarCity = topBar.showCity ? contact.city : '';
   const config = getRestaurantConfig(settings, businessDomain);
   const deliveryNotice = config.deliveryNotice;
   const isMenuPage = pathname.startsWith(`${storeRoot}/products`);
@@ -182,10 +188,16 @@ export function RestaurantSiteHeader({ business, settings }) {
             <span className="truncate">{deliveryNotice}</span>
           </span>
           <div className="flex shrink-0 items-center gap-3">
-            {contact.city ? (
+            {topBarPhone && topBarPhoneHref ? (
+              <a href={topBarPhoneHref} className="hidden items-center gap-1 text-white/95 md:inline-flex">
+                <Phone className="h-3 w-3" aria-hidden />
+                {topBarPhone}
+              </a>
+            ) : null}
+            {topBarCity ? (
               <span className="hidden items-center gap-1 text-white/95 md:inline-flex">
                 <MapPin className="h-3 w-3" aria-hidden />
-                {contact.city}
+                {topBarCity}
               </span>
             ) : null}
             <Link href={productsUrl} className="font-semibold text-white hover:text-white/90">

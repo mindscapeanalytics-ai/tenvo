@@ -152,6 +152,9 @@ export function StoreSettingsManager({ business, category }) {
     heroSubtitle: '',
     heroSlides: [],
     announcement: '',
+    showTopBar: true,
+    showTopBarPhone: false,
+    showTopBarCity: true,
     pageSections: [],
     brand: { primaryColor: '' },
     branding: {
@@ -1349,6 +1352,38 @@ export function StoreSettingsManager({ business, category }) {
                         ? 'Shown as a thin bar at the top of your homepage on smaller screens, and in the store header on desktop.'
                         : 'Shown in the store header when your template includes an announcement bar. Elevated homepage heroes may hide the mobile strip.'}
                 </p>
+              </div>
+              <div className="space-y-3 rounded-xl border border-gray-100 bg-gray-50/80 px-3 py-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">Show top bar</p>
+                    <p className="text-xs text-gray-500">
+                      City, announcement, and Track Order strip above the main header (desktop).
+                    </p>
+                  </div>
+                  <Switch
+                    checked={settings.showTopBar !== false}
+                    onCheckedChange={(v) => set('showTopBar', v)}
+                  />
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">Show phone on top bar</p>
+                    <p className="text-xs text-gray-500">
+                      Uses your Customer phone from Public Contact. Works across store templates.
+                    </p>
+                  </div>
+                  <Switch
+                    checked={settings.showTopBarPhone === true}
+                    onCheckedChange={(v) => set('showTopBarPhone', v)}
+                    disabled={!settings.phone?.trim()}
+                  />
+                </div>
+                {!settings.phone?.trim() ? (
+                  <p className="text-xs text-amber-700">
+                    Add a Customer phone under Public Contact to enable this.
+                  </p>
+                ) : null}
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">

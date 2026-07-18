@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import {
-  Search, MapPin, ChevronRight, ShoppingBag, LayoutGrid, Truck, X,
+  Search, MapPin, ChevronRight, ShoppingBag, LayoutGrid, Truck, X, Phone,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useStorefront } from '@/lib/context/StorefrontContext';
@@ -13,6 +13,8 @@ import { SearchBar } from '@/components/storefront/SearchBar';
 import { StorefrontBrandMark } from '@/components/storefront/StorefrontBrandMark';
 import { formatCurrency } from '@/lib/currency';
 import { resolveStoreContact } from '@/lib/storefront/businessContact';
+import { resolveStoreTopBarConfig } from '@/lib/storefront/storeTopBar';
+import { formatTelHref } from '@/lib/storefront/storeConnectionActions';
 import {
   formatSupermarketStoreName,
   getSupermarketConfig,
@@ -41,6 +43,10 @@ export function SupermarketSiteHeader({ business, settings }) {
   const storeRoot = `/store/${businessDomain}`;
   const displayName = formatSupermarketStoreName(business?.business_name);
   const contact = resolveStoreContact({ business, settings });
+  const topBar = resolveStoreTopBarConfig(settings);
+  const topBarPhone = topBar.showPhone ? contact.phone : '';
+  const topBarPhoneHref = topBarPhone ? formatTelHref(topBarPhone) : null;
+  const topBarCity = topBar.showCity ? contact.city : '';
   const config = getSupermarketConfig(settings, businessDomain, business?.category);
   const freeShip = settings?.freeShippingThreshold;
   const deliveryNotice = config.deliveryNotice || settings?.announcement || SUPERMARKET_DELIVERY_NOTICE;
@@ -77,10 +83,16 @@ export function SupermarketSiteHeader({ business, settings }) {
             <span className="truncate">{deliveryNotice}</span>
           </span>
           <div className="flex shrink-0 items-center gap-3">
-            {contact.city ? (
+            {topBarPhone && topBarPhoneHref ? (
+              <a href={topBarPhoneHref} className="hidden items-center gap-1 text-white/95 md:inline-flex">
+                <Phone className="h-3 w-3" aria-hidden />
+                {topBarPhone}
+              </a>
+            ) : null}
+            {topBarCity ? (
               <span className="hidden items-center gap-1 text-white/95 md:inline-flex">
                 <MapPin className="h-3 w-3" aria-hidden />
-                {contact.city}
+                {topBarCity}
               </span>
             ) : null}
             {typeof freeShip === 'number' && freeShip > 0 ? (
