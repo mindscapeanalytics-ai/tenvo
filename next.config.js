@@ -103,6 +103,8 @@ const nextConfig = {
       { protocol: 'https', hostname: 'comfy.sg' },
       { protocol: 'https', hostname: 'www.comfy.sg' },
       { protocol: 'https', hostname: '**.comfy.sg' },
+      { protocol: 'https', hostname: 'api.fantasticfurniture.com.au' },
+      { protocol: 'https', hostname: '**.fantasticfurniture.com.au' },
       // Marine archive / restaurant secondary hosts
       { protocol: 'https', hostname: 'dwgtrading.com' },
       { protocol: 'https', hostname: 'www.dwgtrading.com' },

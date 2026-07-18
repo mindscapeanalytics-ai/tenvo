@@ -5,8 +5,13 @@ import { SmartProductImage } from '@/components/storefront/SmartProductImage';
 import { StoreMarqueeRow } from '@/components/storefront/sections/shared/StoreMarqueeRow';
 import { cn } from '@/lib/utils';
 import { STORE_SECTION_HEADING } from '@/lib/utils/typography';
+import { getFallbackProductImageUrl } from '@/lib/storefront/productImageFallback';
 
 function CategoryTile({ cat }) {
+  const fallback = getFallbackProductImageUrl(
+    { name: cat.label || cat.id || 'furniture', id: cat.id || cat.slug || 'furniture' },
+    'furniture'
+  );
   return (
     <Link
       href={cat.href}
@@ -24,6 +29,7 @@ function CategoryTile({ cat }) {
           alt={cat.label || ''}
           fill
           sizes="72px"
+          fallbackSrc={fallback !== cat.image ? fallback : undefined}
           className="object-cover transition duration-500 motion-safe:group-hover:scale-110"
         />
       </div>

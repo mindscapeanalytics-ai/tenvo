@@ -23,6 +23,7 @@ import {
   formatFurnitureStoreName,
   resolveFurnitureCategoryFallbackImage,
 } from '@/lib/storefront/furnitureStorefront';
+import { getFallbackProductImageUrl } from '@/lib/storefront/productImageFallback';
 
 /**
  * Woodin elevated furniture homepage — Homelo / COMFY / Fantastic Furniture flow.
@@ -163,7 +164,16 @@ export function FurnitureHomeSections({
                       : 'grid-cols-2 sm:grid-cols-3'
               )}
             >
-              {roomCollections.map((room) => (
+              {roomCollections.map((room) => {
+                const curatedFb = resolveFurnitureCategoryFallbackImage(room);
+                const roomFallback =
+                  curatedFb && curatedFb !== room.image
+                    ? curatedFb
+                    : getFallbackProductImageUrl(
+                        { name: room.label || room.id || 'furniture', id: room.id || 'room' },
+                        'furniture'
+                      );
+                return (
                 <Link
                   key={room.id}
                   href={room.href}
@@ -174,7 +184,7 @@ export function FurnitureHomeSections({
                     alt={room.label || ''}
                     fill
                     className="object-cover transition duration-500 group-hover:scale-105"
-                    fallbackSrc={resolveFurnitureCategoryFallbackImage(room)}
+                    fallbackSrc={roomFallback}
                     placeholderLabel={room.label}
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-stone-950/80 via-stone-900/20 to-transparent" />
@@ -185,7 +195,8 @@ export function FurnitureHomeSections({
                     ) : null}
                   </div>
                 </Link>
-              ))}
+                );
+              })}
             </div>
           </div>
         </section>
@@ -222,7 +233,16 @@ export function FurnitureHomeSections({
                 )}
               >
                 <div className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-stone-100 shadow-md">
-                  <SmartProductImage src={banner.image} alt="" fill className="object-cover" />
+                  <SmartProductImage
+                    src={banner.image}
+                    alt=""
+                    fill
+                    className="object-cover"
+                    fallbackSrc={getFallbackProductImageUrl(
+                      { name: banner.title || banner.id || 'furniture', id: banner.id || 'editorial' },
+                      'furniture'
+                    )}
+                  />
                 </div>
                 <div className="max-w-lg">
                   <p className="text-xs font-semibold uppercase tracking-wider text-amber-800">{banner.eyebrow}</p>

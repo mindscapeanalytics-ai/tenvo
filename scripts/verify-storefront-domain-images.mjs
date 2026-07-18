@@ -76,15 +76,10 @@ assert.notEqual(
 );
 
 const furnitureFile = fs.readFileSync(path.join(root, 'lib/storefront/furnitureStorefront.js'), 'utf8');
-assert.doesNotMatch(
-  furnitureFile,
-  /FURNITURE_DEMO_HERO_SLIDES[\s\S]*?comfy\.sg/,
-  'Furniture demo hero slides must not use flaky comfy.sg CDN'
-);
 assert.match(
   furnitureFile,
-  /FURNITURE_DEMO_HERO_SLIDES[\s\S]*?buildUnsplashImageUrl/,
-  'Furniture demo heroes must use Unsplash'
+  /FURNITURE_DEMO_HERO_SLIDES[\s\S]*?comfy\.sg/,
+  'Furniture demo heroes must restore curated comfy.sg imagery'
 );
 
 const elevated = fs.readFileSync(
@@ -98,7 +93,12 @@ assert.match(
 );
 
 const nextConfig = fs.readFileSync(path.join(root, 'next.config.js'), 'utf8');
-for (const host of ['assets.website-files.com', 'synergize.pk', 'comfy.sg']) {
+for (const host of [
+  'assets.website-files.com',
+  'synergize.pk',
+  'comfy.sg',
+  'fantasticfurniture.com.au',
+]) {
   assert.match(nextConfig, new RegExp(host.replace(/\./g, '\\.')), `next.config must allowlist ${host}`);
 }
 
