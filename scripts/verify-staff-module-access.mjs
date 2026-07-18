@@ -7,6 +7,7 @@ import {
     STAFF_ACCESS_MODULE_IDS,
     extractModuleAccess,
     getDefaultModulesForRole,
+    buildPermissionsPayload,
     permissionToModule,
 } from '../lib/rbac/moduleAccess.js';
 import {
@@ -98,6 +99,12 @@ assert(extractModuleAccess({ foo: 1 }) === null, 'extractModuleAccess({ foo: 1 }
 const extracted = extractModuleAccess({ modules: { pos: true } });
 assert(extracted != null && extracted.pos === true, 'extractModuleAccess pos true');
 assert(extracted != null && extracted.inventory === false, 'extractModuleAccess inventory false');
+
+// 10. buildPermissionsPayload for cashier defaults
+assert(
+    buildPermissionsPayload(getDefaultModulesForRole('cashier')).modules.pos === true,
+    'buildPermissionsPayload(cashier defaults).modules.pos === true'
+);
 
 console.log(`\n${passed} passed, ${failed} failed`);
 if (failed > 0) {
