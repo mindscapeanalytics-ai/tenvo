@@ -1,7 +1,7 @@
 # Marketing Demo Hero Domain Awareness — Design Spec
 
 **Date:** 2026-07-18  
-**Status:** Approved (pending implementation plan)  
+**Status:** Implemented  
 **Scope:** Homepage marketing sections that show demo storefront imagery, plus shared helpers consumed by `/solutions/*`, `/features`, `/why-tenvo`, and `/demo`  
 **Non-scope:** Changing live public storefront hero UX, re-seeding demo catalogs, redesigning marketing layout/copy beyond image assignment, case-study placeholder images
 

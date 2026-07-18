@@ -4,6 +4,7 @@ import { useState, memo } from 'react';
 import { Portlet } from '@/components/ui/portlet';
 import { ShieldAlert, AlertTriangle, CheckCircle2, ShieldCheck, RefreshCw, Eye } from 'lucide-react';
 import { runSystemAuditAction } from '@/lib/actions/premium/ai/agentic';
+import { useResolvedBusinessId } from '@/lib/hooks/useResolvedBusinessId';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 
@@ -27,13 +28,14 @@ export const AgenticAuditPortlet = memo(function AgenticAuditPortlet({
     businessId?: string;
     compact?: boolean;
 }) {
+    const resolvedBusinessId = useResolvedBusinessId(businessId);
     const [result, setResult] = useState<AuditResult | null>(null);
     const [scanning, setScanning] = useState(false);
 
     const runAudit = async () => {
-        if (!businessId) return;
+        if (!resolvedBusinessId) return;
         setScanning(true);
-        const res = await runSystemAuditAction(businessId);
+        const res = await runSystemAuditAction(resolvedBusinessId);
         if (res.success) {
             setResult(res as unknown as AuditResult);
         }

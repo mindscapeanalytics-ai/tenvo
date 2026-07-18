@@ -13,6 +13,7 @@ import {
   Layers,
   Pill,
   Scissors,
+  Ship,
   Shirt,
   ShoppingBag,
   ShoppingBasket,
@@ -46,6 +47,7 @@ const ICON_MAP = {
   car: Car,
   'car-front': CarFront,
   stethoscope: Stethoscope,
+  ship: Ship,
   store: Store,
 };
 
@@ -96,10 +98,7 @@ function StoreSlide({ store, active, priority = false }) {
     setImgFailed(false);
   }, [store.heroImage]);
 
-  const fallbackImage =
-    'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?ixlib=rb-4.1.0&auto=format&fit=crop&w=1920&q=85';
-
-  const displaySrc = imgFailed ? fallbackImage : imgSrc;
+  const showImage = Boolean(imgSrc) && !imgFailed;
 
   return (
     <div
@@ -114,21 +113,23 @@ function StoreSlide({ store, active, priority = false }) {
         className={cn('absolute inset-0 z-0', store.slideBackdropClass || 'bg-slate-100')}
         aria-hidden
       />
-      <Image
-        src={displaySrc || fallbackImage}
-        alt=""
-        fill
-        priority={priority}
-        sizes="100vw"
-        className={cn(
-          'z-[1]',
-          store.heroObjectFit || 'object-cover',
-          store.heroObjectPosition || 'object-center'
-        )}
-        onError={() => {
-          if (!imgFailed) setImgFailed(true);
-        }}
-      />
+      {showImage ? (
+        <Image
+          src={imgSrc}
+          alt=""
+          fill
+          priority={priority}
+          sizes="100vw"
+          className={cn(
+            'z-[1]',
+            store.heroObjectFit || 'object-cover',
+            store.heroObjectPosition || 'object-center'
+          )}
+          onError={() => {
+            if (!imgFailed) setImgFailed(true);
+          }}
+        />
+      ) : null}
 
       <div
         className={cn(

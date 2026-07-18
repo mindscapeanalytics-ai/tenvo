@@ -14,9 +14,11 @@ import { getAnalyticsBundleAction } from '@/lib/actions/premium/ai/analytics';
 import { getDomainColors } from '@/lib/domainColors';
 import { resolveOperationsProfile } from '@/lib/dashboard/domainOperationsIntelligence';
 import { getVisualAnalyticsCopy } from '@/lib/dashboard/visualAnalyticsLabels';
+import { useResolvedBusinessId } from '@/lib/hooks/useResolvedBusinessId';
 import { cn } from '@/lib/utils';
 
 interface VisualAnalyticsPanelProps {
+    /** Optional — falls back to BusinessContext when parents pass `business?.id` during hydrate */
     businessId?: string;
     category?: string;
     business?: { name?: string; country?: string; settings?: Record<string, unknown> } | null;
@@ -32,9 +34,9 @@ function buildDateFilter(dateRange?: { from: Date; to: Date }) {
     return { from, to };
 }
 
-function hubAnalyticsQueryKey(businessId?: string, dateRange?: { from: Date; to: Date }) {
+function hubAnalyticsQueryKey(businessId: string, dateRange?: { from: Date; to: Date }) {
     const filter = buildDateFilter(dateRange);
-    return ['hubAnalytics', businessId || '', filter.from || '', filter.to || ''];
+    return ['hubAnalytics', businessId, filter.from || '', filter.to || ''] as const;
 }
 
 const CHART_ACCENTS = {
@@ -103,6 +105,17 @@ function ChartShell({
     );
 }
 
+function AnalyticsSkeleton({ containerRef }: { containerRef?: React.Ref<HTMLDivElement> }) {
+    return (
+        <div ref={containerRef} className="grid grid-cols-1 md:grid-cols-2 gap-3 animate-pulse">
+            <div className="md:col-span-2 h-[300px] rounded-2xl bg-gradient-to-br from-slate-100 to-slate-50" />
+            {[1, 2, 3].map((i) => (
+                <div key={i} className="h-[280px] rounded-2xl bg-slate-100" />
+            ))}
+        </div>
+    );
+}
+
 export function VisualAnalyticsPanel({
     businessId,
     category = 'retail-shop',
@@ -111,6 +124,7 @@ export function VisualAnalyticsPanel({
     dateRange,
     currency = 'PKR',
 }: VisualAnalyticsPanelProps) {
+    const resolvedBusinessId = useResolvedBusinessId(businessId);
     const colors = getDomainColors(category);
     const copy = useMemo(
         () => getVisualAnalyticsCopy(resolveOperationsProfile(category, domainKnowledge || undefined, business)),
@@ -142,11 +156,17 @@ export function VisualAnalyticsPanel({
         return () => observer.disconnect();
     }, [shouldLoad]);
 
+    const canFetch = Boolean(shouldLoad && resolvedBusinessId);
+
     const analyticsQuery = useQuery({
-        queryKey: hubAnalyticsQueryKey(businessId, dateRange),
-        enabled: Boolean(shouldLoad && businessId),
+        queryKey: hubAnalyticsQueryKey(resolvedBusinessId || '__pending__', dateRange),
+        enabled: canFetch,
         queryFn: async () => {
-            const bundle = await getAnalyticsBundleAction(businessId, dateFilter);
+            // enabled requires resolvedBusinessId; narrow for TypeScript + runtime safety
+            if (!resolvedBusinessId) {
+                throw new Error('VisualAnalyticsPanel: businessId required when analytics query is enabled');
+            }
+            const bundle = await getAnalyticsBundleAction(resolvedBusinessId, dateFilter);
             if (!bundle?.success) {
                 return { salesTrend: [], topProducts: [], categoryData: [] };
             }
@@ -155,24 +175,20 @@ export function VisualAnalyticsPanel({
         staleTime: 60_000,
     });
 
+    // Keep skeleton while tenant id is still hydrating — never treat that as “no sales history”.
     const loading =
+        !resolvedBusinessId ||
         !shouldLoad ||
         analyticsQuery.isLoading ||
         (analyticsQuery.isFetching && !analyticsQuery.data);
+
+    if (loading) {
+        return <AnalyticsSkeleton containerRef={containerRef} />;
+    }
+
     const salesData = (analyticsQuery.data?.salesTrend || []) as Array<Record<string, unknown>>;
     const topProducts = (analyticsQuery.data?.topProducts || []) as Array<Record<string, unknown>>;
     const categoryData = (analyticsQuery.data?.categoryData || []) as Array<Record<string, unknown>>;
-
-    if (loading) {
-        return (
-            <div ref={containerRef} className="grid grid-cols-1 md:grid-cols-2 gap-3 animate-pulse">
-                <div className="md:col-span-2 h-[300px] rounded-2xl bg-gradient-to-br from-slate-100 to-slate-50" />
-                {[1, 2, 3].map((i) => (
-                    <div key={i} className="h-[280px] rounded-2xl bg-slate-100" />
-                ))}
-            </div>
-        );
-    }
 
     const hasData =
         salesData.some((d) => Number(d.revenue) > 0 || Number(d.profit) > 0) ||

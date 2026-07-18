@@ -24,6 +24,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { getAnalyticsBundleAction } from '@/lib/actions/premium/ai/analytics';
+import { useResolvedBusinessId } from '@/lib/hooks/useResolvedBusinessId';
 
 function buildDateFilter(dateRange) {
   if (!dateRange?.from || !dateRange?.to) return {};
@@ -54,6 +55,7 @@ function formatRangeLabel(dateRange) {
  * @param {{ from: Date; to: Date }} [props.dateRange] Dashboard header filter
  */
 export function AdvancedAnalytics({ businessId, category = 'retail-shop', currency = 'PKR', dateRange }) {
+  const resolvedBusinessId = useResolvedBusinessId(businessId);
   const colors = getDomainColors(category);
   const [loading, setLoading] = useState(true);
   const [salesData, setSalesData] = useState([]);
@@ -68,11 +70,11 @@ export function AdvancedAnalytics({ businessId, category = 'retail-shop', curren
   });
 
   const loadData = useCallback(async () => {
-    if (!businessId) return;
+    if (!resolvedBusinessId) return;
     setLoading(true);
     try {
       const filter = buildDateFilter(dateRange);
-      const bundle = await getAnalyticsBundleAction(businessId, filter);
+      const bundle = await getAnalyticsBundleAction(resolvedBusinessId, filter);
       if (bundle.success && bundle.data) {
         setSalesData(bundle.data.salesTrend || []);
         setTopProducts(bundle.data.topProducts || []);
@@ -84,7 +86,7 @@ export function AdvancedAnalytics({ businessId, category = 'retail-shop', curren
     } finally {
       setLoading(false);
     }
-  }, [businessId, dateRange]);
+  }, [resolvedBusinessId, dateRange]);
 
   useEffect(() => {
     void Promise.resolve().then(() => loadData());
@@ -135,7 +137,8 @@ export function AdvancedAnalytics({ businessId, category = 'retail-shop', curren
     },
   ], [kpi, currency, salesData]);
 
-  if (loading) {
+  // Wait for tenant hydrate — do not render empty KPI zeros as if analytics finished
+  if (!resolvedBusinessId || loading) {
     return (
       <div className="flex items-center justify-center h-64">
         <RefreshCcw className="w-8 h-8 text-wine animate-spin" />

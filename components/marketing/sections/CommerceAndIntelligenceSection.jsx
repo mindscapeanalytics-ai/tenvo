@@ -32,7 +32,7 @@ const DEMO = {
   storefront: 'demo-boutique',
   pos: 'demo-supermarket',
   restaurant: 'demo-restaurant',
-  orders: 'demo-pharmacy',
+  orders: 'demo-autoparts',
 };
 
 const PILLARS = [
@@ -68,7 +68,7 @@ const PILLARS = [
     description:
       'Table service, kitchen coordination, and front-of-house selling connect to the same product and revenue picture as retail. Kitchen display on supported Business+ plans.',
     demoDomain: DEMO.restaurant,
-    demoName: 'Kitchen demo',
+    demoName: 'Restaurant demo',
     className: 'lg:col-span-4',
     imageClassName: 'aspect-[4/3]',
   },
@@ -80,7 +80,7 @@ const PILLARS = [
     description:
       'Web orders, counter sales, and B2B requests flow into a single operational queue. Pack, ship, reconcile, and support customers without retyping data.',
     demoDomain: DEMO.orders,
-    demoName: 'Pharmacy demo',
+    demoName: 'Auto parts demo',
     className: 'lg:col-span-4',
     imageClassName: 'aspect-[4/3]',
   },

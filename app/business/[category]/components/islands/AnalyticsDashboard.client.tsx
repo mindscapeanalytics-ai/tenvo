@@ -10,6 +10,7 @@ import { VisualAnalyticsPanel } from './VisualAnalyticsPanel.client';
 import { motion } from 'framer-motion';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { BarChart3 } from 'lucide-react';
+import { useResolvedBusinessId } from '@/lib/hooks/useResolvedBusinessId';
 
 interface ProductLike {
     id?: string | number;
@@ -62,6 +63,7 @@ export function AnalyticsDashboard({
     dateRange,
     onQuickAction,
 }: AnalyticsDashboardProps) {
+    const resolvedBusinessId = useResolvedBusinessId(businessId);
     const latestInvoiceDate = invoices
         .map((inv) => inv?.date ? new Date(inv.date) : null)
         .filter((d): d is Date => !!d && !Number.isNaN(d.getTime()))
@@ -179,7 +181,7 @@ export function AnalyticsDashboard({
 
                         <TabsContent value="predictive" className="m-0 p-3 overflow-y-auto max-h-[420px]">
                             <DemandForecast
-                                businessId={businessId}
+                                businessId={resolvedBusinessId}
                                 category={category}
                                 products={products}
                                 dateRange={dateRange}
@@ -188,7 +190,7 @@ export function AnalyticsDashboard({
 
                         <TabsContent value="studio" className="m-0 p-2.5">
                             <VisualAnalyticsPanel
-                                businessId={businessId}
+                                businessId={resolvedBusinessId}
                                 category={category}
                                 business={business}
                                 domainKnowledge={domainKnowledge as Record<string, unknown> | null}
@@ -199,7 +201,7 @@ export function AnalyticsDashboard({
 
                         <TabsContent value="planning" className="m-0 p-3">
                             <PredictivePlanningPortlet
-                                businessId={businessId}
+                                businessId={resolvedBusinessId}
                                 domainKnowledge={domainKnowledge}
                                 dateRange={dateRange}
                                 layout="compact"
@@ -207,7 +209,7 @@ export function AnalyticsDashboard({
                         </TabsContent>
 
                         <TabsContent value="audit" className="m-0 p-3">
-                            <AgenticAuditPortlet businessId={businessId} compact />
+                            <AgenticAuditPortlet businessId={resolvedBusinessId} compact />
                         </TabsContent>
                     </CardContent>
                 </Card>

@@ -142,7 +142,11 @@ for (const key of EXPECTED_PACKAGES) {
   } else {
     const heroLines = channelHeroMatch[1]
       .split('\n')
-      .filter((line) => /https?:|fashionStockImage|unsplash|AUTO_PARTS|FITNESS_ASSETS/.test(line));
+      .filter((line) =>
+        /https?:|fashionStockImage|unsplash|AUTO_PARTS|FITNESS_ASSETS|TENVO_VEHICLES|FURNITURE_MARKETING|PHARMACY_MARKETING/.test(
+          line
+        )
+      );
     if (heroLines.length < 3) mark(`${key} must define 3 PACKAGE_CHANNEL_HERO_IMAGES`);
   }
   if (!catalog.includes(`key: '${key}'`) && !catalog.includes(`key:'${key}'`)) {

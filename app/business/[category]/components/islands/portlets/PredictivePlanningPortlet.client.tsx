@@ -4,6 +4,7 @@ import { useState, memo, useEffect } from 'react';
 import { Portlet } from '@/components/ui/portlet';
 import { Sparkles, TrendingUp, TrendingDown, Info, ShoppingCart } from 'lucide-react';
 import { getDemandForecastAction } from '@/lib/actions/premium/ai/analytics';
+import { useResolvedBusinessId } from '@/lib/hooks/useResolvedBusinessId';
 import { cn } from '@/lib/utils';
 
 interface DemandForecastItem {
@@ -99,18 +100,24 @@ export const PredictivePlanningPortlet = memo(function PredictivePlanningPortlet
     dateRange,
     layout = 'cards',
 }: PredictivePlanningPortletProps) {
+    const resolvedBusinessId = useResolvedBusinessId(businessId);
     const [data, setData] = useState<DemandForecastItem[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         async function load() {
-            if (!businessId) return;
+            if (!resolvedBusinessId) {
+                setData([]);
+                setLoading(true);
+                return;
+            }
+            setLoading(true);
             const dk =
                 domainKnowledge && typeof domainKnowledge === 'object'
                     ? (domainKnowledge as Record<string, unknown>)
                     : null;
             const res = await getDemandForecastAction(
-                businessId,
+                resolvedBusinessId,
                 (dk?.intelligence as Record<string, unknown> | undefined) ?? {},
                 true,
                 buildDateFilter(dateRange)
@@ -123,7 +130,7 @@ export const PredictivePlanningPortlet = memo(function PredictivePlanningPortlet
             setLoading(false);
         }
         void load();
-    }, [businessId, domainKnowledge, dateRange]);
+    }, [resolvedBusinessId, domainKnowledge, dateRange]);
 
     const lowConfidenceCount = data.filter((row) => (row.confidence || 0) < 0.45).length;
 
