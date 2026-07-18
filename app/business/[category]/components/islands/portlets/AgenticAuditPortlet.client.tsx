@@ -55,7 +55,7 @@ export const AgenticAuditPortlet = memo(function AgenticAuditPortlet({
                     size="icon" 
                     className="h-6 w-6" 
                     onClick={runAudit}
-                    disabled={scanning || !businessId}
+                    disabled={scanning || !resolvedBusinessId}
                 >
                     <RefreshCw className={cn("w-3.5 h-3.5 text-gray-400", scanning && "animate-spin")} />
                 </Button>
@@ -68,12 +68,12 @@ export const AgenticAuditPortlet = memo(function AgenticAuditPortlet({
                 )}>
                     <ShieldCheck className={cn('text-gray-100 mb-3', compact ? 'w-8 h-8' : 'w-10 h-10')} />
                     <p className="text-xs font-bold text-gray-500 mb-3 uppercase tracking-tighter">
-                        {businessId ? 'System Integrity Scan Ready' : 'Select a workspace to run audit'}
+                        {resolvedBusinessId ? 'System Integrity Scan Ready' : 'Select a workspace to run audit'}
                     </p>
                     <Button 
                         size="sm" 
                         onClick={runAudit}
-                        disabled={!businessId}
+                        disabled={!resolvedBusinessId}
                         className="bg-gray-900 text-white hover:bg-black font-semibold text-[10px] uppercase tracking-widest h-8 px-5 rounded-full disabled:opacity-50"
                     >
                         Run Deep Audit

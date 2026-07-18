@@ -4,6 +4,7 @@ import { Package, Rocket, Info } from 'lucide-react';
 import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { getDomainKnowledgeForBusiness } from '@/lib/utils/businessRegionalContext';
 import { useBusiness } from '@/lib/context/BusinessContext';
+import { useResolvedBusinessId } from '@/lib/hooks/useResolvedBusinessId';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -51,6 +52,7 @@ export const DemandForecast = memo(function DemandForecast({
     void _products;
     void _invoices;
     const { business } = useBusiness();
+    const resolvedBusinessId = useResolvedBusinessId(businessId);
     const domainKnowledge = (
         propDomainKnowledge ?? getDomainKnowledgeForBusiness(category, business)
     ) as DomainKnowledgeSlice;
@@ -64,18 +66,24 @@ export const DemandForecast = memo(function DemandForecast({
 
     useEffect(() => {
         async function load() {
-            if (!businessId) {
+            if (!resolvedBusinessId) {
                 setForecastData([]);
-                setLoading(false);
+                setLoading(true);
                 return;
             }
 
+            setLoading(true);
             try {
                 const dk = (
                     propDomainKnowledge ?? getDomainKnowledgeForBusiness(category, business)
                 ) as DomainKnowledgeSlice;
                 const intel = dk?.intelligence ?? {};
-                const res = await getDemandForecastAction(businessId, intel, true, buildDateFilter(dateRange));
+                const res = await getDemandForecastAction(
+                    resolvedBusinessId,
+                    intel,
+                    true,
+                    buildDateFilter(dateRange)
+                );
                 if (res && res.success) {
                     setForecastData((res.data as ForecastRow[]) || []);
                 } else {
@@ -89,7 +97,7 @@ export const DemandForecast = memo(function DemandForecast({
             }
         }
         void load();
-    }, [businessId, category, propDomainKnowledge, business, rangeFromKey, rangeToKey]);
+    }, [resolvedBusinessId, category, propDomainKnowledge, business, rangeFromKey, rangeToKey]);
 
     const chartData = useMemo(
         () =>
