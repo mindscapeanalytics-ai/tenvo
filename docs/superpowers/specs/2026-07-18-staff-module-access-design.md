@@ -1,7 +1,7 @@
 # Staff Module Access (Owner Role Rights) — Design Spec
 
 **Date:** 2026-07-18  
-**Status:** Ready for user review (before implementation plan)  
+**Status:** Approved — implementation plan at `docs/superpowers/plans/2026-07-18-staff-module-access.md`  
 **Approach:** Preset role templates + per-member module overrides (Zoho / Busy pattern)  
 **Not chosen:** Preset-only tightening alone; full Odoo-style custom role builder (deferred)
 
