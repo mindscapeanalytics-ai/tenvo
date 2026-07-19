@@ -60,6 +60,20 @@ if (!exists(bootstrapPath)) {
   if (!bootstrap.includes('getInvoicesAction')) {
     mark('hubShellBootstrap must include invoices');
   }
+  if (!bootstrap.includes('getCustomersAction')) {
+    mark('hubShellBootstrap must include lean customers for CRM first paint');
+  }
+  if (!bootstrap.includes('HUB_SHELL_CUSTOMER_LIMIT')) {
+    mark('hubShellBootstrap must use HUB_SHELL_CUSTOMER_LIMIT');
+  }
+}
+
+const customerAction = read('lib/actions/basic/customer.js');
+if (!customerAction.includes('isTrustedAuthBypassActive')) {
+  mark('getCustomersAction must honor trusted auth bypass ALS');
+}
+if (!customerAction.includes('CUSTOMER_LIST_SELECT') && !customerAction.includes('lean')) {
+  mark('getCustomersAction must support lean list select');
 }
 
 const trustedBypass = 'lib/actions/_shared/trustedAuthBypass.js';
@@ -152,6 +166,9 @@ if (!exists(constantsPath)) {
   if (!constants.includes('export const HUB_SHELL_PRODUCT_PAGE_LIMIT')) {
     mark('hubShellBootstrapConstants must export HUB_SHELL_PRODUCT_PAGE_LIMIT');
   }
+  if (!constants.includes('export const HUB_SHELL_CUSTOMER_LIMIT')) {
+    mark('hubShellBootstrapConstants must export HUB_SHELL_CUSTOMER_LIMIT');
+  }
 }
 
 // Phase 2: lean KPIs, slim product list, sales headers-only, finance session cache
@@ -198,6 +215,18 @@ if (!exists(constantsPath)) {
     if (!loader.includes('serializeDecimalsDeep')) {
       mark('loadInitialHubShell must serializeDecimalsDeep for client props');
     }
+    if (!loader.includes('customers: shell.customers')) {
+      mark('loadInitialHubShell must pass customers into RSC payload');
+    }
+  }
+
+  const dashClient = read('app/business/[category]/DashboardClient.jsx');
+  if (dashClient.includes("fetchSales({ mode: 'full' })") &&
+      /activeTab === 'invoices'[\s\S]{0,400}mode: 'full'/.test(dashClient)) {
+    mark('DashboardClient invoices tab must not force fetchSales full (paint from shell)');
+  }
+  if (!dashClient.includes('fetchCustomers')) {
+    mark('DashboardClient must use fetchCustomers for CRM tab');
   }
 
   if (!exists('components/dashboard/HubShellHydrator.jsx')) {

@@ -545,6 +545,45 @@ export function InventoryManager({
     writeInventoryMobileViewPreference(normalized);
   }, [setViewMode, setMobileViewMode]);
 
+  const gridUpgradeInFlightRef = useRef(false);
+  const needsLeanGridUpgrade = useMemo(
+    () =>
+      products.some(
+        (p) => p?._detailLevel === 'list' || p?._batchesDeferred || p?._variantsDeferred
+      ),
+    [products]
+  );
+
+  // Busy/Excel need batch + full variant fields; shell paints lean list for Visual first.
+  useEffect(() => {
+    if (viewMode !== 'busy' && viewMode !== 'cards') return;
+    if (!businessId || !needsLeanGridUpgrade || gridUpgradeInFlightRef.current) return;
+    gridUpgradeInFlightRef.current = true;
+    let cancelled = false;
+    (async () => {
+      try {
+        if (typeof refreshData === 'function') {
+          await refreshData();
+        } else {
+          const res = await getProductsAction(businessId, {
+            includeSerials: false,
+            detailLevel: 'grid',
+          });
+          if (!cancelled && res.success) {
+            setProducts(deduplicateProducts(scopeProductsToBusiness(res.products, businessId)));
+          }
+        }
+      } catch (err) {
+        console.warn('Inventory grid upgrade skipped:', err?.message || err);
+      } finally {
+        if (!cancelled) gridUpgradeInFlightRef.current = false;
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [viewMode, businessId, refreshData, needsLeanGridUpgrade]);
+
   const handleMobileViewModeChange = useCallback((mode) => {
     const normalized = normalizeInventoryMobileView(mode);
     setMobileViewMode(normalized);

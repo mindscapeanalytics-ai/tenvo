@@ -409,6 +409,7 @@ model customers {
   @@index([business_id, email])
   @@index([business_id, phone])
   @@index([is_deleted])
+  @@index([business_id, is_deleted, is_active, created_at(sort: Desc)], map: "idx_customers_business_list")
 }
 
 model gl_accounts {

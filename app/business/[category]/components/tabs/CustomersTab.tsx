@@ -30,6 +30,8 @@ interface CustomersTabProps {
     onAdd?: () => void;
     category?: string;
     businessId?: string;
+    /** True while CRM list is still loading (shell miss). */
+    isLoading?: boolean;
 }
 
 export function CustomersTab({
@@ -39,6 +41,7 @@ export function CustomersTab({
     onAdd,
     category = 'retail-shop',
     businessId,
+    isLoading = false,
 }: CustomersTabProps) {
     const params = useParams();
     const [searchTerm, setSearchTerm] = useState('');
@@ -67,7 +70,11 @@ export function CustomersTab({
                 icon={Users}
                 iconClassName="bg-emerald-100 text-emerald-600"
                 title="Customers"
-                subtitle={`${customers.length} in database`}
+                subtitle={
+                    isLoading && customers.length === 0
+                        ? 'Loading customers…'
+                        : `${customers.length} in database`
+                }
                 primaryAction={{
                     label: 'Add',
                     icon: Plus,

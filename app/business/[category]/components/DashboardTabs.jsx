@@ -118,6 +118,7 @@ export function DashboardTabs({
     financeInitialTab = null,
     onFinanceInitialTabConsumed,
     inventoryLoading = false,
+    customersLoading = false,
     isAnalyticsLoading = false,
     isSalesLoading = false,
     isInventoryLoading = false,
@@ -432,7 +433,9 @@ export function DashboardTabs({
                                 category={category}
                                 onProductSave={handleSaveProduct}
                                 onProductDelete={handleDeleteProduct}
-                                refreshData={() => fetchInventory({ force: true })}
+                                refreshData={() =>
+                                  fetchInventory({ force: true, detailLevel: 'grid', fullCatalog: true })
+                                }
                                 domainKnowledge={domainKnowledge}
                                 invoices={filteredInvoices}
                                 customers={filteredCustomers}
@@ -519,6 +522,7 @@ export function DashboardTabs({
                                 customers={filteredCustomers}
                                 businessId={activeBusinessId}
                                 category={category}
+                                isLoading={customersLoading}
                                 onCustomerDelete={handleDeleteCustomer}
                                 onAdd={() => setShowCustomerForm(true)}
                                 onUpdate={(customer) => {

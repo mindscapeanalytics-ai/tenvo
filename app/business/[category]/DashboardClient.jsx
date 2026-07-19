@@ -504,6 +504,7 @@ function BusinessDashboardContent() {
     fetchFinance,
     fetchInventory,
     fetchSales,
+    fetchCustomers,
     fetchPurchases,
     fetchManufacturing,
     fetchPayroll,
@@ -556,7 +557,7 @@ function BusinessDashboardContent() {
     [products]
   );
 
-  // Ensure active tab data is loaded; upgrade lean bootstrap lists when opening heavy tabs.
+  // Ensure active tab data is loaded. Paint from shell first; only fetch what the tab needs.
   // Avoid depending on full `products` / moduleReady object identity (re-fetch storms).
   useEffect(() => {
     if (!business?.id || !hubReady) return;
@@ -566,7 +567,15 @@ function BusinessDashboardContent() {
       return;
     }
 
-    if (['inventory', 'batches', 'warehouses', 'pos'].includes(activeTab)) {
+    // Visual inventory paints from shell list; Busy/batch/POS upgrade to grid when needed.
+    if (['inventory', 'warehouses'].includes(activeTab)) {
+      if (!moduleReady.inventoryCatalog && !loadingModules.inventory) {
+        void fetchInventory({ fullCatalog: true, detailLevel: 'list' });
+      }
+      return;
+    }
+
+    if (['batches', 'pos'].includes(activeTab)) {
       if (!moduleReady.inventoryCatalog && !loadingModules.inventory) {
         void fetchInventory({ fullCatalog: true, detailLevel: 'grid' });
       } else if (
@@ -574,17 +583,29 @@ function BusinessDashboardContent() {
         !loadingModules.inventory &&
         inventoryNeedsGridUpgrade
       ) {
-        // Progressive enrichment: shell used slim list; upgrade for grid/batch UI without blanking.
         void fetchInventory({ force: true, fullCatalog: true, detailLevel: 'grid' });
       }
       return;
     }
 
-    if (['invoices', 'customers', 'quotations'].includes(activeTab)) {
-      if (moduleReady.salesListDepth !== 'full' && !loadingModules.sales) {
-        void fetchSales({ mode: 'full' });
-      } else if (!moduleReady.sales && !loadingModules.sales) {
-        void fetchSales({ mode: 'full' });
+    if (activeTab === 'invoices') {
+      // Shell already painted invoice headers — paint instantly; only fetch if shell missed sales.
+      if (!moduleReady.sales && !loadingModules.sales) {
+        void fetchSales({ mode: 'invoices' });
+      }
+      return;
+    }
+
+    if (activeTab === 'customers') {
+      if (!moduleReady.customers && !loadingModules.customers && !loadingModules.sales) {
+        void fetchCustomers();
+      }
+      return;
+    }
+
+    if (activeTab === 'quotations') {
+      if (!moduleReady.quotations && !loadingModules.sales) {
+        void fetchSales({ mode: 'quotations' });
       }
       return;
     }
@@ -624,6 +645,7 @@ function BusinessDashboardContent() {
     inventoryNeedsGridUpgrade,
     loadingModules.inventory,
     loadingModules.sales,
+    loadingModules.customers,
     loadingModules.finance,
     loadingModules.expenses,
     loadingModules.purchases,
@@ -633,6 +655,8 @@ function BusinessDashboardContent() {
     moduleReady.inventoryCatalog,
     moduleReady.salesListDepth,
     moduleReady.sales,
+    moduleReady.customers,
+    moduleReady.quotations,
     moduleReady.finance,
     moduleReady.expenses,
     moduleReady.purchases,
@@ -641,6 +665,7 @@ function BusinessDashboardContent() {
     moduleReady.manufacturing,
     fetchFinance,
     fetchSales,
+    fetchCustomers,
     fetchInventory,
     fetchPurchases,
     fetchManufacturing,
@@ -1144,8 +1169,12 @@ function BusinessDashboardContent() {
         if (entityType === 'products') {
           void fetchInventory({ force: true, fullCatalog: true });
           scheduleAnalyticsRefresh?.();
-        } else if (['invoices', 'customers', 'quotations'].includes(activeTab)) {
-          void fetchSales({ force: true, mode: 'full' });
+        } else if (activeTab === 'invoices') {
+          void fetchSales({ force: true, mode: 'invoices' });
+        } else if (activeTab === 'customers') {
+          void fetchCustomers({ force: true });
+        } else if (activeTab === 'quotations') {
+          void fetchSales({ force: true, mode: 'quotations' });
         } else {
           void refreshAllData();
         }
@@ -2020,6 +2049,11 @@ function BusinessDashboardContent() {
             domainKnowledge={domainKnowledge}
             isLoading={dashboardTabLoading}
             inventoryLoading={Boolean(loadingModules.inventory) && !moduleReady.inventoryCatalog}
+            customersLoading={
+              Boolean(loadingModules.customers || loadingModules.sales) &&
+              !moduleReady.customers &&
+              customers.length === 0
+            }
             isAnalyticsLoading={Boolean(loadingModules.analytics) && !moduleReady.analytics && !dashboardMetrics}
             isSalesLoading={
               Boolean(loadingModules.sales) && !moduleReady.sales && !hasBootstrapKpis
@@ -2169,7 +2203,9 @@ function BusinessDashboardContent() {
         setShowPOBuilder={setShowPOBuilder}
         poInitialData={poInitialData}
         setPoInitialData={setPoInitialData}
-        refreshData={() => fetchInventory({ force: true })}
+        refreshData={() =>
+          fetchInventory({ force: true, detailLevel: 'grid', fullCatalog: true })
+        }
         upsertInvoiceInState={upsertInvoiceInState}
         onPaymentRecorded={() => {
           scheduleAnalyticsRefresh?.();
