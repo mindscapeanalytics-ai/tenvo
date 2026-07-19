@@ -19,6 +19,7 @@ import { workflowAPI } from '@/lib/api/workflow';
 import { bulkDeleteAction } from '@/lib/actions/premium/automation/bulk';
 import { getTablesAction, getKitchenQueueAction } from '@/lib/actions/standard/restaurant';
 import { formatInventoryActionError, isPersistedProductUuid, flattenCompositeProductPayload } from '@/lib/utils/productMutationPayload';
+import { isForeignTenantProduct } from '@/lib/utils/inventoryTenancy';
 import { setPendingInventoryFocus, setPendingExcelMode } from '@/lib/utils/hubNavigationIntent';
 import { useHubTab } from '@/lib/context/HubTabContext';
 import { Button } from '@/components/ui/button';
@@ -172,6 +173,12 @@ function BusinessDashboardContent() {
   const [viewingItem, setViewingItem] = useState(null);
   const [viewingType, setViewingType] = useState(null);
   const [financeInitialTab, setFinanceInitialTab] = useState(null);
+
+  // Drop in-flight product editors when the active shop changes (prevents cross-tenant save).
+  useEffect(() => {
+    setEditingProduct(null);
+    setShowProductForm(false);
+  }, [business?.id]);
 
   useEffect(() => {
     const financeView = searchParams.get('financeView');
@@ -816,11 +823,36 @@ function BusinessDashboardContent() {
     const refreshMode =
       refreshModeOpt ||
       (skipFullWorkspaceRefresh ? 'patch' : 'inventory');
-    const normalizedInput = flattenCompositeProductPayload(productData, business?.id);
     if (!business?.id) {
       toast.error('System is initializing. Please try again in 2 seconds.');
       throw new Error('Business context not ready');
     }
+
+    // Check raw payload BEFORE flatten overwrites business_id with the live shop id.
+    const rawTenantProbe = {
+      business_id:
+        productData?.business_id ??
+        productData?.businessId ??
+        productData?.productData?.business_id ??
+        productData?.productData?.businessId,
+      id: productData?.id ?? productData?.productId ?? productData?.productData?.id,
+    };
+    const catalogProbe =
+      (rawTenantProbe.id && Array.isArray(products)
+        ? products.find((p) => p?.id === rawTenantProbe.id)
+        : null) || editingProduct || null;
+    if (
+      isForeignTenantProduct(rawTenantProbe, business.id) ||
+      isForeignTenantProduct(catalogProbe, business.id)
+    ) {
+      toast.error('This product belongs to another shop. Refreshing inventory…', {
+        id: 'dashboard-product-tenant-mismatch',
+      });
+      void fetchInventory({ force: true, fullCatalog: true, detailLevel: 'grid' });
+      throw new Error('Product does not belong to this business');
+    }
+
+    const normalizedInput = flattenCompositeProductPayload(productData, business?.id);
     try {
       const inputProductId = isPersistedProductUuid(normalizedInput.id)
         ? normalizedInput.id
@@ -828,6 +860,7 @@ function BusinessDashboardContent() {
       const persistedProductId = inputProductId ?? editingProduct?.id ?? null;
       const isEditing = Boolean(persistedProductId);
       const productId = persistedProductId;
+
       const toNumber = (value, fallback = 0) => {
         if (value === '' || value === null || value === undefined) return fallback;
         const parsed = Number(value);

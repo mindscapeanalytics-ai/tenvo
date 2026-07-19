@@ -34,6 +34,7 @@ import { mapExcelRowForSave, prepareCompositeUpsertFromRow } from '@/lib/utils/e
 import { buildNewInventoryRow, getLastRowForDefaults } from '@/lib/utils/inventoryRowDefaults';
 import { getInventoryFieldSuggestions } from '@/lib/utils/inventoryFieldSuggestions';
 import { mapProductField, preserveRelationalData, processFieldValue } from '@/lib/utils/productFieldMapper';
+import { scopeProductsToBusiness, isForeignTenantProduct } from '@/lib/utils/inventoryTenancy';
 import { ShortcutsHelp } from './inventory/ShortcutsHelp';
 import { AdvancedSearch } from './AdvancedSearch';
 import { SmartRestockEngine } from './SmartRestockEngine';
@@ -267,8 +268,11 @@ export function InventoryManager({
     });
   };
 
-  // Initialize local state with strict deduplication
-  const [products, setProducts] = useState(() => deduplicateProducts(initialProducts));
+  // Initialize local state with strict deduplication + tenant scope.
+  // Parent remounts via key={businessId}; this sync only scopes soft-merges.
+  const [products, setProducts] = useState(() =>
+    deduplicateProducts(scopeProductsToBusiness(initialProducts, businessId))
+  );
   /** Avoid hydration mismatch: server and client must not render different `Date` / locale strings. */
   const [lastSyncedAt, setLastSyncedAt] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -283,13 +287,16 @@ export function InventoryManager({
 
   // Sync internal state when prop changes (from parent refresh).
   // Soft-merge by id so in-flight optimistic Busy edits are not hard-clobbered.
+  // Never keep rows whose business_id belongs to another shop.
   useEffect(() => {
-    const next = deduplicateProducts(initialProducts || []);
+    const next = deduplicateProducts(scopeProductsToBusiness(initialProducts || [], businessId));
     queueMicrotask(() => {
       setProducts((prev) => {
-        if (!Array.isArray(prev) || prev.length === 0) return next;
-        const prevById = new Map(prev.filter((p) => p?.id).map((p) => [p.id, p]));
-        const temps = prev.filter((p) => p?._tempId && !p?.id);
+        const scopedPrev = scopeProductsToBusiness(prev, businessId);
+        if (!Array.isArray(scopedPrev) || scopedPrev.length === 0) return next;
+        if ((prev || []).some((p) => isForeignTenantProduct(p, businessId))) return next;
+        const prevById = new Map(scopedPrev.filter((p) => p?.id).map((p) => [p.id, p]));
+        const temps = scopedPrev.filter((p) => p?._tempId && !p?.id);
         const merged = next.map((n) => {
           if (!n?.id) return n;
           const existing = prevById.get(n.id);
@@ -299,7 +306,7 @@ export function InventoryManager({
       });
       setLastSyncedAt(new Date());
     });
-  }, [initialProducts]);
+  }, [initialProducts, businessId]);
 
   // Internal Data Fetching (Only if products not passed or empty, and not controlled by parent)
   const fetchProducts = useCallback(async () => {
@@ -309,7 +316,7 @@ export function InventoryManager({
     try {
       const res = await getProductsAction(businessId, { includeSerials: false, detailLevel: 'grid' });
       if (res.success) {
-        setProducts(deduplicateProducts(res.products));
+        setProducts(deduplicateProducts(scopeProductsToBusiness(res.products, businessId)));
         setLastSyncedAt(new Date());
       } else {
         setError(res.error);
@@ -557,6 +564,15 @@ export function InventoryManager({
   const [showProductFormInternal, setShowProductFormInternal] = useState(false);
   const [productToView, setProductToView] = useState(null);
   const [productToDelete, setProductToDelete] = useState(null);
+
+  // Clear row menus / editors when the active shop changes.
+  useEffect(() => {
+    setSelectedProduct(null);
+    setEditingProduct(null);
+    setProductToView(null);
+    setProductToDelete(null);
+    setShowProductFormInternal(false);
+  }, [businessId]);
   const [productsToBulkDelete, setProductsToBulkDelete] = useState([]);
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
   const [activeDomainFilters, setActiveDomainFilters] = useState({});
@@ -1677,7 +1693,7 @@ export function InventoryManager({
                 <MoreHorizontal className="h-3.5 w-3.5 text-gray-500" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-[180px]">
+            <DropdownMenuContent align="start" sideOffset={6} className="z-[200] w-[200px]">
               <DropdownMenuLabel className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Actions</DropdownMenuLabel>
               <DropdownMenuItem onClick={() => openProductView(row.original)} className="text-sm">
                 <Eye className="mr-2 h-3.5 w-3.5" /> View Details
@@ -1685,6 +1701,11 @@ export function InventoryManager({
               {canEditInventory && (
                 <DropdownMenuItem onClick={() => openProductEdit(row.original)} className="text-sm">
                   <Edit className="mr-2 h-3.5 w-3.5" /> Edit Product
+                </DropdownMenuItem>
+              )}
+              {canEditInventory && (
+                <DropdownMenuItem onClick={() => { setSelectedProduct(row.original); setShowAdvancedFeatures(true); }} className="text-sm">
+                  <Settings className="mr-2 h-3.5 w-3.5" /> Advanced Settings
                 </DropdownMenuItem>
               )}
               {canEditInventory && (isBatchEnabled || isSerialEnabled || isVariantEnabled) && (
@@ -1703,11 +1724,6 @@ export function InventoryManager({
               {canEditInventory && isVariantEnabled && (
                 <DropdownMenuItem onClick={() => { setSelectedProduct(row.original); setShowVariantEditor(true); }} className="text-sm">
                   <Layers className="mr-2 h-3.5 w-3.5" /> Manage Variants
-                </DropdownMenuItem>
-              )}
-              {canEditInventory && (
-                <DropdownMenuItem onClick={() => { setSelectedProduct(row.original); setShowAdvancedFeatures(true); }} className="text-sm">
-                  <Settings className="mr-2 h-3.5 w-3.5" /> Advanced Settings
                 </DropdownMenuItem>
               )}
               {canEditInventory && (

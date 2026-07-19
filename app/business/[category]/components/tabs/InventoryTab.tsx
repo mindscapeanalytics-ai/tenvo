@@ -83,6 +83,7 @@ export function InventoryTab({
             <ErrorBoundary>
                 <Suspense fallback={<InventorySkeleton />}>
                     <InventoryManager
+                        key={businessId || 'inventory'}
                         products={products}
                         businessId={businessId}
                         category={category}
