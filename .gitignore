@@ -61,6 +61,7 @@ docs/README_*.md
 
 # maintenance & diagnostics
 /_maintenance/
+/reports/
 *.log
 *.txt
 !docs/*.md
@@ -76,3 +77,12 @@ docs/README_*.md
 !components.json
 !prisma.config.ts
 !schema.prisma
+
+# Root one-off audits, scratch SQL, and demo HTML extracts (keep under /archive locally)
+/SYSTEM_AUDIT_REPORT.json
+/scratch_query.js
+/scratch_*.js
+/check_*.sql
+/fix_*.sql
+/*.html
+!index.html
