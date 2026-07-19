@@ -142,7 +142,7 @@ export function AdvancedAnalytics({ businessId, category = 'retail-shop', curren
       label: 'Total Orders',
       value: (kpi.growthDetail?.periodOrders ?? salesData.reduce((sum, d) => sum + (d.orderCount || 0), 0)).toLocaleString(),
       subtitle: kpi.growthDetail?.periodOrders != null
-        ? 'Invoices + POS + storefront (selected range)'
+        ? 'Invoices + POS + storefront + restaurant (selected range)'
         : '6-month chart series (set a date range for period orders)',
       icon: ShoppingCart,
       iconBg: 'bg-amber-100',
@@ -353,7 +353,7 @@ export function AdvancedAnalytics({ businessId, category = 'retail-shop', curren
                       {formatRangeLabel(dateRange) && (
                         <span className="font-medium">Range: {formatRangeLabel(dateRange)}. </span>
                       )}
-                      Performance compares combined revenue (invoices + POS + non-cancelled storefront orders) in this range to the immediately preceding period of the same length.
+                      Performance compares combined revenue (invoices, POS, storefront, and restaurant) in this range to the immediately preceding period of the same length.
                       {kpi.growthDetail?.periodRevenue != null && (
                         <span className="block mt-1.5 text-gray-700">
                           <span className="font-semibold">Current: </span>{formatCurrency(kpi.growthDetail.periodRevenue, currency)}

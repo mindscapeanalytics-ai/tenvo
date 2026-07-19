@@ -58,7 +58,7 @@ export default function MultiBusinessPage() {
     if (!authLoading && user) {
       fetchBusinesses();
     } else if (!authLoading && !user) {
-      router.push('/login');
+      router.push('/login?next=/multi-business');
     }
   }, [user, authLoading, router]);
 

@@ -59,6 +59,30 @@ if (authConfirmed.includes("router.push('/')") && !authConfirmed.includes('/regi
   mark('auth/confirmed safety timeout should redirect to /register?step=3, not home');
 }
 
+// --- Post-login must hard-navigate so hub layout does not bounce back to /login ---
+const redirectAfterAuth = read('lib/auth/client/redirectAfterAuth.js');
+if (!redirectAfterAuth.includes('window.location.replace')) {
+  mark('redirectAfterAuth must hard-navigate with window.location.replace after login');
+}
+if (!redirectAfterAuth.includes('navigateAfterAuth')) {
+  mark('redirectAfterAuth must expose navigateAfterAuth for post-login routing');
+}
+
+const loginPage = read('app/login/page.js');
+if (!loginPage.includes('Opening your workspace')) {
+  mark('login page must show a redirecting state when session exists (avoid stuck login form)');
+}
+
+const businessLayout = read('app/business/layout.js');
+if (!businessLayout.includes('login?next=')) {
+  mark('business layout must redirect unauthenticated users to /login?next=…');
+}
+
+const dialogUi = read('components/ui/dialog.jsx');
+if (!dialogUi.includes('aria-describedby={undefined}')) {
+  mark('DialogContent must set aria-describedby={undefined} to silence missing Description warnings');
+}
+
 // --- Production env checklist documented ---
 const envExample = read('.env.example');
 if (!envExample.includes('PRODUCTION LAUNCH CHECKLIST')) {

@@ -33,6 +33,7 @@ export default function LoginPage() {
   const [otpSent, setOtpSent] = useState(false);
   const [otpResendSec, setOtpResendSec] = useState(0);
   const [authMode, setAuthMode] = useState('password');
+  const [isRedirecting, setIsRedirecting] = useState(false);
   const postLoginHandledRef = useRef(null);
 
   useEffect(() => {
@@ -53,7 +54,16 @@ export default function LoginPage() {
       if (!user?.id) return;
       if (postLoginHandledRef.current === user.id) return;
       postLoginHandledRef.current = user.id;
-      await redirectAfterAuth(router, user);
+      setIsRedirecting(true);
+      try {
+        await redirectAfterAuth(router, user);
+      } catch (error) {
+        console.error('[login] post-login redirect failed:', error);
+        postLoginHandledRef.current = null;
+        setIsRedirecting(false);
+        setIsLoading(false);
+        toast.error('Signed in, but we could not open your workspace. Refresh to continue.');
+      }
     },
     [router]
   );
@@ -186,10 +196,16 @@ export default function LoginPage() {
     }
   };
 
-  if (sessionPending) {
+  // Keep the form hidden while the session is loading or we are leaving /login.
+  // Showing the form with an existing session caused a stuck state when a soft
+  // hub redirect bounced back here after postLoginHandledRef was already set.
+  if (sessionPending || isRedirecting || sessionData?.user?.id) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50">
+      <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-gray-50">
         <Loader2 className="h-8 w-8 animate-spin text-wine" />
+        <p className="text-sm font-medium text-gray-500">
+          {sessionData?.user?.id || isRedirecting ? 'Opening your workspace…' : 'Checking session…'}
+        </p>
       </div>
     );
   }

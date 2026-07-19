@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef, startTransition } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -250,6 +250,23 @@ export function SettingsManager({ category }) {
 
   const availableSectionValues = useMemo(() => visibleSections.map(s => s.value), [visibleSections]);
 
+  /** Heavy sections stay mounted after first visit (enterprise-style instant switch). */
+  const KEEP_ALIVE_SECTIONS = useMemo(
+    () =>
+      new Set([
+        'profile',
+        'compliance',
+        'financials',
+        'industry',
+        'billing',
+        'team',
+        'notifications',
+        'security',
+        'tools',
+      ]),
+    []
+  );
+
   const sectionFromUrl = searchParams.get('section');
   const urlDrivenTab = useMemo(() => {
     if (sectionFromUrl && availableSectionValues.includes(sectionFromUrl)) return sectionFromUrl;
@@ -264,14 +281,31 @@ export function SettingsManager({ category }) {
     return availableSectionValues[0] || 'profile';
   }, [urlDrivenTab, userSelectedTab, availableSectionValues]);
 
+  const keepAliveVisitedRef = useRef(new Set([activeTab || 'profile']));
+  const keepAliveBusinessRef = useRef(business?.id);
+  if (business?.id && keepAliveBusinessRef.current !== business.id) {
+    keepAliveBusinessRef.current = business.id;
+    keepAliveVisitedRef.current = new Set([activeTab || 'profile']);
+  }
+  if (typeof activeTab === 'string' && KEEP_ALIVE_SECTIONS.has(activeTab)) {
+    keepAliveVisitedRef.current.add(activeTab);
+  }
+  const shouldForceMountSection = useCallback(
+    (section) => KEEP_ALIVE_SECTIONS.has(section) && keepAliveVisitedRef.current.has(section),
+    [KEEP_ALIVE_SECTIONS]
+  );
+
   const setActiveTab = useCallback(
     (tab) => {
       if (!availableSectionValues.includes(tab)) return;
+      // Paint the panel first; sync deep-link URL off the critical path.
       setUserSelectedTab(tab);
-      const params = new URLSearchParams(searchParams.toString());
-      params.set('section', tab);
-      const qs = params.toString();
-      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+      startTransition(() => {
+        const params = new URLSearchParams(searchParams.toString());
+        params.set('section', tab);
+        const qs = params.toString();
+        router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+      });
     },
     [availableSectionValues, pathname, router, searchParams]
   );
@@ -296,6 +330,9 @@ export function SettingsManager({ category }) {
       });
       return;
     }
+    // Load team only when Team section is opened (or already keep-alive visited).
+    if (activeTab !== 'team' && !keepAliveVisitedRef.current.has('team')) return;
+
     let cancelled = false;
     (async () => {
       try {
@@ -308,7 +345,7 @@ export function SettingsManager({ category }) {
     return () => {
       cancelled = true;
     };
-  }, [businessId]);
+  }, [businessId, activeTab]);
 
   const handleInviteMember = async () => {
     if (!inviteEmail.trim() || !business?.id) {
@@ -796,8 +833,9 @@ export function SettingsManager({ category }) {
   }, [business?.id]);
 
   useEffect(() => {
-    refreshSampleDataState();
-  }, [refreshSampleDataState]);
+    if (activeTab !== 'tools' && !keepAliveVisitedRef.current.has('tools')) return;
+    void refreshSampleDataState();
+  }, [activeTab, refreshSampleDataState]);
 
   const handleLoadSampleData = async (replace = false) => {
     if (!business?.id) return;
@@ -859,7 +897,7 @@ export function SettingsManager({ category }) {
   }
 
   return (
-    <div className="mx-auto max-w-[1400px] space-y-4 overflow-x-hidden touch-manipulation pb-[calc(5rem+env(safe-area-inset-bottom))] animate-in fade-in duration-500 lg:space-y-6 lg:pb-0">
+    <div className="mx-auto max-w-[1400px] space-y-4 overflow-x-hidden touch-manipulation pb-[calc(5rem+env(safe-area-inset-bottom))] motion-safe:animate-in motion-safe:fade-in motion-safe:duration-150 lg:space-y-6 lg:pb-0">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between lg:gap-6">
         <div className="min-w-0 flex-1 lg:hidden">
           <h2 className="text-lg font-bold tracking-tight text-gray-900">Settings</h2>
@@ -984,7 +1022,7 @@ export function SettingsManager({ category }) {
           ))}
         </TabsList>
 
-        <TabsContent value="profile" className="space-y-4 pt-4">
+        <TabsContent value="profile" forceMount={shouldForceMountSection('profile')} className="space-y-4 pt-4 outline-none">
           <Card className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
             <CardHeader className="space-y-1 border-b border-slate-100 bg-gradient-to-r from-slate-50/90 to-white pb-4 pt-5">
               <div className="flex items-start gap-3">
@@ -1047,7 +1085,7 @@ export function SettingsManager({ category }) {
           </Card>
         </TabsContent>
 
-        <TabsContent value="compliance" className="space-y-4 pt-4">
+        <TabsContent value="compliance" forceMount={shouldForceMountSection('compliance')} className="space-y-4 pt-4 outline-none">
           <Card className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
             <CardHeader className="space-y-1 border-b border-slate-100 bg-gradient-to-r from-sky-50/80 to-white pb-4 pt-5">
               <div className="flex items-start gap-3">
@@ -1096,7 +1134,7 @@ export function SettingsManager({ category }) {
           </Card>
         </TabsContent>
 
-        <TabsContent value="notifications" className="space-y-4 pt-4">
+        <TabsContent value="notifications" forceMount={shouldForceMountSection('notifications')} className="space-y-4 pt-4 outline-none">
           <Card className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
             <CardHeader className="space-y-1 border-b border-slate-100 bg-gradient-to-r from-amber-50/50 to-white pb-4 pt-5">
               <div className="flex items-start gap-3">
@@ -1141,7 +1179,7 @@ export function SettingsManager({ category }) {
           )}
         </TabsContent>
 
-        <TabsContent value="security" className="space-y-4 pt-4">
+        <TabsContent value="security" forceMount={shouldForceMountSection('security')} className="space-y-4 pt-4 outline-none">
           <Card className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
             <CardHeader className="space-y-1 border-b border-slate-100 bg-gradient-to-r from-slate-50/90 to-white pb-4 pt-5">
               <div className="flex items-start gap-3">
@@ -1237,7 +1275,7 @@ export function SettingsManager({ category }) {
             </CardContent>
           </Card>
         </TabsContent>
-        <TabsContent value="financials" className="space-y-4 pt-4">
+        <TabsContent value="financials" forceMount={shouldForceMountSection('financials')} className="space-y-4 pt-4 outline-none">
           <Card className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
             <CardHeader className="space-y-1 border-b border-slate-100 bg-gradient-to-r from-emerald-50/50 to-white pb-4 pt-5">
               <div className="flex items-start gap-3">
@@ -1359,11 +1397,11 @@ export function SettingsManager({ category }) {
           </Card>
         </TabsContent>
 
-        <TabsContent value="industry" className="space-y-4 pt-4">
+        <TabsContent value="industry" forceMount={shouldForceMountSection('industry')} className="space-y-4 pt-4 outline-none">
           <IndustryDomainKnowledgePanel />
         </TabsContent>
 
-        <TabsContent value="team" className="space-y-4 pt-4">
+        <TabsContent value="team" forceMount={shouldForceMountSection('team')} className="space-y-4 pt-4 outline-none">
           <Card className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
             <CardHeader className="space-y-1 border-b border-slate-100 bg-gradient-to-r from-slate-50/90 to-white pb-4 pt-5">
               <div className="flex items-start gap-3">
@@ -1761,7 +1799,7 @@ export function SettingsManager({ category }) {
           </Dialog>
         </TabsContent>
 
-        <TabsContent value="billing" className="space-y-4 pt-4">
+        <TabsContent value="billing" forceMount={shouldForceMountSection('billing')} className="space-y-4 pt-4 outline-none">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
             <div>
               <p className="text-sm font-semibold text-slate-900">Billing cycle</p>
@@ -2062,7 +2100,7 @@ export function SettingsManager({ category }) {
           </Card>
         </TabsContent>
 
-        <TabsContent value="tools" className="space-y-4 pt-4">
+        <TabsContent value="tools" forceMount={shouldForceMountSection('tools')} className="space-y-4 pt-4 outline-none">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Card className="border-none shadow-xl border-t-4 border-t-wine-500 overflow-hidden">
               <CardHeader className="bg-wine-50/60">

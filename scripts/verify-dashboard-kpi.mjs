@@ -197,6 +197,88 @@ if (storefrontNav.includes("label: 'Analytics'") && storefrontNav.includes("key:
   ok('Storefront sales nav labeled Sales');
 }
 
+{
+  const catStart = salesInsights.indexOf('export const SALES_KPI_CATEGORY_PERIOD_SQL');
+  const catEnd = salesInsights.indexOf('export const RECENT_SALES_ACTIVITY_SQL');
+  const catBlock = salesInsights.slice(catStart, catEnd > catStart ? catEnd : undefined);
+  if (!catBlock.includes('i.id::text') || !catBlock.includes('o.id::text') || !catBlock.includes('ro.id::text')) {
+    mark('SALES_KPI_CATEGORY_PERIOD_SQL must cast ledger ids to text (storefront int vs uuid UNION)');
+  } else {
+    ok('Category KPI UNION casts mixed id types to text');
+  }
+  if (!catBlock.includes('restaurant_orders')) {
+    mark('SALES_KPI_CATEGORY_PERIOD_SQL must include restaurant_orders');
+  } else {
+    ok('Category KPI includes restaurant channel');
+  }
+}
+
+if (!salesInsights.includes("($5::text = 'all' OR $5::text = 'restaurant')")) {
+  mark('Top moving / recent / customers SQL must support restaurant channel');
+} else {
+  ok('Restaurant channel wired into top/recent/customer sales SQL');
+}
+
+const sseRoute = read('app/api/notifications/sse/route.js');
+const notifHook = read('lib/hooks/useNotifications.js');
+if (!sseRoute.includes('X-Accel-Buffering') || !sseRoute.includes('cancel()')) {
+  mark('Notifications SSE must set X-Accel-Buffering and stream cancel cleanup');
+} else {
+  ok('Notifications SSE hardened against proxy idle resets');
+}
+if (!notifHook.includes('POLL_MS') || !notifHook.includes('MAX_SSE_FAILURES')) {
+  mark('useNotifications must poll REST as baseline and stop SSE after hard failures');
+} else {
+  ok('Notifications client falls back to REST poll when SSE resets');
+}
+
+{
+  const growthStart = salesInsights.indexOf('export const REVENUE_GROWTH_UNIFIED_SQL');
+  const growthEnd = salesInsights.indexOf('export const SALES_COGS_PERIOD_SQL');
+  const growthBlock = salesInsights.slice(growthStart, growthEnd > growthStart ? growthEnd : undefined);
+  if (!growthBlock.includes('restaurant_orders')) {
+    mark('REVENUE_GROWTH_UNIFIED_SQL must include restaurant_orders');
+  } else {
+    ok('Revenue growth SQL includes restaurant channel');
+  }
+}
+
+const analyticsAction = read('lib/actions/premium/ai/analytics.js');
+if (!analyticsAction.includes('Promise.all([') || !analyticsAction.includes('SALES_RETENTION_PERIOD_SQL')) {
+  mark('getAnalyticsBundleAction must Promise.all queries and use period retention SQL');
+} else {
+  ok('Analytics bundle parallelized with multi-channel retention');
+}
+
+const aiInsights = read('components/intelligence/AIInsightsPanel.jsx');
+if (!aiInsights.includes('hubAnalyticsQueryKey') || !aiInsights.includes('sameTenantPlaceholderData')) {
+  mark('AIInsightsPanel must reuse hubAnalytics React Query cache');
+} else {
+  ok('AI Insights paints from shared hubAnalytics cache');
+}
+
+const settingsMgr = read('components/SettingsManager.jsx');
+const dashTabs = read('app/business/[category]/components/DashboardTabs.jsx');
+if (!settingsMgr.includes('shouldForceMountSection') || !settingsMgr.includes('startTransition')) {
+  mark('SettingsManager must visit-forceMount sections and soft-sync URL');
+} else {
+  ok('Settings section switching uses keep-alive + soft URL sync');
+}
+if (!dashTabs.includes("'settings'") || !dashTabs.includes("forceMount={shouldForceMount('settings')}")) {
+  mark('DashboardTabs must keep-alive the settings hub tab');
+} else {
+  ok('Hub Settings tab stay-mounted after first visit');
+}
+
+const dashKpis = read('lib/actions/basic/dashboard.js');
+if (dashKpis.includes('totalRevenue - totalPurchases') && !dashKpis.includes('cogsTotal')) {
+  mark('getDashboardKPIs grossProfit must use sold COGS, not purchases');
+} else if (!dashKpis.includes('SALES_COGS_PERIOD_SQL') || !dashKpis.includes('cogsTotal')) {
+  mark('getDashboardKPIs must compute grossProfit from SALES_COGS_PERIOD_SQL');
+} else {
+  ok('Overview grossProfit uses revenue − COGS');
+}
+
 if (failed) {
   console.error('\nverify-dashboard-kpi: FAILED');
   process.exit(1);

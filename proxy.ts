@@ -17,7 +17,13 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(url, 308);
   }
 
-  const res = NextResponse.next();
+  const requestHeaders = new Headers(request.headers);
+  const pathnameWithSearch = `${request.nextUrl.pathname}${request.nextUrl.search}`;
+  requestHeaders.set('x-tenvo-pathname', pathnameWithSearch);
+
+  const res = NextResponse.next({
+    request: { headers: requestHeaders },
+  });
 
   res.headers.set('X-Frame-Options', 'SAMEORIGIN');
   res.headers.set('X-Content-Type-Options', 'nosniff');

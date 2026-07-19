@@ -40,6 +40,9 @@ const DialogContent = React.forwardRef(
       <DialogOverlay />
       <DialogPrimitive.Content
         ref={ref}
+        // Opt out of Radix's required Description when callers omit DialogDescription.
+        // Callers can still pass aria-describedby via props to override.
+        aria-describedby={undefined}
         className={cn(
           'fixed z-50 grid w-full gap-4 border bg-white shadow-lg duration-200',
           'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',

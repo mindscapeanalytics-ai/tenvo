@@ -69,6 +69,7 @@ const KEEP_ALIVE_TABS = new Set([
     'reports',
     'customers',
     'purchases',
+    'settings',
 ]);
 
 export function DashboardTabs({
@@ -1115,7 +1116,7 @@ export function DashboardTabs({
                     )}
                 </TabsContent>
 
-                <TabsContent value="settings" className="space-y-6 outline-none">
+                <TabsContent value="settings" forceMount={shouldForceMount('settings')} className="space-y-6 outline-none">
                     {wrapTab(
                         <TabGuard tabKey="settings" role={role} planTier={planTier} featureName="Settings" onUpgrade={() => handleTabChange('settings')}>
                             <SettingsManager category={category} />

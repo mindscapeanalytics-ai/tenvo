@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import {
     Brain, TrendingUp, BarChart3, PieChart, Package,
@@ -19,11 +20,16 @@ import {
 } from '@/lib/actions/premium/ai/analytics';
 import { getAiRestockSuggestionsAction } from '@/lib/actions/premium/ai/ai';
 import { formatCurrency } from '@/lib/currency';
+import { toAnalyticsIsoDate } from '@/lib/utils/analyticsRange';
+import {
+    hubAnalyticsQueryKey,
+    sameTenantPlaceholderData,
+} from '@/lib/dashboard/hubQueryKeys';
 
 function buildDateFilter(dateRange) {
-    if (!dateRange?.from || !dateRange?.to) return {};
-    const from = dateRange.from instanceof Date ? dateRange.from.toISOString() : String(dateRange.from);
-    const to = dateRange.to instanceof Date ? dateRange.to.toISOString() : String(dateRange.to);
+    const from = toAnalyticsIsoDate(dateRange?.from);
+    const to = toAnalyticsIsoDate(dateRange?.to);
+    if (!from || !to) return {};
     return { from, to };
 }
 
@@ -158,64 +164,79 @@ export function AIInsightsPanel({ businessId, category = 'retail-shop', dateRang
     const { business, currency: businessCurrency } = useBusiness();
     const effectiveBusinessId = useResolvedBusinessId(businessId);
     const currencyCode = currencyProp || businessCurrency;
+    const filter = useMemo(() => buildDateFilter(dateRange), [dateRange]);
+    const fromKey = filter.from || '';
+    const toKey = filter.to || '';
 
-    const [salesTrend, setSalesTrend] = useState([]);
-    const [topProducts, setTopProducts] = useState([]);
-    const [categories, setCategories] = useState([]);
-    const [kpiData, setKpiData] = useState(null);
     const [forecastData, setForecastData] = useState([]);
-    const [expenseBreakdown, setExpenseBreakdown] = useState([]);
     const [promos, setPromos] = useState([]);
     const [restockSuggestions, setRestockSuggestions] = useState([]);
-    const [productCount, setProductCount] = useState(0);
-    const [loading, setLoading] = useState(true);
+    const [secondaryLoading, setSecondaryLoading] = useState(false);
 
-    const loadAll = useCallback(async () => {
+    const {
+        data: bundleData,
+        isLoading: bundleLoading,
+        isFetching: bundleFetching,
+        refetch: refetchBundle,
+    } = useQuery({
+        queryKey: hubAnalyticsQueryKey(effectiveBusinessId, fromKey, toKey),
+        enabled: Boolean(effectiveBusinessId && fromKey && toKey),
+        staleTime: 60_000,
+        placeholderData: (previousData, previousQuery) =>
+            sameTenantPlaceholderData(previousData, previousQuery, effectiveBusinessId),
+        queryFn: async () => {
+            const bundle = await getAnalyticsBundleAction(effectiveBusinessId, filter);
+            if (!bundle?.success) {
+                throw new Error(bundle?.error || 'Failed to load analytics');
+            }
+            return bundle.data || {};
+        },
+    });
+
+    const salesTrend = bundleData?.salesTrend || [];
+    const topProducts = bundleData?.topProducts || [];
+    const categories = bundleData?.categoryData || [];
+    const kpiData = bundleData?.kpi || null;
+    const expenseBreakdown = bundleData?.expenseBreakdown || [];
+    const productCount = typeof bundleData?.productCount === 'number' ? bundleData.productCount : 0;
+
+    const loadSecondaryInsights = useCallback(async () => {
         if (!effectiveBusinessId) return;
-        setLoading(true);
-        setSalesTrend([]);
-        setTopProducts([]);
-        setCategories([]);
-        setKpiData(null);
-        setForecastData([]);
-        setExpenseBreakdown([]);
-        setPromos([]);
-        setRestockSuggestions([]);
-        setProductCount(0);
+        setSecondaryLoading(true);
         try {
-            const filter = buildDateFilter(dateRange);
             const domainIntel = getDomainKnowledgeForBusiness(category, business)?.intelligence ?? {};
-            const [bundleRes, forecastRes, promoRes, restockRes] = await Promise.allSettled([
-                getAnalyticsBundleAction(effectiveBusinessId, filter),
+            const [forecastRes, promoRes, restockRes] = await Promise.allSettled([
                 getDemandForecastAction(effectiveBusinessId, domainIntel, true, filter),
                 getPromotionRecommendationsAction(effectiveBusinessId),
                 getAiRestockSuggestionsAction(effectiveBusinessId),
             ]);
-
-            if (bundleRes.status === 'fulfilled' && bundleRes.value?.success && bundleRes.value.data) {
-                const d = bundleRes.value.data;
-                setSalesTrend(d.salesTrend || []);
-                setTopProducts(d.topProducts || []);
-                setCategories(d.categoryData || []);
-                setKpiData(d.kpi || null);
-                setExpenseBreakdown(d.expenseBreakdown || []);
-                setProductCount(typeof d.productCount === 'number' ? d.productCount : 0);
+            if (forecastRes.status === 'fulfilled' && forecastRes.value?.success) {
+                setForecastData(forecastRes.value.data || []);
             }
-            if (forecastRes.status === 'fulfilled' && forecastRes.value?.success) setForecastData(forecastRes.value.data || []);
-            if (promoRes.status === 'fulfilled' && promoRes.value?.success) setPromos(promoRes.value.data?.recommendations || []);
-            if (restockRes.status === 'fulfilled' && restockRes.value?.success) setRestockSuggestions(restockRes.value.suggestions || []);
+            if (promoRes.status === 'fulfilled' && promoRes.value?.success) {
+                setPromos(promoRes.value.data?.recommendations || []);
+            }
+            if (restockRes.status === 'fulfilled' && restockRes.value?.success) {
+                setRestockSuggestions(restockRes.value.suggestions || []);
+            }
         } catch (err) {
-            console.error('[AI] Load failed:', err);
+            console.error('[AI] Secondary insights failed:', err);
         } finally {
-            setLoading(false);
+            setSecondaryLoading(false);
         }
-    }, [effectiveBusinessId, dateRange, category, business]);
+    }, [effectiveBusinessId, category, business, filter]);
 
     useEffect(() => {
-        void Promise.resolve().then(() => loadAll());
-    }, [loadAll]);
+        void loadSecondaryInsights();
+    }, [loadSecondaryInsights]);
 
-    if (!effectiveBusinessId || loading) {
+    const refreshAll = useCallback(() => {
+        void refetchBundle();
+        void loadSecondaryInsights();
+    }, [refetchBundle, loadSecondaryInsights]);
+
+    // Only block first paint when we have no cached bundle yet.
+    if (!effectiveBusinessId || (bundleLoading && !bundleData)) {
         return (
             <div className="text-center py-16 text-gray-400">
                 <Brain className="w-10 h-10 mx-auto mb-3 opacity-20 animate-pulse" />
@@ -230,11 +251,12 @@ export function AIInsightsPanel({ businessId, category = 'retail-shop', dateRang
             <div className="flex justify-end">
                 <button
                     type="button"
-                    onClick={loadAll}
-                    className="rounded-lg bg-gray-100 p-2 transition-colors hover:bg-gray-200"
+                    onClick={refreshAll}
+                    disabled={bundleFetching || secondaryLoading}
+                    className="rounded-lg bg-gray-100 p-2 transition-colors hover:bg-gray-200 disabled:opacity-50"
                     title="Refresh AI insights"
                 >
-                    <RefreshCcw className="h-4 w-4 text-gray-500" />
+                    <RefreshCcw className={cn('h-4 w-4 text-gray-500', (bundleFetching || secondaryLoading) && 'animate-spin')} />
                 </button>
             </div>
 
@@ -252,7 +274,7 @@ export function AIInsightsPanel({ businessId, category = 'retail-shop', dateRang
                             kpiData.retentionDetail
                                 ? kpiData.retentionDetail.invoicedCustomers === 0
                                     ? 'Link customers on invoices to measure repeat rate'
-                                    : `${kpiData.retentionDetail.repeatCustomers} repeat of ${kpiData.retentionDetail.invoicedCustomers} invoiced customers`
+                                    : `${kpiData.retentionDetail.repeatCustomers} repeat of ${kpiData.retentionDetail.invoicedCustomers} customers`
                                 : undefined
                         }
                     />

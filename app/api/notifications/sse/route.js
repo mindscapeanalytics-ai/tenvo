@@ -1,4 +1,7 @@
 export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+/** Allow long-lived SSE on platforms that honor maxDuration (e.g. Vercel Pro). */
+export const maxDuration = 60;
 
 import { prismaBase } from '@/lib/db';
 import { headers } from 'next/headers';
@@ -8,6 +11,8 @@ import { pickBusinessIdFromSearchParams } from '@/lib/utils/pickBusinessId';
 
 /** Poll interval — longer cadence reduces DB load (was 5s). */
 const POLL_MS = 15000;
+/** Send a comment keepalive sooner so proxies do not idle-close the socket. */
+const KEEPALIVE_COMMENT = ': keepalive\n\n';
 
 function isMissingNotificationsTable(error) {
   const code = error?.code;
@@ -19,7 +24,7 @@ function isMissingNotificationsTable(error) {
   );
 }
 
-/** SSE endpoint for real-time notifications (poll fallback). */
+/** SSE endpoint for real-time notifications (poll fallback on the client). */
 export async function GET(request) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session?.user) {
@@ -43,28 +48,50 @@ export async function GET(request) {
   let lastCheck = new Date();
   let isActive = true;
   let consecutiveErrors = 0;
+  /** @type {ReturnType<typeof setInterval> | null} */
+  let interval = null;
   /** @type {string | null} */
   let lastNotificationSignature = null;
 
+  function cleanup() {
+    isActive = false;
+    if (interval != null) {
+      clearInterval(interval);
+      interval = null;
+    }
+  }
+
   function safeEnqueue(controllerRef, text) {
+    if (!isActive) return false;
     try {
       controllerRef.enqueue(encoder.encode(text));
       return true;
     } catch {
+      cleanup();
       return false;
+    }
+  }
+
+  function safeClose(controllerRef) {
+    cleanup();
+    try {
+      controllerRef.close();
+    } catch {
+      // already closed
     }
   }
 
   const stream = new ReadableStream({
     start(controller) {
-      if (!safeEnqueue(controller, 'data: {"type":"connected"}\n\n')) {
-        isActive = false;
+      if (!safeEnqueue(controller, `data: {"type":"connected"}\n\n`)) {
         return;
       }
+      // Immediate comment so intermediaries see activity before the first poll.
+      safeEnqueue(controller, KEEPALIVE_COMMENT);
 
-      const interval = setInterval(async () => {
+      interval = setInterval(async () => {
         if (!isActive) {
-          clearInterval(interval);
+          cleanup();
           return;
         }
 
@@ -78,14 +105,15 @@ export async function GET(request) {
             select: { id: true, created_at: true },
           });
 
+          if (!isActive) return;
+
           const signature = latest
             ? `${latest.id}:${latest.created_at?.getTime?.() ?? latest.created_at}`
             : 'none';
 
           if (signature === lastNotificationSignature) {
             if (!safeEnqueue(controller, 'data: {"type":"heartbeat"}\n\n')) {
-              isActive = false;
-              clearInterval(interval);
+              safeClose(controller);
             }
             consecutiveErrors = 0;
             return;
@@ -112,6 +140,8 @@ export async function GET(request) {
             },
           });
 
+          if (!isActive) return;
+
           consecutiveErrors = 0;
 
           if (rows.length > 0) {
@@ -123,23 +153,21 @@ export async function GET(request) {
                   `data: ${JSON.stringify({ type: 'notification', data: notification })}\n\n`
                 )
               ) {
-                isActive = false;
-                clearInterval(interval);
+                safeClose(controller);
                 return;
               }
             }
           }
 
           if (!safeEnqueue(controller, 'data: {"type":"heartbeat"}\n\n')) {
-            isActive = false;
-            clearInterval(interval);
+            safeClose(controller);
           }
         } catch (error) {
           consecutiveErrors += 1;
           const fatal = isMissingNotificationsTable(error);
           const message = fatal
             ? 'Notifications table is not available on this database'
-            : (error?.message || 'Notification stream unavailable');
+            : error?.message || 'Notification stream unavailable';
 
           console.error('[Notifications SSE]', message);
 
@@ -154,34 +182,31 @@ export async function GET(request) {
           );
 
           if (fatal || consecutiveErrors >= 5) {
-            isActive = false;
-            clearInterval(interval);
-            try {
-              controller.close();
-            } catch {
-              // already closed
-            }
+            safeClose(controller);
           }
         }
       }, POLL_MS);
 
-      request.signal.addEventListener('abort', () => {
-        isActive = false;
-        clearInterval(interval);
-        try {
-          controller.close();
-        } catch {
-          // already closed
-        }
-      });
+      const onAbort = () => {
+        safeClose(controller);
+      };
+      if (request.signal.aborted) {
+        onAbort();
+      } else {
+        request.signal.addEventListener('abort', onAbort, { once: true });
+      }
+    },
+    cancel() {
+      cleanup();
     },
   });
 
   return new Response(stream, {
     headers: {
-      'Content-Type': 'text/event-stream',
+      'Content-Type': 'text/event-stream; charset=utf-8',
       'Cache-Control': 'no-cache, no-transform',
       Connection: 'keep-alive',
+      'X-Accel-Buffering': 'no',
     },
   });
 }
