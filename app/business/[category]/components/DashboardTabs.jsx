@@ -305,10 +305,10 @@ export function DashboardTabs({
             key={activeBusinessId || 'hub'}
             className="min-w-0 overflow-x-hidden"
             variants={tabVariants}
-            initial="initial"
+            initial={false}
             animate="animate"
             exit="exit"
-            transition={{ duration: 0.15, ease: 'easeOut' }}
+            transition={{ duration: 0.08, ease: 'easeOut' }}
         >
             {content}
         </motion.div>

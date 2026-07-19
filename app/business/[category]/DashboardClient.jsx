@@ -20,6 +20,7 @@ import { bulkDeleteAction } from '@/lib/actions/premium/automation/bulk';
 import { getTablesAction, getKitchenQueueAction } from '@/lib/actions/standard/restaurant';
 import { formatInventoryActionError, isPersistedProductUuid, flattenCompositeProductPayload } from '@/lib/utils/productMutationPayload';
 import { setPendingInventoryFocus, setPendingExcelMode } from '@/lib/utils/hubNavigationIntent';
+import { buildHubTabHref, syncHubTabUrl } from '@/lib/utils/hubTabNavigation';
 import { Button } from '@/components/ui/button';
 import { Tabs } from '@/components/ui/tabs';
 import { ProductForm } from '@/components/ProductForm';
@@ -200,10 +201,13 @@ function BusinessDashboardContent() {
     }
   }, [searchParams]);
 
-  // Sync URL when state changes (e.g. valid tab click)
-  const handleTabChange = useCallback((val) => {
+  // Instant paint + shallow URL sync (no force-dynamic soft-nav on ?tab=).
+  const handleTabChange = useCallback((val, opts = {}) => {
     const raw = String(val || '').trim().toLowerCase();
-    const financeView = resolveFinanceViewForTab(raw);
+    const financeView =
+      opts.financeView != null && String(opts.financeView).trim()
+        ? String(opts.financeView).trim().toLowerCase()
+        : resolveFinanceViewForTab(raw);
     if (financeView) {
       setFinanceInitialTab(financeView);
     }
@@ -217,9 +221,11 @@ function BusinessDashboardContent() {
 
     const targetTab = resolveDashboardTab(normalizedTab);
     setOptimisticTab(targetTab);
-    const qs = new URLSearchParams({ tab: targetTab });
-    if (financeView) qs.set('financeView', financeView);
-    router.push(`/business/${currentDomain}?${qs.toString()}`, { scroll: false });
+    const { href } = buildHubTabHref(currentDomain, targetTab, { financeView });
+    // Skip when caller already wrote the URL (Sidebar navigateHubTab).
+    if (!opts.skipUrlSync) {
+      syncHubTabUrl(href, { replace: Boolean(opts.replace) });
+    }
   }, [currentDomain, router]);
 
   const handleQuickAction = useCallback((actionId) => {
@@ -425,7 +431,12 @@ function BusinessDashboardContent() {
       if (e.detail?.inventoryFocus) {
         setPendingInventoryFocus(e.detail.inventoryFocus);
       }
-      if (tabId) handleTabChange(tabId);
+      if (!tabId) return;
+      // Shallow nav already synced URL; only flip optimistic paint + finance view.
+      handleTabChange(tabId, {
+        financeView: e.detail?.financeView ?? undefined,
+        skipUrlSync: Boolean(e.detail?.shallow),
+      });
     };
 
     const onViewDetailsEvent = (e) => {
@@ -444,7 +455,7 @@ function BusinessDashboardContent() {
       window.removeEventListener('switch-tab', onSwitchTabEvent);
       window.removeEventListener('view-details', onViewDetailsEvent);
     };
-  }, [handleQuickAction]);
+  }, [handleQuickAction, handleTabChange]);
 
   // Fallback logic for domains not in the static businessCategories map
   const businessInfo = useMemo(() => {
@@ -546,7 +557,15 @@ function BusinessDashboardContent() {
     return () => window.removeEventListener('refresh-dashboard-data', onRefreshDashboardData);
   }, [refreshAllData]);
 
+  const inventoryNeedsGridUpgrade = useMemo(
+    () =>
+      Array.isArray(products) &&
+      products.some((p) => p?._detailLevel === 'list' || p?._batchesDeferred),
+    [products]
+  );
+
   // Ensure active tab data is loaded; upgrade lean bootstrap lists when opening heavy tabs.
+  // Avoid depending on full `products` / moduleReady object identity (re-fetch storms).
   useEffect(() => {
     if (!business?.id || !hubReady) return;
 
@@ -561,8 +580,7 @@ function BusinessDashboardContent() {
       } else if (
         moduleReady.inventoryCatalog &&
         !loadingModules.inventory &&
-        Array.isArray(products) &&
-        products.some((p) => p?._detailLevel === 'list' || p?._batchesDeferred)
+        inventoryNeedsGridUpgrade
       ) {
         // Progressive enrichment: shell used slim list; upgrade for grid/batch UI without blanking.
         void fetchInventory({ force: true, fullCatalog: true, detailLevel: 'grid' });
@@ -611,9 +629,24 @@ function BusinessDashboardContent() {
     activeTab,
     business?.id,
     hubReady,
-    loadingModules,
-    moduleReady,
-    products,
+    inventoryNeedsGridUpgrade,
+    loadingModules.inventory,
+    loadingModules.sales,
+    loadingModules.finance,
+    loadingModules.expenses,
+    loadingModules.purchases,
+    loadingModules.payroll,
+    loadingModules.approvals,
+    loadingModules.manufacturing,
+    moduleReady.inventoryCatalog,
+    moduleReady.salesListDepth,
+    moduleReady.sales,
+    moduleReady.finance,
+    moduleReady.expenses,
+    moduleReady.purchases,
+    moduleReady.payroll,
+    moduleReady.approvals,
+    moduleReady.manufacturing,
     fetchFinance,
     fetchSales,
     fetchInventory,

@@ -28,6 +28,11 @@ import {
   isPosRelevant, isHospitality, isCampaignRelevant, isMembershipRelevant
 } from '@/lib/config/domains';
 import { normalizeDashboardTab } from '@/lib/config/tabs';
+import {
+  HUB_TAB_NAVIGATE_EVENT,
+  navigateHubTab,
+  prefetchHubTabChunk,
+} from '@/lib/utils/hubTabNavigation';
 import toast from 'react-hot-toast';
 import { useAppMode } from '@/lib/context/BusyModeContext';
 import { useHubReady } from '@/lib/hooks/useHubReady';
@@ -214,7 +219,24 @@ export function Sidebar({ isOpen, onClose, isSidebarCollapsed, setIsSidebarColla
   const searchParams = useSearchParams();
   const router = useRouter();
   const { hubReady, navReady, hasOptimisticShell, optimisticShell } = useHubReady();
-  const currentTab = normalizeDashboardTab(searchParams.get('tab') || 'dashboard');
+  const urlTab = normalizeDashboardTab(searchParams.get('tab') || 'dashboard');
+  // Optimistic highlight so sidebar matches panel paint before useSearchParams catches pushState.
+  const [optimisticNavTab, setOptimisticNavTab] = useState(null);
+  const currentTab = optimisticNavTab ?? urlTab;
+
+  useEffect(() => {
+    const onHubTab = (e) => {
+      const tab = e.detail?.tab;
+      if (tab) setOptimisticNavTab(normalizeDashboardTab(tab));
+    };
+    window.addEventListener(HUB_TAB_NAVIGATE_EVENT, onHubTab);
+    return () => window.removeEventListener(HUB_TAB_NAVIGATE_EVENT, onHubTab);
+  }, []);
+
+  useEffect(() => {
+    if (optimisticNavTab == null || optimisticNavTab !== urlTab) return;
+    queueMicrotask(() => setOptimisticNavTab(null));
+  }, [optimisticNavTab, urlTab]);
 
   const pathParts = pathname?.split('/') || [];
   const handleFromUrl = pathParts[2] || 'retail-shop';
@@ -454,6 +476,11 @@ export function Sidebar({ isOpen, onClose, isSidebarCollapsed, setIsSidebarColla
                             {...(isExternal && externalUrl && { target: '_blank', rel: 'noopener noreferrer' })} 
                             aria-disabled={isLocked || isExternalDisabled}
                             title={isExternalDisabled ? 'Set a store domain in Store Settings to view your public store' : undefined}
+                            onMouseEnter={() => {
+                              if (!isExternal && item.key !== 'platform-admin' && !isLocked) {
+                                prefetchHubTabChunk(item.key);
+                              }
+                            }}
                             onClick={(e) => {
                               if (isLocked) {
                                 e.preventDefault();
@@ -473,7 +500,13 @@ export function Sidebar({ isOpen, onClose, isSidebarCollapsed, setIsSidebarColla
                                 e.button === 0
                               ) {
                                 e.preventDefault();
-                                router.push(itemHref, { scroll: false });
+                                const result = navigateHubTab({
+                                  domain: handleFromUrl,
+                                  tab: item.key,
+                                });
+                                if (result.type === 'route') {
+                                  router.push(result.href, { scroll: false });
+                                }
                               }
                               if (window.innerWidth < 1024) onClose?.();
                             }}

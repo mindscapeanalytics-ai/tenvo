@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { MoreHorizontal } from 'lucide-react';
@@ -15,6 +15,11 @@ import {
 import { MobileActionRow } from '@/components/mobile/MobileHubPrimitives';
 import { useHubMobileNav } from '@/lib/hooks/useHubMobileNav';
 import { normalizeDashboardTab } from '@/lib/config/tabs';
+import {
+  HUB_TAB_NAVIGATE_EVENT,
+  navigateHubTab,
+  prefetchHubTabChunk,
+} from '@/lib/utils/hubTabNavigation';
 import {
   MOBILE_BOTTOM_SHEET,
   MOBILE_BOTTOM_SHEET_BODY,
@@ -33,18 +38,48 @@ export function HubMobileBottomNav() {
   const { primaryItems, overflowItems, ready } = useHubMobileNav();
   const [moreOpen, setMoreOpen] = useState(false);
 
-  const currentTab = normalizeDashboardTab(searchParams.get('tab') || 'dashboard');
-  const baseUrl = useMemo(() => {
+  const urlTab = normalizeDashboardTab(searchParams.get('tab') || 'dashboard');
+  const [optimisticNavTab, setOptimisticNavTab] = useState(null);
+  const currentTab = optimisticNavTab ?? urlTab;
+
+  const handleFromUrl = useMemo(() => {
     const parts = pathname?.split('/') || [];
-    const handle = parts[2] || 'retail-shop';
-    return `/business/${handle}`;
+    return parts[2] || 'retail-shop';
   }, [pathname]);
+
+  const baseUrl = `/business/${handleFromUrl}`;
+
+  useEffect(() => {
+    const onHubTab = (e) => {
+      const tab = e.detail?.tab;
+      if (tab) setOptimisticNavTab(normalizeDashboardTab(tab));
+    };
+    window.addEventListener(HUB_TAB_NAVIGATE_EVENT, onHubTab);
+    return () => window.removeEventListener(HUB_TAB_NAVIGATE_EVENT, onHubTab);
+  }, []);
+
+  useEffect(() => {
+    if (optimisticNavTab == null || optimisticNavTab !== urlTab) return;
+    queueMicrotask(() => setOptimisticNavTab(null));
+  }, [optimisticNavTab, urlTab]);
 
   if (!ready) return null;
 
   const hrefFor = (key, item) => {
     if (item?.externalPath) return item.externalPath;
     return key === 'dashboard' ? baseUrl : `${baseUrl}?tab=${key}`;
+  };
+
+  const goToTab = (key, item) => {
+    if (item?.locked) return;
+    if (item?.externalPath) {
+      router.push(item.externalPath, { scroll: false });
+      return;
+    }
+    const result = navigateHubTab({ domain: handleFromUrl, tab: key });
+    if (result.type === 'route') {
+      router.push(result.href, { scroll: false });
+    }
   };
 
   const isOverflowActive = overflowItems.some((item) => item.key === currentTab);
@@ -85,6 +120,20 @@ export function HubMobileBottomNav() {
               <li key={item.key} className="flex-1">
                 <Link
                   href={hrefFor(item.key, item)}
+                  onMouseEnter={() => {
+                    if (!item.locked && !item.externalPath) prefetchHubTabChunk(item.key);
+                  }}
+                  onClick={(e) => {
+                    if (item.locked) {
+                      e.preventDefault();
+                      return;
+                    }
+                    if (item.externalPath) return;
+                    if (!e.metaKey && !e.ctrlKey && !e.shiftKey && e.button === 0) {
+                      e.preventDefault();
+                      goToTab(item.key, item);
+                    }
+                  }}
                   className={cn(
                     'flex flex-col items-center gap-0.5 px-1 py-2 transition-colors',
                     isActive ? 'text-brand-primary' : 'text-gray-500',
@@ -123,7 +172,7 @@ export function HubMobileBottomNav() {
                   onClick={() => {
                     if (item.locked) return;
                     setMoreOpen(false);
-                    router.push(hrefFor(item.key, item));
+                    goToTab(item.key, item);
                   }}
                 />
               ))}
