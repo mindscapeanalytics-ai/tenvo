@@ -1,7 +1,7 @@
 # Hub SWR Paint + Keep-Alive Tabs — Design Spec
 
 **Date:** 2026-07-19  
-**Status:** Implemented + hardened (Approach B + visit-based forceMount + aligned RQ keys)  
+**Status:** Implemented + hardened + verified (Approach B; date SWR + local calendar keys)  
 **Extends:** `2026-07-17-hub-enterprise-shell-bootstrap-design.md` (closes Phase-1 paint/remount gaps)
 
 ## Problem

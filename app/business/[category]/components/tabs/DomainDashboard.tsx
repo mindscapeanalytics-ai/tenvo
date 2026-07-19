@@ -268,6 +268,20 @@ export function DomainDashboard({
         return 0;
     };
 
+    // Shared by Easy + Advanced: shell KPIs unlock Overview instantly (warm cache / bootstrap).
+    const hasBootstrapKpis = Boolean(
+        dashboardMetrics?.revenue != null ||
+            dashboardMetrics?.orders != null ||
+            dashboardMetrics?.inventory != null
+    );
+    const salesTilesLoading = isSalesLoading && !hasBootstrapKpis;
+    const inventoryTilesLoading =
+        isInventoryLoading && dashboardMetrics?.inventory == null;
+    const financeTilesLoading =
+        (isFinanceLoading || isExpensesLoading) &&
+        !hasBootstrapKpis &&
+        !advancedDashboardSnapshot?.finance;
+
     const periodMetrics = useMemo(() => {
         const currentFrom = new Date(dateRange.from);
         const currentTo = new Date(dateRange.to);
@@ -436,15 +450,18 @@ export function DomainDashboard({
             ?? 0;
         const serverOverdue = dashboardMetrics?.alerts?.overdueInvoices ?? 0;
         const catalogLoaded = products.length > 0;
+        const preferServerAlerts = hasBootstrapKpis && (isSalesLoading || invoices.length === 0);
         return {
             // Lean bootstrap may unlock inventory before products hydrate — keep server KPIs until then.
             lowStock: (!catalogLoaded || isInventoryLoading) ? serverLow : lowStockFallback,
-            overdueInvoices: isSalesLoading ? serverOverdue : overdueInvoicesFallback,
+            overdueInvoices: preferServerAlerts ? serverOverdue : overdueInvoicesFallback,
             pendingOrders: pendingOrdersFallback,
         };
     }, [
         dashboardMetrics,
         products.length,
+        invoices.length,
+        hasBootstrapKpis,
         isInventoryLoading,
         isSalesLoading,
         lowStockFallback,
@@ -805,7 +822,7 @@ export function DomainDashboard({
                 theme: 'cyan' as const,
                 sparkline: orderSeries,
                 actionId: metricActionId('orders'),
-                isLoading: isSalesLoading,
+                isLoading: salesTilesLoading,
             },
             {
                 label: 'Revenue In Period',
@@ -816,7 +833,7 @@ export function DomainDashboard({
                 theme: 'emerald' as const,
                 sparkline: revenueSeries,
                 actionId: metricActionId('revenue'),
-                isLoading: isSalesLoading,
+                isLoading: salesTilesLoading,
             },
             {
                 label: 'Inventory Value',
@@ -826,7 +843,7 @@ export function DomainDashboard({
                 icon: Boxes,
                 theme: 'violet' as const,
                 actionId: metricActionId('inventory_value'),
-                isLoading: isInventoryLoading || isFinanceLoading,
+                isLoading: inventoryTilesLoading || (financeTilesLoading && dashboardMetrics?.inventory == null),
             },
             {
                 label: 'Overdue',
@@ -840,7 +857,7 @@ export function DomainDashboard({
                 theme: 'rose' as const,
                 invertTrendColor: true,
                 actionId: metricActionId('overdue'),
-                isLoading: isSalesLoading,
+                isLoading: salesTilesLoading,
             },
         ];
     }, [
@@ -855,9 +872,10 @@ export function DomainDashboard({
         remindersData.overdueInvoices,
         formatCurrencyCompact,
         periodLabel,
-        isSalesLoading,
-        isInventoryLoading,
-        isFinanceLoading,
+        salesTilesLoading,
+        inventoryTilesLoading,
+        financeTilesLoading,
+        dashboardMetrics?.inventory,
     ]);
 
     const financeHeroMetrics = useMemo(
@@ -970,12 +988,14 @@ export function DomainDashboard({
         return insights;
     }, [remindersData, campaignEnabled, revenueTrendSigned, periodMetrics.currentExpenses, expenseTrend, domainKnowledge?.intelligence]);
 
-    // Easy/Advanced tiles unlock from owning modules — do not gate the cockpit on analytics.
-    const metricsPending = isSalesLoading || isInventoryLoading || isFinanceLoading || isExpensesLoading;
+    // Easy/Advanced tiles unlock from owning modules — do not gate the cockpit on expenses list.
+    const metricsPending =
+        !hasBootstrapKpis &&
+        (salesTilesLoading || inventoryTilesLoading || financeTilesLoading);
     // Avoid false empty-state while sales/inventory modules are still hydrating ([] arrays).
     const showQuickSetup = !metricsPending && !hasCoreData;
 
-    // Hydration guard to prevent flash of wrong mode
+    // modeReady is sync on client hub; keep a tiny SSR-safe fallback without blocking warm paint.
     if (!modeReady) {
         return (
             <div className="w-full min-h-[400px] flex items-center justify-center p-6 bg-neutral-50/50 rounded-xl border border-neutral-100 animate-pulse">
@@ -1089,10 +1109,10 @@ export function DomainDashboard({
                 category={category}
                 currency={resolvedCurrency}
                 metricsPending={metricsPending}
-                isSalesLoading={isSalesLoading}
-                isInventoryLoading={isInventoryLoading}
-                isFinanceLoading={isFinanceLoading || isExpensesLoading}
-                isAnalyticsLoading={isAnalyticsLoading}
+                isSalesLoading={salesTilesLoading}
+                isInventoryLoading={inventoryTilesLoading}
+                isFinanceLoading={financeTilesLoading}
+                isAnalyticsLoading={isAnalyticsLoading && !hasBootstrapKpis}
                 domainKnowledge={domainKnowledge as Record<string, unknown> | undefined}
                 domainVerticalLabel={domainVerticalLabel}
                 periodLabel={periodLabel}
@@ -1297,7 +1317,7 @@ export function DomainDashboard({
                 <FinanceHeroStrip
                     metrics={financeHeroMetrics}
                     onNavigate={handleMetricNavigate}
-                    isLoading={isFinanceLoading}
+                    isLoading={financeTilesLoading}
                 />
 
                 {/* Band: period snapshot */}

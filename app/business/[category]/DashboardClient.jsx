@@ -1982,7 +1982,9 @@ function BusinessDashboardContent() {
               !advancedDashboardSnapshot?.finance &&
               !hasBootstrapKpis
             }
-            isExpensesLoading={Boolean(loadingModules.expenses) && !moduleReady.expenses}
+            isExpensesLoading={
+              Boolean(loadingModules.expenses) && !moduleReady.expenses && !hasBootstrapKpis
+            }
             activityFeed={activityFeed}
             productTotal={productTotal}
             hasMoreProducts={hasMoreProducts}

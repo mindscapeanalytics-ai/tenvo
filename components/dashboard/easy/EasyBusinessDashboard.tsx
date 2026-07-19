@@ -627,6 +627,7 @@ export function EasyBusinessDashboard(props: EasyBusinessDashboardProps) {
     customers,
     expenseBreakdown = [],
     chartData = [],
+    dashboardMetrics = null,
     formatCurrencyCompact,
     greeting,
     userName,
@@ -667,18 +668,22 @@ export function EasyBusinessDashboard(props: EasyBusinessDashboardProps) {
 
   // isAnalyticsLoading retained for callers; Overview KPIs unlock from sales/inventory/finance.
   void isAnalyticsLoading;
-  // Per-module skeletons: unlock tiles from the module that owns each metric.
-  // Do not gate sales KPIs on analytics (calendar-month getDashboardMetricsAction).
-  const tileSalesLoading = isSalesLoading;
-  const tileInventoryLoading = isInventoryLoading;
-  // Receivables need sales; P&L / cash wait on finance only (Busy/Zoho-style module settle).
-  const tileFinanceLoading = isFinanceLoading || isSalesLoading;
-  const tilePnlLoading = isFinanceLoading;
-  const tilePeriodLoading = isSalesLoading || isFinanceLoading;
-  const tileAttentionLoading = isSalesLoading || isInventoryLoading;
-  const tileReturnsLoading = isSalesLoading;
-  const tileCoverageLoading = isSalesLoading || isInventoryLoading;
-  // Efficiency / Snapshot mix sales + inventory (+ finance for margin); analytics is optional fallback only.
+  // Shell bootstrap KPIs unlock tiles immediately (same contract as Advanced Overview).
+  const hasBootstrapKpis = Boolean(
+    dashboardMetrics?.revenue != null ||
+      dashboardMetrics?.orders != null ||
+      dashboardMetrics?.inventory != null
+  );
+  // Per-module skeletons: never blank tiles when bootstrap KPIs already painted.
+  const tileSalesLoading = isSalesLoading && !hasBootstrapKpis;
+  const tileInventoryLoading =
+    isInventoryLoading && dashboardMetrics?.inventory == null;
+  const tileFinanceLoading = isFinanceLoading && !hasBootstrapKpis;
+  const tilePnlLoading = isFinanceLoading && !hasBootstrapKpis;
+  const tilePeriodLoading = tileSalesLoading || tilePnlLoading;
+  const tileAttentionLoading = tileSalesLoading || tileInventoryLoading;
+  const tileReturnsLoading = tileSalesLoading;
+  const tileCoverageLoading = tileSalesLoading || tileInventoryLoading;
   const tileCoreLoading = tileSalesLoading || tileFinanceLoading || tileInventoryLoading;
 
   const [activeTab, setActiveTab] = useState('overview');

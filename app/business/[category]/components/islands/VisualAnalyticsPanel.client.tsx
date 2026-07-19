@@ -15,6 +15,11 @@ import { getDomainColors } from '@/lib/domainColors';
 import { resolveOperationsProfile } from '@/lib/dashboard/domainOperationsIntelligence';
 import { getVisualAnalyticsCopy } from '@/lib/dashboard/visualAnalyticsLabels';
 import { useResolvedBusinessId } from '@/lib/hooks/useResolvedBusinessId';
+import { toAnalyticsIsoDate } from '@/lib/utils/analyticsRange';
+import {
+    hubAnalyticsQueryKey,
+    sameTenantPlaceholderData,
+} from '@/lib/dashboard/hubQueryKeys';
 import { cn } from '@/lib/utils';
 
 interface VisualAnalyticsPanelProps {
@@ -28,15 +33,10 @@ interface VisualAnalyticsPanelProps {
 }
 
 function buildDateFilter(dateRange?: { from: Date; to: Date }) {
-    if (!dateRange?.from || !dateRange?.to) return {};
-    const from = dateRange.from instanceof Date ? dateRange.from.toISOString() : String(dateRange.from);
-    const to = dateRange.to instanceof Date ? dateRange.to.toISOString() : String(dateRange.to);
+    const from = toAnalyticsIsoDate(dateRange?.from);
+    const to = toAnalyticsIsoDate(dateRange?.to);
+    if (!from || !to) return {};
     return { from, to };
-}
-
-function hubAnalyticsQueryKey(businessId: string, dateRange?: { from: Date; to: Date }) {
-    const filter = buildDateFilter(dateRange);
-    return ['hubAnalytics', businessId, filter.from || '', filter.to || ''] as const;
 }
 
 const CHART_ACCENTS = {
@@ -157,10 +157,12 @@ export function VisualAnalyticsPanel({
     }, [shouldLoad]);
 
     const canFetch = Boolean(shouldLoad && resolvedBusinessId);
+    const fromKey = dateFilter.from || '';
+    const toKey = dateFilter.to || '';
 
     const analyticsQuery = useQuery({
-        queryKey: hubAnalyticsQueryKey(resolvedBusinessId || '__pending__', dateRange),
-        enabled: canFetch,
+        queryKey: hubAnalyticsQueryKey(resolvedBusinessId || '__pending__', fromKey, toKey),
+        enabled: canFetch && Boolean(fromKey && toKey),
         queryFn: async () => {
             // enabled requires resolvedBusinessId; narrow for TypeScript + runtime safety
             if (!resolvedBusinessId) {
@@ -173,14 +175,16 @@ export function VisualAnalyticsPanel({
             return bundle.data || { salesTrend: [], topProducts: [], categoryData: [] };
         },
         staleTime: 60_000,
+        placeholderData: (previousData, previousQuery) =>
+            sameTenantPlaceholderData(previousData, previousQuery, resolvedBusinessId),
     });
 
     // Keep skeleton while tenant id is still hydrating — never treat that as “no sales history”.
+    // Keep previous charts when revalidating (Zoho-style soft refresh).
     const loading =
         !resolvedBusinessId ||
         !shouldLoad ||
-        analyticsQuery.isLoading ||
-        (analyticsQuery.isFetching && !analyticsQuery.data);
+        (analyticsQuery.isLoading && !analyticsQuery.data);
 
     if (loading) {
         return <AnalyticsSkeleton containerRef={containerRef} />;
