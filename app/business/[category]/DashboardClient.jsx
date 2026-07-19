@@ -597,6 +597,7 @@ function BusinessDashboardContent() {
     }
 
     if (activeTab === 'customers') {
+      // Refetch when CRM never painted successfully (shell errors leave moduleReady.customers false).
       if (!moduleReady.customers && !loadingModules.customers && !loadingModules.sales) {
         void fetchCustomers();
       }

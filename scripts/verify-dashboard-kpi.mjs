@@ -43,6 +43,28 @@ if (!dataContext.includes('buildDashboardMetricsFromSnapshot')) {
 }
 
 {
+  const applyStart = dataContext.indexOf('const applyHubShellPayload');
+  const applyEnd = dataContext.indexOf('const hydrateHubShellFromServer');
+  const applyBody = dataContext.slice(applyStart, applyEnd > applyStart ? applyEnd : undefined);
+  if (!applyBody.includes('shellCustomersFailed') || !applyBody.includes('errors.customers')) {
+    mark('applyHubShellPayload must not mark CRM ready on shell errors.customers');
+  } else if (!applyBody.includes('customersMarkedReady')) {
+    mark('applyHubShellPayload must gate customers ready on successful CRM paint');
+  } else {
+    ok('Shell CRM failure does not fake empty-tenant ready state');
+  }
+}
+
+{
+  const shellLoad = read('lib/dashboard/loadInitialHubShell.js');
+  if (!shellLoad.includes('shell.errors')) {
+    mark('loadInitialHubShell must forward shell.errors to the client hydrator');
+  } else {
+    ok('SSR hub shell forwards partial module errors');
+  }
+}
+
+{
   const analyticsSrc = read('lib/actions/premium/ai/analytics.js');
   const metricsIdx = analyticsSrc.indexOf('export async function getDashboardMetricsAction');
   const metricsEnd = analyticsSrc.indexOf('export async function getExpenseBreakdownAction');
