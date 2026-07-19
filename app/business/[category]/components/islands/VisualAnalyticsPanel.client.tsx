@@ -18,7 +18,6 @@ import { useResolvedBusinessId } from '@/lib/hooks/useResolvedBusinessId';
 import { toAnalyticsIsoDate } from '@/lib/utils/analyticsRange';
 import {
     hubAnalyticsQueryKey,
-    sameTenantPlaceholderData,
 } from '@/lib/dashboard/hubQueryKeys';
 import { cn } from '@/lib/utils';
 
@@ -31,6 +30,19 @@ interface VisualAnalyticsPanelProps {
     dateRange?: { from: Date; to: Date };
     currency?: string;
 }
+
+/** Lean chart payload shared with DataContext idle prefetch (`hubAnalytics`). */
+type HubAnalyticsChartBundle = {
+    salesTrend: Array<Record<string, unknown>>;
+    topProducts: Array<Record<string, unknown>>;
+    categoryData: Array<Record<string, unknown>>;
+};
+
+const EMPTY_ANALYTICS_BUNDLE: HubAnalyticsChartBundle = {
+    salesTrend: [],
+    topProducts: [],
+    categoryData: [],
+};
 
 function buildDateFilter(dateRange?: { from: Date; to: Date }) {
     const from = toAnalyticsIsoDate(dateRange?.from);
@@ -160,23 +172,36 @@ export function VisualAnalyticsPanel({
     const fromKey = dateFilter.from || '';
     const toKey = dateFilter.to || '';
 
-    const analyticsQuery = useQuery({
+    const analyticsQuery = useQuery<HubAnalyticsChartBundle>({
         queryKey: hubAnalyticsQueryKey(resolvedBusinessId || '__pending__', fromKey, toKey),
         enabled: canFetch && Boolean(fromKey && toKey),
-        queryFn: async () => {
+        queryFn: async (): Promise<HubAnalyticsChartBundle> => {
             // enabled requires resolvedBusinessId; narrow for TypeScript + runtime safety
             if (!resolvedBusinessId) {
                 throw new Error('VisualAnalyticsPanel: businessId required when analytics query is enabled');
             }
             const bundle = await getAnalyticsBundleAction(resolvedBusinessId, dateFilter);
-            if (!bundle?.success) {
-                return { salesTrend: [], topProducts: [], categoryData: [] };
+            if (!bundle?.success || !bundle.data) {
+                return EMPTY_ANALYTICS_BUNDLE;
             }
-            return bundle.data || { salesTrend: [], topProducts: [], categoryData: [] };
+            return {
+                salesTrend: Array.isArray(bundle.data.salesTrend) ? bundle.data.salesTrend : [],
+                topProducts: Array.isArray(bundle.data.topProducts) ? bundle.data.topProducts : [],
+                categoryData: Array.isArray(bundle.data.categoryData) ? bundle.data.categoryData : [],
+            };
         },
         staleTime: 60_000,
-        placeholderData: (previousData, previousQuery) =>
-            sameTenantPlaceholderData(previousData, previousQuery, resolvedBusinessId),
+        // Inline tenant guard keeps TanStack placeholderData typed to HubAnalyticsChartBundle
+        // (JS helper return was inferred as {} and broke useQuery overloads).
+        placeholderData: (previousData, previousQuery) => {
+            if (previousData == null || !resolvedBusinessId || !previousQuery?.queryKey) {
+                return undefined;
+            }
+            if (previousQuery.queryKey[1] !== resolvedBusinessId) {
+                return undefined;
+            }
+            return previousData;
+        },
     });
 
     // Keep skeleton while tenant id is still hydrating — never treat that as “no sales history”.
@@ -190,9 +215,9 @@ export function VisualAnalyticsPanel({
         return <AnalyticsSkeleton containerRef={containerRef} />;
     }
 
-    const salesData = (analyticsQuery.data?.salesTrend || []) as Array<Record<string, unknown>>;
-    const topProducts = (analyticsQuery.data?.topProducts || []) as Array<Record<string, unknown>>;
-    const categoryData = (analyticsQuery.data?.categoryData || []) as Array<Record<string, unknown>>;
+    const salesData = analyticsQuery.data?.salesTrend || [];
+    const topProducts = analyticsQuery.data?.topProducts || [];
+    const categoryData = analyticsQuery.data?.categoryData || [];
 
     const hasData =
         salesData.some((d) => Number(d.revenue) > 0 || Number(d.profit) > 0) ||
