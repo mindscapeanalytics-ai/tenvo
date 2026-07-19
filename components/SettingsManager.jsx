@@ -298,13 +298,23 @@ export function SettingsManager({ category }) {
   const setActiveTab = useCallback(
     (tab) => {
       if (!availableSectionValues.includes(tab)) return;
-      // Paint the panel first; sync deep-link URL off the critical path.
+      // Paint the panel first; sync deep-link URL without a Next soft-navigation.
       setUserSelectedTab(tab);
       startTransition(() => {
-        const params = new URLSearchParams(searchParams.toString());
+        const params = new URLSearchParams(
+          typeof window !== 'undefined' ? window.location.search : searchParams.toString()
+        );
         params.set('section', tab);
         const qs = params.toString();
-        router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+        const next = qs ? `${pathname}?${qs}` : pathname;
+        if (typeof window !== 'undefined') {
+          const current = `${window.location.pathname}${window.location.search}`;
+          if (current !== next) {
+            window.history.replaceState(window.history.state, '', next);
+          }
+        } else {
+          router.replace(next, { scroll: false });
+        }
       });
     },
     [availableSectionValues, pathname, router, searchParams]

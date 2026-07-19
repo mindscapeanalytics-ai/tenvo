@@ -70,6 +70,18 @@ const KEEP_ALIVE_TABS = new Set([
     'customers',
     'purchases',
     'settings',
+    'store-settings',
+    'pos',
+    'orders',
+    'campaigns',
+    'memberships',
+    'payments',
+    'audit',
+    'loyalty',
+    'vendors',
+    'gst',
+    'restaurant',
+    'inquiries',
 ]);
 
 export function DashboardTabs({
@@ -142,6 +154,19 @@ export function DashboardTabs({
     }
     const shouldForceMount = (tab) =>
         KEEP_ALIVE_TABS.has(tab) && keepAliveVisitedRef.current.has(tab);
+
+    // Reports sub-views: keep visited panels mounted (CSS-hide) so Forecast/AI/Builder do not cold-remount.
+    const [reportsView, setReportsView] = React.useState('analytics');
+    const reportsVisitedRef = React.useRef(new Set(['analytics']));
+    const reportsBusinessRef = React.useRef(activeBusinessId);
+    if (activeBusinessId && reportsBusinessRef.current !== activeBusinessId) {
+        reportsBusinessRef.current = activeBusinessId;
+        reportsVisitedRef.current = new Set([reportsView || 'analytics']);
+    }
+    if (typeof reportsView === 'string') {
+        reportsVisitedRef.current.add(reportsView);
+    }
+    const shouldShowReportsView = (view) => reportsVisitedRef.current.has(view);
 
     // Memoized Filtering Logic
     const filteredProducts = React.useMemo(() => {
@@ -247,7 +272,6 @@ export function DashboardTabs({
     }, [productionOrders, searchTerm]);
     const [restaurantView, setRestaurantView] = React.useState('manager');
     const [hrView, setHrView] = React.useState('payroll');
-    const [reportsView, setReportsView] = React.useState('analytics');
     const [approvalsView, setApprovalsView] = React.useState('inbox'); // 'inbox' | 'builder'
 
     const {
@@ -506,7 +530,7 @@ export function DashboardTabs({
                     )}
                 </TabsContent>
 
-                <TabsContent value="vendors" className="space-y-6 outline-none">
+                <TabsContent value="vendors" forceMount={shouldForceMount('vendors')} className="space-y-6 outline-none">
                     {wrapTab(
                         <TabGuard tabKey="vendors" role={role} planTier={planTier} featureName="Vendors" onUpgrade={() => handleTabChange('settings')}>
                             <VendorManager
@@ -527,7 +551,7 @@ export function DashboardTabs({
                     )}
                 </TabsContent>
 
-                <TabsContent value="payments" className="space-y-6 outline-none">
+                <TabsContent value="payments" forceMount={shouldForceMount('payments')} className="space-y-6 outline-none">
                     {wrapTab(
                         <TabGuard tabKey="payments" role={role} planTier={planTier} featureName="Payments" onUpgrade={() => handleTabChange('settings')}>
                             <PaymentManager
@@ -722,16 +746,44 @@ export function DashboardTabs({
                                         ))}
                                     </div>
                                 </div>
-                                {reportsView === 'analytics' && <AdvancedAnalytics businessId={activeBusinessId} category={category} currency={currency} dateRange={dateRange} />}
-                                {reportsView === 'forecast' && <DemandForecast businessId={activeBusinessId} category={category} products={products} invoices={invoices} domainKnowledge={domainKnowledge} dateRange={dateRange} />}
-                                {reportsView === 'ai' && <AIInsightsPanel businessId={activeBusinessId} category={category} currency={currency} dateRange={dateRange} />}
-                                {reportsView === 'builder' && <ReportBuilder businessId={activeBusinessId} currency={currency} dateRange={dateRange} />}
+                                {shouldShowReportsView('analytics') ? (
+                                    <div
+                                        className={reportsView === 'analytics' ? 'space-y-4' : 'hidden'}
+                                        aria-hidden={reportsView !== 'analytics'}
+                                    >
+                                        <AdvancedAnalytics businessId={activeBusinessId} category={category} currency={currency} dateRange={dateRange} />
+                                    </div>
+                                ) : null}
+                                {shouldShowReportsView('forecast') ? (
+                                    <div
+                                        className={reportsView === 'forecast' ? 'space-y-4' : 'hidden'}
+                                        aria-hidden={reportsView !== 'forecast'}
+                                    >
+                                        <DemandForecast businessId={activeBusinessId} category={category} products={products} invoices={invoices} domainKnowledge={domainKnowledge} dateRange={dateRange} />
+                                    </div>
+                                ) : null}
+                                {shouldShowReportsView('ai') ? (
+                                    <div
+                                        className={reportsView === 'ai' ? 'space-y-4' : 'hidden'}
+                                        aria-hidden={reportsView !== 'ai'}
+                                    >
+                                        <AIInsightsPanel businessId={activeBusinessId} category={category} currency={currency} dateRange={dateRange} />
+                                    </div>
+                                ) : null}
+                                {shouldShowReportsView('builder') ? (
+                                    <div
+                                        className={reportsView === 'builder' ? 'space-y-4' : 'hidden'}
+                                        aria-hidden={reportsView !== 'builder'}
+                                    >
+                                        <ReportBuilder businessId={activeBusinessId} currency={currency} dateRange={dateRange} />
+                                    </div>
+                                ) : null}
                             </div>
                         </TabGuard>
                     )}
                 </TabsContent>
 
-                <TabsContent value="campaigns" className="space-y-6 outline-none">
+                <TabsContent value="campaigns" forceMount={shouldForceMount('campaigns')} className="space-y-6 outline-none">
                     {wrapTab(
                         <TabGuard tabKey="campaigns" role={role} planTier={planTier} domainCheck={campaignRelevant} domainTitle="Campaigns & Marketing not relevant for this domain" domainMessage="Marketing automations are enabled for customer-facing retail and service domains." requiredPlan="business" featureName="Campaigns & Marketing" onUpgrade={() => handleTabChange('settings')}>
                             <CampaignsManager
@@ -746,7 +798,7 @@ export function DashboardTabs({
                     )}
                 </TabsContent>
 
-                <TabsContent value="gst" className="space-y-6 outline-none">
+                <TabsContent value="gst" forceMount={shouldForceMount('gst')} className="space-y-6 outline-none">
                     {wrapTab(
                         <TabGuard tabKey="gst" role={role} planTier={planTier} featureName="Tax & GST" onUpgrade={() => handleTabChange('settings')}>
                             <TaxComplianceManager
@@ -760,7 +812,7 @@ export function DashboardTabs({
 
                 {/* --- Phase 3+5+6: New Module Tabs ---------------------------- */}
 
-                <TabsContent value="pos" className="outline-none mt-0 pt-2 lg:pt-3">
+                <TabsContent value="pos" forceMount={shouldForceMount('pos')} className="outline-none mt-0 pt-2 lg:pt-3">
                     {wrapTab(
                         <TabGuard
                             tabKey="pos"
@@ -815,7 +867,7 @@ export function DashboardTabs({
                 </TabsContent>
 
                 {/* --- Orders Tab - Storefront Orders ----------------------- */}
-                <TabsContent value="orders" className="space-y-6 outline-none">
+                <TabsContent value="orders" forceMount={shouldForceMount('orders')} className="space-y-6 outline-none">
                     {wrapTab(
                         <TabGuard
                             tabKey="orders"
@@ -835,7 +887,7 @@ export function DashboardTabs({
                 </TabsContent>
 
                 {/* --- Customer Inquiries Tab - Storefront contact messages --- */}
-                <TabsContent value="inquiries" className="space-y-6 outline-none">
+                <TabsContent value="inquiries" forceMount={shouldForceMount('inquiries')} className="space-y-6 outline-none">
                     {wrapTab(
                         <TabGuard
                             tabKey="inquiries"
@@ -851,7 +903,7 @@ export function DashboardTabs({
                     )}
                 </TabsContent>
 
-                <TabsContent value="restaurant" className="space-y-6 outline-none">
+                <TabsContent value="restaurant" forceMount={shouldForceMount('restaurant')} className="space-y-6 outline-none">
                     {wrapTab(
                         <TabGuard
                             tabKey="restaurant"
@@ -1064,7 +1116,7 @@ export function DashboardTabs({
                     )}
                 </TabsContent>
 
-                <TabsContent value="loyalty" className="space-y-6 outline-none">
+                <TabsContent value="loyalty" forceMount={shouldForceMount('loyalty')} className="space-y-6 outline-none">
                     {wrapTab(
                         <TabGuard tabKey="loyalty" role={role} planTier={planTier} domainCheck={posRelevant} domainTitle="Loyalty & CRM not relevant for this domain" domainMessage="Loyalty and POS CRM are available for customer-facing retail and hospitality domains." requiredPlan="starter" featureName="Loyalty & CRM" onUpgrade={() => handleTabChange('settings')}>
                             <StorefrontTabShell activeTab="loyalty">
@@ -1082,7 +1134,7 @@ export function DashboardTabs({
                     )}
                 </TabsContent>
 
-                <TabsContent value="memberships" className="space-y-6 outline-none">
+                <TabsContent value="memberships" forceMount={shouldForceMount('memberships')} className="space-y-6 outline-none">
                     {wrapTab(
                         <TabGuard tabKey="memberships" role={role} planTier={planTier} domainCheck={membershipRelevant} domainTitle="Memberships not relevant for this domain" domainMessage="Membership management is available for gym, spa, salon, and similar service verticals." requiredPlan="professional" featureName="Membership Management" onUpgrade={() => handleTabChange('settings')}>
                             <StorefrontTabShell activeTab="memberships">
@@ -1108,7 +1160,7 @@ export function DashboardTabs({
                     )}
                 </TabsContent>
 
-                <TabsContent value="audit" className="space-y-6 outline-none">
+                <TabsContent value="audit" forceMount={shouldForceMount('audit')} className="space-y-6 outline-none">
                     {wrapTab(
                         <TabGuard tabKey="audit" role={role} planTier={planTier} requiredPlan="business" featureName="Audit Trail" onUpgrade={() => handleTabChange('settings')}>
                             <AuditTrailViewer businessId={activeBusinessId} />
@@ -1125,7 +1177,7 @@ export function DashboardTabs({
                 </TabsContent>
 
                 {/* --- Store Settings Tab --- */}
-                <TabsContent value="store-settings" className="space-y-6 outline-none">
+                <TabsContent value="store-settings" forceMount={shouldForceMount('store-settings')} className="space-y-6 outline-none">
                     {wrapTab(
                         <TabGuard tabKey="store-settings" role={role} planTier={planTier} featureName="Store Settings" onUpgrade={() => handleTabChange('settings')}>
                             <StorefrontTabShell activeTab="store-settings">

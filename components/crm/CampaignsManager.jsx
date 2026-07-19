@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import {
   Megaphone,
   Sparkles,
@@ -113,10 +113,11 @@ export function CampaignsManager({
   const [dispatchBusyId, setDispatchBusyId] = useState(null);
   const [deleteBusyId, setDeleteBusyId] = useState(null);
   const [emailDelivery, setEmailDelivery] = useState(null);
+  const hasHubCacheRef = useRef(false);
 
   const loadHub = useCallback(async () => {
     if (!businessId) return;
-    setHubLoading(true);
+    if (!hasHubCacheRef.current) setHubLoading(true);
     try {
       const [res, intRes] = await Promise.all([
         getCampaignsOverviewAction(businessId),
@@ -133,17 +134,26 @@ export function CampaignsManager({
           promotions: res.promotions || [],
           playbooks: res.playbooks || [],
         });
+        hasHubCacheRef.current = true;
       } else {
         toast.error(res.error || 'Could not load campaigns overview');
-        setHub({ campaigns: [], segments: [], promotionCount: 0, promotions: [], playbooks: [] });
+        if (!hasHubCacheRef.current) {
+          setHub({ campaigns: [], segments: [], promotionCount: 0, promotions: [], playbooks: [] });
+        }
       }
     } catch (e) {
       console.error(e);
       toast.error('Failed to load campaigns data');
-      setHub({ campaigns: [], segments: [], promotionCount: 0, promotions: [], playbooks: [] });
+      if (!hasHubCacheRef.current) {
+        setHub({ campaigns: [], segments: [], promotionCount: 0, promotions: [], playbooks: [] });
+      }
     } finally {
       setHubLoading(false);
     }
+  }, [businessId]);
+
+  useEffect(() => {
+    hasHubCacheRef.current = false;
   }, [businessId]);
 
   useEffect(() => {

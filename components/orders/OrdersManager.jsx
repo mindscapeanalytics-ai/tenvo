@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -124,6 +124,7 @@ export function OrdersManager({ business, category }) {
   const [paymentForm, setPaymentForm] = useState(DEFAULT_PAYMENT_FORM);
   const [recordingPayment, setRecordingPayment] = useState(false);
   const limit = 10;
+  const hasOrdersCacheRef = useRef(false);
 
   const openMembershipsTab = () => {
     const handle = params?.category || business?.handle || business?.domain || category;
@@ -132,8 +133,8 @@ export function OrdersManager({ business, category }) {
 
   const loadOrders = useCallback(async () => {
     if (!business?.id) return;
-    
-    setLoading(true);
+
+    if (!hasOrdersCacheRef.current) setLoading(true);
     try {
       const filters = {
         limit,
@@ -171,6 +172,7 @@ export function OrdersManager({ business, category }) {
         
         setOrders(filteredOrders);
         setTotalOrders(result.total || 0);
+        hasOrdersCacheRef.current = true;
       } else {
         toast.error('Failed to load orders');
       }
@@ -181,6 +183,10 @@ export function OrdersManager({ business, category }) {
       setLoading(false);
     }
   }, [business?.id, currentPage, statusFilter, dateRange, searchQuery]);
+
+  useEffect(() => {
+    hasOrdersCacheRef.current = false;
+  }, [business?.id]);
 
   useEffect(() => {
     loadOrders();

@@ -270,6 +270,34 @@ if (!dashTabs.includes("'settings'") || !dashTabs.includes("forceMount={shouldFo
   ok('Hub Settings tab stay-mounted after first visit');
 }
 
+{
+  const keepAliveStart = dashTabs.indexOf('const KEEP_ALIVE_TABS');
+  const keepAliveEnd = dashTabs.indexOf(']);', keepAliveStart) + 3;
+  const keepAliveBlock = dashTabs.slice(keepAliveStart, keepAliveEnd);
+  for (const tab of ['store-settings', 'pos', 'orders', 'campaigns', 'memberships', 'payments', 'audit']) {
+    if (!keepAliveBlock.includes(`'${tab}'`)) {
+      mark(`KEEP_ALIVE_TABS must include ${tab}`);
+    }
+  }
+  if (!dashTabs.includes("forceMount={shouldForceMount('pos')}") || !dashTabs.includes("forceMount={shouldForceMount('orders')}")) {
+    mark('POS and Orders TabsContent must use visit forceMount');
+  } else {
+    ok('High-traffic hub tabs use keep-alive forceMount');
+  }
+  if (!dashTabs.includes('shouldShowReportsView') || !dashTabs.includes("shouldShowReportsView('ai')")) {
+    mark('Reports sub-views must stay mounted after first visit (CSS hide)');
+  } else {
+    ok('Reports Analytics/Forecast/AI/Builder keep-alive');
+  }
+}
+
+const hubNav = read('lib/utils/hubTabNavigation.js');
+if (!hubNav.includes("'store-settings'") || !hubNav.includes("'pos'")) {
+  mark('Idle hub prefetch must warm POS and store-settings chunks');
+} else {
+  ok('Idle prefetch covers POS + store-settings');
+}
+
 const dashKpis = read('lib/actions/basic/dashboard.js');
 if (dashKpis.includes('totalRevenue - totalPurchases') && !dashKpis.includes('cogsTotal')) {
   mark('getDashboardKPIs grossProfit must use sold COGS, not purchases');
@@ -277,6 +305,12 @@ if (dashKpis.includes('totalRevenue - totalPurchases') && !dashKpis.includes('co
   mark('getDashboardKPIs must compute grossProfit from SALES_COGS_PERIOD_SQL');
 } else {
   ok('Overview grossProfit uses revenue − COGS');
+}
+
+if (!settingsMgr.includes('history.replaceState')) {
+  mark('Settings section URL sync must use history.replaceState (no soft-nav)');
+} else {
+  ok('Settings section URL uses shallow history.replaceState');
 }
 
 if (failed) {

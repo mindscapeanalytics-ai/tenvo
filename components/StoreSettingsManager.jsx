@@ -539,11 +539,17 @@ export function StoreSettingsManager({ business, category }) {
     category || business?.category
   );
 
-  useEffect(() => { loadSettings(); }, [business?.id]);
+  const settingsHydratedRef = useRef(false);
+
+  useEffect(() => {
+    settingsHydratedRef.current = false;
+    void loadSettings();
+  }, [business?.id]);
 
   const loadSettings = async () => {
     if (!business?.id) return;
-    setLoading(true);
+    // Soft revalidate: only show blocking skeleton on first load for this tenant.
+    if (!settingsHydratedRef.current) setLoading(true);
     try {
       const result = await getStorefrontSettings(business.id);
       if (result.success && result.data) {
@@ -557,6 +563,7 @@ export function StoreSettingsManager({ business, category }) {
         }));
         setNewDomain(result.data.storeDomain || '');
         setLoadedPlanTier(result.data.planTier || null);
+        settingsHydratedRef.current = true;
       }
       if (
         (supportsFashionGulSections(category || business?.category) && !isJewelleryStore(category || business?.category))

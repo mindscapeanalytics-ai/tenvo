@@ -1,4 +1,4 @@
-import { useMemo, memo, useState, useEffect } from 'react';
+import { useMemo, memo, useState, useEffect, useRef } from 'react';
 import { getDemandForecastAction } from '@/lib/actions/premium/ai/analytics';
 import { Package, Rocket, Info } from 'lucide-react';
 import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
@@ -69,12 +69,17 @@ export const DemandForecast = memo(function DemandForecast({
         String(category || 'retail-shop');
     const [forecastData, setForecastData] = useState<ForecastRow[]>([]);
     const [loading, setLoading] = useState(true);
+    const hasForecastCacheRef = useRef(false);
 
     const rangeFromKey =
         dateRange?.from instanceof Date ? dateRange.from.getTime() : dateRange?.from != null ? String(dateRange.from) : '';
     const rangeToKey =
         dateRange?.to instanceof Date ? dateRange.to.getTime() : dateRange?.to != null ? String(dateRange.to) : '';
     const dateFilter = useMemo(() => buildDateFilter(dateRange), [rangeFromKey, rangeToKey]);
+
+    useEffect(() => {
+        hasForecastCacheRef.current = false;
+    }, [resolvedBusinessId]);
 
     useEffect(() => {
         async function load() {
@@ -84,7 +89,7 @@ export const DemandForecast = memo(function DemandForecast({
                 return;
             }
 
-            setLoading(true);
+            if (!hasForecastCacheRef.current) setLoading(true);
             try {
                 const res = await getDemandForecastAction(
                     resolvedBusinessId,
@@ -94,12 +99,13 @@ export const DemandForecast = memo(function DemandForecast({
                 );
                 if (res && res.success) {
                     setForecastData((res.data as ForecastRow[]) || []);
-                } else {
+                    hasForecastCacheRef.current = true;
+                } else if (!hasForecastCacheRef.current) {
                     setForecastData([]);
                 }
             } catch (error) {
                 console.error('Demand forecast load failed:', error);
-                setForecastData([]);
+                if (!hasForecastCacheRef.current) setForecastData([]);
             } finally {
                 setLoading(false);
             }

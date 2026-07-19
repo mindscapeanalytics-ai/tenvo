@@ -183,10 +183,11 @@ export function MembershipManager({ businessId, category }) {
   const [benefitsLoading, setBenefitsLoading] = useState(false);
   const [benefitsSaving, setBenefitsSaving] = useState(false);
   const autoSyncedRef = useRef(false);
+  const hasMembershipCacheRef = useRef(false);
 
   const load = useCallback(async () => {
     if (!businessId) return;
-    setLoading(true);
+    if (!hasMembershipCacheRef.current) setLoading(true);
     try {
       const filters = filter === 'all' ? {} : { status: filter };
       const [listRes, planRes, statsRes, insightsRes] = await Promise.all([
@@ -199,12 +200,17 @@ export function MembershipManager({ businessId, category }) {
       if (planRes.success) setPlans(planRes.plans || []);
       if (statsRes.success) setStats(statsRes.stats);
       if (insightsRes.success) setInsights(insightsRes.insights);
+      hasMembershipCacheRef.current = true;
     } catch (err) {
       toast.error(err.message || 'Failed to load memberships');
     } finally {
       setLoading(false);
     }
   }, [businessId, filter, category]);
+
+  useEffect(() => {
+    hasMembershipCacheRef.current = false;
+  }, [businessId]);
 
   const openBenefitsEditor = async (plan) => {
     setBenefitsPlan(plan);
