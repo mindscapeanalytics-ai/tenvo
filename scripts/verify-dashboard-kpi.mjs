@@ -89,8 +89,8 @@ if (!salesInsights.includes('TOP_CUSTOMERS_UNIFIED_SQL')) {
   }
 }
 
-if (!salesFilter.includes('normalizeSalesChannel') || !salesFilter.includes('storefront')) {
-  mark('salesPerformanceFilter must normalize channel including storefront/Online');
+if (!salesFilter.includes('normalizeSalesChannel') || !salesFilter.includes('storefront') || !salesFilter.includes('restaurant')) {
+  mark('salesPerformanceFilter must normalize channel including storefront/Online/restaurant');
 } else {
   ok('salesPerformanceFilter channel contract present');
 }

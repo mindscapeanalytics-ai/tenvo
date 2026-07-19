@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   resolveFormDefaultTaxRate,
   getBusinessRegionalPack,
+  resolveDisplayCurrency,
 } from '@/lib/utils/businessRegionalContext';
 import { buildRegionalTaxCategoryDefaults } from '@/lib/utils/regionalHelpers';
 
@@ -42,11 +43,18 @@ describe('businessRegionalContext', () => {
     expect(resolveFormDefaultTaxRate(disabled, 'retail-shop')).toBe(0);
   });
 
-  it('builds tax categories from country registry only', () => {
-    const ae = buildRegionalTaxCategoryDefaults('AE');
-    expect(ae[0]).toContain('VAT');
-    expect(ae[0]).toContain('5%');
-    const us = buildRegionalTaxCategoryDefaults('US');
-    expect(us).toContain('Standard');
+  it('prefers financials.currency then businesses.currency for pack and display', () => {
+    const business = {
+      currency: 'USD',
+      country: 'Pakistan',
+      settings: {
+        registration: { country_iso: 'PK' },
+        financials: { currency: 'AED', currencySymbol: 'د.إ' },
+      },
+    };
+    const pack = getBusinessRegionalPack(business);
+    expect(pack.currency).toBe('AED');
+    expect(resolveDisplayCurrency(business, pack)).toBe('AED');
+    expect(resolveDisplayCurrency({ currency: 'USD', settings: { registration: { country_iso: 'PK' } } })).toBe('USD');
   });
 });

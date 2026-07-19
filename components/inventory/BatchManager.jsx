@@ -10,6 +10,8 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { batchAPI } from '@/lib/api/batch';
 import { formatCurrency } from '@/lib/currency';
+import { useBusiness } from '@/lib/context/BusinessContext';
+import { resolveDisplayCurrency } from '@/lib/utils/businessRegionalContext';
 import toast from 'react-hot-toast';
 import { ResponsiveManagerHeader } from '@/components/mobile/HubSectionHeader';
 
@@ -32,6 +34,11 @@ export function BatchManager({
     onBatchCreated,
     onClose
 }) {
+    const { business, currency: businessCurrency, regionalPack } = useBusiness();
+    const currency = resolveDisplayCurrency(
+        { currency: businessCurrency || business?.currency },
+        regionalPack
+    );
     const [batches, setBatches] = useState([]);
     const [loading, setLoading] = useState(false);
     const [showAddForm, setShowAddForm] = useState(false);
@@ -210,7 +217,7 @@ export function BatchManager({
                 </Card>
                 <Card>
                     <CardContent className="pt-6">
-                        <div className="text-2xl font-bold text-gray-900">{formatCurrency(totalValue, 'PKR')}</div>
+                        <div className="text-2xl font-bold text-gray-900">{formatCurrency(totalValue, currency)}</div>
                         <p className="text-sm text-gray-600">Total Value</p>
                     </CardContent>
                 </Card>
@@ -303,7 +310,7 @@ export function BatchManager({
                                                 <div>
                                                     <p className="text-gray-600">Cost Price</p>
                                                     <p className="font-medium text-gray-900">
-                                                        {formatCurrency(batch.cost_price || 0, 'PKR')}
+                                                        {formatCurrency(batch.cost_price || 0, currency)}
                                                     </p>
                                                 </div>
 

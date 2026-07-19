@@ -53,9 +53,20 @@ export const DemandForecast = memo(function DemandForecast({
     void _invoices;
     const { business } = useBusiness();
     const resolvedBusinessId = useResolvedBusinessId(businessId);
-    const domainKnowledge = (
-        propDomainKnowledge ?? getDomainKnowledgeForBusiness(category, business)
-    ) as DomainKnowledgeSlice;
+    const domainKnowledge = useMemo(
+        () =>
+            (propDomainKnowledge ??
+                getDomainKnowledgeForBusiness(category, business)) as DomainKnowledgeSlice,
+        [propDomainKnowledge, category, business]
+    );
+    const domainIntel = useMemo(() => {
+        const intel = { ...(domainKnowledge?.intelligence ?? {}) } as Record<string, unknown>;
+        if (!intel.key) intel.key = category;
+        return intel;
+    }, [domainKnowledge, category]);
+    const domainLabel =
+        (typeof domainKnowledge?.name === 'string' && domainKnowledge.name.trim()) ||
+        String(category || 'retail-shop');
     const [forecastData, setForecastData] = useState<ForecastRow[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -63,6 +74,7 @@ export const DemandForecast = memo(function DemandForecast({
         dateRange?.from instanceof Date ? dateRange.from.getTime() : dateRange?.from != null ? String(dateRange.from) : '';
     const rangeToKey =
         dateRange?.to instanceof Date ? dateRange.to.getTime() : dateRange?.to != null ? String(dateRange.to) : '';
+    const dateFilter = useMemo(() => buildDateFilter(dateRange), [rangeFromKey, rangeToKey]);
 
     useEffect(() => {
         async function load() {
@@ -74,15 +86,11 @@ export const DemandForecast = memo(function DemandForecast({
 
             setLoading(true);
             try {
-                const dk = (
-                    propDomainKnowledge ?? getDomainKnowledgeForBusiness(category, business)
-                ) as DomainKnowledgeSlice;
-                const intel = dk?.intelligence ?? {};
                 const res = await getDemandForecastAction(
                     resolvedBusinessId,
-                    intel,
+                    domainIntel,
                     true,
-                    buildDateFilter(dateRange)
+                    dateFilter
                 );
                 if (res && res.success) {
                     setForecastData((res.data as ForecastRow[]) || []);
@@ -97,7 +105,7 @@ export const DemandForecast = memo(function DemandForecast({
             }
         }
         void load();
-    }, [resolvedBusinessId, category, propDomainKnowledge, business, rangeFromKey, rangeToKey]);
+    }, [resolvedBusinessId, domainIntel, dateFilter]);
 
     const chartData = useMemo(
         () =>
@@ -120,6 +128,9 @@ export const DemandForecast = memo(function DemandForecast({
                 <CardContent className="flex flex-col items-center justify-center p-12 text-gray-400">
                     <Package className="w-12 h-12 mb-4 opacity-20" />
                     <p className="font-medium">No sales history available for forecasting logic.</p>
+                    <p className="mt-1 text-xs text-gray-400">
+                        Domain: {domainLabel}
+                    </p>
                 </CardContent>
             </Card>
         );
@@ -127,7 +138,10 @@ export const DemandForecast = memo(function DemandForecast({
 
     return (
         <div className="space-y-6 animate-in fade-in duration-700">
-            <div className="flex justify-end">
+            <div className="flex justify-end gap-2">
+                <Badge variant="outline" className="px-3 py-1 font-semibold text-slate-600 border-slate-200 bg-slate-50">
+                    {domainLabel}
+                </Badge>
                 <Badge variant="outline" className="px-3 py-1 font-semibold text-wine border-wine/20 bg-wine/5">
                     <Rocket className="w-3 h-3 mr-1" />
                     V3 Prediction Engine

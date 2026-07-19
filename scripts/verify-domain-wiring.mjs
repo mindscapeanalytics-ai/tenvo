@@ -5,7 +5,12 @@
  * Expect count to match DOMAIN_KNOWLEDGE_KEYS (60+ verticals).
  */
 import { domainKnowledge, DOMAIN_KNOWLEDGE_KEYS, getDomainKnowledge } from '../lib/domainKnowledge.js';
-import { getDomainConfig, suggestPlanTier } from '../lib/config/domains.js';
+import { getDomainConfig, suggestPlanTier, isMembershipRelevant } from '../lib/config/domains.js';
+import { resolveDomainKey, DOMAIN_KEY_ALIASES } from '../lib/config/domainKeyAliases.js';
+import {
+  resolveMembershipVerticalKey,
+  MEMBERSHIP_VERTICAL_KEYS,
+} from '../lib/memberships/membershipVertical.js';
 
 const INTEL_KEYS = [
   'seasonality',
@@ -59,7 +64,50 @@ for (const key of DOMAIN_KNOWLEDGE_KEYS) {
     failed = true;
   }
 }
+
+for (const [alias, canonical] of Object.entries(DOMAIN_KEY_ALIASES)) {
+  if (resolveDomainKey(alias) !== canonical) {
+    console.error(`FAIL: resolveDomainKey("${alias}") !== "${canonical}"`);
+    failed = true;
+    continue;
+  }
+  if (alias === canonical) continue;
+  const dkAlias = getDomainKnowledge(alias, { countryIso: 'PK' });
+  const dkCanon = getDomainKnowledge(canonical, { countryIso: 'PK' });
+  if (JSON.stringify(dkAlias?.intelligence) !== JSON.stringify(dkCanon?.intelligence)) {
+    console.error(`FAIL: getDomainKnowledge("${alias}") intelligence !== "${canonical}"`);
+    failed = true;
+  }
+  const cfgAlias = getDomainConfig(alias);
+  const cfgCanon = getDomainConfig(canonical);
+  if (cfgAlias?.key && cfgCanon?.key && cfgAlias.key !== cfgCanon.key) {
+    console.error(`FAIL: getDomainConfig("${alias}").key !== getDomainConfig("${canonical}").key`);
+    failed = true;
+  }
+}
+
+if (resolveDomainKey('grocery') !== 'supermarket') {
+  console.error('FAIL: grocery must alias to supermarket');
+  failed = true;
+}
+
+for (const sample of ['salon', 'spa', 'beauty-salon', 'spa-wellness', 'salon-spa']) {
+  if (!isMembershipRelevant(sample)) {
+    console.error(`FAIL: isMembershipRelevant("${sample}") should be true`);
+    failed = true;
+  }
+  if (resolveMembershipVerticalKey(sample) !== 'salon-spa') {
+    console.error(`FAIL: resolveMembershipVerticalKey("${sample}") should be salon-spa`);
+    failed = true;
+  }
+}
+
+if (!MEMBERSHIP_VERTICAL_KEYS.includes('salon-spa')) {
+  console.error('FAIL: MEMBERSHIP_VERTICAL_KEYS must include salon-spa');
+  failed = true;
+}
+
 if (failed) process.exit(1);
 console.log(
-  `OK: ${DOMAIN_KNOWLEDGE_KEYS.length} domains wired (config + plan tier + icons + completeness).`
+  `OK: ${DOMAIN_KNOWLEDGE_KEYS.length} domains wired (config + plan tier + icons + completeness + aliases + membership).`
 );

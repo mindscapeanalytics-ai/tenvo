@@ -82,7 +82,7 @@ export function PurchaseOrderManager({ purchaseOrders = [], onCreate, onUpdateSt
       accessorKey: 'total_amount',
       header: 'Amount',
       cell: ({ row }) => (
-        <span className="font-semibold text-gray-900">{formatCurrency(row.original.total_amount, 'PKR')}</span>
+        <span className="font-semibold text-gray-900">{formatCurrency(row.original.total_amount, currency)}</span>
       ),
     },
     {
@@ -212,7 +212,7 @@ export function PurchaseOrderManager({ purchaseOrders = [], onCreate, onUpdateSt
           </CardHeader>
           <CardContent className="pt-6">
             <p className="text-2xl font-bold text-blue-600">
-              {formatCurrency(procurementValue, 'PKR')}
+              {formatCurrency(procurementValue, currency)}
             </p>
           </CardContent>
         </Card>

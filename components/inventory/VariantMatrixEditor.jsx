@@ -10,6 +10,8 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { variantAPI } from '@/lib/api/variant';
 import { formatCurrency } from '@/lib/currency';
+import { useBusiness } from '@/lib/context/BusinessContext';
+import { resolveDisplayCurrency } from '@/lib/utils/businessRegionalContext';
 import toast from 'react-hot-toast';
 import { ResponsiveManagerHeader } from '@/components/mobile/HubSectionHeader';
 
@@ -23,6 +25,11 @@ export function VariantMatrixEditor({
   onVariantsUpdated,
   onClose
 }) {
+  const { business, currency: businessCurrency, regionalPack } = useBusiness();
+  const currency = resolveDisplayCurrency(
+    { currency: businessCurrency || business?.currency },
+    regionalPack
+  );
   const [variants, setVariants] = useState([]);
   const [matrixData, setMatrixData] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -272,7 +279,7 @@ export function VariantMatrixEditor({
                             if (fullVariant) openEditDialog(fullVariant);
                           }}
                         >
-                          {formatCurrency(variant.price || 0, 'PKR')}
+                          {formatCurrency(variant.price || 0, currency)}
                         </button>
                       </div>
                     </td>
@@ -341,7 +348,7 @@ export function VariantMatrixEditor({
         </Card>
         <Card>
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-gray-900">{formatCurrency(totalValue, 'PKR')}</div>
+            <div className="text-2xl font-bold text-gray-900">{formatCurrency(totalValue, currency)}</div>
             <p className="text-sm text-gray-600">Total Value</p>
           </CardContent>
         </Card>
@@ -433,16 +440,16 @@ export function VariantMatrixEditor({
                         </div>
                         <div>
                           <p className="text-gray-600">Price</p>
-                          <p className="font-semibold">{formatCurrency(variant.price || 0, 'PKR')}</p>
+                          <p className="font-semibold">{formatCurrency(variant.price || 0, currency)}</p>
                         </div>
                         <div>
                           <p className="text-gray-600">Cost</p>
-                          <p className="font-semibold">{formatCurrency(variant.cost_price || 0, 'PKR')}</p>
+                          <p className="font-semibold">{formatCurrency(variant.cost_price || 0, currency)}</p>
                         </div>
                         <div>
                           <p className="text-gray-600">Value</p>
                           <p className="font-semibold">
-                            {formatCurrency((variant.stock || 0) * (variant.cost_price || 0), 'PKR')}
+                            {formatCurrency((variant.stock || 0) * (variant.cost_price || 0), currency)}
                           </p>
                         </div>
                       </div>

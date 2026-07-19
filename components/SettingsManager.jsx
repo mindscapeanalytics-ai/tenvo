@@ -1136,7 +1136,7 @@ export function SettingsManager({ category }) {
               </div>
             </CardContent>
           </Card>
-          {isPosRelevant(category, getDomainKnowledgeForBusiness(business)) && (
+          {isPosRelevant(category, getDomainKnowledgeForBusiness(category, business)) && (
             <PosSettingsPanel category={category} />
           )}
         </TabsContent>
