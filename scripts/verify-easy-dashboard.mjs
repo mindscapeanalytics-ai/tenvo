@@ -124,8 +124,14 @@ if (!industryInsights.includes("variant?: 'default' | 'compact'")) {
 }
 
 const dataContext = read('lib/context/DataContext.js');
-if (!dataContext.includes('markShellReady()')) {
-  mark('DataContext must paint shell immediately (markShellReady)');
+if (!dataContext.includes('setIsShellReady(true)')) {
+  mark('DataContext must paint shell immediately (setIsShellReady)');
+}
+if (!dataContext.includes('useLayoutEffect')) {
+  mark('DataContext must apply hub shell paint in useLayoutEffect before browser paint');
+}
+if (!dataContext.includes('hydrateHubShellFromServer')) {
+  mark('DataContext must support RSC hub shell hydration on cold login');
 }
 if (!dataContext.includes('fetchInventory({ fullCatalog: false })') && !dataContext.includes('fetchInventory(')) {
   mark('DataContext bootstrap must fetch inventory in parallel');
@@ -160,7 +166,7 @@ if (
 if (!dataContext.includes('buildDashboardMetricsFromSnapshot')) {
   mark('DataContext must hydrate dashboardMetrics from finance snapshot (avoid duplicate KPI wait)');
 }
-if (dataContext.includes('void fetchAnalytics?.()') || /Promise\.allSettled\(\[[\s\S]*fetchAnalytics\(\)/.test(dataContext.split('markShellReady')[1]?.slice(0, 1200) || '')) {
+if (dataContext.includes('void fetchAnalytics?.()') || /Promise\.allSettled\(\[[\s\S]*fetchAnalytics\(\)/.test(dataContext.split('setIsShellReady(true)')[1]?.slice(0, 1200) || '')) {
   // Cold bootstrap must not fire getDashboardMetricsAction in parallel with finance snapshot.
   if (/isDataLoaded\(true\);\s*[\s\S]{0,80}fetchAnalytics/.test(dataContext)) {
     mark('DataContext must not cold-load fetchAnalytics after bootstrap (snapshot KPIs already hydrate tiles)');

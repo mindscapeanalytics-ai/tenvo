@@ -1,4 +1,6 @@
 import DashboardClient from './DashboardClient';
+import { HubShellHydrator } from '@/components/dashboard/HubShellHydrator';
+import { loadInitialHubShell } from '@/lib/dashboard/loadInitialHubShell';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,6 +15,15 @@ export async function generateMetadata({ params }) {
   };
 }
 
-export default function BusinessDashboardPage() {
-  return <DashboardClient />;
+export default async function BusinessDashboardPage({ params }) {
+  const { category: categoryParam } = await params;
+  const category = categoryParam || 'retail-shop';
+  const initialHubShell = await loadInitialHubShell(category);
+
+  return (
+    <>
+      <HubShellHydrator initialHubShell={initialHubShell} />
+      <DashboardClient />
+    </>
+  );
 }

@@ -40,12 +40,18 @@ const TabsTrigger = React.forwardRef(({ className, ...props }, ref) => (
 ))
 TabsTrigger.displayName = TabsPrimitive.Trigger.displayName
 
+/**
+ * When `forceMount` is set (hub keep-alive tabs), Radix keeps the panel in the DOM
+ * but does not apply `hidden` — inactive panels stay visible and stack. Always hide
+ * inactive content via data-state so keep-alive and normal tabs both behave correctly.
+ */
 /** @type {React.ForwardRefExoticComponent<TabsProps & React.ComponentPropsWithoutRef<typeof TabsPrimitive.Content>>} */
 const TabsContent = React.forwardRef(({ className, ...props }, ref) => (
   <TabsPrimitive.Content
     ref={ref}
     className={cn(
       "mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+      "data-[state=inactive]:hidden",
       className
     )}
     {...props}

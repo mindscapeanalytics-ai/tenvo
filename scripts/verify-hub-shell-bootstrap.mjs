@@ -178,6 +178,36 @@ if (!exists(constantsPath)) {
   if (!dataCtx.includes('inventoryPendingForceRef')) {
     mark('DataContext must coalesce inventory force refreshes (inventoryPendingForceRef)');
   }
+  if (!dataCtx.includes('hydrateHubShellFromServer')) {
+    mark('DataContext must expose hydrateHubShellFromServer for RSC cold paint');
+  }
+  if (!dataCtx.includes('useLayoutEffect')) {
+    mark('DataContext must paint hub shell cache in useLayoutEffect (before browser paint)');
+  }
+  if (!dataCtx.includes('shellPaintedKeyRef')) {
+    mark('DataContext must track shellPaintedKeyRef so SSR paint is not cleared');
+  }
+
+  if (!exists('lib/dashboard/loadInitialHubShell.js')) {
+    mark('loadInitialHubShell must exist for dashboard RSC cold paint');
+  } else {
+    const loader = read('lib/dashboard/loadInitialHubShell.js');
+    if (!loader.includes('getHubShellBootstrapAction')) {
+      mark('loadInitialHubShell must call getHubShellBootstrapAction');
+    }
+    if (!loader.includes('serializeDecimalsDeep')) {
+      mark('loadInitialHubShell must serializeDecimalsDeep for client props');
+    }
+  }
+
+  if (!exists('components/dashboard/HubShellHydrator.jsx')) {
+    mark('HubShellHydrator must exist');
+  }
+
+  const dashPage = read('app/business/[category]/page.js');
+  if (!dashPage.includes('loadInitialHubShell') || !dashPage.includes('HubShellHydrator')) {
+    mark('business dashboard page must RSC-load hub shell and hydrate via HubShellHydrator');
+  }
 
   const financeHub = read('components/finance/FinanceHub.jsx');
   if (!financeHub.includes('financeHubSessionCache')) {

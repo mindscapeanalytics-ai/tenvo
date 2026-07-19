@@ -124,6 +124,7 @@ export function DashboardTabs({
     const membershipRelevant = isMembershipRelevant(category);
 
     // Visit-based forceMount: first open loads once; leave/return keeps state (no tab-switch storms).
+    // Inactive panels stay mounted but must be CSS-hidden — see TabsContent data-[state=inactive]:hidden.
     // Reset visited set on tenant change so force-mounted panels remount with the new business_id.
     const keepAliveVisitedRef = React.useRef(new Set(['dashboard']));
     const keepAliveBusinessRef = React.useRef(activeBusinessId);
