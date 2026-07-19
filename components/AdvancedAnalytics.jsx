@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useMemo, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { SalesChart, RevenueBarChart, CategoryPieChart, TopProductsChart } from './AdvancedCharts';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { 
@@ -47,8 +48,9 @@ function formatRangeLabel(dateRange) {
 
 /**
  * Advanced Analytics Component
- * Powered by Server-Side SQL Aggregation
- * 
+ * Powered by Server-Side SQL Aggregation.
+ * Shares React Query key `hubAnalytics` with DataContext idle prefetch.
+ *
  * @param {Object} props
  * @param {string} [props.businessId]
  * @param {string} [props.category]
@@ -57,52 +59,61 @@ function formatRangeLabel(dateRange) {
 export function AdvancedAnalytics({ businessId, category = 'retail-shop', currency, dateRange }) {
   const resolvedBusinessId = useResolvedBusinessId(businessId);
   const colors = getDomainColors(category);
-  const [loading, setLoading] = useState(true);
-  const [salesData, setSalesData] = useState([]);
-  const [topProducts, setTopProducts] = useState([]);
-  const [categoryData, setCategoryData] = useState([]);
-  const [kpi, setKpi] = useState({
+  const filter = buildDateFilter(dateRange);
+  const fromKey = filter.from || '';
+  const toKey = filter.to || '';
+
+  const {
+    data: bundleData,
+    isLoading,
+    isFetching,
+    refetch,
+  } = useQuery({
+    queryKey: ['hubAnalytics', resolvedBusinessId, fromKey, toKey],
+    enabled: Boolean(resolvedBusinessId),
+    staleTime: 60_000,
+    // Keep previous only for same tenant (never cross-business paint).
+    placeholderData: (previousData, previousQuery) => {
+      if (!previousData || !previousQuery?.queryKey) return undefined;
+      if (previousQuery.queryKey[1] !== resolvedBusinessId) return undefined;
+      return previousData;
+    },
+    queryFn: async () => {
+      const bundle = await getAnalyticsBundleAction(resolvedBusinessId, filter);
+      if (!bundle?.success) {
+        return { salesTrend: [], topProducts: [], categoryData: [], kpi: null };
+      }
+      return bundle.data || { salesTrend: [], topProducts: [], categoryData: [], kpi: null };
+    },
+  });
+
+  const salesData = bundleData?.salesTrend || [];
+  const topProducts = bundleData?.topProducts || [];
+  const categoryData = bundleData?.categoryData || [];
+  const kpi = bundleData?.kpi || {
     inventoryAsset: 0,
     growth: { value: '0%', trend: 'neutral' },
     retention: '0%',
     retentionDetail: null,
     growthDetail: null,
-  });
+  };
 
-  const loadData = useCallback(async () => {
-    if (!resolvedBusinessId) return;
-    setLoading(true);
-    try {
-      const filter = buildDateFilter(dateRange);
-      const bundle = await getAnalyticsBundleAction(resolvedBusinessId, filter);
-      if (bundle.success && bundle.data) {
-        setSalesData(bundle.data.salesTrend || []);
-        setTopProducts(bundle.data.topProducts || []);
-        setCategoryData(bundle.data.categoryData || []);
-        if (bundle.data.kpi) setKpi(bundle.data.kpi);
-      }
-    } catch (err) {
-      console.error("Failed to load analytics", err);
-    } finally {
-      setLoading(false);
-    }
-  }, [resolvedBusinessId, dateRange]);
-
-  useEffect(() => {
-    void Promise.resolve().then(() => loadData());
-  }, [loadData]);
+  const loading = isLoading && !bundleData;
+  const loadData = useCallback(() => {
+    void refetch();
+  }, [refetch]);
 
   const metrics = useMemo(() => [
     {
       label: 'Performance',
-      value: kpi.growth.value,
+      value: kpi.growth?.value ?? '0%',
       subtitle: kpi.growthDetail?.periodRevenue != null 
         ? `${formatCurrency(kpi.growthDetail.periodRevenue, currency)} this period`
         : 'vs previous period',
-      icon: kpi.growth.trend === 'up' ? TrendingUp : TrendingDown,
-      iconBg: kpi.growth.trend === 'up' ? 'bg-emerald-100' : 'bg-red-100',
-      iconColor: kpi.growth.trend === 'up' ? 'text-emerald-600' : 'text-red-600',
-      trend: kpi.growth.trend === 'up' ? 'positive' : kpi.growth.trend === 'down' ? 'negative' : 'neutral'
+      icon: kpi.growth?.trend === 'up' ? TrendingUp : TrendingDown,
+      iconBg: kpi.growth?.trend === 'up' ? 'bg-emerald-100' : 'bg-red-100',
+      iconColor: kpi.growth?.trend === 'up' ? 'text-emerald-600' : 'text-red-600',
+      trend: kpi.growth?.trend === 'up' ? 'positive' : kpi.growth?.trend === 'down' ? 'negative' : 'neutral'
     },
     {
       label: 'Inventory Asset',
@@ -139,7 +150,7 @@ export function AdvancedAnalytics({ businessId, category = 'retail-shop', curren
     },
   ], [kpi, currency, salesData]);
 
-  // Wait for tenant hydrate — do not render empty KPI zeros as if analytics finished
+  // Wait for tenant hydrate — keep previous paint when revalidating (no blank spinner).
   if (!resolvedBusinessId || loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -157,9 +168,10 @@ export function AdvancedAnalytics({ businessId, category = 'retail-shop', curren
           variant="outline"
           size="sm"
           onClick={loadData}
+          disabled={isFetching}
           className="h-8 gap-1.5 px-2.5 text-xs shadow-sm"
         >
-          <RefreshCcw className="h-3.5 w-3.5" />
+          <RefreshCcw className={cn('h-3.5 w-3.5', isFetching && 'animate-spin')} />
           Refresh
         </Button>
       </div>

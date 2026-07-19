@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
     TrendingUp, DollarSign, ShoppingCart, Users,
     Target, Receipt, ChevronUp, ChevronDown, BarChart2,
@@ -71,61 +72,63 @@ export function SalesManager({
     const { dateRange } = useFilters();
     const [channel, setChannel] = useState('all');
     const [productCategory, setProductCategory] = useState(null);
-    const [loading, setLoading] = useState(Boolean(businessId));
-    const [loadError, setLoadError] = useState(null);
-    const [serverInsights, setServerInsights] = useState(null);
     const primaryColor = colors.primary || '#6366f1';
 
     const fromISO = toAnalyticsIsoDate(dateRange?.from);
     const toISO = toAnalyticsIsoDate(dateRange?.to);
     const periodLabel = formatSalesPeriodLabel(fromISO, toISO);
+    const channelKey = normalizeSalesChannel(channel);
+    const categoryKey = normalizeSalesCategory(productCategory);
 
-    const loadInsights = useCallback(async () => {
-        if (!businessId || !fromISO || !toISO) {
-            setServerInsights(null);
-            setLoading(false);
-            return;
-        }
-        setLoading(true);
-        setLoadError(null);
-        try {
+    const {
+        data: serverInsights,
+        isLoading,
+        isFetching,
+        error: queryError,
+        refetch,
+    } = useQuery({
+        queryKey: ['hubSalesPerformance', businessId, fromISO, toISO, channelKey, categoryKey],
+        enabled: Boolean(businessId && fromISO && toISO),
+        staleTime: 60_000,
+        // Keep previous only for same tenant (never cross-business paint).
+        placeholderData: (previousData, previousQuery) => {
+            if (!previousData || !previousQuery?.queryKey) return undefined;
+            if (previousQuery.queryKey[1] !== businessId) return undefined;
+            return previousData;
+        },
+        queryFn: async () => {
             const res = await getSalesPerformanceAction(businessId, {
                 from: fromISO,
                 to: toISO,
-                channel: normalizeSalesChannel(channel),
-                category: normalizeSalesCategory(productCategory),
+                channel: channelKey,
+                category: categoryKey,
                 topLimit: 8,
             });
-            if (res?.success) {
-                setServerInsights({
-                    meta: res.meta,
-                    categories: res.categories || [],
-                    salesTrend: res.salesTrend,
-                    topProducts: res.topProducts,
-                    topCustomers: res.topCustomers || [],
-                    recentActivity: res.recentActivity,
-                    kpi: res.kpi,
-                });
-            } else {
-                setLoadError(res?.error || res?.message || 'Could not load sales performance');
-                setServerInsights(null);
+            if (!res?.success) {
+                throw new Error(res?.error || res?.message || 'Could not load sales performance');
             }
-        } catch (err) {
-            console.error('Failed to load sales insights', err);
-            setLoadError(err?.message || 'Could not load sales performance');
-            setServerInsights(null);
-        } finally {
-            setLoading(false);
-        }
-    }, [businessId, fromISO, toISO, channel, productCategory]);
+            return {
+                meta: res.meta,
+                categories: res.categories || [],
+                salesTrend: res.salesTrend,
+                topProducts: res.topProducts,
+                topCustomers: res.topCustomers || [],
+                recentActivity: res.recentActivity,
+                kpi: res.kpi,
+            };
+        },
+    });
 
-    useEffect(() => {
-        void loadInsights();
-    }, [loadInsights]);
+    const loadInsights = useCallback(() => {
+        void refetch();
+    }, [refetch]);
 
+    const loading = Boolean(businessId) && isLoading && !serverInsights;
+    const loadError = queryError?.message || null;
     const serverKpi = serverInsights?.kpi;
     const categoryScoped = Boolean(serverKpi?.categoryScoped || productCategory);
-    const showSkeleton = Boolean(businessId) && loading && !serverInsights;
+    // Never skeleton when we have previous/cached insights (same-tenant keep-previous).
+    const showSkeleton = Boolean(businessId) && isLoading && !serverInsights;
 
     const metrics = useMemo(() => {
         if (!serverKpi) return null;
@@ -291,7 +294,7 @@ export function SalesManager({
                     className="p-2 rounded-lg border border-gray-100 text-gray-400 hover:text-gray-600 hover:bg-gray-50 disabled:opacity-40"
                     title="Refresh sales data"
                 >
-                    <RefreshCcw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                    <RefreshCcw className={`w-4 h-4 ${loading || isFetching ? 'animate-spin' : ''}`} />
                 </button>
             </div>
 

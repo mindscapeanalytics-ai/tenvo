@@ -59,6 +59,18 @@ const TabGuard = lazyHubTab(() => import('@/components/guards/TabGuard').then(mo
 const ResourceLimitBanner = lazyHubTab(() => import('@/components/ui/ResourceLimitBanner').then(mod => mod.ResourceLimitBanner));
 const NotificationBell = lazyHubTab(() => import('@/components/notifications/NotificationBell').then(mod => mod.NotificationBell));
 
+/** Tabs that stay mounted after first visit (SWR keep-alive — no remount refetch storms). */
+const KEEP_ALIVE_TABS = new Set([
+    'dashboard',
+    'inventory',
+    'invoices',
+    'finance',
+    'sales',
+    'reports',
+    'customers',
+    'purchases',
+]);
+
 export function DashboardTabs({
     activeTab,
     searchTerm = '',
@@ -110,6 +122,14 @@ export function DashboardTabs({
     const hospitalityDomain = isHospitality(category);
     const campaignRelevant = isCampaignRelevant(category, domainKnowledge);
     const membershipRelevant = isMembershipRelevant(category);
+
+    // Visit-based forceMount: first open loads once; leave/return keeps state (no tab-switch storms).
+    const keepAliveVisitedRef = React.useRef(new Set(['dashboard']));
+    if (typeof activeTab === 'string' && KEEP_ALIVE_TABS.has(activeTab)) {
+        keepAliveVisitedRef.current.add(activeTab);
+    }
+    const shouldForceMount = (tab) =>
+        KEEP_ALIVE_TABS.has(tab) && keepAliveVisitedRef.current.has(tab);
 
     // Memoized Filtering Logic
     const filteredProducts = React.useMemo(() => {
@@ -284,7 +304,7 @@ export function DashboardTabs({
 
     return (
         <>
-                <TabsContent value="dashboard" className="space-y-6 outline-none">
+                <TabsContent value="dashboard" forceMount={shouldForceMount('dashboard')} className="space-y-6 outline-none">
                     {wrapTab(
                         <DomainDashboard
                             businessId={activeBusinessId}
@@ -318,7 +338,7 @@ export function DashboardTabs({
                     )}
                 </TabsContent>
 
-                <TabsContent value="invoices" className="space-y-6 outline-none">
+                <TabsContent value="invoices" forceMount={shouldForceMount('invoices')} className="space-y-6 outline-none">
                     <ResourceLimitBanner
                         message={resourceLimits?.getLimitMessage?.('invoices')}
                         isAtLimit={resourceLimits?.limitReached?.('invoices')}
@@ -347,7 +367,7 @@ export function DashboardTabs({
                     )}
                 </TabsContent>
 
-                <TabsContent value="inventory" className="space-y-6 outline-none">
+                <TabsContent value="inventory" forceMount={shouldForceMount('inventory')} className="space-y-6 outline-none">
                     <ResourceLimitBanner
                         message={resourceLimits?.getLimitMessage?.('products')}
                         isAtLimit={resourceLimits?.limitReached?.('products')}
@@ -455,7 +475,7 @@ export function DashboardTabs({
                     )}
                 </TabsContent>
 
-                <TabsContent value="customers" className="space-y-6 outline-none">
+                <TabsContent value="customers" forceMount={shouldForceMount('customers')} className="space-y-6 outline-none">
                     {wrapTab(
                         <TabGuard tabKey="customers" role={role} planTier={planTier} featureName="Customers" onUpgrade={() => handleTabChange('settings')}>
                             <CustomersTab
@@ -514,7 +534,7 @@ export function DashboardTabs({
                     )}
                 </TabsContent>
 
-                <TabsContent value="purchases" className="space-y-6 outline-none">
+                <TabsContent value="purchases" forceMount={shouldForceMount('purchases')} className="space-y-6 outline-none">
                     {wrapTab(
                         <TabGuard tabKey="purchases" role={role} planTier={planTier} featureName="Purchases" onUpgrade={() => handleTabChange('settings')}>
                             <PurchaseOrderManager
@@ -528,7 +548,7 @@ export function DashboardTabs({
                     )}
                 </TabsContent>
 
-                <TabsContent value="sales" className="space-y-6 outline-none">
+                <TabsContent value="sales" forceMount={shouldForceMount('sales')} className="space-y-6 outline-none">
                     {wrapTab(
                         <TabGuard tabKey="sales" role={role} planTier={planTier} featureName="Sales" onUpgrade={() => handleTabChange('settings')}>
                             <StorefrontTabShell activeTab="sales">
@@ -649,7 +669,7 @@ export function DashboardTabs({
                 )}
 
                 {/* Legacy accounting/expenses/credit-notes/fiscal/exchange-rates tabs alias → finance via tabs.js */}
-                <TabsContent value="finance" className="space-y-6 outline-none">
+                <TabsContent value="finance" forceMount={shouldForceMount('finance')} className="space-y-6 outline-none">
                     {wrapTab(
                         <TabGuard tabKey="finance" role={role} planTier={planTier} featureName="Finance" onUpgrade={() => handleTabChange('settings')}>
                             <FinanceHub
@@ -662,7 +682,7 @@ export function DashboardTabs({
                     )}
                 </TabsContent>
 
-                <TabsContent value="reports" className="space-y-4 outline-none">
+                <TabsContent value="reports" forceMount={shouldForceMount('reports')} className="space-y-4 outline-none">
                     {wrapTab(
                         <TabGuard tabKey="reports" role={role} planTier={planTier} featureName="Analytics & AI" onUpgrade={() => handleTabChange('settings')}>
                             <div className="min-w-0 space-y-4 overflow-x-hidden">

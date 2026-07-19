@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import {
     BookOpen, Receipt, CalendarRange, RefreshCcw,
     Globe, TrendingUp, TrendingDown, ChevronLeft,
@@ -902,19 +901,9 @@ export default function FinanceHub({ businessId, initialTab, businessCategory = 
                 />
             </div>
 
-            {/* Content: on mobile, hide while tile menu is open */}
+            {/* Content: on mobile, hide while tile menu is open. Keep panel tree mounted across sub-nav. */}
             <div className={cn(mobileMenuOpen && 'hidden lg:block')}>
-                <AnimatePresence mode="wait">
-                    <motion.div
-                        key={`${activeTab}:${statementReport}`}
-                        initial={{ opacity: 0, y: 8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -8 }}
-                        transition={{ duration: 0.15 }}
-                    >
-                        {renderContent()}
-                    </motion.div>
-                </AnimatePresence>
+                {renderContent()}
             </div>
 
             {showJournalForm && (
