@@ -225,9 +225,12 @@ export function DomainDashboard({
     void _productTotal;
     void _hasMoreProducts;
     void _onLoadMoreProducts;
-    const { business } = useBusiness() as {
+    const { business, currency: businessCurrency } = useBusiness() as {
         business?: { id?: string; name?: string; country?: string; city?: string } | null;
+        currency?: string;
     };
+    // EasyBusinessDashboard requires string; hub may omit prop until regional pack settles.
+    const resolvedCurrency = (currency || businessCurrency || 'PKR').trim() || 'PKR';
     const { isEasyMode, modeReady } = useAppMode();
     const { datePresetKey } = useFilters();
     const activeBusinessId = useResolvedBusinessId(businessId);
@@ -248,8 +251,8 @@ export function DomainDashboard({
     const multiLocationEnabled = Boolean(domainKnowledge?.multiLocationEnabled);
 
     const formatCurrencyCompact = useCallback(
-        (amount: number) => `${currency} ${Math.round(amount || 0).toLocaleString()}`,
-        [currency]
+        (amount: number) => `${resolvedCurrency} ${Math.round(amount || 0).toLocaleString()}`,
+        [resolvedCurrency]
     );
     const handleMetricNavigate = useCallback(
         (actionId: string) => {
@@ -1084,7 +1087,7 @@ export function DomainDashboard({
                 businessId={activeBusinessId}
                 business={business}
                 category={category}
-                currency={currency}
+                currency={resolvedCurrency}
                 metricsPending={metricsPending}
                 isSalesLoading={isSalesLoading}
                 isInventoryLoading={isInventoryLoading}
@@ -1313,7 +1316,7 @@ export function DomainDashboard({
                     <AnalyticsDashboard
                         businessId={activeBusinessId}
                         category={category}
-                        currency={currency}
+                        currency={resolvedCurrency}
                         business={business}
                         chartData={chartData}
                         invoices={invoices}
@@ -1414,7 +1417,7 @@ export function DomainDashboard({
                 <AnalyticsDashboard
                     businessId={activeBusinessId}
                     category={category}
-                    currency={currency}
+                    currency={resolvedCurrency}
                     business={business}
                     chartData={chartData}
                     invoices={invoices}
