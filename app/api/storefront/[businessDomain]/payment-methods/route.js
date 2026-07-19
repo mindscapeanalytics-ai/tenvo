@@ -41,11 +41,17 @@ export async function GET(_request, { params }) {
     const methods = resolveEligibleStorefrontPaymentMethods(context);
     return NextResponse.json({ success: true, methods });
   } catch (error) {
+    // Fail closed — do not fake COD success (matches POST orders payment gate / cart sync).
+    // Missing-table soft COD remains only in the 42P01 branch above.
     console.error('[payment-methods] Error:', error);
-    return NextResponse.json({
-      success: true,
-      methods: [{ ...STOREFRONT_COD_METHOD }],
-    });
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Payment methods are temporarily unavailable. Please try again.',
+        retryable: true,
+      },
+      { status: 503 }
+    );
   } finally {
     client.release();
   }

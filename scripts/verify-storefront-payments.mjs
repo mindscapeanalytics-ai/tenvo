@@ -26,6 +26,7 @@ const orders = read('app/api/storefront/[businessDomain]/orders/route.js');
 const checkout = read('app/store/[businessDomain]/checkout/page.jsx');
 const cryptoCreate = read('app/api/storefront/[businessDomain]/crypto/create/route.js');
 const stripeIntent = read('app/api/storefront/[businessDomain]/stripe/create-intent/route.js');
+const paymentMethods = read('app/api/storefront/[businessDomain]/payment-methods/route.js');
 
 if (!eligibility.includes('resolveEligibleStorefrontPaymentMethods')) {
   mark('storefrontPaymentEligibility must resolve eligible methods');
@@ -47,6 +48,25 @@ if (orders.includes("effectivePaymentMethod = 'cod'") && orders.includes('paymen
 }
 if (!orders.includes('payment method gate failed') || !orders.includes('503')) {
   mark('orders route must fail closed (503) when payment eligibility cannot load');
+}
+if (!paymentMethods.includes('status: 503') || !paymentMethods.includes('success: false')) {
+  mark('payment-methods GET must fail closed (503) on unexpected load errors');
+}
+{
+  const outerCatchIdx = paymentMethods.lastIndexOf('catch (error)');
+  const outerCatch = outerCatchIdx >= 0 ? paymentMethods.slice(outerCatchIdx) : '';
+  if (outerCatch.includes('STOREFRONT_COD_METHOD') && !outerCatch.includes('status: 503')) {
+    mark('payment-methods outer catch must not soft-return COD success');
+  }
+}
+const checkoutClient = read('lib/storefront/storefrontCheckoutClient.js');
+if (
+  checkoutClient.includes('fall through to COD') ||
+  (checkoutClient.includes('return COD_FALLBACK') &&
+    checkoutClient.includes('catch') &&
+    /catch \{[\s\S]*return COD_FALLBACK/.test(checkoutClient))
+) {
+  mark('fetchStorefrontPaymentMethods must not soft-fallback to COD on API errors');
 }
 if (!checkout.includes('StripeCheckoutPanel')) {
   mark('checkout must render StripeCheckoutPanel for card payments');

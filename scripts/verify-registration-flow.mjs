@@ -12,6 +12,8 @@ import { getDefaultCoaForCountry } from '../lib/config/regionalCoa.js';
 import { getDomainKnowledge } from '../lib/domainKnowledge.js';
 import { DOMAIN_KNOWLEDGE_KEYS } from '../lib/domainKnowledge.js';
 import { resolveDomainKey } from '../lib/config/domainKeyAliases.js';
+import { resolveRegistrationStorefrontDefaults } from '../lib/onboarding/registrationStorefrontDefaults.js';
+import { SUPERMARKET_REGISTRATION_VERTICALS } from '../lib/onboarding/registrationRichVerticals.js';
 
 const errors = [];
 
@@ -190,9 +192,76 @@ for (const key of DOMAIN_KNOWLEDGE_KEYS.slice(0, 5)) {
   assert(Array.isArray(payload.categories), `category array for ${key}`);
 }
 
+// Prisma businesses.create() only accepts logo_url / cover_image_url from businessMedia.
+// keywords must land on seoKeywords → settings.seo (never as a businesses column).
+const ALLOWED_BUSINESS_MEDIA_KEYS = new Set(['logo_url', 'cover_image_url']);
+const storefrontRegional = {
+  countryName: 'Pakistan',
+  countryCode: 'PK',
+  currency: 'PKR',
+  locale: 'en-PK',
+};
+for (const key of DOMAIN_KNOWLEDGE_KEYS) {
+  let defaults;
+  try {
+    defaults = resolveRegistrationStorefrontDefaults({
+      domainKey: key,
+      businessName: `Verify ${key}`,
+      regional: storefrontRegional,
+    });
+  } catch (err) {
+    errors.push(`${key}: resolveRegistrationStorefrontDefaults threw: ${err.message}`);
+    continue;
+  }
+  const mediaKeys = Object.keys(defaults.businessMedia || {});
+  const invalidMedia = mediaKeys.filter((k) => !ALLOWED_BUSINESS_MEDIA_KEYS.has(k));
+  assert(
+    invalidMedia.length === 0,
+    `${key}: businessMedia must only include Prisma columns (got ${invalidMedia.join(', ')})`
+  );
+  assert(
+    defaults.seoKeywords == null || typeof defaults.seoKeywords === 'string',
+    `${key}: seoKeywords must be string or null`
+  );
+}
+
+const autoPartsSf = resolveRegistrationStorefrontDefaults({
+  domainKey: 'auto-parts',
+  businessName: 'Auto Parts Test',
+  regional: storefrontRegional,
+});
+assert(
+  !Object.prototype.hasOwnProperty.call(autoPartsSf.businessMedia || {}, 'keywords'),
+  'auto-parts businessMedia must not include keywords'
+);
+assert(
+  typeof autoPartsSf.seoKeywords === 'string' && autoPartsSf.seoKeywords.includes('auto parts'),
+  'auto-parts must expose seoKeywords for settings.seo'
+);
+assert(
+  typeof autoPartsSf.businessMedia?.cover_image_url === 'string',
+  'auto-parts should still seed cover_image_url'
+);
+
+for (const key of SUPERMARKET_REGISTRATION_VERTICALS) {
+  const sf = resolveRegistrationStorefrontDefaults({
+    domainKey: key,
+    businessName: `Verify ${key}`,
+    regional: storefrontRegional,
+  });
+  assert(
+    !Object.prototype.hasOwnProperty.call(sf.businessMedia || {}, 'keywords'),
+    `${key}: supermarket-family businessMedia must not include keywords`
+  );
+  assert(
+    typeof sf.businessMedia?.cover_image_url === 'string' || sf.seoKeywords == null || typeof sf.seoKeywords === 'string',
+    `${key}: supermarket-family registration defaults must resolve without throwing`
+  );
+}
+
 if (errors.length) {
   for (const e of errors) console.error(`FAIL: ${e}`);
   process.exit(1);
 }
 
-console.log('OK: registration flow helpers (empty inventory, domain profile, demo catalog split).');
+console.log('OK: registration flow helpers (empty inventory, domain profile, demo catalog split, Prisma-safe media).');

@@ -74,6 +74,35 @@ assert(
     businessSrc.includes('domainPackageKey: resolvedPackageKey'),
   'seedRegistrationInventoryAction must pass domain package key for rich seed gate'
 );
+assert(
+  businessSrc.includes('seoKeywords') && businessSrc.includes('seoSettingsPatch'),
+  'createBusiness must route seoKeywords into settings.seo (not businesses columns)'
+);
+assert(
+  businessSrc.includes('await invalidateStorefrontTenant(result.id)') ||
+    businessSrc.includes('await invalidateStorefrontTenant(result.id);'),
+  'createBusiness must invalidate storefront cache after successful registration seed'
+);
+assert(
+  businessSrc.includes('seedFailed'),
+  'createBusiness must surface seedFailed when registration seed throws'
+);
+assert(
+  businessSrc.includes('...registrationStorefront.businessMedia'),
+  'createBusiness still spreads Prisma-safe businessMedia'
+);
+
+const syncServiceSrc = read('lib/services/StorefrontSyncService.js');
+assert(
+  syncServiceSrc.includes('WHERE id = $2 AND business_id = $3::uuid') ||
+    syncServiceSrc.includes('WHERE id = $2 AND business_id = $3'),
+  'syncInventoryToStorefront UPDATE must scope by business_id'
+);
+assert(
+  syncServiceSrc.includes("businessId is required") &&
+    !syncServiceSrc.includes('businessId = null'),
+  'updateStockAvailability must require businessId (no unscoped UPDATE)'
+);
 
 const cartSrc = read('app/api/storefront/[businessDomain]/cart/sync/route.js');
 assert(cartSrc.includes('status: 503') && cartSrc.includes('synced: false'), 'cart/sync must fail closed on error');
@@ -158,6 +187,10 @@ const wholesaleStorefront = resolveRegistrationStorefrontDefaults({
   domainPackageKey: null,
 });
 assert(
+  !Object.prototype.hasOwnProperty.call(wholesaleStorefront.businessMedia || {}, 'keywords'),
+  'registration businessMedia must never include keywords (Prisma businesses has no such column)'
+);
+assert(
   wholesaleStorefront.storefrontExtras?.storefront?.fashion?.showReadyToWear === false,
   'PK textile-wholesale registration fashion seed hides RTW'
 );
@@ -167,6 +200,34 @@ assert(
       (c) => c.tiles?.some((t) => /lawn|khaddar|imported|bridal/i.test(t.label || ''))
     ),
   'textile-wholesale sale mosaic should be fabric trade tiles'
+);
+
+const autoPartsCreateSafe = resolveRegistrationStorefrontDefaults({
+  domainKey: 'auto-parts',
+  businessName: 'Auto Store',
+  regional: { countryName: 'Pakistan', countryCode: 'PK', currency: 'PKR', locale: 'en-PK' },
+});
+assert(
+  !Object.prototype.hasOwnProperty.call(autoPartsCreateSafe.businessMedia || {}, 'keywords'),
+  'auto-parts businessMedia must omit keywords'
+);
+assert(
+  typeof autoPartsCreateSafe.seoKeywords === 'string' && autoPartsCreateSafe.seoKeywords.length > 0,
+  'auto-parts seoKeywords must be set for settings.seo'
+);
+
+const supermarketCreateSafe = resolveRegistrationStorefrontDefaults({
+  domainKey: 'supermarket',
+  businessName: 'Fresh Mart',
+  regional: { countryName: 'Pakistan', countryCode: 'PK', currency: 'PKR', locale: 'en-PK' },
+});
+assert(
+  typeof supermarketCreateSafe.businessDescription === 'string',
+  'supermarket registration must resolve (getSupermarketFamilyProfileExtras imported)'
+);
+assert(
+  SUPERMARKET_REGISTRATION_VERTICALS.has('supermarket'),
+  'supermarket is a registration vertical'
 );
 
 // Editorial seed only when rich catalog gate passes

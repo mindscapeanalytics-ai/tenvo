@@ -195,7 +195,7 @@ export default function CheckoutPage({ params }) {
     };
   }, [hydrated, businessDomain, orderDone, cart.items.length, syncCartFromReconcile, router]);
 
-  // Load payment methods (public API — always falls back to COD)
+  // Load payment methods (public API — fail closed on load errors; no silent COD)
   useEffect(() => {
     if (!businessDomain) return;
     let cancelled = false;
@@ -204,8 +204,13 @@ export default function CheckoutPage({ params }) {
         const methods = await fetchStorefrontPaymentMethods(businessDomain);
         if (cancelled) return;
         setPaymentMethods(methods);
+        if (!methods.length) {
+          toast.error('Payment methods are temporarily unavailable. Please try again.');
+          setForm((f) => ({ ...f, paymentMethod: '' }));
+          return;
+        }
         const cod = methods.find((m) => m.provider === 'cod');
-        const defaultProvider = cod?.provider || methods[0]?.provider || 'cod';
+        const defaultProvider = cod?.provider || methods[0]?.provider || '';
         setForm((f) => ({
           ...f,
           paymentMethod:
@@ -215,8 +220,9 @@ export default function CheckoutPage({ params }) {
         }));
       } catch {
         if (!cancelled) {
-          setPaymentMethods([{ id: 'cod-default', provider: 'cod', display_name: 'Cash on Delivery (COD)' }]);
-          setForm((f) => ({ ...f, paymentMethod: f.paymentMethod || 'cod' }));
+          setPaymentMethods([]);
+          setForm((f) => ({ ...f, paymentMethod: '' }));
+          toast.error('Payment methods are temporarily unavailable. Please try again.');
         }
       } finally {
         if (!cancelled) setLoadingPM(false);
@@ -913,7 +919,7 @@ export default function CheckoutPage({ params }) {
                     ) : paymentMethods.length === 0 ? (
                       <div className={cn('text-center py-10', restaurantStore ? 'text-zinc-500' : 'text-gray-500')}>
                         <AlertCircle className="w-8 h-8 mx-auto mb-2 opacity-40" />
-                        <p className="text-sm">No payment methods configured yet.</p>
+                        <p className="text-sm">Payment methods are temporarily unavailable. Please refresh and try again.</p>
                       </div>
                     ) : (
                       <RadioGroup value={form.paymentMethod}
