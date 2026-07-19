@@ -55,6 +55,9 @@ if (!orders.includes('payment method gate failed') || !orders.includes('503')) {
 if (!orders.includes('is not available for this store') || !orders.includes('status: 400')) {
   mark('orders route must 400 when requested payment method is not eligible');
 }
+if (!orders.includes('requestedPaymentMethod') || !orders.includes('paymentMethodCoerced')) {
+  mark('orders route must only flag payment_method_coerced when a method was explicitly requested');
+}
 if (!paymentMethods.includes('status: 503') || !paymentMethods.includes('success: false')) {
   mark('payment-methods GET must fail closed (503) on unexpected load errors');
 }

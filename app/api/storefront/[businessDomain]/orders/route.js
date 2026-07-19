@@ -231,8 +231,10 @@ export async function POST(request, { params }) {
     preflightClient.release();
   }
 
+  const requestedPaymentMethod = String(paymentMethod || '').trim().toLowerCase();
   const paymentMethodCoerced =
-    String(paymentMethod || '').trim().toLowerCase() !== String(effectivePaymentMethod || '').toLowerCase();
+    Boolean(requestedPaymentMethod) &&
+    requestedPaymentMethod !== String(effectivePaymentMethod || '').toLowerCase();
 
   const isRestaurant = isRestaurantElevatedStore(business.category);
   const normalizedRestaurantMode =

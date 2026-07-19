@@ -279,17 +279,24 @@ export default function CheckoutPage({ params }) {
       }
     }
     if (stepId === 'payment') {
+      if (loadingPM) {
+        toast.error('Payment options are still loading');
+        return false;
+      }
+      if (!paymentMethods.length) {
+        toast.error('Payment methods are temporarily unavailable. Please refresh and try again.');
+        return false;
+      }
       const selected =
-        form.paymentMethod ||
-        paymentMethods.find((m) => m.provider === 'cod')?.provider ||
-        paymentMethods[0]?.provider;
+        form.paymentMethod && paymentMethods.some((m) => m.provider === form.paymentMethod)
+          ? form.paymentMethod
+          : paymentMethods.find((m) => m.provider === 'cod')?.provider || paymentMethods[0]?.provider;
       if (!selected) {
-        if (loadingPM) {
-          toast.error('Payment options are still loading');
-          return false;
-        }
         toast.error('Please select a payment method');
         return false;
+      }
+      if (form.paymentMethod !== selected) {
+        setForm((f) => ({ ...f, paymentMethod: selected }));
       }
     }
     return true;

@@ -565,13 +565,22 @@ export default function RegisterWizard() {
             return;
         }
 
+        if (bizResult.seedFailed) {
+            console.warn('[register] starter catalog seed failed', bizResult.seedSummary);
+            toast.error(
+                'Workspace created, but the starter catalog could not be loaded. You can add products from Inventory after access is ready.',
+                { duration: 8000 }
+            );
+        }
+
         // Clear registration persistence data
         clearRegistrationData();
         
         // CRITICAL: Check approval status BEFORE any other operations
         if (bizResult.requiresApproval) {
-            toast.success('Registration received! Waiting for approval.', { duration: 4000 });
-            
+            if (!bizResult.seedFailed) {
+                toast.success('Registration received! Waiting for approval.', { duration: 4000 });
+            }
             // Clear any cached business shell to prevent optimistic dashboard load
             if (typeof window !== 'undefined') {
                 try {
@@ -591,7 +600,9 @@ export default function RegisterWizard() {
         }
         
         // Only reach here if auto-approved (platform owners)
-        toast.success('Registration successful! Welcome to Tenvo.');
+        if (!bizResult.seedFailed) {
+            toast.success('Registration successful! Welcome to Tenvo.');
+        }
 
         try {
             const setupRes = await completeRegistrationSetupAction(bizResult.businessId, {

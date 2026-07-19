@@ -302,6 +302,18 @@ assert(
   'public catalog UUID gate must use business_settings + approval_status'
 );
 
+const approvalSrc = read('lib/actions/admin/registrationApproval.js');
+assert(
+  approvalSrc.includes('invalidateStorefrontTenant(result.id)') &&
+    approvalSrc.includes('[approveRegistration]'),
+  'approveRegistration must invalidate storefront tenant cache'
+);
+assert(
+  approvalSrc.includes('[rejectRegistration] storefront invalidate') &&
+    approvalSrc.includes('[requestMoreInfo] storefront invalidate'),
+  'reject/requestMoreInfo must invalidate storefront tenant cache'
+);
+
 if (failures.length) {
   console.error('verify-audit-fixes FAILED');
   for (const f of failures) console.error(' -', f);
