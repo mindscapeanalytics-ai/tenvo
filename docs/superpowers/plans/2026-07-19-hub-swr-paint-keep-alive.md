@@ -51,6 +51,12 @@
 
 - [x] Already gated by `moduleReady.finance` from shell; date force no longer wipes all shell cache keys.
 
-### Task 6: Verify
+### Hardening (post-implement review)
 
-- [x] ReadLints on touched files (clean).
+- [x] Canonical `lib/dashboard/hubQueryKeys.js` (YYYY-MM-DD keys; same-tenant placeholder)
+- [x] Shell cache prefix v2 + payload shape validation
+- [x] DataContext dates via `toAnalyticsIsoDate` (aligned with bootstrap/RQ)
+- [x] FinanceHub SWR soft-revalidate (cache paint + network; no stale forever)
+- [x] Keep-alive reset + `wrapTab` key on tenant switch
+- [x] FinancialReports skip PL/BS/CF refetch when data already in memory
+- [x] Mutation invalidates hubAnalytics + hubSalesPerformance query prefixes

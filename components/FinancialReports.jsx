@@ -123,13 +123,14 @@ export default function FinancialReports({ businessId, initialReport = 'pl' }) {
     useEffect(() => {
         if (!businessId) return;
         queueMicrotask(() => {
-            if (activeTab === 'pl') void fetchPL();
-            else if (activeTab === 'bs') void fetchBS();
-            else if (activeTab === 'cf') void fetchCashFlow();
+            // Keep prior statement in memory when switching PL/BS/CF (no remount storm).
+            if (activeTab === 'pl' && !plData) void fetchPL();
+            else if (activeTab === 'bs' && !bsData) void fetchBS();
+            else if (activeTab === 'cf' && !cfData) void fetchCashFlow();
         });
         // Fetches close over date state; ranges refresh via explicit Refresh buttons.
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [businessId, activeTab]);
+    }, [businessId, activeTab, plData, bsData, cfData]);
 
     const handlePrint = () => window.print();
 

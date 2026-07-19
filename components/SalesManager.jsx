@@ -21,6 +21,10 @@ import {
     normalizeSalesCategory,
 } from '@/lib/analytics/salesPerformanceFilter';
 import { toAnalyticsIsoDate } from '@/lib/utils/analyticsRange';
+import {
+    hubSalesPerformanceQueryKey,
+    sameTenantPlaceholderData,
+} from '@/lib/dashboard/hubQueryKeys';
 
 // ── Trend Badge ──────────────────────────────────────────────────────────────
 function TrendBadge({ value }) {
@@ -87,15 +91,11 @@ export function SalesManager({
         error: queryError,
         refetch,
     } = useQuery({
-        queryKey: ['hubSalesPerformance', businessId, fromISO, toISO, channelKey, categoryKey],
+        queryKey: hubSalesPerformanceQueryKey(businessId, fromISO, toISO, channelKey, categoryKey),
         enabled: Boolean(businessId && fromISO && toISO),
         staleTime: 60_000,
-        // Keep previous only for same tenant (never cross-business paint).
-        placeholderData: (previousData, previousQuery) => {
-            if (!previousData || !previousQuery?.queryKey) return undefined;
-            if (previousQuery.queryKey[1] !== businessId) return undefined;
-            return previousData;
-        },
+        placeholderData: (previousData, previousQuery) =>
+            sameTenantPlaceholderData(previousData, previousQuery, businessId),
         queryFn: async () => {
             const res = await getSalesPerformanceAction(businessId, {
                 from: fromISO,

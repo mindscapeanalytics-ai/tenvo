@@ -26,11 +26,16 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { getAnalyticsBundleAction } from '@/lib/actions/premium/ai/analytics';
 import { useResolvedBusinessId } from '@/lib/hooks/useResolvedBusinessId';
+import { toAnalyticsIsoDate } from '@/lib/utils/analyticsRange';
+import {
+  hubAnalyticsQueryKey,
+  sameTenantPlaceholderData,
+} from '@/lib/dashboard/hubQueryKeys';
 
 function buildDateFilter(dateRange) {
-  if (!dateRange?.from || !dateRange?.to) return {};
-  const from = dateRange.from instanceof Date ? dateRange.from.toISOString() : String(dateRange.from);
-  const to = dateRange.to instanceof Date ? dateRange.to.toISOString() : String(dateRange.to);
+  const from = toAnalyticsIsoDate(dateRange?.from);
+  const to = toAnalyticsIsoDate(dateRange?.to);
+  if (!from || !to) return {};
   return { from, to };
 }
 
@@ -69,15 +74,11 @@ export function AdvancedAnalytics({ businessId, category = 'retail-shop', curren
     isFetching,
     refetch,
   } = useQuery({
-    queryKey: ['hubAnalytics', resolvedBusinessId, fromKey, toKey],
-    enabled: Boolean(resolvedBusinessId),
+    queryKey: hubAnalyticsQueryKey(resolvedBusinessId, fromKey, toKey),
+    enabled: Boolean(resolvedBusinessId && fromKey && toKey),
     staleTime: 60_000,
-    // Keep previous only for same tenant (never cross-business paint).
-    placeholderData: (previousData, previousQuery) => {
-      if (!previousData || !previousQuery?.queryKey) return undefined;
-      if (previousQuery.queryKey[1] !== resolvedBusinessId) return undefined;
-      return previousData;
-    },
+    placeholderData: (previousData, previousQuery) =>
+      sameTenantPlaceholderData(previousData, previousQuery, resolvedBusinessId),
     queryFn: async () => {
       const bundle = await getAnalyticsBundleAction(resolvedBusinessId, filter);
       if (!bundle?.success) {

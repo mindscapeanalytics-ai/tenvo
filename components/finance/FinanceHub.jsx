@@ -630,24 +630,23 @@ export default function FinanceHub({ businessId, initialTab, businessCategory = 
         setMobileMenuOpen(false);
     }, []);
 
-    // Load all finance data once per business; remount hydrates from session cache first.
+    // Load finance data with SWR: paint session cache instantly, always soft-revalidate.
     const loadData = useCallback(async ({ force = false } = {}) => {
         if (!effectiveBusinessId) return;
         if (inFlightRef.current && !force) return;
 
         const cached = financeHubSessionCache.get(effectiveBusinessId);
-        if (!force && cached) {
+        const hasWarm = Boolean(!force && cached);
+
+        if (hasWarm) {
             applyFinanceCache(cached);
             setLoading(false);
-            return;
-        }
-
-        if (force) {
-            financeHubSessionCache.delete(effectiveBusinessId);
+        } else {
+            if (force) financeHubSessionCache.delete(effectiveBusinessId);
+            setLoading(true);
         }
 
         inFlightRef.current = true;
-        setLoading(true);
         try {
             const [accRes, expRes, cnRes, fpRes, exRes, covRes] = await Promise.allSettled([
                 getGLAccountsAction(effectiveBusinessId),

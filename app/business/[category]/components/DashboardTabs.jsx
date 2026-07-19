@@ -124,7 +124,17 @@ export function DashboardTabs({
     const membershipRelevant = isMembershipRelevant(category);
 
     // Visit-based forceMount: first open loads once; leave/return keeps state (no tab-switch storms).
+    // Reset visited set on tenant change so force-mounted panels remount with the new business_id.
     const keepAliveVisitedRef = React.useRef(new Set(['dashboard']));
+    const keepAliveBusinessRef = React.useRef(activeBusinessId);
+    if (activeBusinessId && keepAliveBusinessRef.current !== activeBusinessId) {
+        keepAliveBusinessRef.current = activeBusinessId;
+        const seed =
+            typeof activeTab === 'string' && KEEP_ALIVE_TABS.has(activeTab)
+                ? activeTab
+                : 'dashboard';
+        keepAliveVisitedRef.current = new Set([seed]);
+    }
     if (typeof activeTab === 'string' && KEEP_ALIVE_TABS.has(activeTab)) {
         keepAliveVisitedRef.current.add(activeTab);
     }
@@ -291,6 +301,7 @@ export function DashboardTabs({
 
     const wrapTab = (content) => (
         <motion.div
+            key={activeBusinessId || 'hub'}
             className="min-w-0 overflow-x-hidden"
             variants={tabVariants}
             initial="initial"
