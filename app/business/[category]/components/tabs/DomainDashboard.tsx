@@ -200,7 +200,7 @@ export function DomainDashboard({
     products,
     customers,
     dateRange,
-    currency = 'PKR',
+    currency,
     onQuickAction,
     onDateRangePresetChange,
     dashboardMetrics,

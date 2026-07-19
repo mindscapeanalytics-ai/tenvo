@@ -260,6 +260,10 @@ export default function CheckoutPage({ params }) {
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
         toast.error('Please enter a valid email'); return false;
       }
+      if (restaurantStore && restaurantOrderMode === 'dine-in' && !String(form.tableNumber || '').trim()) {
+        toast.error('Please enter your table number for dine-in');
+        return false;
+      }
     }
     if (stepId === 'shipping') {
       if (restaurantPickup) return true;
@@ -806,12 +810,13 @@ export default function CheckoutPage({ params }) {
 
                     {restaurantStore && restaurantOrderMode === 'dine-in' ? (
                       <div>
-                        <Label htmlFor="tableNumber" className="text-zinc-500">Table number</Label>
+                        <Label htmlFor="tableNumber" className="text-zinc-500">Table number *</Label>
                         <Input
                           id="tableNumber"
                           placeholder="e.g. 12, Patio A"
                           value={form.tableNumber}
                           onChange={(e) => set('tableNumber', e.target.value)}
+                          required
                           className={restaurantInputClass('mt-1', { light: true })}
                         />
                       </div>

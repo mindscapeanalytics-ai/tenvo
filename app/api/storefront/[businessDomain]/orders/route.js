@@ -10,7 +10,7 @@ import {
   querySellableLocationQty,
   resolveSellableStockQty,
 } from '@/lib/storefront/storefrontOrderStock';
-import { decrementStorefrontOrderLineStock } from '@/lib/storefront/storefrontOrderInventory';
+import { decrementStorefrontOrderLineStock, shouldCommitStorefrontInventoryOnCreate } from '@/lib/storefront/storefrontOrderInventory';
 import {
   incrementStorefrontPromoUsage,
   resolveStorefrontOrderDiscount,
@@ -42,6 +42,7 @@ import {
 import { resolveStorefrontOrderShippingAmount } from '@/lib/storefront/storefrontShipping';
 import { resolveCheckoutCartItemRefs } from '@/lib/storefront/validateCheckoutCart';
 import { serializeStorefrontOrderAddress } from '@/lib/storefront/storefrontOrderAddress';
+import { collectStorefrontOrderLinePolicyIssues } from '@/lib/storefront/storefrontOrderLinePolicies';
 
 function roundMoney(n) {
   return Math.round(Number(n) * 100) / 100;
@@ -145,8 +146,15 @@ export async function POST(request, { params }) {
         );
       }
     } catch (paymentGateErr) {
-      console.warn('[Create Order] payment method gate skipped:', paymentGateErr?.message);
-      effectivePaymentMethod = 'cod';
+      console.error('[Create Order] payment method gate failed:', paymentGateErr?.message);
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Payment methods are temporarily unavailable. Please try again in a moment.',
+          retryable: true,
+        },
+        { status: 503 }
+      );
     }
 
     const { resolvedItems, issues } = await resolveCheckoutCartItemRefs(
@@ -165,6 +173,23 @@ export async function POST(request, { params }) {
       );
     }
     checkoutItems = resolvedItems;
+
+    const policyIssues = await collectStorefrontOrderLinePolicyIssues(
+      preflightClient,
+      business.id,
+      business.category,
+      checkoutItems
+    );
+    if (policyIssues.length > 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: policyIssues[0].message,
+          issues: policyIssues,
+        },
+        { status: 409 }
+      );
+    }
 
     if (checkoutItems?.length) {
       const lineRefs = checkoutItems.map((i) => ({ productId: i.productId }));
@@ -200,6 +225,16 @@ export async function POST(request, { params }) {
       ? normalizeRestaurantOrderMode(restaurantOrderMode)
       : null;
   const restaurantPickup = isRestaurant && isRestaurantPickupOrder(normalizedRestaurantMode);
+
+  if (isRestaurant && normalizedRestaurantMode === 'dine-in' && !String(tableNumber || '').trim()) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Table number is required for dine-in orders.',
+      },
+      { status: 400 }
+    );
+  }
 
   for (const item of checkoutItems) {
     if (
@@ -533,6 +568,7 @@ export async function POST(request, { params }) {
         : effectivePaymentMethod === 'crypto' || effectivePaymentMethod === 'stripe'
           ? 'awaiting_payment'
           : 'awaiting_payment';
+    const commitInventoryNow = shouldCommitStorefrontInventoryOnCreate(paymentStatus);
 
     const orderMeta = {
       source: 'storefront',
@@ -544,6 +580,8 @@ export async function POST(request, { params }) {
       clientDeclaredShipping,
       serverShipping: shippingAmount,
       discounts: discountMeta,
+      inventory_committed: commitInventoryNow,
+      inventory_deferred: !commitInventoryNow,
       ...(isRestaurant && normalizedRestaurantMode
         ? {
             restaurant_order_mode: normalizedRestaurantMode,
@@ -665,17 +703,19 @@ export async function POST(request, { params }) {
         }
       }
 
-      await decrementStorefrontOrderLineStock(
-        client,
-        business.id,
-        {
-          productId: line.productId,
-          quantity: line.quantity,
-          isVariant: line.isVariant,
-          variantId: line.variantId,
-        },
-        { orderId, orderNumber }
-      );
+      if (commitInventoryNow) {
+        await decrementStorefrontOrderLineStock(
+          client,
+          business.id,
+          {
+            productId: line.productId,
+            quantity: line.quantity,
+            isVariant: line.isVariant,
+            variantId: line.variantId,
+          },
+          { orderId, orderNumber }
+        );
+      }
     }
 
     try {

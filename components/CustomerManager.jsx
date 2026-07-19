@@ -11,7 +11,7 @@ import { DataTable } from './DataTable';
 import { ExportButton } from './ExportButton';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { FormError, FormWarning } from '@/components/ui/form-error';
-import { getDomainKnowledgeForBusiness } from '@/lib/utils/businessRegionalContext';
+import { getDomainKnowledgeForBusiness, resolveDisplayCurrency } from '@/lib/utils/businessRegionalContext';
 import { formatCurrency } from '@/lib/currency';
 import { customerSchema, validateForm, formatPakistaniPhone } from '@/lib/validation';
 import { getDomainColors } from '@/lib/domainColors';
@@ -32,9 +32,12 @@ export function CustomerManager({ customers = [], onAdd, onUpdate, onDelete, cat
   const [customerToView, setCustomerToView] = useState(null);
   const [customerToDelete, setCustomerToDelete] = useState(null);
 
-  const { currency: businessCurrency, business } = useBusiness();
+  const { currency: businessCurrency, business, regionalPack } = useBusiness();
   const knowledge = getDomainKnowledgeForBusiness(category, business);
-  const currency = businessCurrency || 'PKR';
+  const currency = resolveDisplayCurrency(
+    { currency: businessCurrency || business?.currency },
+    regionalPack
+  );
 
   const filteredCustomers = customers.filter(customer =>
     customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -154,6 +157,7 @@ export function CustomerManager({ customers = [], onAdd, onUpdate, onDelete, cat
             filename="customers"
             columns={columns}
             title="Customers Report"
+            business={business}
           />
           <Button onClick={onAdd} className="h-10 rounded-xl px-6 font-bold text-white shadow-lg" style={{ backgroundColor: colors.primary, boxShadow: `0 8px 16px -4px ${colors.primary}40` }}>
             <Plus className="mr-2 h-4 w-4" />

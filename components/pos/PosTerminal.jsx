@@ -58,7 +58,7 @@ import { PosTaxPanel } from '@/components/pos/shared/PosTaxPanel';
 import { usePosManagerGate } from '@/components/pos/shared/PosManagerPinGate';
 import { PosLoyaltyPanel } from '@/components/pos/shared/PosLoyaltyPanel';
 import { PosCashToolsPanel } from '@/components/pos/shared/PosCashToolsPanel';
-import { usePosHotkeys } from '@/lib/hooks/usePosHotkeys';
+import { usePosHotkeys, focusPosScanInput } from '@/lib/hooks/usePosHotkeys';
 import { usePosHeldSales } from '@/lib/hooks/usePosHeldSales';
 import { usePosTaxConfig } from '@/lib/hooks/usePosTaxConfig';
 import { nextPosPaymentMethod } from '@/lib/config/posHotkeys';
@@ -928,12 +928,11 @@ export function PosTerminal({
     }, []);
 
     const focusScanSearch = useCallback(() => {
-        const el = typeof document !== 'undefined'
-            ? document.querySelector('[data-pos-role="scan"]')
-            : null;
-        if (el instanceof HTMLElement) {
-            el.focus();
-        }
+        setMobilePane('browse');
+        // Dual desktop/mobile grids keep a hidden clone in the DOM — focus the visible one.
+        requestAnimationFrame(() => {
+            focusPosScanInput(containerRef.current);
+        });
     }, []);
 
     const handleHoldSale = useCallback(() => {
@@ -1133,14 +1132,16 @@ export function PosTerminal({
         handleCompleteSale,
         handlePaymentMethodSelect,
         paymentMethod,
+        taxEnabled,
         handleClearCart,
         handlePrintBill,
         cartSummary,
     ]);
 
     usePosHotkeys({
-        enabled: !showCustomerDialog && !showSplitDialog && !showTaxPanel,
+        enabled: !showCustomerDialog && !showSplitDialog && !showTaxPanel && !showLoyaltyPanel && !showCashTools,
         handlers: hotkeyHandlers,
+        onFullscreen: toggleFullscreen,
     });
 
     useEffect(() => {
@@ -1155,10 +1156,6 @@ export function PosTerminal({
                     handleCompleteSale();
                 }
             }
-            if (e.key === 'F11') {
-                e.preventDefault();
-                toggleFullscreen();
-            }
             if (e.key === 'Escape' && searchTerm) {
                 setSearchTerm('');
                 focusScanSearch();
@@ -1166,7 +1163,7 @@ export function PosTerminal({
         };
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [cart.length, isProcessing, searchTerm, showCustomerDialog, showTaxPanel, toggleFullscreen, handleCompleteSale, focusScanSearch]);
+    }, [cart.length, isProcessing, searchTerm, showCustomerDialog, showTaxPanel, handleCompleteSale, focusScanSearch]);
 
     const cartPanelProps = {
         items: cart,
@@ -1299,6 +1296,7 @@ export function PosTerminal({
     return (
         <div
             ref={containerRef}
+            data-pos-root="retail"
             className={cn(
                 'flex flex-col min-h-0 overflow-hidden bg-gray-50 border border-gray-200 touch-manipulation',
                 getPosShellHeightClass(isFullscreen, 'terminal'),

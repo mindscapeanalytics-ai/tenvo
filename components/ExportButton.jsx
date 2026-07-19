@@ -6,7 +6,15 @@ import { exportToCSV, exportToExcel, generateReportPDF } from '@/lib/pdf';
 import toast from 'react-hot-toast';
 import { cn } from '@/lib/utils';
 
-export function ExportButton({ data, filename = 'export', columns, title, minimal = false }) {
+export function ExportButton({
+  data,
+  filename = 'export',
+  columns,
+  title,
+  minimal = false,
+  business = null,
+  pdfMeta = null,
+}) {
   const [isOpen, setIsOpen] = useState(false);
 
   const handleExport = async (type) => {
@@ -26,7 +34,11 @@ export function ExportButton({ data, filename = 'export', columns, title, minima
           break;
         case 'pdf':
           if (columns && title) {
-            const doc = generateReportPDF(title, data, columns);
+            const doc = generateReportPDF(title, data, columns, {
+              businessName: business?.business_name || business?.name,
+              business,
+              ...(pdfMeta || {}),
+            });
             doc.save(`${filename}.pdf`);
             toast.success('PDF exported successfully');
           } else {

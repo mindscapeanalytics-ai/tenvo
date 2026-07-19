@@ -48,6 +48,27 @@ if (adjusted.length !== 2 || adjusted[0].quantity !== 1) {
   errors.push('applyStorefrontCartValidationIssues should clamp qty per line');
 }
 
+const policiesSrc = await Bun.file(
+  new URL('../lib/storefront/storefrontOrderLinePolicies.js', import.meta.url)
+).text();
+if (
+  !policiesSrc.includes('collectStorefrontOrderLinePolicyIssues') ||
+  !policiesSrc.includes('isPrescriptionRequiredProduct') ||
+  !policiesSrc.includes('isFitnessBookableProduct')
+) {
+  errors.push('storefrontOrderLinePolicies must enforce Rx and fitness bookables');
+}
+
+const inventorySrc = await Bun.file(
+  new URL('../lib/storefront/storefrontOrderInventory.js', import.meta.url)
+).text();
+if (
+  !inventorySrc.includes('shouldCommitStorefrontInventoryOnCreate') ||
+  !inventorySrc.includes('commitStorefrontOrderInventoryIfPending')
+) {
+  errors.push('storefrontOrderInventory must defer prepaid inventory until payment');
+}
+
 const mapped = mapCartLinesForValidation([{ productId: UUID, quantity: 2, name: 'Item' }]);
 if (mapped[0].productId !== UUID || mapped[0].quantity !== 2) {
   errors.push('mapCartLinesForValidation should preserve cart fields');

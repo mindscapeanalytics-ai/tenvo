@@ -21,6 +21,8 @@ import {
 import { toast } from 'react-hot-toast';
 import { useState, useMemo } from 'react';
 import { catalogProductNeedsVariantPage } from '@/lib/storefront/storefrontProductVariants';
+import { isStorefrontProductUuid } from '@/lib/utils/storefrontProductRef';
+import { resolveStorefrontProductBrowseHref } from '@/lib/storefront/storefrontPurchasability';
 
 /** @type {Record<string, string>} */
 const GRID_DENSITY_CLASSES = {
@@ -40,7 +42,8 @@ function ProductListItem({ product, businessDomain }) {
   const inWishlist = isInWishlist(product.id);
   const listImage = getEffectiveProductImageUrl(product, business?.category);
   const isOutOfStock = product.stock !== null && product.stock !== undefined && product.stock <= 0;
-  const productHref = `/store/${businessDomain}/products/${product.slug || product.id}`;
+  const isPreviewProduct = product.catalog_preview || !isStorefrontProductUuid(product.id);
+  const productHref = resolveStorefrontProductBrowseHref(product, businessDomain);
   const needsVariantPage = catalogProductNeedsVariantPage(product);
   const discount = product.compare_price && Number(product.compare_price) > Number(product.price)
     ? Math.round(((product.compare_price - product.price) / product.compare_price) * 100) : 0;
@@ -48,7 +51,7 @@ function ProductListItem({ product, businessDomain }) {
   const handleAddToCart = async (e) => {
     e.preventDefault();
     if (isOutOfStock) return;
-    if (needsVariantPage) {
+    if (isPreviewProduct || needsVariantPage) {
       window.location.href = productHref;
       return;
     }
@@ -69,7 +72,7 @@ function ProductListItem({ product, businessDomain }) {
 
   return (
     <div className="flex gap-4 bg-white rounded-2xl border border-gray-100 shadow-sm p-4 hover:shadow-md transition-shadow group">
-      <Link href={`/store/${businessDomain}/products/${product.slug || product.id}`} className="flex-shrink-0">
+      <Link href={productHref} className="flex-shrink-0">
         <div className="w-28 h-28 sm:w-36 sm:h-36 bg-gray-50 rounded-xl overflow-hidden">
           {listImage ? (
             <SmartProductImage src={listImage} alt={product.name} width={144} height={144} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
@@ -81,7 +84,7 @@ function ProductListItem({ product, businessDomain }) {
       <div className="flex-1 min-w-0 flex flex-col justify-between">
         <div>
           {product.category_name && <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1">{product.category_name}</p>}
-          <Link href={`/store/${businessDomain}/products/${product.slug || product.id}`}>
+          <Link href={productHref}>
             <h3 className="font-semibold text-gray-900 hover:opacity-80 transition-opacity line-clamp-2 leading-snug">{product.name}</h3>
           </Link>
           {product.description && <p className="text-sm text-gray-500 mt-1 line-clamp-2">{product.description}</p>}

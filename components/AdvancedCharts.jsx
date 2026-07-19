@@ -31,7 +31,7 @@ const COLORS = CHART_PALETTE;
  * @param {any} [props.colors]
  * @param {string} [props.currency]
  */
-export function SalesChart({ data = [], colors, currency = 'PKR' }) {
+export function SalesChart({ data = [], colors, currency }) {
   const primary = colors?.primary || '#3b82f6'; // Blue
   const profitColor = '#10b981'; // Emerald green
   const volumeStroke = '#8b5cf6'; // Purple
@@ -154,7 +154,7 @@ export function SalesChart({ data = [], colors, currency = 'PKR' }) {
  * @param {any} [props.colors]
  * @param {string} [props.currency]
  */
-export function SalesTrendAreaChart({ data = [], colors, currency = 'PKR' }) {
+export function SalesTrendAreaChart({ data = [], colors, currency }) {
   const primary = colors?.primary || '#3b82f6';
   const accent = colors?.primaryLight || '#8b5cf6';
   const chartData = densifyTrendSeries(data);
@@ -258,7 +258,7 @@ function resolveMoneyDomain(data = [], keys = ['revenue', 'profit']) {
  * @param {any} [props.colors]
  * @param {string} [props.currency]
  */
-export function RevenueBarChart({ data = [], colors, currency = 'PKR' }) {
+export function RevenueBarChart({ data = [], colors, currency }) {
   const primary = colors?.primary || '#3b82f6'; // Blue
   const secondary = '#8b5cf6'; // Purple
   const chartData = densifyTrendSeries(data);
@@ -446,7 +446,7 @@ export function RevenueAreaChart({ data, colors }) {
  * @param {any} [props.colors]
  * @param {string} [props.currency]
  */
-export function TopProductsChart({ data, colors, currency = 'PKR' }) {
+export function TopProductsChart({ data, colors, currency }) {
   const primary = colors?.primary || '#3b82f6';
 
   return (

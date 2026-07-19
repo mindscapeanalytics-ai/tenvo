@@ -8,14 +8,15 @@ import { Loader2, Download, RefreshCw, Calendar, TrendingUp, TrendingDown, Scale
 import { formatCurrency } from '@/lib/currency';
 import { accountingAPI } from '@/lib/api/accounting';
 import { useBusiness } from '@/lib/context/BusinessContext';
+import { resolveDisplayCurrency } from '@/lib/utils/businessRegionalContext';
 import { AgingReportsPanel } from '@/components/reports/AgingReportsPanel';
 import TrialBalanceView from '@/components/TrialBalanceView';
 import DayBookReport from '@/components/finance/DayBookReport';
-import { generateFinanceStatementPDF, generateSectionedFinancePDF } from '@/lib/pdf/financeStatementPdf';
+import { generateFinanceStatementPDF, generateSectionedFinancePDF, buildFinancePdfMeta } from '@/lib/pdf/financeStatementPdf';
 import toast from 'react-hot-toast';
 
 // Helper for row rendering
-const ReportRow = ({ label, amount, type = 'normal', indent = false, currency = 'PKR' }) => (
+const ReportRow = ({ label, amount, type = 'normal', indent = false, currency }) => (
     <div className={`flex justify-between py-2 border-b border-gray-150 dark:border-slate-800/40 ${type === 'total' ? 'font-bold bg-gray-50/50 dark:bg-slate-900/50 px-2 rounded mt-1' : ''} ${indent ? 'pl-8' : ''}`}>
         <span className={`${type === 'total' ? 'text-gray-900 dark:text-gray-100' : 'text-gray-600 dark:text-gray-400'}`}>{label}</span>
         <span className={`${type === 'total' ? 'text-gray-900 dark:text-gray-100' : 'text-gray-700 dark:text-gray-300 font-mono'}`}>
@@ -42,7 +43,11 @@ const SectionHeader = ({ title, icon: Icon, color }) => (
  */
 export default function FinancialReports({ businessId, initialReport = 'pl' }) {
     const { business, currency: businessCurrencyCode, regionalPack } = useBusiness();
-    const reportCurrency = businessCurrencyCode || 'PKR';
+    const reportCurrency = resolveDisplayCurrency(
+      { currency: businessCurrencyCode || business?.currency },
+      regionalPack
+    );
+    const reportLocale = regionalPack?.locale;
     const taxIdLabel = regionalPack?.taxIdLabel || 'Tax ID';
     const taxIdLine = business?.ntn ? `${taxIdLabel}: ${business.ntn}` : null;
     const [activeTab, setActiveTab] = useState(() => {
@@ -130,11 +135,12 @@ export default function FinancialReports({ businessId, initialReport = 'pl' }) {
 
     const handleDownloadPdf = async () => {
         try {
-            const baseMeta = {
-                businessName: business?.business_name || 'Business',
+            const baseMeta = buildFinancePdfMeta(business, {
                 currency: reportCurrency,
-                generatedAt: new Date().toISOString(),
-            };
+                locale: reportLocale,
+                taxIdLabel,
+                footnote: taxIdLine || 'Confidential',
+            });
             if (activeTab === 'pl' && plData) {
                 generateSectionedFinancePDF(
                     {
@@ -206,7 +212,7 @@ export default function FinancialReports({ businessId, initialReport = 'pl' }) {
                             heading: 'Equity',
                             rows: [
                                 ...(bsData.equity || []).map((a) => ({ label: a.name, amount: a.balance })),
-                                { label: 'Retained Earnings', amount: bsData.retainedEarnings },
+                                { label: 'Retained Earnings (to date)', amount: bsData.retainedEarnings },
                             ],
                             totalLabel: 'Total Equity',
                             totalAmount: bsData.totalEquity,
@@ -220,6 +226,7 @@ export default function FinancialReports({ businessId, initialReport = 'pl' }) {
                         ...baseMeta,
                         title: 'Cash Flow Statement',
                         periodLabel: `${cfStartDate} to ${cfEndDate}`,
+                        footnote: 'Indirect method. Other / reconciling is the residual to match cash movement.',
                     },
                     [
                         { key: 'label', label: 'Line' },
@@ -232,7 +239,7 @@ export default function FinancialReports({ businessId, initialReport = 'pl' }) {
                         { label: 'Change in AP', amount: cfData.apChange },
                         { label: 'Change in Tax Payable', amount: cfData.taxChange },
                         { label: 'Operating Cash Flow', amount: cfData.operatingCashFlow },
-                        { label: 'Investing / Financing (net)', amount: cfData.investingFinancingNet },
+                        { label: 'Other / reconciling items (plug)', amount: cfData.investingFinancingNet },
                         { label: 'Net Change in Cash', amount: cfData.netChangeInCash },
                         { label: 'Opening Cash', amount: cfData.cashStart },
                         { label: 'Closing Cash', amount: cfData.cashEnd },
@@ -545,7 +552,7 @@ export default function FinancialReports({ businessId, initialReport = 'pl' }) {
                                         </section>
 
                                         <section>
-                                            <SectionHeader title="Investing and Financing (net)" icon={ArrowUpRight} color="bg-wine-500" />
+                                            <SectionHeader title="Other / reconciling items" icon={ArrowUpRight} color="bg-wine-500" />
                                             <div className="space-y-1">
                                                 <ReportRow currency={reportCurrency} label="Residual to match cash movement" amount={cfData.investingFinancingNet} />
                                             </div>

@@ -119,6 +119,13 @@ export async function POST(request) {
 
     if (storefrontOrderPaidHook?.businessId && storefrontOrderPaidHook?.orderId) {
       const { onStorefrontOrderPaidAsync } = await import('@/lib/memberships/membershipOrderHooks');
+      const { commitStorefrontOrderInventoryAfterPayment } = await import(
+        '@/lib/storefront/storefrontOrderInventory'
+      );
+      void commitStorefrontOrderInventoryAfterPayment(
+        storefrontOrderPaidHook.businessId,
+        storefrontOrderPaidHook.orderId
+      );
       void onStorefrontOrderPaidAsync(
         storefrontOrderPaidHook.businessId,
         storefrontOrderPaidHook.orderId

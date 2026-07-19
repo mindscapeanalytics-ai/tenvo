@@ -20,6 +20,7 @@ import { HubEntityMobileList } from '@/components/mobile/HubEntityMobileList';
 import { MOBILE_BOTTOM_NAV_CLASS, MOBILE_FLOATING_Z, MOBILE_MODULE_FAB_RIGHT } from '@/lib/utils/mobileLayout';
 import GRNView from './GRNView';
 import { useBusiness } from '@/lib/context/BusinessContext';
+import { resolveDisplayCurrency } from '@/lib/utils/businessRegionalContext';
 import {
   getPurchaseStatusBadgeClass,
   getPurchaseStatusLabel,
@@ -41,7 +42,11 @@ import {
  * @param {() => void} [props.refreshData]
  */
 export function PurchaseOrderManager({ purchaseOrders = [], onCreate, onUpdateStatus, category = 'retail-shop', refreshData }) {
-  const { business } = useBusiness();
+  const { business, currency: businessCurrency, regionalPack } = useBusiness();
+  const currency = resolveDisplayCurrency(
+    { currency: businessCurrency || business?.currency },
+    regionalPack
+  );
   const colors = getDomainColors(category);
   const [searchTerm, setSearchTerm] = useState('');
   const [poToView, setPoToView] = useState(null);
@@ -161,7 +166,7 @@ export function PurchaseOrderManager({ purchaseOrders = [], onCreate, onUpdateSt
           { label: 'Open', value: openOrdersCount, valueTone: 'text-amber-600' },
           { label: 'Pending', value: pendingReceiptCount, valueTone: 'text-orange-600' },
           { label: 'Received', value: receivedCount, valueTone: 'text-green-600' },
-          { label: 'Value', value: formatCurrency(procurementValue, business?.currency || 'PKR'), hint: 'Total listed' },
+          { label: 'Value', value: formatCurrency(procurementValue, currency), hint: 'Total listed' },
         ]}
       />
 
@@ -183,6 +188,7 @@ export function PurchaseOrderManager({ purchaseOrders = [], onCreate, onUpdateSt
             filename="purchase_orders"
             columns={columns}
             title="Purchase Orders Report"
+            business={business}
           />
         </div>
       </div>
@@ -265,7 +271,7 @@ export function PurchaseOrderManager({ purchaseOrders = [], onCreate, onUpdateSt
           renderIcon={() => <ShoppingCart className="h-5 w-5 text-blue-600" />}
           getTitle={(o) => o.purchase_number || 'PO'}
           getSubtitle={(o) => o.vendor_name || 'Unknown supplier'}
-          getAmount={(o) => formatCurrency(o.total_amount, business?.currency || 'PKR')}
+          getAmount={(o) => formatCurrency(o.total_amount, currency)}
           renderBadge={(o) => (
             <Badge variant="outline" className={cn('text-[10px] font-semibold uppercase', getStatusBadge(o.status))}>
               {getPurchaseStatusLabel(o.status)}

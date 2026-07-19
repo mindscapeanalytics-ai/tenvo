@@ -104,6 +104,35 @@ includes('lib/services/InventoryService.js', 'skip_low_stock_notify', 'invoice c
 includes('app/business/[category]/components/ActionModals.jsx', 'upsertInvoiceInState', 'payment success patches invoice state');
 includes('lib/actions/basic/invoice.js', 'amount_paid', 'list balance enrichment uses payment sum join');
 
+includes('lib/pdf/financeStatementPdf.js', 'resolveInvoiceBrandColor', 'finance PDF uses tenant brand color');
+includes('lib/pdf/financeStatementPdf.js', 'buildFinancePdfMeta', 'finance PDF meta builder');
+includes('lib/pdf/financeStatementPdf.js', 'tableWidth: 182', 'finance PDF full content width');
+includes('components/FinancialReports.jsx', 'Other / reconciling items (plug)', 'cash flow residual labeled honestly');
+includes('components/FinancialReports.jsx', 'buildFinancePdfMeta', 'Statements PDF brand-aware meta');
+includes('components/finance/DayBookReport.jsx', "{ key: 'status', label: 'Status' }", 'Day Book PDF includes status');
+includes('lib/actions/standard/report.js', 'BS_DYNAMIC_RE_CODES', 'BS excludes system RE codes from equity sum');
+includes('lib/actions/standard/report.js', 'ZERO_BALANCE_EPS', 'statements omit zero-balance lines');
+includes('lib/actions/standard/agingReports.js', 'default_payment_terms', 'AP aging uses payment terms due date');
+assert(
+  !read('lib/actions/standard/agingReports.js').includes('expected_delivery'),
+  'AP aging no longer ages on expected_delivery'
+);
+includes('lib/utils/agingBuckets.js', 'parsePaymentTermsDays', 'payment terms day parser');
+includes('components/finance/FinanceMobileNav.jsx', 'GROUP_ORDER', 'Finance nav renders group separators');
+includes('lib/utils/businessRegionalContext.js', 'resolveDisplayCurrency', 'shared display currency helper');
+includes('components/ExportButton.jsx', 'business,', 'ExportButton accepts business for brand PDF');
+includes('components/reports/GeneralLedgerReport.jsx', 'routeCategory', 'GL links use business category not UUID');
+includes('components/TrialBalanceView.jsx', 'buildFinancePdfMeta', 'Trial Balance PDF brand-aware');
+includes('components/reports/AgingReportsPanel.jsx', 'business,', 'Aging PDF passes business for brand');
+assert(
+  !read('components/finance/FinanceHub.jsx').includes("case 'vouchers':"),
+  'dead vouchers switch arm removed from FinanceHub'
+);
+assert(
+  !read('components/finance/FinanceHub.jsx').includes("case 'trial-balance':"),
+  'dead trial-balance switch arm removed from FinanceHub'
+);
+
 if (failed > 0) {
   console.error(`\n${failed} check(s) failed`);
   process.exit(1);

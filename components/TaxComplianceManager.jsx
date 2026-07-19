@@ -190,8 +190,10 @@ export function TaxComplianceManager({ invoices = [], purchaseOrders = [], posTr
                     { label: 'Total', key: 'total_amount' },
                 ], {
                     businessName: business?.business_name || business?.name,
+                    business,
                     periodLabel: periodMeta.label,
                     currency,
+                    locale: regionalPack?.locale,
                 });
                 doc.save(`${standards.taxLabel}_purchase_register_${stamp}.pdf`);
                 toast.success('Purchase register exported');
@@ -223,8 +225,10 @@ export function TaxComplianceManager({ invoices = [], purchaseOrders = [], posTr
 
             const pdfMeta = {
                 businessName: business?.business_name || business?.name,
+                business,
                 periodLabel: periodMeta.label,
                 currency,
+                locale: regionalPack?.locale,
             };
             const doc = type === 'Summary'
                 ? generateReportPDF(`${standards.taxLabel} Summary, ${periodMeta.label}`, summaryRows, [

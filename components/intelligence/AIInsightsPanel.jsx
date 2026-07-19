@@ -18,6 +18,7 @@ import {
     getPromotionRecommendationsAction
 } from '@/lib/actions/premium/ai/analytics';
 import { getAiRestockSuggestionsAction } from '@/lib/actions/premium/ai/ai';
+import { formatCurrency } from '@/lib/currency';
 
 function buildDateFilter(dateRange) {
     if (!dateRange?.from || !dateRange?.to) return {};
@@ -104,7 +105,7 @@ function ForecastRow({ item }) {
 
 // --- Promotion card ---
 
-function PromoCard({ promo, currency }) {
+function PromoCard({ promo, currencyCode }) {
     const strategyColors = {
         Clearance: 'bg-red-50 border-red-200 text-red-700',
         'Volume Booster': 'bg-blue-50 border-blue-200 text-blue-700',
@@ -119,7 +120,9 @@ function PromoCard({ promo, currency }) {
             </div>
             <p className="text-[10px] opacity-80">{promo.reason}</p>
             {promo.potential_revenue > 0 && (
-                <p className="text-[10px] font-bold mt-1">Potential: {currency} {Number(promo.potential_revenue).toLocaleString()}</p>
+                <p className="text-[10px] font-bold mt-1">
+                    Potential: {formatCurrency(Number(promo.potential_revenue) || 0, currencyCode)}
+                </p>
             )}
         </div>
     );
@@ -151,10 +154,10 @@ function MiniBarChart({ data, valueKey = 'revenue', labelKey = 'date' }) {
     );
 }
 
-export function AIInsightsPanel({ businessId, category = 'retail-shop', dateRange }) {
-    const { business, currencySymbol } = useBusiness();
+export function AIInsightsPanel({ businessId, category = 'retail-shop', dateRange, currency: currencyProp }) {
+    const { business, currency: businessCurrency } = useBusiness();
     const effectiveBusinessId = useResolvedBusinessId(businessId);
-    const currency = currencySymbol || 'Rs.';
+    const currencyCode = currencyProp || businessCurrency;
 
     const [salesTrend, setSalesTrend] = useState([]);
     const [topProducts, setTopProducts] = useState([]);
@@ -243,7 +246,7 @@ export function AIInsightsPanel({ businessId, category = 'retail-shop', dateRang
             {/* KPI Row */}
             {kpiData && (
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-                    <MetricCard label="Inventory Asset" value={`${currency} ${(kpiData.inventoryAsset || 0).toLocaleString()}`} icon={Package} color="indigo" />
+                    <MetricCard label="Inventory Asset" value={formatCurrency(kpiData.inventoryAsset || 0, currencyCode)} icon={Package} color="indigo" />
                     <MetricCard label="Growth" value={kpiData.growth?.value || '0%'} trend={kpiData.growth?.trend} trendValue={kpiData.growth?.value} icon={TrendingUp} color="emerald" />
                     <MetricCard
                         label="Retention"
@@ -315,7 +318,7 @@ export function AIInsightsPanel({ businessId, category = 'retail-shop', dateRang
                                             />
                                         </div>
                                     </div>
-                                    <span className="text-[10px] font-semibold text-gray-600 shrink-0">{currency} {Number(product.value).toLocaleString()}</span>
+                                    <span className="text-[10px] font-semibold text-gray-600 shrink-0">{formatCurrency(Number(product.value) || 0, currencyCode)}</span>
                                 </div>
                             );
                         })}
@@ -403,7 +406,7 @@ export function AIInsightsPanel({ businessId, category = 'retail-shop', dateRang
                                 <div key={idx} className="flex items-center gap-2">
                                     <div className={cn('w-2 h-2 rounded-full shrink-0', colors[idx % colors.length])} />
                                     <span className="flex-1 text-xs font-semibold text-gray-700 truncate">{exp.name}</span>
-                                    <span className="text-xs font-bold text-gray-800">{currency} {Number(exp.value).toLocaleString()}</span>
+                                    <span className="text-xs font-bold text-gray-800">{formatCurrency(Number(exp.value) || 0, currencyCode)}</span>
                                     <span className="text-[10px] text-gray-400 w-8 text-right">{exp.percentage}%</span>
                                 </div>
                             );
@@ -423,7 +426,7 @@ export function AIInsightsPanel({ businessId, category = 'retail-shop', dateRang
                     </div>
                     <div className="space-y-2">
                         {promos.map((promo, idx) => (
-                            <PromoCard key={idx} promo={promo} currency={currency} />
+                            <PromoCard key={idx} promo={promo} currencyCode={currencyCode} />
                         ))}
                         {promos.length === 0 && (
                             <p className="text-xs text-gray-400 text-center py-4">Add more sales data to unlock AI promotions</p>

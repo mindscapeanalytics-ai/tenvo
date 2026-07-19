@@ -50,7 +50,7 @@ import { PosHotkeyDock } from '@/components/pos/shared/PosHotkeyDock';
 import { PosTaxPanel } from '@/components/pos/shared/PosTaxPanel';
 import { usePosManagerGate } from '@/components/pos/shared/PosManagerPinGate';
 import { PosCashToolsPanel } from '@/components/pos/shared/PosCashToolsPanel';
-import { usePosHotkeys } from '@/lib/hooks/usePosHotkeys';
+import { usePosHotkeys, focusPosScanInput } from '@/lib/hooks/usePosHotkeys';
 import { usePosHeldSales } from '@/lib/hooks/usePosHeldSales';
 import { usePosTaxConfig } from '@/lib/hooks/usePosTaxConfig';
 import { nextPosPaymentMethod } from '@/lib/config/posHotkeys';
@@ -214,6 +214,7 @@ function ScannedItemsList({
                                 {item.isWeightItem ? (
                                     <input
                                         type="number"
+                                        data-pos-role="qty"
                                         value={item.quantity}
                                         onChange={(e) => onWeightChange?.(idx, parseFloat(e.target.value) || 0.1)}
                                         className="w-14 text-center text-xs font-semibold bg-white rounded px-1 py-1 border-0"
@@ -872,10 +873,10 @@ export function SuperStorePOS({
     }, [cart, discount, taxComponents, cartTax]);
 
     const focusScanSearch = useCallback(() => {
-        const el = typeof document !== 'undefined'
-            ? document.querySelector('[data-pos-role="scan"]')
-            : null;
-        if (el instanceof HTMLElement) el.focus();
+        setMobilePane('browse');
+        requestAnimationFrame(() => {
+            focusPosScanInput(containerRef.current);
+        });
     }, []);
 
     const hotkeyHandlers = useMemo(() => ({
@@ -903,23 +904,32 @@ export function SuperStorePOS({
         handleCompleteSale,
         handlePaymentMethodSelect,
         paymentMethod,
+        taxEnabled,
         handleVoidSale,
         handlePrintBill,
         cartSummary,
     ]);
 
     usePosHotkeys({
-        enabled: !showCustomerDialog && !showSplitDialog && !showTaxPanel,
+        enabled: !showCustomerDialog && !showSplitDialog && !showTaxPanel && !showCashTools,
         handlers: hotkeyHandlers,
+        onFullscreen: toggleFullscreen,
     });
 
     useEffect(() => {
         const handleKeyDown = (e) => {
-            if (e.key === 'F11') { e.preventDefault(); toggleFullscreen(); }
+            if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+                e.preventDefault();
+                focusScanSearch();
+            }
+            if (e.key === 'Escape' && searchTerm) {
+                setSearchTerm('');
+                focusScanSearch();
+            }
         };
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [toggleFullscreen]);
+    }, [searchTerm, focusScanSearch]);
 
     // --- Render --------------------------------------------------------------
 
@@ -950,6 +960,7 @@ export function SuperStorePOS({
     return (
         <div
             ref={containerRef}
+            data-pos-root="superstore"
             className={cn(
                 'flex flex-col min-h-0 overflow-hidden bg-gray-50 border border-gray-200 touch-manipulation transition-all',
                 getPosShellHeightClass(isFullscreen, 'terminal'),

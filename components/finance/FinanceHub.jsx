@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { useBusiness } from '@/lib/context/BusinessContext';
 import { useResolvedBusinessId } from '@/lib/hooks/useResolvedBusinessId';
 import { usePermissions } from '@/lib/hooks/usePermissions';
+import { resolveDisplayCurrency } from '@/lib/utils/businessRegionalContext';
 import { getGLAccountsAction } from '@/lib/actions/basic/accounting';
 import { setExchangeRateAction } from '@/lib/actions/basic/exchangeRate';
 import { getExpensesAction } from '@/lib/actions/basic/expense';
@@ -328,7 +329,7 @@ function CreditNotesPanel({ businessId, creditNotes, currency, onRefresh }) {
 
 function ExchangeRatesPanel({ businessId, rates, baseCurrencyCode, onRefresh }) {
     const [showForm, setShowForm] = useState(false);
-    const fromCurrency = baseCurrencyCode || 'PKR';
+    const fromCurrency = baseCurrencyCode || resolveDisplayCurrency();
     const [toCurrency, setToCurrency] = useState('USD');
     const [rate, setRate] = useState('');
     const [effectiveDate, setEffectiveDate] = useState(() => new Date().toISOString().split('T')[0]);
@@ -576,7 +577,7 @@ function FinanceOverview({
 const financeHubSessionCache = new Map();
 
 export default function FinanceHub({ businessId, initialTab, businessCategory = 'retail-shop', onInitialTabConsumed }) {
-    const { business, currency, currencySymbol } = useBusiness();
+    const { business, currency, currencySymbol, regionalPack } = useBusiness();
     const { can, planCan } = usePermissions();
     const initialNav = resolveFinanceHubNavigation(initialTab || 'overview');
     const [activeTab, setActiveTab] = useState(initialNav.tab);
@@ -597,7 +598,11 @@ export default function FinanceHub({ businessId, initialTab, businessCategory = 
     const [mobileMenuOpen, setMobileMenuOpen] = useState(true);
     const inFlightRef = useRef(false);
 
-    const effectiveCurrency = currencySymbol || 'Rs.';
+    const packCurrency = resolveDisplayCurrency(
+        { currency: currency || business?.currency },
+        regionalPack
+    );
+    const effectiveCurrency = currencySymbol || regionalPack?.currencySymbol || packCurrency;
     const effectiveBusinessId = useResolvedBusinessId(businessId);
 
     const applyFinanceCache = useCallback((cached) => {
@@ -650,7 +655,7 @@ export default function FinanceHub({ businessId, initialTab, businessCategory = 
                 getExpensesAction(effectiveBusinessId, { limit: 50 }),
                 getCreditNotesAction(effectiveBusinessId),
                 getFiscalPeriodsAction(effectiveBusinessId),
-                getExchangeRatesAction(effectiveBusinessId, currency || 'PKR'),
+                getExchangeRatesAction(effectiveBusinessId, packCurrency),
                 accountingAPI.getGlCoverage(effectiveBusinessId),
             ]);
 
@@ -689,7 +694,7 @@ export default function FinanceHub({ businessId, initialTab, businessCategory = 
             inFlightRef.current = false;
             setLoading(false);
         }
-    }, [effectiveBusinessId, currency, applyFinanceCache]);
+    }, [effectiveBusinessId, packCurrency, applyFinanceCache]);
 
     useEffect(() => {
         queueMicrotask(() => {
@@ -775,20 +780,12 @@ export default function FinanceHub({ businessId, initialTab, businessCategory = 
                     />
                 );
             case 'statements':
-            case 'trial-balance':
-            case 'day-book':
                 return (
                     <div className="rounded-xl border border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-950 p-4 shadow-sm">
                         <FinancialReports
                             businessId={effectiveBusinessId}
                             category={businessCategory}
-                            initialReport={
-                                activeTab === 'trial-balance'
-                                    ? 'tb'
-                                    : activeTab === 'day-book'
-                                      ? 'day-book'
-                                      : statementReport
-                            }
+                            initialReport={statementReport}
                         />
                     </div>
                 );
@@ -810,12 +807,6 @@ export default function FinanceHub({ businessId, initialTab, businessCategory = 
                         currency={effectiveCurrency}
                         vendors={vendors}
                     />
-                );
-            case 'vouchers':
-                return (
-                    <div className="rounded-xl border border-gray-100 bg-white p-8 text-center text-sm text-gray-500">
-                        Opening Payments for receipts and vouchers…
-                    </div>
                 );
             case 'journal':
                 return (
@@ -852,7 +843,7 @@ export default function FinanceHub({ businessId, initialTab, businessCategory = 
                     <ExchangeRatesPanel
                         businessId={effectiveBusinessId}
                         rates={rates}
-                        baseCurrencyCode={currency || 'PKR'}
+                        baseCurrencyCode={packCurrency}
                         onRefresh={() => loadData({ force: true })}
                     />
                 );

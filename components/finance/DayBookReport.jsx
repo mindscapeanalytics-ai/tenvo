@@ -7,12 +7,17 @@ import { Download, Loader2, RefreshCw } from 'lucide-react';
 import { accountingAPI } from '@/lib/api/accounting';
 import { useBusiness } from '@/lib/context/BusinessContext';
 import { formatCurrency } from '@/lib/currency';
-import { generateFinanceStatementPDF } from '@/lib/pdf/financeStatementPdf';
+import { generateFinanceStatementPDF, buildFinancePdfMeta } from '@/lib/pdf/financeStatementPdf';
+import { resolveDisplayCurrency } from '@/lib/utils/businessRegionalContext';
 import toast from 'react-hot-toast';
 
 export default function DayBookReport({ businessId }) {
-  const { business, currency: businessCurrency } = useBusiness();
-  const currency = businessCurrency || 'PKR';
+  const { business, currency: businessCurrency, regionalPack } = useBusiness();
+  const currency = resolveDisplayCurrency(
+    { currency: businessCurrency || business?.currency },
+    regionalPack
+  );
+  const locale = regionalPack?.locale;
   const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [loading, setLoading] = useState(false);
   const [rows, setRows] = useState([]);
@@ -44,22 +49,29 @@ export default function DayBookReport({ businessId }) {
 
   const handlePdf = () => {
     const exportRows = [
-      ...rows,
+      ...rows.map((r) => ({
+        ...r,
+        status: String(r.status || 'posted').toLowerCase(),
+      })),
       {
         journalNumber: '',
         accountCode: '',
         accountName: 'Totals',
         description: totals.balanced ? 'Balanced' : 'Out of balance',
+        status: '',
         debit: totals.debit ?? 0,
         credit: totals.credit ?? 0,
       },
     ];
     generateFinanceStatementPDF(
       {
-        businessName: business?.business_name || 'Business',
+        ...buildFinancePdfMeta(business, {
+          currency,
+          locale,
+          taxIdLabel: regionalPack?.taxIdLabel,
+        }),
         title: 'Day Book',
         periodLabel: `Date: ${date}`,
-        currency,
         balanced: totals.balanced,
       },
       [
@@ -67,6 +79,7 @@ export default function DayBookReport({ businessId }) {
         { key: 'accountCode', label: 'Code' },
         { key: 'accountName', label: 'Account' },
         { key: 'description', label: 'Narration' },
+        { key: 'status', label: 'Status' },
         { key: 'debit', label: 'Debit' },
         { key: 'credit', label: 'Credit' },
       ],

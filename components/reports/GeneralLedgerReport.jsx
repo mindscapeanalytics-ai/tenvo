@@ -12,7 +12,8 @@ import { formatCurrency } from '@/lib/currency';
 import { format } from 'date-fns';
 import { BookOpen, Filter, Download } from 'lucide-react';
 import { useBusiness } from '@/lib/context/BusinessContext';
-import { generateFinanceStatementPDF } from '@/lib/pdf/financeStatementPdf';
+import { generateFinanceStatementPDF, buildFinancePdfMeta } from '@/lib/pdf/financeStatementPdf';
+import { resolveDisplayCurrency } from '@/lib/utils/businessRegionalContext';
 
 import Link from 'next/link';
 
@@ -23,8 +24,13 @@ import Link from 'next/link';
  * @param {string} props.businessId - Business UUID
  */
 export function GeneralLedgerReport({ businessId }) {
-    const { business, currency: businessCurrency } = useBusiness();
-    const displayCurrency = businessCurrency || 'PKR';
+    const { business, currency: businessCurrency, regionalPack } = useBusiness();
+    const displayCurrency = resolveDisplayCurrency(
+      { currency: businessCurrency || business?.currency },
+      regionalPack
+    );
+    const locale = regionalPack?.locale;
+    const routeCategory = business?.category || 'retail-shop';
     const [accounts, setAccounts] = useState([]);
 
     const [selectedAccount, setSelectedAccount] = useState('all');
@@ -152,11 +158,19 @@ export function GeneralLedgerReport({ businessId }) {
 
     const getReferenceLink = (type, id) => {
         if (!type || !id) return null;
+        const base = `/business/${routeCategory}`;
         switch (type) {
-            case 'invoices': return `/business/${businessId}?tab=sales&invoiceId=${id}`; // Assumes sales tab
-            case 'purchase': return `/business/${businessId}?tab=inventory&view=purchases`; // Simplified
-            case 'payment': return `/business/${businessId}?tab=finance`;
-            default: return null;
+            case 'invoices':
+            case 'invoice':
+                return `${base}?tab=sales&invoiceId=${id}`;
+            case 'purchase':
+            case 'purchases':
+                return `${base}?tab=inventory&view=purchases`;
+            case 'payment':
+            case 'payments':
+                return `${base}?tab=finance&financeView=payments`;
+            default:
+                return null;
         }
     };
 
@@ -186,10 +200,13 @@ export function GeneralLedgerReport({ businessId }) {
         }
         generateFinanceStatementPDF(
             {
-                businessName: business?.business_name || 'Business',
+                ...buildFinancePdfMeta(business, {
+                    currency: displayCurrency,
+                    locale,
+                    taxIdLabel: regionalPack?.taxIdLabel,
+                }),
                 title: 'General Ledger',
                 periodLabel: `${startDate} to ${endDate}`,
-                currency: displayCurrency,
             },
             [
                 { key: 'transaction_date', label: 'Date' },
@@ -203,7 +220,7 @@ export function GeneralLedgerReport({ businessId }) {
             pdfRows,
             { filename: `General-Ledger-${startDate}-${endDate}.pdf` }
         );
-    }, [business?.business_name, displayCurrency, endDate, entriesWithBalance, isSingleAccount, openingBalance, startDate]);
+    }, [business, displayCurrency, endDate, entriesWithBalance, isSingleAccount, locale, openingBalance, regionalPack?.taxIdLabel, startDate]);
 
     return (
         <Card className="w-full min-w-0 overflow-x-hidden border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-950 shadow-sm print:shadow-none">

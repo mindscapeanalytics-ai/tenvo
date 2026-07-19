@@ -50,7 +50,7 @@ export function SalesManager({
     products = [],
     category = 'retail-shop',
     businessId = null,
-    currency = 'PKR'
+    currency,
 }) {
     const colors = getDomainColors(category);
     const [timeframe, setTimeframe] = useState('monthly');
@@ -109,9 +109,33 @@ export function SalesManager({
 
         const g = (cur, prev) => prev > 0 ? ((cur - prev) / prev) * 100 : cur > 0 ? 100 : 0;
 
-        // Profit estimate: revenue - 60% COGS heuristic
-        const profitEst = total * 0.4;
-        const prevProfitEst = prevTotal * 0.4;
+        // Invoice-only fallback: estimate COGS from product cost_price when line items exist.
+        let cogs = 0;
+        let prevCogs = 0;
+        let costMatched = 0;
+        const costByProduct = new Map(
+            (products || []).map((p) => [String(p.id), Number(p.cost_price ?? p.costPrice) || 0])
+        );
+        const addCogs = (invList, into) => {
+            for (const inv of invList) {
+                const items = inv.items || inv.invoice_items || [];
+                for (const line of items) {
+                    const pid = line.product_id || line.productId;
+                    if (!pid || !costByProduct.has(String(pid))) continue;
+                    costMatched += 1;
+                    into.value += (Number(line.quantity) || 0) * (costByProduct.get(String(pid)) || 0);
+                }
+            }
+        };
+        const curCogs = { value: 0 };
+        const prevCogsBox = { value: 0 };
+        addCogs(curInv, curCogs);
+        addCogs(prevInv, prevCogsBox);
+        cogs = curCogs.value;
+        prevCogs = prevCogsBox.value;
+        const hasCostBasis = costMatched > 0;
+        const profitEst = hasCostBasis ? total - cogs : null;
+        const prevProfitEst = hasCostBasis ? prevTotal - prevCogs : null;
 
         // Repeat customers
         const custOrderCount = {};
@@ -122,27 +146,30 @@ export function SalesManager({
         return {
             total, count, avg, paid, outstanding, activeCustomers,
             profitEst, retentionRate,
+            profitBasis: hasCostBasis ? 'cost' : 'unavailable',
+            marginPct: hasCostBasis && total > 0 ? ((profitEst / total) * 100) : null,
             totalFmt: formatCurrency(total, currency),
             countFmt: count.toLocaleString(),
             avgFmt: formatCurrency(avg, currency),
             paidFmt: formatCurrency(paid, currency),
             outstandingFmt: formatCurrency(outstanding, currency),
-            profitFmt: formatCurrency(profitEst, currency),
+            profitFmt: profitEst == null ? '—' : formatCurrency(profitEst, currency),
             growth: {
                 revenue: g(total, prevTotal),
                 count: g(count, prevCount),
                 avg: g(avg, prevAvg),
                 customers: g(activeCustomers, prevCustomers),
-                profit: g(profitEst, prevProfitEst),
+                profit: profitEst == null || prevProfitEst == null ? 0 : g(profitEst, prevProfitEst),
                 retention: 0,
             }
         };
-    }, [invoices, customers, currency]);
+    }, [invoices, customers, products, currency]);
 
     const serverKpi = serverInsights?.kpi;
     const metrics = useMemo(() => {
         if (serverKpi) {
             const g = serverKpi.growth || {};
+            const profitEst = serverKpi.profitEst;
             return {
                 total: serverKpi.grossTotal,
                 count: serverKpi.orderCount,
@@ -150,14 +177,16 @@ export function SalesManager({
                 paid: serverKpi.collected,
                 outstanding: serverKpi.outstanding,
                 activeCustomers: serverKpi.activeCustomers,
-                profitEst: serverKpi.profitEst,
+                profitEst,
                 retentionRate: serverKpi.retentionRate,
+                profitBasis: serverKpi.profitBasis || 'cost',
+                marginPct: serverKpi.marginPct,
                 totalFmt: formatCurrency(serverKpi.grossTotal, currency),
                 countFmt: String(serverKpi.orderCount),
                 avgFmt: formatCurrency(serverKpi.avgOrder, currency),
                 paidFmt: formatCurrency(serverKpi.collected, currency),
                 outstandingFmt: formatCurrency(serverKpi.outstanding, currency),
-                profitFmt: formatCurrency(serverKpi.profitEst, currency),
+                profitFmt: formatCurrency(profitEst, currency),
                 growth: {
                     revenue: g.revenue ?? 0,
                     count: g.count ?? 0,
@@ -313,7 +342,20 @@ export function SalesManager({
 
             {/* ── KPI Row 2 ───────────────────────────────────────────────── */}
             <div className="hidden grid-cols-2 gap-4 lg:grid lg:grid-cols-4">
-                <KpiCard label="Est. Gross Profit" value={metrics.profitFmt} sub="~40% margin est." icon={TrendingUp} growth={metrics.growth.profit} color="#6366f1" />
+                <KpiCard
+                    label="Gross Profit"
+                    value={metrics.profitFmt}
+                    sub={
+                        metrics.profitBasis === 'unavailable'
+                            ? 'Set product cost prices'
+                            : metrics.marginPct != null
+                                ? `${Number(metrics.marginPct).toFixed(1)}% margin (at cost)`
+                                : 'Revenue minus cost'
+                    }
+                    icon={TrendingUp}
+                    growth={metrics.growth.profit}
+                    color="#6366f1"
+                />
                 <KpiCard label="Amount Collected" value={metrics.paidFmt} sub="Paid invoices" icon={CreditCard} growth={0} color="#0ea5e9" />
                 <KpiCard label="Outstanding" value={metrics.outstandingFmt} sub="Unpaid balance" icon={Receipt} growth={0} color="#ef4444" />
                 <KpiCard label="Retention Rate" value={`${metrics.retentionRate}%`} sub="Repeat customers" icon={Award} growth={metrics.growth.retention} color="#f97316" />

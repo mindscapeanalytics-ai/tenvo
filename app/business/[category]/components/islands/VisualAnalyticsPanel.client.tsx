@@ -122,7 +122,7 @@ export function VisualAnalyticsPanel({
     business,
     domainKnowledge,
     dateRange,
-    currency = 'PKR',
+    currency,
 }: VisualAnalyticsPanelProps) {
     const resolvedBusinessId = useResolvedBusinessId(businessId);
     const colors = getDomainColors(category);

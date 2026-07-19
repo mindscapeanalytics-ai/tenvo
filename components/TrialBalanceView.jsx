@@ -8,15 +8,20 @@ import { formatCurrency } from '@/lib/currency';
 import { accountingAPI } from '@/lib/api/accounting';
 import { useBusiness } from '@/lib/context/BusinessContext';
 import toast from 'react-hot-toast';
-import { generateFinanceStatementPDF } from '@/lib/pdf/financeStatementPdf';
+import { generateFinanceStatementPDF, buildFinancePdfMeta } from '@/lib/pdf/financeStatementPdf';
+import { resolveDisplayCurrency } from '@/lib/utils/businessRegionalContext';
 
 /**
  * @param {Object} props
  * @param {string} props.businessId
  */
 export default function TrialBalanceView({ businessId, currency: currencyProp }) {
-    const { currency: contextCurrency, business } = useBusiness();
-    const currency = currencyProp || contextCurrency || 'PKR';
+    const { currency: contextCurrency, business, regionalPack } = useBusiness();
+    const currency = currencyProp || resolveDisplayCurrency(
+      { currency: contextCurrency || business?.currency },
+      regionalPack
+    );
+    const locale = regionalPack?.locale;
     const [loading, setLoading] = useState(true);
     const [data, setData] = useState({ trialBalance: [], totals: { debit: 0, credit: 0, balanced: false } });
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
@@ -63,10 +68,13 @@ export default function TrialBalanceView({ businessId, currency: currencyProp })
         ];
         generateFinanceStatementPDF(
             {
-                businessName: business?.business_name || 'Business',
+                ...buildFinancePdfMeta(business, {
+                    currency,
+                    locale,
+                    taxIdLabel: regionalPack?.taxIdLabel,
+                }),
                 title: 'Trial Balance',
                 periodLabel: `As of ${date}`,
-                currency,
                 balanced: data.totals?.balanced,
             },
             [

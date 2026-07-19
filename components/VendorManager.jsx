@@ -20,6 +20,7 @@ import { MobileTabHeader, MobileStatStrip } from '@/components/mobile/MobileTabH
 import { HubEntityMobileList } from '@/components/mobile/HubEntityMobileList';
 import { MOBILE_BOTTOM_NAV_CLASS, MOBILE_FLOATING_Z, MOBILE_MODULE_FAB_RIGHT } from '@/lib/utils/mobileLayout';
 import { useBusiness } from '@/lib/context/BusinessContext';
+import { resolveDisplayCurrency } from '@/lib/utils/businessRegionalContext';
 
 function matchesVendorSearch(vendor, query) {
   const q = query.trim().toLowerCase();
@@ -44,8 +45,11 @@ function matchesVendorSearch(vendor, query) {
  * Vendor Manager — supplier list, search, view/ledger, soft-delete.
  */
 export function VendorManager({ vendors = [], onAdd, onUpdate, onDelete, category = 'retail-shop', businessId }) {
-  const { business, currency: businessCurrency } = useBusiness();
-  const currency = businessCurrency || 'PKR';
+  const { business, currency: businessCurrency, regionalPack } = useBusiness();
+  const currency = resolveDisplayCurrency(
+    { currency: businessCurrency || business?.currency },
+    regionalPack
+  );
   const colors = getDomainColors(category);
   const [searchTerm, setSearchTerm] = useState('');
   const [vendorToView, setVendorToView] = useState(null);
@@ -204,6 +208,7 @@ export function VendorManager({ vendors = [], onAdd, onUpdate, onDelete, categor
             filename="vendors"
             columns={columns}
             title="Suppliers Report"
+            business={business}
           />
         </div>
       </div>

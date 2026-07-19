@@ -12,6 +12,7 @@ import {
     getAccountsReceivableAgingAction,
     getAccountsPayableAgingAction,
 } from '@/lib/actions/standard/agingReports';
+import { resolveDisplayCurrency } from '@/lib/utils/businessRegionalContext';
 import toast from 'react-hot-toast';
 
 const BUCKET_COLUMNS = [
@@ -56,7 +57,7 @@ function AgingTable({ rows, currency, type }) {
                     <tr>
                         <th className="px-4 py-3 text-left">{type === 'ar' ? 'Customer' : 'Vendor'}</th>
                         <th className="px-4 py-3 text-left">Document</th>
-                        <th className="px-4 py-3 text-left">Date</th>
+                        <th className="px-4 py-3 text-left">Due</th>
                         <th className="px-4 py-3 text-right">Days</th>
                         {BUCKET_COLUMNS.map((c) => (
                             <th key={c.key} className="px-3 py-3 text-right">{c.label}</th>
@@ -74,7 +75,9 @@ function AgingTable({ rows, currency, type }) {
                                 {type === 'ar' ? row.invoice_number : row.purchase_number}
                             </td>
                             <td className="px-4 py-2.5 text-gray-600">
-                                {row.date ? new Date(row.date).toLocaleDateString() : '-'}
+                                {(row.due_date || row.date)
+                                  ? new Date(row.due_date || row.date).toLocaleDateString()
+                                  : '-'}
                             </td>
                             <td className="px-4 py-2.5 text-right font-medium">{row.days_overdue ?? 0}</td>
                             {BUCKET_COLUMNS.map((c) => (
@@ -99,8 +102,10 @@ function AgingTable({ rows, currency, type }) {
                                 </p>
                                 <p className="mt-0.5 font-mono text-[11px] text-gray-500">
                                     {type === 'ar' ? row.invoice_number : row.purchase_number}
-                                    {' · '}
-                                    {row.date ? new Date(row.date).toLocaleDateString() : ''}
+                                    {' · due '}
+                                    {(row.due_date || row.date)
+                                      ? new Date(row.due_date || row.date).toLocaleDateString()
+                                      : ''}
                                 </p>
                             </div>
                             <p className="shrink-0 text-[13px] font-bold tabular-nums text-gray-900">
@@ -127,8 +132,12 @@ function AgingTable({ rows, currency, type }) {
 }
 
 /** AR/AP aging reports for Finance Hub → Statements. */
-export function AgingReportsPanel({ businessId, currency = 'PKR' }) {
-    const { business } = useBusiness();
+export function AgingReportsPanel({ businessId, currency: currencyProp }) {
+    const { business, currency: contextCurrency, regionalPack } = useBusiness();
+    const currency = currencyProp || resolveDisplayCurrency(
+      { currency: contextCurrency || business?.currency },
+      regionalPack
+    );
     const [activeTab, setActiveTab] = useState('ar');
     const [loading, setLoading] = useState(false);
     const [arData, setArData] = useState(null);
@@ -174,7 +183,7 @@ export function AgingReportsPanel({ businessId, currency = 'PKR' }) {
         return (rows || []).map((r) => ({
             party: isAr ? r.customer_name : r.vendor_name,
             document: isAr ? r.invoice_number : r.purchase_number,
-            date: r.date ? new Date(r.date).toLocaleDateString() : '',
+            date: (r.due_date || r.date) ? new Date(r.due_date || r.date).toLocaleDateString() : '',
             days_overdue: r.days_overdue ?? 0,
             current: r.current_amount ?? 0,
             days_1_30: r.days_1_30 ?? 0,
@@ -188,7 +197,7 @@ export function AgingReportsPanel({ businessId, currency = 'PKR' }) {
     const agingExportColumns = [
         { label: 'Party', key: 'party' },
         { label: 'Document', key: 'document' },
-        { label: 'Date', key: 'date' },
+        { label: 'Due', key: 'date' },
         { label: 'Days', key: 'days_overdue' },
         { label: 'Current', key: 'current' },
         { label: '1-30', key: 'days_1_30' },
@@ -205,12 +214,18 @@ export function AgingReportsPanel({ businessId, currency = 'PKR' }) {
             return;
         }
         const isAr = type === 'ar';
-        const title = isAr ? 'Accounts_Receivable_Aging' : 'Accounts_Payable_Aging';
-        const doc = generateReportPDF(title.replace(/_/g, ' '), exportRows, agingExportColumns, {
-            businessName: business?.business_name || 'Business',
+        const title = isAr ? 'Accounts Receivable Aging' : 'Accounts Payable Aging';
+        const doc = generateReportPDF(title, exportRows, agingExportColumns, {
+            businessName: business?.business_name || business?.name || 'Business',
+            business,
             currency,
+            locale: regionalPack?.locale,
+            periodLabel: `As of ${new Date().toISOString().slice(0, 10)}`,
+            footnote: isAr
+                ? 'A/R outstanding from invoice payments ledger; aged on invoice due date'
+                : 'A/P outstanding from purchase allocations; aged on bill date + payment terms',
         });
-        doc.save(`${title}.pdf`);
+        doc.save(`${title.replace(/\s+/g, '-')}.pdf`);
         toast.success('Aging PDF exported');
     };
 

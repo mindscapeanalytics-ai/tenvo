@@ -12,7 +12,7 @@ import { useBusiness } from '@/lib/context/BusinessContext';
 import { getTablesAction, createRestaurantOrderAction, updateTableStatusAction, settleRestaurantOrderAction } from '@/lib/actions/standard/restaurant';
 import { usePosSettings } from '@/lib/hooks/usePosSettings';
 import { usePosTaxConfig } from '@/lib/hooks/usePosTaxConfig';
-import { usePosHotkeys } from '@/lib/hooks/usePosHotkeys';
+import { usePosHotkeys, focusPosScanInput } from '@/lib/hooks/usePosHotkeys';
 import { usePosManagerGate } from '@/components/pos/shared/PosManagerPinGate';
 import { PosHotkeyDock } from '@/components/pos/shared/PosHotkeyDock';
 import { PosTaxPanel } from '@/components/pos/shared/PosTaxPanel';
@@ -528,8 +528,13 @@ export function RestaurantPOS({ businessId, products = [], onCompleteSale, onOrd
 
     const hotkeyHandlers = useMemo(() => ({
         search: () => {
-            searchInputRef.current?.focus();
-            searchInputRef.current?.select?.();
+            setMobilePane('menu');
+            requestAnimationFrame(() => {
+                if (!focusPosScanInput(containerRef.current)) {
+                    searchInputRef.current?.focus();
+                    searchInputRef.current?.select?.();
+                }
+            });
         },
         customer: focusCustomerField,
         discount: () => toast('Order discounts are managed from the hub', { id: 'resto-discount' }),
@@ -564,15 +569,24 @@ export function RestaurantPOS({ businessId, products = [], onCompleteSale, onOrd
         handleSendToKitchen,
         clearOrder,
         handlePrintBill,
+        taxEnabled,
     ]);
 
     usePosHotkeys({
         enabled: !showTaxPanel,
         handlers: hotkeyHandlers,
+        onFullscreen: toggleFullscreen,
     });
 
     useEffect(() => {
         const onKeyDown = (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+                e.preventDefault();
+                setMobilePane('menu');
+                requestAnimationFrame(() => {
+                    focusPosScanInput(containerRef.current) || searchInputRef.current?.focus();
+                });
+            }
             if (e.key === 'Enter' && showPayment && paymentMethod && !isProcessing && orderItems.length > 0) {
                 if (e.target instanceof HTMLInputElement && e.target.type === 'text') return;
                 e.preventDefault();
@@ -590,6 +604,7 @@ export function RestaurantPOS({ businessId, products = [], onCompleteSale, onOrd
     return (
         <div
             ref={containerRef}
+            data-pos-root="restaurant"
             className={cn(
                 'flex flex-col bg-gray-50 overflow-hidden border border-gray-200 transition-all min-h-0 touch-manipulation',
                 getPosShellHeightClass(isFullscreen, 'terminal'),

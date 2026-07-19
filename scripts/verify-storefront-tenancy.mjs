@@ -103,6 +103,15 @@ if (!ordersRoute.includes('resolveStorefrontBusiness')) {
 if (!ordersRoute.includes('decrementStorefrontOrderLineStock')) {
   mark('orders route must decrement stock via decrementStorefrontOrderLineStock (InventoryService)');
 }
+if (!ordersRoute.includes('shouldCommitStorefrontInventoryOnCreate')) {
+  mark('orders route must gate inventory commit for prepaid (awaiting_payment) orders');
+}
+if (!ordersRoute.includes('collectStorefrontOrderLinePolicyIssues')) {
+  mark('orders route must enforce Rx / fitness bookable policies at order create');
+}
+if (!ordersRoute.includes("status: 503") || !ordersRoute.includes('payment method gate failed')) {
+  mark('orders route must fail closed when payment eligibility cannot load');
+}
 if (!ordersRoute.includes('resolveSellableStockQty')) {
   mark('orders route must validate stock with resolveSellableStockQty');
 }
@@ -110,6 +119,14 @@ if (!ordersRoute.includes('resolveSellableStockQty')) {
 const sfOrderInventory = read('lib/storefront/storefrontOrderInventory.js');
 if (!sfOrderInventory.includes('InventoryService.removeStock') || !sfOrderInventory.includes('removeVariantStock')) {
   mark('storefrontOrderInventory must route through InventoryService.removeStock and removeVariantStock');
+}
+if (!sfOrderInventory.includes('commitStorefrontOrderInventoryIfPending')) {
+  mark('storefrontOrderInventory must expose commitStorefrontOrderInventoryIfPending for prepaid capture');
+}
+
+const linePolicies = read('lib/storefront/storefrontOrderLinePolicies.js');
+if (!linePolicies.includes('isPrescriptionRequiredProduct') || !linePolicies.includes('isFitnessBookableProduct')) {
+  mark('storefrontOrderLinePolicies must cover pharmacy Rx and fitness bookables');
 }
 
 // --- Reviews API ---

@@ -57,7 +57,7 @@ export function AnalyticsDashboard({
     invoices,
     colors,
     category,
-    currency = 'PKR',
+    currency,
     business,
     domainKnowledge,
     dateRange,

@@ -704,7 +704,7 @@ export function DashboardTabs({
                                 </div>
                                 {reportsView === 'analytics' && <AdvancedAnalytics businessId={activeBusinessId} category={category} currency={currency} dateRange={dateRange} />}
                                 {reportsView === 'forecast' && <DemandForecast businessId={activeBusinessId} category={category} products={products} invoices={invoices} domainKnowledge={domainKnowledge} dateRange={dateRange} />}
-                                {reportsView === 'ai' && <AIInsightsPanel businessId={activeBusinessId} category={category} dateRange={dateRange} />}
+                                {reportsView === 'ai' && <AIInsightsPanel businessId={activeBusinessId} category={category} currency={currency} dateRange={dateRange} />}
                                 {reportsView === 'builder' && <ReportBuilder businessId={activeBusinessId} currency={currency} dateRange={dateRange} />}
                             </div>
                         </TabGuard>

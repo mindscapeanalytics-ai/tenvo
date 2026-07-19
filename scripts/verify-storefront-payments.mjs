@@ -42,6 +42,12 @@ if (payments.includes('methods.push({') && payments.includes("provider: 'crypto'
 if (!orders.includes('coerceStorefrontPaymentMethod')) {
   mark('orders route must coerce payment method server-side');
 }
+if (orders.includes("effectivePaymentMethod = 'cod'") && orders.includes('payment method gate skipped')) {
+  mark('orders route must not soft-fail payment gate to COD');
+}
+if (!orders.includes('payment method gate failed') || !orders.includes('503')) {
+  mark('orders route must fail closed (503) when payment eligibility cannot load');
+}
 if (!checkout.includes('StripeCheckoutPanel')) {
   mark('checkout must render StripeCheckoutPanel for card payments');
 }

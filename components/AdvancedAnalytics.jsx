@@ -54,7 +54,7 @@ function formatRangeLabel(dateRange) {
  * @param {string} [props.category]
  * @param {{ from: Date; to: Date }} [props.dateRange] Dashboard header filter
  */
-export function AdvancedAnalytics({ businessId, category = 'retail-shop', currency = 'PKR', dateRange }) {
+export function AdvancedAnalytics({ businessId, category = 'retail-shop', currency, dateRange }) {
   const resolvedBusinessId = useResolvedBusinessId(businessId);
   const colors = getDomainColors(category);
   const [loading, setLoading] = useState(true);
@@ -107,7 +107,7 @@ export function AdvancedAnalytics({ businessId, category = 'retail-shop', curren
     {
       label: 'Inventory Asset',
       value: formatCurrency(kpi.inventoryAsset || 0, currency),
-      subtitle: 'Total stock value',
+      subtitle: 'Stock value at cost',
       icon: Package,
       iconBg: 'bg-violet-100',
       iconColor: 'text-violet-600',
@@ -128,8 +128,10 @@ export function AdvancedAnalytics({ businessId, category = 'retail-shop', curren
     },
     {
       label: 'Total Orders',
-      value: salesData.reduce((sum, d) => sum + (d.orderCount || 0), 0).toLocaleString(),
-      subtitle: 'Combined invoice count',
+      value: (kpi.growthDetail?.periodOrders ?? salesData.reduce((sum, d) => sum + (d.orderCount || 0), 0)).toLocaleString(),
+      subtitle: kpi.growthDetail?.periodOrders != null
+        ? 'Invoices + POS + storefront (selected range)'
+        : '6-month chart series (set a date range for period orders)',
       icon: ShoppingCart,
       iconBg: 'bg-amber-100',
       iconColor: 'text-amber-600',
@@ -229,8 +231,8 @@ export function AdvancedAnalytics({ businessId, category = 'retail-shop', curren
                       <Activity className="w-4 h-4 text-emerald-600" />
                     </div>
                     <div>
-                      <CardTitle className="text-sm font-bold text-gray-900">Revenue & Appointments Overview</CardTitle>
-                      <CardDescription className="text-xs">Monthly revenue vs expenses</CardDescription>
+                      <CardTitle className="text-sm font-bold text-gray-900">Revenue Trend</CardTitle>
+                      <CardDescription className="text-xs">Monthly revenue vs GL profit</CardDescription>
                     </div>
                   </div>
                   {dateRange && formatRangeLabel(dateRange) && (
@@ -254,15 +256,20 @@ export function AdvancedAnalytics({ businessId, category = 'retail-shop', curren
                     <PieChart className="w-4 h-4 text-violet-600" />
                   </div>
                   <div>
-                    <CardTitle className="text-sm font-bold text-gray-900">Department Overview</CardTitle>
-                    <CardDescription className="text-xs">Stock composition by category</CardDescription>
+                    <CardTitle className="text-sm font-bold text-gray-900">Inventory by Category</CardTitle>
+                    <CardDescription className="text-xs">Stock value at cost</CardDescription>
                   </div>
                 </div>
               </CardHeader>
               <CardContent className="pt-4">
                 <div className="h-[280px] flex items-center justify-center">
                   {categoryData.length > 0 ? (
-                    <CategoryPieChart data={categoryData} />
+                    <CategoryPieChart
+                      data={categoryData.map((c) => ({
+                        name: c.name,
+                        value: Number(c.assetValue) > 0 ? Number(c.assetValue) : Number(c.value) || 0,
+                      }))}
+                    />
                   ) : (
                     <div className="text-center">
                       <AlertCircle className="w-12 h-12 text-gray-300 mx-auto mb-3" />
@@ -275,7 +282,7 @@ export function AdvancedAnalytics({ businessId, category = 'retail-shop', curren
             </Card>
           </div>
 
-          {/* Bottom Row - Pathology Tests & Doctors Performance */}
+          {/* Bottom Row - Revenue by month & top products */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <Card className="border-0 shadow-lg bg-white">
               <CardHeader className="pb-3 border-b border-gray-100">
@@ -284,7 +291,7 @@ export function AdvancedAnalytics({ businessId, category = 'retail-shop', curren
                     <BarChart3 className="w-4 h-4 text-blue-600" />
                   </div>
                   <div>
-                    <CardTitle className="text-sm font-bold text-gray-900">Pathology Tests (This Week)</CardTitle>
+                    <CardTitle className="text-sm font-bold text-gray-900">Revenue by Month</CardTitle>
                     <CardDescription className="text-xs">Monthly revenue vs GL profit</CardDescription>
                   </div>
                 </div>
@@ -303,8 +310,8 @@ export function AdvancedAnalytics({ businessId, category = 'retail-shop', curren
                     <TrendingUp className="w-4 h-4 text-amber-600" />
                   </div>
                   <div>
-                    <CardTitle className="text-sm font-bold text-gray-900">Doctors Performance</CardTitle>
-                    <CardDescription className="text-xs">Top revenue generators</CardDescription>
+                    <CardTitle className="text-sm font-bold text-gray-900">Top Products</CardTitle>
+                    <CardDescription className="text-xs">Highest revenue in selected range</CardDescription>
                   </div>
                 </div>
               </CardHeader>
@@ -338,7 +345,7 @@ export function AdvancedAnalytics({ businessId, category = 'retail-shop', curren
                       {formatRangeLabel(dateRange) && (
                         <span className="font-medium">Range: {formatRangeLabel(dateRange)}. </span>
                       )}
-                      Performance compares combined revenue (invoices plus paid storefront orders) in this range to the immediately preceding period of the same length.
+                      Performance compares combined revenue (invoices + POS + non-cancelled storefront orders) in this range to the immediately preceding period of the same length.
                       {kpi.growthDetail?.periodRevenue != null && (
                         <span className="block mt-1.5 text-gray-700">
                           <span className="font-semibold">Current: </span>{formatCurrency(kpi.growthDetail.periodRevenue, currency)}

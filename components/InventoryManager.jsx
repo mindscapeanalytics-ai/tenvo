@@ -1380,12 +1380,13 @@ export function InventoryManager({
   }, [products]);
 
   const abcAnalysis = useMemo(() => {
-    const sorted = [...products].sort((a, b) => ((Number(b.price || 0) * Number(b.stock || 0)) - (Number(a.price || 0) * Number(a.stock || 0))));
-    const totalValue = sorted.reduce((sum, p) => sum + (Number(p.price || 0) * Number(p.stock || 0)), 0);
+    const stockCost = (p) => Number(p.stock || 0) * Number(p.cost_price ?? p.costPrice ?? 0);
+    const sorted = [...products].sort((a, b) => stockCost(b) - stockCost(a));
+    const totalValue = sorted.reduce((sum, p) => sum + stockCost(p), 0);
 
     return sorted.reduce(
       (acc, p) => {
-        const value = Number(p.price || 0) * Number(p.stock || 0);
+        const value = stockCost(p);
         const running = acc.running + value;
         const percentage = totalValue > 0 ? (running / totalValue) * 100 : 0;
         let category = 'C';
@@ -2001,8 +2002,8 @@ export function InventoryManager({
     const byCategory = products.reduce((acc, product) => {
       const categoryName = product.category || 'Uncategorized';
       const stock = Number(product.stock || 0);
-      const price = Number(product.price || 0);
-      const value = stock * price;
+      const unitCost = Number(product.cost_price ?? product.costPrice ?? 0);
+      const value = stock * unitCost;
 
       if (!acc[categoryName]) {
         acc[categoryName] = { category: categoryName, value: 0, units: 0 };
@@ -2882,10 +2883,16 @@ export function InventoryManager({
                 <div className="w-12 h-12 rounded-2xl bg-emerald-50 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-sm shadow-emerald-100">
                   <TrendingUp className="w-6 h-6 text-emerald-600" />
                 </div>
-                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-[0.2em]">Asset Valuation</p>
+                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-[0.2em]">Asset Valuation (at cost)</p>
                 <div className="flex items-baseline gap-2 mt-1">
                   <p className="text-3xl font-semibold text-gray-900 tracking-tighter">
-                    {formatCurrency(products.reduce((sum, p) => sum + ((p.price || 0) * (p.stock || 0)), 0), standards.currency)}
+                    {formatCurrency(
+                      products.reduce(
+                        (sum, p) => sum + (Number(p.stock || 0) * Number(p.cost_price ?? p.costPrice ?? 0)),
+                        0
+                      ),
+                      standards.currency
+                    )}
                   </p>
                 </div>
               </div>
@@ -2932,7 +2939,7 @@ export function InventoryManager({
             <Card className="border-gray-100 shadow-sm">
               <CardHeader>
                 <CardTitle className="text-lg font-bold">Stock Aging Analysis</CardTitle>
-                <CardDescription>Breakdown of inventory by time in stock</CardDescription>
+                <CardDescription>By product create date (not last movement)</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
@@ -2972,8 +2979,8 @@ export function InventoryManager({
 
             <Card className="border-gray-100 shadow-sm">
               <CardHeader>
-                <CardTitle className="text-lg font-bold">Top Performing Categories</CardTitle>
-                <CardDescription>By revenue contribution</CardDescription>
+                <CardTitle className="text-lg font-bold">Top Categories by Stock Value</CardTitle>
+                <CardDescription>Share of inventory value at cost</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
@@ -3029,31 +3036,30 @@ export function InventoryManager({
             />
           </div>
 
-          {/* Domain-specific reports */}
+          {/* Domain-specific report labels (honest: no fake generate toasts) */}
           {domainKnowledge?.reports && domainKnowledge.reports.length > 0 && (
             <Card>
               <CardHeader>
-                <CardTitle>Available Reports</CardTitle>
-                <CardDescription>Domain-specific reports based on your business category</CardDescription>
+                <CardTitle>Domain report checklist</CardTitle>
+                <CardDescription>
+                  Suggested operational reports for your vertical. Open hub Reports or Finance Statements for live data.
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {domainKnowledge.reports.map((report, index) => (
-                    <Button
+                    <div
                       key={index}
-                      variant="outline"
-                      className="justify-start h-auto py-3"
-                      onClick={() => {
-                        toast.success(`Generating ${report}...`);
-                        // Report generation logic here
-                      }}
+                      className="flex items-start gap-2 rounded-xl border border-gray-100 bg-gray-50/80 px-3 py-3"
                     >
-                      <BarChart3 className="w-4 h-4 mr-2" />
-                      <div className="text-left">
-                        <div className="font-medium">{report}</div>
-                        <div className="text-xs text-gray-500">Click to generate</div>
+                      <BarChart3 className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" />
+                      <div className="text-left min-w-0">
+                        <div className="font-medium text-sm text-gray-800">{report}</div>
+                        <div className="text-xs text-gray-500">
+                          Use Reports → Analytics or Finance → Statements for exportable figures
+                        </div>
                       </div>
-                    </Button>
+                    </div>
                   ))}
                 </div>
               </CardContent>
