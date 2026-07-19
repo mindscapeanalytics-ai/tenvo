@@ -140,9 +140,24 @@ export async function POST(request, { params }) {
         );
       }
       effectivePaymentMethod = coerceStorefrontPaymentMethod(paymentMethod, eligibleMethods);
-      if (String(paymentMethod || '').toLowerCase() !== effectivePaymentMethod) {
+      if (!effectivePaymentMethod) {
+        const requested = String(paymentMethod || '').trim();
+        return NextResponse.json(
+          {
+            success: false,
+            error: requested
+              ? `Payment method "${requested}" is not available for this store. Please choose another method.`
+              : 'No payment methods are available for this store. Please contact the store owner.',
+          },
+          { status: 400 }
+        );
+      }
+      if (
+        String(paymentMethod || '').trim() &&
+        String(paymentMethod || '').trim().toLowerCase() !== effectivePaymentMethod
+      ) {
         console.warn(
-          `[Create Order] Payment method "${paymentMethod}" unavailable for ${business.domain}, using "${effectivePaymentMethod}"`
+          `[Create Order] Payment method "${paymentMethod}" normalized to "${effectivePaymentMethod}" for ${business.domain}`
         );
       }
     } catch (paymentGateErr) {

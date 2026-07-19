@@ -32,7 +32,10 @@ if (!eligibility.includes('resolveEligibleStorefrontPaymentMethods')) {
   mark('storefrontPaymentEligibility must resolve eligible methods');
 }
 if (!eligibility.includes('coerceStorefrontPaymentMethod')) {
-  mark('storefrontPaymentEligibility must coerce unavailable methods to COD');
+  mark('storefrontPaymentEligibility must export coerceStorefrontPaymentMethod');
+}
+if (!eligibility.includes('return null') || !eligibility.includes('do not remap')) {
+  mark('coerceStorefrontPaymentMethod must fail closed (null) for unavailable requested methods');
 }
 if (!payments.includes('resolveEligibleStorefrontPaymentMethods')) {
   mark('getAvailablePaymentMethods must use eligibility resolver');
@@ -48,6 +51,9 @@ if (orders.includes("effectivePaymentMethod = 'cod'") && orders.includes('paymen
 }
 if (!orders.includes('payment method gate failed') || !orders.includes('503')) {
   mark('orders route must fail closed (503) when payment eligibility cannot load');
+}
+if (!orders.includes('is not available for this store') || !orders.includes('status: 400')) {
+  mark('orders route must 400 when requested payment method is not eligible');
 }
 if (!paymentMethods.includes('status: 503') || !paymentMethods.includes('success: false')) {
   mark('payment-methods GET must fail closed (503) on unexpected load errors');

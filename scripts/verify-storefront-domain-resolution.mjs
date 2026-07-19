@@ -47,6 +47,12 @@ const fetchSrc = read('lib/storefront/fetchBusinessByDomain.js');
 assert(resolveSrc.includes('pickStorefrontDomainRow'), 'ambiguous match guard must exist');
 assert(resolveSrc.includes('loadStorefrontBusinessShell'), 'RSC shell loader must be exported');
 assert(
+  resolveSrc.includes('isStorefrontApprovalBlocked') &&
+    resolveSrc.includes('b.approval_status') &&
+    resolveSrc.includes("status !== 'approved'"),
+  'public resolve must gate pending/rejected approval statuses'
+);
+assert(
   resolveSrc.includes('shouldFallbackBusinessSettings'),
   'business_settings missing-column fallback (42703) must exist'
 );

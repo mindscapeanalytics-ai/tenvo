@@ -304,13 +304,13 @@ export function DomainDashboard({
         // Paid ratio / receivables stay separate for collections health.
         const billableInvoices = validInvoices.filter(inv => !isReturnLike(inv));
 
-        // UNIFIED ORDER COUNT: Prefer server-side aggregation (includes invoices + POS + storefront)
-        // Fallback to client-side invoice-only calculation for backward compatibility
+        // UNIFIED ORDER COUNT: Prefer server-side aggregation (includes invoices + POS + storefront).
+        // While sales is still loading without shell KPIs, do not undercount via invoice-only fallback.
         const serverOrderCount = dashboardMetrics?.orders?.total;
         const clientInvoiceCount = billableInvoices.filter(inv => inRange(inv?.date, currentFrom, currentTo)).length;
         const currentOrders = serverOrderCount !== undefined && serverOrderCount !== null
             ? Number(serverOrderCount)
-            : clientInvoiceCount;
+            : (isSalesLoading ? 0 : clientInvoiceCount);
         
         // Previous period: use server snapshot if available, else calculate from invoices
         const previousOrders = billableInvoices.filter(inv => inRange(inv?.date, prevFrom, prevTo)).length;
@@ -322,11 +322,12 @@ export function DomainDashboard({
                 : serverRevenueRaw && typeof serverRevenueRaw === 'object'
                   ? serverRevenueRaw.total
                   : undefined;
+        const clientRevenue = billableInvoices
+            .filter(inv => inRange(inv?.date, currentFrom, currentTo))
+            .reduce((sum, inv) => sum + (Number(inv?.grand_total) || Number(inv?.amount) || 0), 0);
         const currentRevenue = serverRevenue !== undefined && serverRevenue !== null
             ? Number(serverRevenue)
-            : billableInvoices
-                .filter(inv => inRange(inv?.date, currentFrom, currentTo))
-                .reduce((sum, inv) => sum + (Number(inv?.grand_total) || Number(inv?.amount) || 0), 0);
+            : (isSalesLoading ? 0 : clientRevenue);
         const previousRevenue = billableInvoices
             .filter(inv => inRange(inv?.date, prevFrom, prevTo))
             .reduce((sum, inv) => sum + (Number(inv?.grand_total) || Number(inv?.amount) || 0), 0);
@@ -390,7 +391,7 @@ export function DomainDashboard({
             previousReturnInvoices,
             pendingReturns
         };
-    }, [dateRange, invoices, expenses, dashboardMetrics]);
+    }, [dateRange, invoices, expenses, dashboardMetrics, isSalesLoading]);
 
     // Track expense context
     const totalExpenses = useMemo(() =>

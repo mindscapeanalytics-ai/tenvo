@@ -42,6 +42,20 @@ if (!dataContext.includes('buildDashboardMetricsFromSnapshot')) {
   ok('Hub shell owns dashboardMetrics');
 }
 
+{
+  const analyticsSrc = read('lib/actions/premium/ai/analytics.js');
+  const metricsIdx = analyticsSrc.indexOf('export async function getDashboardMetricsAction');
+  const metricsEnd = analyticsSrc.indexOf('export async function getExpenseBreakdownAction');
+  const metricsBody = analyticsSrc.slice(metricsIdx, metricsEnd > metricsIdx ? metricsEnd : undefined);
+  if (!metricsBody.includes('getDashboardKPIs') || !metricsBody.includes('resolveAnalyticsRange')) {
+    mark('getDashboardMetricsAction must delegate to date-range getDashboardKPIs');
+  } else if (metricsBody.includes("date_trunc('month', CURRENT_DATE")) {
+    mark('getDashboardMetricsAction must not use calendar-month-only SQL');
+  } else {
+    ok('getDashboardMetricsAction uses date-range getDashboardKPIs');
+  }
+}
+
 if (salesPerf.includes('* 0.4') || salesManager.includes('* 0.4')) {
   mark('Sales profit must not use 40% margin heuristic');
 } else {

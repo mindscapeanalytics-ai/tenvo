@@ -88,6 +88,11 @@ assert(
   'createBusiness must surface seedFailed when registration seed throws'
 );
 assert(
+  businessSrc.includes('PUBLIC_STOREFRONT_SETTING_KEYS') &&
+    businessSrc.includes('business_settings.update'),
+  'completeRegistrationSetupAction must dual-write public chrome into business_settings'
+);
+assert(
   businessSrc.includes('...registrationStorefront.businessMedia'),
   'createBusiness still spreads Prisma-safe businessMedia'
 );
@@ -287,6 +292,14 @@ const checkoutCartSrc = read('lib/storefront/validateCheckoutCart.js');
 assert(
   !checkoutCartSrc.includes('if (isStorefrontProductUuid(ref)) return ref;'),
   'checkout cart resolver must not trust raw client UUIDs'
+);
+
+const catalogAccessSrc = read('lib/storefront/assertPublicStorefrontCatalogAccess.js');
+assert(
+  catalogAccessSrc.includes('bs.settings AS settings') &&
+    catalogAccessSrc.includes('approval_status') &&
+    catalogAccessSrc.includes('isApprovalBlocked'),
+  'public catalog UUID gate must use business_settings + approval_status'
 );
 
 if (failures.length) {
