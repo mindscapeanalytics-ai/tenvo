@@ -3,11 +3,18 @@
 import { Component } from 'react';
 import { AlertCircle, RefreshCw, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  isChunkLoadError,
+  reloadForStaleChunkOnce,
+} from '@/lib/utils/chunkLoadRecovery';
 
 /**
  * Enhanced Error Boundary Component
  * Catches JavaScript errors anywhere in the component tree
  * Displays fallback UI and logs errors for monitoring
+ *
+ * ChunkLoadError is special: soft remount cannot retry a rejected dynamic import.
+ * We hard-reload once so the browser picks up the current deploy's chunks.
  */
 export class ErrorBoundary extends Component {
   constructor(props) {
@@ -15,12 +22,16 @@ export class ErrorBoundary extends Component {
     this.state = {
       hasError: false,
       error: null,
-      errorInfo: null
+      errorInfo: null,
+      recoveringChunk: false,
     };
   }
 
   static getDerivedStateFromError(error) {
-    return { hasError: true, error };
+    if (isChunkLoadError(error)) {
+      return { hasError: true, error, recoveringChunk: true };
+    }
+    return { hasError: true, error, recoveringChunk: false };
   }
 
   componentDidCatch(error, errorInfo) {
@@ -30,18 +41,37 @@ export class ErrorBoundary extends Component {
       timestamp: new Date().toISOString()
     });
 
-    // TODO: Send to error tracking service (Sentry, LogRocket, etc.)
-    // Example: Sentry.captureException(error, { contexts: { react: errorInfo } });
+    if (isChunkLoadError(error)) {
+      if (reloadForStaleChunkOnce()) {
+        this.setState({ errorInfo, recoveringChunk: true });
+        return;
+      }
+      // Already reloaded once this session — show the normal fallback.
+      this.setState({ errorInfo, recoveringChunk: false });
+      return;
+    }
 
-    this.setState({ errorInfo });
+    this.setState({ errorInfo, recoveringChunk: false });
   }
 
   handleReset = () => {
-    this.setState({ hasError: false, error: null, errorInfo: null });
+    if (isChunkLoadError(this.state.error)) {
+      window.location.reload();
+      return;
+    }
+    this.setState({ hasError: false, error: null, errorInfo: null, recoveringChunk: false });
   };
 
   render() {
     if (this.state.hasError) {
+      if (this.state.recoveringChunk) {
+        return (
+          <div className="flex flex-col items-center justify-center min-h-[240px] p-8">
+            <p className="text-sm text-gray-600">Updating app…</p>
+          </div>
+        );
+      }
+
       return (
         <div className="flex flex-col items-center justify-center min-h-[400px] p-8 bg-gradient-to-br from-red-50 to-orange-50">
           <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 border border-red-100">
@@ -51,7 +81,7 @@ export class ErrorBoundary extends Component {
               </div>
             </div>
 
-            <h2 className="text-2xl font-bold text-center mb-3 text-gray-900">
+            <h2 className="text-2xl font-semibold text-center mb-3 text-gray-900">
               Something went wrong
             </h2>
 
@@ -97,7 +127,7 @@ export class ErrorBoundary extends Component {
 }
 
 /**
- * Wrapper component for easier usage
+ * Wrapper component for easier use
  */
 export function withErrorBoundary(Component, fallback) {
   return function WithErrorBoundaryWrapper(props) {
@@ -108,11 +138,3 @@ export function withErrorBoundary(Component, fallback) {
     );
   };
 }
-
-
-
-
-
-
-
-
