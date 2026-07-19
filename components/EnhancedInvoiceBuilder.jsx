@@ -12,6 +12,7 @@ import { PakistaniTaxCalculator } from '@/components/tax/PakistaniTaxCalculator'
 import { calculatePakistaniTax, generateFBRInvoice, formatNTN, getTaxCategoryForDomain } from '@/lib/tax/pakistaniTax';
 import { getDomainKnowledge } from '@/lib/domainKnowledge';
 import { getDomainDefaults, getDomainUnits, getDomainUnits as getUnits, getDomainProductFields, getDomainInvoiceColumns } from '@/lib/utils/domainHelpers';
+import { getDomainConfig } from '@/lib/config/domains';
 import { getDomainColors } from '@/lib/domainColors';
 import { formatCurrency } from '@/lib/utils/formatting';
 import { getTaxStrategy } from '@/lib/utils/taxStrategies';
@@ -76,6 +77,12 @@ export function EnhancedInvoiceBuilder({
   const currency = ctxCurrency || standards.currency;
   const strategy = getTaxStrategy(standards);
   const colors = getDomainColors(category);
+  const brandAccent =
+    business?.settings?.brand?.primaryColor ||
+    business?.settings?.storefront?.brand?.primaryColor ||
+    colors.primary;
+  const domainInvoiceLabel =
+    getDomainConfig(category)?.label_overrides?.invoice || 'Sales Invoice';
   const isPakistaniDomain = isPakistanMarket;
   const showTaxUi = taxEnabled !== false;
   const lineDefaultTaxRate = showTaxUi ? defaultTaxRate : 0;
@@ -133,7 +140,7 @@ export function EnhancedInvoiceBuilder({
       documentType: regionalTaxLabel || standards.taxLabel,
       date: new Date().toISOString().split('T')[0],
       dueDate: '',
-      invoiceType: standards.taxStrategy === 'VAT' ? 'vat' : 'tax',
+      invoiceType: 'retail',
       customer: {
         name: '',
         email: '',
@@ -149,6 +156,7 @@ export function EnhancedInvoiceBuilder({
         totalTax: 0,
       },
       paymentMethod: isPakistaniDomain ? 'cod' : 'cash',
+      category,
       discount: 0,
       discountType: 'percent', // percent or amount
       roundOff: 0,
@@ -180,7 +188,7 @@ export function EnhancedInvoiceBuilder({
           name: item.product_name || item.name || '',
           hsn: item.hsn_code || item.hsn || '',
           quantity,
-          unit: item.unit || 'pcs',
+          unit: item.unit || item.metadata?.unit || 'pcs',
           rate,
           discount,
           taxPercent,
@@ -218,6 +226,17 @@ export function EnhancedInvoiceBuilder({
         date: normalizeDate(initialData.date) || baseInvoice.date,
         dueDate: normalizeDate(initialData.due_date || initialData.dueDate) || '',
         invoiceNumber: initialData.invoice_number || initialData.invoiceNumber || '',
+        invoiceType:
+          initialData.invoiceType ||
+          initialData.invoice_type ||
+          initialData.tax_details?.invoice_type ||
+          initialData.taxDetails?.invoice_type ||
+          'retail',
+        paymentMethod:
+          initialData.payment_method ||
+          initialData.paymentMethod ||
+          baseInvoice.paymentMethod,
+        category: category || initialData.category || baseInvoice.category,
         customer: {
           ...baseInvoice.customer,
           id: initialData.customer_id || customerDetail.id || '',
@@ -937,6 +956,7 @@ export function EnhancedInvoiceBuilder({
           serial_numbers: serialNumbers,
           metadata: {
             ...(item.metadata || {}),
+            unit: item.unit || item.metadata?.unit || 'pcs',
             article_no: item.article_no || item.metadata?.article_no || '',
             design_no: item.design_no || item.metadata?.design_no || '',
             fabric_type: item.fabric_type || item.metadata?.fabric_type || '',
@@ -952,6 +972,15 @@ export function EnhancedInvoiceBuilder({
       // Generate FBR-compliant invoice for Pakistani domains
       let finalInvoice = {
         ...invoice,
+        category,
+        payment_method: invoice.paymentMethod || invoice.payment_method || (isPakistaniDomain ? 'cod' : 'cash'),
+        paymentMethod: invoice.paymentMethod || invoice.payment_method || (isPakistaniDomain ? 'cod' : 'cash'),
+        invoiceType: invoice.invoiceType || 'retail',
+        tax_details: {
+          ...(invoice.taxDetails || {}),
+          ...(invoice.tax_details || {}),
+          invoice_type: invoice.invoiceType || 'retail',
+        },
         items: normalizedItems,
         totals: {
           ...totals,
@@ -1056,7 +1085,12 @@ export function EnhancedInvoiceBuilder({
   const handleExportPDF = async () => {
     setIsExporting(true);
     try {
-      await generateInvoicePDF(invoice, totals, business, isPakistaniDomain);
+      await generateInvoicePDF(
+        { ...invoice, category, invoiceType: invoice.invoiceType || 'retail' },
+        totals,
+        business,
+        isPakistaniDomain
+      );
       toast.success('PDF generated successfully');
     } catch (error) {
       console.error('Error generating PDF:', error);
@@ -1181,11 +1215,11 @@ export function EnhancedInvoiceBuilder({
               <Label className="text-xs font-semibold text-slate-500">Document Type</Label>
               <Combobox
                 options={[
+                  { value: 'retail', label: domainInvoiceLabel },
                   { value: 'tax', label: `${standards.taxLabel} Invoice` },
-                  { value: 'retail', label: 'Retail Invoice' },
                   { value: 'export', label: 'Export Invoice' },
                 ]}
-                value={invoice.invoiceType}
+                value={invoice.invoiceType || 'retail'}
                 onChange={(val) => setInvoice({ ...invoice, invoiceType: val })}
                 placeholder="Select type..."
                 className="h-9 text-sm shadow-sm border-slate-200"
@@ -1397,7 +1431,7 @@ export function EnhancedInvoiceBuilder({
                     Tax
                   </Button>
                 )}
-                <Button onClick={addItem} size="sm" className="h-9 flex-1 rounded-md text-xs font-medium text-white shadow-sm transition-all hover:opacity-90 sm:h-8 sm:flex-none" style={{ backgroundColor: colors.primary }}>
+                <Button onClick={addItem} size="sm" className="h-9 flex-1 rounded-md text-xs font-medium text-white shadow-sm transition-all hover:opacity-90 sm:h-8 sm:flex-none" style={{ backgroundColor: brandAccent }}>
                   <Plus className="w-3.5 h-3.5 mr-1.5" />
                   Add line
                 </Button>
@@ -1426,7 +1460,7 @@ export function EnhancedInvoiceBuilder({
                   products={products}
                   category={category}
                   currency={currency}
-                  colors={colors}
+                  colors={{ ...colors, primary: brandAccent }}
                   updateItem={updateItem}
                   removeItem={removeItem}
                   addItem={addItem}
@@ -1442,7 +1476,7 @@ export function EnhancedInvoiceBuilder({
                 <div className="hidden text-center py-10 bg-slate-50 text-slate-500 border border-dashed border-slate-200 rounded-xl lg:block">
                   <FileText className="w-10 h-10 mx-auto mb-3 text-slate-300" />
                   <p className="font-medium text-sm text-slate-600">No items added yet.</p>
-                  <p className="text-xs mt-1">Click "Add Row" or scan a barcode to get started.</p>
+                  <p className="text-xs mt-1">Click Add line or scan a barcode to get started.</p>
                 </div>
               ) : (
                 <div className="relative hidden overflow-x-auto rounded-lg border border-slate-200 shadow-sm lg:block">
@@ -1457,6 +1491,7 @@ export function EnhancedInvoiceBuilder({
                           </th>
                         ))}
                         <th className="px-4 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wider" style={{minWidth:'96px'}}>Qty</th>
+                        <th className="px-4 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wider" style={{minWidth:'72px'}}>Unit</th>
                         <th className="px-4 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wider" style={{minWidth:'110px'}}>Rate</th>
                         <th className="px-4 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wider" style={{minWidth:'80px'}}>Disc%</th>
                         {showTaxUi && (
@@ -1507,6 +1542,20 @@ export function EnhancedInvoiceBuilder({
                               min={0}
                               className="h-8 text-xs text-right w-full"
                             />
+                          </td>
+                          <td className="px-3 py-2" style={{minWidth:'72px'}}>
+                            <select
+                              value={item.unit || 'pcs'}
+                              onChange={(e) => updateItem(item.id, 'unit', e.target.value)}
+                              className="h-8 w-full rounded-md border border-slate-200 bg-white px-1.5 text-xs text-slate-700"
+                            >
+                              {(getDomainUnits(category) || ['pcs', 'sqft', 'm', 'kg', 'box']).map((u) => (
+                                <option key={u} value={u}>{u}</option>
+                              ))}
+                              {item.unit && !(getDomainUnits(category) || []).includes(item.unit) && (
+                                <option value={item.unit}>{item.unit}</option>
+                              )}
+                            </select>
                           </td>
                           <td className="px-3 py-2" style={{minWidth:'110px'}}>
                             <Input

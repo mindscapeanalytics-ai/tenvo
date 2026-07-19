@@ -1,0 +1,31 @@
+﻿# Task 1 review package (uncommitted — no commits per plan)
+BASE: a6333ac1db906e9d6382122805ecff69e4f35e7f
+HEAD: working tree
+
+## Status
+ M AGENTS.md
+ M package.json
+?? .superpowers/
+?? docs/superpowers/plans/2026-07-18-domain-knowledge-enterprise.md
+?? lib/utils/domainKnowledgeOverrides.js
+?? scripts/verify-domain-knowledge-overrides.mjs
+
+## Diff stat
+
+ package.json | 1 +
+ 1 file changed, 1 insertion(+)
+
+## Full diff
+
+diff --git a/package.json b/package.json
+index e521e11..dc2dbdb 100644
+--- a/package.json
++++ b/package.json
+@@ -74,6 +74,7 @@
+     "verify:finance-gl": "node scripts/verify-finance-gl.mjs",
+     "verify:pos-offline": "node scripts/verify-pos-offline.mjs",
+     "verify:domain-operations": "node scripts/verify-domain-operations.mjs",
++    "verify:domain-knowledge-overrides": "bun scripts/verify-domain-knowledge-overrides.mjs",
+     "verify:storefront-operations-db": "node scripts/verify-storefront-operations-db.mjs",
+     "verify:storefront-order-emails": "node scripts/verify-storefront-order-emails.mjs",
+     "extract:autoparts-archive": "node scripts/extract-autoparts-archive-seed.mjs",

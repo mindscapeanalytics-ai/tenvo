@@ -5,6 +5,7 @@
 import { DOMAIN_KNOWLEDGE_KEYS } from '../lib/domainKnowledge.js';
 import {
   getBrandsForMarket,
+  getBrandsForMarketWithOverrides,
   getBrandCategoryForDomain,
   SUPPORTED_MARKET_ISO,
 } from '../lib/regionalMarket/index.js';
@@ -20,6 +21,13 @@ for (const key of DOMAIN_KNOWLEDGE_KEYS) {
       errors.push(`Empty brand catalog for ${iso} / ${key} (${category})`);
     }
   }
+}
+
+const aeBrands = getBrandsForMarketWithOverrides('AE', 'grocery', {
+  popularBrands: ['Tenant Super Brand'],
+});
+if (aeBrands[0] !== 'Tenant Super Brand') {
+  errors.push('AE popularBrands prepend failed');
 }
 
 if (errors.length) {

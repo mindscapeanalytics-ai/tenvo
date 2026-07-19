@@ -74,6 +74,8 @@
     "verify:finance-gl": "node scripts/verify-finance-gl.mjs",
     "verify:pos-offline": "node scripts/verify-pos-offline.mjs",
     "verify:domain-operations": "node scripts/verify-domain-operations.mjs",
+    "verify:domain-knowledge-overrides": "bun scripts/verify-domain-knowledge-overrides.mjs",
+    "verify:invoice-pdf": "bun scripts/verify-invoice-pdf-format.mjs",
     "verify:storefront-operations-db": "node scripts/verify-storefront-operations-db.mjs",
     "verify:storefront-order-emails": "node scripts/verify-storefront-order-emails.mjs",
     "extract:autoparts-archive": "node scripts/extract-autoparts-archive-seed.mjs",

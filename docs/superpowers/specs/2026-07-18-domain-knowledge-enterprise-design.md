@@ -1,7 +1,7 @@
 # Domain Knowledge Enterprise Layer — Design Spec
 
 **Date:** 2026-07-18  
-**Status:** Approved design — awaiting implementation plan  
+**Status:** Implemented — plan at `docs/superpowers/plans/2026-07-18-domain-knowledge-enterprise.md`  
 **Approach:** Platform presets + country/market layer + owner patch in `settings.domainKnowledge` (merge, not fork)  
 **Not chosen:** Per-override Prisma tables; copy-preset-into-DB at registration (fork)
 

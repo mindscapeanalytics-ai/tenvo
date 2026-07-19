@@ -6,16 +6,18 @@
 import { getDomainKnowledge } from '../domainKnowledge';
 import { getRegionalStandards } from './regionalHelpers';
 import { resolveDomainKey } from '../config/domainKeyAliases';
+import { Product } from '../types/domainTypes';
+
 export { getDomainKnowledge };
 
 export type DomainKnowledgeOptions = { countryIso?: string };
 
+/** Resolve domain knowledge; omit countryIso only for registration/demo (defaults PK). */
 function resolveKnowledge(category: string, options?: DomainKnowledgeOptions) {
   return options?.countryIso
     ? getDomainKnowledge(category, { countryIso: options.countryIso })
     : getDomainKnowledge(category);
 }
-import { Product } from '../types/domainTypes';
 
 /**
  * Get domain-specific product fields for a category
@@ -26,24 +28,24 @@ import { Product } from '../types/domainTypes';
 export const CORE_PRODUCT_KEYS = ['name', 'sku', 'barcode', 'price', 'cost_price', 'stock', 'category', 'brand', 'unit', 'description'];
 export const KEY_BLOCKLIST = ['id', 'created_at', 'updated_at', 'tenant_id'];
 
-export function getDomainProductFields(category: string): string[] {
-  const knowledge: any = getDomainKnowledge(category);
+export function getDomainProductFields(category: string, options?: DomainKnowledgeOptions): string[] {
+  const knowledge: any = resolveKnowledge(category, options);
   return knowledge?.productFields || [];
 }
 
 /**
  * Get domain-specific customer fields for a category
  */
-export function getDomainCustomerFields(category: string): string[] {
-  const knowledge: any = getDomainKnowledge(category);
+export function getDomainCustomerFields(category: string, options?: DomainKnowledgeOptions): string[] {
+  const knowledge: any = resolveKnowledge(category, options);
   return (knowledge as any)?.customerFields || [];
 }
 
 /**
  * Get domain-specific vendor fields for a category
  */
-export function getDomainVendorFields(category: string): string[] {
-  const knowledge: any = getDomainKnowledge(category);
+export function getDomainVendorFields(category: string, options?: DomainKnowledgeOptions): string[] {
+  const knowledge: any = resolveKnowledge(category, options);
   return knowledge?.vendorFields || [];
 }
 
@@ -64,8 +66,8 @@ export function getDomainTaxCategories(category: string, options?: DomainKnowled
  * @param category - Business category
  * @returns Array of unit strings
  */
-export function getDomainUnits(category: string): string[] {
-  const knowledge: any = getDomainKnowledge(category);
+export function getDomainUnits(category: string, options?: DomainKnowledgeOptions): string[] {
+  const knowledge: any = resolveKnowledge(category, options);
   return knowledge?.units || ['pcs'];
 }
 
@@ -222,8 +224,12 @@ export function isSizeColorMatrixEnabled(category: string): boolean {
  * @param product - Existing product object (optional)
  * @returns Object with default field values
  */
-export function getDomainDefaults(category: string, product: any = null): any {
-  const knowledge: any = getDomainKnowledge(category);
+export function getDomainDefaults(
+  category: string,
+  product: any = null,
+  options?: DomainKnowledgeOptions
+): any {
+  const knowledge: any = resolveKnowledge(category, options);
   const defaults: any = {
     unit: knowledge?.units?.[0] || 'pcs',
     taxPercent: knowledge?.defaultTax || 0,
@@ -235,7 +241,7 @@ export function getDomainDefaults(category: string, product: any = null): any {
   if (!product) {
     const stockFields = ['minStock', 'maxStock', 'reorderPoint', 'reorderQuantity', 'leadTime', 'shelfLife'];
     stockFields.forEach(field => {
-      const intelligentVal = getIntelligentDefaults(category, field);
+      const intelligentVal = getIntelligentDefaults(category, field, options);
       if (intelligentVal !== undefined) {
         defaults[field] = intelligentVal;
       }
@@ -353,8 +359,8 @@ export function validateDomainProduct(
  * @param category - Business category
  * @returns Array of feature names
  */
-export function getDomainInventoryFeatures(category: string): string[] {
-  const knowledge: any = getDomainKnowledge(category);
+export function getDomainInventoryFeatures(category: string, options?: DomainKnowledgeOptions): string[] {
+  const knowledge: any = resolveKnowledge(category, options);
   return knowledge?.inventoryFeatures || [];
 }
 
@@ -364,8 +370,8 @@ export function getDomainInventoryFeatures(category: string): string[] {
  * @param category - Business category
  * @returns Array of report names
  */
-export function getDomainReports(category: string): string[] {
-  const knowledge: any = getDomainKnowledge(category);
+export function getDomainReports(category: string, options?: DomainKnowledgeOptions): string[] {
+  const knowledge: any = resolveKnowledge(category, options);
   return knowledge?.reports || [];
 }
 
@@ -375,8 +381,8 @@ export function getDomainReports(category: string): string[] {
  * @param category - Business category
  * @returns Array of payment term strings
  */
-export function getDomainPaymentTerms(category: string): string[] {
-  const knowledge: any = getDomainKnowledge(category);
+export function getDomainPaymentTerms(category: string, options?: DomainKnowledgeOptions): string[] {
+  const knowledge: any = resolveKnowledge(category, options);
   return knowledge?.paymentTerms || ['Cash'];
 }
 
@@ -734,8 +740,12 @@ export function sanitizeDomainData(data: Record<string, any>): Record<string, an
  * @param fieldName - Field name to get default for
  * @returns Intelligent default value or undefined
  */
-export function getIntelligentDefaults(category: string, fieldName: string): any {
-  const knowledge: any = getDomainKnowledge(category);
+export function getIntelligentDefaults(
+  category: string,
+  fieldName: string,
+  options?: DomainKnowledgeOptions
+): any {
+  const knowledge: any = resolveKnowledge(category, options);
   const intelligence = knowledge?.intelligence;
 
   if (!intelligence) return undefined;

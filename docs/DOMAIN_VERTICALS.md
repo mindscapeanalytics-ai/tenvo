@@ -11,6 +11,14 @@
 
 `getDomainKnowledge(category, { countryIso })` merges baseline `taxCategories`, country-aware `marketFeatures` (legacy key `pakistaniFeatures`), and `intelligence` so UI and helpers do not receive empty objects for those shapes. Pass **`countryIso`** (`PK`, `AE`, `US`, `CN`, …) from business registration so brands, payment gateways, and tax compliance match the selected market — see **`docs/REGIONAL_STANDARDS.md`** and **`lib/regionalMarket/`**.
 
+Tenant-scoped callers should use **`getDomainKnowledgeForBusiness(category, business)`** (`lib/utils/businessRegionalContext.js`), which applies country **and** optional owner patch at **`businesses.settings.domainKnowledge`**.
+
+## Owner industry overrides
+
+Owners/admins edit ops config in Hub **Settings → Industry** (`IndustryDomainKnowledgePanel`). Saves go through **`updateDomainKnowledgeOverridesAction`** (permission `settings.edit`) into **`settings.domainKnowledge`**. Merge rules and Zod limits live in **`lib/utils/domainKnowledgeOverrides.js`**. Tax rates stay under Financials / regional pack; owners cannot override tax compliance or payment gateway catalogs.
+
+Empty or missing `settings.domainKnowledge` preserves platform presets (backward compatible).
+
 Domain-specific analytics copy for **dental-clinic**, **veterinary-clinic**, and **salon-spa** lives in `getDomainIndustryInsightsAction` (`lib/actions/premium/ai/analytics.js`) alongside pharmacy, education, and textile.
 
 ## Classification (plans & feature hints)
@@ -26,9 +34,10 @@ Domain-specific analytics copy for **dental-clinic**, **veterinary-clinic**, and
 ```bash
 npm run verify:domains
 npm run verify:regional-market
+npm run verify:domain-knowledge-overrides
 ```
 
-Checks: icon present on each raw `domainKnowledge` entry, `getDomainConfig` returns modules, `suggestPlanTier` returns a valid tier; regional script ensures all 62 verticals have brand catalogs for PK, AE, US, CN, SA.
+Checks: icon present on each raw `domainKnowledge` entry, completeness after `getDomainKnowledge` merge (`units`, fields, `intelligence`, `setupTemplate.categories`), `getDomainConfig` returns modules, `suggestPlanTier` returns a valid tier; regional script ensures all verticals have brand catalogs for PK, AE, US, CN, SA and `popularBrands` prepend works for non-PK; override script covers Zod + merge + locked keys.
 
 ## Best practices (maintenance)
 

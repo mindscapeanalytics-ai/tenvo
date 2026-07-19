@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Combobox } from '@/components/ui/combobox';
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/lib/utils/formatting';
-import { getDomainInvoiceColumns } from '@/lib/utils/domainHelpers';
+import { getDomainInvoiceColumns, getDomainUnits } from '@/lib/utils/domainHelpers';
 import { MOBILE_INPUT_CLASS, MOBILE_GRID_FIELDS } from '@/lib/utils/formMobileStyles';
 import { BarcodeScanTrigger } from '@/components/inventory/BarcodeScanTrigger';
 
@@ -29,6 +29,7 @@ export function InvoiceMobileLineItems({
   showTax = true,
 }) {
   const domainColumns = getDomainInvoiceColumns(category);
+  const unitOptions = getDomainUnits(category) || ['pcs', 'sqft', 'm', 'kg', 'box'];
 
   if (!items.length) {
     return (
@@ -166,6 +167,21 @@ export function InvoiceMobileLineItems({
                     min={0}
                     className={cn(MOBILE_INPUT_CLASS, 'text-right tabular-nums')}
                   />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-[11px] font-semibold text-slate-500">Unit</Label>
+                  <select
+                    value={item.unit || 'pcs'}
+                    onChange={(e) => updateItem?.(item.id, 'unit', e.target.value)}
+                    className={cn(MOBILE_INPUT_CLASS, 'bg-white')}
+                  >
+                    {unitOptions.map((u) => (
+                      <option key={u} value={u}>{u}</option>
+                    ))}
+                    {item.unit && !unitOptions.includes(item.unit) && (
+                      <option value={item.unit}>{item.unit}</option>
+                    )}
+                  </select>
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-[11px] font-semibold text-slate-500">Rate</Label>

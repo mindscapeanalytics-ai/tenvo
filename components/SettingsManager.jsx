@@ -35,6 +35,7 @@ import {
   resolveEffectiveBusinessLimits,
 } from '@/lib/utils/businessLimitOverrides';
 import { updateOwnerBusinessPackagingAction } from '@/lib/actions/basic/business';
+import IndustryDomainKnowledgePanel from '@/components/settings/IndustryDomainKnowledgePanel';
 import { resetTeamMemberPassword, createTeamMemberWithPassword } from '@/lib/actions/admin/teamManagement';
 import { STAFF_ACCESS_MODULES, getDefaultModulesForRole } from '@/lib/rbac/moduleAccess';
 import useSubscription from '@/lib/hooks/useSubscription';
@@ -218,6 +219,7 @@ export function SettingsManager({ category }) {
       { value: 'profile', label: 'Business Profile', visible: true },
       { value: 'compliance', label: 'Compliance', visible: true },
       { value: 'financials', label: 'Financials', visible: true },
+      { value: 'industry', label: 'Industry', visible: true },
       { value: 'billing', label: 'Billing', visible: canManageBilling },
       { value: 'team', label: 'Team', visible: canManageUsers },
       { value: 'notifications', label: 'Automation', visible: true },
@@ -1355,6 +1357,10 @@ export function SettingsManager({ category }) {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="industry" className="space-y-4 pt-4">
+          <IndustryDomainKnowledgePanel />
         </TabsContent>
 
         <TabsContent value="team" className="space-y-4 pt-4">
