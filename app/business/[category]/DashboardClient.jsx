@@ -20,7 +20,7 @@ import { bulkDeleteAction } from '@/lib/actions/premium/automation/bulk';
 import { getTablesAction, getKitchenQueueAction } from '@/lib/actions/standard/restaurant';
 import { formatInventoryActionError, isPersistedProductUuid, flattenCompositeProductPayload } from '@/lib/utils/productMutationPayload';
 import { setPendingInventoryFocus, setPendingExcelMode } from '@/lib/utils/hubNavigationIntent';
-import { buildHubTabHref, syncHubTabUrl } from '@/lib/utils/hubTabNavigation';
+import { useHubTab } from '@/lib/context/HubTabContext';
 import { Button } from '@/components/ui/button';
 import { Tabs } from '@/components/ui/tabs';
 import { ProductForm } from '@/components/ProductForm';
@@ -112,28 +112,9 @@ function BusinessDashboardContent() {
 
   const normalizedUrlTab = normalizeDashboardTab(searchParams.get('tab') || 'dashboard');
   const resolvedUrlTab = resolveDashboardTab(normalizedUrlTab);
-  /**
-   * Radix Tabs are controlled by `activeTab` from the URL. `router.push` updates
-   * `searchParams` one frame later, so the first click used to leave `value` on
-   * the old tab until a second interaction. Optimistic tab bridges that gap.
-   */
-  const [optimisticTab, setOptimisticTab] = useState(null);
-  const activeTab = optimisticTab ?? resolvedUrlTab;
-
-  useEffect(() => {
-    if (optimisticTab == null || optimisticTab !== resolvedUrlTab) return;
-    // Defer clear so we do not synchronously setState in the effect body (react-hooks/set-state-in-effect).
-    queueMicrotask(() => {
-      setOptimisticTab(null);
-    });
-  }, [optimisticTab, resolvedUrlTab]);
-
-  // Clear optimistic tab on pathname change (browser back/forward navigation)
-  useEffect(() => {
-    queueMicrotask(() => {
-      setOptimisticTab(null);
-    });
-  }, [pathname]);
+  /** Shell HubTabProvider is the paint SOT; URL is shareable sync. */
+  const { activeTab: shellActiveTab, goToTab } = useHubTab();
+  const activeTab = shellActiveTab || resolvedUrlTab;
 
   useEffect(() => {
     const billing = searchParams.get('billing');
@@ -201,7 +182,7 @@ function BusinessDashboardContent() {
     }
   }, [searchParams]);
 
-  // Instant paint + shallow URL sync (no force-dynamic soft-nav on ?tab=).
+  // Instant paint + shallow URL sync via shared hub tab navigation.
   const handleTabChange = useCallback((val, opts = {}) => {
     const raw = String(val || '').trim().toLowerCase();
     const financeView =
@@ -220,13 +201,17 @@ function BusinessDashboardContent() {
     }
 
     const targetTab = resolveDashboardTab(normalizedTab);
-    setOptimisticTab(targetTab);
-    const { href } = buildHubTabHref(currentDomain, targetTab, { financeView });
-    // Skip when caller already wrote the URL (Sidebar navigateHubTab).
-    if (!opts.skipUrlSync) {
-      syncHubTabUrl(href, { replace: Boolean(opts.replace) });
+
+    // Caller already ran navigateHubTab (Sidebar / palette / alerts) — finance view only.
+    if (opts.skipUrlSync) {
+      return;
     }
-  }, [currentDomain, router]);
+
+    goToTab(targetTab, {
+      financeView,
+      replace: Boolean(opts.replace),
+    });
+  }, [goToTab, router]);
 
   const handleQuickAction = useCallback((actionId) => {
     if (actionId == null) return;
@@ -432,7 +417,7 @@ function BusinessDashboardContent() {
         setPendingInventoryFocus(e.detail.inventoryFocus);
       }
       if (!tabId) return;
-      // Shallow nav already synced URL; only flip optimistic paint + finance view.
+      // Always apply finance view; URL sync only when caller did not already shallow-nav.
       handleTabChange(tabId, {
         financeView: e.detail?.financeView ?? undefined,
         skipUrlSync: Boolean(e.detail?.shallow),

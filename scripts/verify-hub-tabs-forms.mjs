@@ -268,27 +268,45 @@ const header = read('components/layout/Header.jsx');
 if (!header.includes('normalizeDashboardTab')) mark('Header missing normalizeDashboardTab');
 else ok('Header normalizes tab param');
 
-// 13. Instant tab nav — shallow URL sync (no router.push soft-nav on ?tab=)
+// 13. Instant tab nav — shallow URL sync + HubTabProvider SOT
 const hubNav = read('lib/utils/hubTabNavigation.js');
+const hubTabCtx = read('lib/context/HubTabContext.jsx');
+const shellLayout = read('components/layout/BusinessShellLayout.jsx');
 const sidebarSrc = read('components/layout/Sidebar.jsx');
 const mobileNavSrc = read('components/layout/HubMobileBottomNav.jsx');
 const dashClient = read('app/business/[category]/DashboardClient.jsx');
+const cmdPalette = read('components/layout/CommandPalette.jsx');
 const tabsUi = read('components/ui/tabs.jsx');
 if (!hubNav.includes('history') || !hubNav.includes('pushState') || !hubNav.includes('navigateHubTab')) {
   mark('hubTabNavigation missing pushState / navigateHubTab');
 } else ok('hubTabNavigation shallow pushState');
-if (!sidebarSrc.includes('navigateHubTab')) mark('Sidebar not using navigateHubTab');
-else ok('Sidebar uses navigateHubTab');
-if (!mobileNavSrc.includes('navigateHubTab')) mark('HubMobileBottomNav not using navigateHubTab');
-else ok('HubMobileBottomNav uses navigateHubTab');
-if (!dashClient.includes('syncHubTabUrl')) mark('DashboardClient missing syncHubTabUrl');
-else ok('DashboardClient syncHubTabUrl');
+if (!hubTabCtx.includes('HubTabProvider') || !hubTabCtx.includes('goToTab')) {
+  mark('HubTabContext missing provider/goToTab');
+} else ok('HubTabProvider SOT');
+if (!shellLayout.includes('HubTabProvider')) mark('BusinessShellLayout missing HubTabProvider');
+else ok('BusinessShellLayout wraps HubTabProvider');
+if (!sidebarSrc.includes('useHubTab') || !sidebarSrc.includes('goToTab')) {
+  mark('Sidebar not using HubTabProvider');
+} else ok('Sidebar uses HubTabProvider');
+if (!mobileNavSrc.includes('useHubTab')) mark('HubMobileBottomNav not using HubTabProvider');
+else ok('HubMobileBottomNav uses HubTabProvider');
+if (!dashClient.includes('useHubTab') || !dashClient.includes('goToTab')) {
+  mark('DashboardClient missing useHubTab/goToTab');
+} else ok('DashboardClient uses HubTabProvider');
+if (!cmdPalette.includes('goToTab') && !cmdPalette.includes('navigateHubTabFromLocation')) {
+  mark('CommandPalette still router.push(?tab=)');
+} else ok('CommandPalette shallow tab nav');
 if (/router\.push\([^)]*tab=/.test(sidebarSrc)) {
   mark('Sidebar still router.push(?tab=) — causes RSC soft-nav lag');
 } else ok('Sidebar no router.push(?tab=)');
+if (/router\.push\([^)]*\$\{[^}]*\}.*tab/.test(cmdPalette) || /router\.push\(`\/business\/\$\{[^}]+\}?\?\$\{qs/.test(cmdPalette)) {
+  mark('CommandPalette still router.push with tab query');
+} else ok('CommandPalette no router.push tab query');
 if (!tabsUi.includes('data-[state=inactive]:hidden')) {
   mark('TabsContent missing inactive hide (forceMount overlap)');
 } else ok('TabsContent hides inactive forceMount panels');
+if (!hubNav.includes('prefetchHotHubTabsIdle')) mark('missing idle hot-tab prefetch');
+else ok('idle hot-tab prefetch');
 
 console.log(`\n=== ${failed === 0 ? 'PASS' : 'FAIL'} (${failed} failure(s)) ===`);
 process.exit(failed === 0 ? 0 : 1);

@@ -5,7 +5,7 @@
  */
 
 import { useState } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -20,6 +20,7 @@ import {
     countActiveMembersInList,
     countPendingMembersInList,
 } from '@/lib/memberships/membershipTypes';
+import { navigateHubTabFromLocation } from '@/lib/utils/hubTabNavigation';
 import type { Customer } from '@/types';
 
 interface CustomersTabProps {
@@ -39,7 +40,6 @@ export function CustomersTab({
     category = 'retail-shop',
     businessId,
 }: CustomersTabProps) {
-    const router = useRouter();
     const params = useParams();
     const [searchTerm, setSearchTerm] = useState('');
     const { enabled: membershipEnabled, byCustomerId, getForCustomer } =
@@ -47,7 +47,7 @@ export function CustomersTab({
 
     const openMembershipsTab = () => {
         const handle = (params?.category as string) || category;
-        router.push(`/business/${handle}?tab=memberships`, { scroll: false });
+        navigateHubTabFromLocation('memberships', { domain: handle });
     };
 
     const customerIds = customers.map((c) => c.id);

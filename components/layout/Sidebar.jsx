@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
-import { usePathname, useSearchParams, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, Package, FileText, Users, Truck, ShoppingCart,
   UtensilsCrossed, Heart, ClipboardList, Landmark, CreditCard, Receipt,
@@ -27,12 +27,8 @@ import {
   POS_RELEVANT_DOMAINS, HOSPITALITY_DOMAINS, CAMPAIGN_RELEVANT_DOMAINS,
   isPosRelevant, isHospitality, isCampaignRelevant, isMembershipRelevant
 } from '@/lib/config/domains';
-import { normalizeDashboardTab } from '@/lib/config/tabs';
-import {
-  HUB_TAB_NAVIGATE_EVENT,
-  navigateHubTab,
-  prefetchHubTabChunk,
-} from '@/lib/utils/hubTabNavigation';
+import { prefetchHubTabChunk } from '@/lib/utils/hubTabNavigation';
+import { useHubTab } from '@/lib/context/HubTabContext';
 import toast from 'react-hot-toast';
 import { useAppMode } from '@/lib/context/BusyModeContext';
 import { useHubReady } from '@/lib/hooks/useHubReady';
@@ -216,30 +212,11 @@ export function Sidebar({ isOpen, onClose, isSidebarCollapsed, setIsSidebarColla
   const { appMode, setAppMode, isEasyMode } = useAppMode();
   const t = translations[language];
   const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const router = useRouter();
   const { hubReady, navReady, hasOptimisticShell, optimisticShell } = useHubReady();
-  const urlTab = normalizeDashboardTab(searchParams.get('tab') || 'dashboard');
-  // Optimistic highlight so sidebar matches panel paint before useSearchParams catches pushState.
-  const [optimisticNavTab, setOptimisticNavTab] = useState(null);
-  const currentTab = optimisticNavTab ?? urlTab;
-
-  useEffect(() => {
-    const onHubTab = (e) => {
-      const tab = e.detail?.tab;
-      if (tab) setOptimisticNavTab(normalizeDashboardTab(tab));
-    };
-    window.addEventListener(HUB_TAB_NAVIGATE_EVENT, onHubTab);
-    return () => window.removeEventListener(HUB_TAB_NAVIGATE_EVENT, onHubTab);
-  }, []);
-
-  useEffect(() => {
-    if (optimisticNavTab == null || optimisticNavTab !== urlTab) return;
-    queueMicrotask(() => setOptimisticNavTab(null));
-  }, [optimisticNavTab, urlTab]);
+  const { activeTab: currentTab, domain: hubDomain, goToTab } = useHubTab();
 
   const pathParts = pathname?.split('/') || [];
-  const handleFromUrl = pathParts[2] || 'retail-shop';
+  const handleFromUrl = hubDomain || pathParts[2] || 'retail-shop';
   // Use actual business category for logic, but handle for base URLs
   const category = business?.category || handleFromUrl;
   const baseUrl = `/business/${handleFromUrl}`;
@@ -500,13 +477,7 @@ export function Sidebar({ isOpen, onClose, isSidebarCollapsed, setIsSidebarColla
                                 e.button === 0
                               ) {
                                 e.preventDefault();
-                                const result = navigateHubTab({
-                                  domain: handleFromUrl,
-                                  tab: item.key,
-                                });
-                                if (result.type === 'route') {
-                                  router.push(result.href, { scroll: false });
-                                }
+                                goToTab(item.key);
                               }
                               if (window.innerWidth < 1024) onClose?.();
                             }}

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -38,6 +38,7 @@ import {
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/currency';
 import { formatDate } from '@/lib/utils';
+import { navigateHubTabFromLocation } from '@/lib/utils/hubTabNavigation';
 import { getBusinessOrders, getOrderDetails, updateOrderStatus } from '@/lib/actions/storefront/orders';
 import { updateOrderPaymentStatus, recordManualPayment } from '@/lib/actions/storefront/payments';
 import { cn } from '@/lib/utils';
@@ -107,7 +108,6 @@ function MembershipOrderBadge({ compact = false }) {
 }
 
 export function OrdersManager({ business, category }) {
-  const router = useRouter();
   const params = useParams();
   const { enabled: membershipHubEnabled } = useMembershipHubAccess(category);
   const [orders, setOrders] = useState([]);
@@ -127,7 +127,7 @@ export function OrdersManager({ business, category }) {
 
   const openMembershipsTab = () => {
     const handle = params?.category || business?.handle || business?.domain || category;
-    router.push(`/business/${handle}?tab=memberships`, { scroll: false });
+    navigateHubTabFromLocation('memberships', { domain: handle });
   };
 
   const loadOrders = useCallback(async () => {

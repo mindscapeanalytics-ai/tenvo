@@ -3,6 +3,8 @@
 import { cn } from '@/lib/utils';
 import { useStorefrontMobileNav } from '@/lib/hooks/useStorefrontMobileNav';
 import { HUB_MOBILE_SCROLL_RAIL, HUB_MOBILE_ROOT } from '@/lib/utils/mobileLayout';
+import { navigateHubTabFromLocation } from '@/lib/utils/hubTabNavigation';
+import { useHubTabOptional } from '@/lib/context/HubTabContext';
 
 /**
  * Compact horizontal module rail, replaces sidebar STOREFRONT section on mobile.
@@ -12,6 +14,7 @@ import { HUB_MOBILE_SCROLL_RAIL, HUB_MOBILE_ROOT } from '@/lib/utils/mobileLayou
  */
 export function StorefrontMobileHub({ activeTab, pendingOrders = 0 }) {
   const { items, business, ready } = useStorefrontMobileNav();
+  const hubTab = useHubTabOptional();
 
   if (!ready || items.length === 0) return null;
 
@@ -22,7 +25,11 @@ export function StorefrontMobileHub({ activeTab, pendingOrders = 0 }) {
       if (path) window.open(path, '_blank', 'noopener,noreferrer');
       return;
     }
-    window.dispatchEvent(new CustomEvent('switch-tab', { detail: { tab: item.key } }));
+    if (hubTab?.goToTab) {
+      hubTab.goToTab(item.key);
+      return;
+    }
+    navigateHubTabFromLocation(item.key);
   };
 
   return (

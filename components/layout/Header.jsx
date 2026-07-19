@@ -38,6 +38,8 @@ import { useLanguage } from '@/lib/context/LanguageContext';
 import { useAppMode } from '@/lib/context/BusyModeContext';
 import { useSearchParams } from 'next/navigation';
 import { normalizeDashboardTab } from '@/lib/config/tabs';
+import { navigateHubTabFromLocation } from '@/lib/utils/hubTabNavigation';
+import { useHubTabOptional } from '@/lib/context/HubTabContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
@@ -76,7 +78,18 @@ export function Header({ onMenuClick }) {
     } = useData();
     const { t, language } = useLanguage();
     const searchParams = useSearchParams();
-    const currentTab = normalizeDashboardTab(searchParams.get('tab') || 'dashboard');
+    const hubTab = useHubTabOptional();
+    const currentTab =
+        hubTab?.activeTab ||
+        normalizeDashboardTab(searchParams.get('tab') || 'dashboard');
+
+    const switchTab = React.useCallback((tab) => {
+        if (hubTab?.goToTab) {
+            hubTab.goToTab(tab);
+            return;
+        }
+        navigateHubTabFromLocation(tab);
+    }, [hubTab]);
 
     const [isSearchFocused, setIsSearchFocused] = React.useState(false);
     const [activeIndex, setActiveIndex] = React.useState(-1);
@@ -208,7 +221,7 @@ export function Header({ onMenuClick }) {
                 break;
         }
 
-        window.dispatchEvent(new CustomEvent('switch-tab', { detail: { tab } }));
+        switchTab(tab);
         window.dispatchEvent(new CustomEvent('view-details', {
             detail: { item, type: detailType }
         }));
@@ -618,11 +631,11 @@ export function Header({ onMenuClick }) {
                                     <span className="font-bold text-xs">New Purchase Order</span>
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
-                                <DropdownMenuItem onClick={() => window.dispatchEvent(new CustomEvent('switch-tab', { detail: { tab: 'payments' } }))} className="rounded-xl py-2.5 cursor-pointer">
+                                <DropdownMenuItem onClick={() => switchTab('payments')} className="rounded-xl py-2.5 cursor-pointer">
                                     <History className="w-4 h-4 mr-3 text-emerald-500" />
                                     <span className="font-bold text-xs">Record Payment</span>
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => window.dispatchEvent(new CustomEvent('switch-tab', { detail: { tab: 'finance' } }))} className="rounded-xl py-2.5 cursor-pointer">
+                                <DropdownMenuItem onClick={() => switchTab('finance')} className="rounded-xl py-2.5 cursor-pointer">
                                     <ListFilter className="w-4 h-4 mr-3 text-rose-500" />
                                     <span className="font-bold text-xs">Log Expense</span>
                                 </DropdownMenuItem>

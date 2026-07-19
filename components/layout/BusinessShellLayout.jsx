@@ -7,6 +7,7 @@ import { useLanguage } from '@/lib/context/LanguageContext';
 import { FilterProvider } from '@/lib/context/FilterContext';
 import { DataProvider } from '@/lib/context/DataContext';
 import { HubQueryProvider } from '@/lib/context/HubQueryProvider';
+import { HubTabProvider } from '@/lib/context/HubTabContext';
 import { LazyCommandPalette } from '@/components/layout/LazyCommandPalette';
 import { AgenticFloatingChatbot } from '@/components/layout/AgenticFloatingChatbot';
 import { SubscriptionBillingBanner } from '@/components/billing/SubscriptionBillingBanner';
@@ -27,6 +28,7 @@ export function BusinessShellLayout({ children }) {
         <FilterProvider>
             <HubQueryProvider>
             <DataProvider>
+            <HubTabProvider>
                 {/* Single Ctrl/Cmd+K palette — hub ?tab= routes only (no GlobalCommandPalette path forks). */}
                 <LazyCommandPalette />
                 <div className="h-screen bg-gray-50 flex overflow-hidden w-full">
@@ -49,6 +51,7 @@ export function BusinessShellLayout({ children }) {
                 <HubMobileBottomNav />
                 <UpgradeNudgeBanner />
                 <AgenticFloatingChatbot />
+            </HubTabProvider>
             </DataProvider>
             </HubQueryProvider>
         </FilterProvider>

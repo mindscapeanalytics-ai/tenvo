@@ -25,6 +25,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import { tryNavigateHubActionUrl } from '@/lib/utils/hubTabNavigation';
 
 function formatDistanceToNow(dateString) {
   if (!dateString) return 'Just now';
@@ -96,7 +97,9 @@ export function NotificationBell({ className }) {
     }
     if (notification.action_url) {
       setIsOpen(false);
-      router.push(notification.action_url);
+      if (!tryNavigateHubActionUrl(notification.action_url)) {
+        router.push(notification.action_url);
+      }
     }
   };
 

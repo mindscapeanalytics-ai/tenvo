@@ -18,16 +18,20 @@ import {
     Heart, Megaphone, UtensilsCrossed, RefreshCcw, ClipboardList, TrendingUp,
     Warehouse, Calendar, ArrowLeftRight, BadgeDollarSign, Hash, BadgeCheck
 } from 'lucide-react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { isMembershipRelevant } from '@/lib/config/domains';
+import { navigateHubTabFromLocation } from '@/lib/utils/hubTabNavigation';
+import { useHubTabOptional } from '@/lib/context/HubTabContext';
 
 export function CommandPalette() {
     const [open, setOpen] = useState(false);
     const [membershipRelevant, setMembershipRelevant] = useState(false);
     const router = useRouter();
+    const hubTab = useHubTabOptional();
 
     // Command palette needs the current business domain, not category, to route correctly
     const getCurrentDomain = () => {
+        if (hubTab?.domain) return hubTab.domain;
         if (typeof window !== 'undefined') {
             const storedBiz = localStorage.getItem('businessData');
             if (storedBiz) {
@@ -75,11 +79,20 @@ export function CommandPalette() {
     }, []);
 
     const goTab = useCallback((tab, financeView) => {
-        const currentDomain = getCurrentDomain();
-        const qs = new URLSearchParams({ tab });
-        if (financeView) qs.set('financeView', financeView);
-        runCommand(() => router.push(`/business/${currentDomain}?${qs.toString()}`, { scroll: false }));
-    }, [router, runCommand]);
+        runCommand(() => {
+            if (hubTab?.goToTab) {
+                hubTab.goToTab(tab, { financeView: financeView || null });
+                return;
+            }
+            const result = navigateHubTabFromLocation(tab, {
+                domain: getCurrentDomain(),
+                financeView: financeView || null,
+            });
+            if (result.type === 'route') {
+                router.push(result.href, { scroll: false });
+            }
+        });
+    }, [hubTab, router, runCommand]);
 
     const fireAction = useCallback((actionId) => {
         runCommand(() => window.dispatchEvent(new CustomEvent('open-quick-action', { detail: { actionId } })));
