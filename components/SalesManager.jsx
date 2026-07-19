@@ -9,13 +9,21 @@ import {
 import { formatCurrency } from '@/lib/currency';
 import { getDomainColors } from '@/lib/domainColors';
 import { SalesChart, RevenueBarChart } from './AdvancedCharts';
-import { aggregateMonthlyData, getTopCatalysts } from '@/lib/utils/analytics';
 import { MobileTabHeader, MobileStatStrip } from '@/components/mobile/MobileTabHeader';
 import { useStorefrontEmbedded } from '@/lib/context/StorefrontMobileContext';
+import { useFilters } from '@/lib/context/FilterContext';
 import { getSalesPerformanceAction } from '@/lib/actions/basic/dashboard';
+import { SalesInsightsFilterBar } from '@/components/sales/SalesInsightsFilterBar';
+import {
+    formatSalesPeriodLabel,
+    normalizeSalesChannel,
+    normalizeSalesCategory,
+} from '@/lib/analytics/salesPerformanceFilter';
+import { toAnalyticsIsoDate } from '@/lib/utils/analyticsRange';
 
 // ── Trend Badge ──────────────────────────────────────────────────────────────
 function TrendBadge({ value }) {
+    if (value == null || Number.isNaN(Number(value))) return null;
     const up = value >= 0;
     return (
         <span className={`inline-flex items-center gap-0.5 text-[11px] font-semibold px-1.5 py-0.5 rounded-md ${up ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-500'}`}>
@@ -26,7 +34,7 @@ function TrendBadge({ value }) {
 }
 
 // ── KPI Card ──────────────────────────────────────────────────────────────────
-function KpiCard({ label, value, sub, icon: Icon, growth, color, accent }) {
+function KpiCard({ label, value, sub, icon: Icon, growth, color }) {
     return (
         <div className="bg-white rounded-xl border border-gray-100 p-5 flex flex-col gap-3 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
@@ -44,176 +52,127 @@ function KpiCard({ label, value, sub, icon: Icon, growth, color, accent }) {
     );
 }
 
+function KpiSkeleton() {
+    return (
+        <div className="bg-white rounded-xl border border-gray-100 p-5 animate-pulse">
+            <div className="mb-3 h-9 w-9 rounded-lg bg-gray-100" />
+            <div className="mb-2 h-3 w-20 rounded bg-gray-100" />
+            <div className="h-7 w-28 rounded bg-gray-100" />
+        </div>
+    );
+}
+
 export function SalesManager({
-    invoices = [],
-    customers = [],
-    products = [],
     category = 'retail-shop',
     businessId = null,
     currency,
 }) {
     const colors = getDomainColors(category);
-    const [timeframe, setTimeframe] = useState('monthly');
-    const [loading, setLoading] = useState(false);
+    const { dateRange } = useFilters();
+    const [channel, setChannel] = useState('all');
+    const [productCategory, setProductCategory] = useState(null);
+    const [loading, setLoading] = useState(Boolean(businessId));
+    const [loadError, setLoadError] = useState(null);
     const [serverInsights, setServerInsights] = useState(null);
     const primaryColor = colors.primary || '#6366f1';
 
+    const fromISO = toAnalyticsIsoDate(dateRange?.from);
+    const toISO = toAnalyticsIsoDate(dateRange?.to);
+    const periodLabel = formatSalesPeriodLabel(fromISO, toISO);
+
     const loadInsights = useCallback(async () => {
-        if (!businessId) {
+        if (!businessId || !fromISO || !toISO) {
             setServerInsights(null);
+            setLoading(false);
             return;
         }
         setLoading(true);
+        setLoadError(null);
         try {
-            const res = await getSalesPerformanceAction(businessId, { topLimit: 8 });
+            const res = await getSalesPerformanceAction(businessId, {
+                from: fromISO,
+                to: toISO,
+                channel: normalizeSalesChannel(channel),
+                category: normalizeSalesCategory(productCategory),
+                topLimit: 8,
+            });
             if (res?.success) {
                 setServerInsights({
+                    meta: res.meta,
+                    categories: res.categories || [],
                     salesTrend: res.salesTrend,
                     topProducts: res.topProducts,
+                    topCustomers: res.topCustomers || [],
                     recentActivity: res.recentActivity,
                     kpi: res.kpi,
                 });
+            } else {
+                setLoadError(res?.error || res?.message || 'Could not load sales performance');
+                setServerInsights(null);
             }
         } catch (err) {
             console.error('Failed to load sales insights', err);
+            setLoadError(err?.message || 'Could not load sales performance');
+            setServerInsights(null);
         } finally {
             setLoading(false);
         }
-    }, [businessId]);
+    }, [businessId, fromISO, toISO, channel, productCategory]);
 
     useEffect(() => {
         void loadInsights();
-    }, [loadInsights, invoices.length]);
-
-    // ── Client-side fallback metrics (invoices only) ─────────────────────────
-    const clientMetrics = useMemo(() => {
-        const now = new Date();
-        const curStart = new Date(now.getFullYear(), now.getMonth(), 1);
-        const prevStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-        const prevEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
-
-        const curInv = invoices.filter(inv => new Date(inv.date) >= curStart);
-        const prevInv = invoices.filter(inv => { const d = new Date(inv.date); return d >= prevStart && d <= prevEnd; });
-
-        const total = curInv.reduce((s, i) => s + (Number(i.grand_total) || 0), 0);
-        const count = curInv.length;
-        const avg = count > 0 ? total / count : 0;
-        const paid = curInv.filter(i => i.payment_status === 'paid' || i.status === 'paid').reduce((s, i) => s + (Number(i.grand_total) || 0), 0);
-        const outstanding = total - paid;
-        const activeCustomers = new Set(curInv.filter(i => i.customer_id).map(i => i.customer_id)).size;
-
-        const prevTotal = prevInv.reduce((s, i) => s + (Number(i.grand_total) || 0), 0);
-        const prevCount = prevInv.length;
-        const prevAvg = prevCount > 0 ? prevTotal / prevCount : 0;
-        const prevCustomers = new Set(prevInv.filter(i => i.customer_id).map(i => i.customer_id)).size;
-
-        const g = (cur, prev) => prev > 0 ? ((cur - prev) / prev) * 100 : cur > 0 ? 100 : 0;
-
-        // Invoice-only fallback: estimate COGS from product cost_price when line items exist.
-        let cogs = 0;
-        let prevCogs = 0;
-        let costMatched = 0;
-        const costByProduct = new Map(
-            (products || []).map((p) => [String(p.id), Number(p.cost_price ?? p.costPrice) || 0])
-        );
-        const addCogs = (invList, into) => {
-            for (const inv of invList) {
-                const items = inv.items || inv.invoice_items || [];
-                for (const line of items) {
-                    const pid = line.product_id || line.productId;
-                    if (!pid || !costByProduct.has(String(pid))) continue;
-                    costMatched += 1;
-                    into.value += (Number(line.quantity) || 0) * (costByProduct.get(String(pid)) || 0);
-                }
-            }
-        };
-        const curCogs = { value: 0 };
-        const prevCogsBox = { value: 0 };
-        addCogs(curInv, curCogs);
-        addCogs(prevInv, prevCogsBox);
-        cogs = curCogs.value;
-        prevCogs = prevCogsBox.value;
-        const hasCostBasis = costMatched > 0;
-        const profitEst = hasCostBasis ? total - cogs : null;
-        const prevProfitEst = hasCostBasis ? prevTotal - prevCogs : null;
-
-        // Repeat customers
-        const custOrderCount = {};
-        invoices.forEach(inv => { if (inv.customer_id) custOrderCount[inv.customer_id] = (custOrderCount[inv.customer_id] || 0) + 1; });
-        const repeatCount = Object.values(custOrderCount).filter(c => c > 1).length;
-        const retentionRate = customers.length > 0 ? Math.round((repeatCount / customers.length) * 100) : 0;
-
-        return {
-            total, count, avg, paid, outstanding, activeCustomers,
-            profitEst, retentionRate,
-            profitBasis: hasCostBasis ? 'cost' : 'unavailable',
-            marginPct: hasCostBasis && total > 0 ? ((profitEst / total) * 100) : null,
-            totalFmt: formatCurrency(total, currency),
-            countFmt: count.toLocaleString(),
-            avgFmt: formatCurrency(avg, currency),
-            paidFmt: formatCurrency(paid, currency),
-            outstandingFmt: formatCurrency(outstanding, currency),
-            profitFmt: profitEst == null ? '—' : formatCurrency(profitEst, currency),
-            growth: {
-                revenue: g(total, prevTotal),
-                count: g(count, prevCount),
-                avg: g(avg, prevAvg),
-                customers: g(activeCustomers, prevCustomers),
-                profit: profitEst == null || prevProfitEst == null ? 0 : g(profitEst, prevProfitEst),
-                retention: 0,
-            }
-        };
-    }, [invoices, customers, products, currency]);
+    }, [loadInsights]);
 
     const serverKpi = serverInsights?.kpi;
+    const categoryScoped = Boolean(serverKpi?.categoryScoped || productCategory);
+    const showSkeleton = Boolean(businessId) && loading && !serverInsights;
+
     const metrics = useMemo(() => {
-        if (serverKpi) {
-            const g = serverKpi.growth || {};
-            const profitEst = serverKpi.profitEst;
-            return {
-                total: serverKpi.grossTotal,
-                count: serverKpi.orderCount,
-                avg: serverKpi.avgOrder,
-                paid: serverKpi.collected,
-                outstanding: serverKpi.outstanding,
-                activeCustomers: serverKpi.activeCustomers,
-                profitEst,
-                retentionRate: serverKpi.retentionRate,
-                profitBasis: serverKpi.profitBasis || 'cost',
-                marginPct: serverKpi.marginPct,
-                totalFmt: formatCurrency(serverKpi.grossTotal, currency),
-                countFmt: String(serverKpi.orderCount),
-                avgFmt: formatCurrency(serverKpi.avgOrder, currency),
-                paidFmt: formatCurrency(serverKpi.collected, currency),
-                outstandingFmt: formatCurrency(serverKpi.outstanding, currency),
-                profitFmt: formatCurrency(profitEst, currency),
-                growth: {
-                    revenue: g.revenue ?? 0,
-                    count: g.count ?? 0,
-                    avg: g.avg ?? 0,
-                    customers: g.customers ?? 0,
-                    profit: g.profit ?? 0,
-                    retention: g.retention ?? 0,
-                },
-            };
-        }
-        return clientMetrics;
-    }, [serverKpi, clientMetrics, currency]);
+        if (!serverKpi) return null;
+        const g = serverKpi.growth || {};
+        const profitEst = serverKpi.profitEst;
+        const collected = serverKpi.collected;
+        const outstanding = serverKpi.outstanding;
+        const retentionRate = serverKpi.retentionRate;
+        return {
+            total: serverKpi.grossTotal,
+            count: serverKpi.orderCount,
+            avg: serverKpi.avgOrder,
+            paid: collected,
+            outstanding,
+            activeCustomers: serverKpi.activeCustomers,
+            profitEst,
+            retentionRate,
+            profitBasis: serverKpi.profitBasis || 'cost',
+            marginPct: serverKpi.marginPct,
+            categoryScoped: serverKpi.categoryScoped,
+            totalFmt: formatCurrency(serverKpi.grossTotal, currency),
+            countFmt: String(serverKpi.orderCount),
+            avgFmt: formatCurrency(serverKpi.avgOrder, currency),
+            paidFmt: collected == null ? '—' : formatCurrency(collected, currency),
+            outstandingFmt: outstanding == null ? '—' : formatCurrency(outstanding, currency),
+            profitFmt: formatCurrency(profitEst, currency),
+            retentionFmt: retentionRate == null ? '—' : `${retentionRate}%`,
+            growth: {
+                revenue: g.revenue ?? 0,
+                count: g.count ?? 0,
+                avg: g.avg ?? 0,
+                customers: g.customers ?? 0,
+                profit: g.profit ?? 0,
+                retention: g.retention ?? 0,
+            },
+        };
+    }, [serverKpi, currency]);
 
     const chartData = useMemo(() => {
-        if (serverInsights?.salesTrend?.length) {
-            const months = timeframe === 'monthly' ? 6 : 12;
-            return serverInsights.salesTrend.slice(-months);
-        }
-        return aggregateMonthlyData(invoices, timeframe === 'monthly' ? 6 : 12);
-    }, [serverInsights, invoices, timeframe]);
+        if (serverInsights?.salesTrend?.length) return serverInsights.salesTrend;
+        return [];
+    }, [serverInsights]);
 
     const topCatalysts = useMemo(() => {
-        if (serverInsights?.topProducts?.length) {
-            return serverInsights.topProducts;
-        }
-        return getTopCatalysts(invoices, products, 8);
-    }, [serverInsights, invoices, products]);
+        if (serverInsights?.topProducts?.length) return serverInsights.topProducts;
+        return [];
+    }, [serverInsights]);
 
     const recentInvoices = useMemo(() => {
         if (serverInsights?.recentActivity?.length) {
@@ -227,32 +186,27 @@ export function SalesManager({
                 status: row.status,
             }));
         }
-        return [...invoices].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 8);
-    }, [serverInsights, invoices]);
+        return [];
+    }, [serverInsights]);
 
-    // ── Top customers ────────────────────────────────────────────────────────
     const topCustomers = useMemo(() => {
-        const map = {};
-        invoices.forEach(inv => {
-            const id = inv.customer_id;
-            if (!id) return;
-            if (!map[id]) map[id] = { id, name: inv.customer?.name || inv.customer_name || 'Unknown', total: 0, count: 0 };
-            map[id].total += Number(inv.grand_total) || 0;
-            map[id].count += 1;
-        });
-        return Object.values(map).sort((a, b) => b.total - a.total).slice(0, 5);
-    }, [invoices]);
+        if (serverInsights?.topCustomers?.length) return serverInsights.topCustomers;
+        return [];
+    }, [serverInsights]);
+
+    const filterCategories = serverInsights?.categories || [];
 
     const statusColor = (status) => {
         if (!status) return 'bg-gray-100 text-gray-500';
         const s = status.toLowerCase();
-        if (s === 'paid') return 'bg-emerald-50 text-emerald-600';
+        if (s === 'paid' || s === 'completed') return 'bg-emerald-50 text-emerald-600';
         if (s === 'partial') return 'bg-amber-50 text-amber-600';
         if (s === 'unpaid' || s === 'overdue') return 'bg-red-50 text-red-500';
         return 'bg-gray-100 text-gray-500';
     };
 
     const embeddedInStorefront = useStorefrontEmbedded();
+    const unavailableSub = 'Not available with category filter';
 
     return (
         <div className="min-w-0 space-y-2 overflow-x-hidden touch-manipulation lg:space-y-5">
@@ -261,104 +215,150 @@ export function SalesManager({
                     icon={BarChart2}
                     iconClassName="bg-indigo-100 text-indigo-600"
                     title="Sales Performance"
-                    subtitle={`${metrics.countFmt} orders this month`}
+                    subtitle={metrics ? `${metrics.countFmt} orders · ${periodLabel}` : periodLabel}
                     actions={[
                         {
-                            id: 'monthly',
-                            label: timeframe === 'monthly' ? 'Monthly' : 'Quarterly',
-                            onClick: () => setTimeframe(timeframe === 'monthly' ? 'quarterly' : 'monthly'),
+                            id: 'refresh',
+                            label: 'Refresh',
+                            onClick: () => void loadInsights(),
                         },
                     ]}
                 />
             )}
 
+            <SalesInsightsFilterBar
+                channel={channel}
+                category={productCategory}
+                categories={filterCategories}
+                from={fromISO}
+                to={toISO}
+                periodHint="change dates in the header"
+                disabled={loading || !businessId}
+                onChannelChange={(next) => setChannel(normalizeSalesChannel(next))}
+                onCategoryChange={(next) => setProductCategory(normalizeSalesCategory(next))}
+            />
+
+            {loadError && (
+                <div className="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
+                    {loadError}
+                    <button
+                        type="button"
+                        onClick={() => void loadInsights()}
+                        className="ml-2 font-semibold underline"
+                    >
+                        Retry
+                    </button>
+                </div>
+            )}
+
             <div className="lg:hidden">
-                <MobileStatStrip
-                    items={[
-                        { label: 'Revenue', value: metrics.totalFmt, valueTone: 'text-emerald-600' },
-                        { label: 'Orders', value: metrics.countFmt },
-                        { label: 'AOV', value: metrics.avgFmt },
-                        { label: 'Outstanding', value: metrics.outstandingFmt, valueTone: 'text-red-600' },
-                    ]}
-                />
-                {embeddedInStorefront && (
-                    <div className="mt-1.5 flex justify-end">
-                        <div className="inline-flex rounded-lg bg-gray-100 p-0.5">
-                            {['monthly', 'quarterly'].map((t) => (
-                                <button
-                                    key={t}
-                                    type="button"
-                                    onClick={() => setTimeframe(t)}
-                                    className={`rounded-md px-2.5 py-1 text-[10px] font-bold capitalize ${timeframe === t ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500'}`}
-                                >
-                                    {t}
-                                </button>
-                            ))}
-                        </div>
+                {showSkeleton ? (
+                    <div className="grid grid-cols-2 gap-2">
+                        <div className="h-16 animate-pulse rounded-lg bg-gray-100" />
+                        <div className="h-16 animate-pulse rounded-lg bg-gray-100" />
                     </div>
-                )}
+                ) : metrics ? (
+                    <MobileStatStrip
+                        items={[
+                            { label: 'Revenue', value: metrics.totalFmt, valueTone: 'text-emerald-600' },
+                            { label: 'Orders', value: metrics.countFmt },
+                            { label: 'AOV', value: metrics.avgFmt },
+                            {
+                                label: 'Outstanding',
+                                value: metrics.outstandingFmt,
+                                valueTone: metrics.outstanding == null ? 'text-gray-400' : 'text-red-600',
+                            },
+                        ]}
+                    />
+                ) : null}
             </div>
 
             {/* Desktop header */}
             <div className="hidden items-center justify-between lg:flex">
                 <div>
-                    <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                    <h1 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
                         <BarChart2 className="w-5 h-5" style={{ color: primaryColor }} />
                         Sales Performance
                     </h1>
-                    <p className="text-sm text-gray-400 mt-0.5">Revenue analytics & transaction intelligence</p>
+                    <p className="text-sm text-gray-400 mt-0.5">
+                        Revenue analytics across invoices, POS, and online · {periodLabel}
+                    </p>
                 </div>
-                <div className="flex items-center gap-2">
-                    <div className="flex bg-gray-100 rounded-lg p-0.5">
-                        {['monthly', 'quarterly'].map(t => (
-                            <button
-                                key={t}
-                                onClick={() => setTimeframe(t)}
-                                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all capitalize ${timeframe === t ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
-                            >
-                                {t}
-                            </button>
-                        ))}
-                    </div>
-                    <button
-                        type="button"
-                        onClick={() => void loadInsights()}
-                        disabled={loading || !businessId}
-                        className="p-2 rounded-lg border border-gray-100 text-gray-400 hover:text-gray-600 hover:bg-gray-50 disabled:opacity-40"
-                        title="Refresh sales data"
-                    >
-                        <RefreshCcw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-                    </button>
-                </div>
+                <button
+                    type="button"
+                    onClick={() => void loadInsights()}
+                    disabled={loading || !businessId}
+                    className="p-2 rounded-lg border border-gray-100 text-gray-400 hover:text-gray-600 hover:bg-gray-50 disabled:opacity-40"
+                    title="Refresh sales data"
+                >
+                    <RefreshCcw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                </button>
             </div>
 
             {/* ── KPI Row 1 ───────────────────────────────────────────────── */}
             <div className="hidden grid-cols-2 gap-4 lg:grid lg:grid-cols-4">
-                <KpiCard label="Gross Revenue" value={metrics.totalFmt} sub="This month" icon={DollarSign} growth={metrics.growth.revenue} color={primaryColor} />
-                <KpiCard label="Orders" value={metrics.countFmt} sub="Completed deals" icon={ShoppingCart} growth={metrics.growth.count} color="#8b5cf6" />
-                <KpiCard label="Avg Order Value" value={metrics.avgFmt} sub="Basket size" icon={Target} growth={metrics.growth.avg} color="#f59e0b" />
-                <KpiCard label="Active Customers" value={metrics.activeCustomers.toLocaleString()} sub="This month" icon={Users} growth={metrics.growth.customers} color="#10b981" />
+                {showSkeleton ? (
+                    <>
+                        <KpiSkeleton /><KpiSkeleton /><KpiSkeleton /><KpiSkeleton />
+                    </>
+                ) : metrics ? (
+                    <>
+                        <KpiCard label="Gross Revenue" value={metrics.totalFmt} sub={periodLabel} icon={DollarSign} growth={metrics.growth.revenue} color={primaryColor} />
+                        <KpiCard label="Orders" value={metrics.countFmt} sub="Completed deals" icon={ShoppingCart} growth={metrics.growth.count} color="#8b5cf6" />
+                        <KpiCard label="Avg Order Value" value={metrics.avgFmt} sub="Basket size" icon={Target} growth={metrics.growth.avg} color="#f59e0b" />
+                        <KpiCard label="Active Customers" value={metrics.activeCustomers.toLocaleString()} sub={periodLabel} icon={Users} growth={metrics.growth.customers} color="#10b981" />
+                    </>
+                ) : (
+                    <p className="col-span-4 text-sm text-gray-400 py-6 text-center">No sales data for this filter</p>
+                )}
             </div>
 
             {/* ── KPI Row 2 ───────────────────────────────────────────────── */}
             <div className="hidden grid-cols-2 gap-4 lg:grid lg:grid-cols-4">
-                <KpiCard
-                    label="Gross Profit"
-                    value={metrics.profitFmt}
-                    sub={
-                        metrics.profitBasis === 'unavailable'
-                            ? 'Set product cost prices'
-                            : metrics.marginPct != null
-                                ? `${Number(metrics.marginPct).toFixed(1)}% margin (at cost)`
-                                : 'Revenue minus cost'
-                    }
-                    icon={TrendingUp}
-                    growth={metrics.growth.profit}
-                    color="#6366f1"
-                />
-                <KpiCard label="Amount Collected" value={metrics.paidFmt} sub="Paid invoices" icon={CreditCard} growth={0} color="#0ea5e9" />
-                <KpiCard label="Outstanding" value={metrics.outstandingFmt} sub="Unpaid balance" icon={Receipt} growth={0} color="#ef4444" />
-                <KpiCard label="Retention Rate" value={`${metrics.retentionRate}%`} sub="Repeat customers" icon={Award} growth={metrics.growth.retention} color="#f97316" />
+                {showSkeleton ? (
+                    <>
+                        <KpiSkeleton /><KpiSkeleton /><KpiSkeleton /><KpiSkeleton />
+                    </>
+                ) : metrics ? (
+                    <>
+                        <KpiCard
+                            label="Gross Profit"
+                            value={metrics.profitFmt}
+                            sub={
+                                metrics.marginPct != null
+                                    ? `${Number(metrics.marginPct).toFixed(1)}% margin (at cost)`
+                                    : 'Revenue minus cost'
+                            }
+                            icon={TrendingUp}
+                            growth={metrics.growth.profit}
+                            color="#6366f1"
+                        />
+                        <KpiCard
+                            label="Amount Collected"
+                            value={metrics.paidFmt}
+                            sub={categoryScoped ? unavailableSub : 'Paid / completed'}
+                            icon={CreditCard}
+                            growth={categoryScoped ? null : 0}
+                            color="#0ea5e9"
+                        />
+                        <KpiCard
+                            label="Outstanding"
+                            value={metrics.outstandingFmt}
+                            sub={categoryScoped ? unavailableSub : 'Unpaid balance'}
+                            icon={Receipt}
+                            growth={categoryScoped ? null : 0}
+                            color="#ef4444"
+                        />
+                        <KpiCard
+                            label="Retention Rate"
+                            value={metrics.retentionFmt}
+                            sub={categoryScoped ? unavailableSub : 'Repeat customers in period'}
+                            icon={Award}
+                            growth={categoryScoped ? null : metrics.growth.retention}
+                            color="#f97316"
+                        />
+                    </>
+                ) : null}
             </div>
 
             {/* ── Revenue Chart + Top Products ────────────────────────────── */}
@@ -367,12 +367,16 @@ export function SalesManager({
                     <div className="flex items-center justify-between px-5 py-4 border-b border-gray-50">
                         <div>
                             <p className="text-sm font-semibold text-gray-800">Revenue Trend</p>
-                            <p className="text-xs text-gray-400">{timeframe === 'monthly' ? '6-month' : '12-month'} performance</p>
+                            <p className="text-xs text-gray-400">{periodLabel} · cost-based profit</p>
                         </div>
                         <Activity className="w-4 h-4 text-gray-300" />
                     </div>
                     <div className="p-4 h-[280px]">
-                        <SalesChart data={chartData} colors={colors} currency={currency} />
+                        {showSkeleton ? (
+                            <div className="h-full animate-pulse rounded-lg bg-gray-50" />
+                        ) : (
+                            <SalesChart data={chartData} colors={colors} currency={currency} />
+                        )}
                     </div>
                 </div>
 
@@ -380,13 +384,20 @@ export function SalesManager({
                     <div className="flex items-center justify-between px-5 py-4 border-b border-gray-50">
                         <div>
                             <p className="text-sm font-semibold text-gray-800">Top Products</p>
-                            <p className="text-xs text-gray-400">By revenue</p>
+                            <p className="text-xs text-gray-400">By revenue · {periodLabel}</p>
                         </div>
                         <Package className="w-4 h-4 text-gray-300" />
                     </div>
                     <div className="divide-y divide-gray-50">
-                        {topCatalysts.length === 0 && (
+                        {!showSkeleton && topCatalysts.length === 0 && (
                             <p className="text-xs text-gray-400 px-5 py-6 text-center">No sales data yet</p>
+                        )}
+                        {showSkeleton && (
+                            <div className="space-y-3 p-5">
+                                <div className="h-8 animate-pulse rounded bg-gray-50" />
+                                <div className="h-8 animate-pulse rounded bg-gray-50" />
+                                <div className="h-8 animate-pulse rounded bg-gray-50" />
+                            </div>
                         )}
                         {topCatalysts.slice(0, 6).map((p, i) => (
                             <div key={p.id || p.name || i} className="flex items-center gap-3 px-5 py-3 hover:bg-gray-50 transition-colors">
@@ -404,28 +415,30 @@ export function SalesManager({
 
             {/* ── Order Distribution + Recent Transactions ─────────────────── */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                {/* Order Distribution */}
                 <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
                     <div className="px-5 py-4 border-b border-gray-50">
                         <p className="text-sm font-semibold text-gray-800">Revenue Distribution</p>
-                        <p className="text-xs text-gray-400">By month, sales vs revenue</p>
+                        <p className="text-xs text-gray-400">By month · {periodLabel}</p>
                     </div>
                     <div className="p-4 h-[260px]">
-                        <RevenueBarChart data={chartData} colors={colors} currency={currency} />
+                        {showSkeleton ? (
+                            <div className="h-full animate-pulse rounded-lg bg-gray-50" />
+                        ) : (
+                            <RevenueBarChart data={chartData} colors={colors} currency={currency} />
+                        )}
                     </div>
                 </div>
 
-                {/* Recent Transactions */}
                 <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
                     <div className="flex items-center justify-between px-5 py-4 border-b border-gray-50">
                         <div>
                             <p className="text-sm font-semibold text-gray-800">Recent Transactions</p>
-                            <p className="text-xs text-gray-400">Latest sales activity</p>
+                            <p className="text-xs text-gray-400">In selected period</p>
                         </div>
                         <Clock className="w-4 h-4 text-gray-300" />
                     </div>
                     <div className="divide-y divide-gray-50 max-h-[260px] overflow-y-auto">
-                        {recentInvoices.length === 0 && (
+                        {!showSkeleton && recentInvoices.length === 0 && (
                             <p className="text-xs text-gray-400 px-5 py-6 text-center">No transactions yet</p>
                         )}
                         {recentInvoices.map((inv, i) => (
@@ -459,7 +472,7 @@ export function SalesManager({
                 <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
                     <div className="px-5 py-4 border-b border-gray-50">
                         <p className="text-sm font-semibold text-gray-800">Top Customers</p>
-                        <p className="text-xs text-gray-400">Ranked by total spend</p>
+                        <p className="text-xs text-gray-400">Ranked by total spend · {periodLabel}</p>
                     </div>
                     <div className="hidden overflow-x-auto lg:block">
                         <table className="w-full text-sm">

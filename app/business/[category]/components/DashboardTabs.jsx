@@ -662,45 +662,32 @@ export function DashboardTabs({
                     )}
                 </TabsContent>
 
-                <TabsContent value="reports" className="space-y-6 outline-none">
+                <TabsContent value="reports" className="space-y-4 outline-none">
                     {wrapTab(
                         <TabGuard tabKey="reports" role={role} planTier={planTier} featureName="Analytics & AI" onUpgrade={() => handleTabChange('settings')}>
-                            <div className="min-w-0 space-y-4 overflow-x-hidden lg:space-y-6">
-                                <div className="hidden flex-col gap-3 lg:flex lg:flex-row lg:items-center lg:justify-between">
-                                    <h2 className="text-xl font-semibold uppercase tracking-tight text-gray-900">Analytics & Reports</h2>
-                                    <div className="flex flex-wrap gap-1 rounded-xl bg-gray-100 p-1 lg:gap-1">
+                            <div className="min-w-0 space-y-4 overflow-x-hidden">
+                                <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+                                    <h2 className="hidden shrink-0 text-sm font-semibold tracking-tight text-gray-900 sm:block">
+                                        Reports
+                                    </h2>
+                                    <div className="flex min-w-0 flex-1 gap-1 overflow-x-auto overscroll-x-contain rounded-xl bg-gray-100 p-1 scrollbar-none snap-x snap-mandatory">
                                         {[
-                                            { key: 'analytics', label: 'Analytics' },
-                                            { key: 'forecast', label: 'Demand Forecast' },
-                                            { key: 'ai', label: 'AI Insights' },
-                                            { key: 'builder', label: 'Report Builder' },
+                                            { key: 'analytics', label: 'Analytics', short: 'Analytics' },
+                                            { key: 'forecast', label: 'Demand Forecast', short: 'Forecast' },
+                                            { key: 'ai', label: 'AI Insights', short: 'AI' },
+                                            { key: 'builder', label: 'Report Builder', short: 'Builder' },
                                         ].map(v => (
                                             <button
                                                 key={v.key}
+                                                type="button"
                                                 onClick={() => setReportsView(v.key)}
-                                                className={`rounded-lg px-2.5 py-1.5 text-[11px] font-bold transition-all sm:px-3 sm:text-xs ${reportsView === v.key ? 'bg-white text-gray-900 shadow' : 'text-gray-500 hover:text-gray-700'}`}
+                                                className={`shrink-0 snap-start rounded-lg px-2.5 py-1.5 text-[11px] font-semibold transition-all sm:px-3 sm:text-xs ${reportsView === v.key ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
                                             >
-                                                {v.label}
+                                                <span className="sm:hidden">{v.short}</span>
+                                                <span className="hidden sm:inline">{v.label}</span>
                                             </button>
                                         ))}
                                     </div>
-                                </div>
-                                <div className="flex min-w-0 gap-1 overflow-x-auto overscroll-x-contain rounded-xl bg-gray-100 p-1 scrollbar-none snap-x snap-mandatory lg:hidden">
-                                    {[
-                                        { key: 'analytics', label: 'Analytics', short: 'Analytics' },
-                                        { key: 'forecast', label: 'Demand Forecast', short: 'Forecast' },
-                                        { key: 'ai', label: 'AI Insights', short: 'AI' },
-                                        { key: 'builder', label: 'Report Builder', short: 'Builder' },
-                                    ].map(v => (
-                                        <button
-                                            key={v.key}
-                                            type="button"
-                                            onClick={() => setReportsView(v.key)}
-                                            className={`shrink-0 snap-start rounded-lg px-3 py-2 text-[11px] font-bold transition-all ${reportsView === v.key ? 'bg-white text-gray-900 shadow' : 'text-gray-500'}`}
-                                        >
-                                            {v.short}
-                                        </button>
-                                    ))}
                                 </div>
                                 {reportsView === 'analytics' && <AdvancedAnalytics businessId={activeBusinessId} category={category} currency={currency} dateRange={dateRange} />}
                                 {reportsView === 'forecast' && <DemandForecast businessId={activeBusinessId} category={category} products={products} invoices={invoices} domainKnowledge={domainKnowledge} dateRange={dateRange} />}

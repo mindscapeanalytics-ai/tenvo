@@ -23,7 +23,9 @@ const ok = (msg) => console.log(`OK: ${msg}`);
 const dataContext = read('lib/context/DataContext.js');
 const salesPerf = read('lib/actions/basic/dashboard.js');
 const salesInsights = read('lib/analytics/salesInsights.js');
+const salesFilter = read('lib/analytics/salesPerformanceFilter.js');
 const salesManager = read('components/SalesManager.jsx');
+const filterBar = read('components/sales/SalesInsightsFilterBar.jsx');
 const inventory = read('components/InventoryManager.jsx');
 const reportBuilder = read('components/reports/ReportBuilder.jsx');
 const storefrontNav = read('lib/config/storefrontMobileNav.js');
@@ -58,6 +60,71 @@ if (!salesPerf.includes('SALES_COGS_PERIOD_SQL') || !salesPerf.includes('profitB
   ok('Sales performance uses cost-based gross profit');
 }
 
+if (!salesPerf.includes('normalizeSalesPerformanceOptions') || !salesPerf.includes('channel')) {
+  mark('getSalesPerformanceAction must accept normalized channel/from/to options');
+} else {
+  ok('getSalesPerformanceAction accepts channel + date range options');
+}
+
+if (!salesPerf.includes('TOP_CUSTOMERS_UNIFIED_SQL') || !salesPerf.includes('topCustomers')) {
+  mark('getSalesPerformanceAction must return unified topCustomers');
+} else {
+  ok('Sales performance returns topCustomers');
+}
+
+if (!salesInsights.includes('TOP_CUSTOMERS_UNIFIED_SQL')) {
+  mark('salesInsights must export TOP_CUSTOMERS_UNIFIED_SQL');
+} else {
+  ok('TOP_CUSTOMERS_UNIFIED_SQL present');
+}
+
+{
+  const trendStart = salesInsights.indexOf('export const SALES_TREND_UNIFIED_SQL');
+  const trendEnd = salesInsights.indexOf('export const TOP_MOVING_PRODUCTS_UNIFIED_SQL');
+  const trendBlock = salesInsights.slice(trendStart, trendEnd > trendStart ? trendEnd : undefined);
+  if (trendBlock.includes('gl_entries')) {
+    mark('SALES_TREND_UNIFIED_SQL must not use gl_entries for profit');
+  } else {
+    ok('Sales trend profit is cost-based (no gl_entries)');
+  }
+}
+
+if (!salesFilter.includes('normalizeSalesChannel') || !salesFilter.includes('storefront')) {
+  mark('salesPerformanceFilter must normalize channel including storefront/Online');
+} else {
+  ok('salesPerformanceFilter channel contract present');
+}
+
+if (!salesManager.includes('useFilters') || !salesManager.includes('SalesInsightsFilterBar')) {
+  mark('SalesManager must use hub date range + SalesInsightsFilterBar');
+} else {
+  ok('SalesManager uses hub filters + filter bar');
+}
+
+if (salesManager.includes('clientMetrics') || salesManager.includes('aggregateMonthlyData(invoices')) {
+  mark('SalesManager must not paint invoice-only client KPIs before server');
+} else {
+  ok('SalesManager does not use invoice-only client KPI fallback');
+}
+
+if (salesManager.includes("timeframe === 'monthly'") || salesManager.includes('setTimeframe')) {
+  mark('SalesManager must remove monthly/quarterly toggle (use hub date range)');
+} else {
+  ok('SalesManager monthly/quarterly toggle removed');
+}
+
+if (!filterBar.includes('SALES_CHANNEL_OPTIONS') || !reportBuilder.includes('SalesInsightsFilterBar')) {
+  mark('Filter bar must be shared by SalesManager and ReportBuilder');
+} else {
+  ok('Shared SalesInsightsFilterBar wired to Sales + Report Builder');
+}
+
+if (!reportBuilder.includes('salesChannel') || !reportBuilder.includes('channel:')) {
+  mark('ReportBuilder must pass channel/category into analytics bundle');
+} else {
+  ok('ReportBuilder passes sales channel filters');
+}
+
 if (inventory.includes('Generating ${report}') || inventory.includes('Generating ${report}...')) {
   mark('Inventory domain reports must not fake-generate with toasts');
 } else {
@@ -80,6 +147,18 @@ if (reportBuilder.includes("name: 'Profit & Loss Statement'")) {
   mark('ReportBuilder must not label analytics bundle as formal P&L');
 } else {
   ok('ReportBuilder P&L preset renamed honestly');
+}
+
+if (reportBuilder.includes('\u2014') || reportBuilder.includes(' — ')) {
+  mark('ReportBuilder must not use em dashes in titles/copy');
+} else {
+  ok('ReportBuilder has no em dashes');
+}
+
+if (!reportBuilder.includes('buildWidgetTitle') || !reportBuilder.includes('lg:col-span-4')) {
+  mark('ReportBuilder must use professional titles and 12-col grid spans');
+} else {
+  ok('ReportBuilder grid titles + col spans wired');
 }
 
 if (reportBuilder.includes('PDF export coming soon')) {

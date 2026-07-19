@@ -154,12 +154,25 @@ async function main() {
     from.setMonth(from.getMonth() - 5);
     const fromStr = from.toISOString().slice(0, 10);
 
-    const trend = await client.query(SALES_TREND_UNIFIED_SQL, [primary.id, anchor]);
+    const trend = await client.query(SALES_TREND_UNIFIED_SQL, [
+      primary.id,
+      fromStr,
+      anchor,
+      'all',
+      null,
+    ]);
     const trendRev = trend.rows.reduce((s, r) => s + parseFloat(r.sales || 0), 0);
     if (trendRev <= 0) fail(`${primary.domain}: unified sales trend returned zero revenue`);
     else ok(`${primary.domain}: unified trend revenue = ${trendRev.toFixed(2)}`);
 
-    const top = await client.query(TOP_MOVING_PRODUCTS_UNIFIED_SQL, [primary.id, 5, fromStr, anchor]);
+    const top = await client.query(TOP_MOVING_PRODUCTS_UNIFIED_SQL, [
+      primary.id,
+      5,
+      fromStr,
+      anchor,
+      'all',
+      null,
+    ]);
     const topWithRev = top.rows.filter((r) => parseFloat(r.revenue || 0) > 0);
     if (topWithRev.length === 0) fail(`${primary.domain}: top products all zero revenue`);
     else ok(`${primary.domain}: ${topWithRev.length} top products with revenue`);

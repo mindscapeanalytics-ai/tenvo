@@ -127,19 +127,11 @@ export const DemandForecast = memo(function DemandForecast({
 
     return (
         <div className="space-y-6 animate-in fade-in duration-700">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h2 className="text-xl font-bold text-gray-900">Demand Forecast</h2>
-                    <p className="text-gray-500 font-medium">
-                        AI-powered predictive modeling for {domainKnowledge?.name || 'Inventory'}
-                    </p>
-                </div>
-                <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="px-3 py-1 font-bold text-wine border-wine/20 bg-wine/5">
-                        <Rocket className="w-3 h-3 mr-1" />
-                        V3 Prediction Engine
-                    </Badge>
-                </div>
+            <div className="flex justify-end">
+                <Badge variant="outline" className="px-3 py-1 font-semibold text-wine border-wine/20 bg-wine/5">
+                    <Rocket className="w-3 h-3 mr-1" />
+                    V3 Prediction Engine
+                </Badge>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

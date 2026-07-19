@@ -18,6 +18,13 @@ import { formatCurrency } from '@/lib/currency';
 import { useResolvedBusinessId } from '@/lib/hooks/useResolvedBusinessId';
 import { useBusiness } from '@/lib/context/BusinessContext';
 import { generateAnalyticsReportPDF } from '@/lib/pdf/analyticsReportPdf';
+import { SalesInsightsFilterBar } from '@/components/sales/SalesInsightsFilterBar';
+import {
+    normalizeSalesChannel,
+    normalizeSalesCategory,
+} from '@/lib/analytics/salesPerformanceFilter';
+import { toAnalyticsIsoDate } from '@/lib/utils/analyticsRange';
+import { EMPTY_VALUE, normalizeProseCopy } from '@/lib/utils/copyTypography';
 
 const REPORT_BUILDER_STORAGE_PREFIX = 'tenvo_report_builder_v2_';
 
@@ -149,7 +156,7 @@ function periodLabelFromFilter(filter) {
         const a = new Date(filter.from);
         const b = new Date(filter.to);
         if (Number.isNaN(a.getTime()) || Number.isNaN(b.getTime())) return '';
-        return `Period: ${a.toLocaleDateString(undefined, { dateStyle: 'medium' })} – ${b.toLocaleDateString(undefined, { dateStyle: 'medium' })}`;
+        return `Period: ${a.toLocaleDateString(undefined, { dateStyle: 'medium' })} - ${b.toLocaleDateString(undefined, { dateStyle: 'medium' })}`;
     } catch {
         return '';
     }
@@ -169,10 +176,58 @@ const WIDGET_TYPES = [
     { id: 'line', label: 'Line Chart', icon: LineChart, description: 'Revenue trend' },
     { id: 'pie', label: 'Pie Chart', icon: PieChart, description: 'Category or expense mix' },
     { id: 'table', label: 'Data Table', icon: Table2, description: 'Top products' },
-    { id: 'summary', label: 'Summary Row', icon: FileText, description: 'Period totals' },
+    { id: 'summary', label: 'Summary', icon: FileText, description: 'Period totals' },
 ];
 
-/** Professional templates — each loads real live widgets from the analytics bundle. */
+const FOCUS_TITLES = {
+    revenue: 'Period revenue',
+    orders: 'Orders',
+    growth: 'Growth vs prior',
+    inventory: 'Inventory asset',
+    retention: 'Retention',
+    expenses: 'Expenses (GL)',
+};
+
+function titleCaseFocus(focus) {
+    if (!focus) return '';
+    return FOCUS_TITLES[focus] || String(focus).replace(/_/g, ' ');
+}
+
+/** Professional widget chrome title (no em dash). */
+function buildWidgetTitle({ type, focus, source, reportName }) {
+    if (type === 'kpi') return titleCaseFocus(focus || 'revenue');
+    if (type === 'pie') {
+        if (focus === 'expenses' || source === 'expenses') return 'Expense mix';
+        if (focus === 'inventory' || source === 'inventory') return 'Category mix (at cost)';
+        return 'Category mix';
+    }
+    if (type === 'bar') return 'Revenue by month';
+    if (type === 'line') return 'Revenue trend';
+    if (type === 'table') return 'Top products';
+    if (type === 'summary') return reportName ? `Summary: ${reportName}` : 'Period summary';
+    const typeLabel = WIDGET_TYPES.find((w) => w.id === type)?.label || type;
+    return normalizeProseCopy(String(typeLabel));
+}
+
+function defaultWidgetCol(type) {
+    if (type === 'kpi') return 4;
+    if (type === 'table' || type === 'summary') return 12;
+    if (type === 'pie') return 6;
+    if (type === 'bar' || type === 'line') return 12;
+    return 6;
+}
+
+function colSpanClass(col) {
+    const n = Number(col) || 6;
+    if (n >= 12) return 'lg:col-span-12';
+    if (n >= 8) return 'lg:col-span-8';
+    if (n >= 6) return 'lg:col-span-6';
+    if (n >= 4) return 'lg:col-span-4';
+    if (n >= 3) return 'lg:col-span-3';
+    return 'lg:col-span-6';
+}
+
+/** Templates with explicit cols so each row fills the 12-column grid. */
 const PRESET_TEMPLATES = [
     {
         id: 'sales_summary',
@@ -180,12 +235,12 @@ const PRESET_TEMPLATES = [
         source: 'sales',
         description: 'Period revenue, growth, trend, and top products',
         widgets: [
-            { type: 'kpi', focus: 'revenue' },
-            { type: 'kpi', focus: 'orders' },
-            { type: 'kpi', focus: 'growth' },
-            { type: 'bar' },
-            { type: 'table' },
-            { type: 'summary' },
+            { type: 'kpi', focus: 'revenue', col: 4 },
+            { type: 'kpi', focus: 'orders', col: 4 },
+            { type: 'kpi', focus: 'growth', col: 4 },
+            { type: 'bar', col: 12 },
+            { type: 'table', col: 6 },
+            { type: 'summary', col: 6 },
         ],
     },
     {
@@ -194,9 +249,12 @@ const PRESET_TEMPLATES = [
         source: 'inventory',
         description: 'Stock value at cost and category mix',
         widgets: [
-            { type: 'kpi', focus: 'inventory' },
-            { type: 'pie', focus: 'inventory' },
-            { type: 'summary' },
+            { type: 'kpi', focus: 'inventory', col: 4 },
+            { type: 'kpi', focus: 'revenue', col: 4 },
+            { type: 'kpi', focus: 'orders', col: 4 },
+            { type: 'pie', focus: 'inventory', col: 6 },
+            { type: 'summary', col: 6 },
+            { type: 'table', col: 12 },
         ],
     },
     {
@@ -205,10 +263,12 @@ const PRESET_TEMPLATES = [
         source: 'customers',
         description: 'Repeat purchase rate and sales trend',
         widgets: [
-            { type: 'kpi', focus: 'retention' },
-            { type: 'kpi', focus: 'revenue' },
-            { type: 'line' },
-            { type: 'table' },
+            { type: 'kpi', focus: 'retention', col: 4 },
+            { type: 'kpi', focus: 'revenue', col: 4 },
+            { type: 'kpi', focus: 'orders', col: 4 },
+            { type: 'line', col: 6 },
+            { type: 'table', col: 6 },
+            { type: 'summary', col: 12 },
         ],
     },
     {
@@ -217,10 +277,12 @@ const PRESET_TEMPLATES = [
         source: 'sales',
         description: 'Channel sales KPIs (not formal Finance P&L)',
         widgets: [
-            { type: 'kpi', focus: 'revenue' },
-            { type: 'kpi', focus: 'growth' },
-            { type: 'bar' },
-            { type: 'summary' },
+            { type: 'kpi', focus: 'revenue', col: 4 },
+            { type: 'kpi', focus: 'orders', col: 4 },
+            { type: 'kpi', focus: 'growth', col: 4 },
+            { type: 'bar', col: 12 },
+            { type: 'table', col: 6 },
+            { type: 'summary', col: 6 },
         ],
     },
     {
@@ -229,9 +291,12 @@ const PRESET_TEMPLATES = [
         source: 'expenses',
         description: 'GL expense categories for the selected range',
         widgets: [
-            { type: 'kpi', focus: 'expenses' },
-            { type: 'pie', focus: 'expenses' },
-            { type: 'summary' },
+            { type: 'kpi', focus: 'expenses', col: 4 },
+            { type: 'kpi', focus: 'revenue', col: 4 },
+            { type: 'kpi', focus: 'growth', col: 4 },
+            { type: 'pie', focus: 'expenses', col: 6 },
+            { type: 'summary', col: 6 },
+            { type: 'bar', col: 12 },
         ],
     },
 ];
@@ -245,13 +310,13 @@ function resolveKpiDisplay(focus, liveSnapshot, currency) {
         case 'orders':
             return {
                 title: 'Orders',
-                value: gd.periodOrders != null ? String(gd.periodOrders) : '—',
+                value: gd.periodOrders != null ? String(gd.periodOrders) : EMPTY_VALUE,
                 sub: 'Invoices + POS + storefront',
             };
         case 'growth':
             return {
                 title: 'Growth vs prior',
-                value: kpi?.growth?.value || '—',
+                value: kpi?.growth?.value || EMPTY_VALUE,
                 sub: 'Same-length prior period',
                 trend: kpi?.growth?.value,
                 positive: kpi?.growth?.trend === 'up',
@@ -265,7 +330,7 @@ function resolveKpiDisplay(focus, liveSnapshot, currency) {
         case 'retention':
             return {
                 title: 'Retention',
-                value: kpi?.retention || '—',
+                value: kpi?.retention || EMPTY_VALUE,
                 sub: kpi?.retentionDetail
                     ? `${kpi.retentionDetail.repeatCustomers}/${kpi.retentionDetail.invoicedCustomers} repeat`
                     : 'Invoice customers',
@@ -317,40 +382,49 @@ function LiveBarChart({ salesTrend = [], currency }) {
 
 function LiveLineChart({ salesTrend = [] }) {
     if (!salesTrend.length) {
-        return <p className="text-[10px] text-gray-400 text-center py-6">No trend data for this window</p>;
+        return <p className="py-4 text-center text-[11px] text-gray-400">No trend data for this window</p>;
     }
     const vals = salesTrend.map((m) => Number(m.revenue || m.sales) || 0);
     const max = Math.max(1, ...vals);
     const min = Math.min(0, ...vals);
     const span = Math.max(1, max - min);
-    const w = 200;
-    const h = 72;
+    const w = 280;
+    const h = 88;
     const pts = vals.map((v, i) => {
         const x = vals.length === 1 ? w / 2 : (i / (vals.length - 1)) * w;
-        const y = h - ((v - min) / span) * (h - 8) - 4;
+        const y = h - ((v - min) / span) * (h - 16) - 10;
         return `${x},${y}`;
     });
     const line = pts.join(' ');
     const area = `0,${h} ${line} ${w},${h}`;
     return (
-        <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-24" preserveAspectRatio="none">
-            <polyline fill="none" stroke="#6366F1" strokeWidth="2.5" points={line} />
-            <polygon fill="#6366F1" opacity="0.12" points={area} />
-        </svg>
+        <div className="space-y-1">
+            <svg viewBox={`0 0 ${w} ${h}`} className="h-24 w-full" preserveAspectRatio="none">
+                <polyline fill="none" stroke="#6366F1" strokeWidth="2.5" points={line} />
+                <polygon fill="#6366F1" opacity="0.12" points={area} />
+            </svg>
+            <div className="flex justify-between gap-1 px-0.5">
+                {salesTrend.map((m, i) => (
+                    <span key={i} className="flex-1 truncate text-center text-[9px] font-medium text-gray-400">
+                        {m.date || ''}
+                    </span>
+                ))}
+            </div>
+        </div>
     );
 }
 
-function LivePieChart({ slices = [], currency, mode }) {
+function LivePieChart({ slices = [], currency }) {
     if (!slices.length) {
-        return <p className="text-[10px] text-gray-400 text-center py-6">No breakdown for this window</p>;
+        return <p className="py-4 text-center text-[11px] text-gray-400">No breakdown for this window</p>;
     }
-    const colors = ['#6366F1', '#818CF8', '#A5B4FC', '#C7D2FE', '#E0E7FF', '#4F46E5'];
+    const colors = ['#6366F1', '#818CF8', '#A5B4FC', '#C7D2FE', '#4F46E5', '#312E81'];
     const total = slices.reduce((s, x) => s + x.value, 0) || 1;
     let offset = 0;
     const circumference = 2 * Math.PI * 40;
     return (
-        <div className="flex items-center gap-3">
-            <svg viewBox="0 0 100 100" className="w-20 h-20 shrink-0">
+        <div className="flex items-start gap-3">
+            <svg viewBox="0 0 100 100" className="h-20 w-20 shrink-0">
                 {slices.slice(0, 6).map((slice, i) => {
                     const len = (slice.value / total) * circumference;
                     const el = (
@@ -361,7 +435,7 @@ function LivePieChart({ slices = [], currency, mode }) {
                             r="40"
                             fill="none"
                             stroke={colors[i % colors.length]}
-                            strokeWidth="20"
+                            strokeWidth="18"
                             strokeDasharray={`${len} ${circumference - len}`}
                             strokeDashoffset={-offset}
                             transform="rotate(-90 50 50)"
@@ -371,12 +445,16 @@ function LivePieChart({ slices = [], currency, mode }) {
                     return el;
                 })}
             </svg>
-            <div className="min-w-0 flex-1 space-y-1 max-h-28 overflow-y-auto">
+            <div className="min-w-0 flex-1 space-y-1.5">
                 {slices.slice(0, 6).map((slice, i) => (
-                    <div key={i} className="flex justify-between gap-2 text-[10px]">
-                        <span className="truncate text-gray-600 font-medium">{slice.name}</span>
-                        <span className="shrink-0 font-semibold text-gray-800">
-                            {mode === 'count' ? slice.value : formatCurrency(slice.value, currency)}
+                    <div key={i} className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 text-[11px]">
+                        <span
+                            className="h-2 w-2 shrink-0 rounded-full"
+                            style={{ backgroundColor: colors[i % colors.length] }}
+                        />
+                        <span className="truncate font-medium text-gray-600">{slice.name}</span>
+                        <span className="shrink-0 font-semibold tabular-nums text-gray-900">
+                            {formatCurrency(slice.value, currency)}
                         </span>
                     </div>
                 ))}
@@ -403,101 +481,118 @@ function WidgetPreview({ widget, onRemove, liveSnapshot, currency }) {
         }));
     }, [widget.focus, widget.source, liveSnapshot]);
 
+    const displayTitle = widget.title || buildWidgetTitle({
+        type: widget.type,
+        focus: widget.focus,
+        source: widget.source,
+    });
+
     return (
         <motion.div
             layout
-            initial={{ opacity: 0, scale: 0.95 }}
+            initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
+            exit={{ opacity: 0, scale: 0.98 }}
             className={cn(
-                'group relative rounded-2xl border-2 border-gray-100 bg-white p-4 transition-all hover:border-indigo-200',
-                'max-lg:col-span-full'
+                'group relative col-span-12 rounded-xl border border-gray-200 bg-white p-3.5 shadow-sm',
+                colSpanClass(widget.col)
             )}
-            style={{ gridColumn: `span ${widget.col || 6}` }}
         >
-            <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2 min-w-0">
-                    <GripVertical className="w-4 h-4 text-gray-300 shrink-0" />
-                    <Icon className="w-4 h-4 text-indigo-500 shrink-0" />
-                    <span className="text-sm font-semibold text-gray-800 truncate">{widget.title}</span>
+            <div className="mb-2.5 flex items-center justify-between gap-2">
+                <div className="flex min-w-0 items-center gap-1.5">
+                    <GripVertical className="h-3.5 w-3.5 shrink-0 text-gray-300" />
+                    <Icon className="h-3.5 w-3.5 shrink-0 text-indigo-500" />
+                    <span className="truncate text-xs font-semibold text-gray-800">{displayTitle}</span>
                 </div>
                 <button
                     type="button"
                     onClick={() => onRemove(widget.id)}
-                    className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-lg hover:bg-red-50"
+                    className="rounded-md p-1 opacity-0 transition-opacity hover:bg-red-50 group-hover:opacity-100"
+                    title="Remove widget"
                 >
-                    <Trash2 className="w-3.5 h-3.5 text-red-400" />
+                    <Trash2 className="h-3.5 w-3.5 text-red-400" />
                 </button>
             </div>
 
             {widget.type === 'kpi' && (
-                <div className="text-center py-3">
-                    <p className="text-[10px] font-bold uppercase tracking-wide text-gray-400 mb-1">{kpi.title}</p>
-                    <p className="text-2xl font-semibold text-gray-900 tabular-nums">{kpi.value}</p>
-                    {kpi.trend && (
-                        <span className={cn('text-xs font-semibold mt-1 inline-block', kpi.positive ? 'text-emerald-600' : 'text-red-500')}>
+                <div className="flex min-h-[4.5rem] flex-col justify-center">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">{kpi.title}</p>
+                    <p className="mt-0.5 text-xl font-semibold tabular-nums text-gray-900 sm:text-2xl">{kpi.value}</p>
+                    {kpi.trend ? (
+                        <span className={cn('mt-0.5 text-[11px] font-semibold', kpi.positive ? 'text-emerald-600' : 'text-red-500')}>
                             {kpi.trend}
                         </span>
-                    )}
-                    <p className="text-[10px] text-gray-500 mt-1">{kpi.sub}</p>
+                    ) : null}
+                    <p className="mt-0.5 text-[10px] text-gray-500">{kpi.sub}</p>
                 </div>
             )}
             {widget.type === 'bar' && <LiveBarChart salesTrend={liveSnapshot?.salesTrend} currency={currency} />}
             {widget.type === 'line' && <LiveLineChart salesTrend={liveSnapshot?.salesTrend} />}
             {widget.type === 'pie' && (
-                <LivePieChart
-                    slices={pieSlices}
-                    currency={currency}
-                    mode={widget.focus === 'expenses' ? 'money' : 'money'}
-                />
+                <LivePieChart slices={pieSlices} currency={currency} />
             )}
             {widget.type === 'table' && (
                 liveSnapshot?.topProducts?.length ? (
-                    <div className="space-y-1 max-h-40 overflow-y-auto text-left">
+                    <div className="max-h-44 space-y-1 overflow-y-auto">
                         {liveSnapshot.topProducts.slice(0, 12).map((p, i) => (
-                            <div key={`${p.name}-${i}`} className="flex justify-between gap-2 p-2 bg-gray-50 rounded-lg text-[10px]">
-                                <span className="font-semibold text-gray-800 truncate">{p.name}</span>
-                                <span className="shrink-0 font-bold text-gray-700 tabular-nums">
+                            <div
+                                key={`${p.name}-${i}`}
+                                className="grid grid-cols-[1fr_auto] items-center gap-2 rounded-lg bg-gray-50 px-2.5 py-1.5 text-[11px]"
+                            >
+                                <span className="truncate font-medium text-gray-800">{p.name}</span>
+                                <span className="font-semibold tabular-nums text-gray-900">
                                     {formatCurrency(Number(p.value) || 0, currency)}
                                 </span>
                             </div>
                         ))}
                     </div>
                 ) : (
-                    <p className="text-[10px] text-gray-400 text-center py-3">No product rows for this window</p>
+                    <p className="py-4 text-center text-[11px] text-gray-400">No product rows for this window</p>
                 )
             )}
             {widget.type === 'summary' && (
-                <div className="space-y-2 py-2">
+                <div className="divide-y divide-gray-100">
                     {liveSnapshot?.kpi ? (
                         <>
-                            <div className="flex justify-between text-xs">
-                                <span className="text-gray-500">Range revenue</span>
-                                <span className="font-semibold text-gray-800 tabular-nums">
-                                    {formatCurrency(Number(liveSnapshot.kpi.growthDetail?.periodRevenue) || 0, currency)}
-                                </span>
-                            </div>
-                            <div className="flex justify-between text-xs">
-                                <span className="text-gray-500">Orders</span>
-                                <span className="font-semibold text-gray-800 tabular-nums">
-                                    {liveSnapshot.kpi.growthDetail?.periodOrders ?? '—'}
-                                </span>
-                            </div>
-                            <div className="flex justify-between text-xs">
-                                <span className="text-gray-500">Inventory (at cost)</span>
-                                <span className="font-semibold text-gray-800 tabular-nums">
-                                    {formatCurrency(Number(liveSnapshot.kpi.inventoryAsset) || 0, currency)}
-                                </span>
-                            </div>
-                            <div className="flex justify-between text-sm border-t border-gray-100 pt-2">
-                                <span className="font-semibold text-gray-900">6-mo GL profit</span>
-                                <span className="font-semibold text-emerald-600 tabular-nums">
-                                    {formatCurrency(Number(liveSnapshot.trailingProfit) || 0, currency)}
-                                </span>
-                            </div>
+                            {[
+                                {
+                                    label: 'Range revenue',
+                                    value: formatCurrency(Number(liveSnapshot.kpi.growthDetail?.periodRevenue) || 0, currency),
+                                },
+                                {
+                                    label: 'Orders',
+                                    value: liveSnapshot.kpi.growthDetail?.periodOrders ?? EMPTY_VALUE,
+                                },
+                                {
+                                    label: 'Inventory (at cost)',
+                                    value: formatCurrency(Number(liveSnapshot.kpi.inventoryAsset) || 0, currency),
+                                },
+                                {
+                                    label: 'Trend profit (at cost)',
+                                    value: formatCurrency(Number(liveSnapshot.trailingProfit) || 0, currency),
+                                    emphasize: true,
+                                },
+                            ].map((row) => (
+                                <div
+                                    key={row.label}
+                                    className="grid grid-cols-[1fr_auto] items-center gap-3 py-2 text-xs first:pt-0 last:pb-0"
+                                >
+                                    <span className={cn('text-gray-500', row.emphasize && 'font-semibold text-gray-800')}>
+                                        {row.label}
+                                    </span>
+                                    <span
+                                        className={cn(
+                                            'font-semibold tabular-nums text-gray-900',
+                                            row.emphasize && 'text-emerald-600'
+                                        )}
+                                    >
+                                        {row.value}
+                                    </span>
+                                </div>
+                            ))}
                         </>
                     ) : (
-                        <p className="text-[10px] text-gray-400 text-center py-3">Loading live totals…</p>
+                        <p className="py-4 text-center text-[11px] text-gray-400">Loading live totals...</p>
                     )}
                 </div>
             )}
@@ -516,6 +611,8 @@ export function ReportBuilder({ businessId, currency, dateRange: dashboardDateRa
     const [customFrom, setCustomFrom] = useState(() => isoDateOnly(dashboardDateRange?.from) || '');
     const [customTo, setCustomTo] = useState(() => isoDateOnly(dashboardDateRange?.to) || '');
     const [selectedSource, setSelectedSource] = useState('sales');
+    const [salesChannel, setSalesChannel] = useState('all');
+    const [salesCategory, setSalesCategory] = useState(null);
     const [liveSnapshot, setLiveSnapshot] = useState(null);
     const [savedLayouts, setSavedLayouts] = useState([]);
     const [pdfBusy, setPdfBusy] = useState(false);
@@ -538,7 +635,11 @@ export function ReportBuilder({ businessId, currency, dateRange: dashboardDateRa
             }
             try {
                 setLoadError(null);
-                const filter = mergeReportWindowFilter(dashboardDateRange, reportWindow, customFrom, customTo);
+                const filter = {
+                    ...mergeReportWindowFilter(dashboardDateRange, reportWindow, customFrom, customTo),
+                    channel: normalizeSalesChannel(salesChannel),
+                    category: normalizeSalesCategory(salesCategory),
+                };
                 const bundle = await getAnalyticsBundleAction(resolvedBusinessId, filter);
                 if (cancelled) return;
                 if (bundle.success && bundle.data) {
@@ -552,6 +653,7 @@ export function ReportBuilder({ businessId, currency, dateRange: dashboardDateRa
                         topProducts: bundle.data.topProducts || [],
                         salesTrend: months,
                         categoryData: bundle.data.categoryData || [],
+                        productCategories: bundle.data.productCategories || [],
                         expenseBreakdown: bundle.data.expenseBreakdown || [],
                         appliedRange: bundle.data.range,
                         filter,
@@ -570,7 +672,7 @@ export function ReportBuilder({ businessId, currency, dateRange: dashboardDateRa
         return () => {
             cancelled = true;
         };
-    }, [resolvedBusinessId, dashboardDateRange, reportWindow, customFrom, customTo]);
+    }, [resolvedBusinessId, dashboardDateRange, reportWindow, customFrom, customTo, salesChannel, salesCategory]);
 
     const handleAddWidget = (type) => {
         const focus =
@@ -583,8 +685,13 @@ export function ReportBuilder({ businessId, currency, dateRange: dashboardDateRa
             type: type.id,
             source: selectedSource,
             focus: type.id === 'kpi' || type.id === 'pie' ? focus : undefined,
-            title: `${type.label} — ${DATA_SOURCES.find((s) => s.id === selectedSource)?.label || 'Data'}`,
-            col: type.id === 'kpi' ? 4 : type.id === 'table' || type.id === 'summary' ? 12 : 6,
+            title: buildWidgetTitle({
+                type: type.id,
+                focus: type.id === 'kpi' || type.id === 'pie' ? focus : undefined,
+                source: selectedSource,
+                reportName,
+            }),
+            col: defaultWidgetCol(type.id),
         };
         setWidgets((prev) => [...prev, newWidget]);
         setShowAddWidget(false);
@@ -598,15 +705,21 @@ export function ReportBuilder({ businessId, currency, dateRange: dashboardDateRa
         const generated = template.widgets.map((spec, idx) => {
             const wType = typeof spec === 'string' ? spec : spec.type;
             const focus = typeof spec === 'object' ? spec.focus : undefined;
+            const col = typeof spec === 'object' && spec.col != null
+                ? spec.col
+                : defaultWidgetCol(wType);
             return {
                 id: `tpl-${template.id}-${idx}-${idCounterRef.current++}`,
                 type: wType,
                 source: template.source,
                 focus,
-                title: focus
-                    ? `${WIDGET_TYPES.find((t) => t.id === wType)?.label || wType} — ${focus}`
-                    : `${WIDGET_TYPES.find((t) => t.id === wType)?.label || wType} — ${template.name}`,
-                col: wType === 'kpi' ? 4 : wType === 'table' || wType === 'summary' ? 12 : 6,
+                title: buildWidgetTitle({
+                    type: wType,
+                    focus,
+                    source: template.source,
+                    reportName: template.name,
+                }),
+                col,
             };
         });
         setWidgets(generated);
@@ -624,6 +737,8 @@ export function ReportBuilder({ businessId, currency, dateRange: dashboardDateRa
             reportWindow,
             customFrom,
             customTo,
+            salesChannel,
+            salesCategory,
             updatedAt: new Date().toISOString(),
         };
         const list = loadSavedReports(resolvedBusinessId);
@@ -642,6 +757,10 @@ export function ReportBuilder({ businessId, currency, dateRange: dashboardDateRa
         if (entry.reportWindow) setReportWindow(entry.reportWindow);
         if (entry.customFrom) setCustomFrom(entry.customFrom);
         if (entry.customTo) setCustomTo(entry.customTo);
+        if (entry.salesChannel) setSalesChannel(normalizeSalesChannel(entry.salesChannel));
+        if (entry.salesCategory !== undefined) {
+            setSalesCategory(normalizeSalesCategory(entry.salesCategory));
+        }
         e.target.value = '';
     };
 
@@ -652,6 +771,8 @@ export function ReportBuilder({ businessId, currency, dateRange: dashboardDateRa
             reportWindow,
             customFrom,
             customTo,
+            salesChannel,
+            salesCategory,
             widgets,
             businessId: resolvedBusinessId,
             exportedAt: new Date().toISOString(),
@@ -732,12 +853,12 @@ export function ReportBuilder({ businessId, currency, dateRange: dashboardDateRa
                         <div className="rounded-xl bg-white/80 border border-emerald-100 p-3">
                             <p className="text-[10px] font-bold text-gray-500 uppercase">Orders</p>
                             <p className="text-sm font-semibold text-gray-900 tabular-nums">
-                                {liveSnapshot.kpi.growthDetail?.periodOrders ?? '—'}
+                                {liveSnapshot.kpi.growthDetail?.periodOrders ?? EMPTY_VALUE}
                             </p>
                         </div>
                         <div className="rounded-xl bg-white/80 border border-emerald-100 p-3">
                             <p className="text-[10px] font-bold text-gray-500 uppercase">Growth</p>
-                            <p className="text-sm font-semibold text-gray-900">{liveSnapshot.kpi.growth?.value ?? '—'}</p>
+                            <p className="text-sm font-semibold text-gray-900">{liveSnapshot.kpi.growth?.value ?? EMPTY_VALUE}</p>
                         </div>
                         <div className="rounded-xl bg-white/80 border border-emerald-100 p-3">
                             <p className="text-[10px] font-bold text-gray-500 uppercase">Inventory (at cost)</p>
@@ -760,7 +881,7 @@ export function ReportBuilder({ businessId, currency, dateRange: dashboardDateRa
                         onChange={handleLoadSaved}
                         aria-label="Load saved report layout"
                     >
-                        <option value="">Load saved…</option>
+                        <option value="">Load saved...</option>
                         {savedLayouts.map((s) => (
                             <option key={s.id} value={s.id}>{s.name}</option>
                         ))}
@@ -835,7 +956,7 @@ export function ReportBuilder({ businessId, currency, dateRange: dashboardDateRa
                         disabled={!liveSnapshot?.kpi || pdfBusy}
                         onClick={handleExportPdf}
                     >
-                        <Download className="w-4 h-4 mr-2" /> {pdfBusy ? 'Preparing…' : 'Export PDF'}
+                        <Download className="w-4 h-4 mr-2" /> {pdfBusy ? 'Preparing...' : 'Export PDF'}
                     </Button>
                     <Button className="h-10 flex-1 rounded-xl bg-emerald-600 font-bold text-white hover:bg-emerald-700 sm:flex-none" type="button" onClick={handleSaveLayout}>
                         <Save className="w-4 h-4 mr-2" /> Save report
@@ -843,24 +964,50 @@ export function ReportBuilder({ businessId, currency, dateRange: dashboardDateRa
                 </div>
             </div>
 
-            <div className="flex min-w-0 max-w-full gap-2 overflow-x-auto overscroll-x-contain pb-2 snap-x snap-mandatory scrollbar-none">
+            {(selectedSource === 'sales' || widgets.some((w) => w.source === 'sales')) && (
+                <SalesInsightsFilterBar
+                    channel={salesChannel}
+                    category={salesCategory}
+                    categories={liveSnapshot?.productCategories || []}
+                    from={
+                        toAnalyticsIsoDate(liveSnapshot?.appliedRange?.from)
+                        || toAnalyticsIsoDate(liveSnapshot?.filter?.from)
+                        || customFrom
+                    }
+                    to={
+                        toAnalyticsIsoDate(liveSnapshot?.appliedRange?.to)
+                        || toAnalyticsIsoDate(liveSnapshot?.filter?.to)
+                        || customTo
+                    }
+                    periodHint={reportWindow === 'header' ? 'report window matches hub header' : 'report window'}
+                    onChannelChange={(next) => setSalesChannel(normalizeSalesChannel(next))}
+                    onCategoryChange={(next) => setSalesCategory(normalizeSalesCategory(next))}
+                />
+            )}
+
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-5">
                 {PRESET_TEMPLATES.map((tpl) => (
                     <button
                         key={tpl.id}
                         type="button"
                         onClick={() => handleLoadTemplate(tpl)}
-                        className="flex w-[min(100%,18rem)] shrink-0 snap-start items-center gap-2 rounded-xl border-2 border-gray-100 bg-white px-4 py-2 text-left transition-all hover:border-indigo-200 hover:bg-indigo-50"
+                        className={cn(
+                            'flex items-start gap-2 rounded-xl border bg-white px-3 py-2.5 text-left transition-all hover:border-indigo-200 hover:bg-indigo-50/50',
+                            reportName === tpl.name && widgets.length > 0
+                                ? 'border-indigo-300 ring-1 ring-indigo-100'
+                                : 'border-gray-200'
+                        )}
                     >
-                        <Database className="w-4 h-4 text-indigo-500 shrink-0" />
+                        <Database className="mt-0.5 h-4 w-4 shrink-0 text-indigo-500" />
                         <div className="min-w-0">
-                            <p className="text-xs font-bold text-gray-800">{tpl.name}</p>
-                            <p className="text-[10px] text-gray-400 truncate">{tpl.description}</p>
+                            <p className="text-xs font-semibold text-gray-800">{tpl.name}</p>
+                            <p className="mt-0.5 line-clamp-2 text-[10px] leading-snug text-gray-400">{tpl.description}</p>
                         </div>
                     </button>
                 ))}
             </div>
 
-            <div className="grid min-h-[400px] grid-cols-1 gap-4 lg:grid-cols-12">
+            <div className="grid min-h-[280px] grid-cols-12 gap-3">
                 <AnimatePresence>
                     {widgets.map((widget) => (
                         <WidgetPreview
@@ -874,10 +1021,12 @@ export function ReportBuilder({ businessId, currency, dateRange: dashboardDateRa
                 </AnimatePresence>
 
                 {widgets.length === 0 && (
-                    <div className="col-span-12 flex flex-col items-center justify-center py-20 text-center">
-                        <BarChart3 className="w-12 h-12 text-gray-200 mb-4" />
-                        <h3 className="text-lg font-semibold text-gray-400">No widgets yet</h3>
-                        <p className="text-sm text-gray-300 mt-1">Pick a template or add a widget to build your report</p>
+                    <div className="col-span-12 flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-200 bg-gray-50/80 py-14 text-center">
+                        <BarChart3 className="mb-3 h-10 w-10 text-gray-200" />
+                        <h3 className="text-sm font-semibold text-gray-500">Choose a template to start</h3>
+                        <p className="mt-1 max-w-sm text-xs text-gray-400">
+                            Templates fill a full 12-column layout with live KPIs, charts, and summaries.
+                        </p>
                     </div>
                 )}
             </div>

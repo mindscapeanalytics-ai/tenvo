@@ -227,19 +227,14 @@ export function AIInsightsPanel({ businessId, category = 'retail-shop', dateRang
 
     return (
         <div className="space-y-4">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-wine-500 to-indigo-600 flex items-center justify-center">
-                        <Brain className="w-5 h-5 text-white" />
-                    </div>
-                    <div>
-                        <h2 className="text-lg font-semibold text-gray-900">AI Analytics & Insights</h2>
-                        <p className="text-xs text-gray-400">Predictive analytics · Anomaly detection · Smart recommendations</p>
-                    </div>
-                </div>
-                <button onClick={loadAll} className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors">
-                    <RefreshCcw className="w-4 h-4 text-gray-500" />
+            <div className="flex justify-end">
+                <button
+                    type="button"
+                    onClick={loadAll}
+                    className="rounded-lg bg-gray-100 p-2 transition-colors hover:bg-gray-200"
+                    title="Refresh AI insights"
+                >
+                    <RefreshCcw className="h-4 w-4 text-gray-500" />
                 </button>
             </div>
 
