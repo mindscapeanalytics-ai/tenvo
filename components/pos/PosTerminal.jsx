@@ -39,7 +39,9 @@ import { PosOfflineBanner } from '@/components/pos/shared/PosOfflineBanner';
 import { PosMobileCheckoutBar } from '@/components/pos/shared/PosMobileCheckoutBar';
 import { usePosSettings } from '@/lib/hooks/usePosSettings';
 import { usePosOffline } from '@/lib/hooks/usePosOffline';
+import { usePosOfflineCatalog } from '@/lib/hooks/usePosOfflineCatalog';
 import { usePosProductAdd } from '@/lib/hooks/usePosProductAdd';
+import { planHasFeatureWithPackaging } from '@/lib/subscription/effectivePlanAccess';
 import { normalizePosCategoryKey } from '@/lib/config/posDomains';
 import { usePosFullscreen } from '@/lib/hooks/usePosFullscreen';
 import { usePosReceipt } from '@/lib/hooks/usePosReceipt';
@@ -694,7 +696,7 @@ export function PosTerminal({
     session,
     category: categoryProp,
 }) {
-    const { business, currencySymbol } = useBusiness();
+    const { business, currencySymbol, planTier } = useBusiness();
     const category = categoryProp || business?.category || 'retail-shop';
     const [cart, setCart] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
@@ -711,9 +713,21 @@ export function PosTerminal({
     const [showCameraScanner, setShowCameraScanner] = useState(false);
     const [pharmacyProduct, setPharmacyProduct] = useState(null);
     const posSettings = usePosSettings();
+    const canOfflinePos =
+        Boolean(posSettings.offlineModeEnabled)
+        && planHasFeatureWithPackaging(planTier, 'offline_pos_mode', business?.settings);
     const { isOnline, pendingCount, isSyncing, queueSale, syncPending } = usePosOffline(businessId, {
-        enabled: posSettings.offlineModeEnabled,
+        enabled: canOfflinePos,
     });
+    const { catalogReady, catalogProducts } = usePosOfflineCatalog(businessId, {
+        enabled: canOfflinePos,
+        products,
+    });
+    const sellableProducts = useMemo(() => {
+        if (Array.isArray(products) && products.length > 0) return products;
+        if (!isOnline && catalogReady && catalogProducts.length > 0) return catalogProducts;
+        return products;
+    }, [products, isOnline, catalogReady, catalogProducts]);
     const [isProcessing, setIsProcessing] = useState(false);
     const [isStartingSession, setIsStartingSession] = useState(false);
     const [mobilePane, setMobilePane] = useState('browse');
@@ -794,8 +808,8 @@ export function PosTerminal({
     );
 
     const categories = useMemo(
-        () => buildPosCategoryChips(products, posUi.defaultCategories, posUi.maxCategoryChips),
-        [products, posUi.defaultCategories, posUi.maxCategoryChips]
+        () => buildPosCategoryChips(sellableProducts, posUi.defaultCategories, posUi.maxCategoryChips),
+        [sellableProducts, posUi.defaultCategories, posUi.maxCategoryChips]
     );
 
     const filteredCustomers = useMemo(() => {
@@ -883,14 +897,14 @@ export function PosTerminal({
     const addToCart = tryAddProduct;
 
     const handleBarcodeFromCamera = useCallback((code) => {
-        void handleScanCode(products, code, { clearSearch: () => setSearchTerm('') });
-    }, [handleScanCode, products]);
+        void handleScanCode(sellableProducts, code, { clearSearch: () => setSearchTerm('') });
+    }, [handleScanCode, sellableProducts]);
 
     const handleQuantityChange = useCallback((idx, qty) => {
         setCart((prev) => prev.map((item, i) => {
             if (i !== idx) return item;
             const cap = item.maxStock ?? getProductAvailableStock(
-                products.find((p) => p.id === item.productId)
+                sellableProducts.find((p) => p.id === item.productId)
             );
             const next = Math.max(1, Math.min(Number(qty) || 1, cap > 0 ? cap : Number(qty) || 1));
             if (cap > 0 && next > cap) {
@@ -898,7 +912,7 @@ export function PosTerminal({
             }
             return { ...item, quantity: cap > 0 ? Math.min(next, cap) : next };
         }));
-    }, [products]);
+    }, [sellableProducts]);
 
     const handleRemoveItem = useCallback((idx) => {
         setCart(prev => prev.filter((_, i) => i !== idx));
@@ -1008,7 +1022,13 @@ export function PosTerminal({
                 payments: splitPayments || undefined,
             });
 
-            if (!isOnline && posSettings.offlineModeEnabled) {
+            if (!isOnline && canOfflinePos) {
+                if (!catalogReady) {
+                    toast.error('Connect once to cache products before selling offline', {
+                        id: 'pos-offline',
+                    });
+                    return;
+                }
                 await queueSale(payload);
                 toast.success('Sale queued offline', { id: 'pos-offline' });
                 setCart([]);
@@ -1290,6 +1310,8 @@ export function PosTerminal({
                 isOnline={isOnline}
                 pendingCount={pendingCount}
                 isSyncing={isSyncing}
+                catalogReady={catalogReady}
+                offlineEnabled={canOfflinePos}
                 onSync={syncPending}
                 className="mx-2 mt-1 lg:mx-3"
             />
@@ -1297,7 +1319,7 @@ export function PosTerminal({
             <div className="hidden lg:flex flex-1 min-h-0 overflow-hidden">
                 <section className="flex-1 min-w-0 flex flex-col min-h-0 bg-white border-r border-gray-100">
                     <PosProductGrid
-                        products={products}
+                        products={sellableProducts}
                         categories={categories}
                         activeCategory={activeCategory}
                         onCategoryChange={setActiveCategory}
@@ -1322,7 +1344,7 @@ export function PosTerminal({
                     <>
                         <div className="flex-1 min-h-0 flex flex-col bg-white">
                             <PosProductGrid
-                                products={products}
+                                products={sellableProducts}
                                 categories={categories}
                                 activeCategory={activeCategory}
                                 onCategoryChange={setActiveCategory}

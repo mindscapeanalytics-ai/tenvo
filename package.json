@@ -72,6 +72,7 @@
     "verify:about-storefront": "bun scripts/verify-about-storefront.mjs",
     "verify:hub-business-id": "bun scripts/verify-hub-business-id.mjs",
     "verify:finance-gl": "node scripts/verify-finance-gl.mjs",
+    "verify:pos-offline": "node scripts/verify-pos-offline.mjs",
     "verify:domain-operations": "node scripts/verify-domain-operations.mjs",
     "verify:storefront-operations-db": "node scripts/verify-storefront-operations-db.mjs",
     "verify:storefront-order-emails": "node scripts/verify-storefront-order-emails.mjs",

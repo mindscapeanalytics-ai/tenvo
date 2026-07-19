@@ -9,10 +9,22 @@ export function PosOfflineBanner({
     isOnline,
     pendingCount = 0,
     isSyncing = false,
+    catalogReady = true,
+    offlineEnabled = true,
     onSync,
     className,
 }) {
+    if (!offlineEnabled) return null;
     if (isOnline && pendingCount <= 0) return null;
+
+    let message;
+    if (!isOnline && !catalogReady) {
+        message = 'Offline - product cache missing. Reconnect to enable sales.';
+    } else if (!isOnline) {
+        message = 'Offline - sales will queue and sync when connected';
+    } else {
+        message = `${pendingCount} offline sale${pendingCount === 1 ? '' : 's'} pending sync`;
+    }
 
     return (
         <div
@@ -26,11 +38,7 @@ export function PosOfflineBanner({
         >
             <div className="flex items-center gap-2 min-w-0">
                 <WifiOff className="w-3.5 h-3.5 shrink-0" />
-                <span className="truncate">
-                    {!isOnline
-                        ? 'Offline — sales will queue and sync when connected'
-                        : `${pendingCount} offline sale${pendingCount === 1 ? '' : 's'} pending sync`}
-                </span>
+                <span className="truncate">{message}</span>
             </div>
             {isOnline && pendingCount > 0 && onSync && (
                 <Button

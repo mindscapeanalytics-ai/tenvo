@@ -18,17 +18,22 @@ import { useBusiness } from '@/lib/context/BusinessContext';
 import { posAPI } from '@/lib/api/pos';
 import { DEFAULT_POS_SETTINGS } from '@/lib/config/posSettings';
 import { resolvePosVariant } from '@/lib/config/posDomains';
+import { planHasFeatureWithPackaging } from '@/lib/subscription/effectivePlanAccess';
 import toast from 'react-hot-toast';
 
 /**
  * Tenant POS preferences — stored at business.settings.pos
  */
 export function PosSettingsPanel({ category }) {
-    const { business, updateBusiness } = useBusiness();
+    const { business, updateBusiness, planTier } = useBusiness();
     const businessId = business?.id;
     const variant = resolvePosVariant(category);
     const isRestaurant = variant === 'restaurant';
-
+    const canOfflinePos = planHasFeatureWithPackaging(
+        planTier,
+        'offline_pos_mode',
+        business?.settings
+    );
     const [settings, setSettings] = useState({ ...DEFAULT_POS_SETTINGS });
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -157,9 +162,19 @@ export function PosSettingsPanel({ category }) {
                         />
                         <ToggleRow
                             label="Offline sale queue"
-                            hint="Queue sales locally when offline; sync when connection returns."
-                            checked={settings.offlineModeEnabled}
-                            onCheckedChange={(v) => patch('offlineModeEnabled', v)}
+                            hint={
+                                canOfflinePos
+                                    ? 'Queue sales locally when offline; sync when connection returns.'
+                                    : 'Requires a plan with Offline POS Mode (Starter+).'
+                            }
+                            checked={settings.offlineModeEnabled && canOfflinePos}
+                            onCheckedChange={(v) => {
+                                if (!canOfflinePos) {
+                                    toast.error('Upgrade to enable Offline POS Mode');
+                                    return;
+                                }
+                                patch('offlineModeEnabled', v);
+                            }}
                         />
                         <ToggleRow
                             label="Loyalty at till"

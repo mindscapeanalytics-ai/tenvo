@@ -35,7 +35,9 @@ import { PosMobileCheckoutBar } from '@/components/pos/shared/PosMobileCheckoutB
 import { PosOfflineBanner } from '@/components/pos/shared/PosOfflineBanner';
 import { usePosSettings } from '@/lib/hooks/usePosSettings';
 import { usePosOffline } from '@/lib/hooks/usePosOffline';
+import { usePosOfflineCatalog } from '@/lib/hooks/usePosOfflineCatalog';
 import { usePosProductAdd } from '@/lib/hooks/usePosProductAdd';
+import { planHasFeatureWithPackaging } from '@/lib/subscription/effectivePlanAccess';
 import {
     getPosShellHeightClass,
     POS_SHELL_FOOTER,
@@ -505,7 +507,7 @@ export function SuperStorePOS({
     businessId, products = [], customers = [], onStartSession, onCloseSession,
     onCompleteSale, currency = 'Rs.', session, taxConfig: taxConfigProp, category: categoryProp,
 }) {
-    const { business, currencySymbol } = useBusiness();
+    const { business, currencySymbol, planTier } = useBusiness();
     const category = categoryProp || business?.category || 'supermarket';
     const {
         taxMode,
@@ -519,9 +521,25 @@ export function SuperStorePOS({
     } = usePosTaxConfig(category);
     const taxConfig = taxConfigProp || loadedTaxConfig;
     const domainFlags = getPosDomainFlags(category);
+    const posSettings = usePosSettings();
+    const canOfflinePos =
+        Boolean(posSettings.offlineModeEnabled)
+        && planHasFeatureWithPackaging(planTier, 'offline_pos_mode', business?.settings);
+    const { isOnline, pendingCount, isSyncing, queueSale, syncPending } = usePosOffline(businessId, {
+        enabled: canOfflinePos,
+    });
+    const { catalogReady, catalogProducts } = usePosOfflineCatalog(businessId, {
+        enabled: canOfflinePos,
+        products,
+    });
+    const sellableProducts = useMemo(() => {
+        if (Array.isArray(products) && products.length > 0) return products;
+        if (!isOnline && catalogReady && catalogProducts.length > 0) return catalogProducts;
+        return products;
+    }, [products, isOnline, catalogReady, catalogProducts]);
     const departments = useMemo(
-        () => buildPosDepartments(category, products, posUi.maxCategoryChips + 2),
-        [category, products, posUi.maxCategoryChips]
+        () => buildPosDepartments(category, sellableProducts, posUi.maxCategoryChips + 2),
+        [category, sellableProducts, posUi.maxCategoryChips]
     );
     const domainConfig = getDomainConfig(category);
     const documentLabel = posUi.receiptLabel || domainConfig?.label_overrides?.invoice || 'Receipt';
@@ -549,13 +567,9 @@ export function SuperStorePOS({
     const [lastScannedItem, setLastScannedItem] = useState(null);
     const discountInputRef = useRef(null);
     const { heldOrders, holdSale, resumeLastHeld } = usePosHeldSales(businessId || business?.id);
-    const posSettings = usePosSettings();
     const { requestApproval, managerPinDialog } = usePosManagerGate({
         businessId: businessId || business?.id,
         posSettings,
-    });
-    const { isOnline, pendingCount, isSyncing, queueSale, syncPending } = usePosOffline(businessId, {
-        enabled: posSettings.offlineModeEnabled,
     });
     const { containerRef, isFullscreen, toggleFullscreen } = usePosFullscreen();
     const {
@@ -643,10 +657,10 @@ export function SuperStorePOS({
 
     // --- Derived Data --------------------------------------------------------
 
-    const productCounts = useMemo(() => countProductsByDepartment(products), [products]);
+    const productCounts = useMemo(() => countProductsByDepartment(sellableProducts), [sellableProducts]);
 
     const filteredProducts = useMemo(() => {
-        let items = filterProductsByDepartment(products, activeDepartment);
+        let items = filterProductsByDepartment(sellableProducts, activeDepartment);
         if (searchTerm) {
             const lower = searchTerm.toLowerCase();
             items = items.filter(p =>
@@ -656,7 +670,7 @@ export function SuperStorePOS({
             );
         }
         return items;
-    }, [products, activeDepartment, searchTerm]);
+    }, [sellableProducts, activeDepartment, searchTerm]);
 
     const handlePaymentMethodSelect = useCallback((method) => {
         if (method === 'split') {
@@ -691,14 +705,14 @@ export function SuperStorePOS({
 
     const handleBarcodeScan = useCallback((barcode) => {
         setIsScanning(true);
-        void handleScanCode(products, barcode, { clearSearch: () => setSearchTerm('') }).then((product) => {
+        void handleScanCode(sellableProducts, barcode, { clearSearch: () => setSearchTerm('') }).then((product) => {
             if (!product) {
                 setLastScannedItem(`[WARNING] "${barcode}" not found`);
                 setTimeout(() => setLastScannedItem(null), 2000);
             }
             setTimeout(() => setIsScanning(false), 300);
         });
-    }, [products, handleScanCode]);
+    }, [sellableProducts, handleScanCode]);
 
     const handleQuantityChange = useCallback((idx, qty) => {
         setCart(prev => prev.map((item, i) => i === idx ? { ...item, quantity: Math.round(qty * 100) / 100 } : item));
@@ -773,9 +787,15 @@ export function SuperStorePOS({
                 payments: splitPayments || undefined,
             });
 
-            if (!isOnline && posSettings.offlineModeEnabled) {
+            if (!isOnline && canOfflinePos) {
+                if (!catalogReady) {
+                    toast.error('Connect once to cache products before selling offline', {
+                        id: 'pos-offline',
+                    });
+                    return;
+                }
                 await queueSale(payload);
-                toast.success('Sale saved offline — will sync when online', { id: 'pos-offline' });
+                toast.success('Sale saved offline - will sync when online', { id: 'pos-offline' });
                 setCart([]);
                 setCustomer(null);
                 setDiscount(0);
@@ -940,7 +960,14 @@ export function SuperStorePOS({
             <div className="hidden lg:flex flex-1 min-h-0 overflow-hidden">
                 <div className="flex-1 min-w-0 bg-white flex flex-col min-h-0">
                     <PosSessionBar hasSession={hasSession} terminalLabel={terminalLabel} sessionStartedLabel={sessionStartedLabel} isStartingSession={isStartingSession} onStartSession={handleStartSession} onCloseSession={hasSession ? () => setShowCloseShiftDialog(true) : undefined} />
-                    <PosOfflineBanner isOnline={isOnline} pendingCount={pendingCount} isSyncing={isSyncing} onSync={syncPending} />
+                    <PosOfflineBanner
+                        isOnline={isOnline}
+                        pendingCount={pendingCount}
+                        isSyncing={isSyncing}
+                        catalogReady={catalogReady}
+                        offlineEnabled={canOfflinePos}
+                        onSync={syncPending}
+                    />
                     <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 bg-white shrink-0">
                         <BarcodeScannerInput onScan={handleBarcodeScan} searchTerm={searchTerm} onSearchChange={setSearchTerm} isScanning={isScanning} />
                         <div className="flex items-center gap-1.5 shrink-0">
@@ -980,7 +1007,15 @@ export function SuperStorePOS({
                     <>
                         <div className="flex-1 min-h-0 flex flex-col bg-white overflow-hidden">
                             <PosSessionBar hasSession={hasSession} terminalLabel={terminalLabel} sessionStartedLabel={sessionStartedLabel} isStartingSession={isStartingSession} onStartSession={handleStartSession} onCloseSession={hasSession ? () => setShowCloseShiftDialog(true) : undefined} className="mx-2 mt-2 max-lg:mx-1.5 max-lg:mt-1 max-lg:pt-[env(safe-area-inset-top)]" />
-                            <PosOfflineBanner isOnline={isOnline} pendingCount={pendingCount} isSyncing={isSyncing} onSync={syncPending} className="mx-2 max-lg:mx-1.5" />
+                            <PosOfflineBanner
+                                isOnline={isOnline}
+                                pendingCount={pendingCount}
+                                isSyncing={isSyncing}
+                                catalogReady={catalogReady}
+                                offlineEnabled={canOfflinePos}
+                                onSync={syncPending}
+                                className="mx-2 max-lg:mx-1.5"
+                            />
                             <div className="flex items-center gap-1.5 px-3 max-lg:px-2 py-2 max-lg:py-1.5 border-b shrink-0">
                                 <BarcodeScannerInput onScan={handleBarcodeScan} searchTerm={searchTerm} onSearchChange={setSearchTerm} isScanning={isScanning} />
                                 {showCamera && (
