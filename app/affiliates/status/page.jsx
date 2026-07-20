@@ -26,16 +26,37 @@ export default async function AffiliateStatusPage({ searchParams }) {
           referrals: {
             orderBy: { created_at: 'desc' },
             take: 20,
-            include: {
-              businesses: {
-                select: { business_name: true, domain: true, plan_tier: true }
-              }
+            select: {
+              id: true,
+              affiliate_id: true,
+              business_id: true,
+              status: true,
+              commission_earned: true,
+              created_at: true,
             }
           }
         }
       });
+
       if (!affiliate) {
         error = "No partner account found for that email address.";
+      } else if (affiliate.referrals?.length > 0) {
+        // Batch-fetch business names for all referral rows
+        const bizIds = [...new Set(affiliate.referrals.map(r => r.business_id).filter(Boolean))];
+        if (bizIds.length > 0) {
+          const businesses = await prisma.businesses.findMany({
+            where: { id: { in: bizIds } },
+            select: { id: true, business_name: true, domain: true, plan_tier: true }
+          });
+          const bizMap = Object.fromEntries(businesses.map(b => [b.id, b]));
+          affiliate = {
+            ...affiliate,
+            referrals: affiliate.referrals.map(r => ({
+              ...r,
+              businesses: bizMap[r.business_id] || null,
+            }))
+          };
+        }
       }
     } catch (err) {
       console.error(err);
