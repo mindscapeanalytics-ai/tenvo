@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic';
 import pool from '@/lib/db';
-import { withApiAuth } from '@/lib/api/_shared/middleware';
+import { withApiPermission } from '@/lib/api/_shared/middleware';
 import { apiSuccess, apiError } from '@/lib/api/_shared/response';
 
 /**
@@ -9,7 +9,7 @@ import { apiSuccess, apiError } from '@/lib/api/_shared/response';
  *
  * Authentication: Required (withApiAuth middleware)
  */
-export const GET = withApiAuth(async (request, { businessId }) => {
+export const GET = withApiPermission('inventory.view', async (request, { businessId }) => {
     const { searchParams } = new URL(request.url);
     const limit = Math.min(parseInt(searchParams.get('limit') || '50', 10), 200);
 
@@ -37,7 +37,7 @@ export const GET = withApiAuth(async (request, { businessId }) => {
     }
 });
 
-export const POST = withApiAuth(async (request, { businessId, parsedBody }) => {
+export const POST = withApiPermission('inventory.edit', async (request, { businessId, parsedBody }) => {
     const body = parsedBody || {};
     const { name, category, warehouse_id, scheduled_date } = body;
 

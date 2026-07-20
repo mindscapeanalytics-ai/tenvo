@@ -40,8 +40,9 @@ const SectionHeader = ({ title, icon: Icon, color }) => (
  * @param {string} props.businessId
  * @param {string} [props.category] optional, reserved for future domain-specific report chrome
  * @param {string} [props.initialReport] pl | bs | cf | tb | day-book | aging
+ * @param {number} [props.refreshKey] bump to invalidate cached statement payloads after GL mutations
  */
-export default function FinancialReports({ businessId, initialReport = 'pl' }) {
+export default function FinancialReports({ businessId, initialReport = 'pl', refreshKey = 0 }) {
     const { business, currency: businessCurrencyCode, regionalPack } = useBusiness();
     const reportCurrency = resolveDisplayCurrency(
       { currency: businessCurrencyCode || business?.currency },
@@ -62,6 +63,12 @@ export default function FinancialReports({ businessId, initialReport = 'pl' }) {
             setActiveTab(initialReport);
         }
     }, [initialReport]);
+
+    useEffect(() => {
+        setPlData(null);
+        setBsData(null);
+        setCfData(null);
+    }, [businessId, refreshKey]);
 
     // Date States
     const [startDate, setStartDate] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0]); // First day of month

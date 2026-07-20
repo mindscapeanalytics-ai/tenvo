@@ -204,7 +204,8 @@ function mergeInventoryServerRow(prev, srv) {
  * @param {string} props.businessId
  * @param {string} [props.category]
  * @param {any} [props.domainKnowledge]
- * @param {() => void} [props.refreshData]
+ * @param {() => void} [props.refreshData] Soft grid refresh after single-product mutations
+ * @param {() => void} [props.resyncCatalog] Full catalog resync (import, lean→grid upgrade)
  * @param {Function} [props.onUpdate]
  * @param {Function} [props.onAdd]
  * @param {Function} [props.onEdit]
@@ -241,11 +242,31 @@ export function InventoryManager({
   onStockTransfer,
   onGeneratePO,
   refreshData,
+  resyncCatalog,
 }) {
   const { regionalStandards, currency, currencySymbol, regionalPack, business } = useBusiness();
   const dataCtx = useDataOptional();
   const upsertProductInState = dataCtx?.upsertProductInState;
   const scheduleAnalyticsRefresh = dataCtx?.scheduleAnalyticsRefresh;
+  /** Prefer full catalog when provided; fall back to soft refresh for standalone hosts. */
+  const runCatalogResync = useCallback(async () => {
+    if (typeof resyncCatalog === 'function') {
+      await resyncCatalog();
+      return;
+    }
+    if (typeof refreshData === 'function') {
+      await refreshData();
+    }
+  }, [resyncCatalog, refreshData]);
+  const runSoftRefresh = useCallback(async () => {
+    if (typeof refreshData === 'function') {
+      await refreshData();
+      return;
+    }
+    if (typeof resyncCatalog === 'function') {
+      await resyncCatalog();
+    }
+  }, [refreshData, resyncCatalog]);
   const standards = regionalStandards || {
     currencySymbol: currencySymbol || '₨',
     currency: currency || 'PKR',
@@ -311,7 +332,7 @@ export function InventoryManager({
   // Internal Data Fetching (Only if products not passed or empty, and not controlled by parent)
   const fetchProducts = useCallback(async () => {
     // If businessId missing OR products provided OR parent controls data refresh => SKIP
-    if (!businessId || (initialProducts?.length > 0) || refreshData) return;
+    if (!businessId || (initialProducts?.length > 0) || refreshData || resyncCatalog) return;
     setLoading(true);
     try {
       const res = await getProductsAction(businessId, { includeSerials: false, detailLevel: 'grid' });
@@ -329,7 +350,7 @@ export function InventoryManager({
       setLoading(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [businessId, refreshData]);
+  }, [businessId, refreshData, resyncCatalog]);
 
   useEffect(() => {
     queueMicrotask(() => {
@@ -340,8 +361,8 @@ export function InventoryManager({
   const refreshInventory = useCallback(async () => {
     setLoading(true);
     try {
-      if (typeof refreshData === 'function') {
-        await refreshData();
+      if (typeof resyncCatalog === 'function' || typeof refreshData === 'function') {
+        await runCatalogResync();
       } else if (businessId) {
         const res = await getProductsAction(businessId, { includeSerials: false, detailLevel: 'grid' });
         if (res.success) {
@@ -359,11 +380,11 @@ export function InventoryManager({
     } finally {
       setLoading(false);
     }
-  }, [refreshData, businessId]);
+  }, [resyncCatalog, refreshData, runCatalogResync, businessId]);
 
   const reloadProductsSilent = useCallback(async () => {
-    if (typeof refreshData === 'function') {
-      await refreshData();
+    if (typeof resyncCatalog === 'function' || typeof refreshData === 'function') {
+      await runSoftRefresh();
       return;
     }
     if (businessId) {
@@ -372,7 +393,7 @@ export function InventoryManager({
         setProducts(deduplicateProducts(res.products));
       }
     }
-  }, [refreshData, businessId]);
+  }, [resyncCatalog, refreshData, runSoftRefresh, businessId]);
 
   const hasQuickAddTemplates = useMemo(
     () => getTemplatesForDomain(category).length > 0,
@@ -514,9 +535,9 @@ export function InventoryManager({
       }
       setShowImportModal(false);
       
-      // Refresh the products list to show new data
-      if (refreshData) {
-        await refreshData();
+      // Full catalog resync — import can add/update many rows
+      if (typeof resyncCatalog === 'function' || typeof refreshData === 'function') {
+        await runCatalogResync();
       } else {
         await fetchProducts();
       }
@@ -562,8 +583,8 @@ export function InventoryManager({
     let cancelled = false;
     (async () => {
       try {
-        if (typeof refreshData === 'function') {
-          await refreshData();
+        if (typeof resyncCatalog === 'function' || typeof refreshData === 'function') {
+          await runCatalogResync();
         } else {
           const res = await getProductsAction(businessId, {
             includeSerials: false,
@@ -582,7 +603,7 @@ export function InventoryManager({
     return () => {
       cancelled = true;
     };
-  }, [viewMode, businessId, refreshData, needsLeanGridUpgrade]);
+  }, [viewMode, businessId, refreshData, resyncCatalog, runCatalogResync, needsLeanGridUpgrade]);
 
   const handleMobileViewModeChange = useCallback((mode) => {
     const normalized = normalizeInventoryMobileView(mode);
@@ -2752,7 +2773,8 @@ export function InventoryManager({
                   product={selectedProduct}
                   businessId={selectedProduct.business_id || business?.id}
                   onVariantsUpdated={async () => {
-                    await refreshData?.();
+                    await runSoftRefresh();
+                    scheduleAnalyticsRefresh?.();
                   }}
                   onClose={() => setSelectedProduct(null)}
                 />
@@ -2879,7 +2901,8 @@ export function InventoryManager({
               warehouses={locations}
               onSave={() => {
                 toast.success('Production updated');
-                refreshData?.();
+                void runCatalogResync();
+                scheduleAnalyticsRefresh?.();
               }}
               onBOMAdd={() => { }}
               onProductionOrderCreate={() => { }}
@@ -3074,7 +3097,8 @@ export function InventoryManager({
               warehouses={locations}
               currency={standards.currency}
               onCountComplete={() => {
-                refreshData?.();
+                void runCatalogResync();
+                scheduleAnalyticsRefresh?.();
                 toast.success('Cycle count completed and inventory refreshed');
               }}
             />
@@ -3209,8 +3233,8 @@ export function InventoryManager({
               warehouseId={locations[0]?.id}
               onBatchCreated={async () => {
                 toast.success('Batch created successfully');
-                // Refresh data to get updated batches
-                await refreshData?.();
+                await runSoftRefresh();
+                scheduleAnalyticsRefresh?.();
                 setShowBatchManager(false);
               }}
               onClose={() => setShowBatchManager(false)}
@@ -3258,8 +3282,8 @@ export function InventoryManager({
               businessId={selectedProduct.business_id}
               onVariantsUpdated={async () => {
                 toast.success('Variants updated successfully');
-                // Refresh data to get updated variants
-                await refreshData?.();
+                await runSoftRefresh();
+                scheduleAnalyticsRefresh?.();
                 setShowVariantEditor(false);
               }}
               onClose={() => setShowVariantEditor(false)}
@@ -3310,12 +3334,19 @@ export function InventoryManager({
         onUpdate={(updatedProduct) => {
           // ProductDetailsDialog already persisted via updateProductAction.
           // Merge locally only — do not call composite onUpdate (would double-write).
+          const merged = mergeInventoryServerRow(
+            products.find((p) => p.id === updatedProduct.id),
+            updatedProduct
+          );
           setProducts((prev) =>
             prev.map((p) =>
-              p.id === updatedProduct.id ? mergeInventoryServerRow(p, updatedProduct) : p
+              p.id === updatedProduct.id ? merged : p
             )
           );
-          void refreshData?.();
+          if (typeof upsertProductInState === 'function') {
+            upsertProductInState(merged);
+          }
+          scheduleAnalyticsRefresh?.();
         }}
         category={category}
       />
@@ -3478,9 +3509,9 @@ export function InventoryManager({
             products={products}
             warehouses={locations}
             onAdjustmentComplete={() => {
-              fetchProducts();
+              void runCatalogResync();
+              scheduleAnalyticsRefresh?.();
               setShowStockAdjustment(false);
-              refreshData?.();
             }}
             currency={standards.currency}
           />
@@ -3501,9 +3532,9 @@ export function InventoryManager({
             onStockTransfer={onStockTransfer}
             onClose={() => setShowStockTransferForm(false)}
             onTransferComplete={() => {
-              fetchProducts();
+              void runCatalogResync();
+              scheduleAnalyticsRefresh?.();
               setShowStockTransferForm(false);
-              refreshData?.();
             }}
             products={products}
             warehouses={locations}

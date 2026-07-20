@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
-import { withApiAuth } from '@/lib/api/_shared/middleware';
+import { withApiPermission } from '@/lib/api/_shared/middleware';
 import { apiSuccess, apiError } from '@/lib/api/_shared/response';
 
 /**
@@ -14,7 +14,7 @@ import { apiSuccess, apiError } from '@/lib/api/_shared/response';
  *
  * Authentication: Required (withApiAuth middleware)
  */
-export const GET = withApiAuth(async (request, { businessId, routeParams }) => {
+export const GET = withApiPermission('finance.view_gl', async (request, { businessId, routeParams }) => {
     const id = routeParams?.params?.id;
     if (!id) return apiError('MISSING_ID', 'Session ID is required', 400);
 
@@ -74,7 +74,7 @@ export const GET = withApiAuth(async (request, { businessId, routeParams }) => {
     }
 });
 
-export const PATCH = withApiAuth(async (request, { businessId, parsedBody, routeParams }) => {
+export const PATCH = withApiPermission('finance.manage_accounts', async (request, { businessId, parsedBody, routeParams }) => {
     const id = routeParams?.params?.id;
     if (!id) return apiError('MISSING_ID', 'Session ID is required', 400);
 

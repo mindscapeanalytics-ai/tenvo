@@ -91,6 +91,10 @@ export function HubTabProvider({ children }) {
     prefetchHotHubTabsIdle();
   }, []);
 
+  useEffect(() => {
+    prefetchHotHubTabsIdle({ immediate: true });
+  }, [domain]);
+
   const goToTab = useCallback(
     (tab, opts = {}) => {
       const result = navigateHubTab({

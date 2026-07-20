@@ -48,6 +48,7 @@ import { useResourceLimits } from '@/lib/hooks/useResourceLimits';
 import { getDomainConfig } from '@/lib/config/domains';
 import { QUICK_ACTION_IDS } from '@/lib/config/quickActions';
 import { normalizeDashboardTab, resolveDashboardTab, resolveFinanceViewForTab } from '@/lib/config/tabs';
+import { prefetchHubTabChunk } from '@/lib/utils/hubTabNavigation';
 import { TRIAL_CONFIG } from '@/lib/config/platform';
 
 /**
@@ -116,6 +117,10 @@ function BusinessDashboardContent() {
   /** Shell HubTabProvider is the paint SOT; URL is shareable sync. */
   const { activeTab: shellActiveTab, goToTab } = useHubTab();
   const activeTab = shellActiveTab || resolvedUrlTab;
+
+  useEffect(() => {
+    if (activeTab) prefetchHubTabChunk(activeTab);
+  }, [activeTab]);
 
   useEffect(() => {
     const billing = searchParams.get('billing');
@@ -611,8 +616,11 @@ function BusinessDashboardContent() {
       return;
     }
 
+    if (activeTab === 'finance') {
+      return;
+    }
+
     const tabFetchers = {
-      finance: fetchFinance,
       accounting: fetchFinance,
       expenses: fetchExpenses,
       vendors: fetchPurchases,
@@ -623,7 +631,6 @@ function BusinessDashboardContent() {
     };
 
     const tabModuleKeys = {
-      finance: 'finance',
       accounting: 'finance',
       expenses: 'expenses',
       vendors: 'purchases',
@@ -1337,7 +1344,7 @@ function BusinessDashboardContent() {
       }
 
       // Patch sold product stock in hub state on create — avoid fullCatalog inventory reload.
-      // Updates reverse+re-deduct on the server; skip optimistic stock math to avoid double-counting.
+      // Updates reverse+re-deduct on the server; soft grid refresh keeps headline stock accurate.
       if (!isUpdate && typeof upsertProductInState === 'function') {
         for (const item of mappedItems) {
           if (!item.product_id) continue;
@@ -1352,8 +1359,7 @@ function BusinessDashboardContent() {
           });
         }
       } else if (isUpdate) {
-        // Soft refresh inventory page only (not full catalog) so stock stays accurate after edit.
-        void fetchInventory({ force: true });
+        void fetchInventory({ force: true, detailLevel: 'grid' });
       }
 
       // KPIs refresh in background (debounced analytics); skip forced full finance/inventory.
@@ -1376,15 +1382,31 @@ function BusinessDashboardContent() {
   const handleDeleteInvoice = async (invoiceId) => {
     if (confirm('Are you sure you want to delete this invoice? Stock will be restored to inventory.')) {
       try {
+        const invoiceSnapshot = invoices?.find?.((inv) => inv?.id === invoiceId);
         await invoiceAPI.delete(business.id, invoiceId);
         toast.success('Invoice deleted and stock restored');
         if (typeof removeInvoiceFromState === 'function') {
           removeInvoiceFromState(invoiceId);
         }
-        void Promise.allSettled([
-          fetchInventory({ force: true, fullCatalog: true }),
-          fetchFinance({ force: true }),
-        ]);
+        // Prefer local stock restore from known line items; fall back to soft grid refresh.
+        const lineItems = invoiceSnapshot?.items || invoiceSnapshot?.invoice_items || [];
+        if (lineItems.length > 0 && typeof upsertProductInState === 'function') {
+          for (const item of lineItems) {
+            const productId = item.product_id || item.productId;
+            if (!productId) continue;
+            const existing = products?.find?.((p) => p.id === productId);
+            if (!existing) continue;
+            const qty = Number(item.quantity) || 0;
+            const nextStock = Number(existing.stock || existing.quantity || 0) + qty;
+            upsertProductInState({
+              id: productId,
+              stock: nextStock,
+              quantity: nextStock,
+            });
+          }
+        } else {
+          void fetchInventory({ force: true, detailLevel: 'grid' });
+        }
         scheduleAnalyticsRefresh?.();
       } catch (error) {
         console.error('Error deleting invoice:', error);
@@ -1429,8 +1451,7 @@ function BusinessDashboardContent() {
         }
         void Promise.allSettled([
           fetchSales({ force: true, mode: moduleReady.salesListDepth === 'full' ? 'full' : 'bootstrap' }),
-          fetchInventory({ force: true, fullCatalog: true }),
-          fetchFinance({ force: true }),
+          fetchInventory({ force: true, detailLevel: 'grid', fullCatalog: true }),
         ]);
         scheduleAnalyticsRefresh?.();
       } else {
@@ -1487,8 +1508,7 @@ function BusinessDashboardContent() {
         toast.success(`${successCount} invoice(s) imported successfully`);
         void Promise.allSettled([
           fetchSales({ force: true, mode: 'full' }),
-          fetchInventory({ force: true, fullCatalog: true }),
-          fetchFinance({ force: true }),
+          fetchInventory({ force: true, detailLevel: 'grid', fullCatalog: true }),
         ]);
         scheduleAnalyticsRefresh?.();
       }

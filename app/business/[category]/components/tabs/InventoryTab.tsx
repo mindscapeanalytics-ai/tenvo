@@ -15,7 +15,10 @@ interface InventoryTabProps {
     category: string;
     onProductSave?: (data: any) => Promise<void>;
     onProductDelete?: (id: string) => Promise<void>;
+    /** Soft grid refresh (user Refresh, batch/variant after single-product mutations). */
     refreshData?: () => Promise<void>;
+    /** Full catalog resync after import / lean→grid upgrade / bulk stock changes. */
+    resyncCatalog?: () => Promise<void>;
     domainKnowledge?: any;
     invoices?: Invoice[];
     customers?: Customer[];
@@ -45,6 +48,7 @@ export function InventoryTab({
     onProductSave,
     onProductDelete,
     refreshData,
+    resyncCatalog,
     domainKnowledge,
     invoices,
     customers,
@@ -90,6 +94,7 @@ export function InventoryTab({
                         onUpdate={onUpdate || onProductSave}
                         onDelete={onProductDelete}
                         refreshData={refreshData}
+                        resyncCatalog={resyncCatalog}
                         domainKnowledge={domainKnowledge}
                         invoices={invoices}
                         customers={customers}

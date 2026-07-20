@@ -139,22 +139,60 @@ if (exists('lib/dashboard/hubShellCache.js')) {
   }
 }
 
+if (exists('lib/dashboard/hubShellQuery.js')) {
+  const shellQuery = read('lib/dashboard/hubShellQuery.js');
+  if (!shellQuery.includes('export async function fetchHubShellQuery')) {
+    mark('hubShellQuery must export fetchHubShellQuery');
+  }
+  if (!shellQuery.includes('readHubShellPlaceholder')) {
+    mark('hubShellQuery must export readHubShellPlaceholder for RQ placeholderData');
+  }
+  if (!shellQuery.includes('seedHubShellQueryCache')) {
+    mark('hubShellQuery must export seedHubShellQueryCache for RSC hydrate');
+  }
+} else {
+  mark('lib/dashboard/hubShellQuery.js must exist (Phase 3 hub shell SOT)');
+}
+
+if (exists('lib/hooks/useHubShellQuery.js')) {
+  const hook = read('lib/hooks/useHubShellQuery.js');
+  if (!hook.includes('useHubShellQuery')) {
+    mark('useHubShellQuery hook must exist');
+  }
+  if (!hook.includes('placeholderData')) {
+    mark('useHubShellQuery must use placeholderData for warm paint');
+  }
+} else {
+  mark('lib/hooks/useHubShellQuery.js must exist');
+}
+
+if (exists('lib/dashboard/hubQueryKeys.js')) {
+  const keys = read('lib/dashboard/hubQueryKeys.js');
+  if (!keys.includes('hubShellQueryKey')) {
+    mark('hubQueryKeys must export hubShellQueryKey');
+  }
+}
+
 if (exists('lib/context/DataContext.js')) {
   const dataCtx = read('lib/context/DataContext.js');
+  if (!dataCtx.includes('useHubShellQuery')) {
+    mark('DataContext must use useHubShellQuery as hub shell SOT');
+  }
   if (dataCtx.includes('getHubShellBootstrapAction')) {
-    if (dataCtx.includes('fetchInventory({ fullCatalog: true })')) {
-      mark('DataContext must not background-load fullCatalog after bootstrap');
-    }
-    if (
-      dataCtx.includes("HUB_SHELL_PRODUCT_PAGE_LIMIT } from '@/lib/actions/dashboard/hubShellBootstrap'") ||
-      dataCtx.includes('HUB_SHELL_PRODUCT_PAGE_LIMIT } from "@/lib/actions/dashboard/hubShellBootstrap"') ||
-      /HUB_SHELL_PRODUCT_PAGE_LIMIT[\s\S]*from ['"]@\/lib\/actions\/dashboard\/hubShellBootstrap['"]/.test(dataCtx)
-    ) {
-      mark('DataContext must import HUB_SHELL_PRODUCT_PAGE_LIMIT from hubShellBootstrapConstants, not the use server module');
-    }
-    if (!dataCtx.includes('hubShellBootstrapConstants')) {
-      mark('DataContext must import HUB_SHELL_PRODUCT_PAGE_LIMIT from hubShellBootstrapConstants');
-    }
+    mark('DataContext must not call getHubShellBootstrapAction directly (use hubShellQuery)');
+  }
+  if (dataCtx.includes('fetchInventory({ fullCatalog: true })')) {
+    mark('DataContext must not background-load fullCatalog after bootstrap');
+  }
+  if (
+    dataCtx.includes("HUB_SHELL_PRODUCT_PAGE_LIMIT } from '@/lib/actions/dashboard/hubShellBootstrap'") ||
+    dataCtx.includes('HUB_SHELL_PRODUCT_PAGE_LIMIT } from "@/lib/actions/dashboard/hubShellBootstrap"') ||
+    /HUB_SHELL_PRODUCT_PAGE_LIMIT[\s\S]*from ['"]@\/lib\/actions\/dashboard\/hubShellBootstrap['"]/.test(dataCtx)
+  ) {
+    mark('DataContext must import HUB_SHELL_PRODUCT_PAGE_LIMIT from hubShellBootstrapConstants, not the use server module');
+  }
+  if (!dataCtx.includes('hubShellBootstrapConstants')) {
+    mark('DataContext must import HUB_SHELL_PRODUCT_PAGE_LIMIT from hubShellBootstrapConstants');
   }
 }
 

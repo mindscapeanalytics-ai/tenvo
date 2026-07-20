@@ -434,6 +434,9 @@ export function DashboardTabs({
                                 onProductSave={handleSaveProduct}
                                 onProductDelete={handleDeleteProduct}
                                 refreshData={() =>
+                                  fetchInventory({ force: true, detailLevel: 'grid' })
+                                }
+                                resyncCatalog={() =>
                                   fetchInventory({ force: true, detailLevel: 'grid', fullCatalog: true })
                                 }
                                 domainKnowledge={domainKnowledge}

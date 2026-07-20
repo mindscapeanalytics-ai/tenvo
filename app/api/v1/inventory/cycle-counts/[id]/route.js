@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic';
 import pool from '@/lib/db';
-import { withApiAuth } from '@/lib/api/_shared/middleware';
+import { withApiPermission } from '@/lib/api/_shared/middleware';
 import { apiSuccess, apiError } from '@/lib/api/_shared/response';
 import { InventoryService } from '@/lib/services/InventoryService';
 
@@ -10,7 +10,7 @@ import { InventoryService } from '@/lib/services/InventoryService';
  *
  * Authentication: Required (withApiAuth middleware)
  */
-export const GET = withApiAuth(async (request, { businessId, routeParams }) => {
+export const GET = withApiPermission('inventory.view', async (request, { businessId, routeParams }) => {
     const id = routeParams?.params?.id;
     if (!id) return apiError('MISSING_ID', 'Cycle count ID is required', 400);
 
@@ -42,7 +42,7 @@ export const GET = withApiAuth(async (request, { businessId, routeParams }) => {
     }
 });
 
-export const PATCH = withApiAuth(async (request, { businessId, session, parsedBody, routeParams }) => {
+export const PATCH = withApiPermission('inventory.adjust_stock', async (request, { businessId, session, parsedBody, routeParams }) => {
     const id = routeParams?.params?.id;
     if (!id) return apiError('MISSING_ID', 'Cycle count ID is required', 400);
 

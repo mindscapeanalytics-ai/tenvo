@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
-import { withApiAuth } from '@/lib/api/_shared/middleware';
+import { withApiPermission } from '@/lib/api/_shared/middleware';
 import { apiSuccess, apiError } from '@/lib/api/_shared/response';
 
 /**
@@ -12,7 +12,7 @@ import { apiSuccess, apiError } from '@/lib/api/_shared/response';
  * Authentication: Required (withApiAuth middleware)
  * Authorization: accountant / manager / admin / owner
  */
-export const GET = withApiAuth(async (request, { businessId }) => {
+export const GET = withApiPermission('finance.view_gl', async (request, { businessId }) => {
     const { searchParams } = new URL(request.url);
     const start_date  = searchParams.get('start_date');
     const end_date    = searchParams.get('end_date');

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getNextEmployeeCodeAction } from '@/lib/actions/standard/payroll';
 import { pickBusinessIdFromSearchParams } from '@/lib/utils/pickBusinessId';
+import { withGuard } from '@/lib/rbac/serverGuard';
 
 export async function GET(request) {
     try {
@@ -14,6 +15,8 @@ export async function GET(request) {
             );
         }
 
+        await withGuard(businessId, { permission: 'hr.view_employees', feature: 'payroll' });
+
         const result = await getNextEmployeeCodeAction(businessId);
         
         if (result.success) {
@@ -26,9 +29,12 @@ export async function GET(request) {
         }
     } catch (error) {
         console.error('Next employee code API error:', error);
+        const status = error?.code === 'UNAUTHENTICATED' ? 401
+            : error?.code === 'PERMISSION_DENIED' || error?.code === 'BUSINESS_ACCESS_DENIED' ? 403
+                : 500;
         return NextResponse.json(
-            { error: 'Internal server error' },
-            { status: 500 }
+            { error: error.message || 'Internal server error' },
+            { status }
         );
     }
 }

@@ -33,6 +33,7 @@ import { FinanceMobileNav } from '@/components/finance/FinanceMobileNav';
 import { formatDisplayDate } from '@/lib/utils/formatDisplayDate';
 import { accountingAPI } from '@/lib/api/accounting';
 import { resolveFinanceHubNavigation } from '@/lib/config/tabs';
+import { navigateHubTab } from '@/lib/utils/hubTabNavigation';
 
 // --- Sub-Tab Definitions -----------------------------------------------------
 
@@ -48,14 +49,6 @@ const FINANCE_TABS = [
     { key: 'fiscal', label: 'Fiscal Periods', shortLabel: 'Fiscal', icon: CalendarRange, permission: 'finance.close_period', feature: 'fiscal_periods', group: 'Close' },
     { key: 'exchange', label: 'Exchange Rates', shortLabel: 'FX Rates', icon: Globe, permission: 'finance.exchange_rates', feature: 'exchange_rates', group: 'Close' },
 ];
-
-function goToPaymentsHub() {
-    if (typeof window === 'undefined') return;
-    const url = new URL(window.location.href);
-    url.searchParams.set('tab', 'payments');
-    url.searchParams.delete('financeView');
-    window.location.href = url.toString();
-}
 
 // --- KPI Card ----------------------------------------------------------------
 
@@ -464,6 +457,8 @@ function FinanceOverview({
     reconciling,
     onNavigate,
     onReconcileStorefront,
+    onGoToPayments,
+    onGoToTax,
 }) {
     const totalExpenses = useMemo(() =>
         expenses.reduce((sum, e) => sum + Number(e.amount || 0), 0), [expenses]
@@ -523,17 +518,11 @@ function FinanceOverview({
                 <Button variant="outline" size="sm" onClick={() => onNavigate?.('statements', 'tb')}>Trial Balance</Button>
                 <Button variant="outline" size="sm" onClick={() => onNavigate?.('statements', 'day-book')}>Day Book</Button>
                 <Button variant="outline" size="sm" onClick={() => onNavigate?.('reconciliation')}>Bank reconciliation</Button>
-                <Button variant="outline" size="sm" onClick={goToPaymentsHub}>Payments &amp; vouchers</Button>
+                <Button variant="outline" size="sm" onClick={onGoToPayments}>Payments &amp; vouchers</Button>
                 <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => {
-                        if (typeof window === 'undefined') return;
-                        const url = new URL(window.location.href);
-                        url.searchParams.set('tab', 'gst');
-                        url.searchParams.delete('financeView');
-                        window.location.href = url.toString();
-                    }}
+                    onClick={onGoToTax}
                 >
                     Tax / GST
                 </Button>
@@ -593,6 +582,7 @@ export default function FinanceHub({ businessId, initialTab, businessCategory = 
     const [showJournalForm, setShowJournalForm] = useState(false);
     const [coverage, setCoverage] = useState(null);
     const [reconciling, setReconciling] = useState(false);
+    const [statementsRefreshKey, setStatementsRefreshKey] = useState(0);
     /** Mobile: tile menu first; tap opens panel. Desktop always shows dock + content. */
     const [mobileMenuOpen, setMobileMenuOpen] = useState(true);
     const inFlightRef = useRef(false);
@@ -603,6 +593,16 @@ export default function FinanceHub({ businessId, initialTab, businessCategory = 
     );
     const effectiveCurrency = currencySymbol || regionalPack?.currencySymbol || packCurrency;
     const effectiveBusinessId = useResolvedBusinessId(businessId);
+
+    const goToPaymentsHub = useCallback(() => {
+        const domain = businessCategory || business?.category || 'retail-shop';
+        navigateHubTab({ domain, tab: 'payments', financeView: null });
+    }, [businessCategory, business?.category]);
+
+    const goToTaxHub = useCallback(() => {
+        const domain = businessCategory || business?.category || 'retail-shop';
+        navigateHubTab({ domain, tab: 'gst', financeView: null });
+    }, [businessCategory, business?.category]);
 
     const applyFinanceCache = useCallback((cached) => {
         if (!cached) return;
@@ -628,7 +628,7 @@ export default function FinanceHub({ businessId, initialTab, businessCategory = 
             setStatementReport(report);
         }
         setMobileMenuOpen(false);
-    }, []);
+    }, [goToPaymentsHub]);
 
     // Load finance data with SWR: paint session cache instantly, always soft-revalidate.
     const loadData = useCallback(async ({ force = false } = {}) => {
@@ -642,7 +642,10 @@ export default function FinanceHub({ businessId, initialTab, businessCategory = 
             applyFinanceCache(cached);
             setLoading(false);
         } else {
-            if (force) financeHubSessionCache.delete(effectiveBusinessId);
+            if (force) {
+                financeHubSessionCache.delete(effectiveBusinessId);
+                setStatementsRefreshKey((k) => k + 1);
+            }
             setLoading(true);
         }
 
@@ -726,7 +729,7 @@ export default function FinanceHub({ businessId, initialTab, businessCategory = 
                 onInitialTabConsumed?.();
             });
         }
-    }, [initialTab, onInitialTabConsumed]);
+    }, [initialTab, onInitialTabConsumed, goToPaymentsHub]);
 
     useEffect(() => {
         if (visibleTabKeys.length === 0) return;
@@ -759,6 +762,8 @@ export default function FinanceHub({ businessId, initialTab, businessCategory = 
                         coverage={coverage}
                         reconciling={reconciling}
                         onNavigate={navigateFinance}
+                        onGoToPayments={goToPaymentsHub}
+                        onGoToTax={goToTaxHub}
                         onReconcileStorefront={async () => {
                             setReconciling(true);
                             try {
@@ -784,6 +789,7 @@ export default function FinanceHub({ businessId, initialTab, businessCategory = 
                             businessId={effectiveBusinessId}
                             category={businessCategory}
                             initialReport={statementReport}
+                            refreshKey={statementsRefreshKey}
                         />
                     </div>
                 );
@@ -854,6 +860,8 @@ export default function FinanceHub({ businessId, initialTab, businessCategory = 
                         currency={effectiveCurrency}
                         loading={loading}
                         onNavigate={navigateFinance}
+                        onGoToPayments={goToPaymentsHub}
+                        onGoToTax={goToTaxHub}
                     />
                 );
         }

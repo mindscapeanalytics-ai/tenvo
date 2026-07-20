@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic';
 import pool from '@/lib/db';
-import { withApiAuth } from '@/lib/api/_shared/middleware';
+import { withApiPermission } from '@/lib/api/_shared/middleware';
 import { apiSuccess, apiError } from '@/lib/api/_shared/response';
 
 /**
@@ -10,7 +10,7 @@ import { apiSuccess, apiError } from '@/lib/api/_shared/response';
  *
  * Authentication: Required (withApiAuth middleware)
  */
-export const PATCH = withApiAuth(async (request, { businessId, parsedBody, routeParams }) => {
+export const PATCH = withApiPermission('inventory.edit', async (request, { businessId, parsedBody, routeParams }) => {
     const id = routeParams?.params?.id;
     if (!id) return apiError('MISSING_ID', 'Alert ID is required', 400);
 

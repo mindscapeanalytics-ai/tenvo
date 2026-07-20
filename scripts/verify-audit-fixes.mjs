@@ -314,6 +314,89 @@ assert(
   'reject/requestMoreInfo must invalidate storefront tenant cache'
 );
 
+const usersSrc = read('lib/actions/admin/users.js');
+assert(
+  usersSrc.includes('session.user.id !== userId') &&
+    usersSrc.includes('inviteEmail') &&
+    usersSrc.includes('auth.api.getSession'),
+  'acceptInvitation must bind session userId and invitation email'
+);
+assert(
+  usersSrc.includes('logUserActivity') && usersSrc.includes('withGuard(businessId'),
+  'logUserActivity must require authenticated tenant membership'
+);
+
+const verificationSrc = read('lib/actions/auth/verification.js');
+assert(
+  verificationSrc.includes('requireSessionUser') &&
+    !verificationSrc.includes('export async function generateVerificationToken'),
+  'verification actions must be session-bound; token generator stays internal'
+);
+
+const middlewareSrc = read('lib/api/_shared/middleware.js');
+assert(
+  middlewareSrc.includes('withApiPermission') &&
+    middlewareSrc.includes('platform_api_access'),
+  'API middleware must expose withApiPermission and platform cross-tenant audit'
+);
+
+assert(
+  read('app/api/v1/inventory/cycle-counts/[id]/route.js').includes("withApiPermission('inventory.adjust_stock'"),
+  'cycle-count PATCH must require inventory.adjust_stock'
+);
+assert(
+  read('app/api/v1/finance/journal-entries/route.js').includes("withApiPermission('finance.view_gl'"),
+  'journal-entries GET must require finance.view_gl'
+);
+assert(
+  read('lib/actions/standard/report.js').includes("checkAuth(businessId, null, 'finance.manage_accounts'"),
+  'reconcilePendingStorefrontGlAction must require finance.manage_accounts'
+);
+
+const accountingSrc = read('lib/actions/basic/accounting.js');
+assert(
+  read('lib/actions/basic/accounting.js').includes('if (!txClient)') &&
+    read('lib/actions/basic/accounting.js').includes('finance.view_gl'),
+  'getGLAccountByType/getGLAccountsByTypes must auth when not called in tx'
+);
+
+const dataCtxSrc = read('lib/context/DataContext.js');
+assert(
+  !dataCtxSrc.includes('clearHubShellCache(businessId)'),
+  'local state patches must not clear full hub shell cache on every upsert'
+);
+assert(
+  dataCtxSrc.includes('fetchInventory({ force: true, detailLevel: \'grid\', fullCatalog: true })') &&
+    dataCtxSrc.includes('refreshAllData'),
+  'refreshAllData must include inventory grid resync'
+);
+assert(
+  read('components/InventoryManager.jsx').includes('scheduleAnalyticsRefresh') &&
+    read('components/InventoryManager.jsx').includes('runCatalogResync') &&
+    read('components/InventoryManager.jsx').includes('resyncCatalog'),
+  'InventoryManager must split soft refresh vs catalog resync'
+);
+assert(
+  read('app/business/[category]/components/DashboardTabs.jsx').includes('resyncCatalog') &&
+    read('app/business/[category]/components/DashboardTabs.jsx').includes("detailLevel: 'grid', fullCatalog: true"),
+  'DashboardTabs must wire resyncCatalog to full grid catalog fetch'
+);
+assert(
+  read('app/business/[category]/DashboardClient.jsx').includes('invoiceSnapshot') &&
+    read('app/business/[category]/DashboardClient.jsx').includes("detailLevel: 'grid'"),
+  'invoice delete must prefer local stock restore; update uses soft grid refresh'
+);
+assert(
+  read('components/FinancialReports.jsx').includes('refreshKey') &&
+    read('components/finance/FinanceHub.jsx').includes('statementsRefreshKey'),
+  'FinancialReports must invalidate on FinanceHub force refresh'
+);
+assert(
+  read('components/finance/FinanceHub.jsx').includes('navigateHubTab') &&
+    !read('components/finance/FinanceHub.jsx').includes('window.location.href = url.toString()'),
+  'Finance payments CTA must use soft hub tab navigation'
+);
+
 if (failures.length) {
   console.error('verify-audit-fixes FAILED');
   for (const f of failures) console.error(' -', f);

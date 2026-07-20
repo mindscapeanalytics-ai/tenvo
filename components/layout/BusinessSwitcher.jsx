@@ -11,6 +11,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useBusiness } from '@/lib/context/BusinessContext';
 import { getJoinedBusinessesAction } from '@/lib/actions/basic/business';
+import { persistJoinedBusinessesList } from '@/lib/utils/businessClientCache';
 
 const DOMAIN_ICONS = {
     'retail-shop': Store,
@@ -63,7 +64,7 @@ export function BusinessSwitcher({ isCollapsed = false }) {
                 const nextBusinesses = result.businesses || [];
                 setBusinesses(nextBusinesses);
                 if (typeof window !== 'undefined') {
-                    localStorage.setItem('joinedBusinesses', JSON.stringify(nextBusinesses));
+                    persistJoinedBusinessesList(nextBusinesses);
                 }
             }
         } catch (err) {

@@ -31,6 +31,11 @@ import { Button } from '@/components/ui/button';
 import { TenvoTextLogo } from '@/components/branding/TenvoTextLogo';
 import { toast } from 'react-hot-toast';
 import { cn } from '@/lib/utils';
+import {
+  findJoinedBusinessByDomain,
+  persistBusinessShell,
+  persistJoinedBusinessesList,
+} from '@/lib/utils/businessClientCache';
 
 export default function MultiBusinessPage() {
   const router = useRouter();
@@ -47,6 +52,9 @@ export default function MultiBusinessPage() {
       try {
         const fetched = await businessAPI.getByUserId(user.id);
         setBusinesses(fetched || []);
+        if (Array.isArray(fetched) && fetched.length > 0) {
+          persistJoinedBusinessesList(fetched);
+        }
       } catch (error) {
         console.error('Failed to load businesses:', error);
         toast.error('Could not load your businesses');
@@ -80,7 +88,18 @@ export default function MultiBusinessPage() {
     };
   }, [user, authLoading]);
 
-  const handleEnterBusiness = (domain) => {
+  const handleEnterBusiness = (bizOrDomain) => {
+    const joined =
+      typeof bizOrDomain === 'object' && bizOrDomain?.id
+        ? bizOrDomain
+        : findJoinedBusinessByDomain(
+            typeof bizOrDomain === 'string' ? bizOrDomain : bizOrDomain?.domain
+          );
+    const domain = joined?.domain || (typeof bizOrDomain === 'string' ? bizOrDomain : bizOrDomain?.domain);
+    if (!domain) return;
+    if (joined?.id && joined.user_role) {
+      persistBusinessShell(joined, joined.user_role);
+    }
     router.push(`/business/${domain}`);
   };
   
@@ -251,7 +270,7 @@ export default function MultiBusinessPage() {
                   {filteredBusinesses.map((biz, idx) => (
                     <div
                       key={biz.id}
-                      onClick={() => handleEnterBusiness(biz.domain)}
+                      onClick={() => handleEnterBusiness(biz)}
                       className="group cursor-pointer bg-white rounded-2xl border border-gray-200 p-6 hover:shadow-lg hover:shadow-gray-200/50 hover:border-wine/40 active:scale-[0.98] transition-all duration-300 overflow-hidden relative flex flex-col justify-between h-full animate-in fade-in"
                       style={{ animationDelay: `${idx * 50}ms` }}
                     >
@@ -307,7 +326,7 @@ export default function MultiBusinessPage() {
                   {filteredBusinesses.map((biz, idx) => (
                     <div
                       key={biz.id}
-                      onClick={() => handleEnterBusiness(biz.domain)}
+                      onClick={() => handleEnterBusiness(biz)}
                       className="group cursor-pointer bg-white rounded-xl border border-gray-200 p-4 hover:border-wine/40 hover:shadow-md transition-all duration-300 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 animate-in fade-in"
                       style={{ animationDelay: `${idx * 40}ms` }}
                     >
