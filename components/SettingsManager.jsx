@@ -34,7 +34,6 @@ import {
   formatPlanLimitValue,
   resolveEffectiveBusinessLimits,
 } from '@/lib/utils/businessLimitOverrides';
-import { updateOwnerBusinessPackagingAction } from '@/lib/actions/basic/business';
 import IndustryDomainKnowledgePanel from '@/components/settings/IndustryDomainKnowledgePanel';
 import { resetTeamMemberPassword, createTeamMemberWithPassword } from '@/lib/actions/admin/teamManagement';
 import { STAFF_ACCESS_MODULES, getDefaultModulesForRole } from '@/lib/rbac/moduleAccess';
@@ -189,11 +188,12 @@ export function SettingsManager({ category }) {
   const [sampleDataState, setSampleDataState] = useState(null);
   const [loadSampleOpen, setLoadSampleOpen] = useState(false);
   const [removeSampleOpen, setRemoveSampleOpen] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteInput, setDeleteInput] = useState('');
   const normalizedRole = role || 'viewer';
   const canManageUsers = isPlatformOwner || ['owner', 'admin'].includes(normalizedRole);
   const canManageRoles = isPlatformOwner || normalizedRole === 'owner';
   const canManageBilling = isPlatformOwner || normalizedRole === 'owner';
-  const canOwnerPackaging = isPlatformOwner || normalizedRole === 'owner';
   const canManageAdvancedTools = canManageUsers;
 
   useEffect(() => {
@@ -526,49 +526,6 @@ export function SettingsManager({ category }) {
     }
   };
 
-  useEffect(() => {
-    const pkg = getPackagingFromSettings(business?.settings);
-    const mode = pkg?.mode === 'custom' ? 'custom' : 'tier';
-    const tier = resolvePlanTier(business?.plan_tier || 'free');
-    const tierFeatures = PLAN_TIERS[tier]?.features || {};
-    const seeded = Object.fromEntries(
-      PLAN_FEATURE_TOGGLE_KEYS.map((key) => [key, Boolean(tierFeatures[key])])
-    );
-    queueMicrotask(() => {
-      setLocalPackagingMode(mode);
-      if (mode === 'custom' && pkg?.feature_overrides) {
-        setLocalFeatureOverrides({ ...seeded, ...pkg.feature_overrides });
-      } else {
-        setLocalFeatureOverrides(seeded);
-      }
-    });
-  }, [business?.id, business?.settings, business?.plan_tier]);
-
-  const handleSavePackaging = async () => {
-    if (!business?.id) return;
-    setPackagingBusy(true);
-    try {
-      const res = await updateOwnerBusinessPackagingAction({
-        businessId: business.id,
-        mode: localPackagingMode,
-        featureOverrides: localPackagingMode === 'custom' ? localFeatureOverrides : undefined,
-      });
-      if (!res.success) {
-        toast.error(res.error || 'Could not save module access');
-        return;
-      }
-      if (res.business) updateBusiness(res.business);
-      toast.success(
-        localPackagingMode === 'custom'
-          ? 'Custom module access saved for this business.'
-          : 'Module access now follows your subscription tier only.'
-      );
-    } catch (e) {
-      toast.error(e.message || 'Could not save module access');
-    } finally {
-      setPackagingBusy(false);
-    }
-  };
 
   const handlePlanUpdate = async (tier) => {
     if (!business?.id) return;
@@ -1958,107 +1915,6 @@ export function SettingsManager({ category }) {
             </CardContent>
           </Card>
 
-          {canOwnerPackaging ? (
-            <Card className="border-none shadow-xl">
-              <CardHeader className="bg-slate-50 border-b border-slate-100">
-                <CardTitle className="text-slate-900 flex items-center gap-2">
-                  <LayoutGrid className="w-5 h-5 text-slate-600" />
-                  Custom module access (owner)
-                </CardTitle>
-                <CardDescription>
-                  By default, hubs and server checks use your <strong>subscription tier</strong>. Turn on{' '}
-                  <strong>custom packaging</strong> only when you need to grant or hide specific modules for this
-                  workspace (for example a negotiated pilot). Seat and inventory limits still follow your plan tier.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="pt-6 space-y-4 relative">
-                <div className={`space-y-4 ${packagingBusy ? 'pointer-events-none opacity-70' : ''}`}>
-                  <div className="flex items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white px-4 py-3">
-                    <div>
-                      <p className="text-sm font-semibold text-slate-900">Custom module toggles</p>
-                      <p className="text-xs text-slate-500 mt-0.5">
-                        Off = use plan tier only. On = per-feature switches below override tier defaults for this
-                        business.
-                      </p>
-                    </div>
-                    <Switch
-                      checked={localPackagingMode === 'custom'}
-                      onCheckedChange={(checked) => {
-                        if (checked) {
-                          const t = resolvePlanTier(business?.plan_tier || 'free');
-                          const tierFeatures = PLAN_TIERS[t]?.features || {};
-                          const seeded = Object.fromEntries(
-                            PLAN_FEATURE_TOGGLE_KEYS.map((key) => [key, Boolean(tierFeatures[key])])
-                          );
-                          const existing = getPackagingFromSettings(business?.settings)?.feature_overrides;
-                          setLocalFeatureOverrides({ ...seeded, ...(existing || {}) });
-                          setLocalPackagingMode('custom');
-                        } else {
-                          setLocalPackagingMode('tier');
-                        }
-                      }}
-                      aria-label="Enable custom module packaging"
-                    />
-                  </div>
-
-                  {localPackagingMode === 'custom' ? (
-                    <div className="rounded-xl border border-slate-200 bg-slate-50/50 max-h-[22rem] overflow-y-auto pr-1">
-                      <div className="divide-y divide-slate-100">
-                        {PLAN_FEATURE_TOGGLE_KEYS.map((key) => {
-                          const label = FEATURE_LABELS[key] || key.replace(/_/g, ' ');
-                          const val = !!localFeatureOverrides[key];
-                          const minPlan = FEATURE_MIN_PLAN[key];
-                          const isEnterpriseOnly = enterpriseOnlyFeatureKeys.has(key);
-                          return (
-                            <div
-                              key={key}
-                              className="flex items-center justify-between gap-3 px-3 py-2.5 bg-white/80"
-                            >
-                              <div className="min-w-0">
-                                <span className="text-xs font-medium text-slate-800">{label}</span>
-                                {isEnterpriseOnly ? (
-                                  <span className="ml-1.5 text-[10px] font-semibold uppercase tracking-wide text-violet-700">
-                                    {minPlan === 'business' ? 'Business+' : 'Enterprise'}
-                                  </span>
-                                ) : null}
-                              </div>
-                              <Switch
-                                checked={val}
-                                onCheckedChange={(v) =>
-                                  setLocalFeatureOverrides((prev) => ({
-                                    ...prev,
-                                    [key]: v,
-                                  }))
-                                }
-                                aria-label={label}
-                              />
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ) : null}
-
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      type="button"
-                      onClick={handleSavePackaging}
-                      disabled={packagingBusy}
-                      className="rounded-xl font-semibold"
-                    >
-                      {packagingBusy ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                      Save module access
-                    </Button>
-                  </div>
-                </div>
-                {packagingBusy ? (
-                  <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-white/50 backdrop-blur-[1px]">
-                    <Loader2 className="h-7 w-7 animate-spin text-slate-600" aria-hidden />
-                  </div>
-                ) : null}
-              </CardContent>
-            </Card>
-          ) : null}
 
           <Card className="border-none shadow-xl">
             <CardHeader className="bg-slate-50 border-b border-slate-100">
