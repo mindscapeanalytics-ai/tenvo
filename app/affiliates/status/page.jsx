@@ -25,10 +25,10 @@ export default async function AffiliateStatusPage({ searchParams }) {
         include: {
           referrals: {
             orderBy: { created_at: 'desc' },
-            take: 10, // show latest 10
+            take: 20,
             include: {
               businesses: {
-                select: { name: true }
+                select: { business_name: true, domain: true, plan_tier: true }
               }
             }
           }
@@ -181,7 +181,7 @@ export default async function AffiliateStatusPage({ searchParams }) {
                               {new Date(ref.created_at).toLocaleDateString()}
                             </td>
                             <td className="px-6 py-4 font-medium text-zinc-900">
-                              {ref.businesses?.name || 'Unknown Business'}
+                              {ref.businesses?.business_name || 'Unknown Business'}
                             </td>
                             <td className="px-6 py-4 font-medium text-emerald-700 tabular-nums">
                               ${Number(ref.commission_earned).toFixed(2)}
