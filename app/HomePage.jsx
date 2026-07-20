@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -37,6 +37,7 @@ import HomeOnboardingPathSection from '@/components/marketing/sections/HomeOnboa
 import HomeSecurityTrustSection from '@/components/marketing/sections/HomeSecurityTrustSection';
 import TestimonialCarousel from '@/components/marketing/TestimonialCarousel';
 import { DemoStoreGallery } from '@/components/marketing/sections/DemoStoreGallery';
+import AffiliateProgramSection from '@/components/marketing/sections/AffiliateProgramSection';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/context/AuthContext';
 import { trackEvent, EVENTS } from '@/lib/analytics/tracking';
@@ -1127,6 +1128,9 @@ export default function Home() {
 
         </div>
       </section>
+
+      {/* AFFILIATE PROGRAM CTA */}
+      <AffiliateProgramSection />
 
       {/* 11. FINAL CTA */}
       <section className="relative bg-white py-10 sm:py-14 lg:py-24 overflow-hidden">

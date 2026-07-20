@@ -267,6 +267,13 @@ export default function MarketingNav({
                   >
                     About
                   </Link>
+                  <Link
+                    href="/affiliates"
+                    className="block rounded-xl px-4 py-3 text-left text-sm font-semibold text-neutral-800 transition-colors hover:bg-neutral-50"
+                    onClick={() => setExpandedMenu(null)}
+                  >
+                    Affiliates & Partners
+                  </Link>
                   <MarketingCtaLink
                     href={getBookMeetingHref()}
                     className="block rounded-xl px-4 py-3 text-left text-sm font-semibold text-neutral-800 transition-colors hover:bg-neutral-50"
@@ -404,6 +411,12 @@ export default function MarketingNav({
               onClick={() => router.push('/about')}
             >
               About
+            </button>
+            <button
+              className="w-full rounded-xl px-3 py-3 text-left text-sm font-bold text-gray-700 transition-colors hover:bg-neutral-50 hover:text-brand-primary-dark"
+              onClick={() => router.push('/affiliates')}
+            >
+              Affiliates & Partners
             </button>
             <button
               className="w-full rounded-xl px-3 py-3 text-left text-sm font-bold text-gray-700 transition-colors hover:bg-neutral-50 hover:text-brand-primary-dark"

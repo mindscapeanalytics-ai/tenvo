@@ -152,7 +152,7 @@ model businesses {
   business_payment_methods     business_payment_methods[]
   stripe_connect_accounts      stripe_connect_accounts?
   storefront_analytics         storefront_analytics[]
-  storefront_contact_messages storefront_contact_messages[]
+  storefront_contact_messages  storefront_contact_messages[]
   payment_transactions         payment_transactions[]
   business_settings            business_settings?
   feature_flags                feature_flags[]
@@ -201,6 +201,7 @@ model businesses {
   approval_notes               String?
   is_demo_requested            Boolean                        @default(false)
   demo_requested_at            DateTime?                      @db.Timestamptz(6)
+  affiliate_id                 String?                        @db.Uuid
   registration_requests        registration_requests[]
   subscription_history         subscription_history[]
   stripe_webhook_events        stripe_webhook_events[]
@@ -292,42 +293,44 @@ model businesses {
   customer_memberships         customer_memberships[]
   membership_events            membership_events[]
   membership_benefits          membership_benefits[]
+  affiliates                   affiliates?                    @relation(fields: [affiliate_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
 
   @@index([approval_status, approval_requested_at(sort: Desc)], map: "idx_businesses_approval_status")
 }
 
 /// Registration approval audit trail (platform owner workflow).
 model registration_requests {
-  id                  String     @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  business_id         String?    @db.Uuid
-  user_id             String
-  user_email          String
-  user_name           String?
-  business_name       String
-  domain              String
-  category            String
-  country             String
-  phone               String?
-  plan_tier           String
-  domain_package_key  String?
-  requested_at        DateTime?  @default(now()) @db.Timestamptz(6)
-  ip_address          String?
-  user_agent          String?
-  referrer            String?
-  status              String     @default("pending") @db.VarChar(32)
-  status_updated_at   DateTime?  @default(now()) @db.Timestamptz(6)
-  decided_by          String?
-  decided_at          DateTime?  @db.Timestamptz(6)
-  decision_notes      String?
-  demo_requested      Boolean    @default(false)
-  demo_requested_at   DateTime?  @db.Timestamptz(6)
-  demo_scheduled_at   DateTime?  @db.Timestamptz(6)
-  demo_completed      Boolean    @default(false)
-  internal_notes      String?
-  tags                String[]
-  created_at          DateTime?  @default(now()) @db.Timestamptz(6)
-  updated_at          DateTime?  @default(now()) @db.Timestamptz(6)
-  businesses          businesses? @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  id                 String      @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  business_id        String?     @db.Uuid
+  user_id            String
+  user_email         String
+  user_name          String?
+  business_name      String
+  domain             String
+  category           String
+  country            String
+  phone              String?
+  plan_tier          String
+  domain_package_key String?
+  requested_at       DateTime?   @default(now()) @db.Timestamptz(6)
+  ip_address         String?
+  user_agent         String?
+  referrer           String?
+  status             String      @default("pending") @db.VarChar(32)
+  status_updated_at  DateTime?   @default(now()) @db.Timestamptz(6)
+  decided_by         String?
+  decided_at         DateTime?   @db.Timestamptz(6)
+  decision_notes     String?
+  demo_requested     Boolean     @default(false)
+  demo_requested_at  DateTime?   @db.Timestamptz(6)
+  demo_scheduled_at  DateTime?   @db.Timestamptz(6)
+  demo_completed     Boolean     @default(false)
+  internal_notes     String?
+  affiliate_code     String?
+  tags               String[]
+  created_at         DateTime?   @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime?   @default(now()) @db.Timestamptz(6)
+  businesses         businesses? @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([status, requested_at(sort: Desc)], map: "idx_registration_requests_status")
   @@index([user_id], map: "idx_registration_requests_user")
@@ -505,16 +508,16 @@ model invoices {
   next_invoice_date   DateTime? @db.Date
 
   // Relations
-  invoice_items       invoice_items[]
-  payment_allocations payment_allocations[]
-  credit_notes        credit_notes[]
-  pos_transactions    pos_transactions[]
-  invoice_approvals   invoice_approvals[]
-  invoice_reminders   invoice_payment_reminders[]
-  recurring_invoices  invoices[]                  @relation("RecurringInvoices")
-  parent_invoice      invoices?                   @relation("RecurringInvoices", fields: [recurring_parent_id], references: [id], onDelete: SetNull)
-  membership_initial  customer_memberships[]      @relation("MembershipInitialInvoice")
-  membership_recurring customer_memberships[]     @relation("MembershipRecurringInvoice")
+  invoice_items        invoice_items[]
+  payment_allocations  payment_allocations[]
+  credit_notes         credit_notes[]
+  pos_transactions     pos_transactions[]
+  invoice_approvals    invoice_approvals[]
+  invoice_reminders    invoice_payment_reminders[]
+  recurring_invoices   invoices[]                  @relation("RecurringInvoices")
+  parent_invoice       invoices?                   @relation("RecurringInvoices", fields: [recurring_parent_id], references: [id], onDelete: SetNull)
+  membership_initial   customer_memberships[]      @relation("MembershipInitialInvoice")
+  membership_recurring customer_memberships[]      @relation("MembershipRecurringInvoice")
 
   businesses businesses @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   customers  customers? @relation(fields: [customer_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -885,7 +888,7 @@ model stock_movements {
   movement_type       String?
   domain_data         Json?                @default("{}")
   product_batches     product_batches?     @relation(fields: [batch_id], references: [id], onUpdate: NoAction)
-  product_variants      product_variants?    @relation(fields: [variant_id], references: [id], onUpdate: NoAction)
+  product_variants    product_variants?    @relation(fields: [variant_id], references: [id], onUpdate: NoAction)
   businesses          businesses           @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   products            products             @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   warehouse_locations warehouse_locations? @relation(fields: [warehouse_id], references: [id], onUpdate: NoAction, map: "stock_movements_warehouse_location_fkey")
@@ -950,31 +953,31 @@ model vendors {
 }
 
 model product_batches {
-  id                 String               @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  business_id        String               @db.Uuid
-  product_id         String               @db.Uuid
-  warehouse_id       String?              @db.Uuid
-  batch_number       String
-  manufacturing_date DateTime?            @db.Date
-  expiry_date        DateTime?            @db.Date
-  quantity           Decimal?             @default(0) @db.Decimal(12, 2)
-  reserved_quantity  Decimal?             @default(0) @db.Decimal(12, 2)
-  cost_price         Decimal?             @default(0) @db.Decimal(12, 2)
-  mrp                Decimal?             @default(0) @db.Decimal(12, 2)
-  notes              String?
-  is_active          Boolean?             @default(true)
-  is_deleted         Boolean              @default(false)
-  deleted_at         DateTime?            @db.Timestamptz(6)
-  created_at         DateTime?            @default(now()) @db.Timestamptz(6)
-  updated_at         DateTime?            @default(now()) @db.Timestamptz(6)
-  domain_data        Json?                @default("{}")
-  challan_items      challan_items[]
-  businesses         businesses           @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  products           products             @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  warehouses         warehouse_locations? @relation(fields: [warehouse_id], references: [id], onUpdate: NoAction)
-  product_serials    product_serials[]
-  stock_movements    stock_movements[]
-  stock_transfers    stock_transfers[]
+  id                     String                   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  business_id            String                   @db.Uuid
+  product_id             String                   @db.Uuid
+  warehouse_id           String?                  @db.Uuid
+  batch_number           String
+  manufacturing_date     DateTime?                @db.Date
+  expiry_date            DateTime?                @db.Date
+  quantity               Decimal?                 @default(0) @db.Decimal(12, 2)
+  reserved_quantity      Decimal?                 @default(0) @db.Decimal(12, 2)
+  cost_price             Decimal?                 @default(0) @db.Decimal(12, 2)
+  mrp                    Decimal?                 @default(0) @db.Decimal(12, 2)
+  notes                  String?
+  is_active              Boolean?                 @default(true)
+  is_deleted             Boolean                  @default(false)
+  deleted_at             DateTime?                @db.Timestamptz(6)
+  created_at             DateTime?                @default(now()) @db.Timestamptz(6)
+  updated_at             DateTime?                @default(now()) @db.Timestamptz(6)
+  domain_data            Json?                    @default("{}")
+  challan_items          challan_items[]
+  businesses             businesses               @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  products               products                 @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  warehouses             warehouse_locations?     @relation(fields: [warehouse_id], references: [id], onUpdate: NoAction)
+  product_serials        product_serials[]
+  stock_movements        stock_movements[]
+  stock_transfers        stock_transfers[]
   inventory_reservations inventory_reservations[]
 
   /// Active-row uniqueness: partial unique index (WHERE is_deleted = false)
@@ -1312,20 +1315,20 @@ model product_stock_locations {
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model quotation_items {
-  id            String      @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  quotation_id  String      @db.Uuid
-  product_id    String?     @db.Uuid
+  id            String     @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  quotation_id  String     @db.Uuid
+  product_id    String?    @db.Uuid
   description   String?
-  quantity      Decimal     @default(1) @db.Decimal(12, 2)
-  unit_price    Decimal     @default(0) @db.Decimal(12, 2)
-  tax_amount    Decimal?    @default(0) @db.Decimal(12, 2)
-  total_amount  Decimal?    @default(0) @db.Decimal(12, 2)
-  business_id   String      @db.Uuid
+  quantity      Decimal    @default(1) @db.Decimal(12, 2)
+  unit_price    Decimal    @default(0) @db.Decimal(12, 2)
+  tax_amount    Decimal?   @default(0) @db.Decimal(12, 2)
+  total_amount  Decimal?   @default(0) @db.Decimal(12, 2)
+  business_id   String     @db.Uuid
   batch_number  String?
   serial_number String?
-  businesses    businesses  @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  products      products?   @relation(fields: [product_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
-  quotations    quotations  @relation(fields: [quotation_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  businesses    businesses @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  products      products?  @relation(fields: [product_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  quotations    quotations @relation(fields: [quotation_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([product_id], map: "idx_quotation_items_product_id")
   @@index([quotation_id], map: "idx_quotation_items_quotation_id")
@@ -1499,28 +1502,28 @@ model segment_customers {
 }
 
 model inventory_reservations {
-  id             String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  business_id    String     @db.Uuid
-  product_id     String     @db.Uuid
-  batch_id       String?    @db.Uuid
-  warehouse_id   String?    @db.Uuid
-  customer_id    String?    @db.Uuid
-  quantity       Decimal    @db.Decimal(12, 2)
-  expires_at     DateTime   @db.Timestamptz(6)
-  status         String     @default("active") // active, completed, fulfilled, cancelled, expired
-  reference      String? // e.g. "quotation:uuid" or "order_123"
-  reference_type String?    @db.VarChar(50) // invoice | quotation | sales_order | production
-  reference_id   String?    @db.Uuid
-  notes          String?
-  completed_at   DateTime?  @db.Timestamptz(6)
-  cancelled_at   DateTime?  @db.Timestamptz(6)
-  created_at     DateTime   @default(now()) @db.Timestamptz(6)
-  updated_at     DateTime   @default(now()) @db.Timestamptz(6)
-  businesses     businesses @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  products       products   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  product_batches product_batches? @relation(fields: [batch_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  id                  String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  business_id         String               @db.Uuid
+  product_id          String               @db.Uuid
+  batch_id            String?              @db.Uuid
+  warehouse_id        String?              @db.Uuid
+  customer_id         String?              @db.Uuid
+  quantity            Decimal              @db.Decimal(12, 2)
+  expires_at          DateTime             @db.Timestamptz(6)
+  status              String               @default("active") // active, completed, fulfilled, cancelled, expired
+  reference           String? // e.g. "quotation:uuid" or "order_123"
+  reference_type      String?              @db.VarChar(50) // invoice | quotation | sales_order | production
+  reference_id        String?              @db.Uuid
+  notes               String?
+  completed_at        DateTime?            @db.Timestamptz(6)
+  cancelled_at        DateTime?            @db.Timestamptz(6)
+  created_at          DateTime             @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime             @default(now()) @db.Timestamptz(6)
+  businesses          businesses           @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  products            products             @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product_batches     product_batches?     @relation(fields: [batch_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
   warehouse_locations warehouse_locations? @relation(fields: [warehouse_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
-  customers      customers? @relation(fields: [customer_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  customers           customers?           @relation(fields: [customer_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
 
   @@index([business_id])
   @@index([product_id])
@@ -2456,7 +2459,7 @@ model product_categories {
 model subscription_plans {
   id         String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   name       String
-  price      Decimal   @db.Decimal(10, 2)
+  price      Decimal   @default(0) @db.Decimal(10, 2)
   features   Json?
   is_active  Boolean   @default(true)
   created_at DateTime? @default(now()) @db.Timestamptz(6)
@@ -2464,25 +2467,25 @@ model subscription_plans {
 }
 
 model invoice_payments {
-  id               String      @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  business_id      String      @db.Uuid
-  invoice_id       String      @db.Uuid
-  amount           Decimal     @db.Decimal(12, 2)
+  id               String     @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  business_id      String     @db.Uuid
+  invoice_id       String     @db.Uuid
+  amount           Decimal    @db.Decimal(12, 2)
   payment_method   String?
-  payment_date     DateTime    @db.Date
+  payment_date     DateTime   @db.Date
   reference_number String?
   transaction_id   String?
-  gateway_response Json?       @default("{}")
+  gateway_response Json?      @default("{}")
   notes            String?
   received_by      String?
-  is_deleted       Boolean     @default(false)
-  deleted_at       DateTime?   @db.Timestamptz(6)
+  is_deleted       Boolean    @default(false)
+  deleted_at       DateTime?  @db.Timestamptz(6)
   /// User id who soft-deleted the row (`user`.id is TEXT). Migration `20260608_invoice_payments_deleted_by_text` ensures Postgres type is TEXT, not UUID.
   deleted_by       String?
-  created_at       DateTime?   @default(now()) @db.Timestamptz(6)
-  updated_at       DateTime?   @default(now()) @db.Timestamptz(6)
-  invoices         invoices    @relation(fields: [invoice_id], references: [id], onDelete: Cascade)
-  businesses       businesses  @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  created_at       DateTime?  @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime?  @default(now()) @db.Timestamptz(6)
+  invoices         invoices   @relation(fields: [invoice_id], references: [id], onDelete: Cascade)
+  businesses       businesses @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([invoice_id])
   @@index([business_id, invoice_id])
@@ -2490,18 +2493,18 @@ model invoice_payments {
 
 /// Tax authority remittances (PST/FST/sales tax paid). Used by TaxCalculationsWidget.
 model tax_payments {
-  id               String      @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  business_id      String      @db.Uuid
-  amount           Decimal     @db.Decimal(12, 2)
-  payment_date     DateTime    @db.Date
-  tax_type         String?     @default("sales") @db.VarChar(50)
-  reference_number String?     @db.VarChar(100)
+  id               String     @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  business_id      String     @db.Uuid
+  amount           Decimal    @db.Decimal(12, 2)
+  payment_date     DateTime   @db.Date
+  tax_type         String?    @default("sales") @db.VarChar(50)
+  reference_number String?    @db.VarChar(100)
   notes            String?
-  is_deleted       Boolean     @default(false)
-  deleted_at       DateTime?   @db.Timestamptz(6)
-  created_at       DateTime?   @default(now()) @db.Timestamptz(6)
-  updated_at       DateTime?   @default(now()) @db.Timestamptz(6)
-  businesses       businesses  @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  is_deleted       Boolean    @default(false)
+  deleted_at       DateTime?  @db.Timestamptz(6)
+  created_at       DateTime?  @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime?  @default(now()) @db.Timestamptz(6)
+  businesses       businesses @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([business_id, payment_date(sort: Desc)])
   @@index([business_id, is_deleted])
@@ -2728,33 +2731,33 @@ model membership_plans {
 
 /// Active or historical customer enrollment in a membership plan.
 model customer_memberships {
-  id                     String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  business_id            String              @db.Uuid
-  customer_id            String              @db.Uuid
-  plan_id                String              @db.Uuid
-  product_id             String?             @db.Uuid
-  status                 String              @default("pending") @db.VarChar(32) // trial | pending | active | paused | cancelled | expired
-  started_at             DateTime            @default(now()) @db.Timestamptz(6)
-  ends_at                DateTime?           @db.Timestamptz(6)
-  next_billing_at        DateTime?           @db.Timestamptz(6)
-  auto_renew             Boolean             @default(true)
-  source                 String              @default("hub") @db.VarChar(32) // storefront | pos | hub | import
+  id                          String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  business_id                 String              @db.Uuid
+  customer_id                 String              @db.Uuid
+  plan_id                     String              @db.Uuid
+  product_id                  String?             @db.Uuid
+  status                      String              @default("pending") @db.VarChar(32) // trial | pending | active | paused | cancelled | expired
+  started_at                  DateTime            @default(now()) @db.Timestamptz(6)
+  ends_at                     DateTime?           @db.Timestamptz(6)
+  next_billing_at             DateTime?           @db.Timestamptz(6)
+  auto_renew                  Boolean             @default(true)
+  source                      String              @default("hub") @db.VarChar(32) // storefront | pos | hub | import
   initial_storefront_order_id Int?
-  initial_pos_transaction_id String?        @db.Uuid
-  initial_invoice_id     String?             @db.Uuid
-  recurring_invoice_id   String?             @db.Uuid
-  amount_paid            Decimal?            @default(0) @db.Decimal(12, 2)
-  domain_data            Json?               @default("{}")
-  cancelled_at           DateTime?           @db.Timestamptz(6)
-  paused_at              DateTime?           @db.Timestamptz(6)
-  created_at             DateTime            @default(now()) @db.Timestamptz(6)
-  updated_at             DateTime            @default(now()) @updatedAt @db.Timestamptz(6)
-  businesses             businesses          @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  customers              customers           @relation(fields: [customer_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  plan                   membership_plans    @relation(fields: [plan_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
-  initial_invoice        invoices?           @relation("MembershipInitialInvoice", fields: [initial_invoice_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
-  recurring_invoice      invoices?           @relation("MembershipRecurringInvoice", fields: [recurring_invoice_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
-  events                 membership_events[]
+  initial_pos_transaction_id  String?             @db.Uuid
+  initial_invoice_id          String?             @db.Uuid
+  recurring_invoice_id        String?             @db.Uuid
+  amount_paid                 Decimal?            @default(0) @db.Decimal(12, 2)
+  domain_data                 Json?               @default("{}")
+  cancelled_at                DateTime?           @db.Timestamptz(6)
+  paused_at                   DateTime?           @db.Timestamptz(6)
+  created_at                  DateTime            @default(now()) @db.Timestamptz(6)
+  updated_at                  DateTime            @default(now()) @updatedAt @db.Timestamptz(6)
+  businesses                  businesses          @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  customers                   customers           @relation(fields: [customer_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  plan                        membership_plans    @relation(fields: [plan_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  initial_invoice             invoices?           @relation("MembershipInitialInvoice", fields: [initial_invoice_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  recurring_invoice           invoices?           @relation("MembershipRecurringInvoice", fields: [recurring_invoice_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  events                      membership_events[]
 
   @@index([business_id, customer_id, status], map: "idx_customer_memberships_business_customer_status")
   @@index([business_id, ends_at], map: "idx_customer_memberships_business_ends")
@@ -2789,4 +2792,35 @@ model membership_benefits {
   plan         membership_plans @relation(fields: [plan_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([business_id, plan_id], map: "idx_membership_benefits_business_plan")
+}
+
+model affiliates {
+  id              String       @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  name            String
+  email           String       @unique
+  referral_code   String       @unique
+  commission_rate Decimal      @default(20.00) @db.Decimal(5, 2)
+  payout_details  Json?        @default("{}")
+  total_earnings  Decimal      @default(0.00) @db.Decimal(12, 2)
+  is_active       Boolean      @default(true)
+  status          String       @default("pending")
+  created_at      DateTime     @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime     @default(now()) @updatedAt @db.Timestamptz(6)
+  businesses      businesses[]
+  referrals       referrals[]
+}
+
+model referrals {
+  id                String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  affiliate_id      String   @db.Uuid
+  business_id       String   @db.Uuid
+  status            String   @default("pending") // pending, paid
+  commission_earned Decimal  @default(0.00) @db.Decimal(12, 2)
+  created_at        DateTime @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+
+  affiliate affiliates @relation(fields: [affiliate_id], references: [id], onDelete: Cascade)
+
+  @@index([affiliate_id])
+  @@index([business_id])
 }

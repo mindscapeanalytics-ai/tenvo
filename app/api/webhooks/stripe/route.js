@@ -212,7 +212,7 @@ async function handleCheckoutSessionCompletedTx(tx, session) {
 
   const existing = await tx.businesses.findUnique({
     where: { id: businessId },
-    select: { settings: true },
+    select: { settings: true, affiliate_id: true, affiliates: { select: { commission_rate: true, status: true } } },
   });
   const nextSettings = mergeBusinessSettingsForBilling(
     existing?.settings,
@@ -249,6 +249,26 @@ async function handleCheckoutSessionCompletedTx(tx, session) {
       },
     },
   });
+
+  // Affiliate Commission Calculation
+  if (existing?.affiliate_id && existing?.affiliates?.status === 'approved' && existing?.affiliates?.commission_rate && amountMinor > 0) {
+    const commissionRate = parseFloat(existing.affiliates.commission_rate);
+    const amountMajor = amountMinor / 100;
+    const commissionEarned = (amountMajor * commissionRate) / 100;
+
+    // Create or update referral tracking record
+    await tx.referrals.create({
+      data: {
+        affiliate_id: existing.affiliate_id,
+        business_id: businessId,
+        commission_earned: commissionEarned,
+        status: 'pending',
+      }
+    });
+
+    // We can also update total_earnings on affiliates if we want a denormalized sum
+    // For manual payout, the 'pending' status in referrals is sufficient.
+  }
 
   console.log('[Stripe Webhook] Checkout completed for business:', businessId);
 }

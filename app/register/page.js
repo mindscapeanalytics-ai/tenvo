@@ -183,6 +183,7 @@ function buildRegistrationFormState(persisted) {
         currency,
         ntn: persisted?.ntn || '',
         storeTagline: persisted?.storeTagline || '',
+        affiliateCode: persisted?.affiliateCode || '',
     };
 }
 
@@ -222,7 +223,17 @@ export default function RegisterWizard() {
     const [googleError, setGoogleError] = useState(null);
     
     // Form data with persistence
-    const [formData, setFormData] = useState(() => buildRegistrationFormState(persistedFormData));
+    const [formData, setFormData] = useState(() => {
+        const state = buildRegistrationFormState(persistedFormData);
+        if (typeof window !== 'undefined') {
+            const urlParams = new URLSearchParams(window.location.search);
+            const ref = urlParams.get('ref');
+            if (ref && !state.affiliateCode) {
+                state.affiliateCode = ref;
+            }
+        }
+        return state;
+    });
 
     const prevCountryRef = React.useRef(null);
     useEffect(() => {
@@ -545,6 +556,7 @@ export default function RegisterWizard() {
             category: formData.category || 'retail-shop',
             planTier: formData.planTier || 'free',
             domainPackageKey: formData.domainPackageKey || undefined,
+            affiliateCode: formData.affiliateCode || undefined,
             currency: formData.currency,
             ntn: formData.ntn,
             description: formData.storeTagline || null,
