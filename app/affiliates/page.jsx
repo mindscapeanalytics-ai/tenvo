@@ -5,6 +5,7 @@ import { prismaBase as prisma } from '@/lib/db';
 import { redirect } from 'next/navigation';
 import { TrendingUp, ArrowRight, ShieldCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import Link from 'next/link';
 
 export const metadata = {
   title: 'Partner Program | Tenvo',
@@ -106,11 +107,17 @@ export default function AffiliatesPage({ searchParams }) {
                   />
                 </div>
                 
-                <div className="pt-2">
+                <div className="pt-2 space-y-4">
                   <Button type="submit" size="lg" className="w-full bg-brand-primary text-white hover:bg-brand-primary-dark rounded-xl h-14 text-base font-semibold shadow-sm group">
                     Submit Application
                     <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
                   </Button>
+                  
+                  <div className="text-center">
+                    <Link href="/affiliates/status" className="text-sm font-medium text-brand-primary hover:text-brand-primary-dark hover:underline transition-colors">
+                      Already a partner? Check Status & Dashboard
+                    </Link>
+                  </div>
                 </div>
                 
                 <div className="flex items-center justify-center pt-4 text-sm text-zinc-500 font-medium">

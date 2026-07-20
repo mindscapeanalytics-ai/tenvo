@@ -6,7 +6,7 @@ import {
     ChevronDown, ChevronRight, MoreVertical, RefreshCcw,
     TrendingUp, UserPlus, Clock, AlertTriangle, Check, X,
     Crown, Eye, Edit2, Trash2, Ban,
-    Activity, BarChart3, Layers, Mail, Calendar, Flag, LayoutGrid, Loader2
+    Activity, BarChart3, Layers, Mail, Calendar, Flag, LayoutGrid, Loader2, Link as LinkIcon
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -46,6 +46,7 @@ import { UserManagement } from './UserManagement';
 import { PlatformSubscriptionsPanel } from './PlatformSubscriptionsPanel';
 import { PlatformPackagesPanel } from './PlatformPackagesPanel';
 import { RegistrationApprovalsPanel } from './RegistrationApprovalsPanel';
+import { PlatformAffiliatesPanel } from './PlatformAffiliatesPanel';
 import toast from 'react-hot-toast';
 
 // --- Sub-views ---------------------------------------------------------------
@@ -59,6 +60,7 @@ const ADMIN_TABS = [
     { key: 'packages', label: 'Packages', icon: Layers },
     { key: 'roles', label: 'Roles & Access', icon: UserCog },
     { key: 'features', label: 'Feature Flags', icon: Flag },
+    { key: 'affiliates', label: 'Affiliates', icon: LinkIcon },
 ];
 
 // --- Overview Panel ----------------------------------------------------------
@@ -1132,6 +1134,7 @@ export default function PlatformAdminPanel() {
             {activeTab === 'packages' && <PlatformPackagesPanel />}
             {activeTab === 'roles' && <RolesPanel />}
             {activeTab === 'features' && <FeatureFlagManager />}
+            {activeTab === 'affiliates' && <PlatformAffiliatesPanel />}
         </div>
     );
 }
