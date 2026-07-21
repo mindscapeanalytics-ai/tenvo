@@ -49,8 +49,9 @@ async function registerAffiliate(formData) {
   redirect('/affiliates/success');
 }
 
-export default function AffiliatesPage({ searchParams }) {
-  const error = searchParams?.error;
+export default async function AffiliatesPage({ searchParams }) {
+  const resolvedParams = await Promise.resolve(searchParams);
+  const error = resolvedParams?.error;
   return (
     <MarketingLayout>
       <div className="relative bg-zinc-50 min-h-[90vh] py-24 overflow-hidden flex items-center">
@@ -75,11 +76,19 @@ export default function AffiliatesPage({ searchParams }) {
               </p>
               
               {error === 'email_taken' && (
-                <div className="mb-6 p-4 rounded-xl bg-red-50 text-red-700 text-sm font-medium flex items-center">
-                  <svg className="w-5 h-5 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <div className="mb-6 p-4 rounded-xl bg-amber-50 text-amber-800 border border-amber-200 text-sm flex items-start">
+                  <svg className="w-5 h-5 mr-3 flex-shrink-0 mt-0.5 text-amber-600" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                   </svg>
-                  An affiliate account with this email address already exists.
+                  <div>
+                    <p className="font-semibold mb-1">You've already applied!</p>
+                    <p className="text-amber-700">
+                      An application with this email address already exists. {' '}
+                      <Link href="/affiliates/status" className="font-bold underline hover:text-amber-900">
+                        Check your application status here
+                      </Link>.
+                    </p>
+                  </div>
                 </div>
               )}
               
