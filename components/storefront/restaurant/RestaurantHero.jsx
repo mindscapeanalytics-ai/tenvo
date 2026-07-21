@@ -2,26 +2,32 @@
 
 import { HeroCarousel } from '@/components/storefront/sections/heroes/HeroCarousel';
 import { formatRestaurantStoreName } from '@/lib/storefront/restaurantStorefront';
+import {
+  ELEVATED_CAROUSEL_HERO_CONTENT_SOLO,
+  ELEVATED_CAROUSEL_HERO_HEIGHT,
+} from '@/lib/storefront/elevatedCarouselHero';
 
 /**
- * Elevated restaurant hero — cinematic food carousel (actions live in site header).
+ * Elevated restaurant hero — cinematic full-viewport food carousel.
  */
-export function RestaurantHero({ preset, businessDomain, accent, accentDark, contactCity }) {
+export function RestaurantHero({ preset, accent, accentDark }) {
   const storeName = preset.storeName || formatRestaurantStoreName('');
   const slides = preset.slides || [];
 
   return (
     <section className="relative bg-zinc-100" data-restaurant-hero>
-      <HeroCarousel
-        slides={slides}
-        accent={accent}
-        accentDark={accentDark}
-        variant="restaurant"
-        storeName={storeName}
-        minHeight="min-h-[220px] sm:min-h-[300px] lg:min-h-[380px]"
-        className="restaurant-hero-carousel"
-        contentClassName="pb-8 sm:pb-10 lg:pb-12"
-      />
+      <div className="relative isolate">
+        <HeroCarousel
+          slides={slides}
+          accent={accent}
+          accentDark={accentDark}
+          variant="restaurant"
+          storeName={storeName}
+          minHeight={ELEVATED_CAROUSEL_HERO_HEIGHT}
+          className="restaurant-hero-carousel"
+          contentClassName={ELEVATED_CAROUSEL_HERO_CONTENT_SOLO}
+        />
+      </div>
     </section>
   );
 }

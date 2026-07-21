@@ -4,12 +4,13 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { ChevronLeft, ChevronRight, ArrowRight } from 'lucide-react';
 import { SmartProductImage } from '@/components/storefront/SmartProductImage';
+import { FurnitureVideoBackdrop } from '@/components/storefront/sections/furniture/FurnitureVideoBackdrop';
 import { cn } from '@/lib/utils';
 import { resolveHeroCarouselFallback } from '@/lib/storefront/storefrontImagePlaceholders';
 
 /**
  * Auto-advancing hero background carousel with manual controls.
- * @param {{ slides: Array<{ title: string; subtitle?: string; image: string; eyebrow?: string; ctaLabel?: string; ctaHref?: string }>; accent: string; className?: string; minHeight?: string; variant?: 'default' | 'luxury' | 'pharmacy' | 'parts' | 'furniture' | 'restaurant' | 'tiles'; contentClassName?: string; storeName?: string }} props
+ * @param {{ slides: Array<{ title: string; subtitle?: string; image: string; eyebrow?: string; ctaLabel?: string; ctaHref?: string; videoUrl?: string }>; accent: string; className?: string; minHeight?: string; variant?: 'default' | 'luxury' | 'pharmacy' | 'parts' | 'furniture' | 'restaurant' | 'tiles' | 'tyre'; contentClassName?: string; storeName?: string }} props
  */
 export function HeroCarousel({ slides = [], accent, className, minHeight = 'min-h-[280px] sm:min-h-[360px] lg:min-h-[420px]', variant = 'default', contentClassName, storeName = '' }) {
   const [index, setIndex] = useState(0);
@@ -29,61 +30,88 @@ export function HeroCarousel({ slides = [], accent, className, minHeight = 'min-
   const isPharmacy = variant === 'pharmacy';
   const isFurniture = variant === 'furniture';
   const isTiles = variant === 'tiles';
+  const isTyre = variant === 'tyre';
   const isRestaurant = variant === 'restaurant';
   const isParts = variant === 'parts';
   const slideAccent = slide?.accent || accent;
 
   return (
-    <div className={cn('store-hero relative overflow-hidden', isParts ? 'bg-neutral-950' : 'bg-slate-900', minHeight, className)}>
-      {slides.map((s, i) => (
-        <div
-          key={s.image + i}
-          className={cn(
-            'absolute inset-0 transition-opacity duration-700 ease-in-out',
-            i === index ? 'opacity-100 z-0' : 'opacity-0 z-0'
-          )}
-        >
-          <SmartProductImage
-            src={s.image}
-            alt=""
-            fill
-            className="object-cover"
-            priority={i === 0}
-            fallbackSrc={resolveHeroCarouselFallback(variant, s.title || String(i))}
-          />
+    <div className={cn('store-hero relative overflow-hidden', isParts || isTyre ? 'bg-neutral-950' : 'bg-slate-900', minHeight, className)}>
+      {slides.map((s, i) => {
+        const showSlideVideo = (isFurniture || isTyre) && Boolean(s.videoUrl) && i === index;
+        return (
           <div
+            key={(s.image || s.title || 'slide') + i}
             className={cn(
-              'absolute inset-0',
-              isLuxury
-                ? 'bg-gradient-to-t from-stone-950/95 via-stone-950/55 to-stone-900/25'
-                : isPharmacy
-                  ? 'bg-gradient-to-r from-emerald-950/95 via-emerald-900/80 to-emerald-900/45'
-                  : isFurniture || isTiles
-                    ? 'bg-gradient-to-r from-stone-950/95 via-amber-950/75 to-amber-900/40'
-                    : isRestaurant
-                      ? 'bg-gradient-to-r from-neutral-950/95 via-red-950/75 to-neutral-900/35'
-                      : isParts
-                      ? 'bg-gradient-to-t from-black/85 via-black/45 to-black/15'
-                      : 'bg-gradient-to-r from-slate-950/95 via-slate-900/85 to-slate-900/55'
+              'absolute inset-0 transition-opacity duration-700 ease-in-out',
+              i === index ? 'opacity-100 z-0' : 'opacity-0 z-0'
             )}
-          />
-          <div
-            className={cn(
-              'absolute inset-0',
-              isLuxury ? 'bg-black/15' : isPharmacy ? 'bg-black/20' : isFurniture || isTiles ? 'bg-black/18' : isRestaurant ? 'bg-black/20' : isParts ? 'bg-black/10' : 'bg-black/25'
-            )}
-          />
-          {isParts ? (
-            <div
-              className="pointer-events-none absolute inset-0 opacity-40"
-              style={{
-                backgroundImage: `radial-gradient(circle at 30% 20%, ${s.accent || accent || '#cd232a'}33, transparent 45%)`,
-              }}
-              aria-hidden
+          >
+            <SmartProductImage
+              src={s.image}
+              alt=""
+              fill
+              className="object-cover"
+              priority={i === 0}
+              fallbackSrc={resolveHeroCarouselFallback(variant, s.title || String(i))}
             />
-          ) : null}
-        </div>
-      ))}
+            {showSlideVideo ? (
+              <FurnitureVideoBackdrop
+                videoUrl={s.videoUrl}
+                poster={s.image}
+                className="absolute inset-0 h-full w-full object-cover"
+              />
+            ) : null}
+            <div
+              className={cn(
+                'absolute inset-0',
+                isLuxury
+                  ? 'bg-gradient-to-t from-stone-950/95 via-stone-950/55 to-stone-900/25'
+                  : isPharmacy
+                    ? 'bg-gradient-to-r from-emerald-950/78 via-emerald-950/35 to-transparent'
+                    : isFurniture
+                      ? 'bg-gradient-to-r from-stone-950/78 via-stone-950/35 to-transparent'
+                      : isTiles
+                        ? 'bg-gradient-to-r from-stone-950/78 via-stone-950/35 to-transparent'
+                        : isTyre
+                          ? 'bg-gradient-to-r from-black/85 via-zinc-950/55 to-transparent'
+                        : isRestaurant
+                          ? 'bg-gradient-to-r from-neutral-950/78 via-neutral-950/35 to-transparent'
+                          : isParts
+                            ? 'bg-gradient-to-t from-black/85 via-black/45 to-black/15'
+                            : 'bg-gradient-to-r from-slate-950/95 via-slate-900/85 to-slate-900/55'
+              )}
+            />
+            <div
+              className={cn(
+                'absolute inset-0',
+                isLuxury
+                  ? 'bg-black/15'
+                  : isPharmacy
+                    ? 'bg-gradient-to-t from-emerald-950/50 via-transparent to-emerald-950/15'
+                    : isFurniture
+                      ? 'bg-gradient-to-t from-stone-950/55 via-transparent to-stone-950/15'
+                      : isTiles
+                        ? 'bg-gradient-to-t from-stone-950/55 via-transparent to-stone-950/15'
+                        : isRestaurant
+                          ? 'bg-gradient-to-t from-neutral-950/55 via-transparent to-neutral-950/15'
+                          : isParts
+                            ? 'bg-black/10'
+                            : 'bg-black/25'
+              )}
+            />
+            {isParts ? (
+              <div
+                className="pointer-events-none absolute inset-0 opacity-40"
+                style={{
+                  backgroundImage: `radial-gradient(circle at 30% 20%, ${s.accent || accent || '#cd232a'}33, transparent 45%)`,
+                }}
+                aria-hidden
+              />
+            ) : null}
+          </div>
+        );
+      })}
 
       <div
         className={cn(
@@ -93,32 +121,47 @@ export function HeroCarousel({ slides = [], accent, className, minHeight = 'min-
         )}
       >
         {slide ? (
-          <div className={cn('max-w-xl', (isLuxury || isParts) && 'max-w-2xl')}>
+          <div
+            className={cn(
+              'max-w-xl',
+              (isFurniture || isPharmacy || isTiles || isRestaurant) && 'max-w-2xl',
+              (isLuxury || isParts) && 'max-w-2xl'
+            )}
+          >
             <p
               className={cn(
                 'store-hero-eyebrow mb-2 text-xs font-semibold uppercase tracking-[0.22em] sm:text-sm',
-                isPharmacy && 'text-emerald-300',
-                (isFurniture || isTiles) && 'text-amber-200',
-                isRestaurant && 'text-red-200/90',
+                isPharmacy && 'mb-3 text-emerald-100/95',
+                isFurniture && 'mb-3 text-amber-100/95',
+                isTiles && 'mb-3 text-amber-100/95',
+                isRestaurant && 'mb-3 text-red-100/95',
                 (isLuxury || isParts) && 'text-white/90'
               )}
               style={(isLuxury || isParts) && slideAccent ? { color: slideAccent } : undefined}
             >
-              {slide.eyebrow || (isLuxury ? 'Curated collection' : isPharmacy ? (storeName || 'Pharmacy') : isFurniture ? (storeName || 'Furniture') : isTiles ? (storeName || 'Tiles & marble') : isRestaurant ? (storeName || 'Restaurant') : isParts ? 'Auto parts' : 'Welcome')}
+              {slide.eyebrow ||
+                (isLuxury
+                  ? 'Curated collection'
+                  : isPharmacy
+                    ? storeName || 'Pharmacy'
+                    : isFurniture
+                      ? storeName || 'Furniture'
+                      : isTiles
+                        ? storeName || 'Tiles & marble'
+                        : isRestaurant
+                          ? storeName || 'Restaurant'
+                          : isParts
+                            ? 'Auto parts'
+                            : 'Welcome')}
             </p>
             <h1
               className={cn(
-                'font-semibold leading-tight',
-                isParts ? 'text-white' : 'text-white',
+                'font-semibold leading-tight text-white',
                 isLuxury
                   ? 'store-heading store-heading--inverse text-3xl tracking-wide sm:text-5xl lg:text-6xl'
-                  : isPharmacy
-                    ? 'text-2xl tracking-tight sm:text-[2rem] lg:text-4xl'
-                    : isFurniture || isTiles
-                      ? 'text-2xl tracking-tight sm:text-[2rem] lg:text-4xl'
-                      : isRestaurant
-                        ? 'text-2xl tracking-tight sm:text-[2rem] lg:text-4xl'
-                        : isParts
+                  : isPharmacy || isFurniture || isTiles || isRestaurant
+                    ? 'text-3xl tracking-tight sm:text-4xl lg:text-5xl xl:text-6xl'
+                    : isParts
                       ? 'store-heading store-heading--inverse text-2xl tracking-tight sm:text-4xl lg:text-[2.85rem]'
                       : 'store-heading store-heading--inverse text-2xl tracking-tight sm:text-4xl lg:text-[2.75rem]'
               )}
@@ -130,6 +173,8 @@ export function HeroCarousel({ slides = [], accent, className, minHeight = 'min-
                 className={cn(
                   'store-hero-subtitle mt-3 text-sm leading-relaxed sm:text-base lg:text-lg',
                   isParts ? 'mx-auto max-w-xl text-white/85' : 'text-white/90',
+                  (isFurniture || isPharmacy || isTiles || isRestaurant) &&
+                    'mt-4 max-w-xl text-base text-white/88 sm:text-lg',
                   isLuxury && 'mx-auto max-w-xl'
                 )}
               >
@@ -141,10 +186,18 @@ export function HeroCarousel({ slides = [], accent, className, minHeight = 'min-
                 href={slide.ctaHref}
                 className={cn(
                   'mt-5 inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-semibold transition hover:opacity-95 sm:px-7',
-                  isPharmacy ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-900/30 hover:bg-emerald-400' : (isFurniture || isTiles) ? 'bg-amber-800 text-white shadow-lg shadow-amber-950/30 hover:bg-amber-700' : 'text-white shadow-lg',
+                  isPharmacy
+                    ? 'mt-7 rounded-xl bg-white px-7 py-3.5 text-emerald-950 shadow-lg shadow-emerald-950/25 hover:bg-emerald-50'
+                    : isFurniture
+                      ? 'mt-7 rounded-xl bg-white px-7 py-3.5 text-stone-900 shadow-lg shadow-stone-950/25 hover:bg-amber-50'
+                      : isTiles
+                        ? 'mt-7 rounded-xl bg-white px-7 py-3.5 text-stone-900 shadow-lg shadow-stone-950/25 hover:bg-stone-50'
+                        : isRestaurant
+                          ? 'mt-7 rounded-xl bg-white px-7 py-3.5 text-zinc-900 shadow-lg shadow-black/25 hover:bg-zinc-50'
+                          : 'text-white shadow-lg',
                   isParts && 'hover:shadow-xl motion-safe:hover:scale-[1.02]'
                 )}
-                style={!isPharmacy && !isFurniture && !isTiles ? { backgroundColor: slideAccent || accent } : undefined}
+                style={!isPharmacy && !isFurniture && !isTiles && !isRestaurant ? { backgroundColor: slideAccent || accent } : undefined}
               >
                 {slide.ctaLabel}
                 <ArrowRight className="h-4 w-4" aria-hidden />

@@ -36,6 +36,7 @@ import { isRestaurantElevatedStore } from '@/lib/storefront/restaurantStorefront
 import { isPharmacyElevatedStore } from '@/lib/storefront/pharmacyStorefront';
 import { isFurnitureElevatedStore } from '@/lib/storefront/furnitureStorefront';
 import { isTilesElevatedStore } from '@/lib/storefront/tilesStorefront';
+import { isTyreElevatedStore } from '@/lib/storefront/tyreStorefront';
 import { isFitnessElevatedStore } from '@/lib/storefront/fitnessStorefront';
 import { isSupermarketElevatedStore } from '@/lib/storefront/supermarketStorefront';
 import { isFashionEditorialStore } from '@/lib/storefront/fashionEditorial';
@@ -354,6 +355,9 @@ export function StoreSettingsManager({ business, category }) {
     },
     furniture: {
       showRoomTiles: true,
+      showTrustStrip: true,
+      showLifestyleSpotlight: true,
+      showBrandStories: true,
       showTestimonials: false,
       showShowroomCta: true,
       showMarketingBanners: true,
@@ -363,6 +367,26 @@ export function StoreSettingsManager({ business, category }) {
       showroomLabel: 'Visit showroom',
       featuredRailTitle: '',
       featuredRailSubtitle: '',
+      roomEssentialsTitle: '',
+      roomEssentialsSubtitle: '',
+      heroVideoUrl: '',
+      showroomVideoUrl: '',
+      showroomBannerImage: '',
+      showroomEyebrow: '',
+      showroomTitle: '',
+      showroomSubtitle: '',
+      brandStory1Eyebrow: '',
+      brandStory1Title: '',
+      brandStory1Subtitle: '',
+      brandStory1Image: '',
+      brandStory1Cta: '',
+      brandStory1Href: '',
+      brandStory2Eyebrow: '',
+      brandStory2Title: '',
+      brandStory2Subtitle: '',
+      brandStory2Image: '',
+      brandStory2Cta: '',
+      brandStory2Href: '',
     },
     tiles: {
       showRoomTiles: true,
@@ -375,6 +399,25 @@ export function StoreSettingsManager({ business, category }) {
       showroomLabel: 'Visit emporium',
       featuredRailTitle: '',
       featuredRailSubtitle: '',
+    },
+    tyre: {
+      showTrustStrip: true,
+      showVehicleTiles: true,
+      showBrandWall: true,
+      showAlloyRail: true,
+      showServices: true,
+      showBayCta: true,
+      showTestimonials: false,
+      showMarketingBanners: true,
+      locationLabel: 'Deliver to',
+      defaultLocation: '',
+      searchPlaceholder: '',
+      bayLabel: 'Book fitting bay',
+      featuredRailTitle: '',
+      featuredRailSubtitle: '',
+      heroVideoUrl: '',
+      bayCtaTitle: '',
+      bayCtaSubtitle: '',
     },
     fitness: {
       showPrograms: true,
@@ -488,6 +531,7 @@ export function StoreSettingsManager({ business, category }) {
   const pharmacyStore = isPharmacyElevatedStore(category || business?.category);
   const furnitureStore = isFurnitureElevatedStore(category || business?.category);
   const tilesStore = isTilesElevatedStore(category || business?.category);
+  const tyreStore = isTyreElevatedStore(category || business?.category);
   const fitnessStore = isFitnessElevatedStore(category || business?.category);
   const supermarketStore = isSupermarketElevatedStore(category || business?.category);
   const jewelleryStore = isJewelleryStore(category || business?.category);
@@ -637,6 +681,11 @@ export function StoreSettingsManager({ business, category }) {
     setSettings((prev) => ({
       ...prev,
       tiles: { ...(prev.tiles || {}), [key]: val },
+    }));
+  const setTyre = (key, val) =>
+    setSettings((prev) => ({
+      ...prev,
+      tyre: { ...(prev.tyre || {}), [key]: val },
     }));
   const setFitness = (key, val) =>
     setSettings((prev) => ({
@@ -2300,7 +2349,10 @@ export function StoreSettingsManager({ business, category }) {
               <CardContent className="space-y-4">
                 <div className="grid gap-3 sm:grid-cols-2">
                   {[
+                    ['showTrustStrip', 'Trust strip below hero', false],
                     ['showRoomTiles', 'Room collection tiles', false],
+                    ['showLifestyleSpotlight', 'Lifestyle spotlight', false],
+                    ['showBrandStories', 'Room essentials brand stories', false],
                     ['showTestimonials', 'Customer testimonials', true],
                     ['showShowroomCta', 'Showroom CTA on homepage', false],
                     ['showMarketingBanners', 'Custom marketing banners', false],
@@ -2316,6 +2368,22 @@ export function StoreSettingsManager({ business, category }) {
                 </div>
                 <Separator />
                 <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label>Room essentials title</Label>
+                    <Input
+                      value={settings.furniture?.roomEssentialsTitle || ''}
+                      onChange={(e) => setFurniture('roomEssentialsTitle', e.target.value)}
+                      placeholder="Room essentials"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Room essentials subtitle</Label>
+                    <Input
+                      value={settings.furniture?.roomEssentialsSubtitle || ''}
+                      onChange={(e) => setFurniture('roomEssentialsSubtitle', e.target.value)}
+                      placeholder="Curated pieces for every space"
+                    />
+                  </div>
                   <div className="space-y-1.5">
                     <Label>Search placeholder</Label>
                     <Input
@@ -2346,6 +2414,100 @@ export function StoreSettingsManager({ business, category }) {
                       onChange={(e) => setFurniture('defaultLocation', e.target.value)}
                       placeholder="Uses store city when empty"
                     />
+                  </div>
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <Label>Hero video URL (optional)</Label>
+                    <Input
+                      value={settings.furniture?.heroVideoUrl || ''}
+                      onChange={(e) => setFurniture('heroVideoUrl', e.target.value)}
+                      placeholder="https://…/showroom.mp4"
+                    />
+                    <p className="text-[11px] text-gray-500">
+                      Mute looping MP4 on the first hero slide. Leave blank for image-only (demo stores may use a default).
+                    </p>
+                  </div>
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <Label>Showroom CTA video URL (optional)</Label>
+                    <Input
+                      value={settings.furniture?.showroomVideoUrl || ''}
+                      onChange={(e) => setFurniture('showroomVideoUrl', e.target.value)}
+                      placeholder="https://…/ambient.mp4"
+                    />
+                  </div>
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <Label>Showroom banner image URL</Label>
+                    <Input
+                      value={settings.furniture?.showroomBannerImage || ''}
+                      onChange={(e) => setFurniture('showroomBannerImage', e.target.value)}
+                      placeholder="Leave blank to use Branding hero / cover / catalog photo"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Showroom eyebrow</Label>
+                    <Input
+                      value={settings.furniture?.showroomEyebrow || ''}
+                      onChange={(e) => setFurniture('showroomEyebrow', e.target.value)}
+                      placeholder="Experience in person"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Showroom title</Label>
+                    <Input
+                      value={settings.furniture?.showroomTitle || ''}
+                      onChange={(e) => setFurniture('showroomTitle', e.target.value)}
+                      placeholder="Visit a showroom near you"
+                    />
+                  </div>
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <Label>Showroom motivation</Label>
+                    <Input
+                      value={settings.furniture?.showroomSubtitle || ''}
+                      onChange={(e) => setFurniture('showroomSubtitle', e.target.value)}
+                      placeholder="See fabrics, test comfort, and get expert guidance…"
+                    />
+                  </div>
+                </div>
+                <Separator />
+                <div className="space-y-3">
+                  <p className="text-sm font-semibold text-stone-800">Brand story 1 (above product grid)</p>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {[
+                      ['brandStory1Eyebrow', 'Eyebrow', 'Designed for living'],
+                      ['brandStory1Title', 'Title', 'Furniture that feels like home'],
+                      ['brandStory1Subtitle', 'Motivation', 'Thoughtful proportions and lasting materials…'],
+                      ['brandStory1Image', 'Image URL', 'https://…/lifestyle.jpg'],
+                      ['brandStory1Cta', 'Button label', 'Explore living'],
+                      ['brandStory1Href', 'Link suffix', '?category=living-room'],
+                    ].map(([key, label, placeholder]) => (
+                      <div key={key} className={cn('space-y-1.5', key.includes('Subtitle') || key.includes('Image') ? 'sm:col-span-2' : '')}>
+                        <Label>{label}</Label>
+                        <Input
+                          value={settings.furniture?.[key] || ''}
+                          onChange={(e) => setFurniture(key, e.target.value)}
+                          placeholder={placeholder}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  <p className="pt-2 text-sm font-semibold text-stone-800">Brand story 2 (below product grid)</p>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {[
+                      ['brandStory2Eyebrow', 'Eyebrow', 'Rest well'],
+                      ['brandStory2Title', 'Title', 'Bedrooms made for better nights'],
+                      ['brandStory2Subtitle', 'Motivation', 'Create a calm retreat…'],
+                      ['brandStory2Image', 'Image URL', 'https://…/bedroom.jpg'],
+                      ['brandStory2Cta', 'Button label', 'Shop bedroom'],
+                      ['brandStory2Href', 'Link suffix', '?category=bedroom-furniture'],
+                    ].map(([key, label, placeholder]) => (
+                      <div key={key} className={cn('space-y-1.5', key.includes('Subtitle') || key.includes('Image') ? 'sm:col-span-2' : '')}>
+                        <Label>{label}</Label>
+                        <Input
+                          value={settings.furniture?.[key] || ''}
+                          onChange={(e) => setFurniture(key, e.target.value)}
+                          placeholder={placeholder}
+                        />
+                      </div>
+                    ))}
                   </div>
                 </div>
                 <p className="text-xs text-gray-500">
@@ -2419,6 +2581,101 @@ export function StoreSettingsManager({ business, category }) {
                 </div>
                 <p className="text-xs text-gray-500">
                   Hero carousel slides are under Branding. Uploaded slides override tiles template defaults.
+                </p>
+              </CardContent>
+            </Card>
+          ) : null}
+
+          {tyreStore ? (
+            <Card>
+              <CardHeader className="pb-4">
+                <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                  <Megaphone className="w-4 h-4" /> Tyre storefront
+                </CardTitle>
+                <CardDescription>
+                  Toggle homepage sections below the tyre hero. Size finder, brands, and rails use your live catalog.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {[
+                    ['showTrustStrip', 'Trust strip below hero', false],
+                    ['showVehicleTiles', 'Shop by vehicle type', false],
+                    ['showBrandWall', 'Brand wall', false],
+                    ['showAlloyRail', 'Alloy & wheels rail', false],
+                    ['showServices', 'Bay services section', false],
+                    ['showBayCta', 'Fitting bay CTA', false],
+                    ['showTestimonials', 'Customer testimonials', true],
+                    ['showMarketingBanners', 'Custom marketing banners', false],
+                  ].map(([key, label, optIn]) => (
+                    <div key={key} className="flex items-center gap-2">
+                      <Switch
+                        checked={optIn ? settings.tyre?.[key] === true : settings.tyre?.[key] !== false}
+                        onCheckedChange={(v) => setTyre(key, v)}
+                      />
+                      <Label className="text-sm">{label}</Label>
+                    </div>
+                  ))}
+                </div>
+                <Separator />
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label>Search placeholder</Label>
+                    <Input
+                      value={settings.tyre?.searchPlaceholder || ''}
+                      onChange={(e) => setTyre('searchPlaceholder', e.target.value)}
+                      placeholder="Search size, brand, or model…"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Bay CTA label</Label>
+                    <Input
+                      value={settings.tyre?.bayLabel || ''}
+                      onChange={(e) => setTyre('bayLabel', e.target.value)}
+                      placeholder="Book fitting bay"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Location label</Label>
+                    <Input
+                      value={settings.tyre?.locationLabel || ''}
+                      onChange={(e) => setTyre('locationLabel', e.target.value)}
+                      placeholder="Deliver to"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Default location hint</Label>
+                    <Input
+                      value={settings.tyre?.defaultLocation || ''}
+                      onChange={(e) => setTyre('defaultLocation', e.target.value)}
+                      placeholder="Uses store city when empty"
+                    />
+                  </div>
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <Label>Hero video URL (optional)</Label>
+                    <Input
+                      value={settings.tyre?.heroVideoUrl || ''}
+                      onChange={(e) => setTyre('heroVideoUrl', e.target.value)}
+                      placeholder="https://…mp4"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Bay CTA title</Label>
+                    <Input
+                      value={settings.tyre?.bayCtaTitle || ''}
+                      onChange={(e) => setTyre('bayCtaTitle', e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Bay CTA subtitle</Label>
+                    <Input
+                      value={settings.tyre?.bayCtaSubtitle || ''}
+                      onChange={(e) => setTyre('bayCtaSubtitle', e.target.value)}
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500">
+                  Hero carousel slides are under Branding. Uploaded slides override tyre template defaults.
                 </p>
               </CardContent>
             </Card>

@@ -15,6 +15,7 @@ import { MarketplaceHero } from './marketplace/MarketplaceHero';
 import { PharmacyHero } from './pharmacy/PharmacyHero';
 import { FurnitureHero } from './furniture/FurnitureHero';
 import { TilesHero } from './tiles/TilesHero';
+import { TyreHero } from './tyre/TyreHero';
 import { RestaurantHero } from './restaurant/RestaurantHero';
 import { FitnessHero } from './fitness/FitnessHero';
 import { SupermarketHero } from './supermarket/SupermarketHero';
@@ -79,6 +80,16 @@ export function DomainHeroRouter({
     case 'tiles-elevated':
       return (
         <TilesHero
+          preset={preset}
+          businessDomain={businessDomain}
+          accent={accent}
+          accentDark={accentDark}
+          contactCity={preset.contactCity}
+        />
+      );
+    case 'tyre-elevated':
+      return (
+        <TyreHero
           preset={preset}
           businessDomain={businessDomain}
           accent={accent}

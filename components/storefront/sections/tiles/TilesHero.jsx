@@ -6,9 +6,13 @@ import Link from 'next/link';
 import { Search, MapPin, Layers } from 'lucide-react';
 import { HeroCarousel } from '@/components/storefront/sections/heroes/HeroCarousel';
 import { getTilesConfig } from '@/lib/storefront/tilesStorefront';
+import {
+  ELEVATED_CAROUSEL_HERO_CONTENT,
+  ELEVATED_CAROUSEL_HERO_HEIGHT,
+} from '@/lib/storefront/elevatedCarouselHero';
 
 /**
- * Tenant-aware tiles homepage hero.
+ * Premium screen-aware tiles homepage hero (~full viewport).
  */
 export function TilesHero({ preset, businessDomain, accent, accentDark, contactCity }) {
   const router = useRouter();
@@ -31,22 +35,24 @@ export function TilesHero({ preset, businessDomain, accent, accentDark, contactC
 
   return (
     <section className="relative bg-[#f5f5f4]">
-      <div className="relative bg-stone-950">
+      <div className="relative isolate">
         <HeroCarousel
           slides={preset.slides || []}
           accent={accent}
           variant="tiles"
           storeName={storeName}
-          minHeight="min-h-[240px] sm:min-h-[320px] lg:min-h-[440px]"
+          minHeight={ELEVATED_CAROUSEL_HERO_HEIGHT}
           className="tiles-hero-carousel"
-          contentClassName="pb-10 sm:pb-14 lg:pb-20"
+          contentClassName={ELEVATED_CAROUSEL_HERO_CONTENT}
         />
       </div>
 
       {quickSearchTerms.length > 0 && (
         <div className="border-b border-stone-100/80 bg-white px-3 py-3 lg:hidden">
           <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
-            <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-stone-400">Trending</span>
+            <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-stone-400">
+              Trending
+            </span>
             {quickSearchTerms.map((term) => (
               <button
                 key={term}
@@ -62,8 +68,8 @@ export function TilesHero({ preset, businessDomain, accent, accentDark, contactC
       )}
 
       <div className="relative z-20 mx-auto hidden max-w-[1400px] px-4 sm:px-6 lg:block lg:px-8">
-        <div className="-mt-14 lg:-mt-16">
-          <div className="rounded-2xl border border-stone-100/90 bg-white p-4 shadow-lg shadow-amber-950/10">
+        <div className="-mt-16 xl:-mt-[4.5rem]">
+          <div className="rounded-2xl border border-stone-100/90 bg-white/95 p-4 shadow-xl shadow-amber-950/10 backdrop-blur-sm sm:p-5">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
               <button
                 type="button"
@@ -87,14 +93,14 @@ export function TilesHero({ preset, businessDomain, accent, accentDark, contactC
                     onChange={(e) => setQuery(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && search()}
                     placeholder={config.searchPlaceholder}
-                    className="w-full rounded-xl border border-stone-200 bg-white py-2.5 pl-10 pr-4 text-sm text-stone-900 outline-none transition focus:border-stone-400 focus:ring-2 focus:ring-stone-100"
+                    className="w-full rounded-xl border border-stone-200 bg-white py-3 pl-10 pr-4 text-sm text-stone-900 outline-none transition focus:border-stone-400 focus:ring-2 focus:ring-stone-100"
                     aria-label="Search tiles"
                   />
                 </div>
                 <button
                   type="button"
                   onClick={search}
-                  className="inline-flex shrink-0 items-center justify-center rounded-xl px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-95"
+                  className="inline-flex shrink-0 items-center justify-center rounded-xl px-6 py-3 text-sm font-semibold text-white transition hover:opacity-95"
                   style={{ background: `linear-gradient(135deg, ${accent} 0%, ${accentDark} 100%)` }}
                 >
                   Search
@@ -104,7 +110,7 @@ export function TilesHero({ preset, businessDomain, accent, accentDark, contactC
               {config.showShowroomCta ? (
                 <Link
                   href={`${base}/contact`}
-                  className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-stone-800/30 px-4 py-2.5 text-xs font-semibold text-stone-900 transition hover:bg-stone-50"
+                  className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-stone-800/30 px-4 py-3 text-xs font-semibold text-stone-900 transition hover:bg-stone-50"
                 >
                   <Layers className="h-4 w-4" aria-hidden />
                   {config.showroomLabel}
@@ -113,8 +119,10 @@ export function TilesHero({ preset, businessDomain, accent, accentDark, contactC
             </div>
 
             {quickSearchTerms.length > 0 && (
-              <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-                <span className="text-[10px] font-semibold uppercase tracking-wide text-stone-400">Popular</span>
+              <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                <span className="text-[10px] font-semibold uppercase tracking-wide text-stone-400">
+                  Popular
+                </span>
                 {quickSearchTerms.map((term) => (
                   <button
                     key={term}

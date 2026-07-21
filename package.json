@@ -86,6 +86,8 @@
     "verify:autoparts-seed": "bun scripts/verify-autoparts-seed.mjs",
     "verify:marine-parts-seed": "bun scripts/verify-marine-parts-seed.mjs",
     "verify:fitness-seed": "bun scripts/verify-fitness-seed.mjs",
+    "verify:furniture-storefront": "bun scripts/verify-furniture-storefront.mjs",
+    "verify:tyre-storefront": "bun scripts/verify-tyre-storefront.mjs",
     "verify:pharmacy-seed": "bun scripts/verify-pharmacy-seed.mjs",
     "verify:restaurant-seed": "bun scripts/verify-restaurant-seed.mjs",
     "verify:memberships": "bun scripts/verify-memberships.mjs",
