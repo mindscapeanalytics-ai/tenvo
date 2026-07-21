@@ -20,49 +20,61 @@ export default async function AffiliateStatusPage({ searchParams }) {
 
   if (email) {
     try {
-      affiliate = await prisma.affiliates.findUnique({
-        where: { email: email.toLowerCase().trim() },
-        include: {
-          referrals: {
-            orderBy: { created_at: 'desc' },
-            take: 20,
-            select: {
-              id: true,
-              affiliate_id: true,
-              business_id: true,
-              status: true,
-              commission_earned: true,
-              created_at: true,
-            }
-          }
-        }
-      });
+      const cleanEmail = email.toLowerCase().trim();
 
-      if (!affiliate) {
+      // Use raw SQL so we always get the status column,
+      // regardless of Prisma client cache state
+      const rows = await prisma.$queryRaw`
+        SELECT id, name, email, referral_code, status, commission_rate,
+               total_earnings, is_active, created_at, updated_at
+        FROM affiliates
+        WHERE email = ${cleanEmail}
+        LIMIT 1
+      `;
+
+      if (!rows || rows.length === 0) {
         error = "No partner account found for that email address.";
-      } else if (affiliate.referrals?.length > 0) {
-        // Batch-fetch business names for all referral rows
-        const bizIds = [...new Set(affiliate.referrals.map(r => r.business_id).filter(Boolean))];
+      } else {
+        affiliate = {
+          ...rows[0],
+          commission_rate: Number(rows[0].commission_rate),
+          total_earnings: Number(rows[0].total_earnings),
+          referrals: [],
+        };
+
+        // Fetch referrals for this affiliate
+        const referralRows = await prisma.$queryRaw`
+          SELECT r.id, r.affiliate_id, r.business_id, r.status,
+                 r.commission_earned, r.created_at
+          FROM referrals r
+          WHERE r.affiliate_id = ${affiliate.id}::uuid
+          ORDER BY r.created_at DESC
+          LIMIT 20
+        `;
+
+        // Batch-fetch business names
+        const bizIds = [...new Set(referralRows.map(r => r.business_id).filter(Boolean))];
+        let bizMap = {};
         if (bizIds.length > 0) {
           const businesses = await prisma.businesses.findMany({
             where: { id: { in: bizIds } },
             select: { id: true, business_name: true, domain: true, plan_tier: true }
           });
-          const bizMap = Object.fromEntries(businesses.map(b => [b.id, b]));
-          affiliate = {
-            ...affiliate,
-            referrals: affiliate.referrals.map(r => ({
-              ...r,
-              businesses: bizMap[r.business_id] || null,
-            }))
-          };
+          bizMap = Object.fromEntries(businesses.map(b => [b.id, b]));
         }
+
+        affiliate.referrals = referralRows.map(r => ({
+          ...r,
+          commission_earned: Number(r.commission_earned),
+          businesses: bizMap[r.business_id] || null,
+        }));
       }
     } catch (err) {
-      console.error(err);
+      console.error('[affiliate status page]', err);
       error = "An error occurred while looking up your account.";
     }
   }
+
 
   // Calculate stats if approved
   const totalReferrals = affiliate?.referrals?.length || 0;
