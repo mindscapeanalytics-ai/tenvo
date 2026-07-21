@@ -23,7 +23,12 @@ import {
 } from '@/lib/utils/regionalHelpers';
 import { formatCurrency, isValidCurrency } from '@/lib/currency';
 import { authClient } from '@/lib/auth-client';
-import { useRegistrationPersistence, clearRegistrationData } from '@/lib/hooks/useRegistrationPersistence';
+import { useRegistrationPersistence, clearRegistrationData, getSavedRegistrationData } from '@/lib/hooks/useRegistrationPersistence';
+import {
+    clampRegistrationStep,
+    registrationWantsExplicitResume,
+    resolveInitialRegistrationStep,
+} from '@/lib/registration/registrationWizard';
 import { ResumeBanner } from '@/components/registration/ResumeBanner';
 import { GoogleOAuthError } from '@/components/registration/GoogleOAuthError';
 import Link from 'next/link';
@@ -207,7 +212,21 @@ export default function RegisterWizard() {
         hasRecoveredData
     } = useRegistrationPersistence(1);
 
-    const [step, setStep] = useState(persistedStep);
+    const [step, setStep] = useState(() => {
+        if (typeof window === 'undefined') return 1;
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('new') === '1') {
+            clearRegistrationData();
+            return 1;
+        }
+        const saved = getSavedRegistrationData();
+        return resolveInitialRegistrationStep({
+            searchParams: params,
+            savedStep: saved?.step ?? 1,
+            savedData: saved?.data ?? null,
+            isRecentSave: Boolean(saved?.isRecent),
+        });
+    });
     const [searchTerm, setSearchTerm] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [handleStatus, setHandleStatus] = useState({ checking: false, available: true, error: '' });
@@ -218,6 +237,7 @@ export default function RegisterWizard() {
     const [registrationOtp, setRegistrationOtp] = useState('');
     const [emailDeliveryHint, setEmailDeliveryHint] = useState(null);
     const [resumeChecked, setResumeChecked] = useState(false);
+    const [wizardBootstrapped, setWizardBootstrapped] = useState(false);
     const [showOptionalFields, setShowOptionalFields] = useState(false);
     const [showResumeBanner, setShowResumeBanner] = useState(false);
     const [googleError, setGoogleError] = useState(null);
@@ -252,32 +272,128 @@ export default function RegisterWizard() {
         ? getDomainKnowledge(formData.category, { countryIso: formData.country })
         : null;
 
-    // Smart auto-resume: restore data without blocking dialog
+    // Handle URL params, fresh "add business" flow, and signed-in resume rules.
     useEffect(() => {
-        if (hasRecoveredData && !resumeChecked) {
-            // Auto-fill form with saved data
-            const restoredData = buildRegistrationFormState(persistedFormData);
-            setFormData(restoredData);
-            
-            // Calculate data age
-            const savedAt = persistedFormData._savedAt ? new Date(persistedFormData._savedAt) : null;
-            const ageMinutes = savedAt ? (Date.now() - savedAt.getTime()) / (1000 * 60) : 0;
-            
-            // Smart resume based on age
-            if (ageMinutes < 30) {
-                // Recent data (< 30 min) - silent auto-resume with subtle toast
-                toast.success('Restored your registration from a few minutes ago', { duration: 3000 });
-            } else {
-                // Older data - show dismissible banner
-                setShowResumeBanner(true);
-                
-                // Auto-hide banner after 15 seconds
-                setTimeout(() => setShowResumeBanner(false), 15000);
+        if (typeof window === 'undefined' || wizardBootstrapped) return;
+
+        let cancelled = false;
+
+        const bootstrapWizard = async () => {
+            const params = new URLSearchParams(window.location.search);
+            const isFreshBusiness = params.get('new') === '1';
+            const explicitResume = registrationWantsExplicitResume(params);
+            const verifiedParam = params.get('verified') === 'true';
+
+            if (isFreshBusiness) {
+                clearRegistrationData();
+                setFormData((prev) => ({
+                    ...buildRegistrationFormState({}),
+                    email: user?.email || prev.email || '',
+                }));
+                setStep(1);
+                setPersistedStep(1);
             }
-            
-            setResumeChecked(true);
-        }
-    }, [hasRecoveredData, persistedFormData, resumeChecked]);
+
+            if (params.get('error') === 'google') {
+                const errorType = params.get('google_error') || 'generic';
+                setGoogleError(errorType);
+                window.history.replaceState({}, '', window.location.pathname);
+            }
+
+            if (verifiedParam) {
+                setVerificationState('verified');
+                toast.success('Email verified - finish your workspace setup.');
+            }
+
+            if (user?.id) {
+                try {
+                    const businesses = await businessAPI.getByUserId(user.id);
+                    if (cancelled) return;
+
+                    const hasExistingBusinesses = (businesses?.length || 0) > 0;
+
+                    if (hasExistingBusinesses && !explicitResume) {
+                        clearRegistrationData();
+                        setFormData((prev) => ({
+                            ...buildRegistrationFormState({}),
+                            email: user.email || prev.email || '',
+                        }));
+                        setStep(1);
+                        setPersistedStep(1);
+                    } else if (!hasExistingBusinesses && explicitResume) {
+                        const saved = getSavedRegistrationData();
+                        const mergedForm = buildRegistrationFormState({
+                            ...(saved?.data || {}),
+                            email: user.email || saved?.data?.email || formData.email,
+                        });
+                        setFormData(mergedForm);
+                        const targetStep = verifiedParam
+                            ? 3
+                            : parseInt(String(params.get('step') || '1'), 10);
+                        const clamped = clampRegistrationStep(targetStep, mergedForm);
+                        setStep(clamped);
+                        setPersistedStep(clamped);
+                        if (clamped < 3 && explicitResume) {
+                            toast.error('Continue from step 1 to finish your workspace setup.');
+                        }
+                    }
+                } catch (e) {
+                    console.error('[register] business resume check failed', e);
+                }
+            } else if (explicitResume) {
+                const saved = getSavedRegistrationData();
+                const mergedForm = buildRegistrationFormState(saved?.data || formData);
+                const targetStep = verifiedParam
+                    ? 3
+                    : parseInt(String(params.get('step') || '1'), 10);
+                const clamped = clampRegistrationStep(targetStep, mergedForm);
+                setFormData(mergedForm);
+                setStep(clamped);
+                setPersistedStep(clamped);
+            }
+
+            if (!resumeChecked && hasRecoveredData && !isFreshBusiness) {
+                const restoredData = buildRegistrationFormState(persistedFormData);
+                setFormData(restoredData);
+
+                const savedAt = persistedFormData._savedAt ? new Date(persistedFormData._savedAt) : null;
+                const ageMinutes = savedAt ? (Date.now() - savedAt.getTime()) / (1000 * 60) : 0;
+
+                if (ageMinutes < 30) {
+                    toast.success('Restored your registration from a few minutes ago', { duration: 3000 });
+                    const clamped = clampRegistrationStep(step, restoredData);
+                    if (clamped !== step) {
+                        setStep(clamped);
+                        setPersistedStep(clamped);
+                    }
+                } else {
+                    setShowResumeBanner(true);
+                    setTimeout(() => setShowResumeBanner(false), 15000);
+                }
+            }
+
+            if (!cancelled) {
+                setResumeChecked(true);
+                setWizardBootstrapped(true);
+            }
+        };
+
+        bootstrapWizard();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [
+        wizardBootstrapped,
+        user?.id,
+        user?.email,
+        hasRecoveredData,
+        persistedFormData,
+        resumeChecked,
+        setPersistedStep,
+        step,
+        formData.email,
+    ]);
 
     const handleDismissResumeBanner = () => {
         setShowResumeBanner(false);
@@ -286,14 +402,30 @@ export default function RegisterWizard() {
     const handleStartFresh = () => {
         rejectRecoveredData();
         setShowResumeBanner(false);
-        setFormData(buildRegistrationFormState({}));
+        setFormData(buildRegistrationFormState({ email: user?.email || '' }));
+        setStep(1);
+        setPersistedStep(1);
         toast.success('Starting fresh - form cleared');
     };
 
-    // Sync step with persistence
+    // Sync step with persistence only after wizard bootstrap (avoid stale step 3 flash).
     useEffect(() => {
-        setStep(persistedStep);
-    }, [persistedStep]);
+        if (!wizardBootstrapped) return;
+        const clamped = clampRegistrationStep(persistedStep, formData);
+        if (clamped !== step) {
+            setStep(clamped);
+        }
+    }, [persistedStep, wizardBootstrapped, formData, step]);
+
+    // Keep wizard step valid when form data changes (e.g. resume with incomplete draft).
+    useEffect(() => {
+        if (!wizardBootstrapped) return;
+        const clamped = clampRegistrationStep(step, formData);
+        if (clamped !== step) {
+            setStep(clamped);
+            setPersistedStep(clamped);
+        }
+    }, [formData, step, wizardBootstrapped, setPersistedStep]);
 
     // Update form data with persistence
     const updateFormData = (updates) => {
@@ -398,8 +530,9 @@ export default function RegisterWizard() {
     };
 
     const goToStep = (newStep) => {
-        setStep(newStep);
-        setPersistedStep(newStep);
+        const clamped = clampRegistrationStep(newStep, formData);
+        setStep(clamped);
+        setPersistedStep(clamped);
         setPersistedFormData(formData);
     };
 
@@ -424,73 +557,6 @@ export default function RegisterWizard() {
         })();
         return () => { cancelled = true; };
     }, []);
-
-    // Handle URL params for errors and resume state
-    useEffect(() => {
-        if (typeof window === 'undefined' || resumeChecked) return;
-
-        const params = new URLSearchParams(window.location.search);
-        const stepParam = params.get('step');
-        const verifiedParam = params.get('verified') === 'true';
-
-        if (stepParam === '2' || stepParam === '3') {
-            const parsed = parseInt(stepParam, 10);
-            if (parsed >= 1 && parsed <= 3) {
-                setStep(parsed);
-                setPersistedStep(parsed);
-            }
-        }
-
-        if (verifiedParam) {
-            setVerificationState('verified');
-            toast.success('Email verified - finish your workspace setup.');
-        }
-
-        // Enhanced Google OAuth error handling
-        if (params.get('error') === 'google') {
-            const errorType = params.get('google_error') || 'generic';
-            setGoogleError(errorType);
-            
-            // Clear error from URL after setting state
-            window.history.replaceState({}, '', window.location.pathname);
-        }
-
-        setResumeChecked(true);
-    }, [resumeChecked, setPersistedStep]);
-
-    useEffect(() => {
-        if (!user?.id || resumeChecked === false) return;
-
-        let cancelled = false;
-        (async () => {
-            if (user.email && !formData.email) {
-                setFormData((prev) => ({ ...prev, email: user.email }));
-            }
-
-            const params = new URLSearchParams(window.location.search);
-            const wantsStep3 = params.get('step') === '3' || params.get('verified') === 'true';
-
-            try {
-                const businesses = await businessAPI.getByUserId(user.id);
-                if (cancelled || businesses?.length > 0) return;
-
-                if (wantsStep3 && step < 3) {
-                    setStep(3);
-                    setPersistedStep(3);
-                }
-
-                const ev = await isEmailVerified(user.id);
-                if (cancelled) return;
-                if (ev.success && ev.isVerified) {
-                    setVerificationState('verified');
-                }
-            } catch (e) {
-                console.error('[register] resume check failed', e);
-            }
-        })();
-
-        return () => { cancelled = true; };
-    }, [user, resumeChecked, step, setPersistedStep, formData.email]);
 
     // Debounced domain availability check
     useEffect(() => {
@@ -1140,7 +1206,7 @@ export default function RegisterWizard() {
                                             <div className="rounded-xl border border-wine/15 bg-wine/5 px-4 py-3 text-sm text-gray-700">
                                                 <span className="font-bold text-gray-900">{formData.businessName}</span>
                                                 {' · '}
-                                                <span className="capitalize text-wine">{formData.category.replace(/-/g, ' ')}</span>
+                                                <span className="capitalize text-wine">{(formData.category || 'your industry').replace(/-/g, ' ')}</span>
                                                 {' · '}
                                                 {regionalForWizard.countryName} ({regionalForWizard.currency})
                                             </div>

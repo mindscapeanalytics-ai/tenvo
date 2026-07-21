@@ -158,7 +158,7 @@ export default function MultiBusinessPage() {
               </Button>
               <div className="hidden sm:block w-px h-6 bg-gray-200" />
               <Button
-                onClick={() => router.push('/register')}
+                onClick={() => router.push('/register?new=1')}
                 className="bg-wine hover:bg-wine/90 text-white font-semibold rounded-xl px-4 sm:px-6 py-2 sm:py-2.5 shadow-lg shadow-wine/20 transition-all active:scale-95 text-xs uppercase tracking-widest"
               >
                 <Plus className="w-4 h-4 mr-0 sm:mr-2" />
@@ -195,7 +195,7 @@ export default function MultiBusinessPage() {
               <h3 className="text-2xl font-semibold text-gray-900 tracking-tight mb-2">No entities found</h3>
               <p className="text-sm text-gray-500 font-medium mb-8 max-w-sm mx-auto px-4">Click below to initialize your first enterprise business domain.</p>
               <Button
-                onClick={() => router.push('/register')}
+                onClick={() => router.push('/register?new=1')}
                 className="bg-wine hover:bg-wine/90 text-white font-semibold h-12 px-8 rounded-xl shadow-lg shadow-wine/20 transition-all hover:shadow-xl hover:shadow-wine/30"
               >
                 <Plus className="w-5 h-5 mr-2" />

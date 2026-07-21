@@ -220,7 +220,7 @@ export function BusinessSwitcher({ isCollapsed = false }) {
                                 <button
                                     onClick={() => {
                                         setIsOpen(false);
-                                        router.push('/register');
+                                        router.push('/register?new=1');
                                     }}
                                     className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-gray-50 transition-colors text-left"
                                 >

@@ -34,6 +34,7 @@
     "fonts:sync": "node scripts/sync-open-sans-fonts.mjs",
     "verify:regional-market": "bun scripts/verify-regional-market.mjs",
     "verify:registration-flow": "npx tsx scripts/verify-registration-flow.mjs",
+    "verify:registration-wizard": "node scripts/verify-registration-wizard.mjs",
     "verify:registration-storefront-flow": "bun scripts/verify-registration-storefront-flow.mjs",
     "fix:demo-stores": "npx tsx scripts/fix-demo-stores.mjs",
     "clear:caches": "powershell -ExecutionPolicy Bypass -File scripts/clear-all-caches.ps1",

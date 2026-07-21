@@ -13,7 +13,11 @@ import { getDomainKnowledge } from '../lib/domainKnowledge.js';
 import { DOMAIN_KNOWLEDGE_KEYS } from '../lib/domainKnowledge.js';
 import { resolveDomainKey } from '../lib/config/domainKeyAliases.js';
 import { resolveRegistrationStorefrontDefaults } from '../lib/onboarding/registrationStorefrontDefaults.js';
-import { SUPERMARKET_REGISTRATION_VERTICALS } from '../lib/onboarding/registrationRichVerticals.js';
+import {
+  SUPERMARKET_REGISTRATION_VERTICALS,
+  REGISTRATION_RICH_CATALOG_VERTICALS,
+  PK_CLOTHING_REGISTRATION_VERTICALS,
+} from '../lib/onboarding/registrationRichVerticals.js';
 
 const errors = [];
 
@@ -192,6 +196,79 @@ for (const key of DOMAIN_KNOWLEDGE_KEYS.slice(0, 5)) {
   assert(Array.isArray(payload.categories), `category array for ${key}`);
 }
 
+// Full rich-catalog vertical coverage (not only the first 5 alphabetical keys).
+for (const key of REGISTRATION_RICH_CATALOG_VERTICALS) {
+  const payload = buildRegistrationSeedPayload({
+    businessId: bizId,
+    domainKey: key,
+    countryIso: 'PK',
+  });
+  assert(payload.items.length > 0, `${key} must seed rich products on PK registration`);
+  assert(payload.categories.length > 0, `${key} must seed category shells`);
+  const categorySet = new Set(payload.categories.map((c) => String(c).toLowerCase()));
+  const orphanCategories = [
+    ...new Set(
+      payload.items
+        .map((i) => i.category)
+        .filter(Boolean)
+        .filter((c) => !categorySet.has(String(c).toLowerCase()))
+    ),
+  ];
+  assert(
+    orphanCategories.length === 0,
+    `${key}: product categories missing from shells: ${orphanCategories.slice(0, 8).join(', ')}`
+  );
+}
+
+for (const key of PK_CLOTHING_REGISTRATION_VERTICALS) {
+  const payload = buildRegistrationSeedPayload({
+    businessId: bizId,
+    domainKey: key,
+    countryIso: 'PK',
+  });
+  assert(payload.items.length > 0, `PK clothing ${key} must seed products`);
+}
+
+const restaurantReg = buildRegistrationSeedPayload({
+  businessId: bizId,
+  domainKey: 'restaurant-cafe',
+  countryIso: 'PK',
+});
+assert(
+  restaurantReg.categories.some((c) => /bbq|rolls|biryani|combos/i.test(String(c))),
+  'restaurant-cafe registration categories must match Roll Inn SKU taxonomy (not generic Main Course)'
+);
+
+const jewelleryReg = buildRegistrationSeedPayload({
+  businessId: bizId,
+  domainKey: 'gems-jewellery',
+  countryIso: 'PK',
+});
+assert(jewelleryReg.items.length >= 5, 'gems-jewellery registration should seed jewellery catalog');
+
+const pharmacyNoPkg = buildRegistrationSeedPayload({
+  businessId: bizId,
+  domainKey: 'pharmacy',
+  countryIso: 'PK',
+});
+assert(pharmacyNoPkg.items.length === 0, 'pharmacy without package must not seed products');
+const pharmacyPkg = buildRegistrationSeedPayload({
+  businessId: bizId,
+  domainKey: 'pharmacy',
+  countryIso: 'PK',
+  domainPackageKey: 'pharmacy-commerce',
+});
+assert(pharmacyPkg.items.length > 0, 'pharmacy-commerce package should seed pharmacy catalog');
+
+const furniturePkg = buildRegistrationSeedPayload({
+  businessId: bizId,
+  domainKey: 'furniture',
+  countryIso: 'US',
+  domainPackageKey: 'furniture-commerce',
+});
+assert(furniturePkg.items.length > 0, 'furniture-commerce package should seed furniture catalog');
+
+
 // Prisma businesses.create() only accepts logo_url / cover_image_url from businessMedia.
 // keywords must land on seoKeywords → settings.seo (never as a businesses column).
 const ALLOWED_BUSINESS_MEDIA_KEYS = new Set(['logo_url', 'cover_image_url']);
@@ -242,6 +319,25 @@ assert(
   typeof autoPartsSf.businessMedia?.cover_image_url === 'string',
   'auto-parts should still seed cover_image_url'
 );
+
+for (const key of SUPERMARKET_REGISTRATION_VERTICALS) {
+  const payload = buildRegistrationSeedPayload({
+    businessId: bizId,
+    domainKey: key,
+    countryIso: 'PK',
+  });
+  assert(payload.items.length > 0, `supermarket-family ${key} must seed products on PK registration`);
+  const categorySet = new Set(payload.categories.map((c) => String(c).toLowerCase()));
+  const orphans = [
+    ...new Set(
+      payload.items
+        .map((i) => i.category)
+        .filter(Boolean)
+        .filter((c) => !categorySet.has(String(c).toLowerCase()))
+    ),
+  ];
+  assert(orphans.length === 0, `${key}: missing category shells for ${orphans.slice(0, 5).join(', ')}`);
+}
 
 for (const key of SUPERMARKET_REGISTRATION_VERTICALS) {
   const sf = resolveRegistrationStorefrontDefaults({

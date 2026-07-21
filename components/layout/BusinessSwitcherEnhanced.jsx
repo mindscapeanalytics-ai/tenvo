@@ -371,7 +371,7 @@ export function BusinessSwitcherEnhanced({ isCollapsed = false }) {
                     <button
                         onClick={() => {
                             setIsOpen(false);
-                            router.push('/register');
+                            router.push('/register?new=1');
                         }}
                         className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg hover:bg-white transition-colors text-left group"
                     >

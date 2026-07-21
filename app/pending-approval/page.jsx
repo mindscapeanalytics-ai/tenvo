@@ -100,7 +100,7 @@ export default function PendingApprovalPage() {
           <p className="text-gray-600 mb-6">
             We couldn't find a pending registration for your account.
           </p>
-          <Button onClick={() => router.push('/register')} className="w-full">
+          <Button onClick={() => router.push('/register?new=1')} className="w-full">
             Register New Business
           </Button>
         </Card>

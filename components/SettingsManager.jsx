@@ -898,7 +898,7 @@ export function SettingsManager({ category }) {
             <Button
               type="button"
               variant="outline"
-              onClick={() => router.push('/register')}
+              onClick={() => router.push('/register?new=1')}
               className="h-10 sm:h-11 shrink-0 rounded-xl font-semibold border-slate-200 bg-white hover:bg-slate-50 text-slate-800 px-3 sm:px-4"
             >
               <PlusCircle className="w-4 h-4 sm:mr-2 text-wine shrink-0" />
@@ -2052,7 +2052,7 @@ export function SettingsManager({ category }) {
                       Create a new legal entity or branch. Every business gets its own independent database, domains, and team.
                     </p>
                     <Button
-                      onClick={() => router.push('/register')}
+                      onClick={() => router.push('/register?new=1')}
                       className="bg-blue-600 hover:bg-blue-700 text-white font-bold h-11 px-6 rounded-xl shadow-lg shadow-blue-200"
                     >
                       <PlusCircle className="w-4 h-4 mr-2" />

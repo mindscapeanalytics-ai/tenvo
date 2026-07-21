@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { CheckCircle2, Loader2, PartyPopper } from 'lucide-react';
 import { useAuth } from '@/lib/context/AuthContext';
 import { businessAPI } from '@/lib/api/business';
+import { getSavedRegistrationData } from '@/lib/hooks/useRegistrationPersistence';
 
 const BLOCKED_APPROVAL_STATUSES = new Set([
   'pending_approval',
@@ -34,10 +35,16 @@ export default function AuthConfirmedPage() {
       try {
         const businesses = await businessAPI.getByUserId(user.id);
 
-        if (!businesses?.length) {
-          router.replace('/register?step=3');
-          return;
-        }
+                        if (!businesses?.length) {
+                            const saved = getSavedRegistrationData();
+                            const canResumeStep3 =
+                                saved?.data &&
+                                String(saved.data.businessName || '').trim() &&
+                                String(saved.data.handle || '').trim() &&
+                                String(saved.data.category || '').trim();
+                            router.replace(canResumeStep3 ? '/register?step=3' : '/register');
+                            return;
+                        }
 
         const biz = businesses[0];
         const approvalStatus = String(biz.approval_status || '');
@@ -50,7 +57,7 @@ export default function AuthConfirmedPage() {
         router.replace(`/business/${biz.domain}`);
       } catch (e) {
         console.error('[auth/confirmed] redirect check failed', e);
-        router.replace('/register?step=3');
+        router.replace('/register');
       }
     }, 2000);
 
