@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { ChevronLeft, ChevronRight, ArrowRight } from 'lucide-react';
 import { SmartProductImage } from '@/components/storefront/SmartProductImage';
 import { FurnitureVideoBackdrop } from '@/components/storefront/sections/furniture/FurnitureVideoBackdrop';
+import { TyreHeroRunningWheel } from '@/components/storefront/sections/tyre/TyreHeroRunningWheel';
 import { cn } from '@/lib/utils';
 import { resolveHeroCarouselFallback } from '@/lib/storefront/storefrontImagePlaceholders';
 
@@ -74,7 +75,7 @@ export function HeroCarousel({ slides = [], accent, className, minHeight = 'min-
                       : isTiles
                         ? 'bg-gradient-to-r from-stone-950/78 via-stone-950/35 to-transparent'
                         : isTyre
-                          ? 'bg-gradient-to-r from-black/85 via-zinc-950/55 to-transparent'
+                          ? 'bg-gradient-to-r from-black/92 via-zinc-950/70 to-zinc-950/25'
                         : isRestaurant
                           ? 'bg-gradient-to-r from-neutral-950/78 via-neutral-950/35 to-transparent'
                           : isParts
@@ -93,6 +94,8 @@ export function HeroCarousel({ slides = [], accent, className, minHeight = 'min-
                       ? 'bg-gradient-to-t from-stone-950/55 via-transparent to-stone-950/15'
                       : isTiles
                         ? 'bg-gradient-to-t from-stone-950/55 via-transparent to-stone-950/15'
+                        : isTyre
+                          ? 'bg-gradient-to-t from-black/55 via-transparent to-black/30'
                         : isRestaurant
                           ? 'bg-gradient-to-t from-neutral-950/55 via-transparent to-neutral-950/15'
                           : isParts
@@ -113,6 +116,8 @@ export function HeroCarousel({ slides = [], accent, className, minHeight = 'min-
         );
       })}
 
+      {isTyre ? <TyreHeroRunningWheel /> : null}
+
       <div
         className={cn(
           'relative z-10 mx-auto flex h-full max-w-[1400px] flex-col justify-center px-4 py-10 sm:px-6 sm:py-14 lg:px-8 lg:py-16',
@@ -125,6 +130,7 @@ export function HeroCarousel({ slides = [], accent, className, minHeight = 'min-
             className={cn(
               'max-w-xl',
               (isFurniture || isPharmacy || isTiles || isRestaurant) && 'max-w-2xl',
+              isTyre && 'max-w-2xl rounded-2xl bg-black/25 p-5 backdrop-blur-[2px] sm:p-6 lg:p-7',
               (isLuxury || isParts) && 'max-w-2xl'
             )}
           >
@@ -135,9 +141,16 @@ export function HeroCarousel({ slides = [], accent, className, minHeight = 'min-
                 isFurniture && 'mb-3 text-amber-100/95',
                 isTiles && 'mb-3 text-amber-100/95',
                 isRestaurant && 'mb-3 text-red-100/95',
+                isTyre && 'mb-3 tracking-[0.18em] text-white',
                 (isLuxury || isParts) && 'text-white/90'
               )}
-              style={(isLuxury || isParts) && slideAccent ? { color: slideAccent } : undefined}
+              style={
+                isTyre && slideAccent
+                  ? { color: '#ffffff', textShadow: `0 0 24px ${slideAccent}88` }
+                  : (isLuxury || isParts) && slideAccent
+                    ? { color: slideAccent }
+                    : undefined
+              }
             >
               {slide.eyebrow ||
                 (isLuxury
@@ -150,6 +163,8 @@ export function HeroCarousel({ slides = [], accent, className, minHeight = 'min-
                         ? storeName || 'Tiles & marble'
                         : isRestaurant
                           ? storeName || 'Restaurant'
+                          : isTyre
+                            ? storeName || 'Tyre store'
                           : isParts
                             ? 'Auto parts'
                             : 'Welcome')}
@@ -161,6 +176,8 @@ export function HeroCarousel({ slides = [], accent, className, minHeight = 'min-
                   ? 'store-heading store-heading--inverse text-3xl tracking-wide sm:text-5xl lg:text-6xl'
                   : isPharmacy || isFurniture || isTiles || isRestaurant
                     ? 'text-3xl tracking-tight sm:text-4xl lg:text-5xl xl:text-6xl'
+                    : isTyre
+                      ? 'store-heading store-heading--inverse text-3xl tracking-tight sm:text-4xl lg:text-5xl xl:text-[3.25rem]'
                     : isParts
                       ? 'store-heading store-heading--inverse text-2xl tracking-tight sm:text-4xl lg:text-[2.85rem]'
                       : 'store-heading store-heading--inverse text-2xl tracking-tight sm:text-4xl lg:text-[2.75rem]'
@@ -175,6 +192,7 @@ export function HeroCarousel({ slides = [], accent, className, minHeight = 'min-
                   isParts ? 'mx-auto max-w-xl text-white/85' : 'text-white/90',
                   (isFurniture || isPharmacy || isTiles || isRestaurant) &&
                     'mt-4 max-w-xl text-base text-white/88 sm:text-lg',
+                  isTyre && 'mt-4 max-w-xl text-base text-white/95 sm:text-lg',
                   isLuxury && 'mx-auto max-w-xl'
                 )}
               >
@@ -194,10 +212,16 @@ export function HeroCarousel({ slides = [], accent, className, minHeight = 'min-
                         ? 'mt-7 rounded-xl bg-white px-7 py-3.5 text-stone-900 shadow-lg shadow-stone-950/25 hover:bg-stone-50'
                         : isRestaurant
                           ? 'mt-7 rounded-xl bg-white px-7 py-3.5 text-zinc-900 shadow-lg shadow-black/25 hover:bg-zinc-50'
+                          : isTyre
+                            ? 'mt-7 rounded-xl bg-white px-7 py-3.5 text-zinc-900 shadow-lg shadow-black/35 hover:bg-zinc-100'
                           : 'text-white shadow-lg',
                   isParts && 'hover:shadow-xl motion-safe:hover:scale-[1.02]'
                 )}
-                style={!isPharmacy && !isFurniture && !isTiles && !isRestaurant ? { backgroundColor: slideAccent || accent } : undefined}
+                style={
+                  !isPharmacy && !isFurniture && !isTiles && !isRestaurant && !isTyre
+                    ? { backgroundColor: slideAccent || accent }
+                    : undefined
+                }
               >
                 {slide.ctaLabel}
                 <ArrowRight className="h-4 w-4" aria-hidden />

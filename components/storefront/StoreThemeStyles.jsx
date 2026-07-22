@@ -250,8 +250,21 @@ export function StoreThemeStyles({ business, settings }) {
           [data-store-theme] .store-marquee-track:hover {
             animation-play-state: paused;
           }
+          /* Tyre elevated hero — single wheel spins in place */
+          @keyframes tyre-hero-spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+          }
+          [data-store-theme] .tyre-hero-carousel .tyre-hero-spin {
+            animation: tyre-hero-spin 4.5s linear infinite;
+            will-change: transform;
+            transform-origin: center center;
+          }
           @media (prefers-reduced-motion: reduce) {
             [data-store-theme] .store-marquee-track {
+              animation: none;
+            }
+            [data-store-theme] .tyre-hero-carousel .tyre-hero-spin {
               animation: none;
             }
           }

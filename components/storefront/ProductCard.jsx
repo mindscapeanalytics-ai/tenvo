@@ -21,12 +21,13 @@ import {
   resolveFitnessBookHref,
 } from '@/lib/storefront/fitnessStorefront';
 import { isPharmacyElevatedStore } from '@/lib/storefront/pharmacyStorefront';
+import { isTyreElevatedStore } from '@/lib/storefront/tyreStorefront';
 import { isPrescriptionRequiredProduct, buildPharmacyPrescriptionContactHref } from '@/lib/storefront/pharmacyProducts';
 import { PharmacyPrescriptionCta } from '@/components/storefront/pharmacy/PharmacyPrescriptionCta';
 import { getStorefrontStockState } from '@/lib/storefront/storefrontStockUi';
 import { isStorefrontProductUuid } from '@/lib/utils/storefrontProductRef';
 import { resolveStorefrontProductBrowseHref } from '@/lib/storefront/storefrontPurchasability';
-import { resolveSourcingBadge } from '@/lib/storefront/productAttributeChips';
+import { resolveSourcingBadge, buildTyreAttributeRows } from '@/lib/storefront/productAttributeChips';
 import { catalogProductNeedsVariantPage } from '@/lib/storefront/storefrontProductVariants';
 import { getTenantMeetingUrl } from '@/lib/storefront/storefrontBooking';
 import { toast } from 'react-hot-toast';
@@ -47,6 +48,7 @@ export function ProductCard({ product, businessDomain, variant = 'default' }) {
   const accent = getStoreAccentColor(settings, business?.category);
   const fitnessStore = isFitnessElevatedStore(business?.category);
   const pharmacyStore = isPharmacyElevatedStore(business?.category);
+  const tyreStore = isTyreElevatedStore(business?.category);
   const requiresPrescription = pharmacyStore && isPrescriptionRequiredProduct(product);
   const bookableFitness = fitnessStore && isFitnessBookableProduct(product);
   const meetingUrl = fitnessStore ? getTenantMeetingUrl(business, settings) : '';
@@ -78,7 +80,10 @@ export function ProductCard({ product, businessDomain, variant = 'default' }) {
   const showPartsMeta = isAutoPartsFinderStore(business?.category);
   const showMarineMeta = isMarinePartsFinderStore(business?.category);
   const showFashionMeta = isFashionEditorialStore(business?.category);
-  const sourcingBadge = showFashionMeta ? resolveSourcingBadge(product.domain_data) : null;
+  const sourcingBadge = showFashionMeta || tyreStore ? resolveSourcingBadge(product.domain_data) : null;
+  const tyreSizeHint = tyreStore
+    ? buildTyreAttributeRows(product).find((row) => row.key === 'tyresize')?.value
+    : '';
   const partNumber = product.domain_data?.partnumber;
   const fitmentHint = showPartsMeta
     ? [product.domain_data?.vehiclemake, product.domain_data?.vehiclemodel].filter(Boolean).join(' ')
@@ -384,6 +389,10 @@ export function ProductCard({ product, businessDomain, variant = 'default' }) {
             {partNumber && fitmentHint ? ' · ' : null}
             {fitmentHint ? <span>{fitmentHint}</span> : null}
           </p>
+        )}
+
+        {tyreStore && tyreSizeHint && !isDense && (
+          <p className="truncate text-[10px] font-semibold text-zinc-600">{tyreSizeHint}</p>
         )}
 
         {product.rating && !isDense && (

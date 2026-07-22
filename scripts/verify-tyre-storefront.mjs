@@ -15,8 +15,16 @@ import {
   normalizeTyreVideoUrl,
   partitionTyreProducts,
   resolveTyreBrandWall,
+  resolveTyreShowcaseProducts,
+  enrichTyreProductsWithSeedImages,
   resolveTyreTrustPillars,
   resolveTyreVehicleTiles,
+  resolveTyreExploreSegments,
+  resolveTyreExplorePresentation,
+  resolveTyreBrandStories,
+  filterTyreExploreProducts,
+  pickTyreExploreSegmentWithStock,
+  TYRE_EXPLORE_SEGMENTS,
 } from '../lib/storefront/tyreStorefront.js';
 
 const errors = [];
@@ -129,6 +137,48 @@ const brands = resolveTyreBrandWall({}, '/store/demo-tyre', {
   products: TYRE_SEED_PRODUCTS.map((p, i) => ({ ...p, id: `p-${i}` })),
 });
 if (brands.length < 4) errors.push('brand wall should resolve');
+
+const explore = resolveTyreExploreSegments({}, '/store/demo-tyre', {
+  businessDomain: 'demo-tyre',
+  products: TYRE_SEED_PRODUCTS.map((p, i) => ({ ...p, id: `p-${i}` })),
+});
+if (explore.length < 4) errors.push('explore segments should resolve');
+
+const brandStories = resolveTyreBrandStories({}, TYRE_SEED_PRODUCTS, 'demo-tyre', 'tyre-shop', {
+  storeName: 'Tenvo Tyre Store',
+});
+if (!brandStories.length) errors.push('brand stories should resolve for demo');
+
+const enriched = resolveTyreShowcaseProducts(
+  [{ id: '11111111-1111-4111-8111-111111111111', sku: 'TT-GTR-ECONO-1856515', name: 'GTR BG Econo', stock: 5 }],
+  'demo-tyre'
+);
+if (!enriched[0]?.image_url) errors.push('showcase enrich should backfill missing image by SKU');
+
+const preserved = enrichTyreProductsWithSeedImages(
+  [{ id: '22222222-2222-4222-8222-222222222222', sku: 'CUSTOM-1', image_url: 'https://example.supabase.co/storage/v1/object/public/products/custom.webp', stock: 2 }],
+  'live-tyre'
+);
+if (preserved[0]?.image_url !== 'https://example.supabase.co/storage/v1/object/public/products/custom.webp') {
+  errors.push('tenant uploaded image must not be replaced by seed enrich');
+}
+
+const explorePool = TYRE_SEED_PRODUCTS.map((p, i) => ({
+  ...p,
+  id: `00000000-0000-4000-8000-${String(i).padStart(12, '0')}`,
+  category_name: p.category,
+  category_slug: String(p.category || '')
+    .toLowerCase()
+    .replace(/\s*\/\s*/g, '-')
+    .replace(/\s+/g, '-'),
+  stock: 10,
+}));
+for (const seg of TYRE_EXPLORE_SEGMENTS) {
+  const hits = filterTyreExploreProducts(explorePool, seg.slug);
+  if (!hits.length) errors.push(`explore filter empty for ${seg.slug}`);
+}
+const picked = pickTyreExploreSegmentWithStock(TYRE_EXPLORE_SEGMENTS, explorePool);
+if (!picked?.id) errors.push('pickTyreExploreSegmentWithStock should return a segment');
 
 // silence unused
 void deals;

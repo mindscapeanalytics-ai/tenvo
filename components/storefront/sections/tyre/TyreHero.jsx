@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Search, MapPin, Gauge } from 'lucide-react';
+import { Search, MapPin, Gauge, Phone } from 'lucide-react';
 import { HeroCarousel } from '@/components/storefront/sections/heroes/HeroCarousel';
 import {
   getTyreConfig,
@@ -18,8 +18,10 @@ import {
   ELEVATED_CAROUSEL_HERO_HEIGHT,
 } from '@/lib/storefront/elevatedCarouselHero';
 
+const CONTROL_H = 'h-9';
+
 /**
- * Premium tyre homepage hero with size-first finder dock.
+ * Premium tyre homepage hero with a single-row compact finder dock.
  */
 export function TyreHero({ preset, businessDomain, accent, accentDark, contactCity }) {
   const router = useRouter();
@@ -52,7 +54,7 @@ export function TyreHero({ preset, businessDomain, accent, accentDark, contactCi
   };
 
   const selectClass =
-    'h-10 min-w-0 flex-1 rounded-lg border border-zinc-200 bg-zinc-50 px-2.5 text-sm font-semibold text-zinc-900 outline-none focus:border-zinc-400';
+    `${CONTROL_H} w-full rounded-lg border border-zinc-200 bg-zinc-50 px-2 text-sm font-semibold tabular-nums text-zinc-900 outline-none focus:border-zinc-400`;
 
   return (
     <section className="relative bg-zinc-950">
@@ -68,66 +70,87 @@ export function TyreHero({ preset, businessDomain, accent, accentDark, contactCi
         />
       </div>
 
-      {/* Mobile: size chips + quick search */}
-      <div className="border-b border-zinc-800 bg-zinc-950 px-3 py-3 lg:hidden">
-        <div className="mb-3 grid grid-cols-3 gap-2">
-          <label className="block">
-            <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
-              Width
-            </span>
-            <select className={selectClass} value={width} onChange={(e) => setWidth(e.target.value)}>
-              {TYRE_FINDER_WIDTHS.map((w) => (
-                <option key={w} value={w}>
-                  {w}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="block">
-            <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
-              Profile
-            </span>
-            <select className={selectClass} value={profile} onChange={(e) => setProfile(e.target.value)}>
-              {TYRE_FINDER_PROFILES.map((p) => (
-                <option key={p} value={p}>
-                  {p}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="block">
-            <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
-              Rim
-            </span>
-            <select className={selectClass} value={rim} onChange={(e) => setRim(e.target.value)}>
-              {TYRE_FINDER_RIMS.map((r) => (
-                <option key={r} value={r}>
-                  {r}
-                </option>
-              ))}
-            </select>
-          </label>
+      {/* Mobile */}
+      <div className="border-b border-zinc-800 bg-zinc-950 px-3 py-2.5 lg:hidden">
+        <div className="grid grid-cols-[1fr_1fr_1fr_auto] items-center gap-1.5">
+          <select
+            className={selectClass}
+            value={width}
+            onChange={(e) => setWidth(e.target.value)}
+            aria-label="Width"
+          >
+            {TYRE_FINDER_WIDTHS.map((w) => (
+              <option key={w} value={w}>
+                {w}
+              </option>
+            ))}
+          </select>
+          <select
+            className={selectClass}
+            value={profile}
+            onChange={(e) => setProfile(e.target.value)}
+            aria-label="Profile"
+          >
+            {TYRE_FINDER_PROFILES.map((p) => (
+              <option key={p} value={p}>
+                {p}
+              </option>
+            ))}
+          </select>
+          <select
+            className={selectClass}
+            value={rim}
+            onChange={(e) => setRim(e.target.value)}
+            aria-label="Rim"
+          >
+            {TYRE_FINDER_RIMS.map((r) => (
+              <option key={r} value={r}>
+                {r}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            onClick={findBySize}
+            className={`inline-flex ${CONTROL_H} shrink-0 items-center justify-center gap-1 rounded-lg px-3 text-xs font-semibold text-white`}
+            style={{ backgroundColor: finderAccent }}
+            aria-label="Find tyres by size"
+          >
+            <Gauge className="h-3.5 w-3.5" aria-hidden />
+            Find
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={findBySize}
-          className="mb-3 flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white"
-          style={{ backgroundColor: finderAccent }}
-        >
-          <Gauge className="h-4 w-4" aria-hidden />
-          Find tyres
-        </button>
+        <div className="mt-1.5 flex items-center gap-1.5">
+          <div className="relative min-w-0 flex-1">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-500" />
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') search();
+              }}
+              placeholder={config.searchPlaceholder}
+              className={`${CONTROL_H} w-full rounded-lg border border-zinc-700 bg-zinc-900 pl-8 pr-2 text-xs text-zinc-100 outline-none placeholder:text-zinc-500 focus:border-zinc-500`}
+            />
+          </div>
+          <Link
+            href={`${base}/contact`}
+            className={`inline-flex ${CONTROL_H} shrink-0 items-center justify-center gap-1 rounded-lg px-3 text-xs font-semibold text-white`}
+            style={{ backgroundColor: finderAccentDark }}
+          >
+            <Phone className="h-3.5 w-3.5" aria-hidden />
+            Bay
+          </Link>
+        </div>
         {quickSearchTerms.length > 0 && (
-          <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
-            <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
-              Popular
-            </span>
+          <div className="mt-1.5 flex items-center gap-1.5 overflow-x-auto scrollbar-hide">
             {quickSearchTerms.map((term) => (
               <button
                 key={term}
                 type="button"
                 onClick={() => router.push(`${productsUrl}?search=${encodeURIComponent(term)}`)}
-                className="shrink-0 rounded-full bg-zinc-900 px-3 py-1.5 text-[11px] font-semibold text-zinc-100 active:scale-[0.98]"
+                className="shrink-0 rounded-full bg-zinc-900 px-2.5 py-1 text-[10px] font-semibold text-zinc-200 active:scale-[0.98]"
               >
                 {term}
               </button>
@@ -136,95 +159,114 @@ export function TyreHero({ preset, businessDomain, accent, accentDark, contactCi
         )}
       </div>
 
-      {/* Desktop finder dock */}
+      {/* Desktop: one aligned row */}
       <div className="relative z-20 mx-auto hidden max-w-[1400px] px-4 sm:px-6 lg:block lg:px-8">
-        <div className="-mt-16 xl:-mt-[4.5rem]">
-          <div className="rounded-2xl border border-zinc-200/80 bg-white p-4 shadow-xl shadow-black/20 sm:p-5">
-            <div className="flex flex-col gap-4">
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  className="inline-flex w-fit items-center gap-1.5 rounded-full border border-zinc-100 bg-zinc-50 px-3 py-1.5 text-[11px] font-semibold text-zinc-900"
-                  aria-label={`Location: ${location}`}
-                >
-                  <MapPin className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                  <span className="text-zinc-600">{config.locationLabel}</span>
-                  <span>{location}</span>
-                </button>
-                <span className="text-xs font-semibold text-zinc-500">Search by tyre size</span>
-              </div>
+        <div className="-mt-10 xl:-mt-12">
+          <div className="rounded-xl border border-zinc-200/80 bg-white px-3 py-2 shadow-xl shadow-black/20 sm:px-3.5">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                className={`inline-flex ${CONTROL_H} shrink-0 items-center gap-1.5 rounded-lg border border-zinc-100 bg-zinc-50 px-2.5 text-[11px] font-semibold text-zinc-900`}
+                aria-label={`Location: ${location}`}
+              >
+                <MapPin className="h-3.5 w-3.5 shrink-0 text-zinc-500" aria-hidden />
+                <span className="hidden text-zinc-500 xl:inline">{config.locationLabel}</span>
+                <span>{location}</span>
+              </button>
 
-              <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
-                <label className="block min-w-0 flex-1">
-                  <span className="mb-1 block text-[11px] font-semibold text-zinc-500">Width</span>
-                  <select className={selectClass} value={width} onChange={(e) => setWidth(e.target.value)}>
-                    {TYRE_FINDER_WIDTHS.map((w) => (
-                      <option key={w} value={w}>
-                        {w}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="block min-w-0 flex-1">
-                  <span className="mb-1 block text-[11px] font-semibold text-zinc-500">Profile</span>
-                  <select className={selectClass} value={profile} onChange={(e) => setProfile(e.target.value)}>
-                    {TYRE_FINDER_PROFILES.map((p) => (
-                      <option key={p} value={p}>
-                        {p}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="block min-w-0 flex-1">
-                  <span className="mb-1 block text-[11px] font-semibold text-zinc-500">Rim</span>
-                  <select className={selectClass} value={rim} onChange={(e) => setRim(e.target.value)}>
-                    {TYRE_FINDER_RIMS.map((r) => (
-                      <option key={r} value={r}>
-                        {r}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+              <span className="hidden h-5 w-px shrink-0 bg-zinc-200 sm:block" aria-hidden />
+
+              <div className="flex shrink-0 items-center gap-1" role="group" aria-label="Search by tyre size">
+                <select
+                  className={`${CONTROL_H} w-[4.25rem] rounded-lg border border-zinc-200 bg-zinc-50 px-1.5 text-sm font-semibold tabular-nums text-zinc-900 outline-none focus:border-zinc-400`}
+                  value={width}
+                  onChange={(e) => setWidth(e.target.value)}
+                  aria-label="Width"
+                  title="Width"
+                >
+                  {TYRE_FINDER_WIDTHS.map((w) => (
+                    <option key={w} value={w}>
+                      {w}
+                    </option>
+                  ))}
+                </select>
+                <span className="text-xs font-semibold text-zinc-300" aria-hidden>
+                  /
+                </span>
+                <select
+                  className={`${CONTROL_H} w-[3.75rem] rounded-lg border border-zinc-200 bg-zinc-50 px-1.5 text-sm font-semibold tabular-nums text-zinc-900 outline-none focus:border-zinc-400`}
+                  value={profile}
+                  onChange={(e) => setProfile(e.target.value)}
+                  aria-label="Profile"
+                  title="Profile"
+                >
+                  {TYRE_FINDER_PROFILES.map((p) => (
+                    <option key={p} value={p}>
+                      {p}
+                    </option>
+                  ))}
+                </select>
+                <span className="text-xs font-semibold text-zinc-300" aria-hidden>
+                  R
+                </span>
+                <select
+                  className={`${CONTROL_H} w-[3.5rem] rounded-lg border border-zinc-200 bg-zinc-50 px-1.5 text-sm font-semibold tabular-nums text-zinc-900 outline-none focus:border-zinc-400`}
+                  value={rim}
+                  onChange={(e) => setRim(e.target.value)}
+                  aria-label="Rim"
+                  title="Rim"
+                >
+                  {TYRE_FINDER_RIMS.map((r) => (
+                    <option key={r} value={r}>
+                      {r}
+                    </option>
+                  ))}
+                </select>
                 <button
                   type="button"
                   onClick={findBySize}
-                  className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl px-5 text-sm font-semibold text-white transition hover:opacity-95"
+                  className={`inline-flex ${CONTROL_H} shrink-0 items-center justify-center gap-1.5 rounded-lg px-3 text-sm font-semibold text-white transition hover:opacity-95`}
                   style={{ backgroundColor: finderAccent }}
                 >
-                  <Gauge className="h-4 w-4" aria-hidden />
-                  Find tyres
+                  <Gauge className="h-3.5 w-3.5" aria-hidden />
+                  Find
                 </button>
               </div>
 
-              <div className="flex flex-col gap-2 border-t border-zinc-100 pt-3 sm:flex-row sm:items-center">
-                <div className="relative min-w-0 flex-1">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
-                  <input
-                    type="search"
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') search();
-                    }}
-                    placeholder={config.searchPlaceholder}
-                    className="h-10 w-full rounded-xl border border-zinc-200 bg-zinc-50 pl-10 pr-3 text-sm text-zinc-900 outline-none focus:border-zinc-400"
-                  />
-                </div>
+              <span className="hidden h-5 w-px shrink-0 bg-zinc-200 lg:block" aria-hidden />
+
+              <div className="relative min-w-0 flex-1">
+                <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
+                <input
+                  type="search"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') search();
+                  }}
+                  placeholder={config.searchPlaceholder}
+                  className={`${CONTROL_H} w-full rounded-lg border border-zinc-200 bg-zinc-50 pl-8 pr-10 text-sm text-zinc-900 outline-none placeholder:text-zinc-400 focus:border-zinc-400`}
+                  aria-label="Search size, brand, or model"
+                />
                 <button
                   type="button"
                   onClick={search}
-                  className="inline-flex h-10 shrink-0 items-center justify-center rounded-xl border border-zinc-200 bg-white px-4 text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
+                  className="absolute right-1 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-800"
+                  aria-label="Search"
                 >
-                  Search
+                  <Search className="h-3.5 w-3.5" aria-hidden />
                 </button>
-                <Link
-                  href={`${base}/contact`}
-                  className="inline-flex h-10 shrink-0 items-center justify-center rounded-xl px-4 text-sm font-semibold text-white"
-                  style={{ backgroundColor: finderAccentDark }}
-                >
-                  {config.bayLabel}
-                </Link>
               </div>
+
+              <Link
+                href={`${base}/contact`}
+                className={`inline-flex ${CONTROL_H} shrink-0 items-center justify-center gap-1.5 rounded-lg px-3 text-sm font-semibold text-white transition hover:opacity-95`}
+                style={{ backgroundColor: finderAccentDark }}
+              >
+                <Phone className="h-3.5 w-3.5" aria-hidden />
+                <span className="hidden xl:inline">{config.bayLabel}</span>
+                <span className="xl:hidden">Bay</span>
+              </Link>
             </div>
           </div>
         </div>

@@ -117,6 +117,14 @@ const nextConfig = {
       { protocol: 'https', hostname: 'www.dwgtrading.com' },
       { protocol: 'https', hostname: 'rollinnbbq.pk' },
       { protocol: 'https', hostname: 'www.rollinnbbq.pk' },
+      // Tyre demo / registration archive CDNs (GTR + Techno Tyres)
+      { protocol: 'https', hostname: 'www.gtr.com.pk' },
+      { protocol: 'https', hostname: 'gtr.com.pk' },
+      { protocol: 'https', hostname: '**.gtr.com.pk' },
+      { protocol: 'https', hostname: 'gtrweb.mediaidee.com' },
+      { protocol: 'https', hostname: 'technotyre.com' },
+      { protocol: 'https', hostname: 'www.technotyre.com' },
+      { protocol: 'https', hostname: '**.technotyre.com' },
     ],
     // Keep unoptimized in development to avoid 504/500 when optimizing remote images locally.
     // Production uses Next image optimization (WebP/AVIF) for LCP.

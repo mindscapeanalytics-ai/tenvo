@@ -22,7 +22,7 @@ import { isImmersiveFinderHero, resolveStorefrontCurrency } from '@/lib/storefro
 import { isPharmacyElevatedStore, formatPharmacyStoreName, getPharmacyHeroSlides, resolvePharmacyQuickSearchTerms } from '@/lib/storefront/pharmacyStorefront';
 import { isFurnitureElevatedStore, formatFurnitureStoreName, getFurnitureHeroSlides, resolveFurnitureQuickSearchTerms } from '@/lib/storefront/furnitureStorefront';
 import { isTilesElevatedStore, formatTilesStoreName, getTilesHeroSlides, resolveTilesQuickSearchTerms } from '@/lib/storefront/tilesStorefront';
-import { formatTyreStoreName, getTyreHeroSlides, resolveTyreQuickSearchTerms, isTyreElevatedStore } from '@/lib/storefront/tyreStorefront';
+import { formatTyreStoreName, getTyreHeroSlides, resolveTyreQuickSearchTerms, resolveTyreShowcaseProducts, isTyreElevatedStore } from '@/lib/storefront/tyreStorefront';
 import { isRestaurantElevatedStore, formatRestaurantStoreName, getRestaurantHeroSlides, resolveRestaurantQuickSearchTerms } from '@/lib/storefront/restaurantStorefront';
 import { isFitnessElevatedStore, formatFitnessStoreName, getFitnessHeroSlides, resolveFitnessHeroQuickLinks, resolveFitnessShowcaseProducts } from '@/lib/storefront/fitnessStorefront';
 import { resolveSupermarketShowcaseProducts } from '@/lib/dataLab/supermarketSeedHelpers';
@@ -421,9 +421,12 @@ export default async function StoreHomePage({ params }) {
   const tilesProducts = tilesCatalogResult?.success
     ? tilesCatalogResult.products
     : buildTopPicksProducts(featuredProducts, popularityBackfill, 48);
-  const tyreProducts = tyreCatalogResult?.success
-    ? tyreCatalogResult.products
-    : buildTopPicksProducts(featuredProducts, popularityBackfill, 48);
+  const tyreProducts = resolveTyreShowcaseProducts(
+    tyreCatalogResult?.success
+      ? tyreCatalogResult.products
+      : buildTopPicksProducts(featuredProducts, popularityBackfill, 48),
+    businessDomain
+  );
 
   const restaurantProducts = resolveRestaurantShowcaseProducts(
     restaurantCatalogResult.success

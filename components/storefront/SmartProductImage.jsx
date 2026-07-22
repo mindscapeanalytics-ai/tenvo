@@ -95,6 +95,9 @@ export function SmartProductImage({
   const isDataUrl = renderSrc.startsWith('data:');
   const isSvg = /\.svg(\?|$)/i.test(renderSrc);
 
+  // Default fill/crop; callers may pass object-contain (etc.) and twMerge wins.
+  const fitClass = 'object-cover';
+
   if (isDataUrl || isSvg) {
     if (fill) {
       return (
@@ -102,7 +105,7 @@ export function SmartProductImage({
         <img
           src={renderSrc}
           alt={alt || ''}
-          className={cn('absolute inset-0 h-full w-full object-cover', className)}
+          className={cn('absolute inset-0 h-full w-full', fitClass, className)}
           style={style}
           onError={handleError}
           loading={priority ? 'eager' : 'lazy'}
@@ -117,7 +120,7 @@ export function SmartProductImage({
         alt={alt || ''}
         width={width}
         height={height}
-        className={cn('object-cover', className)}
+        className={cn(fitClass, className)}
         style={style}
         onError={handleError}
         loading={priority ? 'eager' : 'lazy'}
@@ -140,7 +143,7 @@ export function SmartProductImage({
         <img
           src={cdnSrc}
           alt={alt || ''}
-          className={cn('absolute inset-0 h-full w-full object-cover', className)}
+          className={cn('absolute inset-0 h-full w-full', fitClass, className)}
           style={style}
           onError={handleError}
           loading={priority ? 'eager' : 'lazy'}
@@ -156,7 +159,7 @@ export function SmartProductImage({
         alt={alt || ''}
         width={width || 400}
         height={height || 400}
-        className={cn('object-cover', className)}
+        className={cn(fitClass, className)}
         style={style}
         onError={handleError}
         loading={priority ? 'eager' : 'lazy'}
@@ -172,7 +175,7 @@ export function SmartProductImage({
         src={renderSrc}
         alt={alt || ''}
         fill
-        className={className}
+        className={cn(fitClass, className)}
         sizes={sizes || '(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw'}
         style={style}
         priority={priority}
@@ -187,7 +190,7 @@ export function SmartProductImage({
       alt={alt || ''}
       width={width || 400}
       height={height || 400}
-      className={className}
+      className={cn(fitClass, className)}
       sizes={sizes}
       style={style}
       priority={priority}

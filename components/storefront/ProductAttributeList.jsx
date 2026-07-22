@@ -6,6 +6,7 @@ import {
   buildClothingAttributeRows,
   buildPartsAttributeRows,
   buildMarinePartsAttributeRows,
+  buildTyreAttributeRows,
   buildStorefrontFilterHref,
 } from '@/lib/storefront/productAttributeChips';
 
@@ -18,6 +19,7 @@ export function ProductAttributeList({
   showFashionMeta = false,
   showPartsMeta = false,
   showMarineMeta = false,
+  showTyreMeta = false,
   /** Keys already rendered as top-level badges (e.g. sourcing on ProductInfo). */
   hideBadgeKeys = [],
 }) {
@@ -27,7 +29,9 @@ export function ProductAttributeList({
       ? buildMarinePartsAttributeRows(product)
       : showPartsMeta
         ? buildPartsAttributeRows(product)
-        : [];
+        : showTyreMeta
+          ? buildTyreAttributeRows(product)
+          : [];
 
   const visibleRows = rows.filter(
     (row) => !(row.badge && hideBadgeKeys.includes(row.key))

@@ -402,11 +402,18 @@ export function StoreSettingsManager({ business, category }) {
     },
     tyre: {
       showTrustStrip: true,
+      showExploreSection: true,
       showVehicleTiles: true,
       showBrandWall: true,
       showAlloyRail: true,
       showServices: true,
       showBayCta: true,
+      showLifestyleSpotlight: true,
+      showBrandStories: true,
+      showOemPartners: true,
+      showSafetyBand: true,
+      showCareTips: true,
+      showPromoMosaic: false,
       showTestimonials: false,
       showMarketingBanners: true,
       locationLabel: 'Deliver to',
@@ -415,9 +422,24 @@ export function StoreSettingsManager({ business, category }) {
       bayLabel: 'Book fitting bay',
       featuredRailTitle: '',
       featuredRailSubtitle: '',
+      exploreTitle: '',
+      exploreSubtitle: '',
+      exploreBackgroundImage: '',
       heroVideoUrl: '',
       bayCtaTitle: '',
       bayCtaSubtitle: '',
+      brandStory1Eyebrow: '',
+      brandStory1Title: '',
+      brandStory1Subtitle: '',
+      brandStory1Image: '',
+      brandStory1Cta: '',
+      brandStory1Href: '',
+      brandStory2Eyebrow: '',
+      brandStory2Title: '',
+      brandStory2Subtitle: '',
+      brandStory2Image: '',
+      brandStory2Cta: '',
+      brandStory2Href: '',
     },
     fitness: {
       showPrograms: true,
@@ -2600,7 +2622,14 @@ export function StoreSettingsManager({ business, category }) {
                 <div className="grid gap-3 sm:grid-cols-2">
                   {[
                     ['showTrustStrip', 'Trust strip below hero', false],
-                    ['showVehicleTiles', 'Shop by vehicle type', false],
+                    ['showExploreSection', 'Explore our tyres (interactive)', false],
+                    ['showOemPartners', 'OEM partner strip', false],
+                    ['showSafetyBand', 'Safety & technology band', false],
+                    ['showCareTips', 'Tyre care tips', false],
+                    ['showVehicleTiles', 'Shop by vehicle type (when Explore is off)', false],
+                    ['showLifestyleSpotlight', 'Mid-page company banner', false],
+                    ['showBrandStories', 'Brand story band', false],
+                    ['showPromoMosaic', 'Extra promo tiles (optional)', true],
                     ['showBrandWall', 'Brand wall', false],
                     ['showAlloyRail', 'Alloy & wheels rail', false],
                     ['showServices', 'Bay services section', false],
@@ -2673,6 +2702,68 @@ export function StoreSettingsManager({ business, category }) {
                       onChange={(e) => setTyre('bayCtaSubtitle', e.target.value)}
                     />
                   </div>
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <Label>Explore section title</Label>
+                    <Input
+                      value={settings.tyre?.exploreTitle || ''}
+                      onChange={(e) => setTyre('exploreTitle', e.target.value)}
+                      placeholder="Explore our tyres"
+                    />
+                  </div>
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <Label>Explore section subtitle</Label>
+                    <Input
+                      value={settings.tyre?.exploreSubtitle || ''}
+                      onChange={(e) => setTyre('exploreSubtitle', e.target.value)}
+                      placeholder="Choose a vehicle type to discover tyres suited for it."
+                    />
+                  </div>
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <Label>Explore background image URL</Label>
+                    <Input
+                      value={settings.tyre?.exploreBackgroundImage || ''}
+                      onChange={(e) => setTyre('exploreBackgroundImage', e.target.value)}
+                      placeholder="https://…/explore-banner.jpg"
+                    />
+                  </div>
+                </div>
+                <Separator />
+                <p className="text-xs font-semibold text-gray-700">Brand story bands (optional overrides)</p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {[
+                    ['brandStory1Eyebrow', 'Story 1 eyebrow'],
+                    ['brandStory1Title', 'Story 1 title'],
+                    ['brandStory1Subtitle', 'Story 1 subtitle'],
+                    ['brandStory1Image', 'Story 1 image URL'],
+                    ['brandStory1Cta', 'Story 1 button label'],
+                    ['brandStory1Href', 'Story 1 link suffix', '?search=GTR'],
+                  ].map(([key, label, placeholder]) => (
+                    <div key={key} className="space-y-1.5">
+                      <Label>{label}</Label>
+                      <Input
+                        value={settings.tyre?.[key] || ''}
+                        onChange={(e) => setTyre(key, e.target.value)}
+                        placeholder={placeholder || ''}
+                      />
+                    </div>
+                  ))}
+                  {[
+                    ['brandStory2Eyebrow', 'Story 2 eyebrow'],
+                    ['brandStory2Title', 'Story 2 title'],
+                    ['brandStory2Subtitle', 'Story 2 subtitle'],
+                    ['brandStory2Image', 'Story 2 image URL'],
+                    ['brandStory2Cta', 'Story 2 button label'],
+                    ['brandStory2Href', 'Story 2 link suffix', '?search=Michelin'],
+                  ].map(([key, label, placeholder]) => (
+                    <div key={key} className="space-y-1.5">
+                      <Label>{label}</Label>
+                      <Input
+                        value={settings.tyre?.[key] || ''}
+                        onChange={(e) => setTyre(key, e.target.value)}
+                        placeholder={placeholder || ''}
+                      />
+                    </div>
+                  ))}
                 </div>
                 <p className="text-xs text-gray-500">
                   Hero carousel slides are under Branding. Uploaded slides override tyre template defaults.

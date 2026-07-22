@@ -20,11 +20,13 @@ import {
 } from '@/lib/storefront/fitnessStorefront';
 import { isRestaurantElevatedStore, resolveRestaurantTheme } from '@/lib/storefront/restaurantStorefront';
 import { isPharmacyElevatedStore } from '@/lib/storefront/pharmacyStorefront';
+import { isTyreElevatedStore, enrichTyreProductsWithSeedImages } from '@/lib/storefront/tyreStorefront';
 import {
   buildPharmacyShopCatalog,
   paginatePharmacyShopCatalog,
 } from '@/lib/dataLab/pharmacySeedHelpers';
 import { PharmacyShopLayout } from '@/components/storefront/pharmacy/PharmacyShopLayout';
+import { TyreShopLayout } from '@/components/storefront/tyre/TyreShopLayout';
 import {
   buildRestaurantShopCatalog,
   paginateRestaurantShopCatalog,
@@ -88,6 +90,7 @@ export default async function ProductsPage({ params, searchParams }) {
   const fitnessStore = isFitnessElevatedStore(business.category);
   const restaurantStore = isRestaurantElevatedStore(business.category);
   const pharmacyStore = isPharmacyElevatedStore(business.category);
+  const tyreStore = isTyreElevatedStore(business.category);
 
   // Parse filters from search params
   const filters = {
@@ -166,7 +169,9 @@ export default async function ProductsPage({ params, searchParams }) {
                 ? 'Full menu'
                 : pharmacyStore
                   ? 'Shop medicines'
-                  : 'All products';
+                  : tyreStore
+                    ? 'Shop tyres & wheels'
+                    : 'All products';
 
   if (restaurantStore) {
     const settings = storeSettings;
@@ -260,6 +265,65 @@ export default async function ProductsPage({ params, searchParams }) {
           </main>
         </div>
       </PharmacyShopLayout>
+    );
+  }
+
+  if (tyreStore) {
+    const storeBase = `/store/${businessDomain}`;
+    const accent = storeSettings?.theme?.accent || '#CC1532';
+    const tyreSubtitle = filters.search
+      ? `Sized and branded results from ${business.business_name}.`
+      : filters.onSale
+        ? 'Limited-time savings on selected tyres and wheel sets.'
+        : categoryMeta
+          ? `${categoryMeta.name} from ${business.business_name}. Sizes, load ratings, and bay fitting available.`
+          : `Browse passenger, SUV, commercial, alloy, and fitting services from ${business.business_name}.`;
+
+    return (
+      <TyreShopLayout
+        businessDomain={businessDomain}
+        categories={categories}
+        settings={storeSettings}
+        accent={accent}
+        title={heroTitle}
+        subtitle={tyreSubtitle}
+        storeBase={storeBase}
+      >
+        <div className="flex flex-col gap-6 lg:flex-row">
+          <aside className="lg:w-72 lg:shrink-0">
+            <div className="sticky top-24 space-y-4">
+              <ProductFilters
+                filters={filters}
+                categories={categories}
+                businessDomain={businessDomain}
+              />
+            </div>
+          </aside>
+
+          <main className="min-w-0 flex-1">
+            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+              <div className="min-w-0 flex-1">
+                <SearchBar businessDomain={businessDomain} initialQuery={filters.search} />
+              </div>
+              <div className="flex items-center gap-2">
+                <SortDropdown currentSort={filters.sort} businessDomain={businessDomain} />
+                <ViewToggle currentView={view} businessDomain={businessDomain} />
+              </div>
+            </div>
+            <ActiveFilters filters={filters} businessDomain={businessDomain} />
+            <Suspense fallback={<ProductsSkeleton count={12} density="catalog" />}>
+              <ProductGridContent
+                businessId={business.id}
+                businessDomain={businessDomain}
+                filters={filters}
+                view={view}
+                tyreStore={tyreStore}
+                businessCategory={business.category}
+              />
+            </Suspense>
+          </main>
+        </div>
+      </TyreShopLayout>
     );
   }
 
@@ -428,6 +492,7 @@ async function ProductGridContent({
   view = 'grid',
   fitnessStore = false,
   pharmacyStore = false,
+  tyreStore = false,
   businessCategory = '',
   bookableCategoryRequested = false,
 }) {
@@ -549,6 +614,10 @@ async function ProductGridContent({
       total = paged.total;
       hasMore = paged.hasMore;
     }
+  }
+
+  if (tyreStore) {
+    products = enrichTyreProductsWithSeedImages(products, businessDomain);
   }
 
   return (

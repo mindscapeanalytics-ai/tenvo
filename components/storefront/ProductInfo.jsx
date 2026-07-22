@@ -8,6 +8,7 @@ import { isAutoPartsFinderStore } from '@/lib/storefront/partsFinder';
 import { isMarinePartsFinderStore } from '@/lib/storefront/marinePartsFinder';
 import { isFashionEditorialStore } from '@/lib/storefront/fashionEditorial';
 import { isPharmacyElevatedStore } from '@/lib/storefront/pharmacyStorefront';
+import { isTyreElevatedStore } from '@/lib/storefront/tyreStorefront';
 import { resolvePharmacyProductMeta } from '@/lib/storefront/pharmacyProducts';
 import { resolveSourcingBadge } from '@/lib/storefront/productAttributeChips';
 import { ProductAttributeList } from '@/components/storefront/ProductAttributeList';
@@ -25,12 +26,13 @@ export function ProductInfo({ product, businessDomain }) {
   const showPartsMeta = isAutoPartsFinderStore(categoryKey);
   const showMarineMeta = isMarinePartsFinderStore(categoryKey);
   const showFashionMeta = isFashionEditorialStore(categoryKey);
+  const showTyreMeta = isTyreElevatedStore(categoryKey);
   const pharmacyStore = isPharmacyElevatedStore(categoryKey);
   const pharmacyMeta = pharmacyStore ? resolvePharmacyProductMeta(product) : null;
 
   const { stock: displayStock, isOutOfStock, isLowStock } = getStorefrontStockState(product);
 
-  const sourcingBadge = showFashionMeta ? resolveSourcingBadge(product.domain_data) : null;
+  const sourcingBadge = showFashionMeta || showTyreMeta ? resolveSourcingBadge(product.domain_data) : null;
 
   return (
     <div className="space-y-4">
@@ -121,13 +123,14 @@ export function ProductInfo({ product, businessDomain }) {
         <p className="text-gray-600 leading-relaxed">{product.description}</p>
       ) : null}
 
-      {(showFashionMeta || showPartsMeta || showMarineMeta || product.sku) ? (
+      {(showFashionMeta || showPartsMeta || showMarineMeta || showTyreMeta || product.sku) ? (
         <ProductAttributeList
           product={product}
           businessDomain={businessDomain}
           showFashionMeta={showFashionMeta}
           showPartsMeta={showPartsMeta}
           showMarineMeta={showMarineMeta}
+          showTyreMeta={showTyreMeta}
           hideBadgeKeys={sourcingBadge ? ['sourcing'] : []}
         />
       ) : null}
