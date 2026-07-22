@@ -43,6 +43,7 @@ import { resizeImageToWebP } from '@/lib/utils/optimizeImageClient';
 
 const SUBJECT_OPTIONS = [
   { value: 'general', label: 'General inquiry' },
+  { value: 'installment', label: 'Installment enquiry' },
   { value: 'quotation', label: 'Request quotation' },
   { value: 'order', label: 'Order question' },
   { value: 'product', label: 'Product question' },

@@ -9,8 +9,9 @@ import { isMarinePartsFinderStore } from '@/lib/storefront/marinePartsFinder';
 import { isFashionEditorialStore } from '@/lib/storefront/fashionEditorial';
 import { isPharmacyElevatedStore } from '@/lib/storefront/pharmacyStorefront';
 import { isTyreElevatedStore } from '@/lib/storefront/tyreStorefront';
+import { isElectronicsElevatedStore } from '@/lib/storefront/electronicsStorefront';
 import { resolvePharmacyProductMeta } from '@/lib/storefront/pharmacyProducts';
-import { resolveSourcingBadge } from '@/lib/storefront/productAttributeChips';
+import { resolveSourcingBadge, buildElectronicsAttributeRows } from '@/lib/storefront/productAttributeChips';
 import { ProductAttributeList } from '@/components/storefront/ProductAttributeList';
 import { getStorefrontStockState } from '@/lib/storefront/storefrontStockUi';
 
@@ -27,12 +28,16 @@ export function ProductInfo({ product, businessDomain }) {
   const showMarineMeta = isMarinePartsFinderStore(categoryKey);
   const showFashionMeta = isFashionEditorialStore(categoryKey);
   const showTyreMeta = isTyreElevatedStore(categoryKey);
+  const showElectronicsMeta = isElectronicsElevatedStore(categoryKey);
   const pharmacyStore = isPharmacyElevatedStore(categoryKey);
   const pharmacyMeta = pharmacyStore ? resolvePharmacyProductMeta(product) : null;
 
   const { stock: displayStock, isOutOfStock, isLowStock } = getStorefrontStockState(product);
 
   const sourcingBadge = showFashionMeta || showTyreMeta ? resolveSourcingBadge(product.domain_data) : null;
+  const electronicsWarranty = showElectronicsMeta
+    ? buildElectronicsAttributeRows(product).find((row) => row.key === 'warranty')?.value
+    : null;
 
   return (
     <div className="space-y-4">
@@ -71,6 +76,11 @@ export function ProductInfo({ product, businessDomain }) {
         {pharmacyMeta?.scheduleH ? (
           <Badge variant="outline" className="text-xs border-emerald-300 text-emerald-800 bg-emerald-50">
             Schedule H
+          </Badge>
+        ) : null}
+        {electronicsWarranty ? (
+          <Badge variant="outline" className="text-xs border-blue-200 text-blue-800 bg-blue-50">
+            {electronicsWarranty} warranty
           </Badge>
         ) : null}
       </div>
@@ -123,7 +133,7 @@ export function ProductInfo({ product, businessDomain }) {
         <p className="text-gray-600 leading-relaxed">{product.description}</p>
       ) : null}
 
-      {(showFashionMeta || showPartsMeta || showMarineMeta || showTyreMeta || product.sku) ? (
+      {(showFashionMeta || showPartsMeta || showMarineMeta || showTyreMeta || showElectronicsMeta || product.sku) ? (
         <ProductAttributeList
           product={product}
           businessDomain={businessDomain}
@@ -131,7 +141,11 @@ export function ProductInfo({ product, businessDomain }) {
           showPartsMeta={showPartsMeta}
           showMarineMeta={showMarineMeta}
           showTyreMeta={showTyreMeta}
-          hideBadgeKeys={sourcingBadge ? ['sourcing'] : []}
+          showElectronicsMeta={showElectronicsMeta}
+          hideBadgeKeys={[
+            ...(sourcingBadge ? ['sourcing'] : []),
+            ...(electronicsWarranty ? ['warranty'] : []),
+          ]}
         />
       ) : null}
     </div>

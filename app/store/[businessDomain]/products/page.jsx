@@ -21,6 +21,7 @@ import {
 import { isRestaurantElevatedStore, resolveRestaurantTheme } from '@/lib/storefront/restaurantStorefront';
 import { isPharmacyElevatedStore } from '@/lib/storefront/pharmacyStorefront';
 import { isTyreElevatedStore, enrichTyreProductsWithSeedImages } from '@/lib/storefront/tyreStorefront';
+import { isElectronicsElevatedStore, enrichElectronicsProductsWithSeedImages } from '@/lib/storefront/electronicsStorefront';
 import {
   buildPharmacyShopCatalog,
   paginatePharmacyShopCatalog,
@@ -91,6 +92,7 @@ export default async function ProductsPage({ params, searchParams }) {
   const restaurantStore = isRestaurantElevatedStore(business.category);
   const pharmacyStore = isPharmacyElevatedStore(business.category);
   const tyreStore = isTyreElevatedStore(business.category);
+  const electronicsStore = isElectronicsElevatedStore(business.category);
 
   // Parse filters from search params
   const filters = {
@@ -618,6 +620,10 @@ async function ProductGridContent({
 
   if (tyreStore) {
     products = enrichTyreProductsWithSeedImages(products, businessDomain);
+  }
+
+  if (electronicsStore) {
+    products = enrichElectronicsProductsWithSeedImages(products);
   }
 
   return (

@@ -23,6 +23,7 @@ import { isPharmacyElevatedStore, formatPharmacyStoreName, getPharmacyHeroSlides
 import { isFurnitureElevatedStore, formatFurnitureStoreName, getFurnitureHeroSlides, resolveFurnitureQuickSearchTerms } from '@/lib/storefront/furnitureStorefront';
 import { isTilesElevatedStore, formatTilesStoreName, getTilesHeroSlides, resolveTilesQuickSearchTerms } from '@/lib/storefront/tilesStorefront';
 import { formatTyreStoreName, getTyreHeroSlides, resolveTyreQuickSearchTerms, resolveTyreShowcaseProducts, isTyreElevatedStore } from '@/lib/storefront/tyreStorefront';
+import { formatElectronicsStoreName, getElectronicsHeroSlides, resolveElectronicsQuickSearchTerms, resolveElectronicsShowcaseProducts, isElectronicsElevatedStore } from '@/lib/storefront/electronicsStorefront';
 import { isRestaurantElevatedStore, formatRestaurantStoreName, getRestaurantHeroSlides, resolveRestaurantQuickSearchTerms } from '@/lib/storefront/restaurantStorefront';
 import { isFitnessElevatedStore, formatFitnessStoreName, getFitnessHeroSlides, resolveFitnessHeroQuickLinks, resolveFitnessShowcaseProducts } from '@/lib/storefront/fitnessStorefront';
 import { resolveSupermarketShowcaseProducts } from '@/lib/dataLab/supermarketSeedHelpers';
@@ -79,6 +80,8 @@ export async function generateMetadata({ params }) {
     ? formatPharmacyStoreName(business.business_name)
     : isTyreElevatedStore(business.category)
       ? formatTyreStoreName(business.business_name)
+    : isElectronicsElevatedStore(business.category)
+      ? formatElectronicsStoreName(business.business_name)
     : isTilesElevatedStore(business.category)
       ? formatTilesStoreName(business.business_name)
     : isFurnitureElevatedStore(business.category)
@@ -106,6 +109,9 @@ export async function generateMetadata({ params }) {
   } else if (isTyreElevatedStore(business.category)) {
     description = description || `Shop local and imported tyres, alloy rims, and fitting services at ${storeName}.`;
     keywords = `${storeName}, tyre store, tyres, alloy rims, fitting${business.city ? `, ${business.city}` : ''}`;
+  } else if (isElectronicsElevatedStore(business.category)) {
+    description = description || `Shop appliances, gadgets, and branded electronics at ${storeName}.`;
+    keywords = `${storeName}, electronics store, appliances, gadgets${business.city ? `, ${business.city}` : ''}`;
   } else if (isTilesElevatedStore(business.category)) {
     keywords = `tiles, marble, granite, porcelain, onyx, stone store, ${business.business_name}`;
   } else if (isFurnitureElevatedStore(business.category)) {
@@ -195,17 +201,18 @@ export default async function StoreHomePage({ params }) {
   const furnitureElevatedHero = heroPreset.type === 'furniture-elevated';
   const tilesElevatedHero = heroPreset.type === 'tiles-elevated';
   const tyreElevatedHero = heroPreset.type === 'tyre-elevated';
+  const electronicsElevatedHero = heroPreset.type === 'electronics-elevated';
   const restaurantElevatedHero = heroPreset.type === 'restaurant-elevated';
   const fitnessElevatedHero = heroPreset.type === 'fitness-elevated';
   const supermarketElevatedHero = heroPreset.type === 'supermarket-elevated';
   const autoPartsHero = finderHero && isAutoPartsStore(business.category);
   const marinePartsHero = finderHero && isMarinePartsStore(business.category);
   const jewelleryElevatedHero = heroPreset.type === 'jewellery-elevated';
-  const skipHomeNavSections = finderHero || editorialHero || dealershipHero || marketplaceHero || pharmacyElevatedHero || furnitureElevatedHero || tilesElevatedHero || tyreElevatedHero || restaurantElevatedHero || fitnessElevatedHero || supermarketElevatedHero || jewelleryElevatedHero || marinePartsHero;
+  const skipHomeNavSections = finderHero || editorialHero || dealershipHero || marketplaceHero || pharmacyElevatedHero || furnitureElevatedHero || tilesElevatedHero || tyreElevatedHero || electronicsElevatedHero || restaurantElevatedHero || fitnessElevatedHero || supermarketElevatedHero || jewelleryElevatedHero || marinePartsHero;
   const copy = getStoreHomeCopy(business, domainCfg, landing);
   const contact = resolveStoreContact({ business, settings });
 
-  const needsCatalogBackfill = !editorialHero && !dealershipHero && !marketplaceHero && !autoPartsHero && !marinePartsHero && !furnitureElevatedHero && !tilesElevatedHero && !tyreElevatedHero && !restaurantElevatedHero && !fitnessElevatedHero && !supermarketElevatedHero && !jewelleryElevatedHero;
+  const needsCatalogBackfill = !editorialHero && !dealershipHero && !marketplaceHero && !autoPartsHero && !marinePartsHero && !furnitureElevatedHero && !tilesElevatedHero && !tyreElevatedHero && !electronicsElevatedHero && !restaurantElevatedHero && !fitnessElevatedHero && !supermarketElevatedHero && !jewelleryElevatedHero;
 
   const catalogPlan = buildStoreHomeCatalogPlan({
     editorialHero,
@@ -215,6 +222,7 @@ export default async function StoreHomePage({ params }) {
     furnitureElevatedHero,
     tilesElevatedHero,
     tyreElevatedHero,
+    electronicsElevatedHero,
     restaurantElevatedHero,
     fitnessElevatedHero,
     supermarketElevatedHero,
@@ -239,6 +247,7 @@ export default async function StoreHomePage({ params }) {
     furnitureCatalogResult,
     tilesCatalogResult,
     tyreCatalogResult,
+    electronicsCatalogResult,
     restaurantCatalogResult,
     fitnessCatalogResult,
     supermarketCatalogResult,
@@ -253,6 +262,7 @@ export default async function StoreHomePage({ params }) {
     furnitureElevatedHero,
     tilesElevatedHero,
     tyreElevatedHero,
+    electronicsElevatedHero,
     restaurantElevatedHero,
     fitnessElevatedHero,
     supermarketElevatedHero,
@@ -427,6 +437,12 @@ export default async function StoreHomePage({ params }) {
       : buildTopPicksProducts(featuredProducts, popularityBackfill, 48),
     businessDomain
   );
+  const electronicsProducts = resolveElectronicsShowcaseProducts(
+    electronicsCatalogResult?.success
+      ? electronicsCatalogResult.products
+      : buildTopPicksProducts(featuredProducts, popularityBackfill, 48),
+    businessDomain
+  );
 
   const restaurantProducts = resolveRestaurantShowcaseProducts(
     restaurantCatalogResult.success
@@ -457,6 +473,7 @@ export default async function StoreHomePage({ params }) {
   const furnitureStoreName = formatFurnitureStoreName(business.business_name);
   const tilesStoreName = tilesElevatedHero ? formatTilesStoreName(business.business_name) : '';
   const tyreStoreName = tyreElevatedHero ? formatTyreStoreName(business.business_name) : '';
+  const electronicsStoreName = electronicsElevatedHero ? formatElectronicsStoreName(business.business_name) : '';
   const supermarketStoreName = formatSupermarketStoreName(business.business_name);
   const coverImageUrl = business.cover_image_url?.startsWith('http') ? business.cover_image_url : null;
 
@@ -599,6 +616,21 @@ export default async function StoreHomePage({ params }) {
               products: tyreProducts,
             }),
           }
+      : electronicsElevatedHero
+        ? {
+            ...heroPreset,
+            settings,
+            storeName: electronicsStoreName || formatElectronicsStoreName(business.business_name),
+            businessCategory: business.category,
+            quickSearchTerms: resolveElectronicsQuickSearchTerms(settings, businessDomain),
+            slides: getElectronicsHeroSlides(heroPreset.base, settings, {
+              storeName: electronicsStoreName || formatElectronicsStoreName(business.business_name),
+              businessDomain,
+              businessDescription: business.description || settings?.description,
+              coverImage: coverImageUrl,
+              products: electronicsProducts,
+            }),
+          }
       : furnitureElevatedHero
         ? {
             ...heroPreset,
@@ -636,7 +668,7 @@ export default async function StoreHomePage({ params }) {
         ? 'bg-black text-white'
         : editorialHero
           ? 'bg-stone-50 text-slate-900'
-          : dealershipHero || marketplaceHero || pharmacyElevatedHero || furnitureElevatedHero || tilesElevatedHero || tyreElevatedHero || restaurantElevatedHero || supermarketElevatedHero || autoPartsHero || marinePartsHero
+          : dealershipHero || marketplaceHero || pharmacyElevatedHero || furnitureElevatedHero || tilesElevatedHero || tyreElevatedHero || electronicsElevatedHero || restaurantElevatedHero || supermarketElevatedHero || autoPartsHero || marinePartsHero
             ? restaurantElevatedHero
               ? 'bg-zinc-50 text-zinc-900'
               : 'bg-white text-slate-900'
@@ -644,7 +676,7 @@ export default async function StoreHomePage({ params }) {
     )}>
 
       {/* ── Announcement Banner ─────────────────────────────────────────────── */}
-      {hero.banner && !editorialHero && !dealershipHero && !marketplaceHero && !pharmacyElevatedHero && !furnitureElevatedHero && !tilesElevatedHero && !tyreElevatedHero && !restaurantElevatedHero && !fitnessElevatedHero && !supermarketElevatedHero && !jewelleryElevatedHero && !marinePartsHero ? (
+      {hero.banner && !editorialHero && !dealershipHero && !marketplaceHero && !pharmacyElevatedHero && !furnitureElevatedHero && !tilesElevatedHero && !tyreElevatedHero && !electronicsElevatedHero && !restaurantElevatedHero && !fitnessElevatedHero && !supermarketElevatedHero && !jewelleryElevatedHero && !marinePartsHero ? (
         <div
           className="md:hidden text-white text-center py-2 px-4 text-xs font-medium truncate"
           style={{ backgroundColor: accent }}
@@ -868,6 +900,22 @@ export default async function StoreHomePage({ params }) {
           businessDescription={business.description || settings?.description}
         />
       )}
+      {electronicsElevatedHero && (
+        <LazyVerticalHomeSections
+          variant="electronics"
+          businessDomain={businessDomain}
+          businessCategory={business.category}
+          business={business}
+          categories={categories}
+          products={electronicsProducts}
+          currency={storeCurrency}
+          accent={accent}
+          base={heroPreset.base}
+          settings={settings}
+          storeName={electronicsStoreName || formatElectronicsStoreName(business.business_name)}
+          businessDescription={business.description || settings?.description}
+        />
+      )}
 
       {restaurantElevatedHero && (
         <LazyVerticalHomeSections
@@ -1010,7 +1058,7 @@ export default async function StoreHomePage({ params }) {
       />
       )}
 
-      {!editorialHero && !dealershipHero && !marketplaceHero && !pharmacyElevatedHero && !furnitureElevatedHero && !tilesElevatedHero && !tyreElevatedHero && !restaurantElevatedHero && !fitnessElevatedHero && !supermarketElevatedHero && !autoPartsHero && !marinePartsHero && !jewelleryElevatedHero && (
+      {!editorialHero && !dealershipHero && !marketplaceHero && !pharmacyElevatedHero && !furnitureElevatedHero && !tilesElevatedHero && !tyreElevatedHero && !electronicsElevatedHero && !restaurantElevatedHero && !fitnessElevatedHero && !supermarketElevatedHero && !autoPartsHero && !marinePartsHero && !jewelleryElevatedHero && (
         <DomainDealStrip dealStrip={landing.dealStrip} accent={accent} accentDark={accentDark} />
       )}
 
@@ -1065,7 +1113,7 @@ export default async function StoreHomePage({ params }) {
       )}
 
       {/* ── Featured / primary catalog ───────────────────────────────────── */}
-      {featuredRow.length > 0 && !editorialHero && !dealershipHero && !marketplaceHero && !pharmacyElevatedHero && !furnitureElevatedHero && !tilesElevatedHero && !tyreElevatedHero && !restaurantElevatedHero && !fitnessElevatedHero && !supermarketElevatedHero && !autoPartsHero && !marinePartsHero && !jewelleryElevatedHero && (
+      {featuredRow.length > 0 && !editorialHero && !dealershipHero && !marketplaceHero && !pharmacyElevatedHero && !furnitureElevatedHero && !tilesElevatedHero && !tyreElevatedHero && !electronicsElevatedHero && !restaurantElevatedHero && !fitnessElevatedHero && !supermarketElevatedHero && !autoPartsHero && !marinePartsHero && !jewelleryElevatedHero && (
         <section className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-8 py-4 sm:py-10">
           <StoreSectionHeader
             title={copy.featuredTitle}
@@ -1097,7 +1145,7 @@ export default async function StoreHomePage({ params }) {
       )}
 
       {/* ── Fallback primary grid when no featured flag ──────────────────── */}
-      {featuredRow.length === 0 && newArrivalsRaw.length > 0 && !editorialHero && !dealershipHero && !marketplaceHero && !pharmacyElevatedHero && !furnitureElevatedHero && !tilesElevatedHero && !tyreElevatedHero && !restaurantElevatedHero && !fitnessElevatedHero && !supermarketElevatedHero && !autoPartsHero && !marinePartsHero && !jewelleryElevatedHero && (
+      {featuredRow.length === 0 && newArrivalsRaw.length > 0 && !editorialHero && !dealershipHero && !marketplaceHero && !pharmacyElevatedHero && !furnitureElevatedHero && !tilesElevatedHero && !tyreElevatedHero && !electronicsElevatedHero && !restaurantElevatedHero && !fitnessElevatedHero && !supermarketElevatedHero && !autoPartsHero && !marinePartsHero && !jewelleryElevatedHero && (
         <section className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-8 py-4 sm:py-10">
           <StoreSectionHeader
             title={copy.shopAllTitle}
@@ -1119,7 +1167,7 @@ export default async function StoreHomePage({ params }) {
       {/* ── On Sale (retail grid). Editorial stores use the fashion Offers rail
              (FashionDepartmentSections) instead, so skip this to avoid a
              duplicate section and a retail-vs-editorial card clash. ───────── */}
-      {onSaleRow.length >= 1 && !editorialHero && !dealershipHero && !marketplaceHero && !pharmacyElevatedHero && !furnitureElevatedHero && !tilesElevatedHero && !tyreElevatedHero && !restaurantElevatedHero && !fitnessElevatedHero && !supermarketElevatedHero && !autoPartsHero && !marinePartsHero && !jewelleryElevatedHero && (
+      {onSaleRow.length >= 1 && !editorialHero && !dealershipHero && !marketplaceHero && !pharmacyElevatedHero && !furnitureElevatedHero && !tilesElevatedHero && !tyreElevatedHero && !electronicsElevatedHero && !restaurantElevatedHero && !fitnessElevatedHero && !supermarketElevatedHero && !autoPartsHero && !marinePartsHero && !jewelleryElevatedHero && (
         <section className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-8 py-4 sm:py-10">
           <StoreSectionHeader
             title={copy.onSaleTitle}
@@ -1151,7 +1199,7 @@ export default async function StoreHomePage({ params }) {
       ) : null}
 
       {/* ── Free shipping promo (desktop), skip elevated / B2B parts templates ─ */}
-      {!editorialHero && !dealershipHero && !marketplaceHero && !pharmacyElevatedHero && !furnitureElevatedHero && !tilesElevatedHero && !tyreElevatedHero && !restaurantElevatedHero && !fitnessElevatedHero && !supermarketElevatedHero && !jewelleryElevatedHero && !marinePartsHero && !autoPartsHero && (
+      {!editorialHero && !dealershipHero && !marketplaceHero && !pharmacyElevatedHero && !furnitureElevatedHero && !tilesElevatedHero && !tyreElevatedHero && !electronicsElevatedHero && !restaurantElevatedHero && !fitnessElevatedHero && !supermarketElevatedHero && !jewelleryElevatedHero && !marinePartsHero && !autoPartsHero && (
       <section className="hidden md:block mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
         <div
           className="relative overflow-hidden rounded-3xl p-8 sm:p-12"
@@ -1188,7 +1236,7 @@ export default async function StoreHomePage({ params }) {
       )}
 
       {/* ── New Arrivals (only when catalog has more beyond featured) ───────── */}
-      {showNewArrivals && !editorialHero && !dealershipHero && !marketplaceHero && !pharmacyElevatedHero && !furnitureElevatedHero && !tilesElevatedHero && !tyreElevatedHero && !restaurantElevatedHero && !fitnessElevatedHero && !supermarketElevatedHero && !jewelleryElevatedHero && (
+      {showNewArrivals && !editorialHero && !dealershipHero && !marketplaceHero && !pharmacyElevatedHero && !furnitureElevatedHero && !tilesElevatedHero && !tyreElevatedHero && !electronicsElevatedHero && !restaurantElevatedHero && !fitnessElevatedHero && !supermarketElevatedHero && !jewelleryElevatedHero && (
         <section className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-8 py-4 sm:py-10">
           <StoreSectionHeader
             title={copy.newArrivalsTitle}
@@ -1208,7 +1256,7 @@ export default async function StoreHomePage({ params }) {
       )}
 
       {/* ── Mobile buyer support ───────────────────────────────────────────── */}
-      {!dealershipHero && !marketplaceHero && !pharmacyElevatedHero && !furnitureElevatedHero && !tilesElevatedHero && !tyreElevatedHero && !restaurantElevatedHero && !fitnessElevatedHero && !supermarketElevatedHero && !jewelleryElevatedHero && (
+      {!dealershipHero && !marketplaceHero && !pharmacyElevatedHero && !furnitureElevatedHero && !tilesElevatedHero && !tyreElevatedHero && !electronicsElevatedHero && !restaurantElevatedHero && !fitnessElevatedHero && !supermarketElevatedHero && !jewelleryElevatedHero && (
       <StoreBuyerSupportStrip businessDomain={businessDomain} accent={accent} />
       )}
 

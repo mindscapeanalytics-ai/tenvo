@@ -37,6 +37,7 @@ import { isPharmacyElevatedStore } from '@/lib/storefront/pharmacyStorefront';
 import { isFurnitureElevatedStore } from '@/lib/storefront/furnitureStorefront';
 import { isTilesElevatedStore } from '@/lib/storefront/tilesStorefront';
 import { isTyreElevatedStore } from '@/lib/storefront/tyreStorefront';
+import { isElectronicsElevatedStore } from '@/lib/storefront/electronicsStorefront';
 import { isFitnessElevatedStore } from '@/lib/storefront/fitnessStorefront';
 import { isSupermarketElevatedStore } from '@/lib/storefront/supermarketStorefront';
 import { isFashionEditorialStore } from '@/lib/storefront/fashionEditorial';
@@ -441,6 +442,30 @@ export function StoreSettingsManager({ business, category }) {
       brandStory2Cta: '',
       brandStory2Href: '',
     },
+    electronics: {
+      showTrustStrip: true,
+      showCategoryTiles: true,
+      showBrandWall: true,
+      showFeaturedRail: true,
+      showDealsRail: true,
+      showGadgetsRail: true,
+      showAppliancesRail: true,
+      showInstallmentCta: true,
+      showVisitCta: true,
+      locationLabel: 'Deliver to',
+      defaultLocation: '',
+      searchPlaceholder: '',
+      installmentLabel: 'Installment enquiry',
+      featuredRailTitle: '',
+      featuredRailSubtitle: '',
+      dealsRailTitle: '',
+      gadgetsRailTitle: '',
+      appliancesRailTitle: '',
+      installmentTitle: '',
+      installmentSubtitle: '',
+      visitTitle: '',
+      visitSubtitle: '',
+    },
     fitness: {
       showPrograms: true,
       showMemberships: true,
@@ -554,6 +579,7 @@ export function StoreSettingsManager({ business, category }) {
   const furnitureStore = isFurnitureElevatedStore(category || business?.category);
   const tilesStore = isTilesElevatedStore(category || business?.category);
   const tyreStore = isTyreElevatedStore(category || business?.category);
+  const electronicsStore = isElectronicsElevatedStore(category || business?.category);
   const fitnessStore = isFitnessElevatedStore(category || business?.category);
   const supermarketStore = isSupermarketElevatedStore(category || business?.category);
   const jewelleryStore = isJewelleryStore(category || business?.category);
@@ -708,6 +734,11 @@ export function StoreSettingsManager({ business, category }) {
     setSettings((prev) => ({
       ...prev,
       tyre: { ...(prev.tyre || {}), [key]: val },
+    }));
+  const setElectronics = (key, val) =>
+    setSettings((prev) => ({
+      ...prev,
+      electronics: { ...(prev.electronics || {}), [key]: val },
     }));
   const setFitness = (key, val) =>
     setSettings((prev) => ({
@@ -2767,6 +2798,119 @@ export function StoreSettingsManager({ business, category }) {
                 </div>
                 <p className="text-xs text-gray-500">
                   Hero carousel slides are under Branding. Uploaded slides override tyre template defaults.
+                </p>
+              </CardContent>
+            </Card>
+          ) : null}
+
+          {electronicsStore ? (
+            <Card>
+              <CardHeader className="pb-4">
+                <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                  <Megaphone className="w-4 h-4" /> Electronics storefront
+                </CardTitle>
+                <CardDescription>
+                  Toggle homepage sections below the electronics hero. Rails and tiles use your live catalog.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {[
+                    ['showTrustStrip', 'Trust strip below hero', false],
+                    ['showCategoryTiles', 'Shop by category tiles', false],
+                    ['showBrandWall', 'Brand wall', false],
+                    ['showFeaturedRail', 'Top picks rail', false],
+                    ['showDealsRail', 'Deals & offers rail', false],
+                    ['showGadgetsRail', 'Gadgets & wearables rail', false],
+                    ['showAppliancesRail', 'Home appliances rail', false],
+                    ['showInstallmentCta', 'Installment enquiry band', false],
+                    ['showVisitCta', 'Visit showroom CTA', false],
+                  ].map(([key, label, optIn]) => (
+                    <div key={key} className="flex items-center gap-2">
+                      <Switch
+                        checked={optIn ? settings.electronics?.[key] === true : settings.electronics?.[key] !== false}
+                        onCheckedChange={(v) => setElectronics(key, v)}
+                      />
+                      <Label className="text-sm">{label}</Label>
+                    </div>
+                  ))}
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label>Search placeholder</Label>
+                    <Input
+                      value={settings.electronics?.searchPlaceholder || ''}
+                      onChange={(e) => setElectronics('searchPlaceholder', e.target.value)}
+                      placeholder="Search appliances, brands, gadgets…"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Installment CTA label</Label>
+                    <Input
+                      value={settings.electronics?.installmentLabel || ''}
+                      onChange={(e) => setElectronics('installmentLabel', e.target.value)}
+                      placeholder="Installment enquiry"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Location label</Label>
+                    <Input
+                      value={settings.electronics?.locationLabel || ''}
+                      onChange={(e) => setElectronics('locationLabel', e.target.value)}
+                      placeholder="Deliver to"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Default location</Label>
+                    <Input
+                      value={settings.electronics?.defaultLocation || ''}
+                      onChange={(e) => setElectronics('defaultLocation', e.target.value)}
+                      placeholder="Uses store city when empty"
+                    />
+                  </div>
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <Label>Installment band title</Label>
+                    <Input
+                      value={settings.electronics?.installmentTitle || ''}
+                      onChange={(e) => setElectronics('installmentTitle', e.target.value)}
+                      placeholder="Ask about installment plans"
+                    />
+                  </div>
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <Label>Installment band subtitle</Label>
+                    <Input
+                      value={settings.electronics?.installmentSubtitle || ''}
+                      onChange={(e) => setElectronics('installmentSubtitle', e.target.value)}
+                      placeholder="Send an enquiry and our team will guide you."
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Deals rail title</Label>
+                    <Input
+                      value={settings.electronics?.dealsRailTitle || ''}
+                      onChange={(e) => setElectronics('dealsRailTitle', e.target.value)}
+                      placeholder="Deals & offers"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Visit CTA title</Label>
+                    <Input
+                      value={settings.electronics?.visitTitle || ''}
+                      onChange={(e) => setElectronics('visitTitle', e.target.value)}
+                      placeholder="Visit our showroom"
+                    />
+                  </div>
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <Label>Visit CTA subtitle</Label>
+                    <Input
+                      value={settings.electronics?.visitSubtitle || ''}
+                      onChange={(e) => setElectronics('visitSubtitle', e.target.value)}
+                      placeholder="See appliances in person and talk to our team."
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500">
+                  Hero carousel slides are under Branding. Installment uses the contact form subject installment.
                 </p>
               </CardContent>
             </Card>

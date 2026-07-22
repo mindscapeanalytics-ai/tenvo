@@ -22,12 +22,13 @@ import {
 } from '@/lib/storefront/fitnessStorefront';
 import { isPharmacyElevatedStore } from '@/lib/storefront/pharmacyStorefront';
 import { isTyreElevatedStore } from '@/lib/storefront/tyreStorefront';
+import { isElectronicsElevatedStore } from '@/lib/storefront/electronicsStorefront';
 import { isPrescriptionRequiredProduct, buildPharmacyPrescriptionContactHref } from '@/lib/storefront/pharmacyProducts';
 import { PharmacyPrescriptionCta } from '@/components/storefront/pharmacy/PharmacyPrescriptionCta';
 import { getStorefrontStockState } from '@/lib/storefront/storefrontStockUi';
 import { isStorefrontProductUuid } from '@/lib/utils/storefrontProductRef';
 import { resolveStorefrontProductBrowseHref } from '@/lib/storefront/storefrontPurchasability';
-import { resolveSourcingBadge, buildTyreAttributeRows } from '@/lib/storefront/productAttributeChips';
+import { resolveSourcingBadge, buildTyreAttributeRows, buildElectronicsAttributeRows } from '@/lib/storefront/productAttributeChips';
 import { catalogProductNeedsVariantPage } from '@/lib/storefront/storefrontProductVariants';
 import { getTenantMeetingUrl } from '@/lib/storefront/storefrontBooking';
 import { toast } from 'react-hot-toast';
@@ -49,6 +50,7 @@ export function ProductCard({ product, businessDomain, variant = 'default' }) {
   const fitnessStore = isFitnessElevatedStore(business?.category);
   const pharmacyStore = isPharmacyElevatedStore(business?.category);
   const tyreStore = isTyreElevatedStore(business?.category);
+  const electronicsStore = isElectronicsElevatedStore(business?.category);
   const requiresPrescription = pharmacyStore && isPrescriptionRequiredProduct(product);
   const bookableFitness = fitnessStore && isFitnessBookableProduct(product);
   const meetingUrl = fitnessStore ? getTenantMeetingUrl(business, settings) : '';
@@ -83,6 +85,14 @@ export function ProductCard({ product, businessDomain, variant = 'default' }) {
   const sourcingBadge = showFashionMeta || tyreStore ? resolveSourcingBadge(product.domain_data) : null;
   const tyreSizeHint = tyreStore
     ? buildTyreAttributeRows(product).find((row) => row.key === 'tyresize')?.value
+    : '';
+  const electronicsHint = electronicsStore
+    ? (() => {
+        const rows = buildElectronicsAttributeRows(product);
+        const capacity = rows.find((row) => row.key === 'capacity' || row.key === 'screensize')?.value;
+        const warranty = rows.find((row) => row.key === 'warranty')?.value;
+        return [capacity, warranty].filter(Boolean).join(' · ') || '';
+      })()
     : '';
   const partNumber = product.domain_data?.partnumber;
   const fitmentHint = showPartsMeta
@@ -393,6 +403,10 @@ export function ProductCard({ product, businessDomain, variant = 'default' }) {
 
         {tyreStore && tyreSizeHint && !isDense && (
           <p className="truncate text-[10px] font-semibold text-zinc-600">{tyreSizeHint}</p>
+        )}
+
+        {electronicsStore && electronicsHint && !isDense && (
+          <p className="truncate text-[10px] font-semibold text-slate-600">{electronicsHint}</p>
         )}
 
         {product.rating && !isDense && (
