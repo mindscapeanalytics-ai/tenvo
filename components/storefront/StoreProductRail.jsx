@@ -32,6 +32,9 @@ export function StoreProductRail({
   maxItems = 12,
   accentColor,
   autoScroll = false,
+  /** Optional card override (e.g. restaurant quiet-add menu cards). */
+  CardComponent = ProductCard,
+  cardAccent,
 }) {
   const trackRef = useRef(null);
   const [canLeft, setCanLeft] = useState(false);
@@ -117,7 +120,12 @@ export function StoreProductRail({
         <div ref={trackRef} className={STORE_PRODUCT_RAIL_TRACK_CLASS}>
           {railProducts.map((product) => (
             <div key={resolveRailProductId(product)} className={STORE_PRODUCT_RAIL_ITEM_CLASS}>
-              <ProductCard product={product} businessDomain={businessDomain} variant={cardVariant} />
+              <CardComponent
+                product={product}
+                businessDomain={businessDomain}
+                variant={cardVariant}
+                accent={cardAccent || accentColor}
+              />
             </div>
           ))}
         </div>

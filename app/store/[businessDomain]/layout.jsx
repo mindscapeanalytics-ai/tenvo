@@ -31,6 +31,7 @@ import { SupermarketChromeProvider } from '@/components/storefront/supermarket/S
 import { RestaurantSiteHeader } from '@/components/storefront/restaurant/RestaurantSiteHeader';
 import { RestaurantChromeProvider } from '@/components/storefront/restaurant/RestaurantChromeContext';
 import { RestaurantMobileBottomNav } from '@/components/storefront/restaurant/RestaurantMobileBottomNav';
+import { RestaurantStickyCartBar } from '@/components/storefront/restaurant/RestaurantStickyCartBar';
 import { TENVO_VEHICLES_METADATA } from '@/lib/storefront/tenvoVehiclesAssets';
 import { cn } from '@/lib/utils';
 
@@ -183,7 +184,7 @@ export default async function StoreLayout({ children, params }) {
             : supermarketStore
               ? 'pb-[calc(4rem+env(safe-area-inset-bottom))]'
               : restaurantStore
-                ? 'pb-[calc(3rem+env(safe-area-inset-bottom))]'
+                ? 'pb-[calc(7.5rem+env(safe-area-inset-bottom))] lg:pb-24'
                 : fitnessStore
                   ? 'pb-[calc(4.25rem+env(safe-area-inset-bottom))]'
                   : 'pb-[calc(3.5rem+env(safe-area-inset-bottom))]'
@@ -199,6 +200,7 @@ export default async function StoreLayout({ children, params }) {
       />
 
       {pharmacyStore ? <PharmacyMobileBottomNav /> : restaurantStore ? <RestaurantMobileBottomNav /> : fitnessStore ? <FitnessMobileBottomNav /> : <StoreMobileBottomNav />}
+      {restaurantStore ? <RestaurantStickyCartBar /> : null}
 
       <CartDrawer />
       <LiveChat />

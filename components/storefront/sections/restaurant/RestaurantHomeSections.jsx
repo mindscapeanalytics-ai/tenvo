@@ -259,6 +259,8 @@ export function RestaurantHomeSections({
           catalogPool={products}
           businessDomain={businessDomain}
           accentColor={accent}
+          CardComponent={RestaurantMenuItemCard}
+          cardAccent={accent}
           className="border-t border-zinc-200/80 bg-zinc-50"
         />
       )}
@@ -273,6 +275,8 @@ export function RestaurantHomeSections({
           catalogPool={products}
           businessDomain={businessDomain}
           accentColor={accent}
+          CardComponent={RestaurantMenuItemCard}
+          cardAccent={accent}
           className="border-t border-zinc-200/80 bg-white"
         />
       )}
@@ -287,6 +291,8 @@ export function RestaurantHomeSections({
           catalogPool={products}
           businessDomain={businessDomain}
           accentColor={accent}
+          CardComponent={RestaurantMenuItemCard}
+          cardAccent={accent}
           className="border-t border-zinc-200/80 bg-zinc-50"
         />
       )}

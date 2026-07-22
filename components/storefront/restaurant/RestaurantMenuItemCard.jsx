@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Plus, Package } from 'lucide-react';
+import { Plus, Minus, Package } from 'lucide-react';
 import { SmartProductImage } from '@/components/storefront/SmartProductImage';
 import { useCart } from '@/lib/hooks/storefront/useCart';
 import { useStorefront } from '@/lib/context/StorefrontContext';
@@ -14,27 +14,24 @@ import { isPurchasableStorefrontProduct, resolveStorefrontProductBrowseHref } fr
 import { RESTAURANT_MENU_THEME } from '@/lib/storefront/restaurantMenu';
 import { toast } from 'react-hot-toast';
 
-/**
- * Light-theme menu card — image, name, price, quick add.
- */
-export function RestaurantMenuItemCard({ product, businessDomain, accent, className }) {
-  const [isAdding, setIsAdding] = useState(false);
-  const { addItem } = useCart();
-  const { currency, business, businessId } = useStorefront();
-  const imageUrl = getEffectiveProductImageUrl(product, business?.category);
+function useRestaurantMenuLine(product, businessDomain) {
+  const { cart, addItem, updateQuantity } = useCart();
+  const { business, businessId } = useStorefront();
+  const [isBusy, setIsBusy] = useState(false);
+
+  const line = cart?.items?.find(
+    (item) => item.productId === product.id && (item.variantId == null || item.variantId === '')
+  );
+  const qty = line?.quantity || 0;
+  const maxQty = line?.maxQuantity;
   const isOutOfStock =
     product.stock !== null && product.stock !== undefined && Number(product.stock) <= 0;
   const productHref = resolveStorefrontProductBrowseHref(product, businessDomain);
   const needsVariantPage = catalogProductNeedsVariantPage(product);
-  const comparePrice = product.compare_price ?? product.compare_at_price;
-  const onSale = comparePrice && Number(comparePrice) > Number(product.price);
-  const ctaColor = accent || RESTAURANT_MENU_THEME.cartCta;
   const isPreviewProduct = !isPurchasableStorefrontProduct(product);
 
-  const handleAdd = async (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (isOutOfStock) return;
+  const bump = async (delta) => {
+    if (isOutOfStock || isBusy) return;
     if (isPreviewProduct) {
       toast.error('Browse the full menu to order this item');
       window.location.href = `/store/${businessDomain}/products`;
@@ -44,22 +41,72 @@ export function RestaurantMenuItemCard({ product, businessDomain, accent, classN
       window.location.href = productHref;
       return;
     }
-    setIsAdding(true);
+
+    const next = qty + delta;
+    if (next <= 0) {
+      updateQuantity(product.id, null, 0);
+      return;
+    }
+    if (maxQty != null && next > maxQty) {
+      toast.error(`Only ${maxQty} available`);
+      return;
+    }
+
+    setIsBusy(true);
     try {
-      await addItem({ productId: product.id, quantity: 1, variantId: null, businessId });
-      toast.success('Added to cart');
-      window.dispatchEvent(new Event('toggle-cart'));
+      if (delta > 0) {
+        await addItem({
+          productId: product.id,
+          quantity: delta,
+          variantId: null,
+          businessId,
+        });
+        if (qty === 0) {
+          toast.success('Added to bag', { duration: 1400 });
+        }
+      } else {
+        updateQuantity(product.id, null, next);
+      }
     } catch (err) {
-      const message = err.message || 'Could not add item';
+      const message = err.message || 'Could not update item';
       if (/variant|options|size/i.test(message)) {
         window.location.href = productHref;
         return;
       }
       toast.error(message);
     } finally {
-      setIsAdding(false);
+      setIsBusy(false);
     }
   };
+
+  return {
+    qty,
+    isBusy,
+    isOutOfStock,
+    productHref,
+    imageUrl: getEffectiveProductImageUrl(product, business?.category),
+    bump,
+  };
+}
+
+/**
+ * Light-theme menu card — image, name, price, quick add / qty stepper.
+ * Stays on the menu for multi-item ordering (does not open the cart drawer).
+ */
+export function RestaurantMenuItemCard({ product, businessDomain, accent, className }) {
+  const { currency } = useStorefront();
+  const {
+    qty,
+    isBusy,
+    isOutOfStock,
+    productHref,
+    imageUrl,
+    bump,
+  } = useRestaurantMenuLine(product, businessDomain);
+
+  const comparePrice = product.compare_price ?? product.compare_at_price;
+  const onSale = comparePrice && Number(comparePrice) > Number(product.price);
+  const ctaColor = accent || RESTAURANT_MENU_THEME.cartCta;
 
   return (
     <article
@@ -84,6 +131,15 @@ export function RestaurantMenuItemCard({ product, businessDomain, accent, classN
             <Package className="h-8 w-8 text-zinc-300" aria-hidden />
           </div>
         )}
+        {qty > 0 ? (
+          <span
+            className="absolute left-1.5 top-1.5 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full px-1 text-[10px] font-semibold text-white shadow-sm"
+            style={{ backgroundColor: ctaColor }}
+            aria-hidden
+          >
+            {qty}
+          </span>
+        ) : null}
       </Link>
 
       <div className="border-t border-zinc-100 p-2 sm:p-2.5">
@@ -104,16 +160,59 @@ export function RestaurantMenuItemCard({ product, businessDomain, accent, classN
             ) : null}
           </div>
           {!isOutOfStock ? (
-            <button
-              type="button"
-              onClick={handleAdd}
-              disabled={isAdding}
-              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-white shadow-sm motion-safe:transition motion-safe:hover:scale-105 active:scale-95 disabled:opacity-60 sm:h-8 sm:w-8"
-              style={{ backgroundColor: ctaColor }}
-              aria-label={`Add ${product.name} to cart`}
-            >
-              <Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />
-            </button>
+            qty > 0 ? (
+              <div
+                className="inline-flex h-8 items-center rounded-full text-white shadow-sm"
+                style={{ backgroundColor: ctaColor }}
+                role="group"
+                aria-label={`Quantity for ${product.name}`}
+              >
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    bump(-1);
+                  }}
+                  disabled={isBusy}
+                  className="flex h-8 w-7 items-center justify-center rounded-l-full disabled:opacity-60"
+                  aria-label={`Remove one ${product.name}`}
+                >
+                  <Minus className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
+                </button>
+                <span className="min-w-[1.25rem] text-center text-xs font-semibold tabular-nums">
+                  {qty}
+                </span>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    bump(1);
+                  }}
+                  disabled={isBusy}
+                  className="flex h-8 w-7 items-center justify-center rounded-r-full disabled:opacity-60"
+                  aria-label={`Add another ${product.name}`}
+                >
+                  <Plus className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  bump(1);
+                }}
+                disabled={isBusy}
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-white shadow-sm motion-safe:transition motion-safe:hover:scale-105 active:scale-95 disabled:opacity-60 sm:h-8 sm:w-8"
+                style={{ backgroundColor: ctaColor }}
+                aria-label={`Add ${product.name} to bag`}
+              >
+                <Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />
+              </button>
+            )
           ) : (
             <span className="text-[10px] font-medium text-zinc-400">Sold out</span>
           )}
@@ -124,42 +223,20 @@ export function RestaurantMenuItemCard({ product, businessDomain, accent, classN
 }
 
 /**
- * Compact list row for menu list view.
+ * Compact list row for menu list view — same quiet multi-add + stepper UX.
  */
 export function RestaurantMenuListItem({ product, businessDomain, accent }) {
-  const [isAdding, setIsAdding] = useState(false);
-  const { addItem } = useCart();
-  const { currency, business, businessId } = useStorefront();
-  const imageUrl = getEffectiveProductImageUrl(product, business?.category);
-  const isOutOfStock =
-    product.stock !== null && product.stock !== undefined && Number(product.stock) <= 0;
-  const productHref = resolveStorefrontProductBrowseHref(product, businessDomain);
-  const needsVariantPage = catalogProductNeedsVariantPage(product);
-  const ctaColor = accent || RESTAURANT_MENU_THEME.cartCta;
-  const isPreviewProduct = !isPurchasableStorefrontProduct(product);
+  const { currency } = useStorefront();
+  const {
+    qty,
+    isBusy,
+    isOutOfStock,
+    productHref,
+    imageUrl,
+    bump,
+  } = useRestaurantMenuLine(product, businessDomain);
 
-  const handleAdd = async () => {
-    if (isOutOfStock) return;
-    if (isPreviewProduct) {
-      toast.error('Browse the full menu to order this item');
-      window.location.href = `/store/${businessDomain}/products`;
-      return;
-    }
-    if (needsVariantPage) {
-      window.location.href = productHref;
-      return;
-    }
-    setIsAdding(true);
-    try {
-      await addItem({ productId: product.id, quantity: 1, variantId: null, businessId });
-      toast.success('Added to cart');
-      window.dispatchEvent(new Event('toggle-cart'));
-    } catch (err) {
-      toast.error(err.message || 'Could not add item');
-    } finally {
-      setIsAdding(false);
-    }
-  };
+  const ctaColor = accent || RESTAURANT_MENU_THEME.cartCta;
 
   return (
     <div className="flex gap-3 rounded-xl border border-zinc-200/90 bg-white p-2.5 motion-safe:transition hover:border-zinc-300 hover:shadow-sm sm:gap-3.5 sm:p-3">
@@ -171,6 +248,15 @@ export function RestaurantMenuListItem({ product, businessDomain, accent }) {
             <Package className="h-5 w-5 text-zinc-300" />
           </div>
         )}
+        {qty > 0 ? (
+          <span
+            className="absolute left-1 top-1 flex h-4 min-w-[1rem] items-center justify-center rounded-full px-0.5 text-[9px] font-semibold text-white"
+            style={{ backgroundColor: ctaColor }}
+            aria-hidden
+          >
+            {qty}
+          </span>
+        ) : null}
       </Link>
       <div className="flex min-w-0 flex-1 flex-col justify-between">
         <div>
@@ -188,16 +274,47 @@ export function RestaurantMenuListItem({ product, businessDomain, accent }) {
             {formatCurrency(product.price, currency)}
           </span>
           {!isOutOfStock ? (
-            <button
-              type="button"
-              onClick={handleAdd}
-              disabled={isAdding}
-              className="inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-semibold text-white disabled:opacity-60"
-              style={{ backgroundColor: ctaColor }}
-            >
-              <Plus className="h-3.5 w-3.5" aria-hidden />
-              Add
-            </button>
+            qty > 0 ? (
+              <div
+                className="inline-flex h-8 items-center rounded-md text-white"
+                style={{ backgroundColor: ctaColor }}
+                role="group"
+                aria-label={`Quantity for ${product.name}`}
+              >
+                <button
+                  type="button"
+                  onClick={() => bump(-1)}
+                  disabled={isBusy}
+                  className="flex h-8 w-8 items-center justify-center disabled:opacity-60"
+                  aria-label={`Remove one ${product.name}`}
+                >
+                  <Minus className="h-3.5 w-3.5" aria-hidden />
+                </button>
+                <span className="min-w-[1.25rem] text-center text-xs font-semibold tabular-nums">
+                  {qty}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => bump(1)}
+                  disabled={isBusy}
+                  className="flex h-8 w-8 items-center justify-center disabled:opacity-60"
+                  aria-label={`Add another ${product.name}`}
+                >
+                  <Plus className="h-3.5 w-3.5" aria-hidden />
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => bump(1)}
+                disabled={isBusy}
+                className="inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-semibold text-white disabled:opacity-60"
+                style={{ backgroundColor: ctaColor }}
+              >
+                <Plus className="h-3.5 w-3.5" aria-hidden />
+                Add
+              </button>
+            )
           ) : (
             <span className="text-xs text-zinc-400">Unavailable</span>
           )}
