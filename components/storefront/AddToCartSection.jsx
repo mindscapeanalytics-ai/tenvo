@@ -23,10 +23,19 @@ import {
 } from '@/lib/storefront/fitnessStorefront';
 import { getTenantMeetingUrl } from '@/lib/storefront/storefrontBooking';
 import { getStoreAccentColor } from '@/lib/config/storefrontDomains';
+import {
+  allowsFractionalStorefrontQty,
+  storefrontQtyMin,
+  storefrontQtyStep,
+  normalizeStorefrontQty,
+} from '@/lib/storefront/storefrontWeightQty';
 import { toast } from 'react-hot-toast';
 
 export function AddToCartSection({ product, businessDomain, selectedVariant = null }) {
-  const [quantity, setQuantity] = useState(1);
+  const weightItem = allowsFractionalStorefrontQty(product);
+  const qtyStep = storefrontQtyStep(product);
+  const qtyMin = storefrontQtyMin(product);
+  const [quantity, setQuantity] = useState(weightItem ? 1 : 1);
   const [isAdding, setIsAdding] = useState(false);
   const { addItem } = useCart();
   const { isInWishlist, addToWishlist, removeFromWishlist } = useWishlist();
@@ -53,22 +62,31 @@ export function AddToCartSection({ product, businessDomain, selectedVariant = nu
   
   // Intelligent quantity suggestions based on stock
   const quickQuantities = useCallback(() => {
+    if (weightItem) {
+      if (stock === null) return [0.5, 1, 1.5, 2];
+      if (stock <= 0.5) return [qtyMin];
+      if (stock <= 2) return [qtyMin, 1, stock].filter((v, i, a) => a.indexOf(v) === i && v <= stock);
+      return [0.5, 1, 1.5, 2].filter((v) => v <= stock);
+    }
     if (stock === null) return [1, 2, 5, 10];
     if (stock <= 1) return [1];
     if (stock <= 5) return [1, stock];
     if (stock <= 20) return [1, 2, 5, stock];
     return [1, 2, 5, 10];
-  }, [stock]);
+  }, [stock, weightItem, qtyMin]);
   
   // Keyboard shortcuts for accessibility
   useEffect(() => {
     const handleKeyDown = (e) => {
       // + and - keys for quantity
       if (e.key === '+' && !isOutOfStock) {
-        setQuantity(prev => Math.min(prev + 1, stock || 999));
+        setQuantity((prev) => {
+          const next = normalizeStorefrontQty(prev + qtyStep, product);
+          return stock != null ? Math.min(next, stock) : next;
+        });
       }
       if (e.key === '-') {
-        setQuantity(prev => Math.max(1, prev - 1));
+        setQuantity((prev) => Math.max(qtyMin, normalizeStorefrontQty(prev - qtyStep, product)));
       }
       // Enter to add to cart
       if (e.key === 'Enter' && !isOutOfStock && !isAdding) {
@@ -78,11 +96,11 @@ export function AddToCartSection({ product, businessDomain, selectedVariant = nu
     
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [stock, isOutOfStock, isAdding]);
+  }, [stock, isOutOfStock, isAdding, qtyStep, qtyMin, product]);
   
   const handleQuantityChange = (value) => {
-    const newQuantity = parseInt(value) || 1;
-    if (newQuantity >= 1 && (stock === null || newQuantity <= stock)) {
+    const newQuantity = normalizeStorefrontQty(value, product);
+    if (newQuantity >= qtyMin && (stock === null || newQuantity <= stock)) {
       setQuantity(newQuantity);
     }
   };
@@ -192,11 +210,13 @@ export function AddToCartSection({ product, businessDomain, selectedVariant = nu
     <div className="space-y-4">
       {/* Quantity Selector */}
       <div className="flex items-center gap-4">
-        <label className="font-medium text-sm" htmlFor="quantity-input">Quantity:</label>
+        <label className="font-medium text-sm" htmlFor="quantity-input">
+          Quantity{product.unit ? ` (${product.unit})` : ''}:
+        </label>
         <div className="flex items-center border rounded-lg">
           <button
-            onClick={() => handleQuantityChange(quantity - 1)}
-            disabled={quantity <= 1}
+            onClick={() => handleQuantityChange(quantity - qtyStep)}
+            disabled={quantity <= qtyMin}
             className="p-3 hover:bg-gray-100 rounded-l-lg transition-colors disabled:opacity-50 focus:ring-2 focus:ring-brand-primary focus:outline-none"
             aria-label="Decrease quantity"
           >
@@ -205,15 +225,16 @@ export function AddToCartSection({ product, businessDomain, selectedVariant = nu
           <Input
             id="quantity-input"
             type="number"
-            min={1}
+            min={qtyMin}
             max={stock || 999}
+            step={qtyStep}
             value={quantity}
             onChange={(e) => handleQuantityChange(e.target.value)}
             className="w-16 text-center border-0 focus-visible:ring-0 p-0"
             aria-label="Product quantity"
           />
           <button
-            onClick={() => handleQuantityChange(quantity + 1)}
+            onClick={() => handleQuantityChange(quantity + qtyStep)}
             disabled={stock !== null && quantity >= stock}
             className="p-3 hover:bg-gray-100 rounded-r-lg transition-colors disabled:opacity-50 focus:ring-2 focus:ring-brand-primary focus:outline-none"
             aria-label="Increase quantity"

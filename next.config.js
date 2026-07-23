@@ -2,6 +2,18 @@
 const path = require('path');
 const { remotePatterns: storefrontImageRemotePatterns } = require('./lib/storefront/allowedImageHosts.json');
 
+/** Next.js caps `images.remotePatterns` at 50 entries (invalid-next-config). */
+const NEXT_IMAGES_REMOTE_PATTERNS_MAX = 50;
+
+if (!Array.isArray(storefrontImageRemotePatterns)) {
+  throw new Error('allowedImageHosts.json remotePatterns must be an array');
+}
+if (storefrontImageRemotePatterns.length > NEXT_IMAGES_REMOTE_PATTERNS_MAX) {
+  throw new Error(
+    `allowedImageHosts.json has ${storefrontImageRemotePatterns.length} remotePatterns; ` +
+      `Next.js allows at most ${NEXT_IMAGES_REMOTE_PATTERNS_MAX}. Consolidate with **.host wildcards.`
+  );
+}
 const withBundleAnalyzer = require('@next/bundle-analyzer')({
   enabled: process.env.ANALYZE === 'true',
 });

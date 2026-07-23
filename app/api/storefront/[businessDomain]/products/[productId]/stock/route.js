@@ -57,7 +57,7 @@ export async function POST(request, { params }) {
       let productRow;
       if (variantId) {
         const res = await client.query(
-          `SELECT p.id, p.name, p.business_id, p.slug, p.tax_percent, p.domain_data,
+          `SELECT p.id, p.name, p.business_id, p.slug, p.tax_percent, p.domain_data, p.unit,
                   COALESCE(pv.price, p.price) as price,
                   COALESCE(pv.image_url, p.image_url) as image_url,
                   pv.variant_name, pv.size, pv.color, pv.material
@@ -81,7 +81,7 @@ export async function POST(request, { params }) {
         }
       } else {
         const res = await client.query(
-          `SELECT id, name, business_id, slug, price, image_url, tax_percent, domain_data
+          `SELECT id, name, business_id, slug, price, image_url, tax_percent, domain_data, unit
            FROM products
            WHERE id = $1::uuid AND business_id = $2::uuid
              AND COALESCE(is_deleted, false) = false AND is_active = true`,

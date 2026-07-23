@@ -21,6 +21,15 @@ assert.match(
   'next.config.js must load shared allowedImageHosts.json'
 );
 
+const allowJson = JSON.parse(
+  fs.readFileSync(path.join(root, 'lib/storefront/allowedImageHosts.json'), 'utf8')
+);
+const patternCount = Array.isArray(allowJson.remotePatterns) ? allowJson.remotePatterns.length : 0;
+assert.ok(
+  patternCount > 0 && patternCount <= 50,
+  `allowedImageHosts.json remotePatterns must be 1–50 (got ${patternCount}; Next.js hard cap)`
+);
+
 const smartSrc = fs.readFileSync(
   path.join(root, 'components/storefront/SmartProductImage.jsx'),
   'utf8'

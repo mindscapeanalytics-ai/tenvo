@@ -19,6 +19,12 @@ import { RESTAURANT_CART_DRAWER_UI, RESTAURANT_CHECKOUT_UI } from '@/lib/storefr
 import { useRestaurantChromeOptional } from '@/components/storefront/restaurant/RestaurantChromeContext';
 import { toast } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
+import {
+  allowsFractionalStorefrontQty,
+  storefrontQtyStep,
+  storefrontQtyMin,
+  normalizeStorefrontQty,
+} from '@/lib/storefront/storefrontWeightQty';
 
 export function CartDrawer() {
   const router = useRouter();
@@ -39,13 +45,15 @@ export function CartDrawer() {
   const progressPct = Math.min(100, (subtotal / freeShippingThreshold) * 100);
 
   const handleQuantityChange = (item, newQty) => {
-    if (newQty < 1) {
+    const min = storefrontQtyMin(item);
+    const qty = normalizeStorefrontQty(newQty, item);
+    if (qty < min) {
       removeItem(item.productId, item.variantId);
       toast.success('Item removed from cart');
-    } else if (item.maxQuantity && newQty > item.maxQuantity) {
+    } else if (item.maxQuantity && qty > item.maxQuantity) {
       toast.error(`Only ${item.maxQuantity} available`);
     } else {
-      updateQuantity(item.productId, item.variantId, newQty);
+      updateQuantity(item.productId, item.variantId, qty);
     }
   };
 
@@ -226,7 +234,9 @@ export function CartDrawer() {
                           restaurantDrawerUi ? restaurantDrawerUi.qtyBorder : 'border-gray-200'
                         )}>
                           <button
-                            onClick={() => handleQuantityChange(item, item.quantity - 1)}
+                            onClick={() =>
+                              handleQuantityChange(item, item.quantity - storefrontQtyStep(item))
+                            }
                             disabled={isLoading}
                             className={cn(
                               'w-8 h-8 flex items-center justify-center transition-colors disabled:opacity-40',
@@ -236,11 +246,18 @@ export function CartDrawer() {
                           >
                             <Minus className="w-3.5 h-3.5" />
                           </button>
-                          <span className="w-8 text-center text-sm font-semibold">
+                          <span className="w-8 text-center text-sm font-semibold tabular-nums">
                             {item.quantity}
+                            {allowsFractionalStorefrontQty(item) && item.unit ? (
+                              <span className="block text-[9px] font-medium text-gray-500 leading-none">
+                                {item.unit}
+                              </span>
+                            ) : null}
                           </span>
                           <button
-                            onClick={() => handleQuantityChange(item, item.quantity + 1)}
+                            onClick={() =>
+                              handleQuantityChange(item, item.quantity + storefrontQtyStep(item))
+                            }
                             disabled={isLoading || (item.maxQuantity && item.quantity >= item.maxQuantity)}
                             className={cn(
                               'w-8 h-8 flex items-center justify-center transition-colors disabled:opacity-40',
