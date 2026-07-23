@@ -17,7 +17,17 @@ import {
   isMilkShopStore,
   MILK_SHOP_QUICK_SEARCH,
   MILK_SHOP_SIDEBAR_DEPARTMENTS,
+  resolveMilkShopInventoryCategories,
+  buildMilkShopHomeRailsFromInventory,
+  buildMilkShopBrandRowsFromProducts,
 } from '../lib/storefront/milkShopStorefront.js';
+import {
+  resolveSupermarketCategoryIcons,
+  resolveSupermarketBrands,
+  resolveSupermarketHomeRails,
+  resolveSupermarketQuickSearchTerms,
+  resolveSupermarketSidebarDepartments,
+} from '../lib/storefront/supermarketStorefront.js';
 import {
   isStorefrontWeightUnit,
   allowsFractionalStorefrontQty,
@@ -92,6 +102,55 @@ if (MILK_SHOP_SEED_PRODUCTS.some((p) => /animal id|lactation/i.test(JSON.stringi
 
 if (!MILK_SHOP_QUICK_SEARCH.length || MILK_SHOP_SIDEBAR_DEPARTMENTS.length < 5) {
   errors.push('milk shop chrome defaults incomplete');
+}
+
+// Inventory-first chrome: live categories/products beat static fallbacks
+{
+  const sampleProducts = MILK_SHOP_SEED_PRODUCTS.slice(0, 20).map((p, i) => ({
+    ...p,
+    id: `uuid-${i}`,
+    category_name: p.category,
+    category_slug: p.category,
+  }));
+  const inventoryCats = resolveMilkShopInventoryCategories([], sampleProducts);
+  if (inventoryCats.length < 5) {
+    errors.push('inventory categories should derive from product.category');
+  }
+  const rails = resolveSupermarketHomeRails({}, 'milk-shop', {
+    products: sampleProducts,
+    categories: [],
+  });
+  if (!rails.length || !rails.every((r) => r.categorySlug)) {
+    errors.push('milk home rails should come from inventory categories');
+  }
+  const icons = resolveSupermarketCategoryIcons({}, '/store/demo-milk', {
+    businessCategory: 'milk-shop',
+    products: sampleProducts,
+    categories: [],
+  });
+  if (!icons.some((i) => /Fresh Milk|Yogurt/i.test(i.label || i.slug || ''))) {
+    errors.push('category icons should reflect inventory');
+  }
+  const brands = resolveSupermarketBrands({}, '/store/demo-milk', {
+    businessCategory: 'milk-shop',
+    products: sampleProducts,
+  });
+  if (!brands.some((b) => /Olper|Nurpur|Dayfresh|Prema|Nestlé|Pakola|Haleeb|Anhaar|Milkland/i.test(b.label))) {
+    errors.push('brands should come from inventory product.brand');
+  }
+  const quick = resolveSupermarketQuickSearchTerms({}, sampleProducts, inventoryCats, 'demo-milk', 'milk-shop');
+  if (!quick.length) errors.push('quick search should build from inventory');
+  const sidebar = resolveSupermarketSidebarDepartments({}, '/store/demo-milk', {
+    businessCategory: 'milk-shop',
+    products: sampleProducts,
+    categories: [],
+  });
+  if (sidebar.length < 5) errors.push('sidebar should use inventory categories');
+  const fromBuilder = buildMilkShopHomeRailsFromInventory(inventoryCats, sampleProducts);
+  if (fromBuilder.length < 4) errors.push('buildMilkShopHomeRailsFromInventory too sparse');
+  if (buildMilkShopBrandRowsFromProducts(sampleProducts).length < 1) {
+    errors.push('brand rows should extract packaged dairy brands');
+  }
 }
 
 if (!isStorefrontWeightUnit('kg') || allowsFractionalStorefrontQty({ unit: 'pcs' })) {

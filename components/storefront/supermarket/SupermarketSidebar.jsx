@@ -85,11 +85,19 @@ export function SupermarketSidebar({
   storeBase,
   settings = {},
   businessDomain,
+  businessCategory,
+  categories = [],
+  products = [],
   accent = '#f97316',
   className,
   onNavigate,
 }) {
-  const departments = resolveSupermarketSidebarDepartments(settings, storeBase, { businessDomain });
+  const departments = resolveSupermarketSidebarDepartments(settings, storeBase, {
+    businessDomain,
+    businessCategory,
+    categories,
+    products,
+  });
 
   return (
     <nav
@@ -118,6 +126,9 @@ export function SupermarketSidebarDrawer({
   storeBase,
   settings,
   businessDomain,
+  businessCategory,
+  categories = [],
+  products = [],
   accent,
 }) {
   const chrome = useSupermarketChromeOptional();
@@ -148,6 +159,9 @@ export function SupermarketSidebarDrawer({
             storeBase={storeBase}
             settings={settings}
             businessDomain={businessDomain}
+            businessCategory={businessCategory}
+            categories={categories}
+            products={products}
             accent={accent}
             className="border-0 shadow-none"
             onNavigate={chrome.closeSidebar}

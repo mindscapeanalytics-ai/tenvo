@@ -180,9 +180,10 @@ const RAIL_FIELDS = [
   { key: 'title', label: 'Section title', placeholder: 'Mega Food Offer' },
   { key: 'subtitle', label: 'Subtitle', placeholder: 'Bundle savings' },
   { key: 'href', label: 'View all link', placeholder: '?onSale=true' },
+  { key: 'categorySlug', label: 'Inventory category', placeholder: 'Fresh Milk' },
   {
     key: 'partition',
-    label: 'Product pool',
+    label: 'Fallback product pool',
     type: 'select',
     defaultValue: 'deals',
     options: [
@@ -208,17 +209,26 @@ const uid = () => `sm-${Date.now().toString(36)}-${Math.random().toString(36).sl
 
 /**
  * Full supermarket homepage catalog editor for store owners.
+ * Leave lists empty to keep public chrome inventory-driven (especially milk-shop).
  */
-export function SupermarketCatalogEditor({ supermarket = {}, businessId, onChange }) {
+export function SupermarketCatalogEditor({ supermarket = {}, businessId, onChange, isMilkShop = false }) {
   const set = (key, val) => onChange({ ...supermarket, [key]: val });
   const setTitle = (key, val) =>
     onChange({
       ...supermarket,
       sectionTitles: { ...(supermarket.sectionTitles || {}), [key]: val },
     });
+  const inventoryHint = isMilkShop
+    ? 'Leave empty to use live inventory categories and products.'
+    : 'Leave empty to use live inventory where available.';
 
   return (
     <div className="space-y-5">
+      {isMilkShop ? (
+        <p className="rounded-md border border-sky-100 bg-sky-50 px-3 py-2 text-xs text-sky-900">
+          Milk shop chrome prefers your inventory and categories. Overrides below are optional.
+        </p>
+      ) : null}
       <div className="grid gap-3 sm:grid-cols-2">
         {[
           ['showAisleCarousel', 'Popular categories'],
@@ -294,7 +304,7 @@ export function SupermarketCatalogEditor({ supermarket = {}, businessId, onChang
 
       <CatalogListEditor
         title="Popular categories"
-        description="Square tiles below the hero. Use slug or hrefSuffix for links."
+        description={`${inventoryHint} Square tiles below the hero.`}
         items={supermarket.categoryIcons || []}
         fields={CATEGORY_FIELDS}
         businessId={businessId}
@@ -305,7 +315,7 @@ export function SupermarketCatalogEditor({ supermarket = {}, businessId, onChang
 
       <CatalogListEditor
         title="Trending brands"
-        description="Circular brand logos in the trending row."
+        description={`${inventoryHint} Circular brand logos in the trending row.`}
         items={supermarket.brands || []}
         fields={BRAND_FIELDS}
         businessId={businessId}
@@ -316,7 +326,7 @@ export function SupermarketCatalogEditor({ supermarket = {}, businessId, onChang
 
       <CatalogListEditor
         title="Upper promo banners"
-        description="Wide tiles directly under categories."
+        description={isMilkShop ? 'Optional. Off by default for milk shops; grocery tiles are not used.' : 'Wide tiles directly under categories.'}
         items={supermarket.upperPromoTiles || []}
         fields={TILE_FIELDS}
         businessId={businessId}
@@ -327,7 +337,7 @@ export function SupermarketCatalogEditor({ supermarket = {}, businessId, onChang
 
       <CatalogListEditor
         title="Mid-page banners"
-        description="Inserted between product carousels."
+        description={isMilkShop ? 'Optional. Off by default for milk shops.' : 'Inserted between product carousels.'}
         items={supermarket.midPromoTiles || []}
         fields={TILE_FIELDS}
         businessId={businessId}
@@ -338,7 +348,7 @@ export function SupermarketCatalogEditor({ supermarket = {}, businessId, onChang
 
       <CatalogListEditor
         title="Shop-by-offer tiles"
-        description="Larger promotional category cards."
+        description={isMilkShop ? `${inventoryHint} Built from featured products when empty.` : 'Larger promotional category cards.'}
         items={supermarket.promoTiles || []}
         fields={TILE_FIELDS}
         businessId={businessId}
@@ -349,12 +359,20 @@ export function SupermarketCatalogEditor({ supermarket = {}, businessId, onChang
 
       <CatalogListEditor
         title="Product carousel sections"
-        description="Each row pulls from live inventory by pool type."
+        description={`${inventoryHint} Set inventory category to filter the rail; partition is a fallback pool.`}
         items={supermarket.homeRails || []}
         fields={RAIL_FIELDS}
         businessId={businessId}
         onChange={(v) => set('homeRails', v)}
-        createItem={() => ({ id: uid(), title: '', subtitle: '', href: '?onSale=true', partition: 'deals', enabled: true })}
+        createItem={() => ({
+          id: uid(),
+          title: '',
+          subtitle: '',
+          href: '?onSale=true',
+          categorySlug: '',
+          partition: 'deals',
+          enabled: true,
+        })}
         max={10}
       />
 

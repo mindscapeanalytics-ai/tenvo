@@ -94,6 +94,8 @@ function inferBrand(name) {
     ['Dayfresh', /dayfresh/i],
     ['Prema', /prema/i],
     ['Haleeb', /haleeb/i],
+    ['Milkland', /milkland/i],
+    ['Anhaar', /anhaar/i],
     ['Nestlé', /nestle|everyday/i],
     ['Pakola', /pakola/i],
     ['Dawn', /dawn/i],
@@ -290,6 +292,82 @@ const CURATED = [
     featured: true,
     source: 'foodpanda-milk-shops',
   },
+  {
+    name: 'Prema Full Cream Milk 1L',
+    brand: 'Prema',
+    category: 'Packaged Dairy',
+    unit: 'litre',
+    price: 370,
+    source: 'brand-retail',
+  },
+  {
+    name: 'Haleeb Full Cream Milk 1L',
+    brand: 'Haleeb',
+    category: 'Packaged Dairy',
+    unit: 'litre',
+    price: 365,
+    source: 'brand-retail',
+  },
+  {
+    name: 'Milkland UHT Milk 1L',
+    brand: 'Milkland',
+    category: 'Packaged Dairy',
+    unit: 'litre',
+    price: 350,
+    source: 'brand-retail',
+  },
+  {
+    name: 'Anhaar Farm Fresh Milk',
+    brand: 'Anhaar',
+    category: 'Fresh Milk',
+    unit: 'kg',
+    price: 230,
+    featured: true,
+    source: 'anhaar.pk',
+  },
+  {
+    name: 'Rabri 500g',
+    category: 'Dairy Sweets',
+    unit: 'pack',
+    price: 550,
+    source: 'punjabmilkshop.com',
+  },
+  {
+    name: 'Sweet Lassi Glass',
+    category: 'Lassi & Drinks',
+    unit: 'pcs',
+    price: 189,
+    source: 'foodpanda-milk-shops',
+  },
+  {
+    name: 'Nurpur Cream 200ml',
+    brand: 'Nurpur',
+    category: 'Cream & Butter',
+    unit: 'pack',
+    price: 230,
+    source: 'brand-retail',
+  },
+  {
+    name: 'Desi Ghee 500g',
+    category: 'Ghee',
+    unit: 'pack',
+    price: 2100,
+    source: 'purenest.pk',
+  },
+  {
+    name: 'Homemade Dahi 500g',
+    category: 'Yogurt / Dahi',
+    unit: 'pack',
+    price: 140,
+    source: 'punjabmilkshop.com',
+  },
+  {
+    name: 'Fresh Paneer 500g',
+    category: 'Cheese & Khoya',
+    unit: 'pack',
+    price: 1300,
+    source: 'purenest.pk',
+  },
 ];
 
 function normalizeKey(name) {
@@ -370,7 +448,7 @@ function main() {
   const products = merged
     .map((row, i) => toProduct(row, i + 1))
     .filter(Boolean)
-    .slice(0, 48);
+    .slice(0, 72);
 
   const catsPresent = new Set(products.map((p) => p.category));
   for (const c of CATEGORIES) {

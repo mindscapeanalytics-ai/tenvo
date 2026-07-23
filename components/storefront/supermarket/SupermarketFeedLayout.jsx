@@ -11,6 +11,9 @@ export function SupermarketFeedLayout({
   storeBase,
   settings = {},
   businessDomain,
+  businessCategory,
+  categories = [],
+  products = [],
   accent = '#f97316',
 }) {
   return (
@@ -23,6 +26,9 @@ export function SupermarketFeedLayout({
                 storeBase={storeBase}
                 settings={settings}
                 businessDomain={businessDomain}
+                businessCategory={businessCategory}
+                categories={categories}
+                products={products}
                 accent={accent}
               />
             </Suspense>
@@ -34,6 +40,9 @@ export function SupermarketFeedLayout({
         storeBase={storeBase}
         settings={settings}
         businessDomain={businessDomain}
+        businessCategory={businessCategory}
+        categories={categories}
+        products={products}
         accent={accent}
       />
     </>

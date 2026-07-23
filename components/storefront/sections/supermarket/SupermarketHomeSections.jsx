@@ -19,6 +19,8 @@ import {
   resolveSupermarketUpperPromoTiles,
   formatSupermarketStoreName,
 } from '@/lib/storefront/supermarketStorefront';
+import { filterProductsByCategorySlug } from '@/lib/storefront/elevatedStorefrontTenant';
+import { isMilkShopStore } from '@/lib/storefront/milkShopStorefront';
 import { SupermarketBrandsMarquee } from '@/components/storefront/sections/supermarket/SupermarketBrandsMarquee';
 
 const TRUST_ICONS = { fresh: Leaf, delivery: Truck, prices: ShieldCheck, cod: ShieldCheck, default: Clock };
@@ -87,6 +89,7 @@ export function SupermarketHomeSections({
   const config = getSupermarketConfig(settings, businessDomain, businessCategory);
   const titles = config.sectionTitles;
   const displayName = formatSupermarketStoreName(storeName);
+  const milkShop = isMilkShopStore(businessCategory);
   const ctx = { categories, businessDomain, products, businessCategory };
 
   const partitioned = partitionSupermarketProducts(products);
@@ -97,25 +100,32 @@ export function SupermarketHomeSections({
     ? resolveSupermarketBrands(settings, storeBase, ctx)
     : [];
   const upperTiles = config.showUpperPromoTiles !== false
-    ? resolveSupermarketUpperPromoTiles(settings, storeBase)
+    ? resolveSupermarketUpperPromoTiles(settings, storeBase, ctx)
     : [];
   const midTiles = config.showMidPromoTiles !== false
-    ? resolveSupermarketMidPromoTiles(settings, storeBase)
+    ? resolveSupermarketMidPromoTiles(settings, storeBase, ctx)
     : [];
   const promoTiles = config.showPromoBanners !== false
-    ? resolveSupermarketPromoTiles(settings, storeBase)
+    ? resolveSupermarketPromoTiles(settings, storeBase, ctx)
     : [];
   const trustPillars = config.showTrustStrip !== false
     ? resolveSupermarketTrustPillars(settings, businessDomain, businessCategory)
     : [];
   const homeRails = config.showHomeRails !== false
-    ? resolveSupermarketHomeRails(settings, businessCategory)
+    ? resolveSupermarketHomeRails(settings, businessCategory, ctx)
     : [];
 
-  const railProducts = (partition) => {
-    if (partition === 'deals') return partitioned.deals;
-    if (partition === 'fresh') return partitioned.fresh;
-    return partitioned.topSellers;
+  const railProducts = (rail) => {
+    const pool = (() => {
+      if (rail.partition === 'deals') return partitioned.deals;
+      if (rail.partition === 'fresh') return partitioned.fresh;
+      return partitioned.topSellers;
+    })();
+    const slug = rail.categorySlug || rail.category || '';
+    if (!slug) return pool.slice(0, 12);
+    const byCategory = filterProductsByCategorySlug(products, slug);
+    if (byCategory.length) return byCategory.slice(0, 12);
+    return pool.slice(0, 12);
   };
 
   return (
@@ -231,9 +241,11 @@ export function SupermarketHomeSections({
       )}
 
       {homeRails.map((rail, index) => {
-        const items = railProducts(rail.partition);
-        if (!items.length && !products.length) return null;
-        const railHref = `${productsUrl}${rail.href?.startsWith('?') ? rail.href : `?${rail.href || 'onSale=true'}`}`;
+        const items = railProducts(rail);
+        if (!items.length) return null;
+        const railHref = rail.href?.startsWith('http')
+          ? rail.href
+          : `${productsUrl}${rail.href?.startsWith('?') ? rail.href : rail.href ? `?${rail.href.replace(/^\?/, '')}` : '?onSale=true'}`;
         return (
           <div key={rail.id} className="space-y-7 sm:space-y-9">
             <StoreProductRail
@@ -285,14 +297,16 @@ export function SupermarketHomeSections({
           <div className="px-4 text-center sm:px-6">
             <h2 className="text-lg font-bold sm:text-xl">{config.weeklyEssentialsTitle}</h2>
             <p className="mx-auto mt-2 max-w-lg text-sm text-slate-300">
-              Restock milk, bread, rice, and pantry staples — checkout without an account.
+              {milkShop
+                ? 'Restock fresh milk, dahi, makkhan, and packaged dairy. Checkout without an account.'
+                : 'Restock milk, bread, rice, and pantry staples — checkout without an account.'}
             </p>
             <Link
-              href={`${productsUrl}?onSale=true`}
+              href={`${productsUrl}${milkShop ? '?category=Fresh%20Milk' : '?onSale=true'}`}
               className="mt-5 inline-flex items-center gap-2 rounded-lg px-6 py-3 text-sm font-bold text-white transition hover:opacity-90"
               style={{ backgroundColor: accent }}
             >
-              Browse weekly deals <ArrowRight className="h-4 w-4" />
+              {milkShop ? 'Order fresh milk' : 'Browse weekly deals'} <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
         </section>

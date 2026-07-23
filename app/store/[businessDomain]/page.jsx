@@ -692,6 +692,9 @@ export default async function StoreHomePage({ params }) {
           storeBase={heroPreset.base}
           settings={settings}
           businessDomain={businessDomain}
+          businessCategory={business.category}
+          categories={categories}
+          products={supermarketProducts}
           accent={accent}
         >
           <DomainHeroRouter

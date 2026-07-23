@@ -40,6 +40,7 @@ import { isTyreElevatedStore } from '@/lib/storefront/tyreStorefront';
 import { isElectronicsElevatedStore } from '@/lib/storefront/electronicsStorefront';
 import { isFitnessElevatedStore } from '@/lib/storefront/fitnessStorefront';
 import { isSupermarketElevatedStore } from '@/lib/storefront/supermarketStorefront';
+import { isMilkShopStore } from '@/lib/storefront/milkShopStorefront';
 import { isFashionEditorialStore } from '@/lib/storefront/fashionEditorial';
 import { supportsFashionGulSections } from '@/lib/storefront/fashionGulSections';
 import { isJewelleryStore } from '@/lib/storefront/jewelleryStorefront';
@@ -583,6 +584,7 @@ export function StoreSettingsManager({ business, category }) {
   const electronicsStore = isElectronicsElevatedStore(category || business?.category);
   const fitnessStore = isFitnessElevatedStore(category || business?.category);
   const supermarketStore = isSupermarketElevatedStore(category || business?.category);
+  const milkShopStore = isMilkShopStore(category || business?.category);
   const jewelleryStore = isJewelleryStore(category || business?.category);
   const fashionStore = supportsFashionGulSections(category || business?.category) && !jewelleryStore;
   const heroPreviewPreset = useMemo(() => {
@@ -2296,17 +2298,19 @@ export function StoreSettingsManager({ business, category }) {
             <Card>
               <CardHeader className="pb-4">
                 <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                  <Megaphone className="w-4 h-4" /> Supermarket storefront
+                  <Megaphone className="w-4 h-4" /> {milkShopStore ? 'Milk shop storefront' : 'Supermarket storefront'}
                 </CardTitle>
                 <CardDescription>
-                  Manage every homepage section: categories, brands, banners, product rails, trust
-                  bars, and header links. Hero carousel slides are under Branding.
+                  {milkShopStore
+                    ? 'Categories, brands, and product rails use live inventory by default. Leave catalog lists empty to stay inventory-driven, or add overrides below. Hero slides are under Branding.'
+                    : 'Manage homepage sections: categories, brands, banners, product rails, trust bars, and header links. Leave lists empty to use live inventory where supported. Hero carousel slides are under Branding.'}
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <SupermarketCatalogEditor
                   supermarket={settings.supermarket || {}}
                   businessId={business?.id}
+                  isMilkShop={milkShopStore}
                   onChange={(next) => setSettings((prev) => ({ ...prev, supermarket: next }))}
                 />
               </CardContent>
