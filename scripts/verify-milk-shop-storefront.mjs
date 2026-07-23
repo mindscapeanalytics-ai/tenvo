@@ -96,8 +96,25 @@ if (!knowledge.setupTemplate?.categories?.includes('Fresh Milk')) {
   if (milkKey !== 'expirydate') {
     errors.push('Best Before must canonicalise to expirydate for milk-shop');
   }
-  if (resolveDomainFieldKey('Source', 'milk-shop') !== 'milktype') {
-    errors.push('legacy Source must alias to milktype for milk-shop');
+  if (resolveDomainFieldKey('chill', 'milk-shop') !== 'chilled') {
+    errors.push('chill must alias to chilled for milk-shop');
+  }
+  // Seed catalog must use milktype/chilled — not scrape URLs in Milk Type
+  {
+    const bad = MILK_SHOP_SEED_PRODUCTS.filter((p) => {
+      const dd = p.domain_data || {};
+      if (!dd.milktype || !dd.chilled) return true;
+      if (dd.source && !dd.provenance) return true;
+      if (/\.com|\.pk|foodpanda|brand-retail/i.test(String(dd.milktype))) return true;
+      return false;
+    });
+    if (bad.length) {
+      errors.push(`seed domain_data must use milktype/chilled (${bad.length} bad rows, e.g. ${bad[0]?.name})`);
+    }
+    const cow = MILK_SHOP_SEED_PRODUCTS.find((p) => /fresh cow milk/i.test(p.name));
+    if (cow?.domain_data?.milktype !== 'Cow') {
+      errors.push('Fresh Cow Milk seed must have milktype=Cow');
+    }
   }
   const farm = resolveInventoryDomainFeatures('dairy-farm', { countryIso: 'PK' });
   if (!farm.productFields?.some((f) => /Animal ID/i.test(f))) {

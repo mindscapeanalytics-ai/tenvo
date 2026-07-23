@@ -9,8 +9,13 @@ const ICONS = { truck: Truck, refresh: RotateCcw, shield: Shield, credit: Credit
 /**
  * Naheed-style value proposition bar above the footer.
  */
-export function SupermarketFooterTrustStrip({ settings, accent = '#f97316', className }) {
-  const items = resolveSupermarketFooterTrust(settings);
+export function SupermarketFooterTrustStrip({
+  settings,
+  businessCategory,
+  accent = '#f97316',
+  className,
+}) {
+  const items = resolveSupermarketFooterTrust(settings, businessCategory);
   if (!items.length) return null;
 
   return (
@@ -22,8 +27,8 @@ export function SupermarketFooterTrustStrip({ settings, accent = '#f97316', clas
             return (
               <div key={item.id} className="flex items-center gap-3">
                 <div
-                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-orange-50"
-                  style={{ color: accent }}
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
+                  style={{ color: accent, backgroundColor: `${accent}14` }}
                 >
                   <Icon className="h-5 w-5" aria-hidden />
                 </div>

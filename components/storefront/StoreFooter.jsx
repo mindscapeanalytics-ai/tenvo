@@ -120,7 +120,9 @@ export function StoreFooter({ business, settings }) {
     ? getFitnessFooterColumns(`/store/${businessDomain}`, categories || [])
     : [];
   const supermarketColumns = supermarketFooter
-    ? getSupermarketFooterColumns(`/store/${businessDomain}`).map((col) => ({
+    ? getSupermarketFooterColumns(`/store/${businessDomain}`, {
+        businessCategory: business?.category,
+      }).map((col) => ({
         ...col,
         links: (col.links || []).filter((link) => {
           if (!String(link.href || '').endsWith('/about')) return true;
@@ -218,7 +220,12 @@ export function StoreFooter({ business, settings }) {
       )}
     >
       {supermarketFooter && supermarketConfig?.showFooterTrustStrip !== false ? (
-        <SupermarketFooterTrustStrip settings={settings} accent={accent} className="border-slate-800 bg-white" />
+        <SupermarketFooterTrustStrip
+          settings={settings}
+          businessCategory={business?.category}
+          accent={accent}
+          className="border-slate-800 bg-white"
+        />
       ) : null}
       {fitnessFooter ? (
         <div className="border-b border-white/10 bg-black">

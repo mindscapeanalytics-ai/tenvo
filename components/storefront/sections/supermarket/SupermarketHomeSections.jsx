@@ -207,7 +207,11 @@ export function SupermarketHomeSections({
             accent={accent}
             linkLabel="View more"
           />
-          <SupermarketBrandsMarquee brands={brands} autoScroll={config.brandsAutoScroll !== false} />
+          <SupermarketBrandsMarquee
+            brands={brands}
+            autoScroll={config.brandsAutoScroll !== false}
+            accent={accent}
+          />
         </section>
       )}
 

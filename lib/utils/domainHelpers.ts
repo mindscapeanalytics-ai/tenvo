@@ -452,8 +452,7 @@ const DOMAIN_FIELD_KEY_ALIASES: Record<string, Record<string, string>> = {
   'milk-shop': {
     milktype: 'milktype',
     milk_type: 'milktype',
-    // Legacy inventory "Source" → milk type column (not dairy-farm livestock).
-    source: 'milktype',
+    // Only map legacy human labels — scrape "source" URLs stay as provenance.
     bestbefore: 'expirydate',
     expiry: 'expirydate',
     expirydate: 'expirydate',
@@ -503,7 +502,7 @@ export function readDomainFieldValue(
 
   if (direct != null && direct !== '') return direct;
 
-  // Milk shop: seed / older rows used chill:true and free-text source.
+  // Milk shop: seed / older rows used chill:true; never treat provenance URLs as milk type.
   if (resolveDomainKey(category) === 'milk-shop') {
     if (canonical === 'chilled' && domainData.chill != null && domainData.chill !== '') {
       if (domainData.chill === true || domainData.chill === 'true' || domainData.chill === 1) {
@@ -515,7 +514,11 @@ export function readDomainFieldValue(
       return domainData.chill;
     }
     if (canonical === 'milktype' && domainData.source != null && domainData.source !== '') {
-      return domainData.source;
+      const src = String(domainData.source).trim();
+      if (/^(cow|buffalo|goat|mixed|packaged)$/i.test(src)) return src.replace(/^\w/, (c) => c.toUpperCase());
+      if (/farm|collector|own dairy/i.test(src)) return 'Cow';
+      if (/^brand$/i.test(src)) return 'Packaged';
+      // URLs / scrape provenance are not milk types — ignore.
     }
   }
 

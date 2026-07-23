@@ -409,11 +409,23 @@ function toProduct(row, idx) {
     imageCredit: 'Unsplash seed',
     is_featured: featured,
     domain_data: {
-      source: row.source || 'scraped',
-      chill: true,
+      milktype: inferMilkType(name, category, brand),
+      chilled: 'Yes',
       fatpercent: /cow milk/i.test(name) ? '3.5' : /buffalo/i.test(name) ? '6.5' : '',
+      provenance: row.source || 'scraped',
     },
   };
+}
+
+function inferMilkType(name, category, brand) {
+  if (/buffalo/i.test(name)) return 'Buffalo';
+  if (/goat/i.test(name)) return 'Goat';
+  if (/cow/i.test(name)) return 'Cow';
+  if (category === 'Packaged Dairy' || (brand && brand !== 'Tenvo Milk')) return 'Packaged';
+  if (/fresh milk|dahi|makkhan|lassi|ghee|paneer|khoya|malai|cream/i.test(`${name} ${category}`)) {
+    return 'Cow';
+  }
+  return 'Packaged';
 }
 
 function main() {
@@ -534,9 +546,10 @@ function milkProduct(partial) {
     imageCredit: 'Unsplash seed',
     is_featured: featured,
     domain_data: {
-      source: domain_data.source || (brand === 'Tenvo Milk' ? 'Farm / Collector' : 'Brand'),
+      milktype: domain_data.milktype || (brand === 'Tenvo Milk' ? 'Cow' : 'Packaged'),
+      chilled: domain_data.chilled || 'Yes',
       fatpercent: domain_data.fatpercent || '',
-      chill: domain_data.chill !== false,
+      ...(domain_data.provenance ? { provenance: domain_data.provenance } : {}),
       ...domain_data,
     },
   };
