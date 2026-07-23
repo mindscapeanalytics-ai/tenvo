@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const path = require('path');
+const { remotePatterns: storefrontImageRemotePatterns } = require('./lib/storefront/allowedImageHosts.json');
 
 const withBundleAnalyzer = require('@next/bundle-analyzer')({
   enabled: process.env.ANALYZE === 'true',
@@ -65,67 +66,9 @@ const nextConfig = {
     ];
   },
   images: {
-    // Allow Next.js Image optimization with a domain allowlist
-    remotePatterns: [
-      // Unsplash (used for storefront hero/category fallback images)
-      { protocol: 'https', hostname: 'images.unsplash.com' },
-      { protocol: 'https', hostname: 'ui-avatars.com' },
-      { protocol: 'https', hostname: 'placehold.co' },
-      // Common CDN / upload hosts
-      { protocol: 'https', hostname: '**.supabase.co' },
-      { protocol: 'https', hostname: '**.supabase.in' },
-      { protocol: 'https', hostname: 'res.cloudinary.com' },
-      { protocol: 'https', hostname: '**.amazonaws.com' },
-      { protocol: 'https', hostname: '**.googleusercontent.com' },
-      { protocol: 'https', hostname: 'lh3.googleusercontent.com' },
-      // Allow any https source by specifying explicit allowed domains and wildcards
-      { protocol: 'https', hostname: 'services.eatx.pk' },
-      { protocol: 'https', hostname: 'media.naheed.pk' },
-      { protocol: 'https', hostname: 'www.dsmonline.pk' },
-      { protocol: 'https', hostname: 'dsmonline.pk' },
-      { protocol: 'https', hostname: '**.dsmonline.pk' },
-      { protocol: 'https', hostname: 'autostore.pk' },
-      { protocol: 'https', hostname: 'www.autostore.pk' },
-      { protocol: 'https', hostname: '**.autostore.pk' },
-      // Vehicle dealership demo CDN (Sehgal Motors)
-      { protocol: 'https', hostname: 'sehgalmotorsports.pk' },
-      { protocol: 'https', hostname: 'www.sehgalmotorsports.pk' },
-      { protocol: 'https', hostname: '**.sehgalmotorsports.pk' },
-      { protocol: 'https', hostname: '**.unsplash.com' },
-      { protocol: 'https', hostname: 'cdn.shopify.com' },
-      { protocol: 'https', hostname: '**.shopify.com' },
-      { protocol: 'https', hostname: '**.eatx.pk' },
-      { protocol: 'https', hostname: '**.naheed.pk' },
-      { protocol: 'https', hostname: 'c11cbcde.delivery.rocketcdn.me' },
-      { protocol: 'https', hostname: '**.rocketcdn.me' },
-      { protocol: 'https', hostname: 'www.wartsila.com' },
-      { protocol: 'https', hostname: 'wartsila.com' },
-      // Fitness demo (Webflow archive + Synergize supplement CDN)
-      { protocol: 'https', hostname: 'assets.website-files.com' },
-      { protocol: 'https', hostname: 'cdn.prod.website-files.com' },
-      { protocol: 'https', hostname: '**.website-files.com' },
-      { protocol: 'https', hostname: 'www.synergize.pk' },
-      { protocol: 'https', hostname: 'synergize.pk' },
-      // Furniture demo catalog CDN
-      { protocol: 'https', hostname: 'comfy.sg' },
-      { protocol: 'https', hostname: 'www.comfy.sg' },
-      { protocol: 'https', hostname: '**.comfy.sg' },
-      { protocol: 'https', hostname: 'api.fantasticfurniture.com.au' },
-      { protocol: 'https', hostname: '**.fantasticfurniture.com.au' },
-      // Marine archive / restaurant secondary hosts
-      { protocol: 'https', hostname: 'dwgtrading.com' },
-      { protocol: 'https', hostname: 'www.dwgtrading.com' },
-      { protocol: 'https', hostname: 'rollinnbbq.pk' },
-      { protocol: 'https', hostname: 'www.rollinnbbq.pk' },
-      // Tyre demo / registration archive CDNs (GTR + Techno Tyres)
-      { protocol: 'https', hostname: 'www.gtr.com.pk' },
-      { protocol: 'https', hostname: 'gtr.com.pk' },
-      { protocol: 'https', hostname: '**.gtr.com.pk' },
-      { protocol: 'https', hostname: 'gtrweb.mediaidee.com' },
-      { protocol: 'https', hostname: 'technotyre.com' },
-      { protocol: 'https', hostname: 'www.technotyre.com' },
-      { protocol: 'https', hostname: '**.technotyre.com' },
-    ],
+    // Shared allowlist — also enforced at runtime in SmartProductImage
+    // (lib/storefront/allowedImageHosts.json) so unknown hosts never throw Invalid src.
+    remotePatterns: storefrontImageRemotePatterns,
     // Keep unoptimized in development to avoid 504/500 when optimizing remote images locally.
     // Production uses Next image optimization (WebP/AVIF) for LCP.
     unoptimized: process.env.NODE_ENV !== 'production',

@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 /**
- * Parse archive/electronics.html → electronicsArchiveExtract.json + regenerate electronicsDemoCatalog.js
+ * Parse archive/electronics.html + telemartArchiveExtract.json + supplements
+ * → electronicsDemoCatalog.js
  * Run: node scripts/build-electronics-seed-catalog.mjs
+ * Refresh Telemart: node scripts/fetch-telemart-electronics-catalog.mjs
  */
 import fs from 'fs';
 import path from 'path';
@@ -12,7 +14,11 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, '..');
 const archivePath = path.join(root, 'archive', 'electronics.html');
 const extractPath = path.join(root, 'lib', 'dataLab', 'electronicsArchiveExtract.json');
+const telemartPath = path.join(root, 'lib', 'dataLab', 'telemartArchiveExtract.json');
 const catalogPath = path.join(root, 'lib', 'dataLab', 'electronicsDemoCatalog.js');
+
+const MAX_PER_CATEGORY = 8;
+const MAX_TOTAL = 72;
 
 function decodeEntities(s) {
   return String(s || '')
@@ -65,14 +71,11 @@ function inferCapacity(name, category) {
   return '';
 }
 
-function warrantyFor(category) {
-  if (category === 'Air Conditioners') return '1 Year';
-  if (category === 'Gadgets & Wearables') return '1 Year';
+function warrantyFor() {
   return '1 Year';
 }
 
 const html = fs.readFileSync(archivePath, 'utf8');
-
 const products = [];
 const blocks = html.split(/<li class="item product product-item">/).slice(1);
 for (const block of blocks) {
@@ -101,7 +104,7 @@ for (const block of blocks) {
     domain_data: {
       brand,
       model: name.replace(new RegExp(`^${brand}\\s*[|\\-]?\\s*`, 'i'), '').slice(0, 80) || name,
-      warranty: warrantyFor(category),
+      warranty: warrantyFor(),
       specifications: category === 'Air Conditioners' ? 'Inverter, Hot & Cold' : '',
       capacity,
       screensize: category === 'LED TVs' ? capacity : '',
@@ -109,7 +112,6 @@ for (const block of blocks) {
   });
 }
 
-// Dedupe by sku
 const seen = new Set();
 const unique = products.filter((p) => {
   if (seen.has(p.sku)) return false;
@@ -124,13 +126,49 @@ const extract = {
   productCount: unique.length,
   products: unique,
 };
+fs.writeFileSync(extractPath, `${JSON.stringify(extract, null, 2)}\n`);
 
-fs.writeFileSync(extractPath, JSON.stringify(extract, null, 2) + '\n');
+/** License-safe Unsplash demos for Imran archive rows (hotlink-blocked). */
+const ELECTRONICS_DEMO_IMAGES = {
+  'Air Conditioners':
+    'https://images.unsplash.com/photo-1585771724684-38269d6639fd?w=900&q=80&auto=format&fit=crop',
+  Refrigerators:
+    'https://images.unsplash.com/photo-1571175443880-49e1d25b2bc5?w=900&q=80&auto=format&fit=crop',
+  'LED TVs':
+    'https://images.unsplash.com/photo-1593359677879-a4bb92f829d1?w=900&q=80&auto=format&fit=crop',
+  'Washing Machines':
+    'https://images.unsplash.com/photo-1604335399105-a0c585fd81a1?w=900&q=80&auto=format&fit=crop',
+  'Kitchen Appliances':
+    'https://images.unsplash.com/photo-1585659722983-3a675dabf23d?w=900&q=80&auto=format&fit=crop',
+  'Cooling & Fans':
+    'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=900&q=80&auto=format&fit=crop',
+  'Deep Freezers':
+    'https://images.unsplash.com/photo-1571175443880-49e1d25b2bc5?w=900&q=80&auto=format&fit=crop',
+  'Water Dispensers':
+    'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=900&q=80&auto=format&fit=crop',
+  'Small Appliances':
+    'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=900&q=80&auto=format&fit=crop',
+  watch:
+    'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=900&q=80&auto=format&fit=crop',
+  speaker:
+    'https://images.unsplash.com/photo-1546435770-a3e426bf472b?w=900&q=80&auto=format&fit=crop',
+  gadgets:
+    'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=900&q=80&auto=format&fit=crop',
+};
 
-function toSeedProduct(row, index) {
+function resolveElectronicsDemoImage(row) {
+  const name = String(row.name || '');
+  const category = String(row.category || '');
+  if (/watch|ultron|thunder|epic|fortuner/i.test(name)) return ELECTRONICS_DEMO_IMAGES.watch;
+  if (/speaker|play|buddy|pulse|sound|booster/i.test(name)) return ELECTRONICS_DEMO_IMAGES.speaker;
+  if (ELECTRONICS_DEMO_IMAGES[category]) return ELECTRONICS_DEMO_IMAGES[category];
+  if (category === 'Gadgets & Wearables') return ELECTRONICS_DEMO_IMAGES.gadgets;
+  return ELECTRONICS_DEMO_IMAGES.gadgets;
+}
+
+function toSeedFromArchive(row, index) {
   const price = Number(row.price);
   const cost = Math.round(price * 0.82);
-  const featured = index < 4 || row.category === 'Air Conditioners';
   return {
     name: row.name,
     brand: row.brand,
@@ -142,9 +180,9 @@ function toSeedProduct(row, index) {
     stock: row.category === 'Air Conditioners' ? 6 : 18,
     sku: row.sku,
     description: `${row.name}. Genuine ${row.brand} ${String(row.category || 'electronics').toLowerCase()} with official warranty support.`,
-    image_url: row.image_url,
-    imageCredit: 'Archive seed',
-    is_featured: featured,
+    image_url: resolveElectronicsDemoImage(row),
+    imageCredit: 'Unsplash demo',
+    is_featured: index < 3,
     domain_data: {
       model: row.domain_data?.model || row.name,
       warranty: row.domain_data?.warranty || '1 Year',
@@ -157,9 +195,76 @@ function toSeedProduct(row, index) {
   };
 }
 
-const seedProducts = [...unique.map(toSeedProduct), ...ELECTRONICS_SUPPLEMENT_PRODUCTS];
+function toSeedFromTelemart(row, index) {
+  const price = Number(row.price);
+  const compare = Number(row.compare_price) || Math.round(price * 1.08);
+  const image = String(row.image_url || '').split('?')[0];
+  return {
+    name: row.name,
+    brand: row.brand,
+    category: row.category,
+    unit: 'pcs',
+    price,
+    compare_price: compare > price ? compare : Math.round(price * 1.08),
+    cost_price: Math.round(price * 0.82),
+    stock: 8 + (index % 12),
+    sku: row.sku,
+    description: row.description || `${row.name}. Official warranty support.`,
+    image_url: image || resolveElectronicsDemoImage(row),
+    imageCredit: image.includes('shopify') ? 'Telemart / Shopify CDN' : 'Unsplash demo',
+    is_featured: index < 6 || /inverter|qled|smart/i.test(String(row.name)),
+    domain_data: {
+      brand: row.brand,
+      model: row.domain_data?.model || row.handle || row.name,
+      warranty: row.domain_data?.warranty || '1 Year',
+      specifications: row.domain_data?.specifications || row.category,
+      capacity: row.domain_data?.capacity || '',
+      screensize: row.domain_data?.screensize || '',
+      energylabel: row.domain_data?.energylabel || '',
+    },
+  };
+}
+
+function capByCategory(rows, maxPer, maxTotal) {
+  const counts = new Map();
+  const out = [];
+  for (const row of rows) {
+    if (out.length >= maxTotal) break;
+    const cat = row.category || 'Other';
+    const n = counts.get(cat) || 0;
+    if (n >= maxPer) continue;
+    counts.set(cat, n + 1);
+    out.push(row);
+  }
+  return out;
+}
+
+let telemartRows = [];
+if (fs.existsSync(telemartPath)) {
+  try {
+    const tm = JSON.parse(fs.readFileSync(telemartPath, 'utf8'));
+    telemartRows = Array.isArray(tm.products) ? tm.products : [];
+  } catch {
+    telemartRows = [];
+  }
+}
+
+const archiveSeeds = unique.map(toSeedFromArchive);
+const telemartSeeds = capByCategory(telemartRows.map(toSeedFromTelemart), MAX_PER_CATEGORY, MAX_TOTAL);
+
+const skuSeen = new Set();
+const seedProducts = [];
+for (const row of [...telemartSeeds, ...archiveSeeds, ...ELECTRONICS_SUPPLEMENT_PRODUCTS]) {
+  const sku = String(row.sku || '').toLowerCase();
+  if (!sku || skuSeen.has(sku)) continue;
+  skuSeen.add(sku);
+  seedProducts.push(row);
+  if (seedProducts.length >= MAX_TOTAL + ELECTRONICS_SUPPLEMENT_PRODUCTS.length) break;
+}
+
 const acImage =
   seedProducts.find((p) => p.category === 'Air Conditioners')?.image_url ||
+  seedProducts.find((p) => p.category === 'LED TVs')?.image_url ||
   seedProducts[0]?.image_url ||
   '';
 const watchImage =
@@ -167,8 +272,8 @@ const watchImage =
 
 const catalogJs = `/**
  * Tenvo Electronics demo / registration catalog.
- * Built from archive/electronics.html (Imran eShop Gadgets reference).
- * Regenerate: node scripts/build-electronics-seed-catalog.mjs
+ * Built from Telemart Shopify collections + archive/electronics.html + supplements.
+ * Regenerate: node scripts/fetch-telemart-electronics-catalog.mjs && node scripts/build-electronics-seed-catalog.mjs
  */
 
 /** @type {string[]} */
@@ -217,5 +322,7 @@ export const ELECTRONICS_DEMO_HERO_SLIDES = [
 `;
 
 fs.writeFileSync(catalogPath, catalogJs);
-console.log(`Wrote ${unique.length} archive + ${ELECTRONICS_SUPPLEMENT_PRODUCTS.length} supplement = ${seedProducts.length} products → ${catalogPath}`);
-console.log(`Wrote extract → ${extractPath}`);
+console.log(
+  `Wrote catalog: telemart capped ${telemartSeeds.length}, archive ${archiveSeeds.length}, supplements ${ELECTRONICS_SUPPLEMENT_PRODUCTS.length} → ${seedProducts.length} SKUs`
+);
+console.log(`→ ${catalogPath}`);

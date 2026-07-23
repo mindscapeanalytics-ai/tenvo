@@ -452,6 +452,7 @@ export function StoreSettingsManager({ business, category }) {
       showAppliancesRail: true,
       showInstallmentCta: true,
       showVisitCta: true,
+      showFeedSidebar: true,
       locationLabel: 'Deliver to',
       defaultLocation: '',
       searchPlaceholder: '',
@@ -2825,6 +2826,7 @@ export function StoreSettingsManager({ business, category }) {
                     ['showAppliancesRail', 'Home appliances rail', false],
                     ['showInstallmentCta', 'Installment enquiry band', false],
                     ['showVisitCta', 'Visit showroom CTA', false],
+                    ['showFeedSidebar', 'Homepage department sidebar', false],
                   ].map(([key, label, optIn]) => (
                     <div key={key} className="flex items-center gap-2">
                       <Switch

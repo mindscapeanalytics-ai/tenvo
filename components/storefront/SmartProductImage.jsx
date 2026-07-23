@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { resolveBrandMonogramUrl } from '@/lib/storefront/storefrontImagePlaceholders';
 import { isDeadImageUrl } from '@/lib/storefront/deadImageHosts';
 import { normalizeStorefrontRemoteImageUrl } from '@/lib/storefront/productImageFallback';
+import { isAllowedNextImageSrc } from '@/lib/storefront/allowedImageHosts';
 import {
   inferImageVariantFromWidth,
   resolveStorefrontImageSrc,
@@ -15,7 +16,8 @@ import {
 
 /**
  * Renders storefront product imagery.
- * Supabase URLs use CDN transforms (plain img); other HTTPS uses next/image.
+ * Supabase URLs use CDN transforms (plain img); allowlisted HTTPS uses next/image;
+ * unknown remotes use plain img so next/image never throws Invalid src.
  */
 export function SmartProductImage({
   src,
@@ -46,7 +48,9 @@ export function SmartProductImage({
     setUseObjectPublicFallback(false);
   }, [safeSrc]);
 
-  const activeSrc = failed && fallbackSrc && !fallbackFailed ? fallbackSrc : currentSrc;
+  const activeSrc = failed && fallbackSrc && !isDeadImageUrl(fallbackSrc) && !fallbackFailed
+    ? fallbackSrc
+    : currentSrc;
   const monogramSrc =
     placeholderLabel && !activeSrc
       ? resolveBrandMonogramUrl(placeholderLabel)
@@ -61,7 +65,7 @@ export function SmartProductImage({
       setUseObjectPublicFallback(true);
       return;
     }
-    if (fallbackSrc && !failed) {
+    if (fallbackSrc && !failed && !isDeadImageUrl(fallbackSrc)) {
       setFailed(true);
       return;
     }
@@ -98,50 +102,12 @@ export function SmartProductImage({
   // Default fill/crop; callers may pass object-contain (etc.) and twMerge wins.
   const fitClass = 'object-cover';
 
-  if (isDataUrl || isSvg) {
+  const renderPlainImg = (imgSrc) => {
     if (fill) {
       return (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={renderSrc}
-          alt={alt || ''}
-          className={cn('absolute inset-0 h-full w-full', fitClass, className)}
-          style={style}
-          onError={handleError}
-          loading={priority ? 'eager' : 'lazy'}
-          decoding="async"
-        />
-      );
-    }
-    return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={renderSrc}
-        alt={alt || ''}
-        width={width}
-        height={height}
-        className={cn(fitClass, className)}
-        style={style}
-        onError={handleError}
-        loading={priority ? 'eager' : 'lazy'}
-        decoding="async"
-      />
-    );
-  }
-
-  const variant =
-    imageVariant || inferImageVariantFromWidth(width || (fill ? 512 : undefined));
-  const cdnSrc = useObjectPublicFallback
-    ? buildSupabaseObjectPublicUrl(renderSrc)
-    : resolveStorefrontImageSrc(renderSrc, { variant });
-  const useDirectCdn = shouldUseDirectCdnImage(renderSrc);
-
-  if (useDirectCdn) {
-    if (fill) {
-      return (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={cdnSrc}
+          src={imgSrc}
           alt={alt || ''}
           className={cn('absolute inset-0 h-full w-full', fitClass, className)}
           style={style}
@@ -155,7 +121,7 @@ export function SmartProductImage({
     return (
       // eslint-disable-next-line @next/next/no-img-element
       <img
-        src={cdnSrc}
+        src={imgSrc}
         alt={alt || ''}
         width={width || 400}
         height={height || 400}
@@ -167,6 +133,26 @@ export function SmartProductImage({
         fetchPriority={priority ? 'high' : 'auto'}
       />
     );
+  };
+
+  if (isDataUrl || isSvg) {
+    return renderPlainImg(renderSrc);
+  }
+
+  const variant =
+    imageVariant || inferImageVariantFromWidth(width || (fill ? 512 : undefined));
+  const cdnSrc = useObjectPublicFallback
+    ? buildSupabaseObjectPublicUrl(renderSrc)
+    : resolveStorefrontImageSrc(renderSrc, { variant });
+  const useDirectCdn = shouldUseDirectCdnImage(renderSrc);
+
+  if (useDirectCdn) {
+    return renderPlainImg(cdnSrc);
+  }
+
+  // Unknown remotes: plain <img> — next/image throws Invalid src when host is not allowlisted.
+  if (!isAllowedNextImageSrc(renderSrc)) {
+    return renderPlainImg(renderSrc);
   }
 
   if (fill) {

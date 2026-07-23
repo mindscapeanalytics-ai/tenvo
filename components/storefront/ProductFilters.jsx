@@ -11,6 +11,7 @@ import { formatCurrency } from '@/lib/currency';
 import { useStorefront } from '@/lib/context/StorefrontContext';
 import { getStoreAccentColor } from '@/lib/config/storefrontDomains';
 import { isFashionEditorialStore } from '@/lib/storefront/fashionEditorial';
+import { isElectronicsElevatedStore } from '@/lib/storefront/electronicsStorefront';
 import {
   isMarinePartsFinderStore,
   MARINE_EQUIPMENT_TYPES,
@@ -119,6 +120,7 @@ function FiltersBody({ filters, categories, businessDomain, onClose }) {
   const { currency, settings, business } = useStorefront();
   const accent = getStoreAccentColor(settings, business?.category);
   const clothingStore = isFashionEditorialStore(business?.category);
+  const electronicsStore = isElectronicsElevatedStore(business?.category);
   const marineStore = isMarinePartsFinderStore(business?.category);
   const pharmacyStore = isPharmacyElevatedStore(business?.category);
 
@@ -150,6 +152,29 @@ function FiltersBody({ filters, categories, businessDomain, onClose }) {
     };
   }, [clothingStore, business?.category, countryIso]);
 
+  const electronicsBrandOptions = useMemo(() => {
+    if (!electronicsStore) return [];
+    const knowledge = getDomainKnowledge(business?.category, { countryIso });
+    const marketBrands = getBrandsForMarket(countryIso, business?.category) || [];
+    const popularBrands = knowledge?.pakistaniFeatures?.popularBrands || [];
+    return uniqueFilterOptions([
+      ...marketBrands,
+      ...popularBrands,
+      'PEL',
+      'YOLO',
+      'Haier',
+      'Dawlance',
+      'Samsung',
+      'LG',
+      'Gree',
+      'Orient',
+      'Kenwood',
+      'Midea',
+      'Philips',
+      'TCL',
+    ]);
+  }, [electronicsStore, business?.category, countryIso]);
+
   const [priceRange, setPriceRange] = useState([
     filters.minPrice || 0,
     filters.maxPrice || 50000,
@@ -157,7 +182,7 @@ function FiltersBody({ filters, categories, businessDomain, onClose }) {
   const [expanded, setExpanded] = useState({
     browse: true,
     categories: true,
-    brand: clothingStore,
+    brand: clothingStore || electronicsStore,
     fabric: clothingStore,
     sourcing: clothingStore,
     size: false,
@@ -354,6 +379,23 @@ function FiltersBody({ filters, categories, businessDomain, onClose }) {
         >
           <FilterOptionList
             options={clothingFilterOptions.brands}
+            filterKey="brand"
+            currentValue={filters.brand}
+            accent={accent}
+            onSelect={updateFilter}
+          />
+        </FilterSection>
+      )}
+
+      {electronicsStore && electronicsBrandOptions.length > 0 && (
+        <FilterSection
+          title="Brand"
+          expanded={expanded.brand}
+          onToggle={() => toggle('brand')}
+          count={filters.brand ? 1 : 0}
+        >
+          <FilterOptionList
+            options={electronicsBrandOptions}
             filterKey="brand"
             currentValue={filters.brand}
             accent={accent}

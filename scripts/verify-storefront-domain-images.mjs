@@ -93,13 +93,27 @@ assert.match(
 );
 
 const nextConfig = fs.readFileSync(path.join(root, 'next.config.js'), 'utf8');
+assert.match(
+  nextConfig,
+  /allowedImageHosts\.json/,
+  'next.config.js must load shared allowedImageHosts.json'
+);
+const allowlistJson = fs.readFileSync(
+  path.join(root, 'lib/storefront/allowedImageHosts.json'),
+  'utf8'
+);
 for (const host of [
   'assets.website-files.com',
   'synergize.pk',
   'comfy.sg',
   'fantasticfurniture.com.au',
+  'gulahmedshop.com',
 ]) {
-  assert.match(nextConfig, new RegExp(host.replace(/\./g, '\\.')), `next.config must allowlist ${host}`);
+  assert.match(
+    allowlistJson,
+    new RegExp(host.replace(/\./g, '\\.')),
+    `allowedImageHosts.json must allowlist ${host}`
+  );
 }
 
 const fitnessHero = fs.readFileSync(

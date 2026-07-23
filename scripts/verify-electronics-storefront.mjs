@@ -18,6 +18,7 @@ import {
   resolveElectronicsBrandWall,
   resolveElectronicsCategoryTiles,
   resolveElectronicsShowcaseProducts,
+  resolveElectronicsSidebarDepartments,
   resolveElectronicsTrustPillars,
   ELECTRONICS_ACCENTS,
 } from '../lib/storefront/electronicsStorefront.js';
@@ -39,8 +40,8 @@ if (isElectronicsElevatedStore('mobile') || isElectronicsElevatedStore('tyre-sho
 if (!hasRichCatalog('electronics-goods')) {
   errors.push('electronics-goods should have rich catalog');
 }
-if (!Array.isArray(ELECTRONICS_SEED_PRODUCTS) || ELECTRONICS_SEED_PRODUCTS.length < 17) {
-  errors.push(`expected 17+ seed products, got ${ELECTRONICS_SEED_PRODUCTS?.length || 0}`);
+if (!Array.isArray(ELECTRONICS_SEED_PRODUCTS) || ELECTRONICS_SEED_PRODUCTS.length < 40) {
+  errors.push(`expected 40+ seed products, got ${ELECTRONICS_SEED_PRODUCTS?.length || 0}`);
 }
 if (!ELECTRONICS_SEED_CATEGORIES.includes('Air Conditioners')) {
   errors.push('seed categories should include Air Conditioners');
@@ -110,8 +111,15 @@ const brands = resolveElectronicsBrandWall({}, '/store/demo-electronics', {
   businessDomain: 'demo-electronics',
   products: ELECTRONICS_SEED_PRODUCTS,
 });
-if (!brands.some((b) => /YOLO|PEL/i.test(b.label))) {
-  errors.push('brand wall should include YOLO or PEL from seed');
+if (!brands.some((b) => /YOLO|PEL|Haier|Samsung|Dawlance|Gree/i.test(b.label))) {
+  errors.push('brand wall should include known appliance brands from seed');
+}
+
+const depts = resolveElectronicsSidebarDepartments({}, '/store/demo-electronics', {
+  businessDomain: 'demo-electronics',
+});
+if (depts.length < 6) {
+  errors.push('electronics sidebar departments expected');
 }
 
 const { topPicks, deals, gadgets, appliances } = partitionElectronicsProducts(ELECTRONICS_SEED_PRODUCTS);
@@ -143,6 +151,10 @@ if (HERO_EXCLUDED_DEMO_DOMAINS.has('demo-electronics')) {
 
 if (!STOREFRONT_CONTACT_SUBJECTS.includes('installment')) {
   errors.push('installment contact subject missing');
+}
+
+if (ELECTRONICS_SEED_PRODUCTS.some((p) => /imraneshop\.com/i.test(String(p.image_url || '')))) {
+  errors.push('seed must not use imraneshop CDN images (hotlink-blocked / not allowlisted)');
 }
 
 if (ELECTRONICS_ACCENTS.accent !== '#2563eb') {

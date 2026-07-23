@@ -55,6 +55,8 @@
     "verify:demo-storefront-sections": "npx tsx scripts/verify-demo-storefront-sections.mjs",
     "verify:storefront-home-elevated": "bun scripts/verify-storefront-home-elevated-sections.mjs",
     "verify:storefront-domain-images": "bun scripts/verify-storefront-domain-images.mjs",
+    "verify:storefront-image-hosts": "bun scripts/verify-storefront-image-hosts.mjs",
+    "probe:storefront-unsplash": "node scripts/probe-storefront-unsplash.mjs",
     "build:fashion-gul-sections": "node scripts/build-fashion-gul-sections.mjs",
     "verify:storefront-security": "npm run verify:audit-fixes && npm run verify:storefront-tenancy && npm run verify:storefront-domain-resolution && npm run verify:storefront-checkout-intelligence && npm run verify:storefront-payments && npm run verify:registration-flow && npm run verify:domain-packages",
     "verify:campaigns-hub": "node scripts/verify-campaigns-hub.mjs",

@@ -2,7 +2,6 @@
 
 import { use } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { Heart, ShoppingBag, Trash2, Package } from 'lucide-react';
 import { useStorefront } from '@/lib/context/StorefrontContext';
 import { getStoreAccentColor } from '@/lib/config/storefrontDomains';
@@ -10,6 +9,7 @@ import { useCart } from '@/lib/hooks/storefront/useCart';
 import { useWishlist } from '@/lib/hooks/storefront/useWishlist';
 import { formatCurrency } from '@/lib/currency';
 import { toast } from 'react-hot-toast';
+import { SmartProductImage } from '@/components/storefront/SmartProductImage';
 
 export default function WishlistPage({ params }) {
   const { businessDomain } = use(params);
@@ -83,12 +83,13 @@ export default function WishlistPage({ params }) {
                 <Link href={`/store/${businessDomain}/products/${item.slug || item.productId}`}>
                   <div className="aspect-square bg-gray-50 overflow-hidden">
                     {item.image ? (
-                      <Image
+                      <SmartProductImage
                         src={item.image}
                         alt={item.name}
                         width={300}
                         height={300}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        placeholderLabel={item.name}
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">

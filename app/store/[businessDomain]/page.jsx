@@ -62,6 +62,7 @@ import { StoreCatalogEmptyState } from '@/components/storefront/sections/StoreCa
 import { resolveStorefrontHeroSlides } from '@/lib/storefront/heroSlides';
 import { SupermarketHomeSections } from '@/components/storefront/sections/supermarket/SupermarketHomeSections';
 import { SupermarketFeedLayout } from '@/components/storefront/supermarket/SupermarketFeedLayout';
+import { ElectronicsFeedLayout } from '@/components/storefront/electronics/ElectronicsFeedLayout';
 import { isAutoPartsStore } from '@/lib/storefront/autoParts';
 import { isMarinePartsStore, MARINE_ACCENT } from '@/lib/storefront/marineParts';
 import { resolveOwnerMarketingBannersEnabled } from '@/lib/storefront/ownerMarketingBanners';
@@ -901,20 +902,27 @@ export default async function StoreHomePage({ params }) {
         />
       )}
       {electronicsElevatedHero && (
-        <LazyVerticalHomeSections
-          variant="electronics"
-          businessDomain={businessDomain}
-          businessCategory={business.category}
-          business={business}
-          categories={categories}
-          products={electronicsProducts}
-          currency={storeCurrency}
-          accent={accent}
-          base={heroPreset.base}
+        <ElectronicsFeedLayout
+          storeBase={heroPreset.base}
           settings={settings}
-          storeName={electronicsStoreName || formatElectronicsStoreName(business.business_name)}
-          businessDescription={business.description || settings?.description}
-        />
+          businessDomain={businessDomain}
+          accent={accent}
+        >
+          <LazyVerticalHomeSections
+            variant="electronics"
+            businessDomain={businessDomain}
+            businessCategory={business.category}
+            business={business}
+            categories={categories}
+            products={electronicsProducts}
+            currency={storeCurrency}
+            accent={accent}
+            base={heroPreset.base}
+            settings={settings}
+            storeName={electronicsStoreName || formatElectronicsStoreName(business.business_name)}
+            businessDescription={business.description || settings?.description}
+          />
+        </ElectronicsFeedLayout>
       )}
 
       {restaurantElevatedHero && (

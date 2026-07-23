@@ -22,6 +22,7 @@ import { isRestaurantElevatedStore, resolveRestaurantTheme } from '@/lib/storefr
 import { isPharmacyElevatedStore } from '@/lib/storefront/pharmacyStorefront';
 import { isTyreElevatedStore, enrichTyreProductsWithSeedImages } from '@/lib/storefront/tyreStorefront';
 import { isElectronicsElevatedStore, enrichElectronicsProductsWithSeedImages } from '@/lib/storefront/electronicsStorefront';
+import { ElectronicsShopLayout } from '@/components/storefront/electronics/ElectronicsShopLayout';
 import {
   buildPharmacyShopCatalog,
   paginatePharmacyShopCatalog,
@@ -329,6 +330,64 @@ export default async function ProductsPage({ params, searchParams }) {
     );
   }
 
+  if (electronicsStore) {
+    const storeBase = `/store/${businessDomain}`;
+    const accent = storeSettings?.theme?.accent || '#2563eb';
+    const electronicsSubtitle = filters.search
+      ? `Matching appliances and gadgets from ${business.business_name}.`
+      : filters.onSale
+        ? 'Limited-time savings on selected appliances and gadgets.'
+        : categoryMeta
+          ? `${categoryMeta.name} from ${business.business_name}. Warranty-backed stock with installment enquiry available.`
+          : `Browse air conditioners, TVs, kitchen appliances, and gadgets from ${business.business_name}.`;
+
+    return (
+      <ElectronicsShopLayout
+        businessDomain={businessDomain}
+        settings={storeSettings}
+        accent={accent}
+        title={heroTitle}
+        subtitle={electronicsSubtitle}
+        storeBase={storeBase}
+      >
+        <div className="flex flex-col gap-6 lg:flex-row">
+          <aside className="lg:w-72 lg:shrink-0">
+            <div className="sticky top-24 space-y-4">
+              <ProductFilters
+                filters={filters}
+                categories={categories}
+                businessDomain={businessDomain}
+              />
+            </div>
+          </aside>
+
+          <main className="min-w-0 flex-1">
+            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+              <div className="min-w-0 flex-1">
+                <SearchBar businessDomain={businessDomain} initialQuery={filters.search} />
+              </div>
+              <div className="flex items-center gap-2">
+                <SortDropdown currentSort={filters.sort} businessDomain={businessDomain} />
+                <ViewToggle currentView={view} businessDomain={businessDomain} />
+              </div>
+            </div>
+            <ActiveFilters filters={filters} businessDomain={businessDomain} />
+            <Suspense fallback={<ProductsSkeleton count={12} density="catalog" />}>
+              <ProductGridContent
+                businessId={business.id}
+                businessDomain={businessDomain}
+                filters={filters}
+                view={view}
+                electronicsStore={electronicsStore}
+                businessCategory={business.category}
+              />
+            </Suspense>
+          </main>
+        </div>
+      </ElectronicsShopLayout>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Hero Section */}
@@ -495,6 +554,7 @@ async function ProductGridContent({
   fitnessStore = false,
   pharmacyStore = false,
   tyreStore = false,
+  electronicsStore = false,
   businessCategory = '',
   bookableCategoryRequested = false,
 }) {
