@@ -28,6 +28,8 @@ import { FitnessChromeProvider } from '@/components/storefront/fitness/FitnessCh
 import { FitnessMobileBottomNav } from '@/components/storefront/fitness/FitnessMobileBottomNav';
 import { SupermarketSiteHeader } from '@/components/storefront/supermarket/SupermarketSiteHeader';
 import { SupermarketChromeProvider } from '@/components/storefront/supermarket/SupermarketChromeContext';
+import { SupermarketSidebarDrawer } from '@/components/storefront/supermarket/SupermarketSidebar';
+import { getSupermarketChromeTheme } from '@/lib/storefront/supermarketStorefront';
 import { RestaurantSiteHeader } from '@/components/storefront/restaurant/RestaurantSiteHeader';
 import { RestaurantChromeProvider } from '@/components/storefront/restaurant/RestaurantChromeContext';
 import { RestaurantMobileBottomNav } from '@/components/storefront/restaurant/RestaurantMobileBottomNav';
@@ -112,6 +114,9 @@ export default async function StoreLayout({ children, params }) {
   const restaurantStore = isRestaurantElevatedStore(business.category);
   const fitnessStore = isFitnessElevatedStore(business.category);
   const portalStore = dealershipStore || marketplaceStore;
+  const supermarketTheme = supermarketStore
+    ? getSupermarketChromeTheme(settings, business.category)
+    : null;
 
   const storeJsonLd = buildStoreJsonLd({ business, businessDomain: business.domain });
   const webSiteJsonLd = buildStoreWebSiteJsonLd({ business, businessDomain: business.domain });
@@ -155,7 +160,7 @@ export default async function StoreLayout({ children, params }) {
           <PharmacySiteHeader business={business} settings={settings} />
         </Suspense>
       ) : supermarketStore ? (
-        <Suspense fallback={<div className="h-[120px] border-b border-orange-100 bg-white md:h-[148px]" aria-hidden />}>
+        <Suspense fallback={<div className="h-[120px] border-b border-slate-100 bg-white md:h-[148px]" aria-hidden />}>
           <SupermarketSiteHeader business={business} settings={settings} />
         </Suspense>
       ) : restaurantStore ? (
@@ -201,6 +206,19 @@ export default async function StoreLayout({ children, params }) {
 
       {pharmacyStore ? <PharmacyMobileBottomNav /> : restaurantStore ? <RestaurantMobileBottomNav /> : fitnessStore ? <FitnessMobileBottomNav /> : <StoreMobileBottomNav />}
       {restaurantStore ? <RestaurantStickyCartBar /> : null}
+
+      {supermarketStore ? (
+        <Suspense fallback={null}>
+          <SupermarketSidebarDrawer
+            storeBase={`/store/${business.domain}`}
+            settings={settings}
+            businessDomain={business.domain}
+            businessCategory={business.category}
+            categories={categories}
+            accent={supermarketTheme?.accent}
+          />
+        </Suspense>
+      ) : null}
 
       <CartDrawer />
       <LiveChat />

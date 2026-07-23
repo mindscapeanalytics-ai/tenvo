@@ -17,17 +17,16 @@ import { resolveStoreTopBarConfig } from '@/lib/storefront/storeTopBar';
 import { formatTelHref } from '@/lib/storefront/storeConnectionActions';
 import {
   formatSupermarketStoreName,
+  getSupermarketChromeTheme,
   getSupermarketConfig,
   resolveSupermarketSubNav,
 } from '@/lib/storefront/supermarketStorefront';
-import {
-  SUPERMARKET_DELIVERY_NOTICE,
-  SUPERMARKET_THEME,
-} from '@/lib/storefront/supermarketCatalogDefaults';
+import { SUPERMARKET_DELIVERY_NOTICE } from '@/lib/storefront/supermarketCatalogDefaults';
 import { useSupermarketChrome } from '@/components/storefront/supermarket/SupermarketChromeContext';
 
 /**
  * Naheed / DSM-style supermarket header — promo strip, search, cart (no public login).
+ * Milk shops use dairy blue chrome via getSupermarketChromeTheme.
  */
 export function SupermarketSiteHeader({ business, settings }) {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -38,8 +37,10 @@ export function SupermarketSiteHeader({ business, settings }) {
   const { cart } = useCart();
   const cartItemCount = cart?.items?.reduce((sum, item) => sum + item.quantity, 0) || 0;
 
-  const accent = SUPERMARKET_THEME.accent;
-  const promoBar = SUPERMARKET_THEME.promoBar;
+  const theme = getSupermarketChromeTheme(settings, business?.category);
+  const accent = theme.accent;
+  const accentLight = theme.accentLight;
+  const promoBar = theme.promoBar;
   const storeRoot = `/store/${businessDomain}`;
   const displayName = formatSupermarketStoreName(business?.business_name);
   const contact = resolveStoreContact({ business, settings });
@@ -52,7 +53,11 @@ export function SupermarketSiteHeader({ business, settings }) {
   const deliveryNotice = config.deliveryNotice || settings?.announcement || SUPERMARKET_DELIVERY_NOTICE;
   const promoStripHref = config.promoStripHref || '/products';
   const promoStripLabel = config.promoStripLabel;
-  const subNavLinks = resolveSupermarketSubNav(settings, storeRoot, { categories });
+  const subNavLinks = resolveSupermarketSubNav(settings, storeRoot, {
+    categories,
+    businessDomain,
+    businessCategory: business?.category,
+  });
   const isHome = pathname === storeRoot || pathname === `${storeRoot}/`;
 
   const isNavLinkActive = (href) => {
@@ -74,8 +79,15 @@ export function SupermarketSiteHeader({ business, settings }) {
   }, []);
 
   return (
-    <header className="sticky top-0 z-50" data-store-supermarket-header>
-      {/* Orange promo strip */}
+    <header
+      className="sticky top-0 z-50"
+      data-store-supermarket-header
+      style={{
+        '--sm-accent': accent,
+        '--sm-accent-light': accentLight,
+        '--sm-promo': promoBar,
+      }}
+    >
       <div className="text-white" style={{ backgroundColor: promoBar }}>
         <div className="mx-auto flex min-h-8 max-w-[1400px] items-center justify-between gap-2 px-3 py-1.5 text-[10px] font-medium sm:px-6 sm:text-[11px] lg:px-8">
           <span className="inline-flex min-w-0 items-center gap-1 truncate sm:max-w-[55%]">
@@ -107,20 +119,23 @@ export function SupermarketSiteHeader({ business, settings }) {
         </div>
       </div>
 
-      {/* Main header */}
       <div
         className={cn(
-          'border-b border-orange-100/80 bg-white transition-shadow',
-          isScrolled && 'shadow-md shadow-orange-900/5'
+          'border-b bg-white transition-shadow',
+          isScrolled && 'shadow-md'
         )}
+        style={{
+          borderColor: `${accent}33`,
+          boxShadow: isScrolled ? `0 4px 14px ${accent}14` : undefined,
+        }}
       >
         <div className="mx-auto max-w-[1400px] px-3 sm:px-6 lg:px-8">
-          {/* Mobile */}
           <div className="flex items-center gap-2 py-2.5 lg:hidden">
             <button
               type="button"
               onClick={openSidebar}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-orange-50 text-orange-700"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
+              style={{ backgroundColor: accentLight, color: accent }}
               aria-label="Browse departments"
             >
               <LayoutGrid className="h-5 w-5" />
@@ -167,7 +182,6 @@ export function SupermarketSiteHeader({ business, settings }) {
             <ChevronRight className="h-4 w-4 shrink-0 text-slate-300" aria-hidden />
           </button>
 
-          {/* Desktop */}
           <div className="hidden h-[68px] items-center gap-5 lg:flex">
             <Link href={storeRoot} className="flex shrink-0 items-center gap-2">
               <StorefrontBrandMark
@@ -184,7 +198,12 @@ export function SupermarketSiteHeader({ business, settings }) {
             <button
               type="button"
               onClick={openSidebar}
-              className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-orange-200 bg-orange-50 px-3.5 py-2 text-xs font-bold text-orange-800 transition hover:bg-orange-100"
+              className="inline-flex shrink-0 items-center gap-2 rounded-xl border px-3.5 py-2 text-xs font-bold transition hover:opacity-90"
+              style={{
+                borderColor: `${accent}55`,
+                backgroundColor: accentLight,
+                color: theme.accentDark || accent,
+              }}
             >
               <LayoutGrid className="h-4 w-4" aria-hidden />
               Categories
@@ -211,7 +230,6 @@ export function SupermarketSiteHeader({ business, settings }) {
         </div>
       </div>
 
-      {/* Sub-navigation — Naheed taxonomy strip */}
       <nav className="hidden border-b border-slate-100 bg-white lg:block" aria-label="Departments">
         <div className="mx-auto max-w-[1400px] px-6 lg:px-8">
           <div className="flex items-center gap-1 overflow-x-auto py-2 scrollbar-hide">
@@ -219,8 +237,9 @@ export function SupermarketSiteHeader({ business, settings }) {
               href={storeRoot}
               className={cn(
                 'shrink-0 rounded-md px-3 py-1.5 text-xs font-semibold transition',
-                isHome ? 'bg-orange-500 text-white' : 'text-slate-600 hover:bg-slate-50'
+                isHome ? 'text-white' : 'text-slate-600 hover:bg-slate-50'
               )}
+              style={isHome ? { backgroundColor: accent } : undefined}
             >
               Home
             </Link>
@@ -232,8 +251,23 @@ export function SupermarketSiteHeader({ business, settings }) {
                   href={link.href}
                   className={cn(
                     'shrink-0 rounded-md px-3 py-1.5 text-xs font-semibold transition',
-                    active ? 'text-orange-700' : 'text-slate-600 hover:bg-orange-50 hover:text-orange-800'
+                    active ? '' : 'text-slate-600 hover:opacity-90'
                   )}
+                  style={
+                    active
+                      ? { color: theme.accentDark || accent }
+                      : undefined
+                  }
+                  onMouseEnter={(e) => {
+                    if (active) return;
+                    e.currentTarget.style.backgroundColor = accentLight;
+                    e.currentTarget.style.color = theme.accentDark || accent;
+                  }}
+                  onMouseLeave={(e) => {
+                    if (active) return;
+                    e.currentTarget.style.backgroundColor = '';
+                    e.currentTarget.style.color = '';
+                  }}
                 >
                   {link.label}
                 </Link>
@@ -243,7 +277,6 @@ export function SupermarketSiteHeader({ business, settings }) {
         </div>
       </nav>
 
-      {/* Mobile category chips */}
       <nav className="border-b border-slate-100 bg-white lg:hidden" aria-label="Quick shop">
         <div className="mx-auto max-w-[1400px] px-3">
           <div className="flex gap-2 overflow-x-auto py-2 scrollbar-hide">
@@ -260,7 +293,6 @@ export function SupermarketSiteHeader({ business, settings }) {
         </div>
       </nav>
 
-      {/* Mobile search overlay */}
       {isSearchOpen ? (
         <div className="fixed inset-0 z-[70] bg-white lg:hidden">
           <div className="flex items-center gap-2 border-b border-slate-100 px-3 py-3">

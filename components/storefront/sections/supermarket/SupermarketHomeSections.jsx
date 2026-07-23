@@ -129,7 +129,7 @@ export function SupermarketHomeSections({
   };
 
   return (
-    <div className="space-y-7 sm:space-y-9">
+    <div className="space-y-5 sm:space-y-6">
       {trustPillars.length > 0 && (
         <section className="rounded-lg border border-slate-100 bg-slate-50/80 px-3 py-3 sm:px-4">
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
@@ -168,7 +168,8 @@ export function SupermarketHomeSections({
               <Link
                 key={cat.id}
                 href={cat.href}
-                className="group overflow-hidden rounded-lg border border-slate-100 bg-white shadow-sm transition hover:border-orange-200 hover:shadow-md"
+                className="group overflow-hidden rounded-lg border border-slate-100 bg-white shadow-sm transition hover:shadow-md"
+                style={{ '--cat-accent': accent }}
               >
                 <div className="relative aspect-square w-full overflow-hidden bg-slate-50">
                   {cat.image ? (
@@ -179,7 +180,10 @@ export function SupermarketHomeSections({
                       className="object-cover transition duration-300 group-hover:scale-[1.03]"
                     />
                   ) : (
-                    <div className="flex h-full w-full items-center justify-center text-sm font-bold text-orange-700">
+                    <div
+                      className="flex h-full w-full items-center justify-center text-sm font-bold"
+                      style={{ color: accent, backgroundColor: `${accent}12` }}
+                    >
                       {cat.label?.slice(0, 2)?.toUpperCase()}
                     </div>
                   )}
@@ -247,7 +251,7 @@ export function SupermarketHomeSections({
           ? rail.href
           : `${productsUrl}${rail.href?.startsWith('?') ? rail.href : rail.href ? `?${rail.href.replace(/^\?/, '')}` : '?onSale=true'}`;
         return (
-          <div key={rail.id} className="space-y-7 sm:space-y-9">
+          <div key={rail.id} className="space-y-5 sm:space-y-6">
             <StoreProductRail
               id={rail.id}
               title={rail.title}
@@ -258,7 +262,7 @@ export function SupermarketHomeSections({
               catalogPool={products}
               businessDomain={businessDomain}
               cardVariant="dense"
-              className="rounded-lg border border-slate-100 bg-white px-3 py-5 shadow-sm sm:px-4 sm:py-6"
+              className="rounded-lg border border-slate-100 bg-white px-3 py-4 shadow-sm sm:px-4 sm:py-5"
               accentColor={accent}
               autoScroll={config.homeRailsAutoScroll !== false}
             />
@@ -273,7 +277,13 @@ export function SupermarketHomeSections({
       })}
 
       {config.showDeliveryBanner !== false && freeShippingThreshold > 0 && (
-        <section className="overflow-hidden rounded-lg border border-orange-100 bg-gradient-to-r from-orange-50 via-white to-orange-50/30">
+        <section
+          className="overflow-hidden rounded-lg border"
+          style={{
+            borderColor: `${accent}33`,
+            background: `linear-gradient(90deg, ${accent}12 0%, #fff 45%, ${accent}0a 100%)`,
+          }}
+        >
           <div className="flex flex-col items-center justify-between gap-4 px-4 py-6 text-center sm:flex-row sm:px-6 sm:text-left">
             <div>
               <p className="text-sm font-bold text-slate-900">{config.deliveryBannerTitle}</p>

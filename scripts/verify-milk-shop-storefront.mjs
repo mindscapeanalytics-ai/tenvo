@@ -17,6 +17,7 @@ import {
   isMilkShopStore,
   MILK_SHOP_QUICK_SEARCH,
   MILK_SHOP_SIDEBAR_DEPARTMENTS,
+  MILK_SHOP_ACCENTS,
   resolveMilkShopInventoryCategories,
   buildMilkShopHomeRailsFromInventory,
   buildMilkShopBrandRowsFromProducts,
@@ -27,6 +28,7 @@ import {
   resolveSupermarketHomeRails,
   resolveSupermarketQuickSearchTerms,
   resolveSupermarketSidebarDepartments,
+  getSupermarketChromeTheme,
 } from '../lib/storefront/supermarketStorefront.js';
 import {
   isStorefrontWeightUnit,
@@ -102,6 +104,21 @@ if (MILK_SHOP_SEED_PRODUCTS.some((p) => /animal id|lactation/i.test(JSON.stringi
 
 if (!MILK_SHOP_QUICK_SEARCH.length || MILK_SHOP_SIDEBAR_DEPARTMENTS.length < 5) {
   errors.push('milk shop chrome defaults incomplete');
+}
+
+{
+  const theme = getSupermarketChromeTheme({}, 'milk-shop');
+  if (theme.accent !== MILK_SHOP_ACCENTS.accent || theme.promoBar !== MILK_SHOP_ACCENTS.promoBar) {
+    errors.push('milk shop chrome theme should default to dairy blue');
+  }
+  const ownerTheme = getSupermarketChromeTheme({ brand: { primaryColor: '#111827' } }, 'milk-shop');
+  if (ownerTheme.accent !== '#111827') {
+    errors.push('owner brand.primaryColor should win for milk chrome accent');
+  }
+  const groceryTheme = getSupermarketChromeTheme({}, 'supermarket');
+  if (groceryTheme.accent === MILK_SHOP_ACCENTS.accent) {
+    errors.push('supermarket chrome must not use milk dairy blue');
+  }
 }
 
 // Inventory-first chrome: live categories/products beat static fallbacks
