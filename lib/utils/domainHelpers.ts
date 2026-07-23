@@ -449,6 +449,19 @@ const DOMAIN_FIELD_KEY_ALIASES: Record<string, Record<string, string>> = {
     suitcutting: 'suitcutting',
     suit_cutting: 'suitcutting',
   },
+  'milk-shop': {
+    milktype: 'milktype',
+    milk_type: 'milktype',
+    // Legacy inventory "Source" → milk type column (not dairy-farm livestock).
+    source: 'milktype',
+    bestbefore: 'expirydate',
+    expiry: 'expirydate',
+    expirydate: 'expirydate',
+    chilled: 'chilled',
+    chill: 'chilled',
+    fatpercent: 'fatpercent',
+    fat: 'fatpercent',
+  },
 };
 
 /**
@@ -482,12 +495,31 @@ export function readDomainFieldValue(
   if (!domainData || typeof domainData !== 'object') return undefined;
   const canonical = resolveDomainFieldKey(field, category);
   const legacy = normalizeKey(field);
-  return (
+  const direct =
     domainData[canonical] ??
     domainData[legacy] ??
     domainData[field] ??
-    domainData[field.toLowerCase().replace(/\s+/g, '_')]
-  );
+    domainData[field.toLowerCase().replace(/\s+/g, '_')];
+
+  if (direct != null && direct !== '') return direct;
+
+  // Milk shop: seed / older rows used chill:true and free-text source.
+  if (resolveDomainKey(category) === 'milk-shop') {
+    if (canonical === 'chilled' && domainData.chill != null && domainData.chill !== '') {
+      if (domainData.chill === true || domainData.chill === 'true' || domainData.chill === 1) {
+        return 'Yes';
+      }
+      if (domainData.chill === false || domainData.chill === 'false' || domainData.chill === 0) {
+        return 'No';
+      }
+      return domainData.chill;
+    }
+    if (canonical === 'milktype' && domainData.source != null && domainData.source !== '') {
+      return domainData.source;
+    }
+  }
+
+  return direct;
 }
 
 /**
@@ -519,6 +551,10 @@ export function getFieldLabel(field: string, category: string): string {
     widtharz: 'Width (Arz)',
     fabrictype: 'Fabric Type',
     korafinished: 'Kora/Finished',
+    milktype: 'Milk Type',
+    fatpercent: 'Fat %',
+    chilled: 'Chilled',
+    expirydate: 'Best Before',
   };
 
   return fieldLabels[field] || fieldLabels[normalized] || field;

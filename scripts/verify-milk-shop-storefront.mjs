@@ -36,6 +36,9 @@ import {
   normalizeStorefrontQty,
 } from '../lib/storefront/storefrontWeightQty.js';
 import { shouldSeedRichCatalogOnRegistration } from '../lib/onboarding/registrationRichVerticals.js';
+import { resolveInventoryDomainFeatures } from '../lib/utils/inventoryDomainFeatures.js';
+import { buildNewInventoryRow } from '../lib/utils/inventoryRowDefaults.js';
+import { resolveDomainFieldKey } from '../lib/utils/domainHelpers.ts';
 
 const errors = [];
 
@@ -61,6 +64,49 @@ if (!knowledge || knowledge.units?.[0] !== 'kg') {
 }
 if (!knowledge.setupTemplate?.categories?.includes('Fresh Milk')) {
   errors.push('milk-shop setupTemplate must include Fresh Milk');
+}
+{
+  const fields = knowledge.productFields || [];
+  for (const required of ['Milk Type', 'Fat %', 'Chilled', 'Best Before']) {
+    if (!fields.includes(required)) {
+      errors.push(`milk-shop productFields must include ${required}`);
+    }
+  }
+  if (fields.some((f) => /animal id|lactation|breed/i.test(f))) {
+    errors.push('milk-shop must not use dairy-farm livestock fields');
+  }
+  if (fields.includes('Batch Number') || fields.includes('Source')) {
+    errors.push('milk-shop should use Milk Type / Chilled instead of Source / Batch Number columns');
+  }
+  const inv = resolveInventoryDomainFeatures('milk-shop', { countryIso: 'PK' });
+  if (!inv.expiryTrackingEnabled || inv.manufacturingEnabled) {
+    errors.push('milk-shop should enable expiry FEFO and disable manufacturing');
+  }
+  const row = buildNewInventoryRow('milk-shop', 'biz', null, { countryIso: 'PK' });
+  if (row.unit !== 'kg' || row.category !== 'Fresh Milk') {
+    errors.push('new milk-shop row should default unit=kg and category=Fresh Milk');
+  }
+  if (row.domain_data?.milktype !== 'Cow') {
+    errors.push(`new milk-shop row should default milktype=Cow (got ${row.domain_data?.milktype})`);
+  }
+  if (row.domain_data?.chilled !== 'Yes') {
+    errors.push(`new milk-shop row should default chilled=Yes (got ${row.domain_data?.chilled})`);
+  }
+  const milkKey = resolveDomainFieldKey('Best Before', 'milk-shop');
+  if (milkKey !== 'expirydate') {
+    errors.push('Best Before must canonicalise to expirydate for milk-shop');
+  }
+  if (resolveDomainFieldKey('Source', 'milk-shop') !== 'milktype') {
+    errors.push('legacy Source must alias to milktype for milk-shop');
+  }
+  const farm = resolveInventoryDomainFeatures('dairy-farm', { countryIso: 'PK' });
+  if (!farm.productFields?.some((f) => /Animal ID/i.test(f))) {
+    errors.push('dairy-farm must keep Animal ID (milk-shop changes must not bleed)');
+  }
+  const grocery = resolveInventoryDomainFeatures('supermarket', { countryIso: 'PK' });
+  if (grocery.productFields?.includes('Milk Type')) {
+    errors.push('supermarket must not inherit milk-shop Milk Type column');
+  }
 }
 const farm = getDomainKnowledge('dairy-farm');
 if (!farm?.fieldConfig?.animalid && !farm?.productFields?.some((f) => /animal/i.test(f))) {
