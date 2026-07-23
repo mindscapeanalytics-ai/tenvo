@@ -94,7 +94,7 @@ export function SupermarketHomeSections({
     ? resolveSupermarketCategoryIcons(settings, storeBase, ctx)
     : [];
   const brands = config.showBrandsRow !== false
-    ? resolveSupermarketBrands(settings, storeBase)
+    ? resolveSupermarketBrands(settings, storeBase, ctx)
     : [];
   const upperTiles = config.showUpperPromoTiles !== false
     ? resolveSupermarketUpperPromoTiles(settings, storeBase)
@@ -106,9 +106,11 @@ export function SupermarketHomeSections({
     ? resolveSupermarketPromoTiles(settings, storeBase)
     : [];
   const trustPillars = config.showTrustStrip !== false
-    ? resolveSupermarketTrustPillars(settings, businessDomain)
+    ? resolveSupermarketTrustPillars(settings, businessDomain, businessCategory)
     : [];
-  const homeRails = config.showHomeRails !== false ? resolveSupermarketHomeRails(settings) : [];
+  const homeRails = config.showHomeRails !== false
+    ? resolveSupermarketHomeRails(settings, businessCategory)
+    : [];
 
   const railProducts = (partition) => {
     if (partition === 'deals') return partitioned.deals;

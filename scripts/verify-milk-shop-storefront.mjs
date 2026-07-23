@@ -73,7 +73,7 @@ if (resolvePosVariant('milk-shop') !== 'superstore') {
   errors.push('milk-shop POS should be superstore');
 }
 
-if (MILK_SHOP_SEED_PRODUCTS.length < 25) {
+if (MILK_SHOP_SEED_PRODUCTS.length < 30) {
   errors.push(`seed catalog too small: ${MILK_SHOP_SEED_PRODUCTS.length}`);
 }
 const cats = new Set(MILK_SHOP_SEED_PRODUCTS.map((p) => p.category));

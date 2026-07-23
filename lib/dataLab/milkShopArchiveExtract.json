@@ -1,0 +1,294 @@
+{
+  "fetchedAt": "2026-07-23T10:40:13.757Z",
+  "sources": [
+    {
+      "id": "bismillah-archive",
+      "label": "Bismillah Milk Shop (foodpanda Karachi)",
+      "path": "archive/milk-shop.html",
+      "count": 19
+    },
+    {
+      "id": "punjabmilkshop",
+      "label": "Punjab Milk Shop",
+      "url": "https://punjabmilkshop.com/",
+      "count": 15
+    },
+    {
+      "id": "purenest",
+      "label": "Pure Nest",
+      "url": "https://purenest.pk/",
+      "count": 5
+    }
+  ],
+  "products": [
+    {
+      "name": "Pheeki Lassi Glass 1pc",
+      "price": 169,
+      "image_url": null,
+      "source": "bismillah-foodpanda-archive"
+    },
+    {
+      "name": "Doodh Soda 500ml",
+      "price": 299,
+      "image_url": null,
+      "source": "bismillah-foodpanda-archive"
+    },
+    {
+      "name": "Yogurt 1kg",
+      "price": 408,
+      "image_url": null,
+      "source": "bismillah-foodpanda-archive"
+    },
+    {
+      "name": "Fresh Yogurt 500g",
+      "price": 204,
+      "image_url": null,
+      "source": "bismillah-foodpanda-archive"
+    },
+    {
+      "name": "Pakola Doodh Soda Glass 1pc",
+      "price": 119,
+      "image_url": null,
+      "source": "bismillah-foodpanda-archive"
+    },
+    {
+      "name": "Fresh Milk 1L",
+      "price": 278,
+      "image_url": null,
+      "source": "bismillah-foodpanda-archive"
+    },
+    {
+      "name": "Chocolate Lassi Glass 1pc",
+      "price": 249,
+      "image_url": null,
+      "source": "bismillah-foodpanda-archive"
+    },
+    {
+      "name": "Fresh Yogurt 250g",
+      "price": 102,
+      "image_url": null,
+      "source": "bismillah-foodpanda-archive"
+    },
+    {
+      "name": "Mango Lassi Glass 1pc",
+      "price": 289,
+      "image_url": null,
+      "source": "bismillah-foodpanda-archive"
+    },
+    {
+      "name": "Rose Milk Glass 1pc",
+      "price": 149,
+      "image_url": null,
+      "source": "bismillah-foodpanda-archive"
+    },
+    {
+      "name": "Dawn White Bread Vitamin Enriched Medium 1 Packet",
+      "price": 189,
+      "image_url": null,
+      "source": "bismillah-foodpanda-archive"
+    },
+    {
+      "name": "Nurpur Butter 100g",
+      "price": 574,
+      "image_url": null,
+      "source": "bismillah-foodpanda-archive"
+    },
+    {
+      "name": "Brady's Bread Plain Large 850g",
+      "price": 266,
+      "image_url": null,
+      "source": "bismillah-foodpanda-archive"
+    },
+    {
+      "name": "Bake Parlor Bread Small 440g",
+      "price": 139,
+      "image_url": null,
+      "source": "bismillah-foodpanda-archive"
+    },
+    {
+      "name": "Richly Brownie Sticky Butter Crispy Toast 50g",
+      "price": 342,
+      "image_url": null,
+      "source": "bismillah-foodpanda-archive"
+    },
+    {
+      "name": "Doodh Jalebi 250g",
+      "price": 169,
+      "image_url": null,
+      "source": "bismillah-foodpanda-archive"
+    },
+    {
+      "name": "Kheer | 250 g",
+      "price": 219,
+      "image_url": null,
+      "source": "bismillah-foodpanda-archive"
+    },
+    {
+      "name": "Brady's Bread Milky Medium 650g",
+      "price": 189,
+      "image_url": null,
+      "source": "bismillah-foodpanda-archive"
+    },
+    {
+      "name": "Dawn Milky Bread Small - 1 Packet",
+      "price": 139,
+      "image_url": null,
+      "source": "bismillah-foodpanda-archive"
+    },
+    {
+      "name": "Fresh Buffalo Milk",
+      "price": 240,
+      "unit": "litre",
+      "category": "Fresh Milk",
+      "source": "punjabmilkshop.com-menu",
+      "url": "https://punjabmilkshop.com/"
+    },
+    {
+      "name": "Fresh Cow Milk",
+      "price": 220,
+      "unit": "litre",
+      "category": "Fresh Milk",
+      "source": "punjabmilkshop.com-menu",
+      "url": "https://punjabmilkshop.com/"
+    },
+    {
+      "name": "Yogurt / Dahi",
+      "price": 260,
+      "unit": "kg",
+      "category": "Yogurt / Dahi",
+      "source": "punjabmilkshop.com-menu",
+      "url": "https://punjabmilkshop.com/"
+    },
+    {
+      "name": "Lassi 500g",
+      "price": 220,
+      "unit": "pcs",
+      "category": "Lassi & Drinks",
+      "source": "punjabmilkshop.com-menu",
+      "url": "https://punjabmilkshop.com/"
+    },
+    {
+      "name": "Kheer 1kg",
+      "price": 800,
+      "unit": "kg",
+      "category": "Dairy Sweets",
+      "source": "punjabmilkshop.com-menu",
+      "url": "https://punjabmilkshop.com/"
+    },
+    {
+      "name": "Kheer 500g",
+      "price": 400,
+      "unit": "pack",
+      "category": "Dairy Sweets",
+      "source": "punjabmilkshop.com-menu",
+      "url": "https://punjabmilkshop.com/"
+    },
+    {
+      "name": "Kheer 220g",
+      "price": 200,
+      "unit": "pack",
+      "category": "Dairy Sweets",
+      "source": "punjabmilkshop.com-menu",
+      "url": "https://punjabmilkshop.com/"
+    },
+    {
+      "name": "Badami Doodh 450ml",
+      "price": 180,
+      "unit": "pcs",
+      "category": "Lassi & Drinks",
+      "source": "punjabmilkshop.com-menu",
+      "url": "https://punjabmilkshop.com/"
+    },
+    {
+      "name": "Barfi 1kg",
+      "price": 1600,
+      "unit": "kg",
+      "category": "Dairy Sweets",
+      "source": "punjabmilkshop.com-menu",
+      "url": "https://punjabmilkshop.com/"
+    },
+    {
+      "name": "Dhoda 1kg",
+      "price": 1600,
+      "unit": "kg",
+      "category": "Dairy Sweets",
+      "source": "punjabmilkshop.com-menu",
+      "url": "https://punjabmilkshop.com/"
+    },
+    {
+      "name": "Gulab Jamun 1kg",
+      "price": 1400,
+      "unit": "kg",
+      "category": "Dairy Sweets",
+      "source": "punjabmilkshop.com-menu",
+      "url": "https://punjabmilkshop.com/"
+    },
+    {
+      "name": "Garm Gulab Jamun",
+      "price": 120,
+      "unit": "pcs",
+      "category": "Dairy Sweets",
+      "source": "punjabmilkshop.com-menu",
+      "url": "https://punjabmilkshop.com/"
+    },
+    {
+      "name": "Qalaqand 1kg",
+      "price": 1600,
+      "unit": "kg",
+      "category": "Dairy Sweets",
+      "source": "punjabmilkshop.com-menu",
+      "url": "https://punjabmilkshop.com/"
+    },
+    {
+      "name": "Khoya Kulfi",
+      "price": 100,
+      "unit": "pcs",
+      "category": "Dairy Sweets",
+      "source": "punjabmilkshop.com-menu",
+      "url": "https://punjabmilkshop.com/"
+    },
+    {
+      "name": "Badami Kulfi",
+      "price": 120,
+      "unit": "pcs",
+      "category": "Dairy Sweets",
+      "source": "punjabmilkshop.com-menu",
+      "url": "https://punjabmilkshop.com/"
+    },
+    {
+      "name": "Cow Milk",
+      "price": 250,
+      "unitHint": "litre",
+      "source": "purenest.pk",
+      "url": "https://purenest.pk/"
+    },
+    {
+      "name": "Buffalo Milk",
+      "price": 260,
+      "unitHint": "litre",
+      "source": "purenest.pk",
+      "url": "https://purenest.pk/"
+    },
+    {
+      "name": "Yogurt (Pure & Thick",
+      "price": 280,
+      "unitHint": "kg",
+      "source": "purenest.pk",
+      "url": "https://purenest.pk/"
+    },
+    {
+      "name": "Desi Ghee",
+      "price": 4000,
+      "unitHint": "kg",
+      "source": "purenest.pk",
+      "url": "https://purenest.pk/"
+    },
+    {
+      "name": "Paneer (Fresh Cottage Cheese)",
+      "price": 2500,
+      "unitHint": "kg",
+      "source": "purenest.pk",
+      "url": "https://purenest.pk/"
+    }
+  ]
+}
