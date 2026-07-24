@@ -406,6 +406,10 @@ export function Header({ onMenuClick }) {
                                 <ShoppingCart className="mr-3 h-4 w-4 text-brand-primary" />
                                 <span className="text-xs font-bold">New Purchase</span>
                             </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => window.dispatchEvent(new CustomEvent('open-modal', { detail: { modalId: 'expense' } }))} className="cursor-pointer rounded-xl py-2.5">
+                                <ListFilter className="mr-3 h-4 w-4 text-rose-500" />
+                                <span className="text-xs font-bold">Log Expense</span>
+                            </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
                     )}
@@ -635,7 +639,16 @@ export function Header({ onMenuClick }) {
                                     <History className="w-4 h-4 mr-3 text-emerald-500" />
                                     <span className="font-bold text-xs">Record Payment</span>
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => switchTab('finance')} className="rounded-xl py-2.5 cursor-pointer">
+                                <DropdownMenuItem
+                                    onClick={() =>
+                                        window.dispatchEvent(
+                                            new CustomEvent('open-modal', {
+                                                detail: { modalId: 'expense' },
+                                            })
+                                        )
+                                    }
+                                    className="rounded-xl py-2.5 cursor-pointer"
+                                >
                                     <ListFilter className="w-4 h-4 mr-3 text-rose-500" />
                                     <span className="font-bold text-xs">Log Expense</span>
                                 </DropdownMenuItem>

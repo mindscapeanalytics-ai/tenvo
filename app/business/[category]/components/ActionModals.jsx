@@ -31,6 +31,7 @@ import { EnhancedInvoiceBuilder } from '@/components/EnhancedInvoiceBuilder';
 import { QuickInvoiceModal } from '@/components/invoice/QuickInvoiceModal';
 import { PaymentModal } from '@/components/invoice/PaymentModal';
 import { CustomerForm } from '@/components/CustomerForm';
+import { ExpenseEntryForm } from '@/components/ExpenseEntryForm';
 import toast from 'react-hot-toast';
 import { EntityDetailsDialog } from '@/components/EntityDetailsDialog';
 import { getNavItemAccess } from '@/lib/rbac/permissions';
@@ -85,6 +86,12 @@ export function ActionModals({
     editingVendor,
     setEditingVendor,
     onSaveVendor,
+
+    // Expense quick add
+    showExpenseForm,
+    setShowExpenseForm,
+    vendors = [],
+    onExpenseSaved,
 
     // PO Props
     showPOBuilder,
@@ -367,6 +374,18 @@ export function ActionModals({
                         } else {
                             throw new Error(result.error || 'Failed to record payment');
                         }
+                    }}
+                />
+            )}
+
+            {showExpenseForm && (
+                <ExpenseEntryForm
+                    vendors={vendors}
+                    category={category}
+                    onClose={() => setShowExpenseForm(false)}
+                    onSave={async () => {
+                        setShowExpenseForm(false);
+                        await onExpenseSaved?.();
                     }}
                 />
             )}

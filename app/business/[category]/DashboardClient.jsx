@@ -45,6 +45,7 @@ import { DashboardTabs } from './components/DashboardTabs';
 import { BusinessLoadingBoundary } from '@/components/guards/BusinessLoadingBoundary';
 import { useHubReady } from '@/lib/hooks/useHubReady';
 import { useResourceLimits } from '@/lib/hooks/useResourceLimits';
+import { usePermissions } from '@/lib/hooks/usePermissions';
 import { getDomainConfig } from '@/lib/config/domains';
 import { QUICK_ACTION_IDS } from '@/lib/config/quickActions';
 import { normalizeDashboardTab, resolveDashboardTab, resolveFinanceViewForTab } from '@/lib/config/tabs';
@@ -72,7 +73,6 @@ const QUICK_VIEW_ACTION_TO_TAB = {
   'view-category-expenses': 'expenses',
   'view-all-expenses': 'expenses',
   'view-all-accounts': 'accounting',
-  'reconcile-now': 'accounting',
   'view-system-logs': 'audit',
   'view-orders': 'orders',
   'view-inventory': 'inventory',
@@ -106,7 +106,7 @@ function BusinessDashboardContent() {
     switchBusinessByDomain,
     currency,
   } = useBusiness();
-
+  const { planCan } = usePermissions();
 
   // Use business domain for URL routing, but keep category for UI rendering logic
   const currentDomain = business?.domain || String(params?.category || 'retail-shop');
@@ -173,11 +173,20 @@ function BusinessDashboardContent() {
   const [editingProduct, setEditingProduct] = useState(null);
   const [showVendorForm, setShowVendorForm] = useState(false);
   const [editingVendor, setEditingVendor] = useState(null);
+  const [showExpenseForm, setShowExpenseForm] = useState(false);
   const [showPOBuilder, setShowPOBuilder] = useState(false);
   const [poInitialData, setPoInitialData] = useState(null);
   const [viewingItem, setViewingItem] = useState(null);
   const [viewingType, setViewingType] = useState(null);
   const [financeInitialTab, setFinanceInitialTab] = useState(null);
+
+  const openExpenseModal = useCallback(() => {
+    if (!planCan('expense_tracking')) {
+      toast.error('Expense tracking is not on your plan');
+      return;
+    }
+    setShowExpenseForm(true);
+  }, [planCan]);
 
   // Drop in-flight product editors when the active shop changes (prevents cross-tenant save).
   useEffect(() => {
@@ -238,6 +247,15 @@ function BusinessDashboardContent() {
     if (id === 'view-general-ledger') {
       setFinanceInitialTab('general-ledger');
       handleTabChange('finance');
+      return;
+    }
+    if (id === 'reconcile-now') {
+      setFinanceInitialTab('reconciliation');
+      handleTabChange('finance');
+      return;
+    }
+    if (id === 'log-expense') {
+      openExpenseModal();
       return;
     }
 
@@ -406,7 +424,7 @@ function BusinessDashboardContent() {
         break;
       }
     }
-  }, [handleTabChange]);
+  }, [handleTabChange, openExpenseModal]);
 
   // Handle Events from Palette and Sidebar
   useEffect(() => {
@@ -421,6 +439,7 @@ function BusinessDashboardContent() {
       if (modalId === 'customer') setShowCustomerForm(true);
       if (modalId === 'vendor') setShowVendorForm(true);
       if (modalId === 'purchase') setShowPOBuilder(true);
+      if (modalId === 'expense') openExpenseModal();
     };
 
     const onSwitchTabEvent = (e) => {
@@ -452,7 +471,7 @@ function BusinessDashboardContent() {
       window.removeEventListener('switch-tab', onSwitchTabEvent);
       window.removeEventListener('view-details', onViewDetailsEvent);
     };
-  }, [handleQuickAction, handleTabChange]);
+  }, [handleQuickAction, handleTabChange, openExpenseModal]);
 
   // Fallback logic for domains not in the static businessCategories map
   const businessInfo = useMemo(() => {
@@ -2219,6 +2238,14 @@ function BusinessDashboardContent() {
         editingVendor={editingVendor}
         setEditingVendor={setEditingVendor}
         onSaveVendor={handleSaveVendor}
+
+        showExpenseForm={showExpenseForm}
+        setShowExpenseForm={setShowExpenseForm}
+        vendors={vendors}
+        onExpenseSaved={async () => {
+          await Promise.allSettled([fetchExpenses({ force: true }), fetchFinance({ force: true })]);
+          scheduleAnalyticsRefresh?.();
+        }}
 
         showPOBuilder={showPOBuilder}
         setShowPOBuilder={setShowPOBuilder}

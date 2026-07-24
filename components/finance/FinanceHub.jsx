@@ -810,6 +810,7 @@ export default function FinanceHub({ businessId, initialTab, businessCategory = 
                         onDeleteExpense={() => loadData({ force: true })}
                         currency={effectiveCurrency}
                         vendors={vendors}
+                        businessCategory={businessCategory}
                     />
                 );
             case 'journal':

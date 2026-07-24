@@ -124,6 +124,9 @@ includes('components/ExportButton.jsx', 'business,', 'ExportButton accepts busin
 includes('components/reports/GeneralLedgerReport.jsx', 'routeCategory', 'GL links use business category not UUID');
 includes('components/TrialBalanceView.jsx', 'buildFinancePdfMeta', 'Trial Balance PDF brand-aware');
 includes('components/reports/AgingReportsPanel.jsx', 'business,', 'Aging PDF passes business for brand');
+includes('lib/utils/expenseCategories.js', 'getExpenseCategoriesForDomain', 'domain expense category helper');
+includes('components/layout/Header.jsx', "modalId: 'expense'", 'Header Log Expense opens expense modal');
+includes('app/business/[category]/DashboardClient.jsx', "id === 'reconcile-now'", 'reconcile-now routes to Bank Reconciliation');
 assert(
   !read('components/finance/FinanceHub.jsx').includes("case 'vouchers':"),
   'dead vouchers switch arm removed from FinanceHub'

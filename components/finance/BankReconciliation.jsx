@@ -32,6 +32,8 @@ export function BankReconciliation({ businessId, currency, accounts = [] }) {
     // Sessions list
     const [sessions, setSessions] = useState([]);
     const [loadingSessions, setLoadingSessions] = useState(false);
+    const [tablesMissing, setTablesMissing] = useState(false);
+    const [tablesWarning, setTablesWarning] = useState('');
     const [activeSession, setActiveSession] = useState(null);
     const [sessionDetail, setSessionDetail] = useState(null); // { session, lines, gl_entries }
     const [loadingDetail, setLoadingDetail] = useState(false);
@@ -72,10 +74,17 @@ export function BankReconciliation({ businessId, currency, accounts = [] }) {
         try {
             const res = await fetch(`/api/v1/finance/bank-reconciliation?business_id=${businessId}`);
             const data = await res.json();
-            if (data.warning) {
+            if (data.warning || data.code === 'TABLES_MISSING') {
                 setSessions([]);
+                setTablesMissing(true);
+                setTablesWarning(
+                    data.warning ||
+                        'Bank reconciliation is not available on this database yet.'
+                );
                 return;
             }
+            setTablesMissing(false);
+            setTablesWarning('');
             if (!res.ok) throw new Error(data.error || 'Failed to load sessions');
             setSessions(data.sessions || []);
         } catch (err) {
@@ -448,7 +457,8 @@ export function BankReconciliation({ businessId, currency, accounts = [] }) {
                         </div>
                         <Button
                             onClick={() => setShowNewSession(prev => !prev)}
-                            className="bg-brand-primary hover:bg-brand-primary-dark text-white rounded-xl font-bold text-xs px-5 shadow-lg shadow-brand-primary/20"
+                            disabled={tablesMissing}
+                            className="bg-brand-primary hover:bg-brand-primary-dark text-white rounded-xl font-bold text-xs px-5 shadow-lg shadow-brand-primary/20 disabled:opacity-50"
                         >
                             <Plus className="w-4 h-4 mr-1.5" /> New Reconciliation
                         </Button>
@@ -571,6 +581,15 @@ export function BankReconciliation({ businessId, currency, accounts = [] }) {
                     {loadingSessions ? (
                         <div className="flex items-center justify-center py-12 text-gray-400">
                             <Loader2 className="w-5 h-5 animate-spin mr-2" /> Loading...
+                        </div>
+                    ) : tablesMissing ? (
+                        <div className="rounded-2xl border border-amber-100 bg-amber-50/60 py-16 text-center text-amber-800">
+                            <AlertTriangle className="mx-auto mb-3 h-12 w-12 opacity-40" />
+                            <p className="text-sm font-bold">Bank reconciliation unavailable</p>
+                            <p className="mx-auto mt-1 max-w-md text-xs text-amber-700/90">
+                                {tablesWarning ||
+                                    'Bank reconciliation is not available on this database yet.'}
+                            </p>
                         </div>
                     ) : sessions.length === 0 ? (
                         <div className="text-center py-16 text-gray-400 bg-white rounded-2xl border border-gray-100">

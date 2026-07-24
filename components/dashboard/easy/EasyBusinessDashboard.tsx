@@ -1345,9 +1345,23 @@ export function EasyBusinessDashboard(props: EasyBusinessDashboardProps) {
                         ))
                       )}
                     </div>
-                    <Button variant="outline" size="sm" className="mt-4 h-8 text-xs" onClick={() => onQuickAction?.('expenses')}>
-                      View expenses
-                    </Button>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <Button
+                        size="sm"
+                        className="h-8 text-xs"
+                        onClick={() => onQuickAction?.('log-expense')}
+                      >
+                        Log expense
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 text-xs"
+                        onClick={() => onQuickAction?.('expenses')}
+                      >
+                        View expenses
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
               </div>

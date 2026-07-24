@@ -1,145 +1,248 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
-    Receipt, Plus, Calendar, DollarSign, TrendingUp, TrendingDown,
-    Filter, Download, Pencil, Trash2, ChevronDown, Tag
+    Receipt, Plus, Filter, Trash2, Loader2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { formatDisplayDate } from '@/lib/utils/formatDisplayDate';
 import { ExpenseEntryForm } from '@/components/ExpenseEntryForm';
+import { deleteExpenseAction } from '@/lib/actions/basic/expense';
+import {
+    getExpenseCategoriesForDomain,
+    normalizeExpenseCategory,
+    findExpenseCategory,
+} from '@/lib/utils/expenseCategories';
+import toast from 'react-hot-toast';
+import { showActionError } from '@/lib/utils/formErrorHandler';
 
-const EXPENSE_CATEGORIES = [
-    { value: 'rent', label: 'Rent & Utilities', color: 'bg-brand-50 text-brand-primary' },
-    { value: 'salary', label: 'Salaries & Wages', color: 'bg-wine-100 text-wine-700' },
-    { value: 'supplies', label: 'Office Supplies', color: 'bg-amber-100 text-amber-700' },
-    { value: 'transport', label: 'Transport', color: 'bg-emerald-100 text-emerald-700' },
-    { value: 'marketing', label: 'Marketing', color: 'bg-pink-100 text-pink-700' },
-    { value: 'maintenance', label: 'Maintenance', color: 'bg-orange-100 text-orange-700' },
-    { value: 'taxes', label: 'Taxes & Filing', color: 'bg-red-100 text-red-700' },
-    { value: 'other', label: 'Other', color: 'bg-gray-100 text-gray-700' },
-];
-
-export function ExpenseManager({ businessId, expenses = [], onCreateExpense, onDeleteExpense, currency = 'Rs.', vendors = [] }) {
+export function ExpenseManager({
+    businessId,
+    expenses = [],
+    onCreateExpense,
+    onDeleteExpense,
+    currency = 'Rs.',
+    vendors = [],
+    businessCategory = 'retail-shop',
+}) {
     const [showForm, setShowForm] = useState(false);
     const [filterCategory, setFilterCategory] = useState('all');
+    const [deletingId, setDeletingId] = useState(null);
 
-    const filtered = filterCategory === 'all'
-        ? expenses
-        : expenses.filter(e => e.category === filterCategory);
+    const categories = useMemo(
+        () => getExpenseCategoriesForDomain(businessCategory),
+        [businessCategory]
+    );
 
-    const totalExpenses = expenses.reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
+    const filtered = useMemo(() => {
+        if (filterCategory === 'all') return expenses;
+        return expenses.filter(
+            (e) => normalizeExpenseCategory(e.category) === filterCategory
+        );
+    }, [expenses, filterCategory]);
+
+    const totalExpenses = expenses.reduce(
+        (sum, e) => sum + parseFloat(e.amount || 0),
+        0
+    );
     const thisMonth = expenses
-        .filter(e => new Date(e.date).getMonth() === new Date().getMonth())
+        .filter((e) => new Date(e.date).getMonth() === new Date().getMonth())
         .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
 
-    const breakdown = EXPENSE_CATEGORIES.map(cat => ({
-        ...cat,
-        total: expenses.filter(e => e.category === cat.value).reduce((sum, e) => sum + parseFloat(e.amount || 0), 0),
-    })).filter(c => c.total > 0).sort((a, b) => b.total - a.total);
+    const breakdown = categories
+        .map((cat) => ({
+            ...cat,
+            total: expenses
+                .filter((e) => normalizeExpenseCategory(e.category) === cat.value)
+                .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0),
+        }))
+        .filter((c) => c.total > 0)
+        .sort((a, b) => b.total - a.total);
 
+    const handleDelete = async (expense) => {
+        if (!businessId || !expense?.id) return;
+        const label = expense.description || expense.expense_number || 'this expense';
+        if (
+            typeof window !== 'undefined' &&
+            !window.confirm(`Delete ${label}? This reverses the GL posting.`)
+        ) {
+            return;
+        }
+        setDeletingId(expense.id);
+        try {
+            const result = await deleteExpenseAction(businessId, expense.id);
+            if (result.success) {
+                toast.success('Expense deleted');
+                onDeleteExpense?.();
+            } else {
+                showActionError(result);
+            }
+        } catch (err) {
+            toast.error(err.message || 'Failed to delete expense');
+        } finally {
+            setDeletingId(null);
+        }
+    };
 
     return (
         <div className="space-y-6">
-            {/* KPIs */}
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 lg:gap-4">
                 <Card className="border-none shadow-sm">
                     <CardContent className="p-4">
-                        <p className="text-xs text-gray-500 font-medium">Total Expenses</p>
-                        <p className="text-2xl font-semibold text-gray-900 mt-1">{currency}{totalExpenses.toLocaleString()}</p>
+                        <p className="text-xs font-medium text-gray-500">Total Expenses</p>
+                        <p className="mt-1 text-2xl font-semibold text-gray-900">
+                            {currency}
+                            {totalExpenses.toLocaleString()}
+                        </p>
                     </CardContent>
                 </Card>
                 <Card className="border-none shadow-sm">
                     <CardContent className="p-4">
-                        <p className="text-xs text-gray-500 font-medium">This Month</p>
-                        <p className="text-2xl font-semibold text-red-600 mt-1">{currency}{thisMonth.toLocaleString()}</p>
+                        <p className="text-xs font-medium text-gray-500">This Month</p>
+                        <p className="mt-1 text-2xl font-semibold text-red-600">
+                            {currency}
+                            {thisMonth.toLocaleString()}
+                        </p>
                     </CardContent>
                 </Card>
                 <Card className="border-none shadow-sm">
                     <CardContent className="p-4">
-                        <p className="text-xs text-gray-500 font-medium">Top Category</p>
-                        <p className="text-lg font-bold text-gray-900 mt-1">{breakdown[0]?.label || '--'}</p>
-                        <p className="text-xs text-gray-400">{currency}{(breakdown[0]?.total || 0).toLocaleString()}</p>
+                        <p className="text-xs font-medium text-gray-500">Top Category</p>
+                        <p className="mt-1 text-lg font-bold text-gray-900">
+                            {breakdown[0]?.label || '--'}
+                        </p>
+                        <p className="text-xs text-gray-400">
+                            {currency}
+                            {(breakdown[0]?.total || 0).toLocaleString()}
+                        </p>
                     </CardContent>
                 </Card>
             </div>
 
-            {/* Actions Bar */}
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex w-full items-center gap-2 sm:w-auto">
                     <Select value={filterCategory} onValueChange={setFilterCategory}>
                         <SelectTrigger className="h-9 w-full rounded-xl text-xs sm:w-[180px]">
-                            <Filter className="w-3 h-3 mr-2" />
+                            <Filter className="mr-2 h-3 w-3" />
                             <SelectValue placeholder="All Categories" />
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="all">All Categories</SelectItem>
-                            {EXPENSE_CATEGORIES.map(cat => (
-                                <SelectItem key={cat.value} value={cat.value}>{cat.label}</SelectItem>
+                            {categories.map((cat) => (
+                                <SelectItem key={cat.value} value={cat.value}>
+                                    {cat.label}
+                                </SelectItem>
                             ))}
                         </SelectContent>
                     </Select>
                 </div>
-                <Button onClick={() => setShowForm(true)} className="rounded-xl text-xs font-bold bg-brand-primary hover:bg-brand-primary-dark shadow-lg shadow-brand-primary/20">
-                    <Plus className="w-4 h-4 mr-1" /> Record Expense
+                <Button
+                    onClick={() => setShowForm(true)}
+                    className="rounded-xl bg-brand-primary text-xs font-bold shadow-lg shadow-brand-primary/20 hover:bg-brand-primary-dark"
+                >
+                    <Plus className="mr-1 h-4 w-4" /> Record Expense
                 </Button>
             </div>
 
-            {/* Category Breakdown Bar */}
             {breakdown.length > 0 && (
                 <Card className="border-none shadow-sm">
-                    <CardContent className="p-4 space-y-3">
-                        <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Breakdown</p>
-                        {breakdown.map(cat => (
+                    <CardContent className="space-y-3 p-4">
+                        <p className="text-xs font-bold uppercase tracking-widest text-gray-500">
+                            Breakdown
+                        </p>
+                        {breakdown.map((cat) => (
                             <div key={cat.value} className="flex items-center gap-3">
-                                <Badge className={cn('text-[10px] px-2', cat.color)}>{cat.label}</Badge>
-                                <div className="flex-1 bg-gray-100 rounded-full h-2">
+                                <Badge className={cn('px-2 text-[10px]', cat.color)}>
+                                    {cat.label}
+                                </Badge>
+                                <div className="h-2 flex-1 rounded-full bg-gray-100">
                                     <div
-                                        className="bg-brand-primary h-2 rounded-full transition-all"
-                                        style={{ width: `${Math.min((cat.total / totalExpenses) * 100, 100)}%` }}
+                                        className="h-2 rounded-full bg-brand-primary transition-all"
+                                        style={{
+                                            width: `${Math.min(
+                                                (cat.total / totalExpenses) * 100,
+                                                100
+                                            )}%`,
+                                        }}
                                     />
                                 </div>
-                                <span className="text-xs font-bold text-gray-700 w-24 text-right">{currency}{cat.total.toLocaleString()}</span>
+                                <span className="w-24 text-right text-xs font-bold text-gray-700">
+                                    {currency}
+                                    {cat.total.toLocaleString()}
+                                </span>
                             </div>
                         ))}
                     </CardContent>
                 </Card>
             )}
 
-            {/* Expense List */}
             <Card className="border-none shadow-sm">
                 <CardContent className="p-0">
                     <div className="divide-y divide-gray-100">
                         {filtered.map((expense, idx) => {
-                            const cat = EXPENSE_CATEGORIES.find(c => c.value === expense.category);
+                            const cat =
+                                findExpenseCategory(expense.category, businessCategory) ||
+                                categories.find(
+                                    (c) =>
+                                        c.value ===
+                                        normalizeExpenseCategory(expense.category)
+                                );
                             return (
                                 <motion.div
                                     key={expense.id || idx}
                                     initial={{ opacity: 0 }}
                                     animate={{ opacity: 1 }}
-                                    className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors"
+                                    className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-gray-50"
                                 >
-                                    <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center', cat?.color || 'bg-gray-100 text-gray-500')}>
-                                        <Receipt className="w-4 h-4" />
+                                    <div
+                                        className={cn(
+                                            'flex h-8 w-8 items-center justify-center rounded-lg',
+                                            cat?.color || 'bg-gray-100 text-gray-500'
+                                        )}
+                                    >
+                                        <Receipt className="h-4 w-4" />
                                     </div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-semibold text-gray-900 truncate">{expense.description}</p>
-                                        <p className="text-[10px] text-gray-400">{formatDisplayDate(expense.date)} · {cat?.label || expense.category}</p>
+                                    <div className="min-w-0 flex-1">
+                                        <p className="truncate text-sm font-semibold text-gray-900">
+                                            {expense.description}
+                                        </p>
+                                        <p className="text-[10px] text-gray-400">
+                                            {formatDisplayDate(expense.date)} ·{' '}
+                                            {cat?.label || expense.category}
+                                        </p>
                                     </div>
-                                    <span className="text-sm font-semibold text-red-600">{currency}{parseFloat(expense.amount).toLocaleString()}</span>
+                                    <span className="text-sm font-semibold text-red-600">
+                                        {currency}
+                                        {parseFloat(expense.amount).toLocaleString()}
+                                    </span>
+                                    {onDeleteExpense && (
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-8 w-8 shrink-0 text-gray-400 hover:text-red-600"
+                                            disabled={deletingId === expense.id}
+                                            onClick={() => handleDelete(expense)}
+                                            aria-label="Delete expense"
+                                        >
+                                            {deletingId === expense.id ? (
+                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                            ) : (
+                                                <Trash2 className="h-4 w-4" />
+                                            )}
+                                        </Button>
+                                    )}
                                 </motion.div>
                             );
                         })}
                         {filtered.length === 0 && (
                             <div className="py-12 text-center text-gray-400">
-                                <Receipt className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                                <Receipt className="mx-auto mb-2 h-8 w-8 opacity-30" />
                                 <p className="text-sm">No expenses recorded</p>
                             </div>
                         )}
@@ -150,6 +253,7 @@ export function ExpenseManager({ businessId, expenses = [], onCreateExpense, onD
             {showForm && (
                 <ExpenseEntryForm
                     vendors={vendors}
+                    category={businessCategory}
                     onClose={() => setShowForm(false)}
                     onSave={() => onCreateExpense?.()}
                 />
@@ -157,4 +261,3 @@ export function ExpenseManager({ businessId, expenses = [], onCreateExpense, onD
         </div>
     );
 }
-

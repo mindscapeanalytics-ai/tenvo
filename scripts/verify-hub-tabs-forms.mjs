@@ -293,6 +293,53 @@ else ok('HubMobileBottomNav uses HubTabProvider');
 if (!dashClient.includes('useHubTab') || !dashClient.includes('goToTab')) {
   mark('DashboardClient missing useHubTab/goToTab');
 } else ok('DashboardClient uses HubTabProvider');
+
+// Expense quick-add wiring
+const headerSrc = read('components/layout/Header.jsx');
+if (!headerSrc.includes("modalId: 'expense'") && !headerSrc.includes('modalId: "expense"')) {
+  mark('Header Log Expense missing open-modal expense');
+} else ok('Header Log Expense opens expense modal');
+if (headerSrc.includes("switchTab('finance')") && headerSrc.includes('Log Expense')) {
+  // Allow other switchTab uses; fail only if Log Expense still only switches to finance without modal
+  const logExpenseBlock = headerSrc.includes("modalId: 'expense'") || headerSrc.includes('modalId: "expense"');
+  if (!logExpenseBlock) mark('Header Log Expense still bare switchTab finance');
+}
+if (!dashClient.includes("modalId === 'expense'") && !dashClient.includes('modalId === "expense"')) {
+  mark('DashboardClient missing expense open-modal handler');
+} else ok('DashboardClient handles expense modal');
+if (!dashClient.includes("id === 'log-expense'") && !dashClient.includes("id === \"log-expense\"")) {
+  mark('DashboardClient missing log-expense quick action');
+} else ok('DashboardClient log-expense quick action');
+if (!dashClient.includes("id === 'reconcile-now'")) {
+  mark('DashboardClient missing reconcile-now → reconciliation');
+} else ok('DashboardClient reconcile-now → Bank Reconciliation');
+if (dashClient.includes("'reconcile-now': 'accounting'")) {
+  mark('reconcile-now still maps to accounting in QUICK_VIEW_ACTION_TO_TAB');
+} else ok('reconcile-now no longer maps to Chart of Accounts');
+const expenseForm = read('components/ExpenseEntryForm.jsx');
+const expenseMgr = read('components/finance/ExpenseManager.jsx');
+if (!expenseForm.includes('getExpenseCategoriesForDomain')) {
+  mark('ExpenseEntryForm not using shared expense categories');
+} else ok('ExpenseEntryForm uses shared categories');
+if (!expenseMgr.includes('getExpenseCategoriesForDomain')) {
+  mark('ExpenseManager not using shared expense categories');
+} else ok('ExpenseManager uses shared categories');
+const expenseCatsSrc = read('lib/utils/expenseCategories.js');
+if (!expenseCatsSrc.includes("'milk-shop'") || !expenseCatsSrc.includes('route_fuel')) {
+  mark('milk-shop expense overlay missing route_fuel');
+} else ok('milk-shop expense overlays present');
+if (!expenseCatsSrc.includes('normalizeExpenseCategory') || !expenseCatsSrc.includes("salary: 'salaries'")) {
+  mark('normalizeExpenseCategory missing salary alias');
+} else ok('normalizeExpenseCategory maps legacy labels');
+const easyDash = read('components/dashboard/easy/EasyBusinessDashboard.tsx');
+if (!easyDash.includes("log-expense")) {
+  mark('Easy dashboard missing Log expense CTA');
+} else ok('Easy dashboard Log expense CTA');
+const bankRec = read('components/finance/BankReconciliation.jsx');
+if (!bankRec.includes('tablesMissing')) {
+  mark('BankReconciliation missing tables-missing empty state');
+} else ok('BankReconciliation tables-missing state');
+
 if (!cmdPalette.includes('goToTab') && !cmdPalette.includes('navigateHubTabFromLocation')) {
   mark('CommandPalette still router.push(?tab=)');
 } else ok('CommandPalette shallow tab nav');
