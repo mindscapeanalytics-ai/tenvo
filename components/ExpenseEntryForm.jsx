@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { X, Save, Loader2, DollarSign, Calendar, CreditCard } from 'lucide-react';
+import { X, Save, Loader2, Wallet, Calendar, CreditCard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -55,6 +55,16 @@ export function ExpenseEntryForm({
     });
 
     useEffect(() => {
+        if (business?.id) {
+            setFormData((prev) =>
+                prev.businessId === business.id
+                    ? prev
+                    : { ...prev, businessId: business.id }
+            );
+        }
+    }, [business?.id]);
+
+    useEffect(() => {
         async function fetchAccounts() {
             if (!business?.id) return;
             try {
@@ -91,35 +101,58 @@ export function ExpenseEntryForm({
         });
     };
 
+    const buildExpensePayload = () => {
+        const businessId = business?.id || formData.businessId;
+        const categoryValue = formData.category
+            ? normalizeExpenseCategory(formData.category)
+            : null;
+        const categoryLabel =
+            expenseCategories.find((c) => c.value === categoryValue)?.label ||
+            categoryValue;
+        const description =
+            String(formData.description || '').trim() ||
+            (categoryLabel ? `${categoryLabel} expense` : null);
+        const vendorRaw = String(formData.vendorId || '').trim();
+        const accountRaw = String(formData.accountId || '').trim();
+
+        return {
+            businessId,
+            accountId: accountRaw || null,
+            category: categoryValue,
+            amount: parseFloat(formData.amount),
+            taxAmount: parseFloat(formData.taxAmount || 0),
+            vendorId: vendorRaw || null,
+            paymentMethod: formData.paymentMethod || 'cash',
+            date: formData.date,
+            description,
+            receiptUrl: String(formData.receiptUrl || '').trim() || null,
+        };
+    };
+
     const handleSave = async (e) => {
         e.preventDefault();
 
-        const validation = validateWithSchema(expenseSchema, {
-            ...formData,
-            amount: parseFloat(formData.amount),
-            taxAmount: parseFloat(formData.taxAmount || 0),
-        });
+        const payload = buildExpensePayload();
+
+        if (!payload.businessId) {
+            toast.error('Business is not ready. Refresh and try again.');
+            return;
+        }
+        if (!payload.accountId) {
+            toast.error('Please select an expense account');
+            return;
+        }
+
+        const validation = validateWithSchema(expenseSchema, payload);
         if (!validation.success) {
             const firstError = Object.values(validation.errors)[0];
             toast.error(firstError || 'Please fix validation errors');
             return;
         }
 
-        if (!formData.accountId) {
-            toast.error('Please select an expense account');
-            return;
-        }
-
         setIsSaving(true);
         try {
-            const result = await createExpenseAction({
-                ...formData,
-                category: formData.category
-                    ? normalizeExpenseCategory(formData.category)
-                    : '',
-                amount: parseFloat(formData.amount),
-                taxAmount: parseFloat(formData.taxAmount || 0),
-            });
+            const result = await createExpenseAction(payload);
 
             if (result.success) {
                 toast.success('Expense recorded successfully');
@@ -145,7 +178,7 @@ export function ExpenseEntryForm({
                 <CardHeader className="flex shrink-0 flex-row items-center justify-between border-b bg-gradient-to-r from-red-900 to-red-800 px-3 py-3 text-white sm:p-6">
                     <div className="flex min-w-0 items-center gap-3 sm:gap-4">
                         <div className="shrink-0 rounded-xl bg-white/10 p-2 text-white ring-1 ring-white/20 sm:rounded-2xl sm:p-3">
-                            <DollarSign className="h-5 w-5 sm:h-6 sm:w-6" />
+                            <Wallet className="h-5 w-5 sm:h-6 sm:w-6" />
                         </div>
                         <div className="min-w-0">
                             <CardTitle className="text-base font-semibold uppercase tracking-tighter sm:text-2xl">
@@ -219,7 +252,7 @@ export function ExpenseEntryForm({
                                     <Input
                                         type="number"
                                         step="0.01"
-                                        className="h-12 rounded-xl border-gray-200 pl-10 text-lg font-bold shadow-sm transition-all focus:ring-2 focus:ring-red-500"
+                                        className="h-12 rounded-xl border-gray-200 pl-12 text-lg font-bold tabular-nums shadow-sm transition-all focus:ring-2 focus:ring-red-500"
                                         placeholder="0.00"
                                         value={formData.amount}
                                         onChange={(e) =>
@@ -230,7 +263,9 @@ export function ExpenseEntryForm({
                                         }
                                         required
                                     />
-                                    <DollarSign className="pointer-events-none absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
+                                    <span className="pointer-events-none absolute left-3 top-3.5 text-xs font-semibold text-gray-400">
+                                        {currency || ''}
+                                    </span>
                                 </div>
                             </div>
                             <div className="space-y-2">
