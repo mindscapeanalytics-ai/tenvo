@@ -79,6 +79,7 @@ export function MilkRouteHisab({ businessId, category }) {
   const [dayKpis, setDayKpis] = useState(null);
   const [billKpis, setBillKpis] = useState(null);
   const [filter, setFilter] = useState('');
+  const [dayDirty, setDayDirty] = useState(false);
 
   const billingPeriod = billKind === 'week' ? weekPeriod : monthPeriod;
 
@@ -101,6 +102,7 @@ export function MilkRouteHisab({ businessId, category }) {
       setProducts(res.products || []);
       setRows(res.rows || []);
       setDayKpis(res.kpis || null);
+      setDayDirty(false);
     } catch (e) {
       notify.error(e?.message || 'Failed to load day sheet');
     } finally {
@@ -268,6 +270,7 @@ export function MilkRouteHisab({ businessId, category }) {
 
   const updateQty = (customerId, productId, value) => {
     const next = value === '' ? '' : value;
+    setDayDirty(true);
     setRows((prev) =>
       prev.map((r) => {
         if (r.customerId !== customerId) return r;
@@ -283,6 +286,7 @@ export function MilkRouteHisab({ businessId, category }) {
   };
 
   const updateRowField = (customerId, field, value) => {
+    setDayDirty(true);
     setRows((prev) =>
       prev.map((r) => (r.customerId === customerId ? { ...r, [field]: value } : r))
     );
@@ -332,22 +336,32 @@ export function MilkRouteHisab({ businessId, category }) {
         category,
         period: billingPeriod,
       });
+      // Always refresh so partial creates show invoice numbers
+      await loadBills();
       if (!res?.success) {
         notify.error(res?.error || 'Bill generation failed');
         return;
       }
       const created = res.created?.length || 0;
       const skipped = res.skipped?.length || 0;
+      const failed = res.failed?.length || 0;
       const kindLabel = billKind === 'week' ? 'weekly' : 'monthly';
-      notify.compactSave(
-        created
-          ? `Created ${created} ${kindLabel} bill${created === 1 ? '' : 's'}${skipped ? ` (${skipped} skipped)` : ''}`
-          : skipped
-            ? `No new bills (${skipped} skipped)`
-            : 'No new bills'
-      );
-      await loadBills();
+      if (created) {
+        notify.compactSave(
+          `Created ${created} ${kindLabel} bill${created === 1 ? '' : 's'}${skipped ? ` · ${skipped} skipped` : ''}${failed ? ` · ${failed} failed` : ''}`
+        );
+      } else if (failed) {
+        notify.error(res.failed[0]?.reason || 'Bill generation failed');
+      } else if (skipped) {
+        notify.compactSave(`No new bills (${skipped} already billed or empty)`);
+      } else {
+        notify.compactSave('No deliveries to bill in this period');
+      }
+      if (failed && created) {
+        notify.error(`${failed} customer bill${failed === 1 ? '' : 's'} failed: ${res.failed[0]?.reason || 'error'}`);
+      }
     } catch (e) {
+      await loadBills();
       notify.error(e?.message || 'Bill generation failed');
     } finally {
       setGenerating(false);
@@ -667,11 +681,19 @@ export function MilkRouteHisab({ businessId, category }) {
       <MobileStatStrip items={view === 'daily' ? dayStatItems : billStatItems} layout="scroll" />
       <HisabKpiStrip items={view === 'daily' ? dayStatItems : billStatItems} />
 
+      {view === 'daily' && dayDirty ? (
+        <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+          Unsaved changes. Click <span className="font-semibold">Save day</span> so deliveries are
+          recorded and appear on weekly/monthly bills.
+        </p>
+      ) : null}
+
       {view === 'bills' && periodLabel ? (
         <p className="text-xs text-gray-500">
           Billing period: <span className="font-semibold text-gray-700">{periodLabel}</span>
           {' · '}58mm thermal (POS printer)
           {' · '}Hub alerts, email, and WhatsApp reminders
+          {' · '}Use Generate to create invoices (then invoice number replaces Not billed)
         </p>
       ) : null}
 
@@ -965,7 +987,9 @@ function BillsSheet({
                       {row.invoiceNumber}
                     </button>
                   ) : (
-                    <span className="text-gray-400">Not billed</span>
+                    <span className="text-gray-400" title="Click Generate weekly/monthly bills">
+                      Not billed
+                    </span>
                   )}
                 </td>
                 <td className="px-3 py-2 capitalize text-gray-600">

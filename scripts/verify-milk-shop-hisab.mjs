@@ -18,7 +18,11 @@ import {
   buildMilkHisabPeriodKpis,
   shortMilkHisabProductLabel,
   isMilkHisabWalkInCustomer,
+  milkHisabPeriodsOverlap,
+  resolveMilkHisabInvoiceForPeriod,
+  extractMilkHisabPeriodFromNotes,
 } from '../lib/storefront/milkShopHisab.js';
+import { resolveDomainFieldKey } from '../lib/utils/domainHelpers.ts';
 import { isMilkShopStore } from '../lib/storefront/milkShopStorefront.js';
 import { resolveDomainKey } from '../lib/config/domainKeyAliases.js';
 import { getDomainKnowledge } from '../lib/domainKnowledge.js';
@@ -41,14 +45,35 @@ assert(!isMilkHisabRelevant('supermarket'), 'supermarket must not be hisab-relev
 assert(!isMilkHisabRelevant('dairy-farm'), 'dairy-farm must not be hisab-relevant');
 assert(isMilkShopStore('milk-shop') === isMilkHisabRelevant('milk-shop'), 'gate should align with isMilkShopStore');
 
-assert(toMilkHisabDateKey('2026-07-23T12:00:00.000Z') === '2026-07-23', 'date key YYYY-MM-DD');
+assert(toMilkHisabDateKey('2026-07-23') === '2026-07-23', 'date key YYYY-MM-DD passthrough');
 assert(toMilkHisabPeriodKey('2026-07-23') === '2026-07', 'period key YYYY-MM');
 assert(toMilkHisabWeekKey('2026-07-23') === '2026-W30', 'ISO week key for 2026-07-23');
+// Local calendar (not UTC): afternoon PK must not shift the day key
+{
+  const localAfternoon = new Date(2026, 6, 23, 23, 30, 0); // 23 Jul 2026 local
+  assert(toMilkHisabDateKey(localAfternoon) === '2026-07-23', 'local date key ignores UTC shift');
+}
 assert(milkHisabPeriodMarker('2026-07') === '[milk_hisab_period=2026-07]', 'period marker format');
 assert(milkHisabPeriodMarker('2026-W30') === '[milk_hisab_period=2026-W30]', 'week marker format');
 assert(invoiceHasMilkHisabPeriod('Milk route hisab 2026-07. [milk_hisab_period=2026-07]', '2026-07'), 'notes marker detect');
 assert(invoiceHasMilkHisabPeriod('Weekly. [milk_hisab_period=2026-W30]', '2026-W30'), 'week notes marker');
 assert(!invoiceHasMilkHisabPeriod('other notes', '2026-07'), 'unrelated notes must not match');
+assert(extractMilkHisabPeriodFromNotes('x [milk_hisab_period=2026-W30] y') === '2026-W30', 'extract period');
+assert(milkHisabPeriodsOverlap('2026-W30', '2026-07'), 'week overlaps containing month');
+assert(!milkHisabPeriodsOverlap('2026-W30', '2026-08'), 'week does not overlap other month');
+{
+  const invs = [
+    {
+      id: 'i1',
+      customer_id: 'c1',
+      invoice_number: 'INV-1',
+      notes: 'Milk [milk_hisab_period=2026-W30]',
+      payment_status: 'unpaid',
+    },
+  ];
+  const hit = resolveMilkHisabInvoiceForPeriod(invs, 'c1', '2026-07');
+  assert(hit?.invoice_number === 'INV-1', 'month summary finds overlapping week invoice');
+}
 
 const monthBounds = parseMilkHisabBillingPeriod('2026-07');
 assert(monthBounds.kind === 'month', 'month kind');
@@ -132,6 +157,20 @@ assert(
 );
 assert(knowledge?.fieldConfig?.houseno, 'fieldConfig.houseno required');
 assert(knowledge?.fieldConfig?.dailymilkkg, 'fieldConfig.dailymilkkg required');
+assert(knowledge?.fieldConfig?.preferredpayment, 'fieldConfig.preferredpayment required');
+assert(
+  resolveDomainFieldKey('Preferred Payment Method', 'milk-shop') === 'preferredpayment',
+  'Preferred Payment Method alias → preferredpayment'
+);
+assert(
+  resolveDomainFieldKey('Preferred Payment', 'milk-shop') === 'preferredpayment',
+  'Preferred Payment → preferredpayment'
+);
+assert(
+  Array.isArray(knowledge?.pakistaniFeatures?.popularBrands) &&
+    knowledge.pakistaniFeatures.popularBrands.some((b) => /Olper/i.test(b)),
+  'PK milk brands pre-fed'
+);
 assert(
   Array.isArray(knowledge?.reports) && knowledge.reports.includes('Route Hisab'),
   'reports should list Route Hisab'
@@ -170,6 +209,10 @@ for (const name of [
   assert(actionSrc.includes(`export async function ${name}`), `missing action ${name}`);
 }
 assert(actionSrc.includes('skip_inventory: true'), 'month invoices must skip inventory');
+assert(actionSrc.includes('skip_credit_check: true'), 'hisab invoices skip credit guard');
+assert(actionSrc.includes('resolveMilkHisabInvoiceForPeriod'), 'period billed uses overlap resolver');
+assert(actionSrc.includes('failed.push'), 'generate must capture per-customer failures');
+assert(actionSrc.includes('MILK_HISAB_PERIOD_PREFIX'), 'period summary loads all hisab invoices');
 assert(actionSrc.includes('isMilkHisabRelevant'), 'actions must gate on isMilkHisabRelevant');
 assert(actionSrc.includes('parseMilkHisabBillingPeriod'), 'actions must parse week/month periods');
 assert(actionSrc.includes('buildMilkHisabPeriodKpis'), 'period summary must build KPIs');
