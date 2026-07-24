@@ -15,6 +15,9 @@ import {
   parseMilkHisabBillingPeriod,
   milkHisabPeriodMarker,
   invoiceHasMilkHisabPeriod,
+  buildMilkHisabPeriodKpis,
+  shortMilkHisabProductLabel,
+  isMilkHisabWalkInCustomer,
 } from '../lib/storefront/milkShopHisab.js';
 import { isMilkShopStore } from '../lib/storefront/milkShopStorefront.js';
 import { resolveDomainKey } from '../lib/config/domainKeyAliases.js';
@@ -105,6 +108,23 @@ assert(prefs.deliveryActive === true, 'delivery active');
 const inactive = readMilkCustomerPrefs({ domain_data: { deliveryactive: 'No' } });
 assert(inactive.deliveryActive === false, 'delivery inactive when No');
 
+assert(isMilkHisabWalkInCustomer('Walk-in Guest'), 'walk-in detect');
+assert(!isMilkHisabWalkInCustomer('Zeeshan'), 'named customer is not walk-in');
+assert(shortMilkHisabProductLabel('Anhaar Farm Fresh Milk (kg)', 18).length <= 18, 'short product label');
+
+const kpi = buildMilkHisabPeriodKpis([
+  { amount: 100, billed: false, stopCount: 2 },
+  { amount: 200, billed: true, paymentStatus: 'unpaid', stopCount: 3 },
+  { amount: 50, billed: true, paymentStatus: 'paid', stopCount: 1 },
+  { amount: 0, billed: false, stopCount: 1 },
+]);
+assert(kpi.customers === 3, 'KPI customers ignores zero unbilled');
+assert(kpi.unbilledCount === 1 && kpi.unbilledAmount === 100, 'KPI unbilled');
+assert(kpi.unpaidCount === 1 && kpi.unpaidAmount === 200, 'KPI unpaid');
+assert(kpi.paidCount === 1 && kpi.paidAmount === 50, 'KPI paid');
+assert(kpi.totalAmount === 350, 'KPI period total');
+assert(kpi.deliveryDays === 6, 'KPI delivery days');
+
 const knowledge = getDomainKnowledge('milk-shop');
 assert(
   Array.isArray(knowledge?.customerFields) && knowledge.customerFields.includes('House No'),
@@ -152,6 +172,9 @@ for (const name of [
 assert(actionSrc.includes('skip_inventory: true'), 'month invoices must skip inventory');
 assert(actionSrc.includes('isMilkHisabRelevant'), 'actions must gate on isMilkHisabRelevant');
 assert(actionSrc.includes('parseMilkHisabBillingPeriod'), 'actions must parse week/month periods');
+assert(actionSrc.includes('buildMilkHisabPeriodKpis'), 'period summary must build KPIs');
+assert(actionSrc.includes('is_deleted: true'), 'save must soft-delete empty stops');
+assert(actionSrc.includes('meaningfulLines'), 'period summary must skip empty line stops');
 
 const ui = resolve(root, 'components/milk/MilkRouteHisab.jsx');
 assert(existsSync(ui), 'MilkRouteHisab.jsx must exist');
@@ -161,6 +184,9 @@ assert(uiSrc.includes('Generate weekly') || uiSrc.includes('weekly'), 'UI must s
 assert(uiSrc.includes('type="week"'), 'UI must use week picker');
 assert(uiSrc.includes('sendMilkHisabReminderAction'), 'UI must wire reminders');
 assert(uiSrc.includes('Remind unpaid'), 'UI must expose bulk remind');
+assert(uiSrc.includes('HisabKpiStrip') || uiSrc.includes('billStatItems'), 'UI must render period KPIs');
+assert(uiSrc.includes('MobileStatStrip'), 'UI must render mobile KPI strip');
+assert(uiSrc.includes('shortMilkHisabProductLabel'), 'UI must shorten product headers');
 
 const remindHelpers = resolve(root, 'lib/storefront/milkShopHisabReminders.js');
 assert(existsSync(remindHelpers), 'milkShopHisabReminders.js must exist');

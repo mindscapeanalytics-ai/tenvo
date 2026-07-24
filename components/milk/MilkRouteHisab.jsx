@@ -20,7 +20,7 @@ import { formatCurrency } from '@/lib/currency';
 import notify from '@/lib/utils/appToast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { MobileTabHeader } from '@/components/mobile/MobileTabHeader';
+import { MobileTabHeader, MobileStatStrip } from '@/components/mobile/MobileTabHeader';
 import { HUB_MOBILE_ROOT } from '@/lib/utils/mobileLayout';
 import { navigateHubTab } from '@/lib/utils/hubTabNavigation';
 import {
@@ -36,8 +36,11 @@ import {
   toMilkHisabDateKey,
   toMilkHisabPeriodKey,
   toMilkHisabWeekKey,
+  shortMilkHisabProductLabel,
+  buildMilkHisabPeriodKpis,
 } from '@/lib/storefront/milkShopHisab';
 import { printMilkHisabThermalBill, printMilkHisabThermalBillFromRow } from '@/lib/print/milkHisabThermalBill';
+import { MARKETING_STAT_VALUE } from '@/lib/utils/typography';
 
 function todayKey() {
   return toMilkHisabDateKey(new Date());
@@ -73,6 +76,8 @@ export function MilkRouteHisab({ businessId, category }) {
   const [billRows, setBillRows] = useState([]);
   const [productColumns, setProductColumns] = useState([]);
   const [periodLabel, setPeriodLabel] = useState('');
+  const [dayKpis, setDayKpis] = useState(null);
+  const [billKpis, setBillKpis] = useState(null);
   const [filter, setFilter] = useState('');
 
   const billingPeriod = billKind === 'week' ? weekPeriod : monthPeriod;
@@ -90,10 +95,12 @@ export function MilkRouteHisab({ businessId, category }) {
         notify.error(res?.error || 'Failed to load day sheet');
         setRows([]);
         setProducts([]);
+        setDayKpis(null);
         return;
       }
       setProducts(res.products || []);
       setRows(res.rows || []);
+      setDayKpis(res.kpis || null);
     } catch (e) {
       notify.error(e?.message || 'Failed to load day sheet');
     } finally {
@@ -115,11 +122,13 @@ export function MilkRouteHisab({ businessId, category }) {
         setBillRows([]);
         setProductColumns([]);
         setPeriodLabel('');
+        setBillKpis(null);
         return;
       }
       setBillRows(res.rows || []);
       setProductColumns(res.productColumns || []);
       setPeriodLabel(res.label || billingPeriod);
+      setBillKpis(res.kpis || buildMilkHisabPeriodKpis(res.rows || []));
     } catch (e) {
       notify.error(e?.message || 'Failed to load bill summary');
     } finally {
@@ -134,13 +143,22 @@ export function MilkRouteHisab({ businessId, category }) {
 
   const visibleRows = useMemo(() => {
     const q = filter.trim().toLowerCase();
-    if (!q) return rows;
-    return rows.filter(
-      (r) =>
-        String(r.customerName || '').toLowerCase().includes(q) ||
-        String(r.houseNo || '').toLowerCase().includes(q) ||
-        String(r.routeLabel || '').toLowerCase().includes(q)
-    );
+    let list = rows;
+    if (q) {
+      list = list.filter(
+        (r) =>
+          String(r.customerName || '').toLowerCase().includes(q) ||
+          String(r.houseNo || '').toLowerCase().includes(q) ||
+          String(r.routeLabel || '').toLowerCase().includes(q)
+      );
+    }
+    return [...list].sort((a, b) => {
+      const houseCmp = String(a.houseNo || '').localeCompare(String(b.houseNo || ''), undefined, {
+        numeric: true,
+      });
+      if (houseCmp !== 0) return houseCmp;
+      return String(a.customerName || '').localeCompare(String(b.customerName || ''));
+    });
   }, [rows, filter]);
 
   const visibleBillRows = useMemo(() => {
@@ -154,6 +172,7 @@ export function MilkRouteHisab({ businessId, category }) {
   }, [billRows, filter]);
 
   const dayTotal = useMemo(() => {
+    if (dayKpis?.dayTotal != null) return Number(dayKpis.dayTotal) || 0;
     let amount = 0;
     for (const row of rows) {
       for (const p of products) {
@@ -162,11 +181,89 @@ export function MilkRouteHisab({ businessId, category }) {
       }
     }
     return Math.round(amount * 100) / 100;
-  }, [rows, products]);
+  }, [rows, products, dayKpis]);
 
-  const billTotal = useMemo(
-    () => Math.round(billRows.reduce((s, r) => s + (Number(r.amount) || 0), 0) * 100) / 100,
-    [billRows]
+  const liveBillKpis = useMemo(() => billKpis || buildMilkHisabPeriodKpis(billRows), [billKpis, billRows]);
+
+  const dayStatItems = useMemo(() => {
+    let deliveredLive = 0;
+    let housesSetLive = 0;
+    for (const row of rows) {
+      if (Object.values(row.qtyByProduct || {}).some((q) => Number(q) > 0)) deliveredLive += 1;
+      if (String(row.houseNo || '').trim()) housesSetLive += 1;
+    }
+    const onRoute = rows.length;
+    const pending = Math.max(0, onRoute - deliveredLive);
+    return [
+      {
+        label: 'On route',
+        value: onRoute,
+        hint: 'Customers today',
+      },
+      {
+        label: 'Delivered',
+        value: deliveredLive,
+        valueTone: 'text-sky-700',
+        hint: 'With qty entered',
+      },
+      {
+        label: 'Pending',
+        value: pending,
+        valueTone: pending ? 'text-amber-700' : 'text-gray-900',
+        hint: 'Still zero qty',
+        alert: pending > 0 && deliveredLive > 0,
+      },
+      {
+        label: 'Day total',
+        value: formatCurrency(dayTotal, currency),
+        valueTone: 'text-gray-900',
+      },
+      {
+        label: 'Houses set',
+        value: housesSetLive,
+        hint: 'House no filled',
+      },
+    ];
+  }, [rows, dayTotal, currency]);
+
+  const billStatItems = useMemo(
+    () => [
+      {
+        label: 'Customers',
+        value: liveBillKpis.customers || 0,
+        hint: periodLabel || 'This period',
+      },
+      {
+        label: 'Period total',
+        value: formatCurrency(liveBillKpis.totalAmount || 0, currency),
+      },
+      {
+        label: 'Unbilled',
+        value: formatCurrency(liveBillKpis.unbilledAmount || 0, currency),
+        valueTone: liveBillKpis.unbilledCount ? 'text-amber-700' : 'text-gray-900',
+        hint: `${liveBillKpis.unbilledCount || 0} to generate`,
+        alert: (liveBillKpis.unbilledCount || 0) > 0,
+      },
+      {
+        label: 'Unpaid',
+        value: formatCurrency(liveBillKpis.unpaidAmount || 0, currency),
+        valueTone: liveBillKpis.unpaidCount ? 'text-rose-700' : 'text-gray-900',
+        hint: `${liveBillKpis.unpaidCount || 0} billed open`,
+        alert: (liveBillKpis.unpaidCount || 0) > 0,
+      },
+      {
+        label: 'Paid',
+        value: formatCurrency(liveBillKpis.paidAmount || 0, currency),
+        valueTone: 'text-emerald-700',
+        hint: `${liveBillKpis.paidCount || 0} collected`,
+      },
+      {
+        label: 'Stops',
+        value: liveBillKpis.deliveryDays || 0,
+        hint: 'Delivery days logged',
+      },
+    ],
+    [liveBillKpis, currency, periodLabel]
   );
 
   const updateQty = (customerId, productId, value) => {
@@ -404,8 +501,9 @@ export function MilkRouteHisab({ businessId, category }) {
       <div className="hidden lg:flex lg:items-start lg:justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold text-gray-900">Route Hisab</h2>
-          <p className="text-sm text-gray-500">
-            Doorstep delivery log, then weekly or monthly 58mm thermal bills for collection.
+          <p className="text-sm text-gray-500 max-w-2xl">
+            Log doorstep deliveries by day. Switch to Bills for week or month totals, 58mm thermal
+            print, and unpaid reminders.
           </p>
         </div>
         <Button
@@ -504,11 +602,6 @@ export function MilkRouteHisab({ businessId, category }) {
         />
 
         <div className="ml-auto flex flex-wrap items-center gap-2">
-          <span className="text-sm tabular-nums text-gray-600">
-            {view === 'daily'
-              ? `Day total ${formatCurrency(dayTotal, currency)}`
-              : `${billKind === 'week' ? 'Week' : 'Month'} total ${formatCurrency(billTotal, currency)}`}
-          </span>
           {view === 'daily' ? (
             <Button type="button" size="sm" onClick={handleSaveDay} disabled={saving || loading}>
               {saving ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Save className="h-4 w-4 mr-1.5" />}
@@ -520,7 +613,7 @@ export function MilkRouteHisab({ businessId, category }) {
                 type="button"
                 size="sm"
                 onClick={handleGenerateInvoices}
-                disabled={generating || loading}
+                disabled={generating || loading || !(liveBillKpis.unbilledCount > 0)}
               >
                 {generating ? (
                   <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
@@ -534,7 +627,11 @@ export function MilkRouteHisab({ businessId, category }) {
                 size="sm"
                 variant="outline"
                 onClick={handleBulkRemind}
-                disabled={bulkReminding || loading || !billRows.some((r) => Number(r.amount) > 0)}
+                disabled={
+                  bulkReminding ||
+                  loading ||
+                  !((liveBillKpis.unpaidCount || 0) + (liveBillKpis.unbilledCount || 0) > 0)
+                }
               >
                 {bulkReminding ? (
                   <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
@@ -551,10 +648,14 @@ export function MilkRouteHisab({ businessId, category }) {
         </div>
       </div>
 
+      <MobileStatStrip items={view === 'daily' ? dayStatItems : billStatItems} layout="scroll" />
+      <HisabKpiStrip items={view === 'daily' ? dayStatItems : billStatItems} />
+
       {view === 'bills' && periodLabel ? (
         <p className="text-xs text-gray-500">
           Billing period: <span className="font-semibold text-gray-700">{periodLabel}</span>
           {' · '}58mm thermal (POS printer)
+          {' · '}Hub alerts, email, and WhatsApp reminders
         </p>
       ) : null}
 
@@ -586,6 +687,35 @@ export function MilkRouteHisab({ businessId, category }) {
           onRemindEmail={(row) => handleRemindCustomer(row, ['hub', 'email'])}
         />
       )}
+    </div>
+  );
+}
+
+function HisabKpiStrip({ items = [] }) {
+  if (!items.length) return null;
+  const cols =
+    items.length <= 4
+      ? 'lg:grid-cols-4'
+      : items.length === 5
+        ? 'lg:grid-cols-5'
+        : 'lg:grid-cols-3 xl:grid-cols-6';
+  return (
+    <div className={cn('hidden lg:grid gap-2', cols)}>
+      {items.map((item) => (
+        <div
+          key={item.label}
+          className={cn(
+            'rounded-xl border bg-white px-3 py-2.5 shadow-sm min-w-0',
+            item.alert ? 'border-amber-200' : 'border-gray-100'
+          )}
+        >
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">{item.label}</p>
+          <p className={cn(MARKETING_STAT_VALUE, 'mt-0.5 text-base text-gray-900 truncate', item.valueTone)}>
+            {item.value}
+          </p>
+          {item.hint ? <p className="mt-0.5 text-[11px] text-gray-400 truncate">{item.hint}</p> : null}
+        </div>
+      ))}
     </div>
   );
 }
@@ -637,8 +767,9 @@ function DailySheet({ products, rows, currency, onQty, onField }) {
             </div>
             <div className="mt-2 grid grid-cols-2 gap-2">
               {products.map((p) => (
-                <label key={p.id} className="text-xs text-gray-500">
-                  {p.name} ({p.unit || 'pcs'})
+                <label key={p.id} className="text-xs text-gray-500" title={`${p.name} (${p.unit || 'pcs'})`}>
+                  {shortMilkHisabProductLabel(p.name, 28)}
+                  <span className="font-normal text-gray-400"> ({p.unit || 'pcs'})</span>
                   <Input
                     type="number"
                     min="0"
@@ -674,8 +805,12 @@ function DailySheet({ products, rows, currency, onQty, onField }) {
               <th className="px-3 py-2.5 whitespace-nowrap">Customer</th>
               <th className="px-3 py-2.5 whitespace-nowrap">Route</th>
               {products.map((p) => (
-                <th key={p.id} className="px-3 py-2.5 whitespace-nowrap">
-                  {p.name}
+                <th
+                  key={p.id}
+                  className="px-3 py-2.5 whitespace-nowrap max-w-[9rem]"
+                  title={`${p.name} (${p.unit || 'pcs'})`}
+                >
+                  {shortMilkHisabProductLabel(p.name, 18)}
                   <span className="ml-1 font-normal normal-case text-gray-400">
                     ({p.unit || 'pcs'})
                   </span>
@@ -766,8 +901,12 @@ function BillsSheet({
             <th className="px-3 py-2.5">Customer</th>
             <th className="px-3 py-2.5">Days</th>
             {productColumns.map((p) => (
-              <th key={p.id} className="px-3 py-2.5 whitespace-nowrap">
-                {p.name}
+              <th
+                key={p.id}
+                className="px-3 py-2.5 whitespace-nowrap max-w-[8rem]"
+                title={p.name}
+              >
+                {shortMilkHisabProductLabel(p.name, 16)}
               </th>
             ))}
             <th className="px-3 py-2.5 text-right">Amount</th>
