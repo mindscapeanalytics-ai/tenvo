@@ -27,6 +27,7 @@ import {
   POS_RELEVANT_DOMAINS, HOSPITALITY_DOMAINS, CAMPAIGN_RELEVANT_DOMAINS,
   isPosRelevant, isHospitality, isCampaignRelevant, isMembershipRelevant
 } from '@/lib/config/domains';
+import { isMilkHisabRelevant } from '@/lib/storefront/milkShopHisab';
 import { prefetchHubTabChunk } from '@/lib/utils/hubTabNavigation';
 import { useHubTab } from '@/lib/context/HubTabContext';
 import toast from 'react-hot-toast';
@@ -69,6 +70,7 @@ const ADVANCED_NAV_SECTIONS = [
       { key: 'inventory', label: 'Inventory & Stock', icon: Package, alwaysShow: true },
       { key: 'invoices', label: 'Sales & Invoicing', icon: FileText, alwaysShow: true },
       { key: 'customers', label: 'Customers', icon: Users, alwaysShow: true },
+      { key: 'route-hisab', label: 'Route Hisab', icon: BookOpen, domainRule: 'milkHisab' },
       { key: 'vendors', label: 'Vendors & Procurement', icon: Building2, alwaysShow: true },
       { key: 'purchases', label: 'Purchase Orders', icon: Truck, alwaysShow: true },
     ]
@@ -141,6 +143,7 @@ const EASY_NAV_SECTIONS = [
     items: [
       { key: 'invoices', label: 'Invoices', icon: FileText, alwaysShow: true },
       { key: 'customers', label: 'Customers', icon: Users, alwaysShow: true },
+      { key: 'route-hisab', label: 'Route Hisab', icon: BookOpen, domainRule: 'milkHisab' },
       { key: 'memberships', label: 'Memberships', icon: BadgeCheck, domainRule: 'membershipRelevant' },
       { key: 'orders', label: 'Storefront Orders', icon: Package, alwaysShow: true, badge: 'NEW' },
       { key: 'inquiries', label: 'Customer Inquiries', icon: Inbox, alwaysShow: true },
@@ -226,6 +229,7 @@ export function Sidebar({ isOpen, onClose, isSidebarCollapsed, setIsSidebarColla
   const hospitalityDomain = isHospitalityDomain(category);
   const campaignRelevant = isCampaignRelevantDomain(category, domainKnowledge);
   const membershipRelevant = isMembershipRelevant(category);
+  const milkHisabRelevant = isMilkHisabRelevant(category);
   const [hasHydrated, setHasHydrated] = useState(false);
 
   useEffect(() => {
@@ -298,6 +302,9 @@ export function Sidebar({ isOpen, onClose, isSidebarCollapsed, setIsSidebarColla
       return { visible: false, locked: false, requiredPlan: null };
     }
     if (item.domainRule === 'membershipRelevant' && !membershipRelevant) {
+      return { visible: false, locked: false, requiredPlan: null };
+    }
+    if (item.domainRule === 'milkHisab' && !milkHisabRelevant) {
       return { visible: false, locked: false, requiredPlan: null };
     }
 

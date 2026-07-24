@@ -293,6 +293,8 @@ model businesses {
   customer_memberships         customer_memberships[]
   membership_events            membership_events[]
   membership_benefits          membership_benefits[]
+  milk_delivery_stops          milk_delivery_stops[]
+  milk_delivery_lines          milk_delivery_lines[]
   affiliates                   affiliates?                    @relation(fields: [affiliate_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
   referrals                    referrals[]
   custom_domains               business_custom_domains[]
@@ -426,6 +428,7 @@ model customers {
   restaurant_orders      restaurant_orders[]
   inventory_reservations inventory_reservations[]
   customer_memberships   customer_memberships[]
+  milk_delivery_stops    milk_delivery_stops[]
 
   @@index([domain_data], map: "idx_customers_domain_data", type: Gin)
   @@index([business_id, email])
@@ -843,6 +846,7 @@ model products {
   product_specifications  product_specifications[]
   product_reviews         product_reviews[]
   membership_plans        membership_plans[]
+  milk_delivery_lines     milk_delivery_lines[]
 
   /// Soft-delete-aware partial unique indexes (migration 20260713)
   /// - products_business_sku_active_key: WHERE is_deleted = false AND sku IS NOT NULL
@@ -2843,4 +2847,47 @@ model referrals {
 
   @@index([affiliate_id])
   @@index([business_id])
+}
+
+/// Milk-shop doorstep hisab: one stop per customer per calendar day.
+model milk_delivery_stops {
+  id                     String                @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  business_id            String                @db.Uuid
+  delivery_date          DateTime              @db.Date
+  customer_id            String                @db.Uuid
+  house_no_snapshot      String?               @db.VarChar(120)
+  customer_name_snapshot String?
+  route_label            String?               @db.VarChar(120)
+  notes                  String?
+  status                 String                @default("confirmed") @db.VarChar(32)
+  created_at             DateTime              @default(now()) @db.Timestamptz(6)
+  updated_at             DateTime              @default(now()) @updatedAt @db.Timestamptz(6)
+  is_deleted             Boolean               @default(false)
+  deleted_at             DateTime?             @db.Timestamptz(6)
+  businesses             businesses            @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  customers              customers             @relation(fields: [customer_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  lines                  milk_delivery_lines[]
+
+  @@unique([business_id, delivery_date, customer_id], name: "business_id_delivery_date_customer_id", map: "milk_delivery_stops_business_date_customer_key")
+  @@index([business_id, delivery_date], map: "idx_milk_delivery_stops_business_date")
+  @@index([business_id, customer_id], map: "idx_milk_delivery_stops_business_customer")
+}
+
+model milk_delivery_lines {
+  id                     String              @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  business_id            String              @db.Uuid
+  stop_id                String              @db.Uuid
+  product_id             String              @db.Uuid
+  product_name_snapshot  String?
+  unit_snapshot          String?             @db.VarChar(32)
+  quantity               Decimal             @default(0) @db.Decimal(12, 3)
+  unit_price_snapshot    Decimal             @default(0) @db.Decimal(12, 2)
+  created_at             DateTime            @default(now()) @db.Timestamptz(6)
+  updated_at             DateTime            @default(now()) @updatedAt @db.Timestamptz(6)
+  businesses             businesses          @relation(fields: [business_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  stop                   milk_delivery_stops @relation(fields: [stop_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  products               products            @relation(fields: [product_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@unique([stop_id, product_id], map: "milk_delivery_lines_stop_product_key")
+  @@index([business_id, product_id], map: "idx_milk_delivery_lines_business_product")
 }

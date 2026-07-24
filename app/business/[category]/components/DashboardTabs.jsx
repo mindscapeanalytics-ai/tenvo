@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Package } from 'lucide-react';
 import { lazyHubTab } from '@/lib/utils/lazyHubTab';
 import { isPosRelevant, isHospitality, isCampaignRelevant, isMembershipRelevant } from '@/lib/config/domains';
+import { isMilkHisabRelevant } from '@/lib/storefront/milkShopHisab';
 import { resolvePosVariant } from '@/lib/config/posDomains';
 import { useResolvedBusinessId } from '@/lib/hooks/useResolvedBusinessId';
 
@@ -38,6 +39,7 @@ const ReservationManager = lazyHubTab(() => import('@/components/restaurant/Rese
 const FinanceHub = lazyHubTab(() => import('@/components/finance/FinanceHub'));
 const PayrollDashboard = lazyHubTab(() => import('@/components/hr/PayrollDashboard').then(mod => mod.PayrollDashboard));
 const AttendanceTracker = lazyHubTab(() => import('@/components/hr/AttendanceTracker').then(mod => mod.AttendanceTracker));
+const MilkRouteHisab = lazyHubTab(() => import('@/components/milk/MilkRouteHisab').then(mod => mod.MilkRouteHisab));
 const ShiftScheduler = lazyHubTab(() => import('@/components/hr/ShiftScheduler').then(mod => mod.ShiftScheduler));
 const ApprovalInbox = lazyHubTab(() => import('@/components/workflow/ApprovalInbox').then(mod => mod.ApprovalInbox));
 const WorkflowBuilder = lazyHubTab(() => import('@/components/workflow/WorkflowBuilder').then(mod => mod.WorkflowBuilder));
@@ -75,6 +77,7 @@ const KEEP_ALIVE_TABS = new Set([
     'orders',
     'campaigns',
     'memberships',
+    'route-hisab',
     'payments',
     'audit',
     'loyalty',
@@ -136,6 +139,7 @@ export function DashboardTabs({
     const hospitalityDomain = isHospitality(category);
     const campaignRelevant = isCampaignRelevant(category, domainKnowledge);
     const membershipRelevant = isMembershipRelevant(category);
+    const milkHisabRelevant = isMilkHisabRelevant(category);
 
     // Visit-based forceMount: first open loads once; leave/return keeps state (no tab-switch storms).
     // Inactive panels stay mounted but must be CSS-hidden — see TabsContent data-[state=inactive]:hidden.
@@ -1147,6 +1151,23 @@ export function DashboardTabs({
                             <StorefrontTabShell activeTab="memberships">
                             <MembershipManager businessId={activeBusinessId} category={category} />
                             </StorefrontTabShell>
+                        </TabGuard>
+                    )}
+                </TabsContent>
+
+                <TabsContent value="route-hisab" forceMount={shouldForceMount('route-hisab')} className="space-y-6 outline-none data-[state=inactive]:hidden">
+                    {wrapTab(
+                        <TabGuard
+                          tabKey="route-hisab"
+                          role={role}
+                          planTier={planTier}
+                          domainCheck={milkHisabRelevant}
+                          domainTitle="Route Hisab is for milk shops"
+                          domainMessage="Daily doorstep delivery and month collection are available for the milk-shop vertical."
+                          featureName="Route Hisab"
+                          onUpgrade={() => handleTabChange('settings')}
+                        >
+                            <MilkRouteHisab businessId={activeBusinessId} category={category} />
                         </TabGuard>
                     )}
                 </TabsContent>

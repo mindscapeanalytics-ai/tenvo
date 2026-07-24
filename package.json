@@ -91,6 +91,7 @@
     "verify:furniture-storefront": "bun scripts/verify-furniture-storefront.mjs",
     "verify:tyre-storefront": "bun scripts/verify-tyre-storefront.mjs",
     "verify:milk-shop-storefront": "bun scripts/verify-milk-shop-storefront.mjs",
+    "verify:milk-shop-hisab": "bun scripts/verify-milk-shop-hisab.mjs",
     "fetch:milk-shop-catalog": "node scripts/fetch-milk-shop-catalog.mjs",
     "build:milk-shop-catalog": "node scripts/build-milk-shop-seed-catalog.mjs",
     "verify:electronics-storefront": "bun scripts/verify-electronics-storefront.mjs",
