@@ -162,6 +162,13 @@ assert(existsSync(thermalFile), 'milkHisabThermalBill.js must exist');
 const thermalSrc = readFileSync(thermalFile, 'utf8');
 assert(thermalSrc.includes("paperSize: '58mm'"), 'thermal helper defaults to 58mm');
 assert(thermalSrc.includes('dispatchThermalReceipt'), 'thermal helper reuses POS receipt path');
+assert(thermalSrc.includes('buildMilkHisabThermalOptsFromRow'), 'thermal helper supports per-customer draft print');
+assert(thermalSrc.includes('printMilkHisabThermalBillFromRow'), 'thermal helper exports row print');
+
+const docNum = readFileSync(resolve(root, 'lib/db/documentNumber.js'), 'utf8');
+assert(docNum.includes('::bigint'), 'document numbers must use BIGINT (not INTEGER)');
+assert(!docNum.includes('AS INTEGER'), 'document numbers must not cast to INTEGER');
+assert(uiSrc.includes('printMilkHisabThermalBillFromRow') || uiSrc.includes('canPrint'), 'UI must allow print per customer');
 
 const tabs = readFileSync(resolve(root, 'app/business/[category]/components/DashboardTabs.jsx'), 'utf8');
 assert(tabs.includes('route-hisab'), 'DashboardTabs must wire route-hisab');

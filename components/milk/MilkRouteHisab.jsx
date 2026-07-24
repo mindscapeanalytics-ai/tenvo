@@ -32,7 +32,7 @@ import {
   toMilkHisabPeriodKey,
   toMilkHisabWeekKey,
 } from '@/lib/storefront/milkShopHisab';
-import { printMilkHisabThermalBill } from '@/lib/print/milkHisabThermalBill';
+import { printMilkHisabThermalBill, printMilkHisabThermalBillFromRow } from '@/lib/print/milkHisabThermalBill';
 
 function todayKey() {
   return toMilkHisabDateKey(new Date());
@@ -251,33 +251,48 @@ export function MilkRouteHisab({ businessId, category }) {
   };
 
   const handlePrintBill = async (row, mode = 'print') => {
-    if (!row?.invoiceId) {
-      notify.error('Generate the bill first');
+    if (!row || !(Number(row.amount) > 0 || row.invoiceId)) {
+      notify.error('No billable amount for this customer');
       return;
     }
-    setPrintingId(row.invoiceId);
+    const printKey = row.invoiceId || row.customerId;
+    setPrintingId(printKey);
     try {
-      const res = await getMilkHisabBillPrintAction({
-        businessId,
-        category,
-        invoiceId: row.invoiceId,
-      });
-      if (!res?.success) {
-        notify.error(res?.error || 'Could not load bill');
-        return;
-      }
-      await printMilkHisabThermalBill(
-        {
-          business,
-          invoice: res.invoice,
-          items: res.items || [],
-          houseNo: res.houseNo || row.houseNo || '',
-          period: res.period || billingPeriod,
-          periodLabel: res.periodLabel || periodLabel,
+      if (row.invoiceId) {
+        const res = await getMilkHisabBillPrintAction({
+          businessId,
           category,
-        },
-        mode
-      );
+          invoiceId: row.invoiceId,
+        });
+        if (!res?.success) {
+          notify.error(res?.error || 'Could not load bill');
+          return;
+        }
+        await printMilkHisabThermalBill(
+          {
+            business,
+            invoice: res.invoice,
+            items: res.items || [],
+            houseNo: res.houseNo || row.houseNo || '',
+            period: res.period || billingPeriod,
+            periodLabel: res.periodLabel || periodLabel,
+            category,
+          },
+          mode
+        );
+      } else {
+        await printMilkHisabThermalBillFromRow(
+          {
+            business,
+            row,
+            productColumns,
+            period: billingPeriod,
+            periodLabel,
+            category,
+          },
+          mode
+        );
+      }
       if (mode === 'pdf') {
         notify.compactSave('58mm bill PDF downloaded');
       } else {
@@ -659,7 +674,8 @@ function BillsSheet({
         </thead>
         <tbody className="divide-y divide-gray-100">
           {rows.map((row) => {
-            const busy = printingId === row.invoiceId;
+            const busy = printingId === row.invoiceId || printingId === row.customerId;
+            const canPrint = Boolean(row.invoiceId) || Number(row.amount) > 0;
             return (
               <tr key={row.customerId} className="hover:bg-sky-50/40">
                 <td className="px-3 py-2 whitespace-nowrap text-gray-700">{row.houseNo || '-'}</td>
@@ -692,7 +708,7 @@ function BillsSheet({
                   {row.paymentStatus || (row.billed ? 'unpaid' : '-')}
                 </td>
                 <td className="px-3 py-2">
-                  {row.invoiceId ? (
+                  {canPrint ? (
                     <div className="flex items-center gap-1">
                       <Button
                         type="button"
