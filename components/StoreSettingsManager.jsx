@@ -31,7 +31,7 @@ import { MarketingSectionsEditor } from '@/components/storefront/admin/Marketing
 import { isAutoMarketplaceStore } from '@/lib/storefront/autoMarketplace';
 import { isAutoDealershipStore } from '@/lib/storefront/autoDealership';
 import { isAutoPartsStore } from '@/lib/storefront/autoParts';
-import { isMarinePartsStore, MARINE_HERO_VIDEO_URL, MARINE_HERO_POSTER } from '@/lib/storefront/marineParts';
+import { isMarinePartsStore, MARINE_HERO_POSTER } from '@/lib/storefront/marineParts';
 import { isRestaurantElevatedStore } from '@/lib/storefront/restaurantStorefront';
 import { isPharmacyElevatedStore } from '@/lib/storefront/pharmacyStorefront';
 import { isFurnitureElevatedStore } from '@/lib/storefront/furnitureStorefront';
@@ -284,7 +284,7 @@ export function StoreSettingsManager({ business, category }) {
           image: '',
         },
       ],
-      heroVideoUrl: MARINE_HERO_VIDEO_URL,
+      heroVideoUrl: '',
       heroPosterUrl: MARINE_HERO_POSTER,
       heroEyebrow: '',
       heroTitle: '',
@@ -1899,11 +1899,11 @@ export function StoreSettingsManager({ business, category }) {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-1.5">
-                  <Label>Hero video URL (MP4, loops muted)</Label>
+                  <Label>Hero video URL (optional MP4, loops muted)</Label>
                   <Input
                     value={settings.marine?.heroVideoUrl || ''}
                     onChange={(e) => setMarine('heroVideoUrl', e.target.value)}
-                    placeholder={MARINE_HERO_VIDEO_URL}
+                    placeholder="Leave empty to use poster image"
                   />
                 </div>
                 <div className="space-y-1.5">

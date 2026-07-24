@@ -1,11 +1,11 @@
 /**
- * Patch demo-marine storefront.marine with looping hero video + section defaults.
+ * Patch demo-marine storefront.marine with image hero defaults + section toggles.
+ * Hero uses poster/default slides by default; leave heroVideoUrl empty unless an owner opts in.
  */
 import dotenv from 'dotenv';
 import { resolve } from 'path';
 import { createPool } from '../../lib/dataLab/pool.mjs';
 import {
-  MARINE_HERO_VIDEO_URL,
   MARINE_HERO_POSTER,
   MARINE_DEFAULT_SLIDES,
 } from '../../lib/storefront/marinePartsArchiveMap.js';
@@ -24,7 +24,7 @@ const marinePatch = {
   showSpareRail: true,
   showBottomCta: true,
   showMarketingBanners: true,
-  heroVideoUrl: MARINE_HERO_VIDEO_URL,
+  heroVideoUrl: '',
   heroPosterUrl: MARINE_HERO_POSTER,
   heroEyebrow: 'Tenvo Marine',
   heroTitle: 'Shaping reliable power at sea',
@@ -68,7 +68,7 @@ try {
     [JSON.stringify(settings)]
   );
 
-  console.log('OK patched demo-marine marine heroVideoUrl + sections');
+  console.log('OK patched demo-marine marine image hero + sections (video cleared)');
 } finally {
   await pool.end();
 }

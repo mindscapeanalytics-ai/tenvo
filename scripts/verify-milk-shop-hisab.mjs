@@ -175,6 +175,13 @@ assert(actionSrc.includes('parseMilkHisabBillingPeriod'), 'actions must parse we
 assert(actionSrc.includes('buildMilkHisabPeriodKpis'), 'period summary must build KPIs');
 assert(actionSrc.includes('is_deleted: true'), 'save must soft-delete empty stops');
 assert(actionSrc.includes('meaningfulLines'), 'period summary must skip empty line stops');
+assert(
+  !actionSrc.includes('business_name: true,\n        name: true') &&
+    !actionSrc.includes('business_name: true,\r\n        name: true'),
+  'businesses select must not use invalid name field'
+);
+assert(!/^\s*handle:\s*true,/m.test(actionSrc), 'businesses select must not use invalid handle field');
+assert(actionSrc.includes('business?.domain ||'), 'reminder actionUrl must use domain (not handle)');
 
 const ui = resolve(root, 'components/milk/MilkRouteHisab.jsx');
 assert(existsSync(ui), 'MilkRouteHisab.jsx must exist');

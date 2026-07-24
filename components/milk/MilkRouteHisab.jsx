@@ -359,9 +359,16 @@ export function MilkRouteHisab({ businessId, category }) {
       notify.error('No billable amount for this customer');
       return;
     }
-    const printKey = row.invoiceId || row.customerId;
+    const printKey = `${row.invoiceId || row.customerId}:${mode}`;
     setPrintingId(printKey);
     try {
+      const thermalBusiness = {
+        ...(business || {}),
+        business_name:
+          business?.business_name || business?.name || business?.businessName || 'Milk shop',
+        category: business?.category || category,
+      };
+
       if (row.invoiceId) {
         const res = await getMilkHisabBillPrintAction({
           businessId,
@@ -372,9 +379,9 @@ export function MilkRouteHisab({ businessId, category }) {
           notify.error(res?.error || 'Could not load bill');
           return;
         }
-        await printMilkHisabThermalBill(
+        const ok = await printMilkHisabThermalBill(
           {
-            business,
+            business: thermalBusiness,
             invoice: res.invoice,
             items: res.items || [],
             houseNo: res.houseNo || row.houseNo || '',
@@ -384,10 +391,14 @@ export function MilkRouteHisab({ businessId, category }) {
           },
           mode
         );
+        if (!ok) {
+          notify.error(mode === 'pdf' ? 'PDF download failed' : 'Print dialog could not open');
+          return;
+        }
       } else {
-        await printMilkHisabThermalBillFromRow(
+        const ok = await printMilkHisabThermalBillFromRow(
           {
-            business,
+            business: thermalBusiness,
             row,
             productColumns,
             period: billingPeriod,
@@ -396,13 +407,18 @@ export function MilkRouteHisab({ businessId, category }) {
           },
           mode
         );
+        if (!ok) {
+          notify.error(mode === 'pdf' ? 'PDF download failed' : 'Print dialog could not open');
+          return;
+        }
       }
       if (mode === 'pdf') {
         notify.compactSave('58mm bill PDF downloaded');
       } else {
-        notify.compactSave('Sent to 58mm printer');
+        notify.compactSave('58mm bill sent to printer');
       }
     } catch (e) {
+      console.error('handlePrintBill', e);
       notify.error(e?.message || 'Print failed');
     } finally {
       setPrintingId(null);
@@ -918,7 +934,9 @@ function BillsSheet({
         </thead>
         <tbody className="divide-y divide-gray-100">
           {rows.map((row) => {
-            const busy = printingId === row.invoiceId || printingId === row.customerId;
+            const busy =
+              printingId === `${row.invoiceId || row.customerId}:print` ||
+              printingId === `${row.invoiceId || row.customerId}:pdf`;
             const remindBusy = remindingId === row.customerId;
             const canPrint = Boolean(row.invoiceId) || Number(row.amount) > 0;
             const canRemind = Number(row.amount) > 0;
@@ -965,7 +983,7 @@ function BillsSheet({
                         onClick={() => onPrint(row)}
                         title="Print 58mm thermal bill"
                       >
-                        {busy ? (
+                        {printingId === `${row.invoiceId || row.customerId}:print` ? (
                           <Loader2 className="h-3.5 w-3.5 animate-spin" />
                         ) : (
                           <Printer className="h-3.5 w-3.5" />
@@ -980,7 +998,11 @@ function BillsSheet({
                         onClick={() => onPdf(row)}
                         title="Download 58mm PDF"
                       >
-                        <Download className="h-3.5 w-3.5" />
+                        {printingId === `${row.invoiceId || row.customerId}:pdf` ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Download className="h-3.5 w-3.5" />
+                        )}
                       </Button>
                     </div>
                   ) : (
