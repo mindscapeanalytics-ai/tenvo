@@ -10,6 +10,9 @@ import {
   FileText,
   Printer,
   Download,
+  Bell,
+  MessageCircle,
+  Mail,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useBusiness } from '@/lib/context/BusinessContext';
@@ -26,6 +29,8 @@ import {
   getMilkHisabPeriodSummaryAction,
   generateMilkHisabInvoicesAction,
   getMilkHisabBillPrintAction,
+  sendMilkHisabReminderAction,
+  sendMilkHisabBulkRemindersAction,
 } from '@/lib/actions/standard/milkHisab';
 import {
   toMilkHisabDateKey,
@@ -61,6 +66,8 @@ export function MilkRouteHisab({ businessId, category }) {
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [printingId, setPrintingId] = useState(null);
+  const [remindingId, setRemindingId] = useState(null);
+  const [bulkReminding, setBulkReminding] = useState(false);
   const [products, setProducts] = useState([]);
   const [rows, setRows] = useState([]);
   const [billRows, setBillRows] = useState([]);
@@ -305,6 +312,81 @@ export function MilkRouteHisab({ businessId, category }) {
     }
   };
 
+  const openWhatsApp = (url) => {
+    if (!url || typeof window === 'undefined') return;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleRemindCustomer = async (row, channels = ['hub', 'email', 'whatsapp']) => {
+    if (!row?.customerId || !(Number(row.amount) > 0)) {
+      notify.error('No amount to remind for this customer');
+      return;
+    }
+    setRemindingId(row.customerId);
+    try {
+      const res = await sendMilkHisabReminderAction({
+        businessId,
+        category,
+        customerId: row.customerId,
+        period: billingPeriod,
+        amount: row.amount,
+        invoiceId: row.invoiceId,
+        invoiceNumber: row.invoiceNumber,
+        houseNo: row.houseNo,
+        channels,
+      });
+      if (!res?.success) {
+        notify.error(res?.error || 'Reminder failed');
+        return;
+      }
+      if (res.whatsappUrl && channels.includes('whatsapp')) {
+        openWhatsApp(res.whatsappUrl);
+      }
+      const parts = [];
+      if (res.results?.hub?.ok) parts.push('hub alert');
+      if (res.results?.email?.ok) parts.push('email');
+      if (res.results?.whatsapp?.ok) parts.push('WhatsApp');
+      notify.compactSave(parts.length ? `Reminder: ${parts.join(', ')}` : 'Reminder prepared');
+      if (res.results?.email?.error && !res.results?.email?.ok) {
+        notify.error(res.results.email.error);
+      }
+    } catch (e) {
+      notify.error(e?.message || 'Reminder failed');
+    } finally {
+      setRemindingId(null);
+    }
+  };
+
+  const handleBulkRemind = async () => {
+    setBulkReminding(true);
+    try {
+      const res = await sendMilkHisabBulkRemindersAction({
+        businessId,
+        category,
+        period: billingPeriod,
+        channels: ['hub', 'email', 'whatsapp'],
+      });
+      if (!res?.success) {
+        notify.error(res?.error || 'Bulk reminder failed');
+        return;
+      }
+      const total = res.total || 0;
+      const withWa = (res.outcomes || []).filter((o) => o.whatsappUrl).length;
+      notify.compactSave(
+        total
+          ? `Reminded ${total} customer${total === 1 ? '' : 's'}${withWa ? ` (${withWa} WhatsApp)` : ''}`
+          : 'No unpaid bills to remind'
+      );
+      // Open first WhatsApp link to kick off collection; rest stay as hub/email
+      const firstWa = (res.outcomes || []).find((o) => o.whatsappUrl)?.whatsappUrl;
+      if (firstWa) openWhatsApp(firstWa);
+    } catch (e) {
+      notify.error(e?.message || 'Bulk reminder failed');
+    } finally {
+      setBulkReminding(false);
+    }
+  };
+
   const openInvoices = () => {
     navigateHubTab({ domain: handle, tab: 'invoices' });
   };
@@ -447,6 +529,20 @@ export function MilkRouteHisab({ businessId, category }) {
                 )}
                 Generate {billKind === 'week' ? 'weekly' : 'monthly'} bills
               </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={handleBulkRemind}
+                disabled={bulkReminding || loading || !billRows.some((r) => Number(r.amount) > 0)}
+              >
+                {bulkReminding ? (
+                  <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                ) : (
+                  <Bell className="h-4 w-4 mr-1.5" />
+                )}
+                Remind unpaid
+              </Button>
               <Button type="button" size="sm" variant="outline" onClick={openInvoices}>
                 Open invoices
               </Button>
@@ -481,9 +577,13 @@ export function MilkRouteHisab({ businessId, category }) {
           rows={visibleBillRows}
           currency={currency}
           printingId={printingId}
+          remindingId={remindingId}
           onOpenInvoices={openInvoices}
           onPrint={(row) => handlePrintBill(row, 'print')}
           onPdf={(row) => handlePrintBill(row, 'pdf')}
+          onRemind={(row) => handleRemindCustomer(row)}
+          onRemindWhatsApp={(row) => handleRemindCustomer(row, ['hub', 'whatsapp'])}
+          onRemindEmail={(row) => handleRemindCustomer(row, ['hub', 'email'])}
         />
       )}
     </div>
@@ -638,9 +738,13 @@ function BillsSheet({
   rows,
   currency,
   printingId,
+  remindingId,
   onOpenInvoices,
   onPrint,
   onPdf,
+  onRemind,
+  onRemindWhatsApp,
+  onRemindEmail,
 }) {
   if (!rows.length) {
     return (
@@ -670,12 +774,15 @@ function BillsSheet({
             <th className="px-3 py-2.5">Invoice</th>
             <th className="px-3 py-2.5">Payment</th>
             <th className="px-3 py-2.5">58mm bill</th>
+            <th className="px-3 py-2.5">Remind</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-100">
           {rows.map((row) => {
             const busy = printingId === row.invoiceId || printingId === row.customerId;
+            const remindBusy = remindingId === row.customerId;
             const canPrint = Boolean(row.invoiceId) || Number(row.amount) > 0;
+            const canRemind = Number(row.amount) > 0;
             return (
               <tr key={row.customerId} className="hover:bg-sky-50/40">
                 <td className="px-3 py-2 whitespace-nowrap text-gray-700">{row.houseNo || '-'}</td>
@@ -735,6 +842,51 @@ function BillsSheet({
                         title="Download 58mm PDF"
                       >
                         <Download className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <span className="text-gray-300">-</span>
+                  )}
+                </td>
+                <td className="px-3 py-2">
+                  {canRemind ? (
+                    <div className="flex items-center gap-1">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="h-8 px-2"
+                        disabled={remindBusy}
+                        onClick={() => onRemind(row)}
+                        title="Remind via hub, email, and WhatsApp"
+                      >
+                        {remindBusy ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Bell className="h-3.5 w-3.5" />
+                        )}
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 px-2 text-emerald-700"
+                        disabled={remindBusy}
+                        onClick={() => onRemindWhatsApp(row)}
+                        title="WhatsApp reminder (wa.me)"
+                      >
+                        <MessageCircle className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 px-2"
+                        disabled={remindBusy}
+                        onClick={() => onRemindEmail(row)}
+                        title="Email reminder"
+                      >
+                        <Mail className="h-3.5 w-3.5" />
                       </Button>
                     </div>
                   ) : (

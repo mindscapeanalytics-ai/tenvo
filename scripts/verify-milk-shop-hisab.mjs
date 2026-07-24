@@ -143,6 +143,9 @@ for (const name of [
   'getMilkHisabMonthSummaryAction',
   'generateMilkHisabInvoicesAction',
   'getMilkHisabBillPrintAction',
+  'prepareMilkHisabReminderAction',
+  'sendMilkHisabReminderAction',
+  'sendMilkHisabBulkRemindersAction',
 ]) {
   assert(actionSrc.includes(`export async function ${name}`), `missing action ${name}`);
 }
@@ -156,6 +159,14 @@ const uiSrc = readFileSync(ui, 'utf8');
 assert(uiSrc.includes('printMilkHisabThermalBill'), 'UI must print 58mm thermal bills');
 assert(uiSrc.includes('Generate weekly') || uiSrc.includes('weekly'), 'UI must support weekly bills');
 assert(uiSrc.includes('type="week"'), 'UI must use week picker');
+assert(uiSrc.includes('sendMilkHisabReminderAction'), 'UI must wire reminders');
+assert(uiSrc.includes('Remind unpaid'), 'UI must expose bulk remind');
+
+const remindHelpers = resolve(root, 'lib/storefront/milkShopHisabReminders.js');
+assert(existsSync(remindHelpers), 'milkShopHisabReminders.js must exist');
+const remindSrc = readFileSync(remindHelpers, 'utf8');
+assert(remindSrc.includes('buildMilkHisabWhatsAppUrl'), 'WhatsApp wa.me helper required');
+assert(remindSrc.includes('resolveMilkHisabReminderChannels'), 'channel resolver required');
 
 const thermalFile = resolve(root, 'lib/print/milkHisabThermalBill.js');
 assert(existsSync(thermalFile), 'milkHisabThermalBill.js must exist');

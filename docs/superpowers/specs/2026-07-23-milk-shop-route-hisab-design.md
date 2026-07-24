@@ -5,7 +5,8 @@
 **Canonical gate:** `resolveDomainKey(category) === 'milk-shop'` only  
 **Companion:** `docs/superpowers/specs/2026-07-23-milk-shop-pakistan-design.md` (retail/POS/storefront — unchanged)  
 **Approach:** New milk-gated ops module on top of existing **Customers** + **Invoices / invoice_payments / AR**; do not extend memberships, restaurant orders, or supermarket grocery flows  
-**Billing print:** Reuses POS `dispatchThermalReceipt` at **58mm** (works on 55–58mm printers) via `lib/print/milkHisabThermalBill.js` — Weekly / Monthly hisab bills
+**Billing print:** Reuses POS `dispatchThermalReceipt` at **58mm** (works on 55–58mm printers) via `lib/print/milkHisabThermalBill.js` — Weekly / Monthly hisab bills  
+**Reminders:** Hub notification + Resend email (invoice PDF when billed) + WhatsApp `wa.me` click-to-chat; optional Campaigns WhatsApp webhook. No fake WhatsApp Business API claims.
 
 ---
 
