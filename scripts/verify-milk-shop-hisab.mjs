@@ -21,6 +21,9 @@ import {
   milkHisabPeriodsOverlap,
   resolveMilkHisabInvoiceForPeriod,
   extractMilkHisabPeriodFromNotes,
+  abbreviateMilkHisabColumn,
+  buildMilkHisabDayBreakdownGrid,
+  formatMilkHisabDayLine,
 } from '../lib/storefront/milkShopHisab.js';
 import { resolveDomainFieldKey } from '../lib/utils/domainHelpers.ts';
 import { isMilkShopStore } from '../lib/storefront/milkShopStorefront.js';
@@ -206,6 +209,7 @@ for (const name of [
   'getMilkHisabMonthSummaryAction',
   'generateMilkHisabInvoicesAction',
   'getMilkHisabBillPrintAction',
+  'getMilkHisabCustomerDayBreakdownAction',
   'prepareMilkHisabReminderAction',
   'sendMilkHisabReminderAction',
   'sendMilkHisabBulkRemindersAction',
@@ -234,6 +238,8 @@ const ui = resolve(root, 'components/milk/MilkRouteHisab.jsx');
 assert(existsSync(ui), 'MilkRouteHisab.jsx must exist');
 const uiSrc = readFileSync(ui, 'utf8');
 assert(uiSrc.includes('printMilkHisabThermalBill'), 'UI must print 58mm thermal bills');
+assert(uiSrc.includes('printMilkHisabDayBreakdownBill'), 'UI must print day Y/N sheet');
+assert(uiSrc.includes('getMilkHisabCustomerDayBreakdownAction'), 'UI must load day breakdown');
 assert(uiSrc.includes('Generate weekly') || uiSrc.includes('weekly'), 'UI must support weekly bills');
 assert(uiSrc.includes('type="week"'), 'UI must use week picker');
 assert(uiSrc.includes('sendMilkHisabReminderAction'), 'UI must wire reminders');
@@ -255,6 +261,45 @@ assert(thermalSrc.includes("paperSize: '58mm'"), 'thermal helper defaults to 58m
 assert(thermalSrc.includes('dispatchThermalReceipt'), 'thermal helper reuses POS receipt path');
 assert(thermalSrc.includes('buildMilkHisabThermalOptsFromRow'), 'thermal helper supports per-customer draft print');
 assert(thermalSrc.includes('printMilkHisabThermalBillFromRow'), 'thermal helper exports row print');
+assert(thermalSrc.includes('printMilkHisabDayBreakdownBill'), 'thermal helper exports day sheet print');
+assert(thermalSrc.includes('buildMilkHisabDayBreakdownHtml'), 'thermal helper builds day sheet HTML');
+
+assert(abbreviateMilkHisabColumn('Milk') === 'Mil', 'Milk abbreviates to 3 letters');
+assert(isMilkHisabWalkInCustomer('Walk-in') === true, 'walk-in detector');
+
+{
+  const grid = buildMilkHisabDayBreakdownGrid({
+    startIso: '2026-07-01',
+    endIso: '2026-07-03',
+    columns: [
+      { id: 'p-milk', name: 'Fresh Milk', hisabShortLabel: 'Milk', unit: 'kg' },
+      { id: 'p-dahi', name: 'Dahi', hisabShortLabel: 'Dahi', unit: 'kg' },
+      { id: 'p-lassi', name: 'Lassi', hisabShortLabel: 'Lassi', unit: 'pcs' },
+    ],
+    stops: [
+      {
+        delivery_date: '2026-07-01',
+        lines: [
+          { product_id: 'p-milk', quantity: 2 },
+          { product_id: 'p-dahi', quantity: 1 },
+        ],
+      },
+      {
+        delivery_date: '2026-07-02',
+        lines: [{ product_id: 'p-dahi', quantity: 1 }],
+      },
+    ],
+  });
+  assert(grid.days.length === 3, 'day grid fills full calendar span');
+  assert(grid.days[0].marks['p-milk'] === 'Y', 'day 1 milk delivered');
+  assert(grid.days[0].marks['p-lassi'] === 'N', 'day 1 lassi not delivered');
+  assert(grid.days[1].marks['p-milk'] === 'N', 'day 2 milk missing');
+  assert(grid.days[1].marks['p-dahi'] === 'Y', 'day 2 dahi delivered');
+  assert(grid.days[2].hasDelivery === false, 'day 3 empty');
+  const line = formatMilkHisabDayLine(grid.days[0], grid.columns);
+  assert(/01 /.test(line) && /Y/.test(line) && /N/.test(line), `day line format got: ${line}`);
+  assert(line.includes(' '), 'day line keeps spaces for 58mm readability');
+}
 
 const docNum = readFileSync(resolve(root, 'lib/db/documentNumber.js'), 'utf8');
 assert(docNum.includes('::bigint'), 'document numbers must use BIGINT (not INTEGER)');

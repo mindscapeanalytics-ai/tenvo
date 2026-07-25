@@ -29,6 +29,7 @@ import {
   getMilkHisabPeriodSummaryAction,
   generateMilkHisabInvoicesAction,
   getMilkHisabBillPrintAction,
+  getMilkHisabCustomerDayBreakdownAction,
   sendMilkHisabReminderAction,
   sendMilkHisabBulkRemindersAction,
 } from '@/lib/actions/standard/milkHisab';
@@ -39,7 +40,11 @@ import {
   shortMilkHisabProductLabel,
   buildMilkHisabPeriodKpis,
 } from '@/lib/storefront/milkShopHisab';
-import { printMilkHisabThermalBill, printMilkHisabThermalBillFromRow } from '@/lib/print/milkHisabThermalBill';
+import {
+  printMilkHisabDayBreakdownBill,
+  printMilkHisabThermalBill,
+  printMilkHisabThermalBillFromRow,
+} from '@/lib/print/milkHisabThermalBill';
 import { MARKETING_STAT_VALUE } from '@/lib/utils/typography';
 
 function todayKey() {
@@ -384,6 +389,44 @@ export function MilkRouteHisab({ businessId, category }) {
         category: business?.category || category,
       };
 
+      // Prefer PK day Y/N sheet (same 58mm printer as POS / totals bill).
+      if (row.customerId && billingPeriod) {
+        const dayRes = await getMilkHisabCustomerDayBreakdownAction({
+          businessId,
+          category,
+          customerId: row.customerId,
+          period: billingPeriod,
+        });
+        if (dayRes?.success && dayRes.breakdown?.days?.length) {
+          const ok = await printMilkHisabDayBreakdownBill(
+            {
+              business: thermalBusiness,
+              breakdown: dayRes.breakdown,
+              customerName: dayRes.customerName || row.customerName || 'Customer',
+              houseNo: dayRes.houseNo || row.houseNo || '',
+              period: dayRes.period || billingPeriod,
+              periodLabel: dayRes.label || periodLabel,
+              invoiceNumber: dayRes.invoiceNumber || row.invoiceNumber || '',
+              grandTotal: dayRes.amount ?? row.amount ?? 0,
+              paymentStatus: dayRes.paymentStatus || row.paymentStatus || 'unpaid',
+              productMeta: dayRes.productMeta || row.productMeta || {},
+            },
+            mode
+          );
+          if (!ok) {
+            notify.error(mode === 'pdf' ? 'PDF download failed' : 'Print dialog could not open');
+            return;
+          }
+          if (mode === 'pdf') {
+            notify.compactSave('Day sheet PDF downloaded');
+          } else {
+            notify.compactSave('Day sheet sent to printer');
+          }
+          return;
+        }
+      }
+
+      // Fallback: totals-only thermal (invoice lines or period row aggregates).
       if (row.invoiceId) {
         const res = await getMilkHisabBillPrintAction({
           businessId,
@@ -524,7 +567,7 @@ export function MilkRouteHisab({ businessId, category }) {
       <div className="lg:hidden">
         <MobileTabHeader
           title="Route Hisab"
-          subtitle="Daily sheet and 58mm week/month bills"
+          subtitle="Daily sheet and 58mm day Y/N bills"
           icon={BookOpen}
         />
       </div>
@@ -533,8 +576,8 @@ export function MilkRouteHisab({ businessId, category }) {
         <div>
           <h2 className="text-lg font-semibold text-gray-900">Route Hisab</h2>
           <p className="text-sm text-gray-500 max-w-2xl">
-            Log doorstep deliveries by day. Switch to Bills for week or month totals, 58mm thermal
-            print, and unpaid reminders.
+            Log doorstep deliveries by day. Switch to Bills for week or month day sheets (Y/N), 58mm
+            thermal print, and unpaid reminders.
           </p>
         </div>
         <Button
@@ -692,7 +735,7 @@ export function MilkRouteHisab({ businessId, category }) {
       {view === 'bills' && periodLabel ? (
         <p className="text-xs text-gray-500">
           Billing period: <span className="font-semibold text-gray-700">{periodLabel}</span>
-          {' · '}58mm thermal (POS printer)
+          {' · '}58mm day sheet (Y/N per day) + POS printer
           {' · '}Hub alerts, email, and WhatsApp reminders
           {' · '}Use Generate to create invoices (then invoice number replaces Not billed)
         </p>
@@ -1015,7 +1058,7 @@ function BillsSheet({
                         className="h-8 px-2"
                         disabled={busy}
                         onClick={() => onPrint(row)}
-                        title="Print 58mm thermal bill"
+                        title="Print 58mm day sheet (Y/N)"
                       >
                         {printingId === `${row.invoiceId || row.customerId}:print` ? (
                           <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -1030,7 +1073,7 @@ function BillsSheet({
                         className="h-8 px-2"
                         disabled={busy}
                         onClick={() => onPdf(row)}
-                        title="Download 58mm PDF"
+                        title="Download 58mm day sheet PDF"
                       >
                         {printingId === `${row.invoiceId || row.customerId}:pdf` ? (
                           <Loader2 className="h-3.5 w-3.5 animate-spin" />
