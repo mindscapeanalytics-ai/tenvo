@@ -41,6 +41,9 @@ import {
   buildMilkHisabPeriodKpis,
 } from '@/lib/storefront/milkShopHisab';
 import { openWhatsAppSmart } from '@/lib/utils/whatsappOpen';
+import { isMilkHisabOfflineEnabled, isMilkHisabNetworkFailure } from '@/lib/utils/milkHisabOfflineAccess';
+import { useMilkHisabOffline } from '@/lib/hooks/useMilkHisabOffline';
+import { MilkHisabOfflineBanner } from '@/components/milk/MilkHisabOfflineBanner';
 import {
   printMilkHisabDayBreakdownBill,
   printMilkHisabThermalBill,
@@ -64,8 +67,26 @@ function currentWeek() {
  * Milk-shop Route Hisab: daily doorstep grid + week/month 58mm bills.
  */
 export function MilkRouteHisab({ businessId, category }) {
-  const { currency, business } = useBusiness();
+  const { currency, business, planTier } = useBusiness();
   const handle = business?.handle || business?.domain || category;
+  const offlineEnabled = isMilkHisabOfflineEnabled({
+    category: business?.category || category,
+    planTier,
+    settings: business?.settings,
+  });
+  const {
+    isOnline,
+    pendingCount,
+    isSyncing,
+    lastSyncAt,
+    syncPending,
+    queueDaySave,
+    cacheDaySnapshot,
+    readDaySnapshot,
+    cachePeriodSnapshot,
+    readPeriodSnapshot,
+  } = useMilkHisabOffline(businessId, { enabled: offlineEnabled });
+
   const [view, setView] = useState('daily');
   const [billKind, setBillKind] = useState('week');
   const [deliveryDate, setDeliveryDate] = useState(todayKey);
@@ -86,46 +107,148 @@ export function MilkRouteHisab({ businessId, category }) {
   const [billKpis, setBillKpis] = useState(null);
   const [filter, setFilter] = useState('');
   const [dayDirty, setDayDirty] = useState(false);
+  const [daySnapshotReady, setDaySnapshotReady] = useState(true);
+  const [billsFromCache, setBillsFromCache] = useState(false);
 
   const billingPeriod = billKind === 'week' ? weekPeriod : monthPeriod;
 
   const loadDay = useCallback(async () => {
     if (!businessId) return;
     setLoading(true);
+    setDaySnapshotReady(true);
     try {
+      if (offlineEnabled && typeof navigator !== 'undefined' && !navigator.onLine) {
+        const snap = await readDaySnapshot(businessId, deliveryDate);
+        if (!snap) {
+          setRows([]);
+          setProducts([]);
+          setDayKpis(null);
+          setDaySnapshotReady(false);
+          notify.error('No offline copy of this day. Open it once while online.');
+          return;
+        }
+        setProducts(snap.products || []);
+        setRows(snap.rows || []);
+        setDayKpis(snap.kpis || null);
+        setDayDirty(false);
+        setDaySnapshotReady(true);
+        return;
+      }
+
       const res = await getMilkHisabDayAction({
         businessId,
         category,
         deliveryDate,
       });
       if (!res?.success) {
+        // Network/action failure: try snapshot
+        if (offlineEnabled) {
+          const snap = await readDaySnapshot(businessId, deliveryDate);
+          if (snap) {
+            setProducts(snap.products || []);
+            setRows(snap.rows || []);
+            setDayKpis(snap.kpis || null);
+            setDayDirty(false);
+            setDaySnapshotReady(true);
+            notify.compactSave('Loaded offline day sheet copy');
+            return;
+          }
+        }
         notify.error(res?.error || 'Failed to load day sheet');
         setRows([]);
         setProducts([]);
         setDayKpis(null);
+        setDaySnapshotReady(false);
         return;
       }
       setProducts(res.products || []);
       setRows(res.rows || []);
       setDayKpis(res.kpis || null);
       setDayDirty(false);
+      setDaySnapshotReady(true);
+      if (offlineEnabled) {
+        try {
+          await cacheDaySnapshot(businessId, deliveryDate, {
+            products: res.products || [],
+            rows: res.rows || [],
+            kpis: res.kpis || null,
+          });
+        } catch {
+          /* IndexedDB optional */
+        }
+      }
     } catch (e) {
+      if (offlineEnabled) {
+        try {
+          const snap = await readDaySnapshot(businessId, deliveryDate);
+          if (snap) {
+            setProducts(snap.products || []);
+            setRows(snap.rows || []);
+            setDayKpis(snap.kpis || null);
+            setDayDirty(false);
+            setDaySnapshotReady(true);
+            notify.compactSave('Loaded offline day sheet copy');
+            return;
+          }
+        } catch {
+          /* ignore */
+        }
+      }
       notify.error(e?.message || 'Failed to load day sheet');
+      setDaySnapshotReady(false);
     } finally {
       setLoading(false);
     }
-  }, [businessId, category, deliveryDate]);
+  }, [
+    businessId,
+    category,
+    deliveryDate,
+    offlineEnabled,
+    readDaySnapshot,
+    cacheDaySnapshot,
+  ]);
 
   const loadBills = useCallback(async () => {
     if (!businessId || !billingPeriod) return;
     setLoading(true);
+    setBillsFromCache(false);
     try {
+      if (offlineEnabled && typeof navigator !== 'undefined' && !navigator.onLine) {
+        const snap = await readPeriodSnapshot(businessId, billingPeriod);
+        if (!snap) {
+          setBillRows([]);
+          setProductColumns([]);
+          setPeriodLabel('');
+          setBillKpis(null);
+          notify.error('No offline bill summary for this period. Open it once while online.');
+          return;
+        }
+        setBillRows(snap.rows || []);
+        setProductColumns(snap.productColumns || []);
+        setPeriodLabel(snap.label || billingPeriod);
+        setBillKpis(snap.kpis || buildMilkHisabPeriodKpis(snap.rows || []));
+        setBillsFromCache(true);
+        return;
+      }
+
       const res = await getMilkHisabPeriodSummaryAction({
         businessId,
         category,
         period: billingPeriod,
       });
       if (!res?.success) {
+        if (offlineEnabled) {
+          const snap = await readPeriodSnapshot(businessId, billingPeriod);
+          if (snap) {
+            setBillRows(snap.rows || []);
+            setProductColumns(snap.productColumns || []);
+            setPeriodLabel(snap.label || billingPeriod);
+            setBillKpis(snap.kpis || buildMilkHisabPeriodKpis(snap.rows || []));
+            setBillsFromCache(true);
+            notify.compactSave('Loaded offline bill summary');
+            return;
+          }
+        }
         notify.error(res?.error || 'Failed to load bill summary');
         setBillRows([]);
         setProductColumns([]);
@@ -137,17 +260,59 @@ export function MilkRouteHisab({ businessId, category }) {
       setProductColumns(res.productColumns || []);
       setPeriodLabel(res.label || billingPeriod);
       setBillKpis(res.kpis || buildMilkHisabPeriodKpis(res.rows || []));
+      if (offlineEnabled) {
+        try {
+          await cachePeriodSnapshot(businessId, billingPeriod, {
+            rows: res.rows || [],
+            productColumns: res.productColumns || [],
+            label: res.label || billingPeriod,
+            kpis: res.kpis || null,
+          });
+        } catch {
+          /* optional */
+        }
+      }
     } catch (e) {
+      if (offlineEnabled) {
+        try {
+          const snap = await readPeriodSnapshot(businessId, billingPeriod);
+          if (snap) {
+            setBillRows(snap.rows || []);
+            setProductColumns(snap.productColumns || []);
+            setPeriodLabel(snap.label || billingPeriod);
+            setBillKpis(snap.kpis || buildMilkHisabPeriodKpis(snap.rows || []));
+            setBillsFromCache(true);
+            notify.compactSave('Loaded offline bill summary');
+            return;
+          }
+        } catch {
+          /* ignore */
+        }
+      }
       notify.error(e?.message || 'Failed to load bill summary');
     } finally {
       setLoading(false);
     }
-  }, [businessId, category, billingPeriod]);
+  }, [
+    businessId,
+    category,
+    billingPeriod,
+    offlineEnabled,
+    readPeriodSnapshot,
+    cachePeriodSnapshot,
+  ]);
 
   useEffect(() => {
     if (view === 'daily') void loadDay();
     else void loadBills();
   }, [view, loadDay, loadBills]);
+
+  // After background sync lands, refresh the visible sheet from the server.
+  useEffect(() => {
+    if (!offlineEnabled || !lastSyncAt || !isOnline) return;
+    if (view === 'daily') void loadDay();
+    else void loadBills();
+  }, [lastSyncAt]); // eslint-disable-line react-hooks/exhaustive-deps -- intentional: reload only on sync timestamp
 
   const visibleRows = useMemo(() => {
     const q = filter.trim().toLowerCase();
@@ -299,23 +464,55 @@ export function MilkRouteHisab({ businessId, category }) {
     );
   };
 
+  const buildDayPayloadRows = () =>
+    rows.map((r) => {
+      const qtyByProduct = {};
+      for (const [pid, raw] of Object.entries(r.qtyByProduct || {})) {
+        const n = Number(raw);
+        if (Number.isFinite(n) && n > 0) qtyByProduct[String(pid)] = n;
+      }
+      return {
+        customerId: r.customerId,
+        houseNo: r.houseNo,
+        routeLabel: r.routeLabel,
+        notes: r.notes,
+        qtyByProduct,
+      };
+    });
+
+  const queueAndCacheDay = async (payloadRows) => {
+    await queueDaySave({
+      category,
+      deliveryDate,
+      rows: payloadRows,
+    });
+    try {
+      await cacheDaySnapshot(businessId, deliveryDate, {
+        products,
+        rows,
+        kpis: dayKpis,
+      });
+    } catch {
+      /* optional */
+    }
+    setDayDirty(false);
+  };
+
   const handleSaveDay = async () => {
+    if (offlineEnabled && !isOnline && !daySnapshotReady) {
+      notify.error('Cannot save offline without a cached day sheet');
+      return;
+    }
     setSaving(true);
     try {
-      const payloadRows = rows.map((r) => {
-        const qtyByProduct = {};
-        for (const [pid, raw] of Object.entries(r.qtyByProduct || {})) {
-          const n = Number(raw);
-          if (Number.isFinite(n) && n > 0) qtyByProduct[String(pid)] = n;
-        }
-        return {
-          customerId: r.customerId,
-          houseNo: r.houseNo,
-          routeLabel: r.routeLabel,
-          notes: r.notes,
-          qtyByProduct,
-        };
-      });
+      const payloadRows = buildDayPayloadRows();
+
+      if (offlineEnabled && !isOnline) {
+        await queueAndCacheDay(payloadRows);
+        notify.compactSave('Day sheet saved offline — will sync when online');
+        return;
+      }
+
       const res = await saveMilkHisabDayAction({
         businessId,
         category,
@@ -323,12 +520,28 @@ export function MilkRouteHisab({ businessId, category }) {
         rows: payloadRows,
       });
       if (!res?.success) {
+        // Only queue on transport failures — never hide validation/auth errors.
+        if (offlineEnabled && isMilkHisabNetworkFailure(null, res?.error || res?.code || '')) {
+          await queueAndCacheDay(payloadRows);
+          notify.compactSave('Save queued offline — will sync when connection is stable');
+          return;
+        }
         notify.error(res?.error || 'Save failed');
         return;
       }
       notify.compactSave('Day sheet saved');
       await loadDay();
     } catch (e) {
+      if (offlineEnabled && isMilkHisabNetworkFailure(e)) {
+        try {
+          await queueAndCacheDay(buildDayPayloadRows());
+          notify.compactSave('Save queued offline — will sync when online');
+          return;
+        } catch (queueErr) {
+          notify.error(queueErr?.message || e?.message || 'Save failed');
+          return;
+        }
+      }
       notify.error(e?.message || 'Save failed');
     } finally {
       setSaving(false);
@@ -336,6 +549,10 @@ export function MilkRouteHisab({ businessId, category }) {
   };
 
   const handleGenerateInvoices = async () => {
+    if (!isOnline) {
+      notify.error('Connect to the internet to generate bills');
+      return;
+    }
     setGenerating(true);
     try {
       const res = await generateMilkHisabInvoicesAction({
@@ -391,6 +608,30 @@ export function MilkRouteHisab({ businessId, category }) {
         category: business?.category || category,
       };
 
+      // Offline: day Y/N grid needs the server. Print totals from the cached bill row instead.
+      if (!isOnline) {
+        if (localeKey === 'ur') {
+          notify.compactSave('Offline: printing totals bill (day Y/N sheet needs internet)');
+        }
+        const ok = await printMilkHisabThermalBillFromRow(
+          {
+            business: thermalBusiness,
+            row,
+            productColumns,
+            period: billingPeriod,
+            periodLabel,
+            category,
+          },
+          mode
+        );
+        if (!ok) {
+          notify.error(mode === 'pdf' ? 'PDF download failed' : 'Print dialog could not open');
+          return;
+        }
+        notify.compactSave(mode === 'pdf' ? '58mm totals PDF downloaded' : '58mm totals sent to printer');
+        return;
+      }
+
       // Prefer PK day Y/N sheet (same 58mm printer as POS / totals bill).
       if (row.customerId && billingPeriod) {
         const dayRes = await getMilkHisabCustomerDayBreakdownAction({
@@ -441,6 +682,26 @@ export function MilkRouteHisab({ businessId, category }) {
           invoiceId: row.invoiceId,
         });
         if (!res?.success) {
+          // Network hiccup while "online": still print from the bills row.
+          if (isMilkHisabNetworkFailure(null, res?.error || '')) {
+            const ok = await printMilkHisabThermalBillFromRow(
+              {
+                business: thermalBusiness,
+                row,
+                productColumns,
+                period: billingPeriod,
+                periodLabel,
+                category,
+              },
+              mode
+            );
+            if (!ok) {
+              notify.error(mode === 'pdf' ? 'PDF download failed' : 'Print dialog could not open');
+              return;
+            }
+            notify.compactSave('Printed totals from bills row');
+            return;
+          }
           notify.error(res?.error || 'Could not load bill');
           return;
         }
@@ -484,6 +745,32 @@ export function MilkRouteHisab({ businessId, category }) {
       }
     } catch (e) {
       console.error('handlePrintBill', e);
+      if (isMilkHisabNetworkFailure(e)) {
+        try {
+          const ok = await printMilkHisabThermalBillFromRow(
+            {
+              business: {
+                ...(business || {}),
+                business_name:
+                  business?.business_name || business?.name || business?.businessName || 'Milk shop',
+                category: business?.category || category,
+              },
+              row,
+              productColumns,
+              period: billingPeriod,
+              periodLabel,
+              category,
+            },
+            mode
+          );
+          if (ok) {
+            notify.compactSave('Printed totals bill (connection issue)');
+            return;
+          }
+        } catch {
+          /* fall through */
+        }
+      }
       notify.error(e?.message || 'Print failed');
     } finally {
       setPrintingId(null);
@@ -496,6 +783,10 @@ export function MilkRouteHisab({ businessId, category }) {
   };
 
   const handleRemindCustomer = async (row, channels = ['hub', 'email', 'whatsapp']) => {
+    if (!isOnline) {
+      notify.error('Connect to the internet to send reminders');
+      return;
+    }
     if (!row?.customerId || !(Number(row.amount) > 0)) {
       notify.error('No amount to remind for this customer');
       return;
@@ -536,6 +827,10 @@ export function MilkRouteHisab({ businessId, category }) {
   };
 
   const handleBulkRemind = async () => {
+    if (!isOnline) {
+      notify.error('Connect to the internet to send reminders');
+      return;
+    }
     setBulkReminding(true);
     try {
       const res = await sendMilkHisabBulkRemindersAction({
@@ -584,7 +879,8 @@ export function MilkRouteHisab({ businessId, category }) {
           <h2 className="text-lg font-semibold text-gray-900">Route Hisab</h2>
           <p className="text-sm text-gray-500 max-w-2xl">
             Log doorstep deliveries by day. Switch to Bills for week or month day sheets (Y/N), 58mm
-            thermal print, and unpaid reminders.
+            thermal print, and unpaid reminders. Offline: save the daily route when the network drops;
+            bills stay read-only until you reconnect.
           </p>
         </div>
         <Button
@@ -598,6 +894,29 @@ export function MilkRouteHisab({ businessId, category }) {
           Refresh
         </Button>
       </div>
+
+      <MilkHisabOfflineBanner
+        offlineEnabled={offlineEnabled}
+        isOnline={isOnline}
+        pendingCount={pendingCount}
+        isSyncing={isSyncing}
+        daySnapshotReady={daySnapshotReady}
+        view={view}
+        onSync={async () => {
+          const res = await syncPending();
+          if (res?.synced) {
+            notify.compactSave(
+              `Synced ${res.synced} day sheet${res.synced === 1 ? '' : 's'}`
+            );
+            if (view === 'daily') await loadDay();
+            else await loadBills();
+          } else if (res?.failed) {
+            notify.error('Some offline saves failed to sync');
+          } else {
+            notify.compactSave('Nothing pending to sync');
+          }
+        }}
+      />
 
       <div className="flex flex-wrap items-center gap-2">
         <div className="inline-flex rounded-lg border border-gray-200 bg-white p-0.5">
@@ -684,9 +1003,18 @@ export function MilkRouteHisab({ businessId, category }) {
 
         <div className="ml-auto flex flex-wrap items-center gap-2">
           {view === 'daily' ? (
-            <Button type="button" size="sm" onClick={handleSaveDay} disabled={saving || loading}>
+            <Button
+              type="button"
+              size="sm"
+              onClick={handleSaveDay}
+              disabled={
+                saving ||
+                loading ||
+                (offlineEnabled && !isOnline && !daySnapshotReady)
+              }
+            >
               {saving ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Save className="h-4 w-4 mr-1.5" />}
-              Save day
+              {offlineEnabled && !isOnline ? 'Save offline' : 'Save day'}
             </Button>
           ) : (
             <>
@@ -694,7 +1022,14 @@ export function MilkRouteHisab({ businessId, category }) {
                 type="button"
                 size="sm"
                 onClick={handleGenerateInvoices}
-                disabled={generating || loading || !(liveBillKpis.unbilledCount > 0)}
+                disabled={
+                  generating ||
+                  loading ||
+                  !isOnline ||
+                  billsFromCache ||
+                  !(liveBillKpis.unbilledCount > 0)
+                }
+                title={!isOnline ? 'Needs internet' : undefined}
               >
                 {generating ? (
                   <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
@@ -711,8 +1046,10 @@ export function MilkRouteHisab({ businessId, category }) {
                 disabled={
                   bulkReminding ||
                   loading ||
+                  !isOnline ||
                   !((liveBillKpis.unpaidCount || 0) + (liveBillKpis.unbilledCount || 0) > 0)
                 }
+                title={!isOnline ? 'Needs internet' : undefined}
               >
                 {bulkReminding ? (
                   <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
@@ -742,9 +1079,17 @@ export function MilkRouteHisab({ businessId, category }) {
       {view === 'bills' && periodLabel ? (
         <p className="text-xs text-gray-500">
           Billing period: <span className="font-semibold text-gray-700">{periodLabel}</span>
+          {billsFromCache ? ' · Offline cache' : ''}
           {' · '}58mm day sheet EN + اردو (Y/N per day)
           {' · '}Hub alerts, email, and WhatsApp reminders
           {' · '}Use Generate to create invoices (then invoice number replaces Not billed)
+        </p>
+      ) : null}
+
+      {view === 'daily' && offlineEnabled && !isOnline && !daySnapshotReady ? (
+        <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-900">
+          This day was not cached for offline use. Reconnect, open the day once, then you can log the
+          route without internet.
         </p>
       ) : null}
 
@@ -760,6 +1105,7 @@ export function MilkRouteHisab({ businessId, category }) {
           currency={currency}
           onQty={updateQty}
           onField={updateRowField}
+          readOnly={offlineEnabled && !isOnline && !daySnapshotReady}
         />
       ) : (
         <BillsSheet
@@ -776,6 +1122,7 @@ export function MilkRouteHisab({ businessId, category }) {
           onRemind={(row) => handleRemindCustomer(row)}
           onRemindWhatsApp={(row) => handleRemindCustomer(row, ['hub', 'whatsapp'])}
           onRemindEmail={(row) => handleRemindCustomer(row, ['hub', 'email'])}
+          remindersDisabled={!isOnline}
         />
       )}
     </div>
@@ -811,7 +1158,7 @@ function HisabKpiStrip({ items = [] }) {
   );
 }
 
-function DailySheet({ products, rows, currency, onQty, onField }) {
+function DailySheet({ products, rows, currency, onQty, onField, readOnly = false }) {
   if (!rows.length) {
     return (
       <div className="rounded-xl border border-dashed border-gray-200 bg-white px-4 py-12 text-center">
@@ -845,6 +1192,7 @@ function DailySheet({ products, rows, currency, onQty, onField }) {
                   value={row.houseNo || ''}
                   onChange={(e) => onField(row.customerId, 'houseNo', e.target.value)}
                   className="mt-0.5 h-8"
+                  disabled={readOnly}
                 />
               </label>
               <label className="text-xs text-gray-500">
@@ -853,6 +1201,7 @@ function DailySheet({ products, rows, currency, onQty, onField }) {
                   value={row.routeLabel || ''}
                   onChange={(e) => onField(row.customerId, 'routeLabel', e.target.value)}
                   className="mt-0.5 h-8"
+                  disabled={readOnly}
                 />
               </label>
             </div>
@@ -869,6 +1218,7 @@ function DailySheet({ products, rows, currency, onQty, onField }) {
                     value={row.qtyByProduct?.[String(p.id)] ?? row.qtyByProduct?.[p.id] ?? ''}
                     onChange={(e) => onQty(row.customerId, p.id, e.target.value)}
                     className="mt-0.5 h-8 tabular-nums"
+                    disabled={readOnly}
                   />
                   <span className="mt-0.5 block text-[10px] text-gray-400 tabular-nums">
                     {formatCurrency(Number(p.price) || 0, currency)}
@@ -882,6 +1232,7 @@ function DailySheet({ products, rows, currency, onQty, onField }) {
                 value={row.notes || ''}
                 onChange={(e) => onField(row.customerId, 'notes', e.target.value)}
                 className="mt-0.5 h-8"
+                disabled={readOnly}
               />
             </label>
           </div>
@@ -920,6 +1271,7 @@ function DailySheet({ products, rows, currency, onQty, onField }) {
                     value={row.houseNo || ''}
                     onChange={(e) => onField(row.customerId, 'houseNo', e.target.value)}
                     className="h-8 w-28"
+                    disabled={readOnly}
                   />
                 </td>
                 <td className="px-3 py-1.5 font-semibold text-gray-900 whitespace-nowrap">
@@ -930,6 +1282,7 @@ function DailySheet({ products, rows, currency, onQty, onField }) {
                     value={row.routeLabel || ''}
                     onChange={(e) => onField(row.customerId, 'routeLabel', e.target.value)}
                     className="h-8 w-32"
+                    disabled={readOnly}
                   />
                 </td>
                 {products.map((p) => (
@@ -942,6 +1295,7 @@ function DailySheet({ products, rows, currency, onQty, onField }) {
                       value={row.qtyByProduct?.[String(p.id)] ?? row.qtyByProduct?.[p.id] ?? ''}
                       onChange={(e) => onQty(row.customerId, p.id, e.target.value)}
                       className="mx-auto h-8 w-[4.5rem] tabular-nums text-center"
+                      disabled={readOnly}
                     />
                   </td>
                 ))}
@@ -950,6 +1304,7 @@ function DailySheet({ products, rows, currency, onQty, onField }) {
                     value={row.notes || ''}
                     onChange={(e) => onField(row.customerId, 'notes', e.target.value)}
                     className="h-8 min-w-[8rem]"
+                    disabled={readOnly}
                   />
                 </td>
               </tr>
@@ -975,6 +1330,7 @@ function BillsSheet({
   onRemind,
   onRemindWhatsApp,
   onRemindEmail,
+  remindersDisabled = false,
 }) {
   if (!rows.length) {
     return (
@@ -1022,9 +1378,9 @@ function BillsSheet({
           {rows.map((row) => {
             const baseId = row.invoiceId || row.customerId;
             const busy = typeof printingId === 'string' && printingId.startsWith(`${baseId}:`);
-            const remindBusy = remindingId === row.customerId;
+            const remindBusy = remindingId === row.customerId || remindersDisabled;
             const canPrint = Boolean(row.invoiceId) || Number(row.amount) > 0;
-            const canRemind = Number(row.amount) > 0;
+            const canRemind = Number(row.amount) > 0 && !remindersDisabled;
             const spin = (mode, locale) => printingId === `${baseId}:${mode}:${locale}`;
             return (
               <tr key={row.customerId} className="hover:bg-sky-50/40">

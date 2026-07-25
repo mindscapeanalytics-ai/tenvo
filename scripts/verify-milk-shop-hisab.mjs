@@ -36,6 +36,11 @@ import {
   buildWhatsAppAppUrl,
   toWhatsAppAppUrlFromWeb,
 } from '../lib/utils/whatsappOpen.js';
+import { isMilkHisabOfflineEnabled, isMilkHisabNetworkFailure } from '../lib/utils/milkHisabOfflineAccess.js';
+import {
+  milkHisabDaySnapshotKey,
+  milkHisabBusinessDateKey,
+} from '../lib/utils/milkHisabOfflineDb.js';
 import { resolveDomainFieldKey } from '../lib/utils/domainHelpers.ts';
 import { isMilkShopStore } from '../lib/storefront/milkShopStorefront.js';
 import { resolveDomainKey } from '../lib/config/domainKeyAliases.js';
@@ -268,6 +273,47 @@ assert(remindSrc.includes('buildMilkHisabWhatsAppUrl'), 'WhatsApp wa.me helper r
 assert(remindSrc.includes('resolveMilkHisabReminderChannels'), 'channel resolver required');
 assert(remindSrc.includes('openWhatsAppSmart'), 'reminders re-export smart WhatsApp open');
 assert(uiSrc.includes('openWhatsAppSmart'), 'UI must use smart WhatsApp open');
+assert(uiSrc.includes('useMilkHisabOffline'), 'UI must use Route Hisab offline hook');
+assert(uiSrc.includes('MilkHisabOfflineBanner'), 'UI must show offline banner');
+assert(uiSrc.includes('Save offline') || uiSrc.includes('queueDaySave'), 'UI must queue offline saves');
+
+assert(
+  isMilkHisabOfflineEnabled({
+    category: 'milk-shop',
+    planTier: 'professional',
+    settings: {},
+  }) === true,
+  'milk-shop professional offline default on'
+);
+assert(
+  isMilkHisabOfflineEnabled({
+    category: 'milk-shop',
+    planTier: 'professional',
+    settings: { milkHisab: { offlineEnabled: false } },
+  }) === false,
+  'owner can disable milk hisab offline'
+);
+assert(
+  isMilkHisabOfflineEnabled({ category: 'supermarket', planTier: 'professional', settings: {} }) ===
+    false,
+  'supermarket must not get milk hisab offline'
+);
+assert(
+  milkHisabDaySnapshotKey('b1', '2026-07-01') === 'b1::2026-07-01',
+  'day snapshot key'
+);
+assert(
+  milkHisabBusinessDateKey('b1', '2026-07-01') === 'b1::2026-07-01',
+  'business date key'
+);
+
+const offlineBanner = resolve(root, 'components/milk/MilkHisabOfflineBanner.jsx');
+assert(existsSync(offlineBanner), 'MilkHisabOfflineBanner.jsx must exist');
+assert(existsSync(resolve(root, 'lib/hooks/useMilkHisabOffline.js')), 'useMilkHisabOffline hook');
+assert(existsSync(resolve(root, 'lib/utils/milkHisabOfflineQueue.js')), 'offline queue util');
+assert(existsSync(resolve(root, 'lib/utils/milkHisabOfflineCache.js')), 'offline cache util');
+assert(isMilkHisabNetworkFailure(new Error('Failed to fetch')) === true, 'detect fetch failure');
+assert(isMilkHisabNetworkFailure(null, 'Permission denied') === false, 'ignore auth errors');
 
 {
   const web =
