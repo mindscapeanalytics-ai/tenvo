@@ -374,12 +374,13 @@ export function MilkRouteHisab({ businessId, category }) {
     }
   };
 
-  const handlePrintBill = async (row, mode = 'print') => {
+  const handlePrintBill = async (row, mode = 'print', billLocale = 'en') => {
     if (!row || !(Number(row.amount) > 0 || row.invoiceId)) {
       notify.error('No billable amount for this customer');
       return;
     }
-    const printKey = `${row.invoiceId || row.customerId}:${mode}`;
+    const localeKey = billLocale === 'ur' ? 'ur' : 'en';
+    const printKey = `${row.invoiceId || row.customerId}:${mode}:${localeKey}`;
     setPrintingId(printKey);
     try {
       const thermalBusiness = {
@@ -410,6 +411,7 @@ export function MilkRouteHisab({ businessId, category }) {
               grandTotal: dayRes.amount ?? row.amount ?? 0,
               paymentStatus: dayRes.paymentStatus || row.paymentStatus || 'unpaid',
               productMeta: dayRes.productMeta || row.productMeta || {},
+              billLocale: localeKey,
             },
             mode
           );
@@ -417,8 +419,12 @@ export function MilkRouteHisab({ businessId, category }) {
             notify.error(mode === 'pdf' ? 'PDF download failed' : 'Print dialog could not open');
             return;
           }
-          if (mode === 'pdf') {
+          if (localeKey === 'ur' && mode === 'pdf') {
+            notify.compactSave('Urdu day sheet ready — choose Save as PDF if needed');
+          } else if (mode === 'pdf') {
             notify.compactSave('Day sheet PDF downloaded');
+          } else if (localeKey === 'ur') {
+            notify.compactSave('Urdu day sheet sent to printer');
           } else {
             notify.compactSave('Day sheet sent to printer');
           }
@@ -735,7 +741,7 @@ export function MilkRouteHisab({ businessId, category }) {
       {view === 'bills' && periodLabel ? (
         <p className="text-xs text-gray-500">
           Billing period: <span className="font-semibold text-gray-700">{periodLabel}</span>
-          {' · '}58mm day sheet (Y/N per day) + POS printer
+          {' · '}58mm day sheet EN + اردو (Y/N per day)
           {' · '}Hub alerts, email, and WhatsApp reminders
           {' · '}Use Generate to create invoices (then invoice number replaces Not billed)
         </p>
@@ -762,8 +768,10 @@ export function MilkRouteHisab({ businessId, category }) {
           printingId={printingId}
           remindingId={remindingId}
           onOpenInvoices={openInvoices}
-          onPrint={(row) => handlePrintBill(row, 'print')}
-          onPdf={(row) => handlePrintBill(row, 'pdf')}
+          onPrint={(row) => handlePrintBill(row, 'print', 'en')}
+          onPdf={(row) => handlePrintBill(row, 'pdf', 'en')}
+          onPrintUrdu={(row) => handlePrintBill(row, 'print', 'ur')}
+          onPdfUrdu={(row) => handlePrintBill(row, 'pdf', 'ur')}
           onRemind={(row) => handleRemindCustomer(row)}
           onRemindWhatsApp={(row) => handleRemindCustomer(row, ['hub', 'whatsapp'])}
           onRemindEmail={(row) => handleRemindCustomer(row, ['hub', 'email'])}
@@ -961,6 +969,8 @@ function BillsSheet({
   onOpenInvoices,
   onPrint,
   onPdf,
+  onPrintUrdu,
+  onPdfUrdu,
   onRemind,
   onRemindWhatsApp,
   onRemindEmail,
@@ -1009,12 +1019,12 @@ function BillsSheet({
         </thead>
         <tbody className="divide-y divide-gray-100">
           {rows.map((row) => {
-            const busy =
-              printingId === `${row.invoiceId || row.customerId}:print` ||
-              printingId === `${row.invoiceId || row.customerId}:pdf`;
+            const baseId = row.invoiceId || row.customerId;
+            const busy = typeof printingId === 'string' && printingId.startsWith(`${baseId}:`);
             const remindBusy = remindingId === row.customerId;
             const canPrint = Boolean(row.invoiceId) || Number(row.amount) > 0;
             const canRemind = Number(row.amount) > 0;
+            const spin = (mode, locale) => printingId === `${baseId}:${mode}:${locale}`;
             return (
               <tr key={row.customerId} className="hover:bg-sky-50/40">
                 <td className="px-3 py-2 whitespace-nowrap text-gray-700">{row.houseNo || '-'}</td>
@@ -1050,7 +1060,7 @@ function BillsSheet({
                 </td>
                 <td className="px-3 py-2">
                   {canPrint ? (
-                    <div className="flex items-center gap-1">
+                    <div className="flex flex-wrap items-center gap-1 max-w-[11rem]">
                       <Button
                         type="button"
                         size="sm"
@@ -1058,9 +1068,9 @@ function BillsSheet({
                         className="h-8 px-2"
                         disabled={busy}
                         onClick={() => onPrint(row)}
-                        title="Print 58mm day sheet (Y/N)"
+                        title="Print English 58mm day sheet"
                       >
-                        {printingId === `${row.invoiceId || row.customerId}:print` ? (
+                        {spin('print', 'en') ? (
                           <Loader2 className="h-3.5 w-3.5 animate-spin" />
                         ) : (
                           <Printer className="h-3.5 w-3.5" />
@@ -1073,12 +1083,45 @@ function BillsSheet({
                         className="h-8 px-2"
                         disabled={busy}
                         onClick={() => onPdf(row)}
-                        title="Download 58mm day sheet PDF"
+                        title="Download English 58mm day sheet PDF"
                       >
-                        {printingId === `${row.invoiceId || row.customerId}:pdf` ? (
+                        {spin('pdf', 'en') ? (
                           <Loader2 className="h-3.5 w-3.5 animate-spin" />
                         ) : (
                           <Download className="h-3.5 w-3.5" />
+                        )}
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="h-8 px-2 font-urdu text-[11px] leading-none"
+                        disabled={busy}
+                        onClick={() => onPrintUrdu?.(row)}
+                        title="اردو بل پرنٹ کریں"
+                      >
+                        {spin('print', 'ur') ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          'اردو'
+                        )}
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 px-2 font-urdu text-[11px] leading-none"
+                        disabled={busy}
+                        onClick={() => onPdfUrdu?.(row)}
+                        title="اردو بل PDF"
+                      >
+                        {spin('pdf', 'ur') ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <span className="inline-flex items-center gap-0.5">
+                            <Download className="h-3 w-3" />
+                            PDF
+                          </span>
                         )}
                       </Button>
                     </div>

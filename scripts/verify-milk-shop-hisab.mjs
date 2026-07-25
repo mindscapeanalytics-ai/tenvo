@@ -25,6 +25,12 @@ import {
   buildMilkHisabDayBreakdownGrid,
   formatMilkHisabDayLine,
 } from '../lib/storefront/milkShopHisab.js';
+import {
+  normalizeMilkHisabBillLocale,
+  getMilkHisabDaySheetCopy,
+  milkHisabUrduProductLabel,
+  localizeMilkHisabPeriodLabel,
+} from '../lib/storefront/milkHisabUrdu.js';
 import { resolveDomainFieldKey } from '../lib/utils/domainHelpers.ts';
 import { isMilkShopStore } from '../lib/storefront/milkShopStorefront.js';
 import { resolveDomainKey } from '../lib/config/domainKeyAliases.js';
@@ -240,6 +246,8 @@ const uiSrc = readFileSync(ui, 'utf8');
 assert(uiSrc.includes('printMilkHisabThermalBill'), 'UI must print 58mm thermal bills');
 assert(uiSrc.includes('printMilkHisabDayBreakdownBill'), 'UI must print day Y/N sheet');
 assert(uiSrc.includes('getMilkHisabCustomerDayBreakdownAction'), 'UI must load day breakdown');
+assert(uiSrc.includes('onPrintUrdu') || uiSrc.includes("billLocale: localeKey"), 'UI must offer Urdu print');
+assert(uiSrc.includes('اردو'), 'UI must show Urdu print label');
 assert(uiSrc.includes('Generate weekly') || uiSrc.includes('weekly'), 'UI must support weekly bills');
 assert(uiSrc.includes('type="week"'), 'UI must use week picker');
 assert(uiSrc.includes('sendMilkHisabReminderAction'), 'UI must wire reminders');
@@ -263,7 +271,21 @@ assert(thermalSrc.includes('buildMilkHisabThermalOptsFromRow'), 'thermal helper 
 assert(thermalSrc.includes('printMilkHisabThermalBillFromRow'), 'thermal helper exports row print');
 assert(thermalSrc.includes('printMilkHisabDayBreakdownBill'), 'thermal helper exports day sheet print');
 assert(thermalSrc.includes('buildMilkHisabDayBreakdownHtml'), 'thermal helper builds day sheet HTML');
+assert(thermalSrc.includes('billLocale'), 'thermal day sheet supports billLocale');
+assert(thermalSrc.includes('Noto Naskh Arabic') || thermalSrc.includes('Noto+Naskh'), 'Urdu HTML loads Naskh');
 
+const urduFile = resolve(root, 'lib/storefront/milkHisabUrdu.js');
+assert(existsSync(urduFile), 'milkHisabUrdu.js must exist');
+assert(normalizeMilkHisabBillLocale('ur') === 'ur', 'ur locale normalize');
+assert(normalizeMilkHisabBillLocale('en') === 'en', 'en locale normalize');
+assert(getMilkHisabDaySheetCopy('ur', 'month').total.includes('کل'), 'Urdu total label');
+assert(milkHisabUrduProductLabel({ name: 'Fresh Milk' }) === 'دودھ', 'Milk → دودھ');
+assert(milkHisabUrduProductLabel({ name: 'Dahi Cup' }) === 'دہی', 'Dahi → دہی');
+assert(milkHisabUrduProductLabel({ name: 'Sweet Lassi' }) === 'لسی', 'Lassi → لسی');
+assert(
+  localizeMilkHisabPeriodLabel('July 2026', 'ur', 'month').includes('جولائی'),
+  'July localizes to جولائی'
+);
 assert(abbreviateMilkHisabColumn('Milk') === 'Mil', 'Milk abbreviates to 3 letters');
 assert(isMilkHisabWalkInCustomer('Walk-in') === true, 'walk-in detector');
 
