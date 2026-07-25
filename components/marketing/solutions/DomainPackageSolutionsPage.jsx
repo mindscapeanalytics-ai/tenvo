@@ -31,7 +31,7 @@ import { FEATURE_LABELS, PLAN_TIERS } from '@/lib/config/plans';
 import { CAPABILITY_STATUS_LABEL, CAPABILITY_STATUS_STYLE } from '@/lib/marketing/capabilities';
 import { formatCurrency } from '@/lib/currency';
 import { getBookMeetingHref } from '@/lib/marketing/salesLinks';
-import { getDemoStoreHeroByDomain } from '@/lib/marketing/demoStoreGalleryMeta';
+import { getDemoStoreHeroByDomain, getDemoStoreHref } from '@/lib/marketing/demoStoreGalleryMeta';
 import {
   buildUnifiedPackageSlides,
   enrichVerticalPresetSlides,
@@ -100,6 +100,31 @@ export default function DomainPackageSolutionsPage({ pkg, content }) {
   const fallbackHero = pkg.demoStoreDomain ? getDemoStoreHeroByDomain(pkg.demoStoreDomain) : '';
   const verticalSlides = enrichVerticalPresetSlides(content.verticalPresets, fallbackHero);
   const unifiedSlides = buildUnifiedPackageSlides(pkg, content, verticalSlides);
+  const demoHref = pkg.demoStoreDomain ? getDemoStoreHref(pkg.demoStoreDomain) : null;
+
+  const guideSteps =
+    Array.isArray(content.guideSteps) && content.guideSteps.length > 0
+      ? content.guideSteps
+      : [
+          {
+            title: 'Explore this suite',
+            body: 'Review channels, included modules, and pre-enabled features on this page so you know what lands on day one.',
+          },
+          demoHref
+            ? {
+                title: 'Try the live demo',
+                body: `Open ${pkg.demoStoreDomain} to see the public storefront buyers get with this vertical.`,
+                href: demoHref,
+                cta: 'Open demo store',
+              }
+            : null,
+          {
+            title: 'Register with this package',
+            body: `Start a 14-day trial. Registration applies ${pkg.name} packaging, ${businessTier?.name || 'plan'} modules, and the ${pkg.defaultVertical} vertical preset.`,
+            href: registerHref,
+            cta: 'Start with this suite',
+          },
+        ].filter(Boolean);
 
   const limitStats = [
     { label: 'Products', value: limits.max_products?.toLocaleString() || '10,000+' },
@@ -276,6 +301,54 @@ export default function DomainPackageSolutionsPage({ pkg, content }) {
             </li>
           ))}
         </ul>
+      </MarketingSection>
+
+      <MarketingSection id="get-started" className="border-b border-neutral-200/80 bg-neutral-50">
+        <SectionIntro
+          eyebrow="Owner guide"
+          title={content.guideHeading || 'From this page to a live hub'}
+          lead={
+            content.guideLead ||
+            'Navigate the suite, preview the demo storefront, then register with packaging and vertical presets already applied.'
+          }
+        />
+        <ol className="mx-auto grid max-w-5xl gap-4 md:grid-cols-3">
+          {guideSteps.map((step, idx) => (
+            <li
+              key={step.title}
+              className="flex h-full flex-col rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm sm:p-6"
+            >
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-neutral-400">
+                Step {String(idx + 1).padStart(2, '0')}
+              </span>
+              <h3 className="mt-2 text-lg font-semibold text-neutral-900">{step.title}</h3>
+              <p className="mt-2 flex-1 text-sm font-medium leading-relaxed text-neutral-600">{step.body}</p>
+              {step.href && step.cta ? (
+                <Button asChild variant="outline" size="sm" className="mt-4 w-full rounded-full font-semibold sm:w-auto">
+                  <Link href={step.href}>
+                    {step.cta}
+                    <ArrowRight className="ml-1.5 h-3.5 w-3.5" aria-hidden />
+                  </Link>
+                </Button>
+              ) : null}
+            </li>
+          ))}
+        </ol>
+        <div className="mx-auto mt-8 flex max-w-5xl flex-col gap-3 sm:flex-row sm:justify-center">
+          <Button asChild size="lg" className="h-12 rounded-full font-semibold">
+            <Link href={registerHref}>
+              Get this suite
+              <ArrowRight className="ml-2 h-4 w-4" aria-hidden />
+            </Link>
+          </Button>
+          {demoHref ? (
+            <Button asChild variant="outline" size="lg" className="h-12 rounded-full font-semibold">
+              <Link href={demoHref} target="_blank" rel="noopener noreferrer">
+                Open demo store
+              </Link>
+            </Button>
+          ) : null}
+        </div>
       </MarketingSection>
 
       <div id="faq">

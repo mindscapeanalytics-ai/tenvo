@@ -105,11 +105,19 @@ if (!dynamicPage.includes('getDomainPackageBySlug')) mark('dynamic solutions pag
 if (!dynamicLayout.includes('generateMetadata')) mark('dynamic solutions layout metadata');
 
 if (!billingCards.includes('listDomainPackageBillableSkus')) mark('billing cards use catalog-resolved prices');
+if (!billingCards.includes('milk-commerce')) mark('billing cards icon map must include milk-commerce');
 
 if (!domainPackageNav.includes('listIndustryPlanNavItems')) mark('domain package nav helper');
 if (!domainPackageNav.includes("hubPath: '/industry-plans'")) mark('industry plans hub path');
+if (!domainPackageNav.includes('milk-commerce')) mark('domain package nav must include milk-commerce');
 if (!marketingNav.includes('INDUSTRY_PLANS_NAV')) mark('marketing nav industry plans dropdown');
+if (!marketingNav.includes('Dumbbell') || !marketingNav.includes('Milk')) {
+  mark('MarketingNav industryPlanIcons must include Dumbbell and Milk');
+}
 if (!industryPlansPage.includes('IndustryPlansHubPage')) mark('industry plans hub page');
+if (!solutionsPage.includes('get-started') || !solutionsPage.includes('guideSteps')) {
+  mark('solutions page must render owner get-started guide');
+}
 const heroShowcase = read('components/marketing/solutions/DomainPackageHeroShowcase.jsx');
 const verticalMeta = read('lib/marketing/domainPackageVerticalMeta.js');
 if (!heroShowcase.includes('DomainPackageHeroShowcase')) mark('domain package hero showcase');

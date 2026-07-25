@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Menu, X, ChevronDown, Package, Receipt, Briefcase, Store, Factory, Globe, ShoppingBag, UtensilsCrossed, Megaphone, Heart, Brain, Shirt, Pill, Cog, CarFront, Sofa, Sparkles, ArrowRight } from 'lucide-react';
+import { Menu, X, ChevronDown, Package, Receipt, Briefcase, Store, Factory, Globe, ShoppingBag, UtensilsCrossed, Megaphone, Heart, Brain, Shirt, Pill, Cog, CarFront, Sofa, Dumbbell, Milk, Sparkles, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { trackNavMenuOpen, trackCTAClick } from '@/lib/analytics/tracking';
 import { useAuth } from '@/lib/context/AuthContext';
@@ -92,6 +92,8 @@ export default function MarketingNav({
     Cog,
     CarFront,
     Sofa,
+    Dumbbell,
+    Milk,
     Sparkles,
   };
 
@@ -198,7 +200,7 @@ export default function MarketingNav({
                 onToggle={() => toggleMenu('industry-plans')}
                 triggerClassName={navItemClass}
               >
-                <div className="w-[min(96vw,40rem)] p-4 sm:p-6">
+                <div className="w-[min(96vw,44rem)] p-4 sm:p-6">
                   <div className="mb-4 flex items-start justify-between gap-4 border-b border-neutral-100 pb-4">
                     <div>
                       <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">
