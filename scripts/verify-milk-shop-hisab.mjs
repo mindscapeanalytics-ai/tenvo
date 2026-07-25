@@ -24,12 +24,18 @@ import {
   abbreviateMilkHisabColumn,
   buildMilkHisabDayBreakdownGrid,
   formatMilkHisabDayLine,
+  isMilkHisabBillRemindable,
+  MILK_HISAB_COLLECTION_NOTE,
 } from '../lib/storefront/milkShopHisab.js';
 import {
   normalizeMilkHisabBillLocale,
   getMilkHisabDaySheetCopy,
   milkHisabUrduProductLabel,
   localizeMilkHisabPeriodLabel,
+  localizeMilkHisabPeriodParts,
+  formatMilkHisabPkDate,
+  formatMilkHisabTotalLine,
+  sortMilkHisabPrintColumns,
 } from '../lib/storefront/milkHisabUrdu.js';
 import {
   parseWhatsAppWebUrl,
@@ -262,6 +268,19 @@ assert(uiSrc.includes('Generate weekly') || uiSrc.includes('weekly'), 'UI must s
 assert(uiSrc.includes('type="week"'), 'UI must use week picker');
 assert(uiSrc.includes('sendMilkHisabReminderAction'), 'UI must wire reminders');
 assert(uiSrc.includes('Remind unpaid'), 'UI must expose bulk remind');
+assert(uiSrc.includes('setMilkHisabBillPaymentStatusAction'), 'UI must wire payment toggle action');
+assert(uiSrc.includes('MilkHisabPaymentToggle'), 'UI must render compact Unpaid/Paid toggle');
+assert(uiSrc.includes('isMilkHisabBillRemindable'), 'UI must gate WhatsApp on unpaid');
+assert(uiSrc.includes('lg:hidden'), 'Bills must have mobile card layout');
+assert(uiSrc.includes('hidden lg:block'), 'Bills desktop table dual-layout');
+assert(actionSrc.includes('setMilkHisabBillPaymentStatusAction'), 'actions must export payment status setter');
+assert(actionSrc.includes('MILK_HISAB_COLLECTION_NOTE'), 'payment uses Route Hisab collection marker');
+assert(actionSrc.includes('MILK_HISAB_ALREADY_PAID'), 'remind must reject paid invoices');
+assert(isMilkHisabBillRemindable({ amount: 100, paymentStatus: 'unpaid' }), 'unpaid remindable');
+assert(isMilkHisabBillRemindable({ amount: 100, paymentStatus: null }), 'unbilled remindable');
+assert(!isMilkHisabBillRemindable({ amount: 100, paymentStatus: 'paid' }), 'paid not remindable');
+assert(!isMilkHisabBillRemindable({ amount: 0, paymentStatus: 'unpaid' }), 'zero amount not remindable');
+assert(String(MILK_HISAB_COLLECTION_NOTE).includes('Route Hisab'), 'collection note marker');
 assert(uiSrc.includes('HisabKpiStrip') || uiSrc.includes('billStatItems'), 'UI must render period KPIs');
 assert(uiSrc.includes('MobileStatStrip'), 'UI must render mobile KPI strip');
 assert(uiSrc.includes('shortMilkHisabProductLabel'), 'UI must shorten product headers');
@@ -344,6 +363,7 @@ assert(existsSync(urduFile), 'milkHisabUrdu.js must exist');
 assert(normalizeMilkHisabBillLocale('ur') === 'ur', 'ur locale normalize');
 assert(normalizeMilkHisabBillLocale('en') === 'en', 'en locale normalize');
 assert(getMilkHisabDaySheetCopy('ur', 'month').total.includes('کل'), 'Urdu total label');
+assert(getMilkHisabDaySheetCopy('ur', 'week').daySection.includes('Y/N'), 'Urdu day section');
 assert(milkHisabUrduProductLabel({ name: 'Fresh Milk' }) === 'دودھ', 'Milk → دودھ');
 assert(milkHisabUrduProductLabel({ name: 'Dahi Cup' }) === 'دہی', 'Dahi → دہی');
 assert(milkHisabUrduProductLabel({ name: 'Sweet Lassi' }) === 'لسی', 'Lassi → لسی');
@@ -351,6 +371,40 @@ assert(
   localizeMilkHisabPeriodLabel('July 2026', 'ur', 'month').includes('جولائی'),
   'July localizes to جولائی'
 );
+assert(formatMilkHisabPkDate('2026-07-20') === '20-07-2026', 'PK date DD-MM-YYYY');
+{
+  const weekParts = localizeMilkHisabPeriodParts(
+    'Week 30 (2026-07-20 to 2026-07-26)',
+    'ur',
+    'week',
+    { startIso: '2026-07-20', endIso: '2026-07-26' }
+  );
+  assert(weekParts.title === 'ہفتہ 30', `week title got: ${weekParts.title}`);
+  assert(
+    weekParts.range === '20-07-2026 تا 26-07-2026',
+    `week range must be LTR-safe got: ${weekParts.range}`
+  );
+  assert(!weekParts.range.includes('to '), 'Urdu range must not use English to');
+}
+assert(
+  formatMilkHisabTotalLine({ label: 'دودھ', qty: 7, unit: 'کلو' }, 'ur') === 'دودھ · 7 کلو',
+  'Urdu total line readable'
+);
+assert(
+  formatMilkHisabTotalLine({ label: 'Milk', qty: 7, unit: 'kg' }, 'en') === 'Milk 7 kg',
+  'EN total line readable'
+);
+{
+  const sorted = sortMilkHisabPrintColumns([
+    { name: 'Eggs', shortLabel: 'Egg' },
+    { name: 'Fresh Milk', shortLabel: 'Milk' },
+    { name: 'Dahi', shortLabel: 'Dahi' },
+  ]);
+  assert(sorted[0].shortLabel === 'Milk', 'print columns milk-first');
+  assert(sorted[1].shortLabel === 'Dahi', 'print columns dahi second');
+}
+assert(thermalSrc.includes('periodRange'), 'day sheet separates period range for RTL safety');
+assert(thermalSrc.includes('formatMilkHisabTotalLine'), 'day sheet uses readable total lines');
 assert(abbreviateMilkHisabColumn('Milk') === 'Mil', 'Milk abbreviates to 3 letters');
 assert(isMilkHisabWalkInCustomer('Walk-in') === true, 'walk-in detector');
 

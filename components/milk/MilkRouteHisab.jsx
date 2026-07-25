@@ -32,6 +32,7 @@ import {
   getMilkHisabCustomerDayBreakdownAction,
   sendMilkHisabReminderAction,
   sendMilkHisabBulkRemindersAction,
+  setMilkHisabBillPaymentStatusAction,
 } from '@/lib/actions/standard/milkHisab';
 import {
   toMilkHisabDateKey,
@@ -39,6 +40,7 @@ import {
   toMilkHisabWeekKey,
   shortMilkHisabProductLabel,
   buildMilkHisabPeriodKpis,
+  isMilkHisabBillRemindable,
 } from '@/lib/storefront/milkShopHisab';
 import { openWhatsAppSmart } from '@/lib/utils/whatsappOpen';
 import { isMilkHisabOfflineEnabled, isMilkHisabNetworkFailure } from '@/lib/utils/milkHisabOfflineAccess';
@@ -98,6 +100,7 @@ export function MilkRouteHisab({ businessId, category }) {
   const [printingId, setPrintingId] = useState(null);
   const [remindingId, setRemindingId] = useState(null);
   const [bulkReminding, setBulkReminding] = useState(false);
+  const [paymentBusyId, setPaymentBusyId] = useState(null);
   const [products, setProducts] = useState([]);
   const [rows, setRows] = useState([]);
   const [billRows, setBillRows] = useState([]);
@@ -356,7 +359,7 @@ export function MilkRouteHisab({ businessId, category }) {
     return Math.round(amount * 100) / 100;
   }, [rows, products, dayKpis]);
 
-  const liveBillKpis = useMemo(() => billKpis || buildMilkHisabPeriodKpis(billRows), [billKpis, billRows]);
+  const liveBillKpis = useMemo(() => buildMilkHisabPeriodKpis(billRows), [billRows]);
 
   const dayStatItems = useMemo(() => {
     let deliveredLive = 0;
@@ -791,6 +794,10 @@ export function MilkRouteHisab({ businessId, category }) {
       notify.error('No amount to remind for this customer');
       return;
     }
+    if (!isMilkHisabBillRemindable(row)) {
+      notify.error('Already paid. No reminder needed.');
+      return;
+    }
     setRemindingId(row.customerId);
     try {
       const res = await sendMilkHisabReminderAction({
@@ -857,6 +864,47 @@ export function MilkRouteHisab({ businessId, category }) {
       notify.error(e?.message || 'Bulk reminder failed');
     } finally {
       setBulkReminding(false);
+    }
+  };
+
+  const handleBillPaymentStatus = async (row, nextStatus) => {
+    if (!isOnline) {
+      notify.error('Connect to the internet to update payment');
+      return;
+    }
+    if (!row?.invoiceId) {
+      notify.error('Generate the bill first, then mark paid');
+      return;
+    }
+    const next = String(nextStatus || '').toLowerCase() === 'paid' ? 'paid' : 'unpaid';
+    const current = String(row.paymentStatus || 'unpaid').toLowerCase() === 'paid' ? 'paid' : 'unpaid';
+    if (next === current) return;
+
+    setPaymentBusyId(row.invoiceId);
+    try {
+      const res = await setMilkHisabBillPaymentStatusAction({
+        businessId,
+        category,
+        invoiceId: row.invoiceId,
+        paymentStatus: next,
+      });
+      if (!res?.success) {
+        notify.error(res?.error || 'Could not update payment');
+        return;
+      }
+      setBillRows((prev) =>
+        prev.map((r) =>
+          r.customerId === row.customerId
+            ? { ...r, paymentStatus: res.paymentStatus || next, billed: true }
+            : r
+        )
+      );
+      setBillKpis(null);
+      notify.compactSave(next === 'paid' ? 'Marked paid' : 'Marked unpaid');
+    } catch (e) {
+      notify.error(e?.message || 'Could not update payment');
+    } finally {
+      setPaymentBusyId(null);
     }
   };
 
@@ -1080,9 +1128,8 @@ export function MilkRouteHisab({ businessId, category }) {
         <p className="text-xs text-gray-500">
           Billing period: <span className="font-semibold text-gray-700">{periodLabel}</span>
           {billsFromCache ? ' · Offline cache' : ''}
-          {' · '}58mm day sheet EN + اردو (Y/N per day)
-          {' · '}Hub alerts, email, and WhatsApp reminders
-          {' · '}Use Generate to create invoices (then invoice number replaces Not billed)
+          {' · '}Generate bills, mark Unpaid/Paid, print 58mm EN or اردو
+          {' · '}WhatsApp remind only when unpaid
         </p>
       ) : null}
 
@@ -1114,7 +1161,10 @@ export function MilkRouteHisab({ businessId, category }) {
           currency={currency}
           printingId={printingId}
           remindingId={remindingId}
+          paymentBusyId={paymentBusyId}
+          paymentDisabled={!isOnline}
           onOpenInvoices={openInvoices}
+          onPaymentStatus={handleBillPaymentStatus}
           onPrint={(row) => handlePrintBill(row, 'print', 'en')}
           onPdf={(row) => handlePrintBill(row, 'pdf', 'en')}
           onPrintUrdu={(row) => handlePrintBill(row, 'print', 'ur')}
@@ -1316,13 +1366,63 @@ function DailySheet({ products, rows, currency, onQty, onField, readOnly = false
   );
 }
 
+function MilkHisabPaymentToggle({ status, disabled, busy, onChange }) {
+  const paid = String(status || '').toLowerCase() === 'paid';
+  return (
+    <div
+      className="inline-flex rounded-md border border-gray-200 bg-gray-50 p-0.5"
+      role="group"
+      aria-label="Payment status"
+    >
+      <button
+        type="button"
+        disabled={disabled || busy}
+        onClick={() => onChange('unpaid')}
+        className={cn(
+          'h-7 min-w-[3.25rem] rounded px-2 text-[11px] font-semibold transition-colors',
+          !paid ? 'bg-white text-rose-700 shadow-sm' : 'text-gray-500 hover:text-gray-700',
+          (disabled || busy) && 'opacity-50 cursor-not-allowed'
+        )}
+      >
+        {busy && !paid ? <Loader2 className="mx-auto h-3 w-3 animate-spin" /> : 'Unpaid'}
+      </button>
+      <button
+        type="button"
+        disabled={disabled || busy}
+        onClick={() => onChange('paid')}
+        className={cn(
+          'h-7 min-w-[3.25rem] rounded px-2 text-[11px] font-semibold transition-colors',
+          paid ? 'bg-white text-emerald-700 shadow-sm' : 'text-gray-500 hover:text-gray-700',
+          (disabled || busy) && 'opacity-50 cursor-not-allowed'
+        )}
+      >
+        {busy && paid ? <Loader2 className="mx-auto h-3 w-3 animate-spin" /> : 'Paid'}
+      </button>
+    </div>
+  );
+}
+
+function billProductSummary(row, productColumns) {
+  const bits = [];
+  for (const p of productColumns || []) {
+    const qty = Number(row.qtyByProduct?.[String(p.id)] ?? row.qtyByProduct?.[p.id]) || 0;
+    if (qty <= 0) continue;
+    const label = shortMilkHisabProductLabel(p, 8);
+    bits.push(`${qty}${p.unit ? ` ${p.unit}` : ''} ${label}`);
+  }
+  return bits.join(' · ');
+}
+
 function BillsSheet({
   productColumns,
   rows,
   currency,
   printingId,
   remindingId,
+  paymentBusyId,
+  paymentDisabled = false,
   onOpenInvoices,
+  onPaymentStatus,
   onPrint,
   onPdf,
   onPrintUrdu,
@@ -1343,200 +1443,394 @@ function BillsSheet({
     );
   }
 
-  return (
-    <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
-      <table className="min-w-full text-sm">
-        <thead className="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
-          <tr>
-            <th className="px-3 py-2.5">House</th>
-            <th className="px-3 py-2.5">Customer</th>
-            <th className="px-3 py-2.5">Days</th>
-            {productColumns.map((p) => (
-              <th
-                key={p.id}
-                className="px-2 py-2 text-center align-bottom min-w-[4.5rem] max-w-[5.5rem]"
-                title={p.name}
+  const renderActions = (row) => {
+    const baseId = row.invoiceId || row.customerId;
+    const busy = typeof printingId === 'string' && printingId.startsWith(`${baseId}:`);
+    const remindable = isMilkHisabBillRemindable(row) && !remindersDisabled;
+    const remindBusy = remindingId === row.customerId || remindersDisabled;
+    const canPrint = Boolean(row.invoiceId) || Number(row.amount) > 0;
+    const spin = (mode, locale) => printingId === `${baseId}:${mode}:${locale}`;
+    const payBusy = paymentBusyId === row.invoiceId;
+    const canPay = Boolean(row.invoiceId);
+
+    return (
+      <>
+        <div className="flex flex-wrap items-center gap-1.5">
+          {canPay ? (
+            <MilkHisabPaymentToggle
+              status={row.paymentStatus || 'unpaid'}
+              disabled={paymentDisabled}
+              busy={payBusy}
+              onChange={(next) => onPaymentStatus?.(row, next)}
+            />
+          ) : (
+            <span className="text-xs text-gray-400" title="Generate bill first">
+              —
+            </span>
+          )}
+        </div>
+        <div className="mt-2 flex flex-wrap items-center gap-1">
+          {canPrint ? (
+            <>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-8 px-2"
+                disabled={busy}
+                onClick={() => onPrint(row)}
+                title="Print English 58mm day sheet"
               >
-                <span className="block truncate text-[11px] font-semibold uppercase tracking-wide text-gray-600">
-                  {shortMilkHisabProductLabel(p, 12)}
-                </span>
-                {p.unit ? (
-                  <span className="mt-0.5 block font-normal normal-case text-[10px] text-gray-400">
-                    {p.unit}
+                {spin('print', 'en') ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Printer className="h-3.5 w-3.5" />
+                )}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="h-8 px-2"
+                disabled={busy}
+                onClick={() => onPdf(row)}
+                title="Download English 58mm day sheet PDF"
+              >
+                {spin('pdf', 'en') ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Download className="h-3.5 w-3.5" />
+                )}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-8 px-2 font-urdu text-[11px] leading-none"
+                disabled={busy}
+                onClick={() => onPrintUrdu?.(row)}
+                title="اردو بل پرنٹ کریں"
+              >
+                {spin('print', 'ur') ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  'اردو'
+                )}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="h-8 px-2 font-urdu text-[11px] leading-none"
+                disabled={busy}
+                onClick={() => onPdfUrdu?.(row)}
+                title="اردو بل PDF"
+              >
+                {spin('pdf', 'ur') ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <span className="inline-flex items-center gap-0.5">
+                    <Download className="h-3 w-3" />
+                    PDF
                   </span>
-                ) : null}
-              </th>
-            ))}
-            <th className="px-3 py-2.5 text-right">Amount</th>
-            <th className="px-3 py-2.5">Invoice</th>
-            <th className="px-3 py-2.5">Payment</th>
-            <th className="px-3 py-2.5">58mm bill</th>
-            <th className="px-3 py-2.5">Remind</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-gray-100">
-          {rows.map((row) => {
-            const baseId = row.invoiceId || row.customerId;
-            const busy = typeof printingId === 'string' && printingId.startsWith(`${baseId}:`);
-            const remindBusy = remindingId === row.customerId || remindersDisabled;
-            const canPrint = Boolean(row.invoiceId) || Number(row.amount) > 0;
-            const canRemind = Number(row.amount) > 0 && !remindersDisabled;
-            const spin = (mode, locale) => printingId === `${baseId}:${mode}:${locale}`;
-            return (
-              <tr key={row.customerId} className="hover:bg-sky-50/40">
-                <td className="px-3 py-2 whitespace-nowrap text-gray-700">{row.houseNo || '-'}</td>
-                <td className="px-3 py-2 font-semibold text-gray-900 whitespace-nowrap">
-                  {row.customerName}
-                </td>
-                <td className="px-3 py-2 tabular-nums text-gray-600">{row.stopCount || 0}</td>
-                {productColumns.map((p) => (
-                  <td key={p.id} className="px-3 py-2 tabular-nums text-gray-700">
-                    {Number(row.qtyByProduct?.[String(p.id)] ?? row.qtyByProduct?.[p.id]) || 0}
-                  </td>
-                ))}
-                <td className="px-3 py-2 text-right tabular-nums font-semibold text-gray-900">
+                )}
+              </Button>
+            </>
+          ) : (
+            <span className="text-gray-300">-</span>
+          )}
+          {remindable ? (
+            <>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-8 px-2"
+                disabled={remindBusy}
+                onClick={() => onRemind(row)}
+                title="Remind via hub, email, and WhatsApp"
+              >
+                {remindBusy && remindingId === row.customerId ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Bell className="h-3.5 w-3.5" />
+                )}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="h-8 px-2 text-emerald-700"
+                disabled={remindBusy}
+                onClick={() => onRemindWhatsApp(row)}
+                title="WhatsApp reminder (unpaid only)"
+              >
+                <MessageCircle className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="h-8 px-2"
+                disabled={remindBusy}
+                onClick={() => onRemindEmail(row)}
+                title="Email reminder (unpaid only)"
+              >
+                <Mail className="h-3.5 w-3.5" />
+              </Button>
+            </>
+          ) : Number(row.amount) > 0 ? (
+            <span className="text-[11px] text-emerald-700 font-semibold">Paid</span>
+          ) : null}
+        </div>
+      </>
+    );
+  };
+
+  return (
+    <>
+      <div className="space-y-3 lg:hidden">
+        {rows.map((row) => {
+          const summary = billProductSummary(row, productColumns);
+          return (
+            <div
+              key={row.customerId}
+              className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-gray-900 truncate">{row.customerName}</p>
+                  <p className="text-xs text-gray-500">
+                    House {row.houseNo || '-'}
+                    {' · '}
+                    {row.stopCount || 0} days
+                  </p>
+                </div>
+                <p className="shrink-0 text-sm font-semibold tabular-nums text-gray-900">
                   {formatCurrency(Number(row.amount) || 0, currency)}
-                </td>
-                <td className="px-3 py-2">
-                  {row.invoiceNumber ? (
-                    <button
-                      type="button"
-                      className="text-sky-700 font-semibold hover:underline"
-                      onClick={onOpenInvoices}
-                    >
-                      {row.invoiceNumber}
-                    </button>
-                  ) : (
-                    <span className="text-gray-400" title="Click Generate weekly/monthly bills">
-                      Not billed
+                </p>
+              </div>
+              {summary ? <p className="mt-1.5 text-[11px] text-gray-500 leading-snug">{summary}</p> : null}
+              <div className="mt-2 flex items-center justify-between gap-2">
+                {row.invoiceNumber ? (
+                  <button
+                    type="button"
+                    className="text-xs font-semibold text-sky-700 hover:underline"
+                    onClick={onOpenInvoices}
+                  >
+                    {row.invoiceNumber}
+                  </button>
+                ) : (
+                  <span className="text-xs text-gray-400">Not billed</span>
+                )}
+              </div>
+              <div className="mt-2 border-t border-gray-100 pt-2">{renderActions(row)}</div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="hidden lg:block overflow-x-auto rounded-xl border border-gray-200 bg-white">
+        <table className="min-w-full text-sm">
+          <thead className="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+            <tr>
+              <th className="sticky left-0 z-10 bg-gray-50 px-3 py-2.5">House</th>
+              <th className="sticky left-[4.5rem] z-10 bg-gray-50 px-3 py-2.5">Customer</th>
+              <th className="px-3 py-2.5">Days</th>
+              {productColumns.map((p) => (
+                <th
+                  key={p.id}
+                  className="px-2 py-2 text-center align-bottom min-w-[4.5rem] max-w-[5.5rem]"
+                  title={p.name}
+                >
+                  <span className="block truncate text-[11px] font-semibold uppercase tracking-wide text-gray-600">
+                    {shortMilkHisabProductLabel(p, 12)}
+                  </span>
+                  {p.unit ? (
+                    <span className="mt-0.5 block font-normal normal-case text-[10px] text-gray-400">
+                      {p.unit}
                     </span>
-                  )}
-                </td>
-                <td className="px-3 py-2 capitalize text-gray-600">
-                  {row.paymentStatus || (row.billed ? 'unpaid' : '-')}
-                </td>
-                <td className="px-3 py-2">
-                  {canPrint ? (
-                    <div className="flex flex-wrap items-center gap-1 max-w-[11rem]">
-                      <Button
+                  ) : null}
+                </th>
+              ))}
+              <th className="px-3 py-2.5 text-right">Amount</th>
+              <th className="px-3 py-2.5">Invoice</th>
+              <th className="px-3 py-2.5">Payment</th>
+              <th className="px-3 py-2.5">Bill / Remind</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {rows.map((row) => {
+              const payBusy = paymentBusyId === row.invoiceId;
+              const canPay = Boolean(row.invoiceId);
+              const baseId = row.invoiceId || row.customerId;
+              const busy = typeof printingId === 'string' && printingId.startsWith(`${baseId}:`);
+              const remindable = isMilkHisabBillRemindable(row) && !remindersDisabled;
+              const remindBusy = remindingId === row.customerId || remindersDisabled;
+              const canPrint = Boolean(row.invoiceId) || Number(row.amount) > 0;
+              const spin = (mode, locale) => printingId === `${baseId}:${mode}:${locale}`;
+              return (
+                <tr key={row.customerId} className="hover:bg-sky-50/40">
+                  <td className="sticky left-0 z-[1] bg-white px-3 py-2 whitespace-nowrap text-gray-700">
+                    {row.houseNo || '-'}
+                  </td>
+                  <td className="sticky left-[4.5rem] z-[1] bg-white px-3 py-2 font-semibold text-gray-900 whitespace-nowrap">
+                    {row.customerName}
+                  </td>
+                  <td className="px-3 py-2 tabular-nums text-gray-600">{row.stopCount || 0}</td>
+                  {productColumns.map((p) => (
+                    <td key={p.id} className="px-3 py-2 tabular-nums text-center text-gray-700">
+                      {Number(row.qtyByProduct?.[String(p.id)] ?? row.qtyByProduct?.[p.id]) || 0}
+                    </td>
+                  ))}
+                  <td className="px-3 py-2 text-right tabular-nums font-semibold text-gray-900">
+                    {formatCurrency(Number(row.amount) || 0, currency)}
+                  </td>
+                  <td className="px-3 py-2">
+                    {row.invoiceNumber ? (
+                      <button
                         type="button"
-                        size="sm"
-                        variant="outline"
-                        className="h-8 px-2"
-                        disabled={busy}
-                        onClick={() => onPrint(row)}
-                        title="Print English 58mm day sheet"
+                        className="text-sky-700 font-semibold hover:underline"
+                        onClick={onOpenInvoices}
                       >
-                        {spin('print', 'en') ? (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        ) : (
-                          <Printer className="h-3.5 w-3.5" />
-                        )}
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        className="h-8 px-2"
-                        disabled={busy}
-                        onClick={() => onPdf(row)}
-                        title="Download English 58mm day sheet PDF"
-                      >
-                        {spin('pdf', 'en') ? (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        ) : (
-                          <Download className="h-3.5 w-3.5" />
-                        )}
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        className="h-8 px-2 font-urdu text-[11px] leading-none"
-                        disabled={busy}
-                        onClick={() => onPrintUrdu?.(row)}
-                        title="اردو بل پرنٹ کریں"
-                      >
-                        {spin('print', 'ur') ? (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        ) : (
-                          'اردو'
-                        )}
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        className="h-8 px-2 font-urdu text-[11px] leading-none"
-                        disabled={busy}
-                        onClick={() => onPdfUrdu?.(row)}
-                        title="اردو بل PDF"
-                      >
-                        {spin('pdf', 'ur') ? (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        ) : (
-                          <span className="inline-flex items-center gap-0.5">
-                            <Download className="h-3 w-3" />
-                            PDF
-                          </span>
-                        )}
-                      </Button>
+                        {row.invoiceNumber}
+                      </button>
+                    ) : (
+                      <span className="text-gray-400" title="Click Generate weekly/monthly bills">
+                        Not billed
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-3 py-2">
+                    {canPay ? (
+                      <MilkHisabPaymentToggle
+                        status={row.paymentStatus || 'unpaid'}
+                        disabled={paymentDisabled}
+                        busy={payBusy}
+                        onChange={(next) => onPaymentStatus?.(row, next)}
+                      />
+                    ) : (
+                      <span className="text-gray-400">-</span>
+                    )}
+                  </td>
+                  <td className="px-3 py-2">
+                    <div className="flex flex-wrap items-center gap-1 max-w-[14rem]">
+                      {canPrint ? (
+                        <>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="h-8 px-2"
+                            disabled={busy}
+                            onClick={() => onPrint(row)}
+                            title="Print English 58mm day sheet"
+                          >
+                            {spin('print', 'en') ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Printer className="h-3.5 w-3.5" />
+                            )}
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 px-2"
+                            disabled={busy}
+                            onClick={() => onPdf(row)}
+                            title="Download English PDF"
+                          >
+                            {spin('pdf', 'en') ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Download className="h-3.5 w-3.5" />
+                            )}
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="h-8 px-2 font-urdu text-[11px] leading-none"
+                            disabled={busy}
+                            onClick={() => onPrintUrdu?.(row)}
+                            title="اردو بل پرنٹ کریں"
+                          >
+                            {spin('print', 'ur') ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              'اردو'
+                            )}
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 px-2"
+                            disabled={busy}
+                            onClick={() => onPdfUrdu?.(row)}
+                            title="اردو بل PDF"
+                          >
+                            {spin('pdf', 'ur') ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Download className="h-3.5 w-3.5" />
+                            )}
+                          </Button>
+                        </>
+                      ) : (
+                        <span className="text-gray-300">-</span>
+                      )}
+                      {remindable ? (
+                        <>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="h-8 px-2"
+                            disabled={remindBusy}
+                            onClick={() => onRemind(row)}
+                            title="Remind via hub, email, and WhatsApp"
+                          >
+                            {remindBusy && remindingId === row.customerId ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Bell className="h-3.5 w-3.5" />
+                            )}
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 px-2 text-emerald-700"
+                            disabled={remindBusy}
+                            onClick={() => onRemindWhatsApp(row)}
+                            title="WhatsApp reminder (unpaid only)"
+                          >
+                            <MessageCircle className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 px-2"
+                            disabled={remindBusy}
+                            onClick={() => onRemindEmail(row)}
+                            title="Email reminder"
+                          >
+                            <Mail className="h-3.5 w-3.5" />
+                          </Button>
+                        </>
+                      ) : null}
                     </div>
-                  ) : (
-                    <span className="text-gray-300">-</span>
-                  )}
-                </td>
-                <td className="px-3 py-2">
-                  {canRemind ? (
-                    <div className="flex items-center gap-1">
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        className="h-8 px-2"
-                        disabled={remindBusy}
-                        onClick={() => onRemind(row)}
-                        title="Remind via hub, email, and WhatsApp"
-                      >
-                        {remindBusy ? (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        ) : (
-                          <Bell className="h-3.5 w-3.5" />
-                        )}
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        className="h-8 px-2 text-emerald-700"
-                        disabled={remindBusy}
-                        onClick={() => onRemindWhatsApp(row)}
-                        title="WhatsApp reminder (opens app when installed)"
-                      >
-                        <MessageCircle className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        className="h-8 px-2"
-                        disabled={remindBusy}
-                        onClick={() => onRemindEmail(row)}
-                        title="Email reminder"
-                      >
-                        <Mail className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  ) : (
-                    <span className="text-gray-300">-</span>
-                  )}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </>
   );
 }
 
