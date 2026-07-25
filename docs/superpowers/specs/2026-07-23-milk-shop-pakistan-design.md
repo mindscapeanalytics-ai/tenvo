@@ -27,7 +27,7 @@ Neighborhood milk shops in Pakistan sell fresh milk primarily **by kg** (not lit
 - Custom Jewellery/Fitness-scale elevated template fork.
 - Animal / lactation / farm yield tracking (stays on `dairy-farm`).
 - Forcing decimal qty on all storefronts (only weight-unit / milk-shop weight SKUs).
-- New domain commercial package (unless requested later).
+- ~~New domain commercial package (unless requested later).~~ Shipped as `milk-commerce` — see `docs/superpowers/specs/2026-07-25-milk-commerce-package-design.md`.
 
 ---
 

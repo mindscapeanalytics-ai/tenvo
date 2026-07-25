@@ -15,6 +15,7 @@ import {
   CarFront,
   Sofa,
   Dumbbell,
+  Milk,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -33,6 +34,7 @@ const PACKAGE_ICONS = {
   'vehicle-showroom': CarFront,
   'furniture-commerce': Sofa,
   'fitness-commerce': Dumbbell,
+  'milk-commerce': Milk,
 };
 
 function resolveActiveDomainPackageKey(settings) {

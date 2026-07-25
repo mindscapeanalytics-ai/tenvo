@@ -53,6 +53,10 @@ const MODULE_ICON_MAP = {
   furniture: 'Sofa',
   storefront: 'LayoutTemplate',
   coaching: 'CalendarCheck',
+  counter: 'Store',
+  'route-hisab': 'ClipboardList',
+  chill: 'Snowflake',
+  online: 'Globe',
 };
 
 const DEFAULT_MODULES_LEAD =

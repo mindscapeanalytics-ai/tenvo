@@ -27,6 +27,7 @@ const EXPECTED_PACKAGES = [
   'vehicle-showroom',
   'furniture-commerce',
   'fitness-commerce',
+  'milk-commerce',
 ];
 
 const catalog = read('lib/config/domainPackages.js');
@@ -53,6 +54,33 @@ if (!features.includes('AUTO_PARTS_COMMERCE_FEATURE_OVERRIDES')) mark('auto part
 if (!features.includes('VEHICLE_SHOWROOM_FEATURE_OVERRIDES')) mark('showroom feature overrides');
 if (!features.includes('FURNITURE_COMMERCE_FEATURE_OVERRIDES')) mark('furniture feature overrides');
 if (!features.includes('FITNESS_COMMERCE_FEATURE_OVERRIDES')) mark('fitness feature overrides');
+if (!features.includes('MILK_COMMERCE_FEATURE_OVERRIDES')) mark('milk feature overrides');
+if (!features.includes("buildDomainPackageFeatureOverrides('professional'")) {
+  mark('milk package must build overrides from professional tier');
+}
+
+const easyIntel = read('lib/dashboard/easyDomainIntelligence.js');
+if (!easyIntel.includes("'milk-shop':") && !easyIntel.includes('milk-shop:')) {
+  mark('easyDomainIntelligence must define milk-shop VERTICAL_PLAYBOOKS entry');
+}
+if (!easyIntel.includes("actionTab: 'route-hisab'")) {
+  mark('milk-shop Easy playbook must actionTab route-hisab');
+}
+if (!easyIntel.includes('isElevatedPerishability') && !easyIntel.includes("critical")) {
+  mark('Easy intelligence must treat critical perishability like high');
+}
+
+const milkKnowledge = read('lib/domainData/retail.js');
+const milkAnchor = milkKnowledge.indexOf("'milk-shop':");
+if (milkAnchor < 0) {
+  mark('retail.js must define milk-shop knowledge');
+} else {
+  const nextKey = milkKnowledge.indexOf("\n    '", milkAnchor + 12);
+  const milkBlock = milkKnowledge.slice(milkAnchor, nextKey > 0 ? nextKey : milkAnchor + 8000);
+  if (!/multiLocationEnabled:\s*false/.test(milkBlock)) {
+    mark('milk-shop knowledge must set multiLocationEnabled false (single counter)');
+  }
+}
 
 if (!catalog.includes('demoStoreDomain')) mark('demoStoreDomain on packages');
 if (!solutionsContent.includes("icon: 'Globe'")) mark('solutions content uses serializable icon names');
