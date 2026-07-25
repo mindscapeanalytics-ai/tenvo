@@ -40,6 +40,7 @@ import {
   shortMilkHisabProductLabel,
   buildMilkHisabPeriodKpis,
 } from '@/lib/storefront/milkShopHisab';
+import { openWhatsAppSmart } from '@/lib/utils/whatsappOpen';
 import {
   printMilkHisabDayBreakdownBill,
   printMilkHisabThermalBill,
@@ -491,7 +492,7 @@ export function MilkRouteHisab({ businessId, category }) {
 
   const openWhatsApp = (url) => {
     if (!url || typeof window === 'undefined') return;
-    window.open(url, '_blank', 'noopener,noreferrer');
+    openWhatsAppSmart(url);
   };
 
   const handleRemindCustomer = async (row, channels = ['hub', 'email', 'whatsapp']) => {
@@ -522,7 +523,7 @@ export function MilkRouteHisab({ businessId, category }) {
       const parts = [];
       if (res.results?.hub?.ok) parts.push('hub alert');
       if (res.results?.email?.ok) parts.push('email');
-      if (res.results?.whatsapp?.ok) parts.push('WhatsApp');
+      if (res.results?.whatsapp?.ok) parts.push('WhatsApp app');
       notify.compactSave(parts.length ? `Reminder: ${parts.join(', ')}` : 'Reminder prepared');
       if (res.results?.email?.error && !res.results?.email?.ok) {
         notify.error(res.results.email.error);
@@ -1154,7 +1155,7 @@ function BillsSheet({
                         className="h-8 px-2 text-emerald-700"
                         disabled={remindBusy}
                         onClick={() => onRemindWhatsApp(row)}
-                        title="WhatsApp reminder (wa.me)"
+                        title="WhatsApp reminder (opens app when installed)"
                       >
                         <MessageCircle className="h-3.5 w-3.5" />
                       </Button>

@@ -31,6 +31,11 @@ import {
   milkHisabUrduProductLabel,
   localizeMilkHisabPeriodLabel,
 } from '../lib/storefront/milkHisabUrdu.js';
+import {
+  parseWhatsAppWebUrl,
+  buildWhatsAppAppUrl,
+  toWhatsAppAppUrlFromWeb,
+} from '../lib/utils/whatsappOpen.js';
 import { resolveDomainFieldKey } from '../lib/utils/domainHelpers.ts';
 import { isMilkShopStore } from '../lib/storefront/milkShopStorefront.js';
 import { resolveDomainKey } from '../lib/config/domainKeyAliases.js';
@@ -261,6 +266,20 @@ assert(existsSync(remindHelpers), 'milkShopHisabReminders.js must exist');
 const remindSrc = readFileSync(remindHelpers, 'utf8');
 assert(remindSrc.includes('buildMilkHisabWhatsAppUrl'), 'WhatsApp wa.me helper required');
 assert(remindSrc.includes('resolveMilkHisabReminderChannels'), 'channel resolver required');
+assert(remindSrc.includes('openWhatsAppSmart'), 'reminders re-export smart WhatsApp open');
+assert(uiSrc.includes('openWhatsAppSmart'), 'UI must use smart WhatsApp open');
+
+{
+  const web =
+    'https://wa.me/923077367967?text=' + encodeURIComponent('Assalamualaikum test');
+  const parsed = parseWhatsAppWebUrl(web);
+  assert(parsed?.phone === '923077367967', 'parse wa.me phone');
+  assert(parsed?.text.startsWith('Assalamualaikum'), 'parse wa.me text');
+  const app = buildWhatsAppAppUrl('923077367967', 'Hello');
+  assert(app === 'whatsapp://send?phone=923077367967&text=Hello', `app url got ${app}`);
+  const fromWeb = toWhatsAppAppUrlFromWeb(web);
+  assert(String(fromWeb).startsWith('whatsapp://send?phone=923077367967'), 'web→app deep link');
+}
 
 const thermalFile = resolve(root, 'lib/print/milkHisabThermalBill.js');
 assert(existsSync(thermalFile), 'milkHisabThermalBill.js must exist');
