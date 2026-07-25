@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   BookOpen,
   CalendarDays,
+  ChevronDown,
   Loader2,
   RefreshCw,
   Save,
@@ -66,7 +67,8 @@ function currentWeek() {
 }
 
 /**
- * Milk-shop Route Hisab: daily doorstep grid + week/month 58mm bills.
+ * Milk-shop Daily Route: daily doorstep grid + week/month 58mm bills.
+ * Hub tab key remains `route-hisab`; UI label is Daily Route.
  */
 export function MilkRouteHisab({ businessId, category }) {
   const { currency, business, planTier } = useBusiness();
@@ -916,15 +918,15 @@ export function MilkRouteHisab({ businessId, category }) {
     <div className={cn(HUB_MOBILE_ROOT, 'space-y-4')}>
       <div className="lg:hidden">
         <MobileTabHeader
-          title="Route Hisab"
-          subtitle="Daily sheet and 58mm day Y/N bills"
+          title="Daily Route"
+          subtitle="Doorstep qty by house · 58mm day bills"
           icon={BookOpen}
         />
       </div>
 
       <div className="hidden lg:flex lg:items-start lg:justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold text-gray-900">Route Hisab</h2>
+          <h2 className="text-lg font-semibold text-gray-900">Daily Route</h2>
           <p className="text-sm text-gray-500 max-w-2xl">
             Log doorstep deliveries by day. Switch to Bills for week or month day sheets (Y/N), 58mm
             thermal print, and unpaid reminders. Offline: save the daily route when the network drops;
@@ -1208,7 +1210,24 @@ function HisabKpiStrip({ items = [] }) {
   );
 }
 
+function dailyRowQtyEntries(row, products) {
+  return (products || [])
+    .map((p) => {
+      const qty = Number(row.qtyByProduct?.[String(p.id)] ?? row.qtyByProduct?.[p.id] ?? 0);
+      if (!(qty > 0)) return null;
+      return {
+        id: p.id,
+        label: shortMilkHisabProductLabel(p, 12),
+        qty,
+        unit: p.unit || 'pcs',
+      };
+    })
+    .filter(Boolean);
+}
+
 function DailySheet({ products, rows, currency, onQty, onField, readOnly = false }) {
+  const [expandedId, setExpandedId] = useState(null);
+
   if (!rows.length) {
     return (
       <div className="rounded-xl border border-dashed border-gray-200 bg-white px-4 py-12 text-center">
@@ -1220,73 +1239,154 @@ function DailySheet({ products, rows, currency, onQty, onField, readOnly = false
     );
   }
 
+  const toggleRow = (customerId) => {
+    setExpandedId((prev) => (String(prev) === String(customerId) ? null : customerId));
+  };
+
   return (
     <>
-      <div className="space-y-3 lg:hidden">
-        {rows.map((row) => (
-          <div
-            key={row.customerId}
-            className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm"
-          >
-            <div>
-              <p className="text-sm font-semibold text-gray-900">{row.customerName}</p>
-              <p className="text-xs text-gray-500">
-                House {row.houseNo || '-'}
-                {row.routeLabel ? ` · ${row.routeLabel}` : ''}
-              </p>
-            </div>
-            <div className="mt-2 grid grid-cols-2 gap-2">
-              <label className="text-xs text-gray-500">
-                House
-                <Input
-                  value={row.houseNo || ''}
-                  onChange={(e) => onField(row.customerId, 'houseNo', e.target.value)}
-                  className="mt-0.5 h-8"
-                  disabled={readOnly}
-                />
-              </label>
-              <label className="text-xs text-gray-500">
-                Route
-                <Input
-                  value={row.routeLabel || ''}
-                  onChange={(e) => onField(row.customerId, 'routeLabel', e.target.value)}
-                  className="mt-0.5 h-8"
-                  disabled={readOnly}
-                />
-              </label>
-            </div>
-            <div className="mt-2 grid grid-cols-2 gap-2">
-              {products.map((p) => (
-                <label key={p.id} className="text-xs text-gray-500" title={`${p.name} (${p.unit || 'pcs'})`}>
-                  {shortMilkHisabProductLabel(p, 16)}
-                  <span className="font-normal text-gray-400"> ({p.unit || 'pcs'})</span>
-                  <Input
-                    type="number"
-                    min="0"
-                    step="0.1"
-                    inputMode="decimal"
-                    value={row.qtyByProduct?.[String(p.id)] ?? row.qtyByProduct?.[p.id] ?? ''}
-                    onChange={(e) => onQty(row.customerId, p.id, e.target.value)}
-                    className="mt-0.5 h-8 tabular-nums"
-                    disabled={readOnly}
+      <div className="space-y-2 lg:hidden">
+        {rows.map((row) => {
+          const open = String(expandedId) === String(row.customerId);
+          const filled = dailyRowQtyEntries(row, products);
+          const filledCount = filled.length;
+          return (
+            <div
+              key={row.customerId}
+              className={cn(
+                'rounded-xl border bg-white shadow-sm overflow-hidden',
+                open ? 'border-sky-300 ring-1 ring-sky-100' : 'border-gray-200'
+              )}
+            >
+              <button
+                type="button"
+                onClick={() => toggleRow(row.customerId)}
+                className="flex w-full items-center gap-2 px-3 py-2.5 text-left touch-manipulation"
+                aria-expanded={open}
+                aria-controls={`daily-route-row-${row.customerId}`}
+              >
+                <span
+                  className={cn(
+                    'flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border',
+                    open ? 'border-sky-200 bg-sky-50 text-sky-700' : 'border-gray-200 bg-gray-50 text-gray-500'
+                  )}
+                >
+                  <ChevronDown
+                    className={cn('h-4 w-4 transition-transform', open ? 'rotate-0' : '-rotate-90')}
+                    aria-hidden
                   />
-                  <span className="mt-0.5 block text-[10px] text-gray-400 tabular-nums">
-                    {formatCurrency(Number(p.price) || 0, currency)}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-semibold text-gray-900 truncate">
+                    {row.customerName}
                   </span>
-                </label>
-              ))}
+                  <span className="mt-0.5 block text-[11px] text-gray-500 truncate">
+                    House {row.houseNo || '-'}
+                    {row.routeLabel ? ` · ${row.routeLabel}` : ''}
+                    {filledCount > 0
+                      ? ` · ${filled
+                          .slice(0, 3)
+                          .map((e) => `${e.label} ${e.qty}`)
+                          .join(', ')}${filledCount > 3 ? '…' : ''}`
+                      : ' · No qty yet'}
+                  </span>
+                </span>
+                <span
+                  className={cn(
+                    'shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold tabular-nums',
+                    filledCount > 0
+                      ? 'bg-emerald-50 text-emerald-700'
+                      : 'bg-amber-50 text-amber-700'
+                  )}
+                >
+                  {filledCount > 0 ? `${filledCount} item${filledCount === 1 ? '' : 's'}` : 'Pending'}
+                </span>
+              </button>
+
+              {open ? (
+                <div
+                  id={`daily-route-row-${row.customerId}`}
+                  className="border-t border-gray-100 bg-gray-50/60 px-3 py-2.5 space-y-2"
+                >
+                  <div className="grid grid-cols-2 gap-2">
+                    <label className="text-xs text-gray-500">
+                      House
+                      <Input
+                        value={row.houseNo || ''}
+                        onChange={(e) => onField(row.customerId, 'houseNo', e.target.value)}
+                        className="mt-0.5 h-9 bg-white"
+                        disabled={readOnly}
+                      />
+                    </label>
+                    <label className="text-xs text-gray-500">
+                      Route
+                      <Input
+                        value={row.routeLabel || ''}
+                        onChange={(e) => onField(row.customerId, 'routeLabel', e.target.value)}
+                        className="mt-0.5 h-9 bg-white"
+                        disabled={readOnly}
+                      />
+                    </label>
+                  </div>
+
+                  <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
+                    <table className="min-w-full text-sm">
+                      <thead className="bg-gray-50 text-left text-[10px] font-semibold uppercase tracking-wide text-gray-500">
+                        <tr>
+                          <th className="px-2.5 py-2">Product</th>
+                          <th className="px-2 py-2 text-right w-16">Unit</th>
+                          <th className="px-2 py-2 text-right w-24">Qty</th>
+                          <th className="px-2.5 py-2 text-right w-20">Rate</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {products.map((p) => (
+                          <tr key={p.id}>
+                            <td className="px-2.5 py-1.5 font-medium text-gray-900">
+                              {shortMilkHisabProductLabel(p, 18)}
+                            </td>
+                            <td className="px-2 py-1.5 text-right text-xs text-gray-500">
+                              {p.unit || 'pcs'}
+                            </td>
+                            <td className="px-2 py-1.5 text-right">
+                              <Input
+                                type="number"
+                                min="0"
+                                step="0.1"
+                                inputMode="decimal"
+                                value={
+                                  row.qtyByProduct?.[String(p.id)] ?? row.qtyByProduct?.[p.id] ?? ''
+                                }
+                                onChange={(e) => onQty(row.customerId, p.id, e.target.value)}
+                                className="ml-auto h-9 w-[4.75rem] tabular-nums text-center bg-white"
+                                disabled={readOnly}
+                                aria-label={`${p.name} quantity`}
+                              />
+                            </td>
+                            <td className="px-2.5 py-1.5 text-right text-[11px] tabular-nums text-gray-500">
+                              {formatCurrency(Number(p.price) || 0, currency)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <label className="block text-xs text-gray-500">
+                    Notes
+                    <Input
+                      value={row.notes || ''}
+                      onChange={(e) => onField(row.customerId, 'notes', e.target.value)}
+                      className="mt-0.5 h-9 bg-white"
+                      disabled={readOnly}
+                      placeholder="Optional"
+                    />
+                  </label>
+                </div>
+              ) : null}
             </div>
-            <label className="mt-2 block text-xs text-gray-500">
-              Notes
-              <Input
-                value={row.notes || ''}
-                onChange={(e) => onField(row.customerId, 'notes', e.target.value)}
-                className="mt-0.5 h-8"
-                disabled={readOnly}
-              />
-            </label>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       <div className="hidden lg:block overflow-x-auto rounded-xl border border-gray-200 bg-white">

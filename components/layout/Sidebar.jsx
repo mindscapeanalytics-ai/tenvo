@@ -71,7 +71,7 @@ const ADVANCED_NAV_SECTIONS = [
       { key: 'inventory', label: 'Inventory & Stock', icon: Package, alwaysShow: true },
       { key: 'invoices', label: 'Sales & Invoicing', icon: FileText, alwaysShow: true },
       { key: 'customers', label: 'Customers', icon: Users, alwaysShow: true },
-      { key: 'route-hisab', label: 'Route Hisab', icon: BookOpen, domainRule: 'milkHisab' },
+      { key: 'route-hisab', label: 'Daily Route', icon: BookOpen, domainRule: 'milkHisab' },
       { key: 'vendors', label: 'Vendors & Procurement', icon: Building2, alwaysShow: true },
       { key: 'purchases', label: 'Purchase Orders', icon: Truck, alwaysShow: true },
     ]
@@ -144,7 +144,7 @@ const EASY_NAV_SECTIONS = [
     items: [
       { key: 'invoices', label: 'Invoices', icon: FileText, alwaysShow: true },
       { key: 'customers', label: 'Customers', icon: Users, alwaysShow: true },
-      { key: 'route-hisab', label: 'Route Hisab', icon: BookOpen, domainRule: 'milkHisab' },
+      { key: 'route-hisab', label: 'Daily Route', icon: BookOpen, domainRule: 'milkHisab' },
       { key: 'memberships', label: 'Memberships', icon: BadgeCheck, domainRule: 'membershipRelevant' },
       { key: 'orders', label: 'Storefront Orders', icon: Package, alwaysShow: true, badge: 'NEW' },
       { key: 'inquiries', label: 'Customer Inquiries', icon: Inbox, alwaysShow: true },

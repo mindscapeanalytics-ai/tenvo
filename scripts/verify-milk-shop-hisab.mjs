@@ -210,8 +210,8 @@ assert(
   'PK milk brands pre-fed'
 );
 assert(
-  Array.isArray(knowledge?.reports) && knowledge.reports.includes('Route Hisab'),
-  'reports should list Route Hisab'
+  Array.isArray(knowledge?.reports) && knowledge.reports.includes('Daily Route'),
+  'reports should list Daily Route'
 );
 
 assert(VALID_DASHBOARD_TABS.has('route-hisab'), 'VALID_TAB_LIST must include route-hisab');
