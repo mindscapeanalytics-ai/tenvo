@@ -120,6 +120,8 @@ const products = [
 const cols = resolveMilkHisabProducts(products, {});
 assert(cols.length >= 4, 'default hisab columns should pick milk/eggs/bread/butter');
 assert(cols[0]?.name === 'Fresh Milk', 'milk should be first matched column');
+assert(cols[0]?.hisabShortLabel === 'Milk', 'milk column short label');
+assert(cols.find((c) => /egg/i.test(c.name))?.hisabShortLabel === 'Eggs', 'eggs short label');
 
 const prefs = readMilkCustomerPrefs({
   address: 'fallback',
@@ -136,6 +138,8 @@ assert(inactive.deliveryActive === false, 'delivery inactive when No');
 assert(isMilkHisabWalkInCustomer('Walk-in Guest'), 'walk-in detect');
 assert(!isMilkHisabWalkInCustomer('Zeeshan'), 'named customer is not walk-in');
 assert(shortMilkHisabProductLabel('Anhaar Farm Fresh Milk (kg)', 18).length <= 18, 'short product label');
+assert(shortMilkHisabProductLabel({ name: 'Anhaar Farm Fresh Milk', hisabShortLabel: 'Milk' }, 14) === 'Milk', 'prefer hisabShortLabel');
+assert(shortMilkHisabProductLabel({ name: 'FARM FRESH EGGS (dozen)' }, 14) === 'Eggs', 'hint eggs from name');
 
 const kpi = buildMilkHisabPeriodKpis([
   { amount: 100, billed: false, stopCount: 2 },

@@ -178,7 +178,7 @@ export function MilkRouteHisab({ businessId, category }) {
     let amount = 0;
     for (const row of rows) {
       for (const p of products) {
-        const qty = Number(row.qtyByProduct?.[p.id]) || 0;
+        const qty = Number(row.qtyByProduct?.[String(p.id)] ?? row.qtyByProduct?.[p.id]) || 0;
         amount += qty * (Number(p.price) || 0);
       }
     }
@@ -270,15 +270,16 @@ export function MilkRouteHisab({ businessId, category }) {
 
   const updateQty = (customerId, productId, value) => {
     const next = value === '' ? '' : value;
+    const pid = String(productId);
     setDayDirty(true);
     setRows((prev) =>
       prev.map((r) => {
-        if (r.customerId !== customerId) return r;
+        if (String(r.customerId) !== String(customerId)) return r;
         return {
           ...r,
           qtyByProduct: {
             ...r.qtyByProduct,
-            [productId]: next === '' ? '' : Number(next),
+            [pid]: next === '' ? '' : Number(next),
           },
         };
       })
@@ -299,7 +300,7 @@ export function MilkRouteHisab({ businessId, category }) {
         const qtyByProduct = {};
         for (const [pid, raw] of Object.entries(r.qtyByProduct || {})) {
           const n = Number(raw);
-          if (Number.isFinite(n) && n > 0) qtyByProduct[pid] = n;
+          if (Number.isFinite(n) && n > 0) qtyByProduct[String(pid)] = n;
         }
         return {
           customerId: r.customerId,
@@ -806,14 +807,14 @@ function DailySheet({ products, rows, currency, onQty, onField }) {
             <div className="mt-2 grid grid-cols-2 gap-2">
               {products.map((p) => (
                 <label key={p.id} className="text-xs text-gray-500" title={`${p.name} (${p.unit || 'pcs'})`}>
-                  {shortMilkHisabProductLabel(p.name, 28)}
+                  {shortMilkHisabProductLabel(p, 16)}
                   <span className="font-normal text-gray-400"> ({p.unit || 'pcs'})</span>
                   <Input
                     type="number"
                     min="0"
                     step="0.1"
                     inputMode="decimal"
-                    value={row.qtyByProduct?.[p.id] ?? ''}
+                    value={row.qtyByProduct?.[String(p.id)] ?? row.qtyByProduct?.[p.id] ?? ''}
                     onChange={(e) => onQty(row.customerId, p.id, e.target.value)}
                     className="mt-0.5 h-8 tabular-nums"
                   />
@@ -845,12 +846,14 @@ function DailySheet({ products, rows, currency, onQty, onField }) {
               {products.map((p) => (
                 <th
                   key={p.id}
-                  className="px-3 py-2.5 whitespace-nowrap max-w-[9rem]"
-                  title={`${p.name} (${p.unit || 'pcs'})`}
+                  className="px-2 py-2 text-center align-bottom min-w-[4.75rem] max-w-[5.5rem]"
+                  title={`${p.name} · ${formatCurrency(Number(p.price) || 0, currency)} / ${p.unit || 'pcs'}`}
                 >
-                  {shortMilkHisabProductLabel(p.name, 18)}
-                  <span className="ml-1 font-normal normal-case text-gray-400">
-                    ({p.unit || 'pcs'})
+                  <span className="block truncate text-[11px] font-semibold uppercase tracking-wide text-gray-600">
+                    {shortMilkHisabProductLabel(p, 12)}
+                  </span>
+                  <span className="mt-0.5 block font-normal normal-case text-[10px] text-gray-400">
+                    {p.unit || 'pcs'}
                   </span>
                 </th>
               ))}
@@ -878,15 +881,15 @@ function DailySheet({ products, rows, currency, onQty, onField }) {
                   />
                 </td>
                 {products.map((p) => (
-                  <td key={p.id} className="px-2 py-1.5">
+                  <td key={p.id} className="px-1.5 py-1.5 text-center">
                     <Input
                       type="number"
                       min="0"
                       step="0.1"
                       inputMode="decimal"
-                      value={row.qtyByProduct?.[p.id] ?? ''}
+                      value={row.qtyByProduct?.[String(p.id)] ?? row.qtyByProduct?.[p.id] ?? ''}
                       onChange={(e) => onQty(row.customerId, p.id, e.target.value)}
-                      className="h-8 w-20 tabular-nums"
+                      className="mx-auto h-8 w-[4.5rem] tabular-nums text-center"
                     />
                   </td>
                 ))}
@@ -941,10 +944,17 @@ function BillsSheet({
             {productColumns.map((p) => (
               <th
                 key={p.id}
-                className="px-3 py-2.5 whitespace-nowrap max-w-[8rem]"
+                className="px-2 py-2 text-center align-bottom min-w-[4.5rem] max-w-[5.5rem]"
                 title={p.name}
               >
-                {shortMilkHisabProductLabel(p.name, 16)}
+                <span className="block truncate text-[11px] font-semibold uppercase tracking-wide text-gray-600">
+                  {shortMilkHisabProductLabel(p, 12)}
+                </span>
+                {p.unit ? (
+                  <span className="mt-0.5 block font-normal normal-case text-[10px] text-gray-400">
+                    {p.unit}
+                  </span>
+                ) : null}
               </th>
             ))}
             <th className="px-3 py-2.5 text-right">Amount</th>
@@ -971,7 +981,7 @@ function BillsSheet({
                 <td className="px-3 py-2 tabular-nums text-gray-600">{row.stopCount || 0}</td>
                 {productColumns.map((p) => (
                   <td key={p.id} className="px-3 py-2 tabular-nums text-gray-700">
-                    {Number(row.qtyByProduct?.[p.id]) || 0}
+                    {Number(row.qtyByProduct?.[String(p.id)] ?? row.qtyByProduct?.[p.id]) || 0}
                   </td>
                 ))}
                 <td className="px-3 py-2 text-right tabular-nums font-semibold text-gray-900">
