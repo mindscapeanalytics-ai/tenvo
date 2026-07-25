@@ -54,6 +54,15 @@ import { getDomainKnowledge } from '../lib/domainKnowledge.js';
 import { VALID_DASHBOARD_TABS, normalizeDashboardTab } from '../lib/config/tabs.js';
 import { getNavItemAccess } from '../lib/rbac/permissions.js';
 import { buildMilkHisabThermalOpts } from '../lib/print/milkHisabThermalBill.js';
+import {
+  isMilkShopHubNavAllowed,
+  MILK_SHOP_HIDDEN_NAV_KEYS,
+  MILK_SHOP_PLAN_NAV_MATRIX,
+  mergeMilkShopLeanNavSettings,
+} from '../lib/config/milkShopHubNav.js';
+import { getMilkShopLeanFeatureStrip } from '../lib/config/domainPackageFeatures.js';
+import { getRegistrationVerticalFeatureOverrides } from '../lib/onboarding/registrationVerticalPackaging.js';
+import { planHasFeatureWithPackaging } from '../lib/subscription/effectivePlanAccess.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, '..');
@@ -455,11 +464,59 @@ assert(tabs.includes('milkHisabRelevant'), 'DashboardTabs must domain-gate milk 
 const sidebar = readFileSync(resolve(root, 'components/layout/Sidebar.jsx'), 'utf8');
 assert(sidebar.includes("key: 'route-hisab'"), 'Sidebar must list route-hisab');
 assert(sidebar.includes("domainRule: 'milkHisab'"), 'Sidebar must use milkHisab domainRule');
+assert(sidebar.includes('isMilkShopHubNavAllowed'), 'Sidebar must hide milk-irrelevant nav');
+assert(sidebar.includes('mergeMilkShopLeanNavSettings'), 'Sidebar must apply milk lean packaging');
 
 const mobile = readFileSync(resolve(root, 'lib/hooks/useHubMobileNav.js'), 'utf8');
 assert(mobile.includes("key: 'route-hisab'"), 'mobile nav must include route-hisab');
+assert(mobile.includes('isMilkShopHubNavAllowed'), 'mobile nav must hide milk-irrelevant items');
 
 assert(resolveDomainKey('milk') === 'milk-shop', 'milk alias still resolves');
+
+{
+  assert(!isMilkShopHubNavAllowed('loyalty', 'milk-shop'), 'milk hides loyalty');
+  assert(!isMilkShopHubNavAllowed('payroll', 'milk-shop'), 'milk hides payroll');
+  assert(!isMilkShopHubNavAllowed('campaigns', 'doodh-shop'), 'milk alias hides campaigns');
+  assert(!isMilkShopHubNavAllowed('restaurant', 'milk-shop'), 'milk hides restaurant');
+  assert(isMilkShopHubNavAllowed('route-hisab', 'milk-shop'), 'milk keeps route-hisab');
+  assert(isMilkShopHubNavAllowed('pos', 'milk-shop'), 'milk keeps pos');
+  assert(isMilkShopHubNavAllowed('loyalty', 'supermarket'), 'supermarket still allows loyalty nav key');
+  assert(MILK_SHOP_HIDDEN_NAV_KEYS.includes('loyalty'), 'hidden list includes loyalty');
+
+  const strip = getMilkShopLeanFeatureStrip();
+  assert(strip.loyalty_programs === false, 'lean strip disables loyalty');
+  assert(strip.restaurant_pos === false, 'lean strip disables restaurant');
+  assert(strip.payroll === false, 'lean strip disables payroll');
+  assert(strip.multi_warehouse === false, 'lean strip disables multi warehouse');
+
+  const regStrip = getRegistrationVerticalFeatureOverrides('milk-shop');
+  assert(regStrip.loyalty_programs === false, 'registration applies milk lean strip');
+  assert(
+    Object.keys(getRegistrationVerticalFeatureOverrides('supermarket') || {}).length === 0,
+    'supermarket gets no auto strip'
+  );
+
+  const leanSettings = mergeMilkShopLeanNavSettings({}, 'milk-shop');
+  assert(
+    planHasFeatureWithPackaging('enterprise', 'loyalty_programs', leanSettings) === false,
+    'enterprise milk lean locks loyalty'
+  );
+  assert(planHasFeatureWithPackaging('enterprise', 'pos', leanSettings) === true, 'enterprise milk keeps POS');
+  assert(
+    planHasFeatureWithPackaging('professional', 'batch_tracking', leanSettings) === true,
+    'professional milk keeps FEFO batches'
+  );
+
+  const loyaltyAccess = getNavItemAccess('loyalty', 'owner', 'enterprise', leanSettings);
+  assert(loyaltyAccess.locked === true || loyaltyAccess.visible === false, 'loyalty not usable on milk enterprise');
+
+  for (const key of MILK_SHOP_PLAN_NAV_MATRIX.professional.lockedOrHidden) {
+    if (key === 'batches') continue;
+    assert(!isMilkShopHubNavAllowed(key, 'milk-shop'), `pro matrix hide ${key}`);
+  }
+  assert(MILK_SHOP_PLAN_NAV_MATRIX.starter.visible.includes('route-hisab'), 'starter matrix includes route-hisab');
+  assert(MILK_SHOP_PLAN_NAV_MATRIX.professional.visible.includes('batches'), 'pro matrix includes batches');
+}
 
 if (errors.length) {
   console.error('verify-milk-shop-hisab FAILED:');

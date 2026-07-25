@@ -28,6 +28,7 @@ import {
   isPosRelevant, isHospitality, isCampaignRelevant, isMembershipRelevant
 } from '@/lib/config/domains';
 import { isMilkHisabRelevant } from '@/lib/storefront/milkShopHisab';
+import { isMilkShopHubNavAllowed, mergeMilkShopLeanNavSettings } from '@/lib/config/milkShopHubNav';
 import { prefetchHubTabChunk } from '@/lib/utils/hubTabNavigation';
 import { useHubTab } from '@/lib/context/HubTabContext';
 import toast from 'react-hot-toast';
@@ -307,6 +308,9 @@ export function Sidebar({ isOpen, onClose, isSidebarCollapsed, setIsSidebarColla
     if (item.domainRule === 'milkHisab' && !milkHisabRelevant) {
       return { visible: false, locked: false, requiredPlan: null };
     }
+    if (!isMilkShopHubNavAllowed(item.key, category)) {
+      return { visible: false, locked: false, requiredPlan: null };
+    }
 
     // Domain knowledge conditions (manufacturing, multiLocation, etc.)
     if (item.conditionKey === 'manufacturing' && !domainKnowledge?.manufacturingEnabled) {
@@ -323,7 +327,8 @@ export function Sidebar({ isOpen, onClose, isSidebarCollapsed, setIsSidebarColla
     }
 
     // RBAC + Subscription check via the permissions system
-    return getNavItemAccess(item.key, effectiveRole, planTier, business?.settings, business?.platformFeatureOverrides, moduleAccess);
+    const navSettings = mergeMilkShopLeanNavSettings(business?.settings, category);
+    return getNavItemAccess(item.key, effectiveRole, planTier, navSettings, business?.platformFeatureOverrides, moduleAccess);
   };
 
   return (
