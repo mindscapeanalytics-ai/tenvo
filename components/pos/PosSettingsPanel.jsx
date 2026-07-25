@@ -184,7 +184,7 @@ export function PosSettingsPanel({ category }) {
                         />
                         <ToggleRow
                             label="Open cash drawer on cash sale"
-                            hint="Sends an ESC/POS drawer kick to the default printer after cash or split sales."
+                            hint="Embeds an ESC/POS drawer kick in the same receipt print on cash or split sales (one print job, no blank page)."
                             checked={settings.cashDrawerKickOnCashSale !== false}
                             onCheckedChange={(v) => patch('cashDrawerKickOnCashSale', v)}
                         />

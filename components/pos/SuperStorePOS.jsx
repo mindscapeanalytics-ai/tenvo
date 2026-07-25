@@ -57,7 +57,6 @@ import { usePosHeldSales } from '@/lib/hooks/usePosHeldSales';
 import { usePosTaxConfig } from '@/lib/hooks/usePosTaxConfig';
 import { nextPosPaymentMethod } from '@/lib/config/posHotkeys';
 import { computePosCartTax } from '@/lib/utils/posTaxComponents';
-import { openCashDrawer } from '@/lib/utils/posCashDrawer';
 import toast from 'react-hot-toast';
 
 // --- Department Filter Bar ---------------------------------------------------
@@ -763,21 +762,12 @@ export function SuperStorePOS({
             });
 
             if (result?.success) {
-                recordSuccessfulSale({
-                    result,
-                    payload,
-                    cart,
-                    customer,
-                    paymentMethod,
-                    hasSession,
-                });
                 const tender = splitPayments?.length ? 'split' : paymentMethod;
-                if (
+                const kickDrawer = Boolean(
                     posSettings.cashDrawerKickOnCashSale
                     && (tender === 'cash' || tender === 'split')
-                ) {
-                    openCashDrawer({ label: 'Sale' });
-                }
+                );
+                // Instant till: clear cart before print so cashier can scan the next sale.
                 setCart([]);
                 setCustomer(null);
                 setDiscount(0);
@@ -786,6 +776,16 @@ export function SuperStorePOS({
                 setPaymentMethod('cash');
                 setTaxMode('standard');
                 setMobilePane('browse');
+                setIsProcessing(false);
+                recordSuccessfulSale({
+                    result,
+                    payload,
+                    cart,
+                    customer,
+                    paymentMethod,
+                    hasSession,
+                    kickCashDrawer: kickDrawer,
+                });
             } else if (result?.error) {
                 toast.error(formatSaleError(result), { id: 'pos-sale-error' });
             }

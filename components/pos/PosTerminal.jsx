@@ -66,7 +66,6 @@ import { usePosHeldSales } from '@/lib/hooks/usePosHeldSales';
 import { usePosTaxConfig } from '@/lib/hooks/usePosTaxConfig';
 import { nextPosPaymentMethod } from '@/lib/config/posHotkeys';
 import { computePosCartTax } from '@/lib/utils/posTaxComponents';
-import { openCashDrawer } from '@/lib/utils/posCashDrawer';
 import {
     earnPosLoyaltyPointsAction,
     getPosLoyaltySummaryAction,
@@ -1002,40 +1001,16 @@ export function PosTerminal({
             });
 
             if (result?.success) {
-                recordSuccessfulSale({
-                    result,
-                    payload,
-                    cart,
-                    customer,
-                    paymentMethod,
-                    hasSession,
-                });
-
                 const tender = splitPayments?.length ? 'split' : paymentMethod;
-                if (
+                const kickDrawer = Boolean(
                     posSettings.cashDrawerKickOnCashSale
                     && (tender === 'cash' || tender === 'split')
-                ) {
-                    openCashDrawer({ label: 'Sale' });
-                }
+                );
+                const soldCart = cart;
+                const soldCustomer = customer;
+                const soldTotal = payload.total;
 
-                if (posSettings.loyaltyAtTill && customer?.id && payload.total > 0) {
-                    try {
-                        const loyalty = await getPosLoyaltySummaryAction(businessId, customer.id);
-                        if (loyalty?.success && loyalty.program?.id) {
-                            await earnPosLoyaltyPointsAction({
-                                businessId,
-                                programId: loyalty.program.id,
-                                customerId: customer.id,
-                                amount: payload.total,
-                                referenceId: result.transaction?.id || result.transactionId || null,
-                            });
-                        }
-                    } catch {
-                        /* non-blocking */
-                    }
-                }
-
+                // Instant till: unlock UI before loyalty / print side-effects.
                 setCart([]);
                 setCustomer(null);
                 setDiscount(0);
@@ -1044,6 +1019,36 @@ export function PosTerminal({
                 setPaymentMethod('cash');
                 setTaxMode('standard');
                 setMobilePane('browse');
+                setIsProcessing(false);
+
+                recordSuccessfulSale({
+                    result,
+                    payload,
+                    cart: soldCart,
+                    customer: soldCustomer,
+                    paymentMethod,
+                    hasSession,
+                    kickCashDrawer: kickDrawer,
+                });
+
+                if (posSettings.loyaltyAtTill && soldCustomer?.id && soldTotal > 0) {
+                    void (async () => {
+                        try {
+                            const loyalty = await getPosLoyaltySummaryAction(businessId, soldCustomer.id);
+                            if (loyalty?.success && loyalty.program?.id) {
+                                await earnPosLoyaltyPointsAction({
+                                    businessId,
+                                    programId: loyalty.program.id,
+                                    customerId: soldCustomer.id,
+                                    amount: soldTotal,
+                                    referenceId: result.transaction?.id || result.transactionId || null,
+                                });
+                            }
+                        } catch {
+                            /* non-blocking */
+                        }
+                    })();
+                }
             } else if (result?.error) {
                 toast.error(formatSaleError(result), { id: 'pos-sale-error' });
             }

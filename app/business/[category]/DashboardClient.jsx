@@ -1737,7 +1737,6 @@ function BusinessDashboardContent() {
 
   const handlePosCheckout = async (checkoutData) => {
     try {
-      toast.loading('Processing POS Checkout...', { id: 'pos' });
       const normalizedItems = (checkoutData.items || []).map(item => ({
         productId: item.productId || item.id,
         productName: item.productName || item.name || 'Item',
@@ -1801,7 +1800,7 @@ function BusinessDashboardContent() {
           throw new Error(posResult?.error || 'POS transaction failed');
         }
 
-        toast.success('Sale completed successfully', { id: 'pos' });
+        // Return immediately — hub refreshes are background only (instant till feel).
         void Promise.allSettled([
           fetchSales({ force: true, mode: 'full' }),
           fetchInventory({ force: true, fullCatalog: true }),
@@ -1842,7 +1841,6 @@ function BusinessDashboardContent() {
       };
 
       const createdInvoice = await invoiceAPI.create(invoiceData, invoiceItems);
-      toast.success('Sale completed successfully', { id: 'pos' });
       if (createdInvoice?.id && typeof upsertInvoiceInState === 'function') {
         upsertInvoiceInState({
           ...createdInvoice,
