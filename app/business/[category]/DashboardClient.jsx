@@ -1746,6 +1746,9 @@ function BusinessDashboardContent() {
         taxPercent: Number(item.taxPercent) || 0,
         taxAmount: Number(item.taxAmount) || 0,
         discountAmount: Number(item.discountAmount) || 0,
+        batchId: item.batchId || item.batch_id || null,
+        variantId: item.variantId || item.variant_id || null,
+        serialNumber: item.serialNumber || item.serial_number || null,
       }));
       const lineDiscountTotal = normalizedItems.reduce(
         (sum, i) => sum + Number(i.discountAmount || 0),
@@ -1788,6 +1791,7 @@ function BusinessDashboardContent() {
           customerId: checkoutData.customerId || null,
           items: normalizedItems,
           discountAmount: lineDiscountTotal > 0 ? 0 : discountTotal,
+          clientRef: checkoutData.clientRef || checkoutData.client_ref || null,
           payments: checkoutData.payments?.length
             ? checkoutData.payments
             : [{ method: checkoutData.paymentMethod || 'cash', amount: total }],

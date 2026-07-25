@@ -59,7 +59,7 @@ if (hotkeysMod.POS_HOTKEY_DOCK_ITEMS.length !== 9) {
 
 const SUPERSTORE = new Set([
   'supermarket', 'grocery', 'wholesale-distribution', 'bakery-confectionery',
-  'pharmacy', 'cold-storage', 'fmcg', 'petrol-pump',
+  'milk-shop', 'pharmacy', 'cold-storage', 'fmcg', 'petrol-pump',
 ]);
 const SERVICE = new Set([
   'salon-spa', 'courier-logistics', 'mobile-repairing', 'clinics-healthcare', 'gym-fitness',
@@ -79,6 +79,7 @@ const variantCases = [
   ['cafe', 'restaurant'],
   ['supermarket', 'superstore'],
   ['grocery', 'superstore'],
+  ['milk-shop', 'superstore'],
   ['pharmacy', 'superstore'],
   ['cold-storage', 'superstore'],
   ['salon-spa', 'service'],

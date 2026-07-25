@@ -28,7 +28,10 @@ import { PosSessionBar } from '@/components/pos/shared/PosSessionBar';
 import { PosCloseShiftDialog } from '@/components/pos/shared/PosCloseShiftDialog';
 import { PosSplitPaymentDialog } from '@/components/pos/shared/PosSplitPaymentDialog';
 import { PosProductBrowseGrid } from '@/components/pos/shared/PosProductBrowseGrid';
+import { PosCartLines } from '@/components/pos/shared/PosCartLines';
+import { PosHeldSalesSheet } from '@/components/pos/shared/PosHeldSalesSheet';
 import { PosCameraScanner } from '@/components/pos/shared/PosCameraScanner';
+import { getBulkQuickAdds } from '@/lib/utils/posWholesale';
 import { canUseBarcodeScan } from '@/lib/utils/barcodeAccess';
 import { PosPharmacyBatchDialog } from '@/components/pos/shared/PosPharmacyBatchDialog';
 import { PosMobileCheckoutBar } from '@/components/pos/shared/PosMobileCheckoutBar';
@@ -45,7 +48,6 @@ import {
 import { usePosFullscreen } from '@/lib/hooks/usePosFullscreen';
 import { usePosReceipt } from '@/lib/hooks/usePosReceipt';
 import { getEffectiveProductImageUrl } from '@/lib/storefront/productImageFallback';
-import { ProductThumbnail } from '@/components/product/ProductThumbnail';
 import { PosHotkeyDock } from '@/components/pos/shared/PosHotkeyDock';
 import { PosTaxPanel } from '@/components/pos/shared/PosTaxPanel';
 import { usePosManagerGate } from '@/components/pos/shared/PosManagerPinGate';
@@ -160,152 +162,36 @@ function BarcodeScannerInput({ onScan, onSearchChange, searchTerm, isScanning })
     );
 }
 
-// --- Scanned Items List ------------------------------------------------------
-
-function ScannedItemsList({
-    items, onQuantityChange, onRemoveItem, onWeightChange,
-    onPriceOverride, currency, businessCategory,
-}) {
-    return (
-        <div className="flex-1 overflow-y-auto">
-            <div className="divide-y divide-gray-100">
-                <AnimatePresence>
-                    {items.map((item, idx) => (
-                        <motion.div
-                            key={`${item.productId}-${idx}`}
-                            initial={{ opacity: 0, y: -10, backgroundColor: '#ecfdf5' }}
-                            animate={{ opacity: 1, y: 0, backgroundColor: '#ffffff' }}
-                            exit={{ opacity: 0, x: -50 }}
-                            transition={{ duration: 0.2, backgroundColor: { duration: 0.8 } }}
-                            className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50/50 transition-colors group"
-                        >
-                            <span className="text-[10px] font-bold text-gray-300 w-5 text-right shrink-0">
-                                {idx + 1}
-                            </span>
-
-                            <ProductThumbnail
-                                product={{ image_url: item.imageUrl, name: item.name, id: item.productId }}
-                                businessCategory={businessCategory}
-                                size="md"
-                                className="border border-gray-100"
-                            />
-
-                            {/* Product info */}
-                            <div className="flex-1 min-w-0">
-                                <p className="text-xs font-bold text-gray-900 truncate">{item.name}</p>
-                                <div className="flex items-center gap-2 mt-0.5">
-                                    <span className="text-[10px] text-gray-400 font-mono">{item.sku || item.barcode || '--'}</span>
-                                    {item.isWeightItem && (
-                                        <Badge variant="outline" className="text-[10px] h-4 px-1 border-amber-300 text-amber-600">
-                                            <Weight className="w-2.5 h-2.5 mr-0.5" /> Weight
-                                        </Badge>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Quantity controls */}
-                            <div className="flex items-center gap-0.5 bg-gray-100 rounded-lg p-0.5">
-                                <button
-                                    onClick={() => onQuantityChange(idx, Math.max(item.isWeightItem ? 0.1 : 1, item.quantity - (item.isWeightItem ? 0.1 : 1)))}
-                                    className="p-1.5 hover:bg-white rounded-md transition-colors"
-                                >
-                                    <Minus className="w-3 h-3 text-gray-500" />
-                                </button>
-                                {item.isWeightItem ? (
-                                    <input
-                                        type="number"
-                                        data-pos-role="qty"
-                                        value={item.quantity}
-                                        onChange={(e) => onWeightChange?.(idx, parseFloat(e.target.value) || 0.1)}
-                                        className="w-14 text-center text-xs font-semibold bg-white rounded px-1 py-1 border-0"
-                                        step="0.01"
-                                        min="0.01"
-                                    />
-                                ) : (
-                                    <div className="flex items-center">
-                                        <span className="w-8 text-center text-xs font-semibold">{item.quantity}</span>
-                                        {/* Quick Add Presets for Retail Crate/Bulk */}
-                                        <div className="flex flex-col ml-1 border-l border-gray-200 pl-1">
-                                            <button onClick={() => onQuantityChange(idx, item.quantity + 5)} className="text-[7px] font-semibold text-emerald-600 hover:bg-emerald-50 px-1 rounded">+5</button>
-                                            <button onClick={() => onQuantityChange(idx, item.quantity + 12)} className="text-[7px] font-semibold text-brand-primary hover:bg-brand-50 px-1 rounded">+12</button>
-                                        </div>
-                                    </div>
-                                )}
-                                <button
-                                    onClick={() => onQuantityChange(idx, item.quantity + (item.isWeightItem ? 0.1 : 1))}
-                                    className="p-1.5 hover:bg-white rounded-md transition-colors"
-                                >
-                                    <Plus className="w-3 h-3 text-gray-500" />
-                                </button>
-                            </div>
-
-                            {/* Unit + Weight label */}
-                            {item.isWeightItem && (
-                                <span className="text-[10px] font-bold text-gray-400 w-8">
-                                    {item.unit || 'kg'}
-                                </span>
-                            )}
-
-                            {/* Unit price */}
-                            <span className="text-[10px] text-gray-400 w-16 text-right shrink-0">
-                                @{currency}{parseFloat(item.unitPrice).toLocaleString()}
-                            </span>
-
-                            {/* Line total */}
-                            <span className="text-xs font-semibold text-gray-900 w-20 text-right shrink-0">
-                                {currency}{(item.unitPrice * item.quantity).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
-                            </span>
-
-                            {/* Remove */}
-                            <button
-                                onClick={() => onRemoveItem(idx)}
-                                className="p-1 opacity-0 group-hover:opacity-100 hover:bg-red-50 rounded transition-all"
-                            >
-                                <X className="w-3.5 h-3.5 text-red-400" />
-                            </button>
-                        </motion.div>
-                    ))}
-                </AnimatePresence>
-            </div>
-
-            {items.length === 0 && (
-                <div className="flex flex-col items-center justify-center py-20 text-gray-400">
-                    <ScanLine className="w-12 h-12 mb-3 opacity-20" />
-                    <p className="text-sm font-bold">Scan items to begin</p>
-                    <p className="text-[10px] mt-1 text-gray-300">Use barcode scanner or search by name</p>
-                </div>
-            )}
-        </div>
-    );
-}
-
-// --- Cart Summary (Right Panel) ----------------------------------------------
+// --- Cart Summary (Right Panel) — lines live here, browse stays left --------
 
 function CartSummary({
-    items, customer, onCustomerSelect, taxPercent, taxConfig,
-    discount = 0, onDiscountChange, onPaymentMethodSelect,
-    onCompleteSale, onHoldSale, onVoidSale, isProcessing,
-    currency = 'Rs.', heldOrders = [], onResumeHeldSale, onPrintBill, onDownloadBillPdf,
+    items, customer, onCustomerSelect,
+    discount = 0, onDiscountChange, discountType = 'fixed', onDiscountTypeChange,
+    onPaymentMethodSelect,
+    onCompleteSale, onHoldSale, onClearSale, isProcessing,
+    currency = 'Rs.', heldOrders = [], onOpenHeldSales, onPrintBill, onDownloadBillPdf,
     onBack, taxLabel = 'Tax', taxBreakdown = [], discountInputRef,
     onOpenTax, taxMode = 'standard', taxEnabled = true,
+    businessCategory,
+    onQuantityChange, onWeightChange, onRemoveItem,
+    showBulkQuickAdds = false, bulkQuickAdds = [5, 12],
 }) {
-    const itemCount = items.reduce((sum, i) => sum + (i.isWeightItem ? 1 * i.quantity : i.quantity), 0);
+    const itemCount = items.reduce((sum, i) => sum + (Number(i.quantity) || 0), 0);
     const subtotal = items.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0);
-    
-    // Calculate total tax by summing per-item tax stored in items
     const totalTax = items.reduce((sum, i) => {
         const itemTax = (i.unitPrice * i.quantity) * ((i.taxPercent || 0) / 100);
         return sum + itemTax;
     }, 0);
-    
     const taxAmount = Math.round(totalTax * 100) / 100;
-    const discountAmount = parseFloat(discount || 0);
+    const rawDiscount = parseFloat(discount || 0) || 0;
+    const discountAmount = discountType === 'percentage'
+        ? Math.round(subtotal * (rawDiscount / 100) * 100) / 100
+        : rawDiscount;
     const total = Math.round((subtotal + taxAmount - discountAmount) * 100) / 100;
     const showBreakdown = Array.isArray(taxBreakdown) && taxBreakdown.length > 1;
 
     return (
         <div className="flex flex-col h-full bg-slate-900 text-white touch-manipulation min-h-0 overflow-hidden">
-            {/* Header */}
             <div className="flex items-center justify-between px-4 max-lg:px-3 py-3 max-lg:py-2 border-b border-slate-700/50 shrink-0">
                 <div className="flex items-center gap-2 min-w-0">
                     {onBack ? (
@@ -320,16 +206,23 @@ function CartSummary({
                     </Badge>
                 </div>
                 {heldOrders.length > 0 && (
-                    <Badge variant="outline" className="text-amber-400 border-amber-500/30 text-[10px]">
-                        <Clock className="w-3 h-3 mr-1" />
-                        {heldOrders.length} held
-                    </Badge>
+                    <button
+                        type="button"
+                        onClick={onOpenHeldSales}
+                        className="inline-flex"
+                        aria-label={`Open ${heldOrders.length} held sales`}
+                    >
+                        <Badge variant="outline" className="text-amber-400 border-amber-500/30 text-[10px] cursor-pointer hover:bg-amber-500/10">
+                            <Clock className="w-3 h-3 mr-1" />
+                            {heldOrders.length} held
+                        </Badge>
+                    </button>
                 )}
             </div>
 
-            {/* Customer */}
-            <div className="px-3 py-2 border-b border-slate-800">
+            <div className="px-3 py-2 border-b border-slate-800 shrink-0">
                 <button
+                    type="button"
                     onClick={onCustomerSelect}
                     className="flex items-center gap-2 w-full px-3 py-2 rounded-lg bg-slate-800/60 hover:bg-slate-800 transition-colors text-xs"
                 >
@@ -339,164 +232,171 @@ function CartSummary({
                 </button>
             </div>
 
-            {/* Totals */}
-            <div className="flex-1 flex flex-col justify-end">
-                {items.length > 0 && (
-                    <div className="px-4 py-3 space-y-2 border-t border-slate-700/50">
-                        <div className="space-y-1.5 text-xs">
-                            <div className="flex justify-between text-gray-400">
-                                <span>Subtotal ({items.length} items)</span>
-                                <span>{currency}{subtotal.toLocaleString()}</span>
-                            </div>
-                            {taxEnabled && showBreakdown ? (
-                                taxBreakdown.map((row) => (
-                                    <button
-                                        key={row.key}
-                                        type="button"
-                                        onClick={onOpenTax}
-                                        disabled={!onOpenTax}
-                                        className="flex w-full justify-between text-gray-400 enabled:hover:text-emerald-300 disabled:cursor-default"
-                                    >
-                                        <span>{row.label} ({row.rate}%)</span>
-                                        <span>{currency}{row.amount.toLocaleString()}</span>
-                                    </button>
-                                ))
-                            ) : taxEnabled ? (
-                                <button
-                                    type="button"
-                                    onClick={onOpenTax}
-                                    disabled={!onOpenTax}
-                                    className="flex w-full justify-between text-gray-400 enabled:hover:text-emerald-300 disabled:cursor-default"
-                                >
-                                    <span>{taxLabel}{taxMode && taxMode !== 'standard' ? ` · ${taxMode === 'gst_only' ? 'GST only' : 'Exempt'}` : ''}</span>
-                                    <span>{currency}{taxAmount.toLocaleString()}</span>
-                                </button>
-                            ) : null}
-                            <div className="flex items-center justify-between text-gray-400">
-                                <span>Discount</span>
-                                <Input
-                                    ref={discountInputRef}
-                                    type="number"
-                                    data-pos-role="discount"
-                                    value={discount}
-                                    onChange={(e) => onDiscountChange?.(e.target.value)}
-                                    className="w-20 h-6 text-right text-xs bg-slate-800 border-slate-700 text-white rounded px-2"
-                                    min={0}
-                                />
-                            </div>
-                            <div className="flex justify-between text-2xl max-lg:text-xl font-semibold text-white pt-3 max-lg:pt-2 border-t border-slate-700">
-                                <span>TOTAL</span>
-                                <span className="text-emerald-400">{currency}{total.toLocaleString()}</span>
-                            </div>
-                        </div>
+            <PosCartLines
+                items={items}
+                currency={currency}
+                businessCategory={businessCategory}
+                theme="dark"
+                onQuantityChange={onQuantityChange}
+                onWeightChange={onWeightChange}
+                onRemoveItem={onRemoveItem}
+                showBulkQuickAdds={showBulkQuickAdds}
+                bulkQuickAdds={bulkQuickAdds}
+                emptyTitle="Cart is empty"
+                emptyHint="Scan or tap products on the left to add"
+            />
 
-                        {/* Payment Methods */}
-                        <div className="grid grid-cols-4 gap-1.5 max-lg:gap-1 pt-2 max-lg:pt-1.5">
-                            {[
-                                { key: 'cash', icon: Banknote, label: 'Cash', color: 'hover:bg-emerald-500/20 hover:border-emerald-500/40' },
-                                { key: 'card', icon: CreditCard, label: 'Card', color: 'hover:bg-brand-primary/20 hover:border-brand-primary/40' },
-                                { key: 'wallet', icon: Smartphone, label: 'Mobile', color: 'hover:bg-wine-500/20 hover:border-wine-500/40' },
-                                { key: 'split', icon: SplitSquareHorizontal, label: 'Split', color: 'hover:bg-amber-500/20 hover:border-amber-500/40' },
-                            ].map(({ key, icon: Icon, label, color }) => (
-                                <button
-                                    key={key}
-                                    onClick={() => onPaymentMethodSelect?.(key)}
-                                    className={cn(
-                                        'flex flex-col items-center gap-1 py-2 max-lg:py-1.5 rounded-lg border border-slate-700 bg-slate-800 transition-all text-gray-400 touch-manipulation',
-                                        color
-                                    )}
-                                >
-                                    <Icon className="w-4 h-4" />
-                                    <span className="text-[10px] font-medium">{label}</span>
-                                </button>
-                            ))}
-                        </div>
-
-                        {/* Action Buttons */}
-                        <div className="grid grid-cols-2 gap-1.5 pt-1">
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={onHoldSale}
-                                className="h-9 rounded-lg text-[10px] font-bold border-slate-700 text-gray-400 hover:bg-amber-500/10 hover:text-amber-400 hover:border-amber-500/30"
-                            >
-                                <Clock className="w-3.5 h-3.5 mr-1.5" /> HOLD
-                            </Button>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={onVoidSale}
-                                className="h-9 rounded-lg text-[10px] font-bold border-slate-700 text-gray-400 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/30"
-                            >
-                                <X className="w-3.5 h-3.5 mr-1.5" /> VOID
-                            </Button>
-                        </div>
-
-                        {heldOrders.length > 0 && (
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={onResumeHeldSale}
-                                className="w-full h-9 rounded-lg text-[10px] font-bold border-amber-600/30 text-amber-300 bg-amber-500/10 hover:bg-amber-500/20"
-                            >
-                                <RotateCcw className="w-3.5 h-3.5 mr-1.5" /> RESUME LAST HELD SALE ({heldOrders.length})
-                            </Button>
-                        )}
-
-                        {onPrintBill ? (
-                            <Button
+            <div className="shrink-0 border-t border-slate-700/50 px-4 py-3 space-y-2">
+                <div className="space-y-1.5 text-xs">
+                    <div className="flex justify-between text-gray-400">
+                        <span>Subtotal ({items.length} items)</span>
+                        <span>{currency}{subtotal.toLocaleString()}</span>
+                    </div>
+                    {taxEnabled && showBreakdown ? (
+                        taxBreakdown.map((row) => (
+                            <button
+                                key={row.key}
                                 type="button"
-                                variant="outline"
-                                onClick={() => onPrintBill({ subtotal, taxAmount, discountAmount, total })}
-                                disabled={isProcessing}
-                                className="w-full h-9 rounded-lg text-[10px] font-bold border-slate-700 text-gray-300 bg-slate-800 hover:bg-slate-700"
+                                onClick={onOpenTax}
+                                disabled={!onOpenTax}
+                                className="flex w-full justify-between text-gray-400 enabled:hover:text-emerald-300 disabled:cursor-default"
                             >
-                                <Printer className="w-3.5 h-3.5 mr-1.5" /> PRINT
-                            </Button>
-                        ) : null}
-                        {onDownloadBillPdf ? (
-                            <Button
-                                type="button"
-                                variant="outline"
-                                onClick={() => onDownloadBillPdf({ subtotal, taxAmount, discountAmount, total })}
-                                disabled={isProcessing}
-                                className="w-full h-9 rounded-lg text-[10px] font-bold border-slate-700 text-gray-300 bg-slate-800 hover:bg-slate-700"
-                            >
-                                <FileDown className="w-3.5 h-3.5 mr-1.5" /> PDF
-                            </Button>
-                        ) : null}
-
-                        {/* Complete Sale */}
-                        <Button
-                            onClick={onCompleteSale}
-                            disabled={isProcessing || items.length === 0}
-                            className="w-full h-14 rounded-xl text-sm font-semibold bg-gradient-to-r from-emerald-500 to-emerald-600
-                                       hover:from-emerald-600 hover:to-emerald-700 shadow-lg shadow-emerald-500/20 disabled:opacity-50 tracking-tight"
+                                <span>{row.label} ({row.rate}%)</span>
+                                <span>{currency}{row.amount.toLocaleString()}</span>
+                            </button>
+                        ))
+                    ) : taxEnabled ? (
+                        <button
+                            type="button"
+                            onClick={onOpenTax}
+                            disabled={!onOpenTax}
+                            className="flex w-full justify-between text-gray-400 enabled:hover:text-emerald-300 disabled:cursor-default"
                         >
-                            {isProcessing ? (
-                                <div className="flex items-center gap-2">
-                                    <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                                    Processing...
-                                </div>
-                            ) : (
-                                <>
-                                    <CheckCircle2 className="w-5 h-5 mr-2" />
-                                    CHECKOUT - {currency}{total.toLocaleString()}
-                                </>
-                            )}
-                        </Button>
+                            <span>{taxLabel}{taxMode && taxMode !== 'standard' ? ` · ${taxMode === 'gst_only' ? 'GST only' : 'Exempt'}` : ''}</span>
+                            <span>{currency}{taxAmount.toLocaleString()}</span>
+                        </button>
+                    ) : null}
+                    <div className="flex items-center justify-between text-gray-400 gap-2">
+                        <span>Discount</span>
+                        <div className="flex items-center gap-1">
+                            <button
+                                type="button"
+                                onClick={() => onDiscountTypeChange?.(discountType === 'fixed' ? 'percentage' : 'fixed')}
+                                className="h-6 px-1.5 rounded text-[9px] font-semibold border border-slate-700 bg-slate-800 text-slate-300 hover:border-emerald-500/40"
+                                aria-label="Toggle discount type"
+                            >
+                                {discountType === 'percentage' ? '%' : currency}
+                            </button>
+                            <Input
+                                ref={discountInputRef}
+                                type="number"
+                                data-pos-role="discount"
+                                value={discount}
+                                onChange={(e) => onDiscountChange?.(e.target.value)}
+                                className="w-20 h-6 text-right text-xs bg-slate-800 border-slate-700 text-white rounded px-2"
+                                min={0}
+                            />
+                        </div>
                     </div>
+                    <div className="flex justify-between text-2xl max-lg:text-xl font-semibold text-white pt-3 max-lg:pt-2 border-t border-slate-700">
+                        <span>TOTAL</span>
+                        <span className="text-emerald-400">{currency}{total.toLocaleString()}</span>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-4 gap-1.5 max-lg:gap-1 pt-2 max-lg:pt-1.5">
+                    {[
+                        { key: 'cash', icon: Banknote, label: 'Cash', color: 'hover:bg-emerald-500/20 hover:border-emerald-500/40' },
+                        { key: 'card', icon: CreditCard, label: 'Card', color: 'hover:bg-brand-primary/20 hover:border-brand-primary/40' },
+                        { key: 'wallet', icon: Smartphone, label: 'Mobile', color: 'hover:bg-wine-500/20 hover:border-wine-500/40' },
+                        { key: 'split', icon: SplitSquareHorizontal, label: 'Split', color: 'hover:bg-amber-500/20 hover:border-amber-500/40' },
+                    ].map(({ key, icon: Icon, label, color }) => (
+                        <button
+                            key={key}
+                            type="button"
+                            onClick={() => onPaymentMethodSelect?.(key)}
+                            className={cn(
+                                'flex flex-col items-center gap-1 py-2 max-lg:py-1.5 rounded-lg border border-slate-700 bg-slate-800 transition-all text-gray-400 touch-manipulation',
+                                color
+                            )}
+                        >
+                            <Icon className="w-4 h-4" />
+                            <span className="text-[10px] font-medium">{label}</span>
+                        </button>
+                    ))}
+                </div>
+
+                <div className="grid grid-cols-2 gap-1.5 pt-1">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={onHoldSale}
+                        className="h-9 rounded-lg text-[10px] font-bold border-slate-700 text-gray-400 hover:bg-amber-500/10 hover:text-amber-400 hover:border-amber-500/30"
+                    >
+                        <Clock className="w-3.5 h-3.5 mr-1.5" /> HOLD
+                    </Button>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={onClearSale}
+                        className="h-9 rounded-lg text-[10px] font-bold border-slate-700 text-gray-400 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/30"
+                    >
+                        <X className="w-3.5 h-3.5 mr-1.5" /> CLEAR
+                    </Button>
+                </div>
+
+                {heldOrders.length > 0 && (
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={onOpenHeldSales}
+                        className="w-full h-9 rounded-lg text-[10px] font-bold border-amber-600/30 text-amber-300 bg-amber-500/10 hover:bg-amber-500/20"
+                    >
+                        <RotateCcw className="w-3.5 h-3.5 mr-1.5" /> HELD SALES ({heldOrders.length})
+                    </Button>
                 )}
 
-                {items.length === 0 && (
-                    <div className="flex flex-col items-center justify-center flex-1 text-gray-600 px-6">
-                        <ShoppingCart className="w-10 h-10 mb-3 opacity-20" />
-                        <p className="text-xs font-bold text-gray-400">Cart is empty</p>
-                        <p className="text-[10px] text-gray-600 mt-1 text-center">
-                            Scan items with the barcode reader or search by name to add products
-                        </p>
-                    </div>
-                )}
+                {onPrintBill ? (
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => onPrintBill({ subtotal, taxAmount, discountAmount, total })}
+                        disabled={isProcessing || items.length === 0}
+                        className="w-full h-9 rounded-lg text-[10px] font-bold border-slate-700 text-gray-300 bg-slate-800 hover:bg-slate-700"
+                    >
+                        <Printer className="w-3.5 h-3.5 mr-1.5" /> PRINT
+                    </Button>
+                ) : null}
+                {onDownloadBillPdf ? (
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => onDownloadBillPdf({ subtotal, taxAmount, discountAmount, total })}
+                        disabled={isProcessing || items.length === 0}
+                        className="w-full h-9 rounded-lg text-[10px] font-bold border-slate-700 text-gray-300 bg-slate-800 hover:bg-slate-700"
+                    >
+                        <FileDown className="w-3.5 h-3.5 mr-1.5" /> PDF
+                    </Button>
+                ) : null}
+
+                <Button
+                    onClick={onCompleteSale}
+                    disabled={isProcessing || items.length === 0}
+                    className="w-full h-14 rounded-xl text-sm font-semibold bg-gradient-to-r from-emerald-500 to-emerald-600
+                               hover:from-emerald-600 hover:to-emerald-700 shadow-lg shadow-emerald-500/20 disabled:opacity-50 tracking-tight"
+                >
+                    {isProcessing ? (
+                        <div className="flex items-center gap-2">
+                            <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                            Processing...
+                        </div>
+                    ) : (
+                        <>
+                            <CheckCircle2 className="w-5 h-5 mr-2" />
+                            CHECKOUT - {currency}{total.toLocaleString()}
+                        </>
+                    )}
+                </Button>
             </div>
         </div>
     );
@@ -521,7 +421,6 @@ export function SuperStorePOS({
         posUi,
     } = usePosTaxConfig(category);
     const taxConfig = taxConfigProp || loadedTaxConfig;
-    const domainFlags = getPosDomainFlags(category);
     const posSettings = usePosSettings();
     const canOfflinePos =
         Boolean(posSettings.offlineModeEnabled)
@@ -553,12 +452,14 @@ export function SuperStorePOS({
     const [customerQuery, setCustomerQuery] = useState('');
     const [showCustomerDialog, setShowCustomerDialog] = useState(false);
     const [discount, setDiscount] = useState(0);
+    const [discountType, setDiscountType] = useState('fixed');
     const [paymentMethod, setPaymentMethod] = useState('cash');
     const [splitPayments, setSplitPayments] = useState(null);
     const [showSplitDialog, setShowSplitDialog] = useState(false);
     const [showCloseShiftDialog, setShowCloseShiftDialog] = useState(false);
     const [showTaxPanel, setShowTaxPanel] = useState(false);
     const [showCashTools, setShowCashTools] = useState(false);
+    const [showHeldSheet, setShowHeldSheet] = useState(false);
     const [mobilePane, setMobilePane] = useState('browse');
     const [showCameraScanner, setShowCameraScanner] = useState(false);
     const [pharmacyProduct, setPharmacyProduct] = useState(null);
@@ -567,7 +468,12 @@ export function SuperStorePOS({
     const [isScanning, setIsScanning] = useState(false);
     const [lastScannedItem, setLastScannedItem] = useState(null);
     const discountInputRef = useRef(null);
-    const { heldOrders, holdSale, resumeLastHeld } = usePosHeldSales(businessId || business?.id);
+    const { heldOrders, holdSale, resumeHeld, removeHeld } = usePosHeldSales(businessId || business?.id);
+    const domainFlags = useMemo(() => getPosDomainFlags(category), [category]);
+    const bulkQuickAdds = useMemo(() => {
+        if (domainFlags.wholesaleMode) return getBulkQuickAdds(1);
+        return [5, 12];
+    }, [domainFlags.wholesaleMode]);
     const { requestApproval, managerPinDialog } = usePosManagerGate({
         businessId: businessId || business?.id,
         posSettings,
@@ -630,10 +536,10 @@ export function SuperStorePOS({
             customer,
             paymentMethod,
             discount,
-            discountType: 'fixed',
+            discountType,
             totalsFromCart,
         });
-    }, [cart, customer, discount, paymentMethod, downloadBillPdfFromCart]);
+    }, [cart, customer, discount, discountType, paymentMethod, downloadBillPdfFromCart]);
 
     const handlePrintBill = useCallback((totalsFromCart) => {
         printBillFromCart({
@@ -641,10 +547,10 @@ export function SuperStorePOS({
             customer,
             paymentMethod,
             discount,
-            discountType: 'fixed',
+            discountType,
             totalsFromCart,
         });
-    }, [cart, customer, discount, paymentMethod, printBillFromCart]);
+    }, [cart, customer, discount, discountType, paymentMethod, printBillFromCart]);
 
     const handleStartSession = useCallback(async () => {
         if (!onStartSession || isStartingSession) return;
@@ -716,32 +622,56 @@ export function SuperStorePOS({
     }, [sellableProducts, handleScanCode]);
 
     const handleQuantityChange = useCallback((idx, qty) => {
-        setCart(prev => prev.map((item, i) => i === idx ? { ...item, quantity: Math.round(qty * 100) / 100 } : item));
+        setCart((prev) => prev.map((item, i) => {
+            if (i !== idx) return item;
+            let next = Math.round(Number(qty) * 100) / 100;
+            const minQty = item.isWeightItem ? 0.1 : 1;
+            if (!Number.isFinite(next) || next < minQty) next = minQty;
+            const cap = Number(item.maxStock);
+            if (Number.isFinite(cap) && cap > 0 && next > cap) {
+                toast.error('Not enough stock', { id: 'pos-stock-cap' });
+                next = cap;
+            }
+            return { ...item, quantity: next };
+        }));
     }, []);
 
     const handleWeightChange = useCallback((idx, weight) => {
-        setCart(prev => prev.map((item, i) => i === idx ? { ...item, quantity: Math.round(weight * 100) / 100 } : item));
-    }, []);
+        handleQuantityChange(idx, weight);
+    }, [handleQuantityChange]);
 
     const handleRemoveItem = useCallback((idx) => {
         setCart(prev => prev.filter((_, i) => i !== idx));
     }, []);
 
     const handleHoldSale = useCallback(() => {
-        if (cart.length === 0) return;
-        holdSale({ items: cart, customer, discount, taxMode, paymentMethod });
+        if (cart.length === 0) {
+            toast.error('Cart is empty', { id: 'pos-hold' });
+            return;
+        }
+        const ok = holdSale({
+            items: cart,
+            customer,
+            discount,
+            discountType,
+            taxMode,
+            paymentMethod,
+        });
+        if (!ok) return;
         setCart([]);
         setCustomer(null);
         setDiscount(0);
+        setDiscountType('fixed');
         setTaxMode('standard');
         toast.success('Sale held', { id: 'pos-hold' });
-    }, [cart, customer, discount, taxMode, paymentMethod, holdSale, setTaxMode]);
+    }, [cart, customer, discount, discountType, taxMode, paymentMethod, holdSale, setTaxMode]);
 
     const handleVoidSale = useCallback(() => {
         const run = () => {
             setCart([]);
             setCustomer(null);
             setDiscount(0);
+            setDiscountType('fixed');
             setTaxMode('standard');
         };
         requestApproval('clear', run);
@@ -755,20 +685,37 @@ export function SuperStorePOS({
         setTaxMode(mode);
     }, [requestApproval, setTaxMode]);
 
-    const handleResumeLastHeldSale = useCallback(() => {
-        if (heldOrders.length === 0 || cart.length > 0) return;
-        const restored = resumeLastHeld();
+    const applyHeldSnapshot = useCallback((restored) => {
         if (!restored) return;
-        setCart(restored?.items || []);
-        setCustomer(restored?.customer || null);
-        setDiscount(restored?.discount || 0);
-        if (restored?.taxMode) setTaxMode(restored.taxMode);
-    }, [heldOrders.length, cart.length, resumeLastHeld, setTaxMode]);
+        setCart(restored.items || []);
+        setCustomer(restored.customer || null);
+        setDiscount(restored.discount || 0);
+        setDiscountType(restored.discountType === 'percentage' ? 'percentage' : 'fixed');
+        if (restored.taxMode) setTaxMode(restored.taxMode);
+        if (restored.paymentMethod) setPaymentMethod(restored.paymentMethod);
+        setShowHeldSheet(false);
+        toast.success('Held sale restored', { id: 'pos-hold' });
+    }, [setTaxMode]);
+
+    const handleResumeHeldSale = useCallback((id) => {
+        if (cart.length > 0) {
+            toast.error('Clear or checkout the current cart before resuming a held sale', {
+                id: 'pos-hold',
+            });
+            return;
+        }
+        const restored = resumeHeld(id);
+        applyHeldSnapshot(restored);
+    }, [cart.length, resumeHeld, applyHeldSnapshot]);
+
+    const handleDiscardHeldSale = useCallback((id) => {
+        removeHeld(id);
+        toast.success('Held sale discarded', { id: 'pos-hold' });
+    }, [removeHeld]);
 
     const handleCompleteSale = useCallback(async () => {
         if (cart.length === 0 || isProcessing) return;
         const sub = cart.reduce((s, i) => s + i.unitPrice * i.quantity, 0);
-        const discPct = sub > 0 ? ((Number(discount) || 0) / sub) * 100 : 0;
 
         const runSale = async () => {
         setIsProcessing(true);
@@ -781,9 +728,11 @@ export function SuperStorePOS({
                     ...i,
                     taxPercent: i.taxPercent ?? effectiveTaxRate,
                     batchId: i.batchId || null,
+                    variantId: i.variantId || null,
+                    serialNumber: i.serialNumber || null,
                 })),
                 discount,
-                discountType: 'fixed',
+                discountType,
                 paymentMethod: splitPayments?.length ? 'split' : paymentMethod,
                 payments: splitPayments || undefined,
             });
@@ -800,6 +749,7 @@ export function SuperStorePOS({
                 setCart([]);
                 setCustomer(null);
                 setDiscount(0);
+                setDiscountType('fixed');
                 setSplitPayments(null);
                 setPaymentMethod('cash');
                 setTaxMode('standard');
@@ -831,6 +781,7 @@ export function SuperStorePOS({
                 setCart([]);
                 setCustomer(null);
                 setDiscount(0);
+                setDiscountType('fixed');
                 setSplitPayments(null);
                 setPaymentMethod('cash');
                 setTaxMode('standard');
@@ -846,8 +797,11 @@ export function SuperStorePOS({
         }
         };
 
+        const discPct = discountType === 'percentage'
+            ? (Number(discount) || 0)
+            : (sub > 0 ? ((Number(discount) || 0) / sub) * 100 : 0);
         requestApproval('discount', () => { void runSale(); }, { discountPercent: discPct });
-    }, [cart, businessId, session, customer, discount, paymentMethod, splitPayments, isProcessing, onCompleteSale, hasSession, effectiveTaxRate, category, recordSuccessfulSale, formatSaleError, isOnline, posSettings, queueSale, taxMode, setTaxMode, requestApproval]);
+    }, [cart, businessId, session, customer, discount, discountType, paymentMethod, splitPayments, isProcessing, onCompleteSale, hasSession, effectiveTaxRate, category, recordSuccessfulSale, formatSaleError, isOnline, posSettings, queueSale, taxMode, setTaxMode, requestApproval, canOfflinePos, catalogReady]);
 
     const cartTax = useMemo(
         () => computePosCartTax(cart, taxComponents),
@@ -857,7 +811,7 @@ export function SuperStorePOS({
     const cartSummary = useMemo(() => {
         const totals = computePosOrderTotals(cart, {
             discount,
-            discountType: 'fixed',
+            discountType,
             taxComponents,
             precomputedTax: cartTax,
         });
@@ -870,7 +824,7 @@ export function SuperStorePOS({
             total: totals.total,
             itemCount,
         };
-    }, [cart, discount, taxComponents, cartTax]);
+    }, [cart, discount, discountType, taxComponents, cartTax]);
 
     const focusScanSearch = useCallback(() => {
         setMobilePane('browse');
@@ -911,7 +865,7 @@ export function SuperStorePOS({
     ]);
 
     usePosHotkeys({
-        enabled: !showCustomerDialog && !showSplitDialog && !showTaxPanel && !showCashTools,
+        enabled: !showCustomerDialog && !showSplitDialog && !showTaxPanel && !showCashTools && !showHeldSheet,
         handlers: hotkeyHandlers,
         onFullscreen: toggleFullscreen,
     });
@@ -939,23 +893,30 @@ export function SuperStorePOS({
         onCustomerSelect: () => setShowCustomerDialog(true),
         discount,
         onDiscountChange: setDiscount,
+        discountType,
+        onDiscountTypeChange: setDiscountType,
         onPaymentMethodSelect: handlePaymentMethodSelect,
         onCompleteSale: handleCompleteSale,
         onHoldSale: handleHoldSale,
-        onVoidSale: handleVoidSale,
-        onResumeHeldSale: handleResumeLastHeldSale,
+        onClearSale: handleVoidSale,
+        onOpenHeldSales: () => setShowHeldSheet(true),
         onPrintBill: handlePrintBill,
         onDownloadBillPdf: handleDownloadBillPdf,
         isProcessing,
         currency: displayCurrency,
         heldOrders,
-        taxConfig,
         taxLabel: taxLabel || posUi.taxLabel,
         taxBreakdown: cartSummary.taxBreakdown,
         discountInputRef,
         onOpenTax: taxEnabled ? () => setShowTaxPanel(true) : undefined,
         taxMode,
         taxEnabled,
+        businessCategory: category,
+        onQuantityChange: handleQuantityChange,
+        onWeightChange: handleWeightChange,
+        onRemoveItem: handleRemoveItem,
+        showBulkQuickAdds: Boolean(domainFlags.supportsBulkQty || domainFlags.wholesaleMode),
+        bulkQuickAdds,
     };
     return (
         <div
@@ -994,13 +955,7 @@ export function SuperStorePOS({
                         </div>
                     </div>
                     <DepartmentBar departments={departments} activeDepartment={activeDepartment} onDepartmentChange={setActiveDepartment} productCounts={productCounts} />
-                    {cart.length > 0 ? (
-                        <ScannedItemsList items={cart} onQuantityChange={handleQuantityChange} onRemoveItem={handleRemoveItem} onWeightChange={handleWeightChange} currency={displayCurrency} businessCategory={category} />
-                    ) : !searchTerm ? (
-                        <PosProductBrowseGrid products={filteredProducts} onAddToCart={addToCart} currency={displayCurrency} businessCategory={category} />
-                    ) : (
-                        <ScannedItemsList items={cart} onQuantityChange={handleQuantityChange} onRemoveItem={handleRemoveItem} onWeightChange={handleWeightChange} currency={displayCurrency} businessCategory={category} />
-                    )}
+                    <PosProductBrowseGrid products={filteredProducts} onAddToCart={addToCart} currency={displayCurrency} businessCategory={category} />
                     {searchTerm && (
                         <div className="border-t overflow-y-auto max-h-64 bg-gray-50/50">{filteredProducts.slice(0, 8).map((p) => (
                             <button key={p.id} type="button" onClick={() => { addToCart(p); setSearchTerm(''); }} className="flex w-full px-4 py-2 text-left hover:bg-emerald-50/50 text-xs font-bold">{p.name}</button>
@@ -1034,11 +989,7 @@ export function SuperStorePOS({
                                 )}
                             </div>
                             <DepartmentBar departments={departments} activeDepartment={activeDepartment} onDepartmentChange={setActiveDepartment} productCounts={productCounts} />
-                            {cart.length > 0 ? (
-                                <ScannedItemsList items={cart} onQuantityChange={handleQuantityChange} onRemoveItem={handleRemoveItem} onWeightChange={handleWeightChange} currency={displayCurrency} businessCategory={category} />
-                            ) : (
-                                <PosProductBrowseGrid products={filteredProducts} onAddToCart={addToCart} currency={displayCurrency} businessCategory={category} />
-                            )}
+                            <PosProductBrowseGrid products={filteredProducts} onAddToCart={addToCart} currency={displayCurrency} businessCategory={category} />
                         </div>
                         {cartSummary.itemCount > 0 ? (
                             <PosMobileCheckoutBar
@@ -1181,6 +1132,15 @@ export function SuperStorePOS({
 
             <PosCameraScanner open={showCameraScanner} onClose={() => setShowCameraScanner(false)} onScan={handleBarcodeScan} />
 
+            <PosHeldSalesSheet
+                open={showHeldSheet}
+                onOpenChange={setShowHeldSheet}
+                heldOrders={heldOrders}
+                currency={displayCurrency}
+                onResume={handleResumeHeldSale}
+                onDiscard={handleDiscardHeldSale}
+            />
+
             <PosPharmacyBatchDialog
                 open={Boolean(pharmacyProduct)}
                 onOpenChange={(open) => !open && setPharmacyProduct(null)}
@@ -1199,7 +1159,7 @@ export function SuperStorePOS({
                         quantity: i.quantity,
                         taxPercent: i.taxPercent ?? effectiveTaxRate,
                     })),
-                    { discount, discountType: 'fixed' }
+                    { discount, discountType }
                 ).total}
                 currency={displayCurrency}
                 onConfirm={(payments) => {

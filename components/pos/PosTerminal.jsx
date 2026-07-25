@@ -33,6 +33,8 @@ import {
 import { PosCloseShiftDialog } from '@/components/pos/shared/PosCloseShiftDialog';
 import { PosSplitPaymentDialog } from '@/components/pos/shared/PosSplitPaymentDialog';
 import { PosCameraScanner } from '@/components/pos/shared/PosCameraScanner';
+import { PosCartLines } from '@/components/pos/shared/PosCartLines';
+import { PosHeldSalesSheet } from '@/components/pos/shared/PosHeldSalesSheet';
 import { canUseBarcodeScan } from '@/lib/utils/barcodeAccess';
 import { PosPharmacyBatchDialog } from '@/components/pos/shared/PosPharmacyBatchDialog';
 import { PosOfflineBanner } from '@/components/pos/shared/PosOfflineBanner';
@@ -42,7 +44,8 @@ import { usePosOffline } from '@/lib/hooks/usePosOffline';
 import { usePosOfflineCatalog } from '@/lib/hooks/usePosOfflineCatalog';
 import { usePosProductAdd } from '@/lib/hooks/usePosProductAdd';
 import { planHasFeatureWithPackaging } from '@/lib/subscription/effectivePlanAccess';
-import { normalizePosCategoryKey } from '@/lib/config/posDomains';
+import { getPosDomainFlags, normalizePosCategoryKey } from '@/lib/config/posDomains';
+import { getBulkQuickAdds } from '@/lib/utils/posWholesale';
 import { usePosFullscreen } from '@/lib/hooks/usePosFullscreen';
 import { usePosReceipt } from '@/lib/hooks/usePosReceipt';
 import {
@@ -314,12 +317,15 @@ function PosCart({
     loyaltyBalance = 0, currency = '₨', taxLabel = 'Tax', taxBreakdown = [],
     selectedPaymentMethod = 'cash',
     onBack, hideKeyboardHint = false, businessCategory, onPrintBill, onDownloadBillPdf,
-    onHoldSale, onResumeHeldSale, heldOrders = [],
+    onHoldSale, onOpenHeldSales, heldOrders = [],
     discountInputRef,
     onOpenLoyalty,
     onOpenTax,
     taxMode = 'standard',
     taxEnabled = true,
+    showBulkQuickAdds = false,
+    bulkQuickAdds = [5, 12],
+    onWeightChange,
 }) {
     const subtotal = items.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0);
     
@@ -386,91 +392,20 @@ function PosCart({
             </header>
 
             {/* Line items, scrollable middle only */}
-            <div
-                className={cn(POS_SCROLL_MIDDLE, 'px-2 sm:px-3 py-2 space-y-1.5 bg-gradient-to-b from-gray-50/80 to-transparent')}
-                role="list"
-                aria-label="Cart items"
-            >
-                <AnimatePresence initial={false}>
-                    {items.map((item, idx) => (
-                        <motion.div
-                            key={`${item.productId}-${idx}`}
-                            initial={{ opacity: 0, y: 8 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, x: -12 }}
-                            className="grid grid-cols-[auto_1fr_auto] gap-x-2 gap-y-1.5 p-2.5 rounded-xl bg-white border border-gray-100 shadow-sm shadow-gray-900/5"
-                            role="listitem"
-                        >
-                            <ProductThumbnail
-                                product={{ image_url: item.imageUrl, name: item.name, id: item.productId }}
-                                businessCategory={businessCategory}
-                                size="cart"
-                                className="row-span-2 border border-gray-100 self-start"
-                            />
-                            <div className="min-w-0 col-start-2">
-                                <p className="text-xs font-semibold text-gray-900 leading-snug line-clamp-2" title={item.name}>
-                                    {item.name}
-                                </p>
-                                <p className="text-[10px] text-gray-500 mt-0.5">
-                                    {currency}{item.unitPrice.toLocaleString()} each
-                                </p>
-                            </div>
-                            <button
-                                type="button"
-                                onClick={() => onRemoveItem(idx)}
-                                className="col-start-3 p-1 self-start rounded-md hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors"
-                                aria-label={`Remove ${item.name}`}
-                            >
-                                <X className="w-3.5 h-3.5" />
-                            </button>
-                            <div className="col-start-2 col-span-2 flex items-center justify-between gap-2 pt-0.5">
-                                <div
-                                    className="flex items-center gap-0.5 bg-gray-100 rounded-lg px-0.5"
-                                    role="group"
-                                    aria-label={`Quantity for ${item.name}`}
-                                >
-                                    <button
-                                        type="button"
-                                        onClick={() => onQuantityChange(idx, Math.max(1, item.quantity - 1))}
-                                        className="p-1.5 hover:bg-white rounded-md transition-colors text-gray-600"
-                                        aria-label={`Decrease ${item.name}`}
-                                    >
-                                        <Minus className="w-3 h-3" />
-                                    </button>
-                                    <span className="w-8 text-center text-xs font-semibold tabular-nums text-gray-900">{item.quantity}</span>
-                                    <button
-                                        type="button"
-                                        onClick={() => onQuantityChange(idx, item.quantity + 1)}
-                                        className="p-1.5 hover:bg-white rounded-md transition-colors text-gray-600"
-                                        aria-label={`Increase ${item.name}`}
-                                    >
-                                        <Plus className="w-3 h-3" />
-                                    </button>
-                                </div>
-                                <span className="text-sm font-semibold text-brand-primary tabular-nums">
-                                    {currency}{(item.unitPrice * item.quantity).toLocaleString()}
-                                </span>
-                            </div>
-                        </motion.div>
-                    ))}
-                </AnimatePresence>
-
-                {items.length === 0 && (
-                    <div
-                        className="flex flex-col items-center justify-center py-14 px-4 text-center"
-                        role="status"
-                        aria-live="polite"
-                    >
-                        <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-white border border-gray-100 shadow-sm shadow-gray-900/5">
-                            <ShoppingCart className="w-6 h-6 text-gray-400" aria-hidden="true" />
-                        </div>
-                        <p className="text-sm font-medium text-gray-700">Cart is empty</p>
-                        <p className="text-[11px] text-gray-500 mt-1 max-w-[220px] leading-relaxed">
-                            Tap products on the left or scan a barcode to add items
-                        </p>
-                    </div>
-                )}
-            </div>
+            <PosCartLines
+                items={items}
+                currency={currency}
+                businessCategory={businessCategory}
+                theme="light"
+                onQuantityChange={onQuantityChange}
+                onWeightChange={onWeightChange || onQuantityChange}
+                onRemoveItem={onRemoveItem}
+                showBulkQuickAdds={showBulkQuickAdds}
+                bulkQuickAdds={bulkQuickAdds}
+                emptyTitle="Cart is empty"
+                emptyHint="Tap products on the left or scan a barcode to add items"
+                className={cn(POS_SCROLL_MIDDLE, 'bg-gradient-to-b from-gray-50/80 to-transparent')}
+            />
 
             {/* Checkout footer, pinned */}
             <footer className={cn(POS_SHELL_FOOTER, 'border-gray-100 bg-white px-3 sm:px-4 max-lg:px-2.5 py-3 max-lg:py-2.5 space-y-2.5 max-lg:space-y-2')}>
@@ -579,15 +514,15 @@ function PosCart({
                                     <Clock className="w-3.5 h-3.5 mr-1" /> Hold
                                 </Button>
                             ) : null}
-                            {heldOrders.length > 0 && onResumeHeldSale ? (
+                            {heldOrders.length > 0 && onOpenHeldSales ? (
                                 <Button
                                     type="button"
                                     variant="outline"
-                                    onClick={onResumeHeldSale}
-                                    disabled={items.length > 0 || isProcessing}
+                                    onClick={onOpenHeldSales}
+                                    disabled={isProcessing}
                                     className="h-9 flex-1 rounded-xl text-[10px] font-semibold border-sky-200 text-sky-800 hover:bg-sky-50"
                                 >
-                                    <RotateCcw className="w-3.5 h-3.5 mr-1" /> Resume ({heldOrders.length})
+                                    <RotateCcw className="w-3.5 h-3.5 mr-1" /> Held ({heldOrders.length})
                                 </Button>
                             ) : null}
                         </div>
@@ -734,6 +669,7 @@ export function PosTerminal({
     const [showTaxPanel, setShowTaxPanel] = useState(false);
     const [showLoyaltyPanel, setShowLoyaltyPanel] = useState(false);
     const [showCashTools, setShowCashTools] = useState(false);
+    const [showHeldSheet, setShowHeldSheet] = useState(false);
     const [loyaltyBalance, setLoyaltyBalance] = useState(0);
     const discountInputRef = useRef(null);
     const {
@@ -745,7 +681,12 @@ export function PosTerminal({
         taxEnabled,
         posUi,
     } = usePosTaxConfig(category);
-    const { heldOrders, holdSale, resumeLastHeld } = usePosHeldSales(businessId || business?.id);
+    const { heldOrders, holdSale, resumeHeld, removeHeld } = usePosHeldSales(businessId || business?.id);
+    const domainFlags = useMemo(() => getPosDomainFlags(category), [category]);
+    const bulkQuickAdds = useMemo(() => {
+        if (domainFlags.wholesaleMode) return getBulkQuickAdds(1);
+        return [5, 12];
+    }, [domainFlags.wholesaleMode]);
     const { requestApproval, managerPinDialog } = usePosManagerGate({
         businessId: businessId || business?.id,
         posSettings,
@@ -958,12 +899,14 @@ export function PosTerminal({
         toast.success('Sale held', { id: 'pos-hold' });
     }, [cart, customer, discount, discountType, taxMode, paymentMethod, holdSale, setTaxMode]);
 
-    const handleResumeHeldSale = useCallback(() => {
+    const handleResumeHeldById = useCallback((id) => {
         if (cart.length > 0) {
-            toast.error('Clear or hold the current cart first', { id: 'pos-hold' });
+            toast.error('Clear or checkout the current cart before resuming a held sale', {
+                id: 'pos-hold',
+            });
             return;
         }
-        const restored = resumeLastHeld();
+        const restored = resumeHeld(id);
         if (!restored) return;
         setCart(restored.items || []);
         setCustomer(restored.customer || null);
@@ -971,8 +914,14 @@ export function PosTerminal({
         setDiscountType(restored.discountType || 'fixed');
         if (restored.taxMode) setTaxMode(restored.taxMode);
         if (restored.paymentMethod) setPaymentMethod(restored.paymentMethod);
+        setShowHeldSheet(false);
         toast.success('Held sale restored', { id: 'pos-hold' });
-    }, [cart.length, resumeLastHeld, setTaxMode]);
+    }, [cart.length, resumeHeld, setTaxMode]);
+
+    const handleDiscardHeldSale = useCallback((id) => {
+        removeHeld(id);
+        toast.success('Held sale discarded', { id: 'pos-hold' });
+    }, [removeHeld]);
 
     const handleClearCart = useCallback(() => {
         if (cart.length === 0) return;
@@ -1014,6 +963,8 @@ export function PosTerminal({
                     ...i,
                     taxPercent: i.taxPercent ?? effectiveTaxRate,
                     batchId: i.batchId || null,
+                    variantId: i.variantId || null,
+                    serialNumber: i.serialNumber || null,
                 })),
                 discount,
                 discountType,
@@ -1139,7 +1090,7 @@ export function PosTerminal({
     ]);
 
     usePosHotkeys({
-        enabled: !showCustomerDialog && !showSplitDialog && !showTaxPanel && !showLoyaltyPanel && !showCashTools,
+        enabled: !showCustomerDialog && !showSplitDialog && !showTaxPanel && !showLoyaltyPanel && !showCashTools && !showHeldSheet,
         handlers: hotkeyHandlers,
         onFullscreen: toggleFullscreen,
     });
@@ -1188,7 +1139,7 @@ export function PosTerminal({
         onPrintBill: handlePrintBill,
         onDownloadBillPdf: handleDownloadBillPdf,
         onHoldSale: handleHoldSale,
-        onResumeHeldSale: handleResumeHeldSale,
+        onOpenHeldSales: () => setShowHeldSheet(true),
         heldOrders,
         discountInputRef,
         onOpenLoyalty: customer?.id && posSettings.loyaltyAtTill
@@ -1197,6 +1148,9 @@ export function PosTerminal({
         onOpenTax: taxEnabled ? () => setShowTaxPanel(true) : undefined,
         taxMode,
         taxEnabled,
+        showBulkQuickAdds: Boolean(domainFlags.supportsBulkQty || domainFlags.wholesaleMode),
+        bulkQuickAdds,
+        onWeightChange: handleQuantityChange,
     };
 
     const posShellHeader = (
@@ -1518,6 +1472,15 @@ export function PosTerminal({
                 open={showCameraScanner}
                 onClose={() => setShowCameraScanner(false)}
                 onScan={handleBarcodeFromCamera}
+            />
+
+            <PosHeldSalesSheet
+                open={showHeldSheet}
+                onOpenChange={setShowHeldSheet}
+                heldOrders={heldOrders}
+                currency={displayCurrency}
+                onResume={handleResumeHeldById}
+                onDiscard={handleDiscardHeldSale}
             />
 
             <PosPharmacyBatchDialog
