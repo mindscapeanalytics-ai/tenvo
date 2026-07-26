@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import {
   TrendingUp,
   ArrowUpRight,
+  Lock,
 } from 'lucide-react';
 import {
   Area,
@@ -32,12 +33,14 @@ import {
 } from '@/lib/dashboard/easyDashboardHelpers';
 import {
   buildRetailSimpleActions,
+  buildRetailSimpleSecondaryActions,
   resolveOnlineOrderCount,
   resolveOnlineSalesAmount,
 } from '@/lib/dashboard/retailSimpleActions';
 import { isMilkHisabRelevant } from '@/lib/storefront/milkShopHisab';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { MobilePresetPills } from '@/components/mobile/MobileHubPrimitives';
+import toast from 'react-hot-toast';
 
 export interface RetailSimpleDashboardProps {
   business?: { name?: string } | null;
@@ -81,20 +84,26 @@ function RetailActionTile({
   onClick?: () => void;
 }) {
   const Icon = action.icon;
+  const locked = action.status === 'locked';
   return (
     <button
       type="button"
       onClick={onClick}
+      aria-disabled={locked || undefined}
+      title={locked ? action.lockReason || 'Not available' : undefined}
       className={cn(
         'group relative flex min-h-[5.25rem] flex-col items-start justify-between gap-2 rounded-2xl p-3.5 text-left shadow-sm transition-all duration-200',
-        'hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-neutral-400',
-        'active:translate-y-0 active:scale-[0.99]',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-neutral-400',
+        locked
+          ? 'cursor-not-allowed opacity-90'
+          : 'hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 active:scale-[0.99]',
         action.tile
       )}
     >
       <span
         className={cn(
-          'inline-flex h-9 w-9 items-center justify-center rounded-xl transition-transform duration-200 group-hover:scale-105',
+          'inline-flex h-9 w-9 items-center justify-center rounded-xl transition-transform duration-200',
+          !locked && 'group-hover:scale-105',
           action.iconWrap
         )}
       >
@@ -102,9 +111,15 @@ function RetailActionTile({
       </span>
       <span className="min-w-0">
         <span className="block text-sm font-semibold leading-tight tracking-tight">{action.label}</span>
-        <span className="mt-0.5 block text-[11px] font-medium opacity-80">{action.hint}</span>
+        <span className="mt-0.5 block text-[11px] font-medium opacity-80">
+          {locked ? action.lockReason || 'Upgrade or ask an owner' : action.hint}
+        </span>
       </span>
-      <ArrowUpRight className="absolute right-3 top-3 h-3.5 w-3.5 opacity-40 transition-opacity group-hover:opacity-80" aria-hidden />
+      {locked ? (
+        <Lock className="absolute right-3 top-3 h-3.5 w-3.5 opacity-70" aria-hidden />
+      ) : (
+        <ArrowUpRight className="absolute right-3 top-3 h-3.5 w-3.5 opacity-40 transition-opacity group-hover:opacity-80" aria-hidden />
+      )}
     </button>
   );
 }
@@ -221,6 +236,19 @@ export function RetailSimpleDashboard(props: RetailSimpleDashboardProps) {
     [category, domainKnowledge, canNav, planCan]
   );
 
+  const secondaryActions = useMemo(
+    () => buildRetailSimpleSecondaryActions({ category, canNav }),
+    [category, canNav]
+  );
+
+  const handleAction = (action: ActionTone) => {
+    if (action.status === 'locked') {
+      toast.error(action.lockReason || 'This action is not available yet');
+      return;
+    }
+    onQuickAction?.(action.id);
+  };
+
   const revenueBars = useMemo(() => normalizeSparklineBars(chartData, 8), [chartData]);
   const expenseRows = useMemo(() => normalizeExpenseRows(expenseBreakdown, 5), [expenseBreakdown]);
 
@@ -319,11 +347,27 @@ export function RetailSimpleDashboard(props: RetailSimpleDashboardProps) {
               <RetailActionTile
                 key={action.id}
                 action={action}
-                onClick={() => onQuickAction?.(action.id)}
+                onClick={() => handleAction(action)}
               />
             ))}
           </div>
         )}
+        {secondaryActions.length > 0 ? (
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {secondaryActions.map((extra) => (
+              <Button
+                key={extra.id}
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 rounded-full border-neutral-200 bg-white text-[11px] font-semibold text-neutral-700"
+                onClick={() => onQuickAction?.(extra.id)}
+              >
+                {extra.label}
+              </Button>
+            ))}
+          </div>
+        ) : null}
       </section>
 
       {/* Graphs — desktop full row; mobile stacked after KPIs for fast entry first */}

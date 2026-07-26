@@ -607,6 +607,8 @@ export interface EasyBusinessDashboardProps {
   isInventoryLoading?: boolean;
   isFinanceLoading?: boolean;
   isAnalyticsLoading?: boolean;
+  /** When true, hide duplicate mobile hub + desktop quick-action header (Retail Simple sits above). */
+  embeddedInRetailHome?: boolean;
 }
 
 export function EasyBusinessDashboard(props: EasyBusinessDashboardProps) {
@@ -664,6 +666,7 @@ export function EasyBusinessDashboard(props: EasyBusinessDashboardProps) {
     isInventoryLoading = false,
     isFinanceLoading = false,
     isAnalyticsLoading = false,
+    embeddedInRetailHome = false,
   } = props;
 
   // isAnalyticsLoading retained for callers; Overview KPIs unlock from sales/inventory/finance.
@@ -686,7 +689,7 @@ export function EasyBusinessDashboard(props: EasyBusinessDashboardProps) {
   const tileCoverageLoading = tileSalesLoading || tileInventoryLoading;
   const tileCoreLoading = tileSalesLoading || tileFinanceLoading || tileInventoryLoading;
 
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState(embeddedInRetailHome ? 'sales' : 'overview');
   const [operationsBadge, setOperationsBadge] = useState<number | null>(null);
 
   const handleInsightAction = useCallback(
@@ -827,6 +830,7 @@ export function EasyBusinessDashboard(props: EasyBusinessDashboardProps) {
 
   return (
     <div className="w-full min-w-0 space-y-3 overflow-x-hidden bg-neutral-50/80 p-0 lg:p-1">
+      {!embeddedInRetailHome ? (
       <DashboardMobileHub
         mode="easy"
         metricsPending={metricsPending}
@@ -862,8 +866,10 @@ export function EasyBusinessDashboard(props: EasyBusinessDashboardProps) {
         hasCoreData={hasCoreData}
         quickSetupSteps={quickSetupSteps}
       />
+      ) : null}
 
       <Card className="overflow-hidden border-neutral-200 shadow-sm">
+        {!embeddedInRetailHome ? (
         <div className="hidden lg:block">
         <EasyDashboardHeader
           businessName={business?.name}
@@ -879,10 +885,36 @@ export function EasyBusinessDashboard(props: EasyBusinessDashboardProps) {
           capabilityBadges={capabilityBadges}
         />
         </div>
+        ) : (
+        <div className="hidden border-b border-neutral-100 bg-white px-4 py-2.5 sm:px-5 lg:block">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="min-w-0">
+              <h2 className="text-sm font-semibold tracking-tight text-neutral-900">Guided business insights</h2>
+              <p className="text-[11px] font-medium text-neutral-500">
+                Full Easy tabs: sales, accounts, stock, customers, operations, and insights
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-1">
+              {capabilityBadges.slice(0, 3).map((b) => (
+                <Badge key={b.label} variant="secondary" className="text-[10px] font-medium">
+                  {b.label}
+                </Badge>
+              ))}
+              {seasonBadge ? (
+                <Badge variant="outline" className="text-[10px] font-medium">
+                  {seasonBadge.label}
+                </Badge>
+              ) : null}
+            </div>
+          </div>
+        </div>
+        )}
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="bg-white">
           <div className="border-b border-neutral-100 px-3 py-2 lg:hidden">
-            <p className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-neutral-400">Dashboard views</p>
+            <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-neutral-400">
+              {embeddedInRetailHome ? 'More insights' : 'Dashboard views'}
+            </p>
             <MobilePresetPills
               compact
               options={easyMobileTabOptions}

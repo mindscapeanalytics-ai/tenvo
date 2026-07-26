@@ -40,6 +40,9 @@ if (!domainDashboard.includes('RetailSimpleDashboard')) {
 if (!domainDashboard.includes('isRetailSimpleDashboard')) {
   mark('DomainDashboard must branch on isRetailSimpleDashboard');
 }
+if (!domainDashboard.includes('embeddedInRetailHome')) {
+  mark('DomainDashboard must embed EasyBusinessDashboard under Retail Simple (no feature loss)');
+}
 if (!domainDashboard.includes('resolveProductStock')) {
   mark('DomainDashboard must use resolveProductStock for inventory KPIs');
 }
@@ -58,8 +61,20 @@ if (!retailSimple.includes('Quick entry')) {
 if (!retailSimple.includes('buildRetailSimpleActions')) {
   mark('RetailSimpleDashboard must build tiles via buildRetailSimpleActions');
 }
+if (!retailSimple.includes('buildRetailSimpleSecondaryActions')) {
+  mark('RetailSimpleDashboard must expose secondary Easy tools (inventory/reports/excel)');
+}
 if (!retailSimple.includes('usePermissions')) {
   mark('RetailSimpleDashboard must gate tiles with usePermissions');
+}
+if (!retailSimple.includes('Lock')) {
+  mark('RetailSimpleDashboard must show locked tile affordance for gated actions');
+}
+if (!easyDashboard.includes('embeddedInRetailHome')) {
+  mark('EasyBusinessDashboard must support embeddedInRetailHome under Retail Simple');
+}
+if (!easyDashboard.includes('DomainOperationsPanel')) {
+  mark('EasyBusinessDashboard must render DomainOperationsPanel on Operations tab');
 }
 if (!retailSimple.includes('hidden lg:grid') || !retailSimple.includes('lg:hidden')) {
   mark('RetailSimpleDashboard must use dual-layout for graphs (desktop vs mobile)');
@@ -72,6 +87,12 @@ if (!retailSimple.includes('font-semibold') || retailSimple.includes('font-bold 
 }
 if (!retailActions.includes('isPosRelevant') || !retailActions.includes('expense_tracking')) {
   mark('retailSimpleActions must gate POS domain and expense_tracking');
+}
+if (!retailActions.includes("status: 'locked'") && !retailActions.includes("status: /** @type {'locked'} */ ('locked')")) {
+  mark('retailSimpleActions must keep locked tiles visible (fully featured grid)');
+}
+if (!retailActions.includes('buildRetailSimpleSecondaryActions')) {
+  mark('retailSimpleActions must expose secondary Easy tools');
 }
 if (!retailActions.includes('isMilkHisabRelevant') || !retailActions.includes('route-hisab')) {
   mark('retailSimpleActions must support Milk Record → route-hisab');
