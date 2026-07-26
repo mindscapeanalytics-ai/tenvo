@@ -576,6 +576,7 @@ export function MilkRouteHisab({ businessId, category }) {
       const created = res.created?.length || 0;
       const skipped = res.skipped?.length || 0;
       const failed = res.failed?.length || 0;
+      const paidPending = (res.created || []).filter((c) => c.hisabPaidPending).length;
       const kindLabel = billKind === 'week' ? 'weekly' : 'monthly';
       if (created) {
         notify.compactSave(
@@ -590,6 +591,11 @@ export function MilkRouteHisab({ businessId, category }) {
       }
       if (failed && created) {
         notify.error(`${failed} customer bill${failed === 1 ? '' : 's'} failed: ${res.failed[0]?.reason || 'error'}`);
+      }
+      if (paidPending) {
+        notify.error(
+          `${paidPending} paid hisab bill${paidPending === 1 ? '' : 's'} need Mark paid again on the invoice`
+        );
       }
     } catch (e) {
       await loadBills();

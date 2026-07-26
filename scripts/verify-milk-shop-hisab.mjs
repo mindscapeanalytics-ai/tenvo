@@ -339,10 +339,19 @@ assert(actionSrc.includes('MILK_HISAB_ALREADY_PAID'), 'remind must reject paid i
 assert(actionSrc.includes('patchMilkHisabPeriodPayment'), 'payment must persist hisab period flag');
 assert(actionSrc.includes('hisabOnly: true'), 'payment supports hisab-only (no invoice)');
 assert(actionSrc.includes('buildMilkHisabBillLinesForReminder'), 'remind must include bill lines');
+assert(actionSrc.includes('appliedHisabPaid'), 'generate must only report paid when receipt applied');
+assert(actionSrc.includes('hisabPaidPending'), 'generate must flag paid-apply failures');
+assert(
+  actionSrc.includes("if (hisabPaid)") && !actionSrc.includes('hisabPaid && !invoiceId'),
+  'remind must reject hisab paid even when invoice exists'
+);
 assert(isMilkHisabBillRemindable({ amount: 100, paymentStatus: 'unpaid' }), 'unpaid remindable');
 assert(isMilkHisabBillRemindable({ amount: 100, paymentStatus: null }), 'unbilled remindable');
 assert(!isMilkHisabBillRemindable({ amount: 100, paymentStatus: 'paid' }), 'paid not remindable');
 assert(!isMilkHisabBillRemindable({ amount: 0, paymentStatus: 'unpaid' }), 'zero amount not remindable');
+assert(uiSrc.includes('hisabPaidPending'), 'UI warns when generate paid-apply fails');
+assert(uiSrc.includes('BillsActionCluster'), 'UI uses compact bills action cluster');
+assert(uiSrc.includes('Remind sends bill details'), 'UI copy notes bill details in remind');
 assert(String(MILK_HISAB_COLLECTION_NOTE).includes('Route Hisab'), 'collection note marker');
 assert(uiSrc.includes('HisabKpiStrip') || uiSrc.includes('billStatItems'), 'UI must render period KPIs');
 assert(uiSrc.includes('MobileStatStrip'), 'UI must render mobile KPI strip');
