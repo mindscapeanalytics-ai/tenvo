@@ -1106,7 +1106,57 @@ export function DomainDashboard({
         const domainVerticalLabel =
             (domainKnowledge as { name?: string } | undefined)?.name || getDomainKnowledge(category).name;
 
-        const easyDashboard = (
+        // Retail Simple: standalone one-page home (wireframe). Guided Easy tabs via Retail/Guided toggle.
+        if (isRetailSimpleDashboard) {
+            return (
+                <>
+                    {metricsPending ? (
+                        <p className="sr-only" aria-live="polite">
+                            Loading live metrics
+                        </p>
+                    ) : null}
+                    <RetailSimpleDashboard
+                        business={business}
+                        category={category}
+                        domainKnowledge={domainKnowledge as Record<string, unknown> | undefined}
+                        currency={resolvedCurrency}
+                        periodLabel={periodLabel}
+                        activePreset={activePreset}
+                        onQuickAction={onQuickAction}
+                        onDateRangePresetChange={onDateRangePresetChange}
+                        chartData={chartData}
+                        expenseBreakdown={expenseBreakdown as unknown as Array<Record<string, unknown>>}
+                        dashboardMetrics={dashboardMetrics as unknown as Record<string, unknown> | null}
+                        formatCurrencyCompact={formatCurrencyCompact}
+                        greeting={greeting}
+                        userName={userName}
+                        periodMetrics={{
+                            currentRevenue: periodMetrics.currentRevenue,
+                            currentOrders: periodMetrics.currentOrders,
+                            currentExpenses: periodMetrics.currentExpenses,
+                            soldUnits: periodMetrics.soldUnits,
+                        }}
+                        metricsPending={metricsPending}
+                        isSalesLoading={salesTilesLoading}
+                        isFinanceLoading={financeTilesLoading}
+                        reminders={remindersData}
+                        inventoryValue={inventoryValue}
+                        inStockUnits={inStockUnits}
+                        outstandingAmount={outstandingAmount}
+                        openInvoicesCount={openInvoicesCount}
+                        domainEfficiency={domainEfficiency}
+                    />
+                </>
+            );
+        }
+
+        return (
+            <>
+                {metricsPending ? (
+                    <p className="sr-only" aria-live="polite">
+                      Loading live metrics
+                    </p>
+                ) : null}
             <EasyBusinessDashboard
                 businessId={activeBusinessId}
                 business={business}
@@ -1161,57 +1211,7 @@ export function DomainDashboard({
                 multiLocationEnabled={multiLocationEnabled}
                 warehouseUtilizationDisplay={warehouseUtilizationDisplay}
                 stockCheckRecencyDisplay={stockCheckRecencyDisplay}
-                embeddedInRetailHome={isRetailSimpleDashboard}
             />
-        );
-
-        // Retail Simple home + full Easy guided tabs/ops/insights (no feature loss).
-        if (isRetailSimpleDashboard) {
-            return (
-                <div className="w-full min-w-0 space-y-4">
-                    {metricsPending ? (
-                        <p className="sr-only" aria-live="polite">
-                            Loading live metrics
-                        </p>
-                    ) : null}
-                    <RetailSimpleDashboard
-                        business={business}
-                        category={category}
-                        domainKnowledge={domainKnowledge as Record<string, unknown> | undefined}
-                        currency={resolvedCurrency}
-                        periodLabel={periodLabel}
-                        activePreset={activePreset}
-                        onQuickAction={onQuickAction}
-                        onDateRangePresetChange={onDateRangePresetChange}
-                        chartData={chartData}
-                        expenseBreakdown={expenseBreakdown as unknown as Array<Record<string, unknown>>}
-                        dashboardMetrics={dashboardMetrics as unknown as Record<string, unknown> | null}
-                        formatCurrencyCompact={formatCurrencyCompact}
-                        greeting={greeting}
-                        userName={userName}
-                        periodMetrics={{
-                            currentRevenue: periodMetrics.currentRevenue,
-                            currentOrders: periodMetrics.currentOrders,
-                            currentExpenses: periodMetrics.currentExpenses,
-                            soldUnits: periodMetrics.soldUnits,
-                        }}
-                        metricsPending={metricsPending}
-                        isSalesLoading={salesTilesLoading}
-                        isFinanceLoading={financeTilesLoading}
-                    />
-                    {easyDashboard}
-                </div>
-            );
-        }
-
-        return (
-            <>
-                {metricsPending ? (
-                    <p className="sr-only" aria-live="polite">
-                      Loading live metrics
-                    </p>
-                ) : null}
-            {easyDashboard}
             </>
         );
     }

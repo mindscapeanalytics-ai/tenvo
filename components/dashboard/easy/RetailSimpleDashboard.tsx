@@ -70,6 +70,12 @@ export interface RetailSimpleDashboardProps {
   metricsPending?: boolean;
   isSalesLoading?: boolean;
   isFinanceLoading?: boolean;
+  reminders?: { lowStock?: number; overdueInvoices?: number; pendingOrders?: number };
+  inventoryValue?: number;
+  inStockUnits?: number;
+  outstandingAmount?: number;
+  openInvoicesCount?: number;
+  domainEfficiency?: number;
 }
 
 type ActionTone = ReturnType<typeof buildRetailSimpleActions>[number];
@@ -211,6 +217,12 @@ export function RetailSimpleDashboard(props: RetailSimpleDashboardProps) {
     metricsPending = false,
     isSalesLoading = false,
     isFinanceLoading = false,
+    reminders = {},
+    inventoryValue = 0,
+    inStockUnits = 0,
+    outstandingAmount = 0,
+    openInvoicesCount = 0,
+    domainEfficiency = 0,
   } = props;
 
   const { canNav, planCan } = usePermissions();
@@ -566,6 +578,52 @@ export function RetailSimpleDashboard(props: RetailSimpleDashboardProps) {
             onClick={() => onQuickAction?.('invoices')}
           />
         </div>
+      </section>
+
+      {/* Compact shop health — stays on Retail home without stacking Easy tabs */}
+      <section aria-label="Shop health" className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6">
+        <RetailKpiBox
+          label="Low stock"
+          value={String(reminders.lowStock ?? 0)}
+          hint="SKUs to review"
+          accent="bg-amber-500"
+          onClick={() => onQuickAction?.('inventory')}
+        />
+        <RetailKpiBox
+          label="Overdue"
+          value={String(reminders.overdueInvoices ?? 0)}
+          hint="Open invoices"
+          accent="bg-rose-400"
+          onClick={() => onQuickAction?.('overdue')}
+        />
+        <RetailKpiBox
+          label="Pending orders"
+          value={String(reminders.pendingOrders ?? 0)}
+          hint="Needs attention"
+          accent="bg-orange-400"
+          onClick={() => onQuickAction?.('pending-orders')}
+        />
+        <RetailKpiBox
+          label="Receivables"
+          value={formatCurrencyCompact(outstandingAmount)}
+          hint={`${openInvoicesCount} open`}
+          accent="bg-violet-500"
+          onClick={() => onQuickAction?.('invoices')}
+        />
+        <RetailKpiBox
+          label="Stock value"
+          value={formatCurrencyCompact(inventoryValue)}
+          hint={`${inStockUnits.toLocaleString()} units`}
+          accent="bg-slate-600"
+          onClick={() => onQuickAction?.('inventory')}
+        />
+        <RetailKpiBox
+          label="Efficiency"
+          value={`${domainEfficiency}%`}
+          hint={domainEfficiency >= 85 ? 'Healthy' : 'Review alerts'}
+          accent="bg-neutral-800"
+          onClick={() => onQuickAction?.('reports')}
+        />
       </section>
 
       {/* Mobile charts — below KPIs so entry + numbers come first */}
