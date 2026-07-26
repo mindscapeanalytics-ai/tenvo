@@ -117,7 +117,12 @@ export function PosCartLines({
                                             </Badge>
                                         ) : null}
                                         {item.batchNumber ? (
-                                            <span className="text-[10px] text-slate-500">
+                                            <span
+                                                className={cn(
+                                                    'text-[10px]',
+                                                    isDark ? 'text-slate-500' : 'text-gray-400'
+                                                )}
+                                            >
                                                 Batch {item.batchNumber}
                                             </span>
                                         ) : null}

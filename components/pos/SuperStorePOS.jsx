@@ -43,7 +43,9 @@ import { usePosProductAdd } from '@/lib/hooks/usePosProductAdd';
 import { planHasFeatureWithPackaging } from '@/lib/subscription/effectivePlanAccess';
 import {
     getPosShellHeightClass,
+    POS_SCROLL_MIDDLE,
     POS_SHELL_FOOTER,
+    POS_SHELL_HEADER,
 } from '@/lib/utils/posLayout';
 import { usePosFullscreen } from '@/lib/hooks/usePosFullscreen';
 import { usePosReceipt } from '@/lib/hooks/usePosReceipt';
@@ -161,12 +163,12 @@ function BarcodeScannerInput({ onScan, onSearchChange, searchTerm, isScanning })
     );
 }
 
-// --- Cart Summary (Right Panel) — lines live here, browse stays left --------
+// --- Cart Summary (Right Panel) — light theme, lines here, browse stays left -
 
 function CartSummary({
     items, customer, onCustomerSelect,
     discount = 0, onDiscountChange, discountType = 'fixed', onDiscountTypeChange,
-    onPaymentMethodSelect,
+    onPaymentMethodSelect, selectedPaymentMethod = 'cash',
     onCompleteSale, onHoldSale, onClearSale, isProcessing,
     currency = 'Rs.', heldOrders = [], onOpenHeldSales, onPrintBill, onDownloadBillPdf,
     onBack, taxLabel = 'Tax', taxBreakdown = [], discountInputRef,
@@ -184,219 +186,276 @@ function CartSummary({
     const taxAmount = Math.round(totalTax * 100) / 100;
     const rawDiscount = parseFloat(discount || 0) || 0;
     const discountAmount = discountType === 'percentage'
-        ? Math.round(subtotal * (rawDiscount / 100) * 100) / 100
-        : rawDiscount;
+        ? Math.min(Math.round(subtotal * (rawDiscount / 100) * 100) / 100, subtotal)
+        : Math.min(rawDiscount, subtotal);
     const total = Math.round((subtotal + taxAmount - discountAmount) * 100) / 100;
     const showBreakdown = Array.isArray(taxBreakdown) && taxBreakdown.length > 1;
+    const billTotals = { subtotal, taxAmount, discountAmount, total };
 
     return (
-        <div className="flex flex-col h-full bg-slate-900 text-white touch-manipulation min-h-0 overflow-hidden">
-            <div className="flex items-center justify-between px-4 max-lg:px-3 py-3 max-lg:py-2 border-b border-slate-700/50 shrink-0">
+        <div
+            className="flex flex-col h-full min-h-0 overflow-hidden bg-gradient-to-b from-gray-50 via-white to-white text-gray-900 touch-manipulation"
+            role="complementary"
+            aria-label="Shopping cart and checkout"
+        >
+            <header className={cn(POS_SHELL_HEADER, 'flex items-center justify-between gap-2 px-3 sm:px-4 max-lg:px-2.5 py-2.5 max-lg:py-2 border-b border-gray-100 bg-white/95 backdrop-blur-sm')}>
                 <div className="flex items-center gap-2 min-w-0">
                     {onBack ? (
-                        <button type="button" onClick={onBack} className="p-1.5 -ml-1 rounded-lg hover:bg-slate-800" aria-label="Back">
+                        <button
+                            type="button"
+                            onClick={onBack}
+                            className="p-1.5 -ml-1 rounded-lg hover:bg-gray-100 text-gray-600 transition-colors flex-shrink-0"
+                            aria-label="Back to products"
+                        >
                             <ArrowLeft className="w-4 h-4" />
                         </button>
                     ) : null}
-                    <ShoppingCart className="w-4 h-4 text-emerald-400 shrink-0" />
-                    <span className="text-sm font-semibold tracking-tight">CART</span>
-                    <Badge variant="secondary" className="bg-emerald-500/20 text-emerald-300 text-[10px] font-bold">
-                        {items.length} items * {itemCount} qty
+                    <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-primary/10 flex-shrink-0">
+                        <ShoppingCart className="w-3.5 h-3.5 text-brand-primary" aria-hidden="true" />
+                    </span>
+                    <span className="text-sm font-semibold tracking-tight text-gray-900">Cart</span>
+                    <Badge
+                        variant="secondary"
+                        className="bg-brand-primary/10 text-brand-primary border-0 text-[10px] font-semibold"
+                        aria-label={`${items.length} lines, ${itemCount} units`}
+                    >
+                        {itemCount} {itemCount === 1 ? 'item' : 'items'}
                     </Badge>
                 </div>
-                {heldOrders.length > 0 && (
-                    <button
-                        type="button"
-                        onClick={onOpenHeldSales}
-                        className="inline-flex"
-                        aria-label={`Open ${heldOrders.length} held sales`}
+                {items.length > 0 ? (
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-red-500 hover:text-red-600 hover:bg-red-50 h-8 text-xs flex-shrink-0"
+                        onClick={onClearSale}
+                        aria-label="Clear all items from cart"
                     >
-                        <Badge variant="outline" className="text-amber-400 border-amber-500/30 text-[10px] cursor-pointer hover:bg-amber-500/10">
-                            <Clock className="w-3 h-3 mr-1" />
-                            {heldOrders.length} held
-                        </Badge>
-                    </button>
-                )}
-            </div>
-
-            <div className="px-3 py-2 border-b border-slate-800 shrink-0">
-                <button
-                    type="button"
-                    onClick={onCustomerSelect}
-                    className="flex items-center gap-2 w-full px-3 py-2 rounded-lg bg-slate-800/60 hover:bg-slate-800 transition-colors text-xs"
-                >
-                    <User className="w-3.5 h-3.5 text-gray-400" />
-                    <span className="text-gray-300 flex-1 text-left truncate">{customer?.name || 'Walk-in Customer'}</span>
-                    <ChevronDown className="w-3 h-3 text-gray-500" />
-                </button>
-            </div>
+                        <Trash2 className="w-3.5 h-3.5 mr-1" aria-hidden="true" /> Clear
+                    </Button>
+                ) : null}
+            </header>
 
             <PosCartLines
                 items={items}
                 currency={currency}
                 businessCategory={businessCategory}
-                theme="dark"
+                theme="light"
                 onQuantityChange={onQuantityChange}
-                onWeightChange={onWeightChange}
+                onWeightChange={onWeightChange || onQuantityChange}
                 onRemoveItem={onRemoveItem}
                 showBulkQuickAdds={showBulkQuickAdds}
                 bulkQuickAdds={bulkQuickAdds}
                 emptyTitle="Cart is empty"
                 emptyHint="Scan or tap products on the left to add"
+                className={cn(POS_SCROLL_MIDDLE, 'bg-gradient-to-b from-gray-50/80 to-transparent')}
             />
 
-            <div className="shrink-0 border-t border-slate-700/50 px-4 py-3 space-y-2">
-                <div className="space-y-1.5 text-xs">
-                    <div className="flex justify-between text-gray-400">
-                        <span>Subtotal ({items.length} items)</span>
-                        <span>{currency}{subtotal.toLocaleString()}</span>
-                    </div>
-                    {taxEnabled && showBreakdown ? (
-                        taxBreakdown.map((row) => (
-                            <button
-                                key={row.key}
-                                type="button"
-                                onClick={onOpenTax}
-                                disabled={!onOpenTax}
-                                className="flex w-full justify-between text-gray-400 enabled:hover:text-emerald-300 disabled:cursor-default"
-                            >
-                                <span>{row.label} ({row.rate}%)</span>
-                                <span>{currency}{row.amount.toLocaleString()}</span>
-                            </button>
-                        ))
-                    ) : taxEnabled ? (
+            <footer className={cn(POS_SHELL_FOOTER, 'border-gray-100 bg-white px-3 sm:px-4 max-lg:px-2.5 py-3 max-lg:py-2.5 space-y-2 max-lg:space-y-1.5')}>
+                {items.length > 0 ? (
+                    <>
                         <button
                             type="button"
-                            onClick={onOpenTax}
-                            disabled={!onOpenTax}
-                            className="flex w-full justify-between text-gray-400 enabled:hover:text-emerald-300 disabled:cursor-default"
+                            onClick={onCustomerSelect}
+                            className="flex items-center gap-2 w-full px-3 py-2 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors text-xs border border-gray-200"
                         >
-                            <span>{taxLabel}{taxMode && taxMode !== 'standard' ? ` · ${taxMode === 'gst_only' ? 'GST only' : 'Exempt'}` : ''}</span>
-                            <span>{currency}{taxAmount.toLocaleString()}</span>
+                            <User className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                            <span className="text-gray-800 truncate flex-1 text-left font-medium">
+                                {customer?.name || 'Walk-in Customer'}
+                            </span>
+                            <ChevronDown className="w-3 h-3 text-gray-400 flex-shrink-0" />
                         </button>
-                    ) : null}
-                    <div className="flex items-center justify-between text-gray-400 gap-2">
-                        <span>Discount</span>
-                        <div className="flex items-center gap-1">
-                            <button
-                                type="button"
-                                onClick={() => onDiscountTypeChange?.(discountType === 'fixed' ? 'percentage' : 'fixed')}
-                                className="h-6 px-1.5 rounded text-[9px] font-semibold border border-slate-700 bg-slate-800 text-slate-300 hover:border-emerald-500/40"
-                                aria-label="Toggle discount type"
-                            >
-                                {discountType === 'percentage' ? '%' : currency}
-                            </button>
-                            <Input
-                                ref={discountInputRef}
-                                type="number"
-                                data-pos-role="discount"
-                                value={discount}
-                                onChange={(e) => onDiscountChange?.(e.target.value)}
-                                className="w-20 h-6 text-right text-xs bg-slate-800 border-slate-700 text-white rounded px-2"
-                                min={0}
-                            />
+
+                        <div className="rounded-xl bg-gray-50 border border-gray-100 px-3 py-2 space-y-1.5 text-[11px] sm:text-xs" role="region" aria-label="Order totals">
+                            <div className="flex justify-between text-gray-500">
+                                <span>Subtotal ({itemCount})</span>
+                                <span className="tabular-nums text-gray-700">{currency}{subtotal.toLocaleString()}</span>
+                            </div>
+                            {taxEnabled && showBreakdown ? (
+                                taxBreakdown.map((row) => (
+                                    <button
+                                        key={row.key}
+                                        type="button"
+                                        onClick={onOpenTax}
+                                        disabled={!onOpenTax}
+                                        className="flex w-full justify-between text-gray-500 disabled:cursor-default enabled:hover:text-emerald-700"
+                                    >
+                                        <span>{row.label} ({row.rate}%)</span>
+                                        <span className="tabular-nums text-gray-700">{currency}{row.amount.toLocaleString()}</span>
+                                    </button>
+                                ))
+                            ) : taxEnabled ? (
+                                <button
+                                    type="button"
+                                    onClick={onOpenTax}
+                                    disabled={!onOpenTax}
+                                    className="flex w-full justify-between text-gray-500 disabled:cursor-default enabled:hover:text-emerald-700"
+                                >
+                                    <span>
+                                        {taxLabel}
+                                        {taxMode && taxMode !== 'standard'
+                                            ? ` · ${taxMode === 'gst_only' ? 'GST only' : 'Exempt'}`
+                                            : ''}
+                                    </span>
+                                    <span className="tabular-nums text-gray-700">{currency}{taxAmount.toLocaleString()}</span>
+                                </button>
+                            ) : null}
+                            <div className="flex items-center justify-between text-gray-500 gap-2">
+                                <span>Discount</span>
+                                <div className="flex items-center gap-1">
+                                    <button
+                                        type="button"
+                                        onClick={() => onDiscountTypeChange?.(discountType === 'fixed' ? 'percentage' : 'fixed')}
+                                        className="h-7 px-1.5 rounded-md text-[10px] font-semibold border border-gray-200 bg-white text-gray-600 hover:border-emerald-400"
+                                        aria-label="Toggle discount type"
+                                    >
+                                        {discountType === 'percentage' ? '%' : currency}
+                                    </button>
+                                    <Input
+                                        ref={discountInputRef}
+                                        type="number"
+                                        data-pos-role="discount"
+                                        value={discount}
+                                        onChange={(e) => onDiscountChange?.(e.target.value)}
+                                        className="w-16 h-7 text-right text-xs bg-white border-gray-200 text-gray-900 rounded-md px-2 focus-visible:ring-emerald-500/25 focus-visible:border-emerald-400"
+                                        min={0}
+                                        max={discountType === 'percentage' ? 100 : subtotal}
+                                        aria-label="Discount"
+                                    />
+                                </div>
+                            </div>
+                            {discountAmount > 0 ? (
+                                <div className="flex justify-between text-emerald-600 text-[10px] font-medium">
+                                    <span>Savings</span>
+                                    <span className="tabular-nums">-{currency}{discountAmount.toLocaleString()}</span>
+                                </div>
+                            ) : null}
+                            <div className="flex justify-between items-baseline pt-1.5 mt-0.5 border-t border-gray-200">
+                                <span className="text-sm font-semibold text-gray-900">Total</span>
+                                <span className="text-xl font-semibold text-brand-primary tabular-nums" aria-live="polite">
+                                    {currency}{total.toLocaleString()}
+                                </span>
+                            </div>
                         </div>
-                    </div>
-                    <div className="flex justify-between text-2xl max-lg:text-xl font-semibold text-white pt-3 max-lg:pt-2 border-t border-slate-700">
-                        <span>TOTAL</span>
-                        <span className="text-emerald-400">{currency}{total.toLocaleString()}</span>
-                    </div>
-                </div>
 
-                <div className="grid grid-cols-4 gap-1.5 max-lg:gap-1 pt-2 max-lg:pt-1.5">
-                    {[
-                        { key: 'cash', icon: Banknote, label: 'Cash', color: 'hover:bg-emerald-500/20 hover:border-emerald-500/40' },
-                        { key: 'card', icon: CreditCard, label: 'Card', color: 'hover:bg-brand-primary/20 hover:border-brand-primary/40' },
-                        { key: 'wallet', icon: Smartphone, label: 'Mobile', color: 'hover:bg-wine-500/20 hover:border-wine-500/40' },
-                        { key: 'split', icon: SplitSquareHorizontal, label: 'Split', color: 'hover:bg-amber-500/20 hover:border-amber-500/40' },
-                    ].map(({ key, icon: Icon, label, color }) => (
-                        <button
-                            key={key}
-                            type="button"
-                            onClick={() => onPaymentMethodSelect?.(key)}
-                            className={cn(
-                                'flex flex-col items-center gap-1 py-2 max-lg:py-1.5 rounded-lg border border-slate-700 bg-slate-800 transition-all text-gray-400 touch-manipulation',
-                                color
-                            )}
+                        <div className="flex gap-1.5">
+                            {onHoldSale ? (
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={onHoldSale}
+                                    disabled={items.length === 0 || isProcessing}
+                                    className="h-9 flex-1 rounded-xl text-[10px] font-semibold border-amber-200 text-amber-800 hover:bg-amber-50"
+                                >
+                                    <Clock className="w-3.5 h-3.5 mr-1" /> Hold
+                                </Button>
+                            ) : null}
+                            {heldOrders.length > 0 && onOpenHeldSales ? (
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={onOpenHeldSales}
+                                    disabled={isProcessing}
+                                    className="h-9 flex-1 rounded-xl text-[10px] font-semibold border-sky-200 text-sky-800 hover:bg-sky-50"
+                                >
+                                    <RotateCcw className="w-3.5 h-3.5 mr-1" /> Held ({heldOrders.length})
+                                </Button>
+                            ) : null}
+                        </div>
+
+                        <div
+                            className="grid grid-cols-4 gap-1.5"
+                            role="radiogroup"
+                            aria-label="Payment method"
                         >
-                            <Icon className="w-4 h-4" />
-                            <span className="text-[10px] font-medium">{label}</span>
-                        </button>
-                    ))}
-                </div>
+                            {[
+                                { key: 'cash', icon: Banknote, label: 'Cash' },
+                                { key: 'card', icon: CreditCard, label: 'Card' },
+                                { key: 'wallet', icon: Smartphone, label: 'Wallet' },
+                                { key: 'split', icon: SplitSquareHorizontal, label: 'Split' },
+                            ].map(({ key, icon: Icon, label }) => (
+                                <button
+                                    key={key}
+                                    type="button"
+                                    onClick={() => onPaymentMethodSelect?.(key)}
+                                    className={cn(
+                                        'flex flex-col items-center gap-0.5 py-2 rounded-xl border text-[10px] font-medium transition-all touch-manipulation',
+                                        selectedPaymentMethod === key
+                                            ? 'border-brand-primary/40 bg-brand-primary/10 text-brand-primary shadow-sm'
+                                            : 'border-gray-200 bg-white text-gray-500 hover:border-gray-300 hover:bg-gray-50'
+                                    )}
+                                    role="radio"
+                                    aria-checked={selectedPaymentMethod === key}
+                                >
+                                    <Icon className="w-3.5 h-3.5" />
+                                    {label}
+                                </button>
+                            ))}
+                        </div>
 
-                <div className="grid grid-cols-2 gap-1.5 pt-1">
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={onHoldSale}
-                        className="h-9 rounded-lg text-[10px] font-bold border-slate-700 text-gray-400 hover:bg-amber-500/10 hover:text-amber-400 hover:border-amber-500/30"
-                    >
-                        <Clock className="w-3.5 h-3.5 mr-1.5" /> HOLD
-                    </Button>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={onClearSale}
-                        className="h-9 rounded-lg text-[10px] font-bold border-slate-700 text-gray-400 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/30"
-                    >
-                        <X className="w-3.5 h-3.5 mr-1.5" /> CLEAR
-                    </Button>
-                </div>
-
-                {heldOrders.length > 0 && (
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={onOpenHeldSales}
-                        className="w-full h-9 rounded-lg text-[10px] font-bold border-amber-600/30 text-amber-300 bg-amber-500/10 hover:bg-amber-500/20"
-                    >
-                        <RotateCcw className="w-3.5 h-3.5 mr-1.5" /> HELD SALES ({heldOrders.length})
-                    </Button>
+                        {/* Single row: Print | PDF | Pay — frees cart height */}
+                        <div className="flex gap-1.5">
+                            {onPrintBill ? (
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => onPrintBill(billTotals)}
+                                    disabled={isProcessing}
+                                    className="h-11 flex-1 rounded-xl text-xs font-semibold border-gray-200 bg-white hover:bg-gray-50 text-gray-700"
+                                    title="Print bill"
+                                >
+                                    <Printer className="w-4 h-4 mr-1" /> Print
+                                </Button>
+                            ) : null}
+                            {onDownloadBillPdf ? (
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => onDownloadBillPdf(billTotals)}
+                                    disabled={isProcessing}
+                                    className="h-11 w-11 shrink-0 rounded-xl border-gray-200 bg-white hover:bg-gray-50 text-gray-700 p-0"
+                                    title="Download PDF"
+                                    aria-label="Download bill PDF"
+                                >
+                                    <FileDown className="w-4 h-4" />
+                                </Button>
+                            ) : null}
+                            <Button
+                                onClick={onCompleteSale}
+                                disabled={isProcessing}
+                                className="h-11 flex-[2] rounded-xl text-sm font-semibold bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white shadow-md shadow-emerald-500/20"
+                            >
+                                {isProcessing ? (
+                                    <span className="flex items-center gap-2">
+                                        <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                                        Processing…
+                                    </span>
+                                ) : (
+                                    <>
+                                        <CheckCircle2 className="w-4 h-4 mr-1.5 inline" />
+                                        Pay {currency}{total.toLocaleString()}
+                                    </>
+                                )}
+                            </Button>
+                        </div>
+                    </>
+                ) : (
+                    <div className="py-2.5 text-center rounded-xl bg-gray-50 border border-gray-100 space-y-2">
+                        <p className="text-[11px] text-gray-500">Checkout appears when you add items</p>
+                        <p className="text-lg font-semibold text-gray-800 tabular-nums">{currency}0</p>
+                        {heldOrders.length > 0 && onOpenHeldSales ? (
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={onOpenHeldSales}
+                                className="h-8 rounded-lg text-[10px] font-semibold border-sky-200 text-sky-800 hover:bg-sky-50"
+                            >
+                                <RotateCcw className="w-3.5 h-3.5 mr-1" /> Held ({heldOrders.length})
+                            </Button>
+                        ) : null}
+                    </div>
                 )}
-
-                {onPrintBill ? (
-                    <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => onPrintBill({ subtotal, taxAmount, discountAmount, total })}
-                        disabled={isProcessing || items.length === 0}
-                        className="w-full h-9 rounded-lg text-[10px] font-bold border-slate-700 text-gray-300 bg-slate-800 hover:bg-slate-700"
-                    >
-                        <Printer className="w-3.5 h-3.5 mr-1.5" /> PRINT
-                    </Button>
-                ) : null}
-                {onDownloadBillPdf ? (
-                    <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => onDownloadBillPdf({ subtotal, taxAmount, discountAmount, total })}
-                        disabled={isProcessing || items.length === 0}
-                        className="w-full h-9 rounded-lg text-[10px] font-bold border-slate-700 text-gray-300 bg-slate-800 hover:bg-slate-700"
-                    >
-                        <FileDown className="w-3.5 h-3.5 mr-1.5" /> PDF
-                    </Button>
-                ) : null}
-
-                <Button
-                    onClick={onCompleteSale}
-                    disabled={isProcessing || items.length === 0}
-                    className="w-full h-14 rounded-xl text-sm font-semibold bg-gradient-to-r from-emerald-500 to-emerald-600
-                               hover:from-emerald-600 hover:to-emerald-700 shadow-lg shadow-emerald-500/20 disabled:opacity-50 tracking-tight"
-                >
-                    {isProcessing ? (
-                        <div className="flex items-center gap-2">
-                            <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                            Processing...
-                        </div>
-                    ) : (
-                        <>
-                            <CheckCircle2 className="w-5 h-5 mr-2" />
-                            CHECKOUT - {currency}{total.toLocaleString()}
-                        </>
-                    )}
-                </Button>
-            </div>
+            </footer>
         </div>
     );
 }
@@ -896,6 +955,7 @@ export function SuperStorePOS({
         discountType,
         onDiscountTypeChange: setDiscountType,
         onPaymentMethodSelect: handlePaymentMethodSelect,
+        selectedPaymentMethod: paymentMethod,
         onCompleteSale: handleCompleteSale,
         onHoldSale: handleHoldSale,
         onClearSale: handleVoidSale,
@@ -962,7 +1022,7 @@ export function SuperStorePOS({
                         ))}</div>
                     )}
                 </div>
-                <aside className="w-[min(100%,400px)] shrink-0 flex flex-col min-h-0">
+                <aside className="w-[min(100%,380px)] xl:w-[420px] shrink-0 flex flex-col min-h-0 bg-white border-l border-gray-100">
                     <CartSummary {...cartSummaryProps} />
                 </aside>
             </div>
