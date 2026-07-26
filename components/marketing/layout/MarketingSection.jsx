@@ -20,7 +20,7 @@ const PADDING = {
 const WIDTH = {
   default: MARKETING_CONTAINER,
   narrow: MARKETING_CONTAINER_NARROW,
-  full: 'w-full min-w-0 px-4 min-[380px]:px-5 sm:px-6 lg:px-12',
+  full: 'w-full min-w-0 px-4 min-[380px]:px-5 sm:px-6 lg:px-10 xl:px-12',
 };
 
 /**

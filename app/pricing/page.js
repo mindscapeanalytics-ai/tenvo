@@ -142,7 +142,7 @@ export default function PricingPage() {
   return (
     <MarketingLayout transparentNav={false}>
       <section className="border-b border-neutral-200/80 bg-white py-10 sm:py-14 lg:py-16">
-        <div className="mx-auto max-w-7xl px-4 min-[380px]:px-5 sm:px-6 lg:px-12 text-center space-y-4 sm:space-y-6">
+        <div className={cn(MARKETING_CONTAINER, 'space-y-4 text-center sm:space-y-6')}>
           <div className="inline-flex max-w-full flex-wrap items-center justify-center gap-2 rounded-full border border-brand-100 bg-brand-50 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-brand-primary sm:px-4 sm:text-[11px] sm:tracking-[0.25em]">
             <ShieldCheck className="h-4 w-4 shrink-0" />
             Plans aligned with the product
@@ -243,7 +243,7 @@ export default function PricingPage() {
       </section>
 
       <section className="bg-neutral-50 py-10 sm:py-14 lg:py-16 border-b border-neutral-200/80">
-        <div className="w-full max-w-[min(100%,92rem)] mx-auto px-4 min-[380px]:px-5 sm:px-6 lg:px-8 xl:px-10">
+        <div className={MARKETING_CONTAINER}>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-4 lg:grid-cols-5 lg:items-stretch">
             {TIER_KEYS.map((tierKey) => {
               const tier = PLAN_TIERS[tierKey];
@@ -361,7 +361,8 @@ export default function PricingPage() {
       </section>
 
       <section className="bg-white py-10 sm:py-16 lg:py-28 border-b border-neutral-200/80">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6">
+        <div className={MARKETING_CONTAINER}>
+          <div className="mx-auto max-w-4xl">
           <div className="bg-neutral-50 border-2 border-neutral-200/90 rounded-[2.5rem] p-8 sm:p-12 shadow-sm space-y-10">
             <div className="text-center space-y-3">
               <h3 className="text-2xl sm:text-3xl font-semibold text-neutral-900">Estimate operational ROI</h3>
@@ -432,11 +433,12 @@ export default function PricingPage() {
               </div>
             </div>
           </div>
+          </div>
         </div>
       </section>
 
       <section className="bg-neutral-50 py-10 sm:py-16 lg:py-28 border-b border-neutral-200/80">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 space-y-8">
+        <div className={cn(MARKETING_CONTAINER, 'space-y-8')}>
           <div className="text-center max-w-3xl mx-auto space-y-4">
             <h3 className="text-2xl sm:text-3xl font-semibold text-neutral-900">Feature matrix by tier</h3>
             <p className="text-sm text-neutral-500 font-semibold">Same capability flags used inside the app.</p>
@@ -485,7 +487,8 @@ export default function PricingPage() {
       </section>
 
       <section className="bg-white py-10 sm:py-16 lg:py-28 border-b border-neutral-200/80">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6">
+        <div className={MARKETING_CONTAINER}>
+          <div className="mx-auto max-w-4xl">
           <div className="text-center mb-16 space-y-4">
             <h2 className="text-[11px] font-semibold text-brand-primary uppercase tracking-[0.25em]">Billing & payments FAQ</h2>
             <h3 className="text-3xl sm:text-4xl font-semibold text-neutral-900 tracking-tight">Common questions</h3>
@@ -503,17 +506,18 @@ export default function PricingPage() {
                 </button>
                 {expandedFaq === index && (
                   <div className="p-6 pt-0 border-t border-neutral-200">
-                    <p className="text-xs text-neutral-500 leading-relaxed font-semibold">{item.a}</p>
+                    <p className="text-[11px] text-neutral-500 leading-relaxed font-semibold">{item.a}</p>
                   </div>
                 )}
               </div>
             ))}
           </div>
+          </div>
         </div>
       </section>
 
       <section className="bg-neutral-50 py-16 lg:py-24">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12">
+        <div className={MARKETING_CONTAINER}>
           <div className="bg-white border border-neutral-200/80 rounded-[3rem] p-8 sm:p-12 lg:p-16 text-center space-y-6 relative overflow-hidden shadow-sm">
             <Building2 className="w-10 h-10 text-brand-primary mx-auto" />
             <h3 className="text-3xl sm:text-5xl font-semibold text-neutral-900 tracking-tight max-w-4xl mx-auto">Ready when you are</h3>

@@ -11,7 +11,7 @@ import { TenvoTextLogo } from '@/components/branding/TenvoTextLogo';
 import MarketingCtaLink from '@/components/marketing/ui/MarketingCtaLink';
 import { getBookMeetingHref } from '@/lib/marketing/salesLinks';
 import { cn } from '@/lib/utils';
-import { MARKETING_NAV_HEIGHT } from '@/lib/utils/marketingLayout';
+import { MARKETING_CONTAINER_CHROME, MARKETING_NAV_HEIGHT } from '@/lib/utils/marketingLayout';
 import { modulesForNav } from '@/lib/marketing/capabilities';
 import { INDUSTRY_PLANS_NAV, listIndustryPlanNavItems } from '@/lib/marketing/domainPackageNav';
 
@@ -73,13 +73,19 @@ export default function MarketingNav({
     }
   };
 
-  const navClasses = `sticky top-0 z-50 transition-all duration-300 ${transparent && !scrolled
+  const onDarkHero = transparent && !scrolled;
+
+  const navClasses = `sticky top-0 z-50 transition-all duration-300 ${onDarkHero
       ? 'bg-transparent'
       : 'bg-white/90 backdrop-blur-2xl border-b border-neutral-200/50 shadow-[0_4px_24px_-12px_rgba(0,0,0,0.1)]'
     }`;
 
-  const navItemClass =
-    'inline-flex h-10 shrink-0 items-center whitespace-nowrap rounded-lg px-2.5 text-[13px] font-semibold text-neutral-800 transition-colors hover:bg-neutral-100/90 hover:text-brand-primary-dark lg:px-2 lg:text-[12.5px] xl:px-2.5 xl:text-[13px] 2xl:px-3 2xl:text-sm';
+  const navItemClass = cn(
+    'inline-flex h-10 shrink-0 items-center whitespace-nowrap rounded-lg px-2.5 text-[13px] font-semibold transition-colors lg:px-2 lg:text-[12.5px] xl:px-2.5 xl:text-[13px] 2xl:px-3 2xl:text-sm',
+    onDarkHero
+      ? 'text-white/90 hover:bg-white/10 hover:text-white'
+      : 'text-neutral-800 hover:bg-neutral-100/90 hover:text-brand-primary-dark'
+  );
 
   const enterpriseCore = modulesForNav('enterpriseCore');
   const verticals = modulesForNav('verticals');
@@ -121,14 +127,17 @@ export default function MarketingNav({
 
   return (
     <nav className={navClasses} aria-label="Primary marketing">
-      <div className="mx-auto max-w-[1440px] pl-[max(1.25rem,env(safe-area-inset-left))] pr-[max(1.25rem,env(safe-area-inset-right))] pt-[max(0.25rem,env(safe-area-inset-top))] sm:pl-7 sm:pr-7 lg:pl-10 lg:pr-10 xl:pl-14 xl:pr-14 2xl:pl-16 2xl:pr-16">
+      <div className={cn(MARKETING_CONTAINER_CHROME, 'pt-[max(0.25rem,env(safe-area-inset-top))]')}>
         <div className={cn('flex items-center justify-between gap-3 sm:gap-6 xl:grid xl:grid-cols-[auto_minmax(0,1fr)_auto] xl:items-center xl:justify-items-stretch xl:gap-x-8 2xl:gap-x-10', MARKETING_NAV_HEIGHT)}>
           {/* Logo - keep a hard gutter so the first nav control never overlaps the wordmark */}
           <Link
             href="/"
             className="flex min-w-0 max-w-[min(100%,14rem)] shrink-0 items-center gap-3 rounded-lg outline-none ring-brand-primary/30 transition-all hover:opacity-95 focus-visible:ring-2 sm:max-w-none"
           >
-            <TenvoTextLogo />
+            <TenvoTextLogo
+              textClassName={onDarkHero ? 'text-white' : undefined}
+              taglineClassName={onDarkHero ? 'text-white/55' : undefined}
+            />
           </Link>
 
           {/* Desktop: primary links in the middle column (minmax(0,1fr) allows shrink without colliding into logo) */}
@@ -294,9 +303,18 @@ export default function MarketingNav({
           {/* Right: auth (desktop) + menu toggle (mobile). WhatsApp / currency live in footer & contact. */}
           <div className="flex min-w-0 shrink-0 items-center justify-end gap-2 sm:gap-3">
             {showAuthButtons ? (
-              <div className="hidden items-center gap-2 border-l border-neutral-200/80 pl-3 sm:gap-2.5 sm:pl-4 xl:flex xl:gap-3 xl:pl-5">
+              <div className={cn(
+                'hidden items-center gap-2 border-l pl-3 sm:gap-2.5 sm:pl-4 xl:flex xl:gap-3 xl:pl-5',
+                onDarkHero ? 'border-white/15' : 'border-neutral-200/80'
+              )}>
                 {authLoading ? (
-                  <div className="h-10 w-32 animate-pulse rounded-full bg-neutral-100" aria-hidden />
+                  <div
+                    className={cn(
+                      'h-10 w-32 animate-pulse rounded-full',
+                      onDarkHero ? 'bg-white/10' : 'bg-neutral-100'
+                    )}
+                    aria-hidden
+                  />
                 ) : user ? (
                   <>
                     <Button
@@ -308,7 +326,12 @@ export default function MarketingNav({
                     <Button
                       variant="ghost"
                       onClick={handleLogout}
-                      className="h-10 shrink-0 rounded-lg px-2.5 font-semibold text-neutral-700 hover:bg-neutral-100 xl:px-3"
+                      className={cn(
+                        'h-10 shrink-0 rounded-lg px-2.5 font-semibold xl:px-3',
+                        onDarkHero
+                          ? 'text-white/85 hover:bg-white/10 hover:text-white'
+                          : 'text-neutral-700 hover:bg-neutral-100'
+                      )}
                     >
                       Log out
                     </Button>
@@ -317,7 +340,12 @@ export default function MarketingNav({
                   <>
                     <Button
                       variant="ghost"
-                      className="h-10 shrink-0 rounded-lg px-2.5 font-semibold text-neutral-700 hover:bg-neutral-100 sm:px-3 xl:px-4"
+                      className={cn(
+                        'h-10 shrink-0 rounded-lg px-2.5 font-semibold sm:px-3 xl:px-4',
+                        onDarkHero
+                          ? 'text-white/85 hover:bg-white/10 hover:text-white'
+                          : 'text-neutral-700 hover:bg-neutral-100'
+                      )}
                       onClick={() => handleCTAClick('nav', 'Log in', '/login')}
                     >
                       Log in
@@ -337,7 +365,12 @@ export default function MarketingNav({
             <button
               type="button"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="rounded-xl p-2 text-gray-600 transition-colors hover:bg-gray-100 xl:hidden"
+              className={cn(
+                'rounded-xl p-2 transition-colors xl:hidden',
+                onDarkHero
+                  ? 'text-white/90 hover:bg-white/10'
+                  : 'text-gray-600 hover:bg-gray-100'
+              )}
               aria-label="Toggle menu"
               aria-expanded={mobileMenuOpen}
             >

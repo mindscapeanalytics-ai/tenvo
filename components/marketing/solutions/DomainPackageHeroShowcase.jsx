@@ -16,7 +16,7 @@ import { formatCurrency } from '@/lib/currency';
 import { getBookMeetingHref } from '@/lib/marketing/salesLinks';
 import { getDemoStoreHref } from '@/lib/marketing/demoStoreGalleryMeta';
 import { getDomainPackageRegisterHref } from '@/lib/config/domainPackages';
-import { MARKETING_STAT_VALUE } from '@/lib/utils/marketingLayout';
+import { MARKETING_CONTAINER, MARKETING_STAT_VALUE } from '@/lib/utils/marketingLayout';
 
 const FADE_MS = 700;
 const HOLD_MS = 6000;
@@ -139,8 +139,8 @@ export default function DomainPackageHeroShowcase({
         <HeroSlideLayer key={slide.id} slide={slide} active={i === index} priority={i === 0} />
       ))}
 
-      <div className="relative z-20 flex flex-1 flex-col justify-end px-5 pb-[7.25rem] pt-24 sm:px-8 sm:pb-[7.75rem] sm:pt-28 lg:px-12">
-        <div className="mx-auto w-full max-w-[1440px]">
+      <div className="relative z-20 flex flex-1 flex-col justify-end pb-[7.25rem] pt-24 sm:pb-[7.75rem] sm:pt-28">
+        <div className={MARKETING_CONTAINER}>
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end lg:gap-10">
             <div className="min-w-0 space-y-4">
               <div className="flex flex-wrap items-center gap-2">
@@ -279,8 +279,8 @@ export default function DomainPackageHeroShowcase({
         </div>
       </div>
 
-      <div className="absolute inset-x-0 bottom-0 z-30 border-t border-white/10 bg-neutral-950/65 px-4 py-3 backdrop-blur-md sm:py-3.5">
-        <div className="mx-auto flex max-w-[1440px] flex-col items-center gap-2">
+      <div className="absolute inset-x-0 bottom-0 z-30 border-t border-white/10 bg-neutral-950/65 py-3 backdrop-blur-md sm:py-3.5">
+        <div className={cn(MARKETING_CONTAINER, 'flex flex-col items-center gap-2')}>
           <div
             className="flex flex-wrap items-center justify-center gap-2"
             role="tablist"
