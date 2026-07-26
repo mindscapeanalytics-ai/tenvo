@@ -54,7 +54,7 @@ const recordPaymentSchema = z.object({
     notes: z.string().optional().nullable()
 });
 
-export const POST = withApiAuth(async (request, { businessId, session, role, routeParams }) => {
+export const POST = withApiAuth(async (request, { businessId, session, role, routeParams, parsedBody }) => {
     try {
         // Check permissions
         if (role === 'viewer') {
@@ -67,7 +67,12 @@ export const POST = withApiAuth(async (request, { businessId, session, role, rou
             return apiError('MISSING_INVOICE_ID', 'Invoice ID is required', 400);
         }
 
-        const body = await request.json();
+        // withApiAuth already consumed the body stream — never call request.json() again
+        const body = parsedBody || {};
+
+        // #region agent log
+        fetch('http://127.0.0.1:7878/ingest/6b64085d-e42a-4ca5-8da5-396ffe0aff69',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'cd7567'},body:JSON.stringify({sessionId:'cd7567',runId:'post-fix',hypothesisId:'B',location:'app/api/v1/invoices/[id]/payments/route.js:POST',message:'invoice payment body source',data:{usedParsedBody:parsedBody!=null,hasAmount:typeof body.amount==='number',hasMethod:typeof body.payment_method==='string',keys:Object.keys(body).filter((k)=>k!=='business_id'&&k!=='businessId')},timestamp:Date.now()})}).catch(()=>{});
+        // #endregion
         
         // Validate request body
         const validation = recordPaymentSchema.safeParse(body);
@@ -88,9 +93,17 @@ export const POST = withApiAuth(async (request, { businessId, session, role, rou
             userId: session.user.id
         });
 
+        // #region agent log
+        fetch('http://127.0.0.1:7878/ingest/6b64085d-e42a-4ca5-8da5-396ffe0aff69',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'cd7567'},body:JSON.stringify({sessionId:'cd7567',runId:'post-fix',hypothesisId:'B',location:'app/api/v1/invoices/[id]/payments/route.js:POST:success',message:'invoice payment recorded',data:{ok:true,hasPaymentId:Boolean(result?.id||result?.payment?.id)},timestamp:Date.now()})}).catch(()=>{});
+        // #endregion
+
         return apiSuccess(result, 201);
     } catch (error) {
         console.error('[POST /api/v1/invoices/[id]/payments] Error:', error);
+
+        // #region agent log
+        fetch('http://127.0.0.1:7878/ingest/6b64085d-e42a-4ca5-8da5-396ffe0aff69',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'cd7567'},body:JSON.stringify({sessionId:'cd7567',runId:'post-fix',hypothesisId:'B',location:'app/api/v1/invoices/[id]/payments/route.js:POST:catch',message:'invoice payment error',data:{errName:error?.name,errMsg:String(error?.message||'').slice(0,160),isBodyUsed:/Body already used/i.test(String(error?.message||''))},timestamp:Date.now()})}).catch(()=>{});
+        // #endregion
         
         if (error.message?.includes('exceeds invoice balance')) {
             return apiError('PAYMENT_EXCEEDS_BALANCE', error.message, 400);
