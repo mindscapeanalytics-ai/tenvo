@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useMemo, useState, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   Users,
   Zap,
@@ -53,6 +54,9 @@ import {
 } from '@/lib/dashboard/easyDomainIntelligence';
 import { resolveOperationsProfile, getOperationsTabGuidance } from '@/lib/dashboard/domainOperationsIntelligence';
 import { DomainOperationsPanel } from '@/components/dashboard/easy/DomainOperationsPanel';
+import { hubSalesPerformanceQueryKey } from '@/lib/dashboard/hubQueryKeys';
+import { getSalesPerformanceAction } from '@/lib/actions/basic/dashboard';
+import { toAnalyticsIsoDate } from '@/lib/utils/analyticsRange';
 
 // ---------------------------------------------------------------------------
 // Primitives — shadcn-inspired compact cards
@@ -759,10 +763,38 @@ export function EasyBusinessDashboard(props: EasyBusinessDashboardProps) {
 
   const sparkBars = useMemo(() => normalizeSparklineBars(chartData, 6), [chartData]);
   const dualSpark = useMemo(() => normalizeDualSparkline(chartData, 6), [chartData]);
-  const topProducts = useMemo(
-    () => buildTopProductsFromInvoices(invoices, dateRange, 5),
-    [invoices, dateRange]
-  );
+
+  // Headers-only invoices have no line items — prefer sales-performance top products (shell idle prefetch).
+  const dateFromISO = toAnalyticsIsoDate(dateRange?.from) || toAnalyticsIsoDate(new Date());
+  const dateToISO = toAnalyticsIsoDate(dateRange?.to) || toAnalyticsIsoDate(new Date());
+  const salesPerfQuery = useQuery({
+    queryKey: hubSalesPerformanceQueryKey(businessId, dateFromISO, dateToISO, 'all', null),
+    queryFn: async () => {
+      const res = await getSalesPerformanceAction(businessId, {
+        from: dateFromISO,
+        to: dateToISO,
+        channel: 'all',
+        category: null,
+        topLimit: 8,
+      });
+      if (!res?.success) return null;
+      return res;
+    },
+    enabled: Boolean(businessId && dateFromISO && dateToISO),
+    staleTime: 60_000,
+  });
+
+  const topProducts = useMemo(() => {
+    const fromInvoices = buildTopProductsFromInvoices(invoices, dateRange, 5);
+    if (fromInvoices.length > 0) return fromInvoices;
+    const analyticsRows = salesPerfQuery.data?.topProducts;
+    if (!Array.isArray(analyticsRows) || analyticsRows.length === 0) return [];
+    return analyticsRows.slice(0, 5).map((row) => ({
+      name: String(row?.name || row?.product_name || 'Product'),
+      qty: Number(row?.qty || row?.quantity || 0),
+      revenue: Number(row?.revenue || row?.total || 0),
+    }));
+  }, [invoices, dateRange, salesPerfQuery.data]);
   const topCustomers = useMemo(
     () => buildTopCustomersFromInvoices(invoices, dateRange, 5),
     [invoices, dateRange]

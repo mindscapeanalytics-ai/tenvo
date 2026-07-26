@@ -225,6 +225,8 @@ if (!dataContext.includes('isStale()')) {
 }
 if (
   !dataContext.includes('getHubShellBootstrapAction') &&
+  !dataContext.includes('useHubShellQuery') &&
+  !dataContext.includes('fetchHubShell') &&
   !dataContext.includes('fetchInventory({ fullCatalog: false })') &&
   !dataContext.includes('fullCatalog: false')
 ) {
@@ -232,6 +234,8 @@ if (
 }
 if (
   !dataContext.includes('getHubShellBootstrapAction') &&
+  !dataContext.includes('useHubShellQuery') &&
+  !dataContext.includes('includeItems: false') &&
   !dataContext.includes("fetchSales({ mode: 'bootstrap' })") &&
   !dataContext.includes("mode: 'bootstrap'")
 ) {
@@ -239,6 +243,7 @@ if (
 }
 if (
   !dataContext.includes('getHubShellBootstrapAction') &&
+  !dataContext.includes('useHubShellQuery') &&
   !dataContext.includes('fetchHubShell') &&
   !/Promise\.allSettled\(\[\s*fetchFinance\(\),\s*fetchSales\(/.test(dataContext)
 ) {

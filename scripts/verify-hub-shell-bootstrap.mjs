@@ -247,6 +247,12 @@ if (!exists(constantsPath)) {
   if (!dataCtx.includes('HUB_SHELL_DEFERRED_REVALIDATE_MS') || !dataCtx.includes('shellDeferredRevalidateTimerRef')) {
     mark('DataContext must defer soft-revalidate after SSR/cache paint (avoid double bootstrap)');
   }
+  if (!dataCtx.includes('identityChanged') || !dataCtx.includes('deferSoftRevalidate')) {
+    mark('DataContext must refetch immediately on date/tenant identity change (not defer 45s)');
+  }
+  if (!dataCtx.includes('loadAllPages')) {
+    mark('DataContext fetchInventory must support loadAllPages for POS complete catalog');
+  }
   if (!dataCtx.includes('inventoryPendingForceRef')) {
     mark('DataContext must coalesce inventory force refreshes (inventoryPendingForceRef)');
   }

@@ -432,7 +432,7 @@ export function Header({ onMenuClick }) {
                                 <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
                                 <Input
                                     id="hub-header-search-mobile"
-                                    name="hub-search"
+                                    name="hub-search-mobile"
                                     type="search"
                                     autoComplete="off"
                                     placeholder={t.search_placeholder}
@@ -483,7 +483,7 @@ export function Header({ onMenuClick }) {
                         <Search className={`absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 group-focus-within:text-brand-primary transition-colors ${language === 'ur' ? 'right-3' : 'left-3'}`} />
                         <Input
                             id="hub-header-search"
-                            name="hub-search"
+                            name="hub-search-desktop"
                             type="search"
                             autoComplete="off"
                             placeholder={t.search_placeholder + '...  (/)'}

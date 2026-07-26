@@ -302,6 +302,7 @@ export function DashboardTabs({
         fetchSales,
         fetchFinance,
         fetchExpenses,
+        scheduleAnalyticsRefresh,
         setShowInvoiceBuilder,
         setShowProductForm,
         setShowCustomerForm,
@@ -576,6 +577,8 @@ export function DashboardTabs({
                                         fetchSales({ force: true }),
                                         fetchFinance({ force: true }),
                                     ]);
+                                    // Shell owns Overview KPIs — invalidate hub shell (not finance overwrite).
+                                    scheduleAnalyticsRefresh?.();
                                 }}
                             />
                         </TabGuard>

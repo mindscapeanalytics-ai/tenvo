@@ -608,13 +608,14 @@ function BusinessDashboardContent() {
 
     if (['batches', 'pos'].includes(activeTab)) {
       if (!moduleReady.inventoryCatalog && !loadingModules.inventory) {
-        void fetchInventory({ fullCatalog: true, detailLevel: 'grid' });
+        void fetchInventory({ force: true, fullCatalog: true, detailLevel: 'grid', loadAllPages: true });
       } else if (
         moduleReady.inventoryCatalog &&
         !loadingModules.inventory &&
-        inventoryNeedsGridUpgrade
+        (inventoryNeedsGridUpgrade || hasMoreProducts)
       ) {
-        void fetchInventory({ force: true, fullCatalog: true, detailLevel: 'grid' });
+        // POS needs complete catalog (Busy/Zoho till) — drain remaining pages at grid depth.
+        void fetchInventory({ force: true, fullCatalog: true, detailLevel: 'grid', loadAllPages: true });
       }
       return;
     }
@@ -677,6 +678,7 @@ function BusinessDashboardContent() {
     business?.id,
     hubReady,
     inventoryNeedsGridUpgrade,
+    hasMoreProducts,
     loadingModules.inventory,
     loadingModules.sales,
     loadingModules.customers,
@@ -1811,7 +1813,7 @@ function BusinessDashboardContent() {
         // Avoid fetchFinance(force) overwrite of Overview SOT + fat sales/full fan.
         void Promise.allSettled([
           fetchSales({ force: true, mode: 'invoices' }),
-          fetchInventory({ force: true, fullCatalog: true, detailLevel: 'grid' }),
+          fetchInventory({ force: true, fullCatalog: true, detailLevel: 'grid', loadAllPages: true }),
         ]);
         scheduleAnalyticsRefresh?.();
         return {
@@ -2155,6 +2157,7 @@ function BusinessDashboardContent() {
               fetchSales,
               fetchFinance,
               fetchExpenses,
+              scheduleAnalyticsRefresh,
               setShowInvoiceBuilder,
               setShowProductForm,
               setShowCustomerForm,
