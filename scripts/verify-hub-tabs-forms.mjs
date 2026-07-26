@@ -310,6 +310,18 @@ if (!dashClient.includes("modalId === 'expense'") && !dashClient.includes('modal
 if (!dashClient.includes("id === 'log-expense'") && !dashClient.includes("id === \"log-expense\"")) {
   mark('DashboardClient missing log-expense quick action');
 } else ok('DashboardClient log-expense quick action');
+const domainDash = read('app/business/[category]/components/tabs/DomainDashboard.tsx');
+if (domainDash.includes("id: 'record-payment'") && domainDash.includes("label: 'Record Payment'")) {
+  mark('DomainDashboard Easy still has Record Payment instead of Record Expense');
+} else if (!domainDash.includes("id: 'log-expense'") || !domainDash.includes('Record Expense')) {
+  mark('DomainDashboard Easy missing Record Expense → log-expense');
+} else ok('DomainDashboard Easy Record Expense opens log-expense');
+if (!headerSrc.includes('Record Expense') || (!headerSrc.includes("modalId: 'expense'") && !headerSrc.includes('modalId: "expense"'))) {
+  mark('Header missing Record Expense → open-modal expense');
+} else ok('Header Record Expense opens expense modal');
+if (headerSrc.includes('Record Payment') && headerSrc.includes("switchTab('payments')")) {
+  mark('Header still has Record Payment → payments tab (should be expense modal)');
+} else ok('Header no longer routes Record Payment as expense substitute');
 if (!dashClient.includes("id === 'reconcile-now'")) {
   mark('DashboardClient missing reconcile-now → reconciliation');
 } else ok('DashboardClient reconcile-now → Bank Reconciliation');

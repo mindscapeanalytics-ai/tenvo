@@ -1351,7 +1351,7 @@ export function EasyBusinessDashboard(props: EasyBusinessDashboardProps) {
                         className="h-8 text-xs"
                         onClick={() => onQuickAction?.('log-expense')}
                       >
-                        Log expense
+                        Record expense
                       </Button>
                       <Button
                         variant="outline"

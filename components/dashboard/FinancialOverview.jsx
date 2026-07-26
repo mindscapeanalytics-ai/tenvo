@@ -22,7 +22,7 @@ export function FinancialOverview({
     const router = useRouter();
 
     const quickActions = [
-        { label: 'Log Expense', icon: Wallet, actionId: 'log-expense' },
+        { label: 'Record Expense', icon: Wallet, actionId: 'log-expense' },
         { label: 'View Invoices', icon: Receipt, tab: 'invoices' },
         { label: 'Purchase Orders', icon: Truck, tab: 'purchases' },
         { label: 'General Ledger', icon: FileText, tab: 'finance', financeSubTab: 'general-ledger' },

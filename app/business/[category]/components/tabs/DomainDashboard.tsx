@@ -6,7 +6,7 @@ import {
     CreditCard, Clock,
     Zap,
     Boxes, Warehouse, RotateCcw, BadgeDollarSign,
-    Package, FileText, BarChart3, Plus, Banknote, Table2
+    Package, FileText, BarChart3, Plus, Wallet, Table2
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -1053,7 +1053,7 @@ export function DomainDashboard({
             { id: 'new-invoice', label: 'New Invoice', desc: 'Create a sale', icon: Plus, color: 'bg-slate-900 hover:bg-slate-800 text-white border border-slate-900' },
             { id: 'add-product', label: 'Add Product', desc: 'Record inventory', icon: Package, color: 'bg-brand-50 hover:bg-brand-100 text-brand-primary-dark border border-brand-100' },
             { id: 'add-customer', label: 'Add Customer', desc: 'Grow customer base', icon: Users, color: 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200' },
-            { id: 'record-payment', label: 'Record Payment', desc: 'Collect receivables', icon: Banknote, color: 'bg-cyan-50 hover:bg-cyan-100 text-cyan-800 border border-cyan-200' },
+            { id: 'log-expense', label: 'Record Expense', desc: 'Money paid from shop', icon: Wallet, color: 'bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200' },
             { id: 'inventory', label: 'Review Inventory', desc: 'Fix stock issues', icon: Warehouse, color: 'bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200' },
             { id: 'reports', label: 'View Reports', desc: 'Open analytics', icon: BarChart3, color: 'bg-orange-50 hover:bg-orange-100 text-orange-700 border border-orange-200' },
             { id: 'excel-mode', label: 'Excel data entry', desc: 'Bulk spreadsheet entry', icon: Table2, color: 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200' },

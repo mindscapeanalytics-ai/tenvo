@@ -20,7 +20,6 @@ import {
     Layers,
     Warehouse,
     ShoppingCart,
-    History,
     ListFilter,
     Download,
     LayoutGrid,
@@ -408,7 +407,7 @@ export function Header({ onMenuClick }) {
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => window.dispatchEvent(new CustomEvent('open-modal', { detail: { modalId: 'expense' } }))} className="cursor-pointer rounded-xl py-2.5">
                                 <ListFilter className="mr-3 h-4 w-4 text-rose-500" />
-                                <span className="text-xs font-bold">Log Expense</span>
+                                <span className="text-xs font-bold">Record Expense</span>
                             </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
@@ -635,10 +634,6 @@ export function Header({ onMenuClick }) {
                                     <span className="font-bold text-xs">New Purchase Order</span>
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
-                                <DropdownMenuItem onClick={() => switchTab('payments')} className="rounded-xl py-2.5 cursor-pointer">
-                                    <History className="w-4 h-4 mr-3 text-emerald-500" />
-                                    <span className="font-bold text-xs">Record Payment</span>
-                                </DropdownMenuItem>
                                 <DropdownMenuItem
                                     onClick={() =>
                                         window.dispatchEvent(
@@ -650,7 +645,7 @@ export function Header({ onMenuClick }) {
                                     className="rounded-xl py-2.5 cursor-pointer"
                                 >
                                     <ListFilter className="w-4 h-4 mr-3 text-rose-500" />
-                                    <span className="font-bold text-xs">Log Expense</span>
+                                    <span className="font-bold text-xs">Record Expense</span>
                                 </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
