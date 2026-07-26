@@ -28,6 +28,7 @@ import { MergedActionInsights } from '../islands/MergedActionInsights.client';
 import NetsuiteDashboard from '../islands/NetsuiteDashboard.client';
 import { DashboardMobileHub } from '@/components/dashboard/mobile/DashboardMobileHub';
 import { EasyBusinessDashboard } from '@/components/dashboard/easy/EasyBusinessDashboard';
+import { RetailSimpleDashboard } from '@/components/dashboard/easy/RetailSimpleDashboard';
 import { DomainOperationsPanel } from '@/components/dashboard/easy/DomainOperationsPanel';
 import { useDomainOperationsSnapshot } from '@/lib/hooks/useDomainOperationsSnapshot';
 import { FinanceHeroStrip } from '@/components/dashboard/advanced/FinanceHeroStrip.client';
@@ -127,7 +128,14 @@ interface ExpenseBreakdownItem {
 }
 
 interface DashboardMetrics {
-    revenue?: number | { total?: number; orderCount?: number };
+    revenue?: number | {
+        total?: number;
+        orderCount?: number;
+        storefront?: number;
+        pos?: number;
+        invoices?: number;
+    };
+    channels?: { storefront?: number; pos?: number; invoice?: number };
     orders?: { total?: number; pending?: number; paid?: number; invoices?: number; pos?: number; storefront?: number };
     products?: number;
     customers?: { active?: number; growth?: number };
@@ -231,7 +239,7 @@ export function DomainDashboard({
     };
     // EasyBusinessDashboard requires string; hub may omit prop until regional pack settles.
     const resolvedCurrency = (currency || businessCurrency || 'PKR').trim() || 'PKR';
-    const { isEasyMode, modeReady } = useAppMode();
+    const { isEasyMode, isRetailSimpleDashboard, modeReady } = useAppMode();
     const { datePresetKey } = useFilters();
     const activeBusinessId = useResolvedBusinessId(businessId);
     const advancedOpsSnapshot = useDomainOperationsSnapshot({
@@ -239,6 +247,7 @@ export function DomainDashboard({
         category,
         dateRange,
         // Defer heavy ops SQL until lean bootstrap + core modules settle (no race with Overview KPIs).
+        // Retail Simple Online Sales uses hub KPIs (dashboard.view), not this ai_analytics-gated snapshot.
         enabled:
             !isEasyMode &&
             Boolean(activeBusinessId) &&
@@ -1014,6 +1023,44 @@ export function DomainDashboard({
     if (isEasyMode) {
         const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'there';
         const greeting = new Date().getHours() < 12 ? 'Good morning' : new Date().getHours() < 17 ? 'Good afternoon' : 'Good evening';
+
+        // Retail Simple: single-page tiles + graphs + KPIs (settings / user menu toggle).
+        if (isRetailSimpleDashboard) {
+            return (
+                <>
+                    {metricsPending ? (
+                        <p className="sr-only" aria-live="polite">
+                            Loading live metrics
+                        </p>
+                    ) : null}
+                    <RetailSimpleDashboard
+                        business={business}
+                        category={category}
+                        domainKnowledge={domainKnowledge as Record<string, unknown> | undefined}
+                        currency={resolvedCurrency}
+                        periodLabel={periodLabel}
+                        activePreset={activePreset}
+                        onQuickAction={onQuickAction}
+                        onDateRangePresetChange={onDateRangePresetChange}
+                        chartData={chartData}
+                        expenseBreakdown={expenseBreakdown as unknown as Array<Record<string, unknown>>}
+                        dashboardMetrics={dashboardMetrics as unknown as Record<string, unknown> | null}
+                        formatCurrencyCompact={formatCurrencyCompact}
+                        greeting={greeting}
+                        userName={userName}
+                        periodMetrics={{
+                            currentRevenue: periodMetrics.currentRevenue,
+                            currentOrders: periodMetrics.currentOrders,
+                            currentExpenses: periodMetrics.currentExpenses,
+                            soldUnits: periodMetrics.soldUnits,
+                        }}
+                        metricsPending={metricsPending}
+                        isSalesLoading={salesTilesLoading}
+                        isFinanceLoading={financeTilesLoading}
+                    />
+                </>
+            );
+        }
 
         const easyCommandStrip = [
             {

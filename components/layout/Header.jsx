@@ -62,7 +62,7 @@ import { MOBILE_TAB_LABELS, MOBILE_MINIMAL_HEADER_TABS, MOBILE_HIDE_HEADER_QUICK
 export function Header({ onMenuClick }) {
     const { dateRange, setDateRange, searchQuery, setSearchQuery } = useFilters();
     const { business } = useBusiness();
-    const { isEasyMode } = useAppMode();
+    const { isEasyMode, isRetailSimpleDashboard } = useAppMode();
     const {
         products,
         invoices,
@@ -254,7 +254,9 @@ export function Header({ onMenuClick }) {
 
     // Extract category from URL
     const labels = {
-        dashboard: isEasyMode ? 'Home' : 'Command Overview',
+        dashboard: isEasyMode
+            ? (isRetailSimpleDashboard ? 'Retail Home' : 'Home')
+            : 'Command Overview',
         inventory: 'Inventory Engine',
         invoices: 'Billing & Invoicing',
         customers: 'CRM & Client Hub',

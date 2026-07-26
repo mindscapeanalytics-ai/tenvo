@@ -34,8 +34,71 @@ if (!domainDashboard.includes('isEasyMode')) {
 if (!domainDashboard.includes('EasyBusinessDashboard')) {
   mark('DomainDashboard must render EasyBusinessDashboard in easy mode');
 }
+if (!domainDashboard.includes('RetailSimpleDashboard')) {
+  mark('DomainDashboard must render RetailSimpleDashboard for retail simple home');
+}
+if (!domainDashboard.includes('isRetailSimpleDashboard')) {
+  mark('DomainDashboard must branch on isRetailSimpleDashboard');
+}
 if (!domainDashboard.includes('resolveProductStock')) {
   mark('DomainDashboard must use resolveProductStock for inventory KPIs');
+}
+
+const retailSimple = read('components/dashboard/easy/RetailSimpleDashboard.tsx');
+const retailActions = read('lib/dashboard/retailSimpleActions.js');
+const busyMode = read('lib/context/BusyModeContext.js');
+const settingsManager = read('components/SettingsManager.jsx');
+const userManager = read('components/auth/UserManager.jsx');
+const hubBootstrapMetrics = read('lib/dashboard/hubBootstrapMetrics.js');
+const dashboardKpis = read('lib/actions/basic/dashboard.js');
+
+if (!retailSimple.includes('Quick entry')) {
+  mark('RetailSimpleDashboard must expose quick entry action tiles');
+}
+if (!retailSimple.includes('buildRetailSimpleActions')) {
+  mark('RetailSimpleDashboard must build tiles via buildRetailSimpleActions');
+}
+if (!retailSimple.includes('usePermissions')) {
+  mark('RetailSimpleDashboard must gate tiles with usePermissions');
+}
+if (!retailSimple.includes('hidden lg:grid') || !retailSimple.includes('lg:hidden')) {
+  mark('RetailSimpleDashboard must use dual-layout for graphs (desktop vs mobile)');
+}
+if (!retailSimple.includes('font-semibold') || retailSimple.includes('font-bold tracking-tight')) {
+  // Prefer font-semibold for headings per hub typography
+  if (/className="[^"]*font-bold[^"]*tracking-tight/.test(retailSimple)) {
+    mark('RetailSimpleDashboard headings should use font-semibold not font-bold');
+  }
+}
+if (!retailActions.includes('isPosRelevant') || !retailActions.includes('expense_tracking')) {
+  mark('retailSimpleActions must gate POS domain and expense_tracking');
+}
+if (!retailActions.includes('isMilkHisabRelevant') || !retailActions.includes('route-hisab')) {
+  mark('retailSimpleActions must support Milk Record → route-hisab');
+}
+if (!retailActions.includes('resolveOnlineSalesAmount')) {
+  mark('retailSimpleActions must resolve Online Sales from hub metrics');
+}
+if (!busyMode.includes('tenvo_dashboard_style') || !busyMode.includes('isRetailSimpleDashboard')) {
+  mark('BusyModeContext must persist tenvo_dashboard_style and expose isRetailSimpleDashboard');
+}
+if (!settingsManager.includes('Retail Simple Dashboard') || !settingsManager.includes('setDashboardStyle')) {
+  mark('SettingsManager must expose Retail Simple Dashboard toggle');
+}
+if (!userManager.includes("setDashboardStyle('retail_simple')") || !userManager.includes("setDashboardStyle('guided')")) {
+  mark('UserManager must offer Retail / Guided home toggle');
+}
+if (!dashboardKpis.includes('storefront_revenue') || !dashboardKpis.includes('channels:')) {
+  mark('getDashboardKPIs must expose storefront channel revenue for Retail Simple Online Sales');
+}
+if (!hubBootstrapMetrics.includes('channels:') || !hubBootstrapMetrics.includes('storefront:')) {
+  mark('buildDashboardMetricsFromSnapshot must map channel storefront revenue');
+}
+if (domainDashboard.includes('isRetailSimpleDashboard') && /isRetailSimpleDashboard[\s\S]{0,200}ai_analytics|opsChannels\.storefront/.test(domainDashboard)) {
+  mark('Retail Simple must not source Online Sales from ai_analytics ops snapshot');
+}
+if (domainDashboard.includes('enabled:') && /isRetailSimpleDashboard/.test(domainDashboard.match(/useDomainOperationsSnapshot\([\s\S]*?\}\);/)?.[0] || '')) {
+  mark('DomainDashboard must not enable domain ops snapshot solely for Retail Simple Online Sales');
 }
 
 if (!easyDashboard.includes('TabsList')) {

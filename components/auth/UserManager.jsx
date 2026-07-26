@@ -15,7 +15,8 @@ import {
     Mail,
     Smartphone,
     Sparkles,
-    Globe
+    Globe,
+    LayoutGrid,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useLanguage } from '@/lib/context/LanguageContext';
@@ -52,7 +53,7 @@ export function UserManager({ trigger }) {
     const router = useRouter();
     const { business, role, isPlatformOwner } = useBusiness();
     const { language, toggleLanguage } = useLanguage();
-    const { setAppMode, isEasyMode } = useAppMode();
+    const { setAppMode, isEasyMode, isRetailSimpleDashboard, setDashboardStyle } = useAppMode();
     const [showProfileDialog, setShowProfileDialog] = useState(false);
     const [isUpdating, setIsUpdating] = useState(false);
     const canManageBilling = isPlatformOwner || role === 'owner';
@@ -214,6 +215,48 @@ export function UserManager({ trigger }) {
                                 </button>
                             </div>
                         </div>
+
+                        {/* Retail Simple home (only meaningful in Simple mode) */}
+                        {isEasyMode ? (
+                            <div className="flex items-center justify-between gap-2">
+                                <div className="flex min-w-0 items-center gap-2">
+                                    <LayoutGrid className="w-3.5 h-3.5 shrink-0 text-sky-600" />
+                                    <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 truncate">
+                                        Retail home
+                                    </span>
+                                </div>
+                                <div className="flex bg-white border border-gray-100 rounded-lg p-0.5 shadow-sm">
+                                    <button
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            setDashboardStyle('retail_simple');
+                                        }}
+                                        className={cn(
+                                            "px-2.5 py-0.5 text-[10px] font-bold rounded-md transition-all",
+                                            isRetailSimpleDashboard
+                                                ? "bg-sky-600 text-white shadow-sm"
+                                                : "text-gray-500 hover:text-gray-700"
+                                        )}
+                                    >
+                                        Retail
+                                    </button>
+                                    <button
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            setDashboardStyle('guided');
+                                        }}
+                                        className={cn(
+                                            "px-2.5 py-0.5 text-[10px] font-bold rounded-md transition-all",
+                                            !isRetailSimpleDashboard
+                                                ? "bg-sky-600 text-white shadow-sm"
+                                                : "text-gray-500 hover:text-gray-700"
+                                        )}
+                                    >
+                                        Guided
+                                    </button>
+                                </div>
+                            </div>
+                        ) : null}
 
                         {/* Language Toggle */}
                         <div className="flex items-center justify-between">

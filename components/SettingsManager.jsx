@@ -26,6 +26,7 @@ import {
   getBusinessSampleDataStateAction,
 } from '@/lib/actions/basic/business';
 import { useBusiness } from '@/lib/context/BusinessContext';
+import { useAppMode } from '@/lib/context/BusyModeContext';
 import { PLAN_TIERS, PLAN_FEATURE_TOGGLE_KEYS, resolvePlanTier, FEATURE_LABELS, PLAN_ORDER, FEATURE_MIN_PLAN } from '@/lib/config/plans';
 import { getPackagingFromSettings, planHasFeatureWithPackaging } from '@/lib/subscription/effectivePlanAccess';
 import {
@@ -132,6 +133,12 @@ function buildProfileFormData(b) {
 export function SettingsManager({ category }) {
   const { business, updateBusiness, role, isPlatformOwner, planTier, regionalStandards } = useBusiness();
   const { initiateCheckout, isRedirecting, stripeCheckoutAvailable, devInstantBilling, fetchSubscription } = useSubscription();
+  const {
+    isEasyMode,
+    setAppMode,
+    isRetailSimpleDashboard,
+    setDashboardStyle,
+  } = useAppMode();
   const [billingInterval, setBillingInterval] = useState('monthly');
 
   const [isSaving, setIsSaving] = useState(false);
@@ -222,7 +229,7 @@ export function SettingsManager({ category }) {
       { value: 'industry', label: 'Industry', visible: true },
       { value: 'billing', label: 'Billing', visible: canManageBilling },
       { value: 'team', label: 'Team', visible: canManageUsers },
-      { value: 'notifications', label: 'Automation', visible: true },
+      { value: 'notifications', label: 'Preferences', visible: true },
       { value: 'security', label: 'Security', visible: true },
       { value: 'tools', label: 'Tools', visible: canManageAdvancedTools },
     ].filter(section => section.visible);
@@ -1102,6 +1109,54 @@ export function SettingsManager({ category }) {
         </TabsContent>
 
         <TabsContent value="notifications" forceMount={shouldForceMountSection('notifications')} className="space-y-4 pt-4 outline-none">
+          <Card className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+            <CardHeader className="space-y-1 border-b border-slate-100 bg-gradient-to-r from-sky-50/60 to-white pb-4 pt-5">
+              <div className="flex items-start gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-sky-100 text-sky-800 ring-1 ring-sky-200/80">
+                  <LayoutGrid className="w-5 h-5" aria-hidden />
+                </div>
+                <div className="min-w-0 flex-1 space-y-1">
+                  <CardTitle className="text-base sm:text-lg font-bold tracking-tight text-slate-900">Home dashboard</CardTitle>
+                  <CardDescription className="text-sm text-slate-600 font-medium leading-relaxed">
+                    Choose a simple one-page retail home for fast daily entry, or the guided multi-tab layout. Pro mode keeps the full sidebar workspace.
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-6 space-y-4">
+              <div className="flex items-center justify-between gap-4 p-4 bg-slate-50/80 rounded-2xl border border-slate-100">
+                <div className="min-w-0">
+                  <Label className="font-semibold text-slate-900">Simple interface</Label>
+                  <p className="text-xs text-slate-500 font-medium mt-1 leading-relaxed">
+                    Fewer sidebar options for small shops. Turn off for the full Pro workspace.
+                  </p>
+                </div>
+                <Switch
+                  checked={isEasyMode}
+                  onCheckedChange={(checked) => setAppMode(checked ? 'easy' : 'advanced')}
+                />
+              </div>
+              <div className="flex items-center justify-between gap-4 p-4 bg-slate-50/80 rounded-2xl border border-slate-100">
+                <div className="min-w-0">
+                  <Label className="font-semibold text-slate-900">Retail Simple Dashboard</Label>
+                  <p className="text-xs text-slate-500 font-medium mt-1 leading-relaxed">
+                    Default home: colored quick-entry tiles, key graphs, and retail KPIs on one page. Requires Simple interface.
+                  </p>
+                </div>
+                <Switch
+                  checked={isRetailSimpleDashboard}
+                  onCheckedChange={(checked) => {
+                    if (checked) {
+                      // setDashboardStyle('retail_simple') also flips Interface to Simple
+                      setDashboardStyle('retail_simple');
+                    } else {
+                      setDashboardStyle('guided');
+                    }
+                  }}
+                />
+              </div>
+            </CardContent>
+          </Card>
           <Card className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
             <CardHeader className="space-y-1 border-b border-slate-100 bg-gradient-to-r from-amber-50/50 to-white pb-4 pt-5">
               <div className="flex items-start gap-3">
