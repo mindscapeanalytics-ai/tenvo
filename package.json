@@ -67,6 +67,7 @@
     "verify:billing-packages": "npx tsx scripts/verify-billing-packages.mjs",
     "verify:mvp-launch": "node scripts/verify-mvp-launch.mjs",
     "verify:hub-tabs-forms": "bun scripts/verify-hub-tabs-forms.mjs",
+    "verify:expense-easy-entry": "bun scripts/verify-expense-easy-entry.mjs",
     "verify:staff-module-access": "bun scripts/verify-staff-module-access.mjs",
     "verify:easy-dashboard": "node scripts/verify-easy-dashboard.mjs",
     "verify:dashboard-kpi": "node scripts/verify-dashboard-kpi.mjs",

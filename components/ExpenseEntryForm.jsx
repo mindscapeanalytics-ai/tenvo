@@ -1,13 +1,16 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { X, Save, Loader2, Wallet, Calendar, CreditCard } from 'lucide-react';
+import {
+    X, Save, Loader2, Wallet, Calendar, CreditCard, ChevronDown, ChevronUp, Banknote,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Combobox } from '@/components/ui/combobox';
 import { useBusiness } from '@/lib/context/BusinessContext';
+import { useLanguage } from '@/lib/context/LanguageContext';
 import { createExpenseAction } from '@/lib/actions/basic/expense';
 import { getGLAccountsAction } from '@/lib/actions/basic/accounting';
 import toast from 'react-hot-toast';
@@ -18,7 +21,38 @@ import { MOBILE_OVERLAY, MOBILE_OVERLAY_CARD, MOBILE_FORM_FOOTER, MOBILE_GRID_FI
 import {
     getExpenseCategoriesForDomain,
     normalizeExpenseCategory,
+    getExpenseCategoryShopLabel,
+    expenseCategoryTranslationKey,
 } from '@/lib/utils/expenseCategories';
+
+function lastCategoryStorageKey(businessId) {
+    return businessId ? `tenvo-expense-last-cat:${businessId}` : null;
+}
+
+function readLastCategory(businessId) {
+    try {
+        const key = lastCategoryStorageKey(businessId);
+        if (!key || typeof window === 'undefined') return '';
+        return String(localStorage.getItem(key) || '').trim();
+    } catch {
+        return '';
+    }
+}
+
+function writeLastCategory(businessId, category) {
+    try {
+        const key = lastCategoryStorageKey(businessId);
+        if (!key || !category) return;
+        localStorage.setItem(key, category);
+    } catch {
+        /* ignore */
+    }
+}
+
+function tx(t, key, fallback) {
+    const v = t?.[key];
+    return typeof v === 'string' && v.trim() ? v : fallback;
+}
 
 export function ExpenseEntryForm({
     onClose,
@@ -27,31 +61,43 @@ export function ExpenseEntryForm({
     initialData = null,
     category = 'retail-shop',
 }) {
-    const { business, currency } = useBusiness();
+    const { business, currencySymbol, currency: currencyCode } = useBusiness();
+    const { language, t } = useLanguage();
     const domainKey = category || business?.category || 'retail-shop';
+    const isUrdu = language === 'ur';
+    const displayCurrency = currencySymbol || currencyCode || '';
 
     const expenseCategories = useMemo(
         () => getExpenseCategoriesForDomain(domainKey),
         [domainKey]
     );
 
+    const categoryLabel = (cat) => {
+        const key = expenseCategoryTranslationKey(cat.value);
+        return tx(t, key, getExpenseCategoryShopLabel(cat));
+    };
+
+    const [showAccurate, setShowAccurate] = useState(Boolean(initialData?.account_id));
     const [isSaving, setIsSaving] = useState(false);
     const [glAccounts, setGlAccounts] = useState([]);
     const [isLoadingAccounts, setIsLoadingAccounts] = useState(true);
 
-    const [formData, setFormData] = useState({
-        businessId: business?.id,
-        accountId: initialData?.account_id || '',
-        category: initialData?.category
+    const [formData, setFormData] = useState(() => {
+        const initialCat = initialData?.category
             ? normalizeExpenseCategory(initialData.category)
-            : '',
-        amount: initialData?.amount || 0,
-        taxAmount: initialData?.tax_amount || 0,
-        vendorId: initialData?.vendor_id || '',
-        paymentMethod: initialData?.payment_method || 'cash',
-        date: initialData?.date || new Date().toISOString().split('T')[0],
-        description: initialData?.description || '',
-        receiptUrl: initialData?.receipt_url || '',
+            : '';
+        return {
+            businessId: business?.id,
+            accountId: initialData?.account_id || '',
+            category: initialCat,
+            amount: initialData?.amount || '',
+            taxAmount: initialData?.tax_amount || 0,
+            vendorId: initialData?.vendor_id || '',
+            paymentMethod: initialData?.payment_method || 'cash',
+            date: initialData?.date || new Date().toISOString().split('T')[0],
+            description: initialData?.description || '',
+            receiptUrl: initialData?.receipt_url || '',
+        };
     });
 
     useEffect(() => {
@@ -65,29 +111,55 @@ export function ExpenseEntryForm({
     }, [business?.id]);
 
     useEffect(() => {
+        if (initialData?.category || !business?.id) return;
+        const raw = readLastCategory(business.id);
+        if (!raw) return;
+        const last = normalizeExpenseCategory(raw);
+        const exists = expenseCategories.some((c) => c.value === last);
+        if (!exists) return;
+        setFormData((prev) => (prev.category ? prev : { ...prev, category: last }));
+    }, [business?.id, expenseCategories, initialData?.category]);
+
+    useEffect(() => {
         async function fetchAccounts() {
             if (!business?.id) return;
             try {
                 const result = await getGLAccountsAction(business.id);
                 if (result.success) {
-                    setGlAccounts(result.accounts.filter((a) => a.type === 'expense'));
+                    setGlAccounts(
+                        (result.accounts || []).filter(
+                            (a) => String(a.type || '').toLowerCase() === 'expense'
+                        )
+                    );
                 }
             } catch (error) {
                 console.error('Error fetching GL accounts:', error);
-                toast.error('Failed to load expense accounts');
+                toast.error(tx(t, 'expense_err_accounts', 'Failed to load expense accounts'));
             } finally {
                 setIsLoadingAccounts(false);
             }
         }
         fetchAccounts();
-    }, [business?.id]);
+    }, [business?.id, t]);
 
-    const suggestAccountForCategory = (categoryValue) => {
+    const suggestAccountForCategory = (categoryValue, accounts = glAccounts) => {
         const cat = expenseCategories.find((c) => c.value === categoryValue);
-        if (!cat?.account_code || !glAccounts.length) return '';
-        const match = glAccounts.find((a) => String(a.code) === String(cat.account_code));
+        if (!cat?.account_code || !accounts.length) return '';
+        const match = accounts.find((a) => String(a.code) === String(cat.account_code));
         return match ? String(match.id) : '';
     };
+
+    // When GL accounts arrive after a category was already chosen, fill empty account only.
+    useEffect(() => {
+        if (!formData.category || !glAccounts.length) return;
+        const suggested = suggestAccountForCategory(formData.category, glAccounts);
+        if (!suggested) return;
+        setFormData((prev) => {
+            if (prev.accountId) return prev;
+            return { ...prev, accountId: suggested };
+        });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [glAccounts, formData.category]);
 
     const handleCategoryChange = (val) => {
         const normalized = normalizeExpenseCategory(val);
@@ -96,7 +168,8 @@ export function ExpenseEntryForm({
             return {
                 ...prev,
                 category: normalized,
-                accountId: suggested || prev.accountId,
+                // Never keep a previous category's GL account (would mis-post).
+                accountId: suggested || '',
             };
         });
     };
@@ -106,21 +179,25 @@ export function ExpenseEntryForm({
         const categoryValue = formData.category
             ? normalizeExpenseCategory(formData.category)
             : null;
-        const categoryLabel =
-            expenseCategories.find((c) => c.value === categoryValue)?.label ||
-            categoryValue;
+        const catMeta = expenseCategories.find((c) => c.value === categoryValue);
+        const categoryLabelText = catMeta ? categoryLabel(catMeta) : categoryValue;
         const description =
             String(formData.description || '').trim() ||
-            (categoryLabel ? `${categoryLabel} expense` : null);
+            (categoryLabelText ? `${categoryLabelText}` : null);
         const vendorRaw = String(formData.vendorId || '').trim();
         const accountRaw = String(formData.accountId || '').trim();
+        // Easy mode: let the server resolve GL from category. Accurate: honor explicit account.
+        const accountId = showAccurate && accountRaw ? accountRaw : null;
+        const amountNum = Number.parseFloat(String(formData.amount ?? '').replace(/,/g, ''));
+        const taxNum = Number.parseFloat(String(formData.taxAmount ?? 0).replace(/,/g, ''));
 
         return {
             businessId,
-            accountId: accountRaw || null,
+            accountId,
             category: categoryValue,
-            amount: parseFloat(formData.amount),
-            taxAmount: parseFloat(formData.taxAmount || 0),
+            domainKey,
+            amount: Number.isFinite(amountNum) ? amountNum : NaN,
+            taxAmount: Number.isFinite(taxNum) ? Math.max(0, taxNum) : 0,
             vendorId: vendorRaw || null,
             paymentMethod: formData.paymentMethod || 'cash',
             date: formData.date,
@@ -130,23 +207,27 @@ export function ExpenseEntryForm({
     };
 
     const handleSave = async (e) => {
-        e.preventDefault();
+        e?.preventDefault?.();
 
         const payload = buildExpensePayload();
 
         if (!payload.businessId) {
-            toast.error('Business is not ready. Refresh and try again.');
+            toast.error(tx(t, 'expense_err_business', 'Business is not ready. Refresh and try again.'));
             return;
         }
-        if (!payload.accountId) {
-            toast.error('Please select an expense account');
+        if (!payload.category && !payload.accountId) {
+            toast.error(tx(t, 'expense_err_category', 'Select what the money was for'));
+            return;
+        }
+        if (!(Number(payload.amount) > 0)) {
+            toast.error(tx(t, 'expense_err_amount', 'Enter a valid amount'));
             return;
         }
 
         const validation = validateWithSchema(expenseSchema, payload);
         if (!validation.success) {
             const firstError = Object.values(validation.errors)[0];
-            toast.error(firstError || 'Please fix validation errors');
+            toast.error(firstError || tx(t, 'expense_err_validation', 'Please fix validation errors'));
             return;
         }
 
@@ -155,37 +236,46 @@ export function ExpenseEntryForm({
             const result = await createExpenseAction(payload);
 
             if (result.success) {
-                toast.success('Expense recorded successfully');
+                if (payload.category) writeLastCategory(payload.businessId, payload.category);
+                toast.success(tx(t, 'expense_saved', 'Expense recorded'));
                 onSave?.(result.expense);
                 onClose?.();
             } else if (isValidationError(result)) {
                 formatValidationErrors(result);
-                toast.error('Please fix validation errors');
+                toast.error(tx(t, 'expense_err_validation', 'Please fix validation errors'));
             } else {
                 showActionError(result);
             }
         } catch (error) {
             console.error('Error saving expense:', error);
-            toast.error(`Failed to record expense: ${error.message}`);
+            toast.error(
+                `${tx(t, 'expense_err_save', 'Failed to record expense')}: ${error.message}`
+            );
         } finally {
             setIsSaving(false);
         }
     };
 
+    const paymentMethods = [
+        { key: 'cash', label: tx(t, 'expense_pay_cash', 'Cash'), icon: Banknote },
+        { key: 'bank', label: tx(t, 'expense_pay_bank', 'Bank'), icon: CreditCard },
+        { key: 'credit', label: tx(t, 'expense_pay_credit', 'Pay later'), icon: Calendar },
+    ];
+
     return (
         <div className={MOBILE_OVERLAY}>
-            <Card className={cn(MOBILE_OVERLAY_CARD, 'max-w-2xl')}>
-                <CardHeader className="flex shrink-0 flex-row items-center justify-between border-b bg-gradient-to-r from-red-900 to-red-800 px-3 py-3 text-white sm:p-6">
-                    <div className="flex min-w-0 items-center gap-3 sm:gap-4">
-                        <div className="shrink-0 rounded-xl bg-white/10 p-2 text-white ring-1 ring-white/20 sm:rounded-2xl sm:p-3">
-                            <Wallet className="h-5 w-5 sm:h-6 sm:w-6" />
+            <Card className={cn(MOBILE_OVERLAY_CARD, 'max-w-lg', isUrdu && 'font-urdu')}>
+                <CardHeader className="flex shrink-0 flex-row items-center justify-between border-b bg-gradient-to-r from-rose-800 to-rose-700 px-3 py-3 text-white sm:p-5">
+                    <div className="flex min-w-0 items-center gap-3">
+                        <div className="shrink-0 rounded-xl bg-white/10 p-2 text-white ring-1 ring-white/20">
+                            <Wallet className="h-5 w-5" />
                         </div>
                         <div className="min-w-0">
-                            <CardTitle className="text-base font-semibold uppercase tracking-tighter sm:text-2xl">
-                                Record Expense
+                            <CardTitle className="text-base font-semibold tracking-tight sm:text-lg">
+                                {tx(t, 'expense_record_title', 'Record money out')}
                             </CardTitle>
-                            <p className="mt-0.5 hidden text-xs font-bold uppercase tracking-widest text-red-200 sm:block">
-                                {business?.name} · Financial Transactions
+                            <p className="mt-0.5 truncate text-[11px] text-rose-100/90">
+                                {tx(t, 'expense_record_subtitle', 'What you paid from the shop today')}
                             </p>
                         </div>
                     </div>
@@ -194,190 +284,202 @@ export function ExpenseEntryForm({
                         size="icon"
                         onClick={onClose}
                         className="rounded-full text-white/50 hover:bg-white/10 hover:text-white"
+                        aria-label={tx(t, 'expense_close', 'Close')}
                     >
                         <X className="h-5 w-5" />
                     </Button>
                 </CardHeader>
 
-                <CardContent className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-white p-3 sm:p-6">
-                    <form onSubmit={handleSave} className="space-y-4 sm:space-y-6">
-                        <div className={cn(MOBILE_GRID_FIELDS, 'sm:gap-6')}>
-                            <div className="space-y-2">
-                                <Label className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">
-                                    Expense Account (GL) *
-                                </Label>
-                                <Combobox
-                                    options={glAccounts.map((a) => ({
-                                        value: String(a.id),
-                                        label: `${a.code} - ${a.name}`,
-                                        description: a.type || 'Expense',
-                                    }))}
-                                    value={String(formData.accountId || '')}
-                                    onChange={(val) =>
-                                        setFormData((prev) => ({ ...prev, accountId: val }))
-                                    }
-                                    placeholder={
-                                        isLoadingAccounts
-                                            ? 'Loading accounts...'
-                                            : 'Search GL accounts...'
-                                    }
-                                    emptyText="No expense accounts found"
-                                    className="h-12"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">
-                                    Category Tag
-                                </Label>
-                                <Combobox
-                                    options={expenseCategories.map((c) => ({
-                                        value: c.value,
-                                        label: c.label,
-                                    }))}
-                                    value={formData.category || ''}
-                                    onChange={handleCategoryChange}
-                                    placeholder="Select category..."
-                                    emptyText="No categories found"
-                                    className="h-12"
-                                />
+                <CardContent className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-white p-3 sm:p-5">
+                    <form onSubmit={handleSave} className="space-y-4">
+                        <div className="space-y-2">
+                            <Label className="text-[11px] font-semibold text-gray-600">
+                                {tx(t, 'expense_what_for', 'What for?')} *
+                            </Label>
+                            <div className="grid max-h-44 grid-cols-2 gap-1.5 overflow-y-auto sm:grid-cols-3">
+                                {expenseCategories.map((cat) => {
+                                    const selected = formData.category === cat.value;
+                                    return (
+                                        <button
+                                            key={cat.value}
+                                            type="button"
+                                            onClick={() => handleCategoryChange(cat.value)}
+                                            className={cn(
+                                                'rounded-xl border px-2.5 py-2.5 text-left text-[11px] font-semibold leading-snug transition-colors',
+                                                selected
+                                                    ? 'border-rose-400 bg-rose-50 text-rose-900 ring-1 ring-rose-300'
+                                                    : 'border-gray-200 bg-gray-50 text-gray-700 hover:border-gray-300 hover:bg-white'
+                                            )}
+                                        >
+                                            {categoryLabel(cat)}
+                                        </button>
+                                    );
+                                })}
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                            <div className="space-y-2">
-                                <Label className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">
-                                    Amount ({currency}) *
-                                </Label>
-                                <div className="relative">
+                        <div className="space-y-2">
+                            <Label className="text-[11px] font-semibold text-gray-600">
+                                {tx(t, 'expense_how_much', 'How much?')} ({displayCurrency}) *
+                            </Label>
+                            <Input
+                                type="number"
+                                step="0.01"
+                                inputMode="decimal"
+                                className="h-14 rounded-xl border-gray-200 text-2xl font-semibold tabular-nums focus-visible:ring-rose-500/30"
+                                placeholder="0"
+                                value={formData.amount}
+                                onChange={(e) =>
+                                    setFormData((prev) => ({ ...prev, amount: e.target.value }))
+                                }
+                                required
+                                autoFocus
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label className="text-[11px] font-semibold text-gray-600">
+                                {tx(t, 'expense_paid_how', 'Paid how?')}
+                            </Label>
+                            <div className="grid grid-cols-3 gap-1.5">
+                                {paymentMethods.map(({ key, label, icon: Icon }) => (
+                                    <button
+                                        key={key}
+                                        type="button"
+                                        onClick={() =>
+                                            setFormData((prev) => ({ ...prev, paymentMethod: key }))
+                                        }
+                                        className={cn(
+                                            'flex flex-col items-center gap-1 rounded-xl border py-2.5 text-[11px] font-semibold transition-all',
+                                            formData.paymentMethod === key
+                                                ? 'border-emerald-400 bg-emerald-50 text-emerald-900'
+                                                : 'border-gray-200 bg-white text-gray-500 hover:bg-gray-50'
+                                        )}
+                                    >
+                                        <Icon className="h-4 w-4" />
+                                        {label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label className="text-[11px] font-semibold text-gray-600">
+                                {tx(t, 'expense_note_optional', 'Note (optional)')}
+                            </Label>
+                            <Input
+                                className="h-11 rounded-xl border-gray-200"
+                                placeholder={tx(t, 'expense_note_placeholder', 'e.g. fuel for morning route')}
+                                value={formData.description}
+                                onChange={(e) =>
+                                    setFormData((prev) => ({ ...prev, description: e.target.value }))
+                                }
+                            />
+                        </div>
+
+                        <button
+                            type="button"
+                            onClick={() => setShowAccurate((v) => !v)}
+                            className="flex w-full items-center justify-between rounded-xl border border-dashed border-gray-200 bg-gray-50 px-3 py-2 text-[11px] font-semibold text-gray-600 hover:bg-gray-100"
+                        >
+                            <span>{tx(t, 'expense_more_details', 'More details (account, tax, vendor)')}</span>
+                            {showAccurate ? (
+                                <ChevronUp className="h-4 w-4" />
+                            ) : (
+                                <ChevronDown className="h-4 w-4" />
+                            )}
+                        </button>
+
+                        {showAccurate ? (
+                            <div className="space-y-4 rounded-xl border border-gray-100 bg-gray-50/80 p-3">
+                                <div className={cn(MOBILE_GRID_FIELDS, 'sm:gap-4')}>
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+                                            {tx(t, 'expense_gl_account', 'Expense account (books)')}
+                                        </Label>
+                                        <Combobox
+                                            options={glAccounts.map((a) => ({
+                                                value: String(a.id),
+                                                label: `${a.code} - ${a.name}`,
+                                                description: a.type || 'Expense',
+                                            }))}
+                                            value={String(formData.accountId || '')}
+                                            onChange={(val) =>
+                                                setFormData((prev) => ({ ...prev, accountId: val }))
+                                            }
+                                            placeholder={
+                                                isLoadingAccounts
+                                                    ? tx(t, 'expense_loading_accounts', 'Loading accounts...')
+                                                    : tx(t, 'expense_search_accounts', 'Search accounts...')
+                                            }
+                                            emptyText={tx(t, 'expense_no_accounts', 'No expense accounts found')}
+                                            className="h-11"
+                                        />
+                                        <p className="text-[10px] text-gray-400">
+                                            {tx(
+                                                t,
+                                                'expense_gl_hint',
+                                                'Leave blank to pick the account automatically from the category'
+                                            )}
+                                        </p>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+                                            {tx(t, 'expense_date', 'Date')}
+                                        </Label>
+                                        <Input
+                                            type="date"
+                                            className="h-11 rounded-xl border-gray-200 bg-white"
+                                            value={formData.date}
+                                            onChange={(e) =>
+                                                setFormData((prev) => ({
+                                                    ...prev,
+                                                    date: e.target.value,
+                                                }))
+                                            }
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+                                        {tx(t, 'expense_tax_optional', 'Tax included (optional)')}
+                                    </Label>
                                     <Input
                                         type="number"
                                         step="0.01"
-                                        className="h-12 rounded-xl border-gray-200 pl-12 text-lg font-bold tabular-nums shadow-sm transition-all focus:ring-2 focus:ring-red-500"
-                                        placeholder="0.00"
-                                        value={formData.amount}
+                                        className="h-11 rounded-xl border-gray-200 bg-white"
+                                        value={formData.taxAmount}
                                         onChange={(e) =>
                                             setFormData((prev) => ({
                                                 ...prev,
-                                                amount: e.target.value,
-                                            }))
-                                        }
-                                        required
-                                    />
-                                    <span className="pointer-events-none absolute left-3 top-3.5 text-xs font-semibold text-gray-400">
-                                        {currency || ''}
-                                    </span>
-                                </div>
-                            </div>
-                            <div className="space-y-2">
-                                <Label className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">
-                                    Tax Included (Optional)
-                                </Label>
-                                <Input
-                                    type="number"
-                                    step="0.01"
-                                    className="h-12 rounded-xl border-gray-200 shadow-sm transition-all focus:ring-2 focus:ring-red-500"
-                                    placeholder="0.00"
-                                    value={formData.taxAmount}
-                                    onChange={(e) =>
-                                        setFormData((prev) => ({
-                                            ...prev,
-                                            taxAmount: e.target.value,
-                                        }))
-                                    }
-                                />
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                            <div className="space-y-2">
-                                <Label className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">
-                                    Date
-                                </Label>
-                                <div className="relative">
-                                    <Input
-                                        type="date"
-                                        className="h-12 rounded-xl border-gray-200 shadow-sm transition-all focus:ring-2 focus:ring-red-500"
-                                        value={formData.date}
-                                        onChange={(e) =>
-                                            setFormData((prev) => ({
-                                                ...prev,
-                                                date: e.target.value,
+                                                taxAmount: e.target.value,
                                             }))
                                         }
                                     />
-                                    <Calendar className="pointer-events-none absolute right-3 top-3.5 h-5 w-5 text-gray-400" />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+                                        {tx(t, 'expense_vendor_optional', 'Paid to supplier (optional)')}
+                                    </Label>
+                                    <Combobox
+                                        options={vendors.map((v) => ({
+                                            value: String(v.id),
+                                            label: v.name,
+                                            description: v.city || v.phone || '',
+                                        }))}
+                                        value={String(formData.vendorId || '')}
+                                        onChange={(val) =>
+                                            setFormData((prev) => ({ ...prev, vendorId: val }))
+                                        }
+                                        placeholder={tx(t, 'expense_search_vendors', 'Search suppliers...')}
+                                        emptyText={tx(t, 'expense_no_vendors', 'No suppliers — shop expense')}
+                                        className="h-11"
+                                    />
                                 </div>
                             </div>
-                            <div className="space-y-2">
-                                <Label className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">
-                                    Payment Method
-                                </Label>
-                                <div className="flex gap-2">
-                                    {['cash', 'bank', 'credit'].map((method) => (
-                                        <Button
-                                            key={method}
-                                            type="button"
-                                            variant={
-                                                formData.paymentMethod === method
-                                                    ? 'default'
-                                                    : 'outline'
-                                            }
-                                            className={`h-12 flex-1 rounded-xl text-[10px] font-semibold uppercase tracking-widest transition-all ${
-                                                formData.paymentMethod === method
-                                                    ? 'border-none bg-red-600 text-white hover:bg-red-700'
-                                                    : 'border-gray-200 text-gray-400 hover:text-gray-900'
-                                            }`}
-                                            onClick={() =>
-                                                setFormData((prev) => ({
-                                                    ...prev,
-                                                    paymentMethod: method,
-                                                }))
-                                            }
-                                        >
-                                            <CreditCard className="mr-2 h-3 w-3" />
-                                            {method}
-                                        </Button>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">
-                                Paid to Vendor (Optional)
-                            </Label>
-                            <Combobox
-                                options={vendors.map((v) => ({
-                                    value: String(v.id),
-                                    label: v.name,
-                                    description: v.city || v.phone || '',
-                                }))}
-                                value={String(formData.vendorId || '')}
-                                onChange={(val) =>
-                                    setFormData((prev) => ({ ...prev, vendorId: val }))
-                                }
-                                placeholder="Search vendors..."
-                                emptyText="No vendors -- internal expense"
-                                className="h-12"
-                            />
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">
-                                Description / Narrative
-                            </Label>
-                            <textarea
-                                className="h-24 w-full resize-none rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-medium shadow-sm outline-none transition-all focus:ring-2 focus:ring-red-500"
-                                placeholder="Purpose of this expense..."
-                                value={formData.description}
-                                onChange={(e) =>
-                                    setFormData((prev) => ({
-                                        ...prev,
-                                        description: e.target.value,
-                                    }))
-                                }
-                            />
-                        </div>
+                        ) : null}
                     </form>
                 </CardContent>
 
@@ -387,21 +489,21 @@ export function ExpenseEntryForm({
                             variant="ghost"
                             onClick={onClose}
                             disabled={isSaving}
-                            className="h-9 text-xs font-semibold uppercase tracking-widest text-gray-400 hover:text-gray-900"
+                            className="h-10 text-xs font-semibold text-gray-500 hover:text-gray-900"
                         >
-                            Discard
+                            {tx(t, 'expense_discard', 'Cancel')}
                         </Button>
                         <Button
                             disabled={isSaving}
                             onClick={handleSave}
-                            className="flex h-9 items-center gap-2 rounded-xl bg-emerald-600 px-6 text-xs font-semibold uppercase tracking-widest text-white shadow-xl shadow-red-500/20 transition-all hover:bg-emerald-700 active:scale-95 sm:h-12 sm:px-10"
+                            className="flex h-11 items-center gap-2 rounded-xl bg-emerald-600 px-6 text-sm font-semibold text-white shadow-md shadow-emerald-600/20 hover:bg-emerald-700 active:scale-[0.98] sm:px-8"
                         >
                             {isSaving ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />
                             ) : (
                                 <Save className="h-4 w-4" />
                             )}
-                            Record Expense
+                            {tx(t, 'expense_save', 'Save expense')}
                         </Button>
                     </div>
                 </div>

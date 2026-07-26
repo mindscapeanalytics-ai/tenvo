@@ -74,7 +74,15 @@ export function GlobalCommandPalette() {
             <span>Open POS Terminal</span>
             <CommandShortcut>⌘P</CommandShortcut>
           </CommandItem>
-          <CommandItem onSelect={() => navigateTo('/finance/expenses?action=new')}>
+          <CommandItem
+            onSelect={() =>
+              runCommand(() => {
+                window.dispatchEvent(
+                  new CustomEvent('open-modal', { detail: { modalId: 'expense' } })
+                );
+              })
+            }
+          >
             <Receipt className="mr-2 h-4 w-4" />
             <span>Record Expense</span>
           </CommandItem>

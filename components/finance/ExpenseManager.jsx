@@ -17,6 +17,7 @@ import {
     getExpenseCategoriesForDomain,
     normalizeExpenseCategory,
     findExpenseCategory,
+    getExpenseCategoryShopLabel,
 } from '@/lib/utils/expenseCategories';
 import toast from 'react-hot-toast';
 import { showActionError } from '@/lib/utils/formErrorHandler';
@@ -35,7 +36,11 @@ export function ExpenseManager({
     const [deletingId, setDeletingId] = useState(null);
 
     const categories = useMemo(
-        () => getExpenseCategoriesForDomain(businessCategory),
+        () =>
+            getExpenseCategoriesForDomain(businessCategory).map((cat) => ({
+                ...cat,
+                label: getExpenseCategoryShopLabel(cat),
+            })),
         [businessCategory]
     );
 
@@ -213,7 +218,9 @@ export function ExpenseManager({
                                         </p>
                                         <p className="text-[10px] text-gray-400">
                                             {formatDisplayDate(expense.date)} ·{' '}
-                                            {cat?.label || expense.category}
+                                            {cat
+                                                ? getExpenseCategoryShopLabel(cat)
+                                                : expense.category}
                                         </p>
                                     </div>
                                     <span className="text-sm font-semibold text-red-600">

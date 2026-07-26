@@ -3,7 +3,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Receipt, Truck, FileText, BarChart3, TrendingUp, Layers } from 'lucide-react';
+import { Receipt, Truck, FileText, BarChart3, TrendingUp, Layers, Wallet } from 'lucide-react';
 import { RevenueAreaChart } from '@/components/AdvancedCharts';
 import { formatCurrency } from '@/lib/currency';
 import { useRouter } from 'next/navigation';
@@ -17,10 +17,12 @@ export function FinancialOverview({
     role = 'owner',
     onTabChange,
     onFinanceSubTab,
+    onQuickAction,
 }) {
     const router = useRouter();
 
     const quickActions = [
+        { label: 'Log Expense', icon: Wallet, actionId: 'log-expense' },
         { label: 'View Invoices', icon: Receipt, tab: 'invoices' },
         { label: 'Purchase Orders', icon: Truck, tab: 'purchases' },
         { label: 'General Ledger', icon: FileText, tab: 'finance', financeSubTab: 'general-ledger' },
@@ -41,13 +43,25 @@ export function FinancialOverview({
                     <CardDescription>Direct shortcuts to common financial tasks</CardDescription>
                 </CardHeader>
                 <CardContent className="pt-6">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
                         {filteredActions.map((item, idx) => (
                             <Button
                                 key={idx}
                                 variant="outline"
                                 className="h-20 flex flex-col items-center justify-center gap-2 rounded-xl hover:bg-wine/5 hover:border-wine/20 border-gray-200 group transition-all"
                                 onClick={() => {
+                                    if (item.actionId) {
+                                        if (onQuickAction) {
+                                            onQuickAction(item.actionId);
+                                        } else {
+                                            window.dispatchEvent(
+                                                new CustomEvent('open-modal', {
+                                                    detail: { modalId: 'expense' },
+                                                })
+                                            );
+                                        }
+                                        return;
+                                    }
                                     if (item.tab) {
                                         onTabChange(item.tab);
                                         if (item.financeSubTab && onFinanceSubTab) {

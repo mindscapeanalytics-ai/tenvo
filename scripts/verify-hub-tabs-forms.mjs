@@ -335,6 +335,34 @@ const easyDash = read('components/dashboard/easy/EasyBusinessDashboard.tsx');
 if (!easyDash.includes("log-expense")) {
   mark('Easy dashboard missing Log expense CTA');
 } else ok('Easy dashboard Log expense CTA');
+if (!expenseForm.includes('expense_record_title') || !expenseForm.includes('Record money out')) {
+  mark('ExpenseEntryForm missing Easy shopkeeper title');
+} else ok('ExpenseEntryForm Easy shopkeeper title');
+if (!expenseForm.includes('More details')) {
+  mark('ExpenseEntryForm missing Accurate More details expand');
+} else ok('ExpenseEntryForm Accurate expand');
+const resolveExpense = read('lib/utils/resolveExpenseAccount.js');
+if (!resolveExpense.includes('resolveExpenseAccountId')) {
+  mark('resolveExpenseAccountId helper missing');
+} else ok('resolveExpenseAccountId helper present');
+const expenseAction = read('lib/actions/basic/expense.js');
+if (!expenseAction.includes('resolveExpenseAccountId')) {
+  mark('createExpenseAction not resolving GL account');
+} else ok('createExpenseAction resolves GL from category');
+const finOverview = read('components/dashboard/FinancialOverview.jsx');
+if (!finOverview.includes("actionId: 'log-expense'") && !finOverview.includes('log-expense')) {
+  mark('FinancialOverview missing Log Expense quick action');
+} else ok('FinancialOverview Log Expense quick action');
+const globalPalette = read('components/GlobalCommandPalette.jsx');
+if (globalPalette.includes('/finance/expenses?action=new')) {
+  mark('GlobalCommandPalette still uses stale /finance/expenses path');
+} else if (!globalPalette.includes("modalId: 'expense'") && !globalPalette.includes('modalId: "expense"')) {
+  mark('GlobalCommandPalette missing open-modal expense');
+} else ok('GlobalCommandPalette opens expense modal');
+const translationsSrc = read('lib/translations.js');
+if (!translationsSrc.includes('expense_record_title:') || !translationsSrc.includes('اخراجات لکھیں')) {
+  mark('translations missing expense Urdu keys');
+} else ok('Expense EN/UR translation keys present');
 const bankRec = read('components/finance/BankReconciliation.jsx');
 if (!bankRec.includes('tablesMissing')) {
   mark('BankReconciliation missing tables-missing empty state');
