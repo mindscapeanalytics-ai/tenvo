@@ -5,6 +5,8 @@ import { cn } from "@/lib/utils"
  * @typedef {Object} InputProps
  * @property {string} [className]
  * @property {string} [type]
+ * @property {string} [id]
+ * @property {string} [name]
  * @property {any} [value]
  * @property {(e: any) => void} [onChange]
  * @property {string} [placeholder]
@@ -18,7 +20,12 @@ import { cn } from "@/lib/utils"
  */
 
 /** @type {React.ForwardRefExoticComponent<InputProps & React.InputHTMLAttributes<HTMLInputElement> & React.RefAttributes<HTMLInputElement>>} */
-const Input = React.forwardRef(({ className, type, ...props }, ref) => {
+const Input = React.forwardRef(({ className, type, id, name, ...props }, ref) => {
+  // Chrome / a11y: form fields should expose id or name for autofill association (MDN <input>).
+  // useId is SSR-safe; skip auto-id when the caller already set id or name.
+  const generatedId = React.useId()
+  const resolvedId = id ?? (name ? undefined : generatedId)
+
   return (
     <input
       type={type}
@@ -28,10 +35,11 @@ const Input = React.forwardRef(({ className, type, ...props }, ref) => {
       )}
       ref={ref}
       {...props}
+      id={resolvedId}
+      name={name}
     />
   )
 })
 Input.displayName = "Input"
 
 export { Input }
-

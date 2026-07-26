@@ -272,7 +272,10 @@ export function BusinessSwitcherEnhanced({ isCollapsed = false }) {
                         <div className="relative">
                             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-400" />
                             <Input
-                                type="text"
+                                id="hub-business-switcher-search"
+                                name="business-search"
+                                type="search"
+                                autoComplete="off"
                                 placeholder="Search businesses..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}

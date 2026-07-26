@@ -1,7 +1,10 @@
 import * as React from "react"
 import { cn } from "@/lib/utils"
 
-const Textarea = React.forwardRef(({ className, ...props }, ref) => {
+const Textarea = React.forwardRef(({ className, id, name, ...props }, ref) => {
+    const generatedId = React.useId()
+    const resolvedId = id ?? (name ? undefined : generatedId)
+
     return (
         <textarea
             className={cn(
@@ -10,6 +13,8 @@ const Textarea = React.forwardRef(({ className, ...props }, ref) => {
             )}
             ref={ref}
             {...props}
+            id={resolvedId}
+            name={name}
         />
     )
 })

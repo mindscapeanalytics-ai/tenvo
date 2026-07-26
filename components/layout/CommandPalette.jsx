@@ -104,7 +104,11 @@ export function CommandPalette() {
 
     return (
         <CommandDialog open={open} onOpenChange={setOpen}>
-            <CommandInput placeholder="Search modules, actions, features..." />
+            <CommandInput
+                id="hub-command-palette-search"
+                name="command-palette-search"
+                placeholder="Search modules, actions, features..."
+            />
             <CommandList>
                 <CommandEmpty>No results found.</CommandEmpty>
 

@@ -18,7 +18,11 @@ const Command = React.forwardRef(({ className, ...props }, ref) => (
 ))
 Command.displayName = CommandPrimitive.displayName
 
-const CommandInput = React.forwardRef(({ className, ...props }, ref) => (
+const CommandInput = React.forwardRef(({ className, id, name, ...props }, ref) => {
+  const generatedId = React.useId()
+  const resolvedId = id ?? (name ? undefined : generatedId)
+
+  return (
   <div className="flex items-center border-b px-3" cmdk-input-wrapper="">
     <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
     <CommandPrimitive.Input
@@ -28,9 +32,12 @@ const CommandInput = React.forwardRef(({ className, ...props }, ref) => (
         className
       )}
       {...props}
+      id={resolvedId}
+      name={name}
     />
   </div>
-))
+  )
+})
 
 CommandInput.displayName = CommandPrimitive.Input.displayName
 

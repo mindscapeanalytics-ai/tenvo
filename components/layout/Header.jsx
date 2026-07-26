@@ -431,6 +431,10 @@ export function Header({ onMenuClick }) {
                             <div className="relative pt-2">
                                 <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
                                 <Input
+                                    id="hub-header-search-mobile"
+                                    name="hub-search"
+                                    type="search"
+                                    autoComplete="off"
                                     placeholder={t.search_placeholder}
                                     className="h-9 rounded-xl border-gray-200 bg-gray-50 pl-9 text-xs"
                                     value={searchQuery}
@@ -478,6 +482,10 @@ export function Header({ onMenuClick }) {
                     <div className="relative w-full group">
                         <Search className={`absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 group-focus-within:text-brand-primary transition-colors ${language === 'ur' ? 'right-3' : 'left-3'}`} />
                         <Input
+                            id="hub-header-search"
+                            name="hub-search"
+                            type="search"
+                            autoComplete="off"
                             placeholder={t.search_placeholder + '...  (/)'}
                             className={`h-9 text-xs bg-gray-50 border-gray-200/50 focus:bg-white focus:border-brand-100 focus:ring-4 focus:ring-brand-50 transition-all rounded-xl ${language === 'ur' ? 'pr-9' : 'pl-9'}`}
                             value={searchQuery}
