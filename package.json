@@ -31,6 +31,7 @@
     "verify:inventory-domains": "bun scripts/verify-inventory-domains.mjs",
     "verify:inventory-wiring": "bun scripts/verify-inventory-wiring.mjs",
     "verify:barcode-wiring": "bun scripts/verify-barcode-wiring.mjs",
+    "verify:performance-wiring": "node scripts/verify-performance-wiring.mjs",
     "fonts:sync": "node scripts/sync-open-sans-fonts.mjs",
     "verify:regional-market": "bun scripts/verify-regional-market.mjs",
     "verify:registration-flow": "npx tsx scripts/verify-registration-flow.mjs",
