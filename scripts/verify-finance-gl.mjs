@@ -57,8 +57,17 @@ includes('components/TaxComplianceManager.jsx', 'periodPos', 'GST includes POS t
 
 // A/R & A/P aging (Statements)
 includes('lib/utils/agingBuckets.js', 'bucketAgingRows', 'shared aging bucket helper');
-includes('lib/services/InvoicePaymentService.js', 'calculate_invoice_balance(i.id)', 'AR aging uses invoice balance function');
+includes('lib/services/InvoicePaymentService.js', 'LEFT JOIN (\n                        SELECT invoice_id, SUM(amount) AS amount_paid', 'AR aging uses aggregated payment join (not N+1 balance fn)');
 includes('lib/services/InvoicePaymentService.js', 'bucketAgingRows', 'AR aging buckets outstanding balance');
+{
+  const agingSrc = read('lib/services/InvoicePaymentService.js');
+  const agingStart = agingSrc.indexOf('getAgingReport');
+  const agingSlice = agingStart >= 0 ? agingSrc.slice(agingStart, agingStart + 2500) : '';
+  assert(
+    agingSlice.length > 0 && !agingSlice.includes('calculate_invoice_balance(i.id)'),
+    'AR aging query must not call calculate_invoice_balance per invoice'
+  );
+}
 assert(
   !read('lib/services/InvoicePaymentService.js').includes('FROM invoice_aging'),
   'AR aging does not depend on invoice_aging view at runtime'

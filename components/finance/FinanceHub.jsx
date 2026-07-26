@@ -105,7 +105,12 @@ function CreditNotesPanel({ businessId, creditNotes, currency, onRefresh }) {
         if (!businessId) return;
         setLoadingInvoices(true);
         try {
-            const res = await getInvoicesAction(businessId);
+            // Credit notes need line items for prefill — opt in explicitly (list default is headers-only).
+            const res = await getInvoicesAction(businessId, {
+                limit: 200,
+                offset: 0,
+                includeItems: true,
+            });
             if (res.success) {
                 // Only show paid/partially_paid invoices eligible for credit notes
                 setInvoices((res.invoices || []).filter(inv =>

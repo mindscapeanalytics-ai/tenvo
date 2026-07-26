@@ -273,6 +273,8 @@ assert(uiSrc.includes('printMilkHisabDayBreakdownBill'), 'UI must print day Y/N 
 assert(uiSrc.includes('getMilkHisabCustomerDayBreakdownAction'), 'UI must load day breakdown');
 assert(uiSrc.includes('onPrintUrdu') || uiSrc.includes("billLocale: localeKey"), 'UI must offer Urdu print');
 assert(uiSrc.includes('اردو'), 'UI must show Urdu print label');
+assert(uiSrc.includes('resolveBusinessCountryIso') && uiSrc.includes("=== 'PK'"), 'Urdu bills must gate on Pakistan country');
+assert(uiSrc.includes('urduBillsEnabled'), 'BillsSheet must receive urduBillsEnabled');
 assert(uiSrc.includes('Generate weekly') || uiSrc.includes('weekly'), 'UI must support weekly bills');
 assert(uiSrc.includes('type="week"'), 'UI must use week picker');
 assert(uiSrc.includes('sendMilkHisabReminderAction'), 'UI must wire reminders');

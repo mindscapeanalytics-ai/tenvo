@@ -342,6 +342,23 @@ if (dashKpis.includes('totalRevenue - totalPurchases') && !dashKpis.includes('co
 } else {
   ok('Overview grossProfit uses revenue − COGS');
 }
+if (!dashKpis.includes('product_display_stock')) {
+  mark('getDashboardKPIs must aggregate inventory via product_display_stock CTE');
+} else {
+  ok('Overview inventory KPIs use grouped display-stock CTE');
+}
+
+const dashClient = read('app/business/[category]/DashboardClient.jsx');
+if (!dashClient.includes("activeTab === 'inventory'") && !dashClient.includes("['inventory', 'warehouses']")) {
+  mark('DashboardClient must handle inventory tab data loading');
+} else if (
+  !dashClient.includes("detailLevel: 'grid'") ||
+  !dashClient.includes('inventoryNeedsGridUpgrade')
+) {
+  mark('DashboardClient inventory tab must upgrade list → grid when needed');
+} else {
+  ok('Inventory tab progressive list→grid enrichment wired');
+}
 
 if (!settingsMgr.includes('history.replaceState')) {
   mark('Settings section URL sync must use history.replaceState (no soft-nav)');

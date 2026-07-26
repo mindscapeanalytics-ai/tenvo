@@ -591,10 +591,17 @@ function BusinessDashboardContent() {
       return;
     }
 
-    // Visual inventory paints from shell list; Busy/batch/POS upgrade to grid when needed.
+    // Visual inventory paints from shell list; Busy/batch/POS/Inventory upgrade to grid when needed.
     if (['inventory', 'warehouses'].includes(activeTab)) {
       if (!moduleReady.inventoryCatalog && !loadingModules.inventory) {
         void fetchInventory({ fullCatalog: true, detailLevel: 'list' });
+      } else if (
+        moduleReady.inventoryCatalog &&
+        !loadingModules.inventory &&
+        inventoryNeedsGridUpgrade
+      ) {
+        // Phase-2: Inventory tab background enrichment list → grid (non-blocking).
+        void fetchInventory({ force: true, fullCatalog: true, detailLevel: 'grid' });
       }
       return;
     }
@@ -1800,12 +1807,11 @@ function BusinessDashboardContent() {
           throw new Error(posResult?.error || 'POS transaction failed');
         }
 
-        // Return immediately — hub refreshes are background only (instant till feel).
+        // Return immediately — lean background refresh (shell KPIs via debounced scheduleAnalyticsRefresh).
+        // Avoid fetchFinance(force) overwrite of Overview SOT + fat sales/full fan.
         void Promise.allSettled([
-          fetchSales({ force: true, mode: 'full' }),
-          fetchInventory({ force: true, fullCatalog: true }),
-          fetchFinance({ force: true }),
-          fetchExpenses(),
+          fetchSales({ force: true, mode: 'invoices' }),
+          fetchInventory({ force: true, fullCatalog: true, detailLevel: 'grid' }),
         ]);
         scheduleAnalyticsRefresh?.();
         return {

@@ -220,15 +220,32 @@ if (!exists(constantsPath)) {
   if (/SELECT \* FROM invoices/.test(dashboardKpis)) {
     mark('getDashboardKPIs must not SELECT * FROM invoices (use column-minimal CTEs)');
   }
+  if (!dashboardKpis.includes('product_display_stock') || !dashboardKpis.includes('sellable_location_qty')) {
+    mark('getDashboardKPIs inventory must use grouped product_display_stock CTE (not per-product correlated EXISTS)');
+  }
+  if (/EXISTS \(\s*SELECT 1 FROM product_stock_locations/.test(dashboardKpis)) {
+    mark('getDashboardKPIs must not use correlated EXISTS on product_stock_locations');
+  }
 
   const productService = read('lib/services/ProductService.js');
   if (!productService.includes('detailLevel') || !productService.includes('_detailLevel')) {
     mark('ProductService.getProducts must support detailLevel / _detailLevel');
   }
+  if (!productService.includes('unbounded') || !productService.includes('DEFAULT_PAGE')) {
+    mark('ProductService.getProducts must default-page when limit/offset omitted (unbounded opt-in)');
+  }
+
+  const invoiceAction = read('lib/actions/basic/invoice.js');
+  if (!invoiceAction.includes('includeItems = false')) {
+    mark('getInvoicesAction must default includeItems to false (headers-only)');
+  }
 
   const dataCtx = read('lib/context/DataContext.js');
   if (!dataCtx.includes('includeItems: false')) {
     mark('DataContext fetchSales must keep includeItems false for list modes');
+  }
+  if (!dataCtx.includes('HUB_SHELL_DEFERRED_REVALIDATE_MS') || !dataCtx.includes('shellDeferredRevalidateTimerRef')) {
+    mark('DataContext must defer soft-revalidate after SSR/cache paint (avoid double bootstrap)');
   }
   if (!dataCtx.includes('inventoryPendingForceRef')) {
     mark('DataContext must coalesce inventory force refreshes (inventoryPendingForceRef)');

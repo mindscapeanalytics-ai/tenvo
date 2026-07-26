@@ -53,6 +53,7 @@ import {
   printMilkHisabThermalBillFromRow,
 } from '@/lib/print/milkHisabThermalBill';
 import { MARKETING_STAT_VALUE } from '@/lib/utils/typography';
+import { resolveBusinessCountryIso } from '@/lib/utils/businessRegionalContext';
 
 function todayKey() {
   return toMilkHisabDateKey(new Date());
@@ -73,6 +74,7 @@ function currentWeek() {
 export function MilkRouteHisab({ businessId, category }) {
   const { currency, business, planTier } = useBusiness();
   const handle = business?.handle || business?.domain || category;
+  const urduBillsEnabled = resolveBusinessCountryIso(business) === 'PK';
   const offlineEnabled = isMilkHisabOfflineEnabled({
     category: business?.category || category,
     planTier,
@@ -602,7 +604,11 @@ export function MilkRouteHisab({ businessId, category }) {
       notify.error('No billable amount for this customer');
       return;
     }
-    const localeKey = billLocale === 'ur' ? 'ur' : 'en';
+    const localeKey = billLocale === 'ur' && urduBillsEnabled ? 'ur' : 'en';
+    if (billLocale === 'ur' && !urduBillsEnabled) {
+      notify.error('Urdu bills are only available for Pakistan businesses');
+      return;
+    }
     const printKey = `${row.invoiceId || row.customerId}:${mode}:${localeKey}`;
     setPrintingId(printKey);
     try {
@@ -1130,7 +1136,8 @@ export function MilkRouteHisab({ businessId, category }) {
         <p className="text-xs text-gray-500">
           Billing period: <span className="font-semibold text-gray-700">{periodLabel}</span>
           {billsFromCache ? ' · Offline cache' : ''}
-          {' · '}Generate bills, mark Unpaid/Paid, print 58mm EN or اردو
+          {' · '}Generate bills, mark Unpaid/Paid, print 58mm
+          {urduBillsEnabled ? ' EN or اردو' : ' EN'}
           {' · '}WhatsApp remind only when unpaid
         </p>
       ) : null}
@@ -1165,6 +1172,7 @@ export function MilkRouteHisab({ businessId, category }) {
           remindingId={remindingId}
           paymentBusyId={paymentBusyId}
           paymentDisabled={!isOnline}
+          urduBillsEnabled={urduBillsEnabled}
           onOpenInvoices={openInvoices}
           onPaymentStatus={handleBillPaymentStatus}
           onPrint={(row) => handlePrintBill(row, 'print', 'en')}
@@ -1521,6 +1529,7 @@ function BillsSheet({
   remindingId,
   paymentBusyId,
   paymentDisabled = false,
+  urduBillsEnabled = false,
   onOpenInvoices,
   onPaymentStatus,
   onPrint,
@@ -1602,39 +1611,43 @@ function BillsSheet({
                   <Download className="h-3.5 w-3.5" />
                 )}
               </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                className="h-8 px-2 font-urdu text-[11px] leading-none"
-                disabled={busy}
-                onClick={() => onPrintUrdu?.(row)}
-                title="اردو بل پرنٹ کریں"
-              >
-                {spin('print', 'ur') ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  'اردو'
-                )}
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                className="h-8 px-2 font-urdu text-[11px] leading-none"
-                disabled={busy}
-                onClick={() => onPdfUrdu?.(row)}
-                title="اردو بل PDF"
-              >
-                {spin('pdf', 'ur') ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <span className="inline-flex items-center gap-0.5">
-                    <Download className="h-3 w-3" />
-                    PDF
-                  </span>
-                )}
-              </Button>
+              {urduBillsEnabled ? (
+                <>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-8 px-2 font-urdu text-[11px] leading-none"
+                    disabled={busy}
+                    onClick={() => onPrintUrdu?.(row)}
+                    title="اردو بل پرنٹ کریں"
+                  >
+                    {spin('print', 'ur') ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      'اردو'
+                    )}
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="h-8 px-2 font-urdu text-[11px] leading-none"
+                    disabled={busy}
+                    onClick={() => onPdfUrdu?.(row)}
+                    title="اردو بل PDF"
+                  >
+                    {spin('pdf', 'ur') ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <span className="inline-flex items-center gap-0.5">
+                        <Download className="h-3 w-3" />
+                        PDF
+                      </span>
+                    )}
+                  </Button>
+                </>
+              ) : null}
             </>
           ) : (
             <span className="text-gray-300">-</span>
@@ -1847,36 +1860,40 @@ function BillsSheet({
                               <Download className="h-3.5 w-3.5" />
                             )}
                           </Button>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            className="h-8 px-2 font-urdu text-[11px] leading-none"
-                            disabled={busy}
-                            onClick={() => onPrintUrdu?.(row)}
-                            title="اردو بل پرنٹ کریں"
-                          >
-                            {spin('print', 'ur') ? (
-                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            ) : (
-                              'اردو'
-                            )}
-                          </Button>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="ghost"
-                            className="h-8 px-2"
-                            disabled={busy}
-                            onClick={() => onPdfUrdu?.(row)}
-                            title="اردو بل PDF"
-                          >
-                            {spin('pdf', 'ur') ? (
-                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            ) : (
-                              <Download className="h-3.5 w-3.5" />
-                            )}
-                          </Button>
+                          {urduBillsEnabled ? (
+                            <>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                className="h-8 px-2 font-urdu text-[11px] leading-none"
+                                disabled={busy}
+                                onClick={() => onPrintUrdu?.(row)}
+                                title="اردو بل پرنٹ کریں"
+                              >
+                                {spin('print', 'ur') ? (
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                ) : (
+                                  'اردو'
+                                )}
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="ghost"
+                                className="h-8 px-2"
+                                disabled={busy}
+                                onClick={() => onPdfUrdu?.(row)}
+                                title="اردو بل PDF"
+                              >
+                                {spin('pdf', 'ur') ? (
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                ) : (
+                                  <Download className="h-3.5 w-3.5" />
+                                )}
+                              </Button>
+                            </>
+                          ) : null}
                         </>
                       ) : (
                         <span className="text-gray-300">-</span>

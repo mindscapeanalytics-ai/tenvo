@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { DataTable } from './DataTable';
 import { cn } from '@/lib/utils';
+import dynamic from 'next/dynamic';
 import { BusyGrid } from './BusyGrid';
 import { readDomainFieldValue } from '@/lib/utils/domainHelpers';
 import { buildInventoryGridColumns, readGridCellValue } from '@/lib/utils/inventoryGridColumns';
@@ -37,8 +38,6 @@ import { mapProductField, preserveRelationalData, processFieldValue } from '@/li
 import { scopeProductsToBusiness, isForeignTenantProduct } from '@/lib/utils/inventoryTenancy';
 import { ShortcutsHelp } from './inventory/ShortcutsHelp';
 import { AdvancedSearch } from './AdvancedSearch';
-import { SmartRestockEngine } from './SmartRestockEngine';
-import { DemandForecast } from './DemandForecast';
 import { InventoryCommandBar } from './inventory/InventoryCommandBar';
 import { InventoryMobileHub } from './inventory/mobile/InventoryMobileHub';
 import { InventoryMobileProductList } from './inventory/mobile/InventoryMobileProductList';
@@ -61,9 +60,6 @@ import { mergeScannedProductIntoList } from '@/lib/utils/productScanLookup';
 import { canUseBarcodeScan } from '@/lib/utils/barcodeAccess';
 import { useInventoryScan } from '@/lib/hooks/useInventoryScan';
 import { AdvancedInventoryFeatures } from './AdvancedInventoryFeatures';
-import { MultiLocationInventory } from './MultiLocationInventory';
-import { ManufacturingModule } from './ManufacturingModule';
-import { QuotationOrderChallanManager } from './QuotationOrderChallanManager';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
@@ -139,6 +135,58 @@ import { resolveInventoryDomainFeatures } from '@/lib/utils/inventoryDomainFeatu
  * A comprehensive dashboard for managing products, batches, serials, and inventory logistics.
  */
 import { getProductsAction, getProductAction, deleteProductAction, createProductAction, updateProductAction, toggleProductActiveAction } from '@/lib/actions/standard/inventory/product';
+
+const SmartRestockEngine = dynamic(
+  () => import('./SmartRestockEngine').then((m) => m.SmartRestockEngine),
+  { ssr: false }
+);
+const DemandForecast = dynamic(
+  () => import('./DemandForecast').then((m) => m.DemandForecast),
+  { ssr: false }
+);
+const MultiLocationInventory = dynamic(
+  () => import('./MultiLocationInventory').then((m) => m.MultiLocationInventory),
+  { ssr: false }
+);
+const ManufacturingModule = dynamic(
+  () => import('./ManufacturingModule').then((m) => m.ManufacturingModule),
+  { ssr: false }
+);
+const QuotationOrderChallanManager = dynamic(
+  () => import('./QuotationOrderChallanManager').then((m) => m.QuotationOrderChallanManager),
+  { ssr: false }
+);
+
+/** Paged grid catalog for standalone InventoryManager (never unbounded findMany). */
+async function fetchInventoryGridPages(businessId, { pageSize = 200, maxPages = 50 } = {}) {
+  const all = [];
+  let offset = 0;
+  let hasMore = true;
+  let page = 0;
+  let lastError = null;
+  while (hasMore && page < maxPages) {
+    const res = await getProductsAction(businessId, {
+      includeSerials: false,
+      detailLevel: 'grid',
+      limit: pageSize,
+      offset,
+    });
+    if (!res?.success) {
+      lastError = res?.error || 'Failed to load inventory';
+      break;
+    }
+    const pageProducts = res.products || [];
+    all.push(...pageProducts);
+    hasMore = Boolean(res.hasMore);
+    offset += pageSize;
+    page += 1;
+    if (pageProducts.length === 0) break;
+  }
+  if (lastError && all.length === 0) {
+    return { success: false, error: lastError, products: [] };
+  }
+  return { success: true, products: all };
+}
 
 /** Normalize domain_data before merging, JSON strings must not be object-spread or saves corrupt */
 function parseProductDomainData(raw) {
@@ -335,7 +383,7 @@ export function InventoryManager({
     if (!businessId || (initialProducts?.length > 0) || refreshData || resyncCatalog) return;
     setLoading(true);
     try {
-      const res = await getProductsAction(businessId, { includeSerials: false, detailLevel: 'grid' });
+      const res = await fetchInventoryGridPages(businessId);
       if (res.success) {
         setProducts(deduplicateProducts(scopeProductsToBusiness(res.products, businessId)));
         setLastSyncedAt(new Date());
@@ -364,7 +412,7 @@ export function InventoryManager({
       if (typeof resyncCatalog === 'function' || typeof refreshData === 'function') {
         await runCatalogResync();
       } else if (businessId) {
-        const res = await getProductsAction(businessId, { includeSerials: false, detailLevel: 'grid' });
+        const res = await fetchInventoryGridPages(businessId);
         if (res.success) {
           setProducts(deduplicateProducts(res.products));
         } else {
@@ -388,7 +436,7 @@ export function InventoryManager({
       return;
     }
     if (businessId) {
-      const res = await getProductsAction(businessId, { includeSerials: false, detailLevel: 'grid' });
+      const res = await fetchInventoryGridPages(businessId);
       if (res.success) {
         setProducts(deduplicateProducts(res.products));
       }
@@ -586,10 +634,7 @@ export function InventoryManager({
         if (typeof resyncCatalog === 'function' || typeof refreshData === 'function') {
           await runCatalogResync();
         } else {
-          const res = await getProductsAction(businessId, {
-            includeSerials: false,
-            detailLevel: 'grid',
-          });
+          const res = await fetchInventoryGridPages(businessId);
           if (!cancelled && res.success) {
             setProducts(deduplicateProducts(scopeProductsToBusiness(res.products, businessId)));
           }
