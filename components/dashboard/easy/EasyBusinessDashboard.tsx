@@ -765,11 +765,21 @@ export function EasyBusinessDashboard(props: EasyBusinessDashboardProps) {
   const dualSpark = useMemo(() => normalizeDualSparkline(chartData, 6), [chartData]);
 
   // Headers-only invoices have no line items — prefer sales-performance top products (shell idle prefetch).
-  const dateFromISO = toAnalyticsIsoDate(dateRange?.from) || toAnalyticsIsoDate(new Date());
-  const dateToISO = toAnalyticsIsoDate(dateRange?.to) || toAnalyticsIsoDate(new Date());
+  const dateFromISO =
+    toAnalyticsIsoDate(dateRange?.from) || toAnalyticsIsoDate(new Date()) || '';
+  const dateToISO =
+    toAnalyticsIsoDate(dateRange?.to) || toAnalyticsIsoDate(new Date()) || '';
+  const salesPerfBusinessId = businessId ?? '';
   const salesPerfQuery = useQuery({
-    queryKey: hubSalesPerformanceQueryKey(businessId, dateFromISO, dateToISO, 'all', null),
+    queryKey: hubSalesPerformanceQueryKey(
+      salesPerfBusinessId,
+      dateFromISO,
+      dateToISO,
+      'all',
+      null
+    ),
     queryFn: async () => {
+      if (!businessId || !dateFromISO || !dateToISO) return null;
       const res = await getSalesPerformanceAction(businessId, {
         from: dateFromISO,
         to: dateToISO,
@@ -777,8 +787,14 @@ export function EasyBusinessDashboard(props: EasyBusinessDashboardProps) {
         category: null,
         topLimit: 8,
       });
-      if (!res?.success) return null;
-      return res;
+      const payload = res as unknown as {
+        success?: boolean;
+        topProducts?: Array<Record<string, unknown>>;
+      };
+      if (!payload?.success) return null;
+      return {
+        topProducts: Array.isArray(payload.topProducts) ? payload.topProducts : [],
+      };
     },
     enabled: Boolean(businessId && dateFromISO && dateToISO),
     staleTime: 60_000,
