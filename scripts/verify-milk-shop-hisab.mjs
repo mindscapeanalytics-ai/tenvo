@@ -25,8 +25,13 @@ import {
   buildMilkHisabDayBreakdownGrid,
   formatMilkHisabDayLine,
   isMilkHisabBillRemindable,
+  readMilkHisabPeriodPayment,
+  patchMilkHisabPeriodPayment,
+  resolveMilkHisabRowPaymentStatus,
+  buildMilkHisabBillLinesForReminder,
   MILK_HISAB_COLLECTION_NOTE,
 } from '../lib/storefront/milkShopHisab.js';
+import { buildMilkHisabReminderMessage } from '../lib/storefront/milkShopHisabReminders.js';
 import {
   normalizeMilkHisabBillLocale,
   getMilkHisabDaySheetCopy,
@@ -176,17 +181,58 @@ assert(shortMilkHisabProductLabel({ name: 'Anhaar Farm Fresh Milk', hisabShortLa
 assert(shortMilkHisabProductLabel({ name: 'FARM FRESH EGGS (dozen)' }, 14) === 'Eggs', 'hint eggs from name');
 
 const kpi = buildMilkHisabPeriodKpis([
-  { amount: 100, billed: false, stopCount: 2 },
+  { amount: 100, billed: false, paymentStatus: 'unpaid', stopCount: 2 },
   { amount: 200, billed: true, paymentStatus: 'unpaid', stopCount: 3 },
   { amount: 50, billed: true, paymentStatus: 'paid', stopCount: 1 },
   { amount: 0, billed: false, stopCount: 1 },
 ]);
 assert(kpi.customers === 3, 'KPI customers ignores zero unbilled');
 assert(kpi.unbilledCount === 1 && kpi.unbilledAmount === 100, 'KPI unbilled');
-assert(kpi.unpaidCount === 1 && kpi.unpaidAmount === 200, 'KPI unpaid');
+assert(kpi.unpaidCount === 2 && kpi.unpaidAmount === 300, 'KPI unpaid includes unbilled open');
 assert(kpi.paidCount === 1 && kpi.paidAmount === 50, 'KPI paid');
 assert(kpi.totalAmount === 350, 'KPI period total');
 assert(kpi.deliveryDays === 6, 'KPI delivery days');
+
+const kpiHisabPaid = buildMilkHisabPeriodKpis([
+  { amount: 80, billed: false, paymentStatus: 'paid', stopCount: 2 },
+]);
+assert(kpiHisabPaid.unbilledCount === 1, 'hisab-paid still unbilled for invoice generate');
+assert(kpiHisabPaid.paidCount === 1 && kpiHisabPaid.unpaidCount === 0, 'manual paid without invoice');
+
+const patched = patchMilkHisabPeriodPayment({}, '2026-W30', 'paid');
+assert(readMilkHisabPeriodPayment(patched, '2026-W30') === 'paid', 'period payment write/read');
+assert(
+  resolveMilkHisabRowPaymentStatus({
+    billed: false,
+    hisabPaymentStatus: 'paid',
+  }) === 'paid',
+  'resolve hisab-only paid'
+);
+assert(
+  resolveMilkHisabRowPaymentStatus({
+    billed: true,
+    invoicePaymentStatus: 'unpaid',
+    hisabPaymentStatus: 'paid',
+  }) === 'unpaid',
+  'invoice status wins when billed'
+);
+assert(
+  buildMilkHisabBillLinesForReminder({
+    qtyByProduct: { a: 2 },
+    productMeta: { a: { name: 'Fresh Milk', unit: 'kg' } },
+  }).length === 1,
+  'reminder bill lines from qty'
+);
+const remindMsg = buildMilkHisabReminderMessage({
+  businessName: 'Tenvo Milk',
+  customerName: 'Sara',
+  amount: 100,
+  periodLabel: 'Week 30',
+  currency: 'PKR',
+  billLines: [{ name: 'Milk', qty: 2, unit: 'kg' }],
+});
+assert(remindMsg.includes('Bill:'), 'reminder message includes bill details');
+assert(remindMsg.includes('2 kg Milk'), 'reminder message includes line qty');
 
 const knowledge = getDomainKnowledge('milk-shop');
 assert(
@@ -281,12 +327,18 @@ assert(uiSrc.includes('sendMilkHisabReminderAction'), 'UI must wire reminders');
 assert(uiSrc.includes('Remind unpaid'), 'UI must expose bulk remind');
 assert(uiSrc.includes('setMilkHisabBillPaymentStatusAction'), 'UI must wire payment toggle action');
 assert(uiSrc.includes('MilkHisabPaymentToggle'), 'UI must render compact Unpaid/Paid toggle');
+assert(uiSrc.includes('BillsActionCluster'), 'UI must use compact aligned action cluster');
+assert(uiSrc.includes('customerId: row.customerId'), 'payment toggle works without invoice');
+assert(uiSrc.includes('qtyByProduct: row.qtyByProduct'), 'remind must pass bill qty lines');
 assert(uiSrc.includes('isMilkHisabBillRemindable'), 'UI must gate WhatsApp on unpaid');
 assert(uiSrc.includes('lg:hidden'), 'Bills must have mobile card layout');
 assert(uiSrc.includes('hidden lg:block'), 'Bills desktop table dual-layout');
 assert(actionSrc.includes('setMilkHisabBillPaymentStatusAction'), 'actions must export payment status setter');
 assert(actionSrc.includes('MILK_HISAB_COLLECTION_NOTE'), 'payment uses Route Hisab collection marker');
 assert(actionSrc.includes('MILK_HISAB_ALREADY_PAID'), 'remind must reject paid invoices');
+assert(actionSrc.includes('patchMilkHisabPeriodPayment'), 'payment must persist hisab period flag');
+assert(actionSrc.includes('hisabOnly: true'), 'payment supports hisab-only (no invoice)');
+assert(actionSrc.includes('buildMilkHisabBillLinesForReminder'), 'remind must include bill lines');
 assert(isMilkHisabBillRemindable({ amount: 100, paymentStatus: 'unpaid' }), 'unpaid remindable');
 assert(isMilkHisabBillRemindable({ amount: 100, paymentStatus: null }), 'unbilled remindable');
 assert(!isMilkHisabBillRemindable({ amount: 100, paymentStatus: 'paid' }), 'paid not remindable');
@@ -302,6 +354,8 @@ const remindSrc = readFileSync(remindHelpers, 'utf8');
 assert(remindSrc.includes('buildMilkHisabWhatsAppUrl'), 'WhatsApp wa.me helper required');
 assert(remindSrc.includes('resolveMilkHisabReminderChannels'), 'channel resolver required');
 assert(remindSrc.includes('openWhatsAppSmart'), 'reminders re-export smart WhatsApp open');
+assert(remindSrc.includes('billLines'), 'reminder copy accepts bill lines');
+assert(remindSrc.includes('Bill:'), 'reminder message embeds bill details');
 assert(uiSrc.includes('openWhatsAppSmart'), 'UI must use smart WhatsApp open');
 assert(uiSrc.includes('useMilkHisabOffline'), 'UI must use Route Hisab offline hook');
 assert(uiSrc.includes('MilkHisabOfflineBanner'), 'UI must show offline banner');

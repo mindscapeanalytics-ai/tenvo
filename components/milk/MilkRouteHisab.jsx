@@ -428,7 +428,7 @@ export function MilkRouteHisab({ businessId, category }) {
         label: 'Unpaid',
         value: formatCurrency(liveBillKpis.unpaidAmount || 0, currency),
         valueTone: liveBillKpis.unpaidCount ? 'text-rose-700' : 'text-gray-900',
-        hint: `${liveBillKpis.unpaidCount || 0} billed open`,
+        hint: `${liveBillKpis.unpaidCount || 0} open`,
         alert: (liveBillKpis.unpaidCount || 0) > 0,
       },
       {
@@ -817,6 +817,8 @@ export function MilkRouteHisab({ businessId, category }) {
         invoiceId: row.invoiceId,
         invoiceNumber: row.invoiceNumber,
         houseNo: row.houseNo,
+        qtyByProduct: row.qtyByProduct,
+        productMeta: row.productMeta,
         channels,
       });
       if (!res?.success) {
@@ -880,20 +882,22 @@ export function MilkRouteHisab({ businessId, category }) {
       notify.error('Connect to the internet to update payment');
       return;
     }
-    if (!row?.invoiceId) {
-      notify.error('Generate the bill first, then mark paid');
+    if (!row?.customerId || !(Number(row.amount) > 0 || row.billed)) {
+      notify.error('No bill amount for this customer');
       return;
     }
     const next = String(nextStatus || '').toLowerCase() === 'paid' ? 'paid' : 'unpaid';
     const current = String(row.paymentStatus || 'unpaid').toLowerCase() === 'paid' ? 'paid' : 'unpaid';
     if (next === current) return;
 
-    setPaymentBusyId(row.invoiceId);
+    setPaymentBusyId(row.customerId);
     try {
       const res = await setMilkHisabBillPaymentStatusAction({
         businessId,
         category,
-        invoiceId: row.invoiceId,
+        invoiceId: row.invoiceId || null,
+        customerId: row.customerId,
+        period: billingPeriod,
         paymentStatus: next,
       });
       if (!res?.success) {
@@ -903,7 +907,11 @@ export function MilkRouteHisab({ businessId, category }) {
       setBillRows((prev) =>
         prev.map((r) =>
           r.customerId === row.customerId
-            ? { ...r, paymentStatus: res.paymentStatus || next, billed: true }
+            ? {
+                ...r,
+                paymentStatus: res.paymentStatus || next,
+                hisabPaymentStatus: next,
+              }
             : r
         )
       );
@@ -1103,7 +1111,7 @@ export function MilkRouteHisab({ businessId, category }) {
                   bulkReminding ||
                   loading ||
                   !isOnline ||
-                  !((liveBillKpis.unpaidCount || 0) + (liveBillKpis.unbilledCount || 0) > 0)
+                  !(liveBillKpis.unpaidCount || 0)
                 }
                 title={!isOnline ? 'Needs internet' : undefined}
               >
@@ -1138,7 +1146,7 @@ export function MilkRouteHisab({ businessId, category }) {
           {billsFromCache ? ' · Offline cache' : ''}
           {' · '}Generate bills, mark Unpaid/Paid, print 58mm
           {urduBillsEnabled ? ' EN or اردو' : ' EN'}
-          {' · '}WhatsApp remind only when unpaid
+          {' · '}Remind sends bill details in the message (WhatsApp cannot attach PDF)
         </p>
       ) : null}
 
@@ -1478,7 +1486,7 @@ function MilkHisabPaymentToggle({ status, disabled, busy, onChange }) {
   const paid = String(status || '').toLowerCase() === 'paid';
   return (
     <div
-      className="inline-flex rounded-md border border-gray-200 bg-gray-50 p-0.5"
+      className="inline-flex h-7 items-stretch overflow-hidden rounded border border-gray-200 bg-white"
       role="group"
       aria-label="Payment status"
     >
@@ -1487,25 +1495,166 @@ function MilkHisabPaymentToggle({ status, disabled, busy, onChange }) {
         disabled={disabled || busy}
         onClick={() => onChange('unpaid')}
         className={cn(
-          'h-7 min-w-[3.25rem] rounded px-2 text-[11px] font-semibold transition-colors',
-          !paid ? 'bg-white text-rose-700 shadow-sm' : 'text-gray-500 hover:text-gray-700',
+          'inline-flex min-w-[3.1rem] items-center justify-center px-2 text-[10px] font-semibold uppercase tracking-wide transition-colors',
+          !paid
+            ? 'bg-rose-600 text-white'
+            : 'bg-white text-gray-500 hover:bg-rose-50 hover:text-rose-700',
           (disabled || busy) && 'opacity-50 cursor-not-allowed'
         )}
       >
-        {busy && !paid ? <Loader2 className="mx-auto h-3 w-3 animate-spin" /> : 'Unpaid'}
+        {busy && !paid ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Unpaid'}
       </button>
       <button
         type="button"
         disabled={disabled || busy}
         onClick={() => onChange('paid')}
         className={cn(
-          'h-7 min-w-[3.25rem] rounded px-2 text-[11px] font-semibold transition-colors',
-          paid ? 'bg-white text-emerald-700 shadow-sm' : 'text-gray-500 hover:text-gray-700',
+          'inline-flex min-w-[3.1rem] items-center justify-center border-l border-gray-200 px-2 text-[10px] font-semibold uppercase tracking-wide transition-colors',
+          paid
+            ? 'bg-emerald-600 text-white'
+            : 'bg-white text-gray-500 hover:bg-emerald-50 hover:text-emerald-700',
           (disabled || busy) && 'opacity-50 cursor-not-allowed'
         )}
       >
-        {busy && paid ? <Loader2 className="mx-auto h-3 w-3 animate-spin" /> : 'Paid'}
+        {busy && paid ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Paid'}
       </button>
+    </div>
+  );
+}
+
+const BILL_ACTION_BTN =
+  'inline-flex h-7 w-7 shrink-0 items-center justify-center rounded border border-gray-200 bg-white p-0 text-gray-700 hover:bg-gray-50 disabled:opacity-50';
+
+function BillsActionCluster({
+  row,
+  printingId,
+  remindingId,
+  urduBillsEnabled = false,
+  remindersDisabled = false,
+  onPrint,
+  onPdf,
+  onPrintUrdu,
+  onPdfUrdu,
+  onRemind,
+  onRemindWhatsApp,
+  onRemindEmail,
+}) {
+  const baseId = row.invoiceId || row.customerId;
+  const busy = typeof printingId === 'string' && printingId.startsWith(`${baseId}:`);
+  const remindable = isMilkHisabBillRemindable(row) && !remindersDisabled;
+  const remindBusy = remindingId === row.customerId || remindersDisabled;
+  const canPrint = Boolean(row.invoiceId) || Number(row.amount) > 0;
+  const spin = (mode, locale) => printingId === `${baseId}:${mode}:${locale}`;
+
+  if (!canPrint && !remindable) {
+    return <span className="text-xs text-gray-300">-</span>;
+  }
+
+  return (
+    <div className="inline-flex flex-nowrap items-center gap-1">
+      {canPrint ? (
+        <>
+          <button
+            type="button"
+            className={BILL_ACTION_BTN}
+            disabled={busy}
+            onClick={() => onPrint(row)}
+            title="Print English 58mm day sheet"
+            aria-label="Print English bill"
+          >
+            {spin('print', 'en') ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Printer className="h-3.5 w-3.5" />
+            )}
+          </button>
+          <button
+            type="button"
+            className={BILL_ACTION_BTN}
+            disabled={busy}
+            onClick={() => onPdf(row)}
+            title="Download English 58mm PDF"
+            aria-label="Download English PDF"
+          >
+            {spin('pdf', 'en') ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Download className="h-3.5 w-3.5" />
+            )}
+          </button>
+          {urduBillsEnabled ? (
+            <>
+              <button
+                type="button"
+                className={cn(BILL_ACTION_BTN, 'w-auto min-w-[1.75rem] px-1.5 font-urdu text-[10px] leading-none')}
+                disabled={busy}
+                onClick={() => onPrintUrdu?.(row)}
+                title="اردو بل پرنٹ کریں"
+                aria-label="Print Urdu bill"
+              >
+                {spin('print', 'ur') ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'اردو'}
+              </button>
+              <button
+                type="button"
+                className={BILL_ACTION_BTN}
+                disabled={busy}
+                onClick={() => onPdfUrdu?.(row)}
+                title="اردو بل PDF"
+                aria-label="Download Urdu PDF"
+              >
+                {spin('pdf', 'ur') ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Download className="h-3.5 w-3.5" />
+                )}
+              </button>
+            </>
+          ) : null}
+        </>
+      ) : null}
+
+      {canPrint && remindable ? <span className="mx-0.5 h-4 w-px shrink-0 bg-gray-200" aria-hidden /> : null}
+
+      {remindable ? (
+        <>
+          <button
+            type="button"
+            className={BILL_ACTION_BTN}
+            disabled={remindBusy}
+            onClick={() => onRemind(row)}
+            title="Remind with bill details (hub, email, WhatsApp)"
+            aria-label="Send reminder"
+          >
+            {remindBusy && remindingId === row.customerId ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Bell className="h-3.5 w-3.5" />
+            )}
+          </button>
+          <button
+            type="button"
+            className={cn(BILL_ACTION_BTN, 'text-emerald-700')}
+            disabled={remindBusy}
+            onClick={() => onRemindWhatsApp(row)}
+            title="WhatsApp reminder with bill details (unpaid only)"
+            aria-label="WhatsApp reminder"
+          >
+            <MessageCircle className="h-3.5 w-3.5" />
+          </button>
+          <button
+            type="button"
+            className={BILL_ACTION_BTN}
+            disabled={remindBusy}
+            onClick={() => onRemindEmail(row)}
+            title="Email reminder with bill details (unpaid only)"
+            aria-label="Email reminder"
+          >
+            <Mail className="h-3.5 w-3.5" />
+          </button>
+        </>
+      ) : Number(row.amount) > 0 && String(row.paymentStatus || '').toLowerCase() === 'paid' ? (
+        <span className="text-[10px] font-semibold uppercase tracking-wide text-emerald-700">Paid</span>
+      ) : null}
     </div>
   );
 }
@@ -1552,159 +1701,13 @@ function BillsSheet({
     );
   }
 
-  const renderActions = (row) => {
-    const baseId = row.invoiceId || row.customerId;
-    const busy = typeof printingId === 'string' && printingId.startsWith(`${baseId}:`);
-    const remindable = isMilkHisabBillRemindable(row) && !remindersDisabled;
-    const remindBusy = remindingId === row.customerId || remindersDisabled;
-    const canPrint = Boolean(row.invoiceId) || Number(row.amount) > 0;
-    const spin = (mode, locale) => printingId === `${baseId}:${mode}:${locale}`;
-    const payBusy = paymentBusyId === row.invoiceId;
-    const canPay = Boolean(row.invoiceId);
-
-    return (
-      <>
-        <div className="flex flex-wrap items-center gap-1.5">
-          {canPay ? (
-            <MilkHisabPaymentToggle
-              status={row.paymentStatus || 'unpaid'}
-              disabled={paymentDisabled}
-              busy={payBusy}
-              onChange={(next) => onPaymentStatus?.(row, next)}
-            />
-          ) : (
-            <span className="text-xs text-gray-400" title="Generate bill first">
-              —
-            </span>
-          )}
-        </div>
-        <div className="mt-2 flex flex-wrap items-center gap-1">
-          {canPrint ? (
-            <>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                className="h-8 px-2"
-                disabled={busy}
-                onClick={() => onPrint(row)}
-                title="Print English 58mm day sheet"
-              >
-                {spin('print', 'en') ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Printer className="h-3.5 w-3.5" />
-                )}
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                className="h-8 px-2"
-                disabled={busy}
-                onClick={() => onPdf(row)}
-                title="Download English 58mm day sheet PDF"
-              >
-                {spin('pdf', 'en') ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Download className="h-3.5 w-3.5" />
-                )}
-              </Button>
-              {urduBillsEnabled ? (
-                <>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    className="h-8 px-2 font-urdu text-[11px] leading-none"
-                    disabled={busy}
-                    onClick={() => onPrintUrdu?.(row)}
-                    title="اردو بل پرنٹ کریں"
-                  >
-                    {spin('print', 'ur') ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      'اردو'
-                    )}
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    className="h-8 px-2 font-urdu text-[11px] leading-none"
-                    disabled={busy}
-                    onClick={() => onPdfUrdu?.(row)}
-                    title="اردو بل PDF"
-                  >
-                    {spin('pdf', 'ur') ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <span className="inline-flex items-center gap-0.5">
-                        <Download className="h-3 w-3" />
-                        PDF
-                      </span>
-                    )}
-                  </Button>
-                </>
-              ) : null}
-            </>
-          ) : (
-            <span className="text-gray-300">-</span>
-          )}
-          {remindable ? (
-            <>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                className="h-8 px-2"
-                disabled={remindBusy}
-                onClick={() => onRemind(row)}
-                title="Remind via hub, email, and WhatsApp"
-              >
-                {remindBusy && remindingId === row.customerId ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Bell className="h-3.5 w-3.5" />
-                )}
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                className="h-8 px-2 text-emerald-700"
-                disabled={remindBusy}
-                onClick={() => onRemindWhatsApp(row)}
-                title="WhatsApp reminder (unpaid only)"
-              >
-                <MessageCircle className="h-3.5 w-3.5" />
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                className="h-8 px-2"
-                disabled={remindBusy}
-                onClick={() => onRemindEmail(row)}
-                title="Email reminder (unpaid only)"
-              >
-                <Mail className="h-3.5 w-3.5" />
-              </Button>
-            </>
-          ) : Number(row.amount) > 0 ? (
-            <span className="text-[11px] text-emerald-700 font-semibold">Paid</span>
-          ) : null}
-        </div>
-      </>
-    );
-  };
-
   return (
     <>
       <div className="space-y-3 lg:hidden">
         {rows.map((row) => {
           const summary = billProductSummary(row, productColumns);
+          const payBusy = paymentBusyId === row.customerId;
+          const canPay = Number(row.amount) > 0 || row.billed;
           return (
             <div
               key={row.customerId}
@@ -1724,7 +1727,7 @@ function BillsSheet({
                 </p>
               </div>
               {summary ? <p className="mt-1.5 text-[11px] text-gray-500 leading-snug">{summary}</p> : null}
-              <div className="mt-2 flex items-center justify-between gap-2">
+              <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
                 {row.invoiceNumber ? (
                   <button
                     type="button"
@@ -1736,20 +1739,43 @@ function BillsSheet({
                 ) : (
                   <span className="text-xs text-gray-400">Not billed</span>
                 )}
+                {canPay ? (
+                  <MilkHisabPaymentToggle
+                    status={row.paymentStatus || 'unpaid'}
+                    disabled={paymentDisabled}
+                    busy={payBusy}
+                    onChange={(next) => onPaymentStatus?.(row, next)}
+                  />
+                ) : null}
               </div>
-              <div className="mt-2 border-t border-gray-100 pt-2">{renderActions(row)}</div>
+              <div className="mt-2 border-t border-gray-100 pt-2">
+                <BillsActionCluster
+                  row={row}
+                  printingId={printingId}
+                  remindingId={remindingId}
+                  urduBillsEnabled={urduBillsEnabled}
+                  remindersDisabled={remindersDisabled}
+                  onPrint={onPrint}
+                  onPdf={onPdf}
+                  onPrintUrdu={onPrintUrdu}
+                  onPdfUrdu={onPdfUrdu}
+                  onRemind={onRemind}
+                  onRemindWhatsApp={onRemindWhatsApp}
+                  onRemindEmail={onRemindEmail}
+                />
+              </div>
             </div>
           );
         })}
       </div>
 
       <div className="hidden lg:block overflow-x-auto rounded-xl border border-gray-200 bg-white">
-        <table className="min-w-full text-sm">
+        <table className="min-w-full border-collapse text-sm">
           <thead className="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
             <tr>
-              <th className="sticky left-0 z-10 bg-gray-50 px-3 py-2.5">House</th>
-              <th className="sticky left-[4.5rem] z-10 bg-gray-50 px-3 py-2.5">Customer</th>
-              <th className="px-3 py-2.5">Days</th>
+              <th className="sticky left-0 z-10 bg-gray-50 px-3 py-2">House</th>
+              <th className="sticky left-[4.5rem] z-10 bg-gray-50 px-3 py-2">Customer</th>
+              <th className="px-3 py-2 text-center">Days</th>
               {productColumns.map((p) => (
                 <th
                   key={p.id}
@@ -1766,40 +1792,39 @@ function BillsSheet({
                   ) : null}
                 </th>
               ))}
-              <th className="px-3 py-2.5 text-right">Amount</th>
-              <th className="px-3 py-2.5">Invoice</th>
-              <th className="px-3 py-2.5">Payment</th>
-              <th className="px-3 py-2.5">Bill / Remind</th>
+              <th className="px-3 py-2 text-right">Amount</th>
+              <th className="px-3 py-2 whitespace-nowrap">Invoice</th>
+              <th className="px-3 py-2 whitespace-nowrap">Status</th>
+              <th className="px-3 py-2 whitespace-nowrap">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {rows.map((row) => {
-              const payBusy = paymentBusyId === row.invoiceId;
-              const canPay = Boolean(row.invoiceId);
-              const baseId = row.invoiceId || row.customerId;
-              const busy = typeof printingId === 'string' && printingId.startsWith(`${baseId}:`);
-              const remindable = isMilkHisabBillRemindable(row) && !remindersDisabled;
-              const remindBusy = remindingId === row.customerId || remindersDisabled;
-              const canPrint = Boolean(row.invoiceId) || Number(row.amount) > 0;
-              const spin = (mode, locale) => printingId === `${baseId}:${mode}:${locale}`;
+              const payBusy = paymentBusyId === row.customerId;
+              const canPay = Number(row.amount) > 0 || row.billed;
               return (
                 <tr key={row.customerId} className="hover:bg-sky-50/40">
-                  <td className="sticky left-0 z-[1] bg-white px-3 py-2 whitespace-nowrap text-gray-700">
+                  <td className="sticky left-0 z-[1] bg-white px-3 py-1.5 whitespace-nowrap text-gray-700 align-middle">
                     {row.houseNo || '-'}
                   </td>
-                  <td className="sticky left-[4.5rem] z-[1] bg-white px-3 py-2 font-semibold text-gray-900 whitespace-nowrap">
+                  <td className="sticky left-[4.5rem] z-[1] bg-white px-3 py-1.5 font-semibold text-gray-900 whitespace-nowrap align-middle">
                     {row.customerName}
                   </td>
-                  <td className="px-3 py-2 tabular-nums text-gray-600">{row.stopCount || 0}</td>
+                  <td className="px-3 py-1.5 tabular-nums text-center text-gray-600 align-middle">
+                    {row.stopCount || 0}
+                  </td>
                   {productColumns.map((p) => (
-                    <td key={p.id} className="px-3 py-2 tabular-nums text-center text-gray-700">
+                    <td
+                      key={p.id}
+                      className="px-2 py-1.5 tabular-nums text-center text-gray-700 align-middle"
+                    >
                       {Number(row.qtyByProduct?.[String(p.id)] ?? row.qtyByProduct?.[p.id]) || 0}
                     </td>
                   ))}
-                  <td className="px-3 py-2 text-right tabular-nums font-semibold text-gray-900">
+                  <td className="px-3 py-1.5 text-right tabular-nums font-semibold text-gray-900 align-middle whitespace-nowrap">
                     {formatCurrency(Number(row.amount) || 0, currency)}
                   </td>
-                  <td className="px-3 py-2">
+                  <td className="px-3 py-1.5 align-middle whitespace-nowrap">
                     {row.invoiceNumber ? (
                       <button
                         type="button"
@@ -1809,12 +1834,12 @@ function BillsSheet({
                         {row.invoiceNumber}
                       </button>
                     ) : (
-                      <span className="text-gray-400" title="Click Generate weekly/monthly bills">
+                      <span className="text-xs text-gray-400" title="Optional: Generate weekly/monthly invoices">
                         Not billed
                       </span>
                     )}
                   </td>
-                  <td className="px-3 py-2">
+                  <td className="px-3 py-1.5 align-middle whitespace-nowrap">
                     {canPay ? (
                       <MilkHisabPaymentToggle
                         status={row.paymentStatus || 'unpaid'}
@@ -1826,120 +1851,21 @@ function BillsSheet({
                       <span className="text-gray-400">-</span>
                     )}
                   </td>
-                  <td className="px-3 py-2">
-                    <div className="flex flex-wrap items-center gap-1 max-w-[14rem]">
-                      {canPrint ? (
-                        <>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            className="h-8 px-2"
-                            disabled={busy}
-                            onClick={() => onPrint(row)}
-                            title="Print English 58mm day sheet"
-                          >
-                            {spin('print', 'en') ? (
-                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            ) : (
-                              <Printer className="h-3.5 w-3.5" />
-                            )}
-                          </Button>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="ghost"
-                            className="h-8 px-2"
-                            disabled={busy}
-                            onClick={() => onPdf(row)}
-                            title="Download English PDF"
-                          >
-                            {spin('pdf', 'en') ? (
-                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            ) : (
-                              <Download className="h-3.5 w-3.5" />
-                            )}
-                          </Button>
-                          {urduBillsEnabled ? (
-                            <>
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="outline"
-                                className="h-8 px-2 font-urdu text-[11px] leading-none"
-                                disabled={busy}
-                                onClick={() => onPrintUrdu?.(row)}
-                                title="اردو بل پرنٹ کریں"
-                              >
-                                {spin('print', 'ur') ? (
-                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                ) : (
-                                  'اردو'
-                                )}
-                              </Button>
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="ghost"
-                                className="h-8 px-2"
-                                disabled={busy}
-                                onClick={() => onPdfUrdu?.(row)}
-                                title="اردو بل PDF"
-                              >
-                                {spin('pdf', 'ur') ? (
-                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                ) : (
-                                  <Download className="h-3.5 w-3.5" />
-                                )}
-                              </Button>
-                            </>
-                          ) : null}
-                        </>
-                      ) : (
-                        <span className="text-gray-300">-</span>
-                      )}
-                      {remindable ? (
-                        <>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            className="h-8 px-2"
-                            disabled={remindBusy}
-                            onClick={() => onRemind(row)}
-                            title="Remind via hub, email, and WhatsApp"
-                          >
-                            {remindBusy && remindingId === row.customerId ? (
-                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            ) : (
-                              <Bell className="h-3.5 w-3.5" />
-                            )}
-                          </Button>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="ghost"
-                            className="h-8 px-2 text-emerald-700"
-                            disabled={remindBusy}
-                            onClick={() => onRemindWhatsApp(row)}
-                            title="WhatsApp reminder (unpaid only)"
-                          >
-                            <MessageCircle className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="ghost"
-                            className="h-8 px-2"
-                            disabled={remindBusy}
-                            onClick={() => onRemindEmail(row)}
-                            title="Email reminder"
-                          >
-                            <Mail className="h-3.5 w-3.5" />
-                          </Button>
-                        </>
-                      ) : null}
-                    </div>
+                  <td className="px-3 py-1.5 align-middle whitespace-nowrap">
+                    <BillsActionCluster
+                      row={row}
+                      printingId={printingId}
+                      remindingId={remindingId}
+                      urduBillsEnabled={urduBillsEnabled}
+                      remindersDisabled={remindersDisabled}
+                      onPrint={onPrint}
+                      onPdf={onPdf}
+                      onPrintUrdu={onPrintUrdu}
+                      onPdfUrdu={onPdfUrdu}
+                      onRemind={onRemind}
+                      onRemindWhatsApp={onRemindWhatsApp}
+                      onRemindEmail={onRemindEmail}
+                    />
                   </td>
                 </tr>
               );
