@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import * as LucideIcons from 'lucide-react';
 import { ArrowRight, CheckCircle2, ExternalLink } from 'lucide-react';
 import MarketingLayout from '@/components/marketing/layout/MarketingLayout';
@@ -14,6 +15,7 @@ import {
   mergePlanLimits,
 } from '@/lib/config/domainPackages';
 import { INDUSTRY_PLANS_NAV, listIndustryPlanNavItems } from '@/lib/marketing/domainPackageNav';
+import { getDomainPackageSolutionsContent } from '@/lib/marketing/domainPackageSolutionsContent';
 import { PLAN_TIERS, resolvePlanTier } from '@/lib/config/plans';
 import { formatCurrency } from '@/lib/currency';
 import { getBookMeetingHref } from '@/lib/marketing/salesLinks';
@@ -69,87 +71,140 @@ export default function IndustryPlansHubPage() {
               const Icon = resolveIcon(nav?.icon);
               const tier = PLAN_TIERS[resolvePlanTier(pkg.recommendedPlanTier)];
               const limits = mergePlanLimits(pkg.recommendedPlanTier, pkg.limitOverrides);
+              const content = getDomainPackageSolutionsContent(pkg.slug);
               const highlights = (pkg.moduleGroups || []).slice(0, 3).map((m) => m.title);
               const detailHref = pkg.marketingPath || `/solutions/${pkg.slug}`;
               const registerHref = getDomainPackageRegisterHref(pkg.key);
               const demoHref = pkg.demoStoreDomain ? getDemoStoreHref(pkg.demoStoreDomain) : null;
+              const cardImage = content?.cardImage || null;
+              const isMilk = pkg.key === 'milk-commerce';
 
               return (
                 <article
                   key={pkg.key}
-                  className="group flex flex-col rounded-3xl border border-neutral-200 bg-gradient-to-br from-neutral-50/80 to-white p-6 shadow-sm transition-[box-shadow,border-color] hover:border-brand-primary/25 hover:shadow-md sm:p-7"
+                  className={cn(
+                    'group flex flex-col overflow-hidden rounded-3xl border bg-gradient-to-br from-neutral-50/80 to-white shadow-sm transition-[box-shadow,border-color] hover:shadow-md',
+                    isMilk
+                      ? 'border-sky-200 hover:border-sky-400/60'
+                      : 'border-neutral-200 hover:border-brand-primary/25'
+                  )}
                 >
-                  <div className="flex items-start gap-4">
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-brand-primary text-white shadow-brand">
-                      <Icon className="h-5 w-5" aria-hidden />
+                  {cardImage ? (
+                    <div className="relative aspect-[16/9] border-b border-neutral-200/80 bg-sky-50/50">
+                      <Image
+                        src={cardImage}
+                        alt={content?.cardImageAlt || `${pkg.name} product preview`}
+                        fill
+                        className="object-contain object-top p-2 sm:p-3"
+                        sizes="(max-width: 1024px) 100vw, 50vw"
+                      />
+                      {isMilk ? (
+                        <span className="absolute left-3 top-3 rounded-full bg-sky-700 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-white shadow-sm">
+                          Built for doodh shops
+                        </span>
+                      ) : null}
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="text-lg font-semibold text-neutral-900">{nav?.label || pkg.name}</h3>
-                        {pkg.pricing?.badge ? (
-                          <span className="rounded-full bg-brand-primary/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-brand-primary">
-                            {pkg.pricing.badge}
-                          </span>
-                        ) : null}
-                      </div>
-                      <p className="mt-1 text-sm font-medium text-neutral-600">{pkg.tagline}</p>
-                    </div>
-                  </div>
+                  ) : null}
 
-                  <p className="mt-4 text-sm leading-relaxed text-neutral-600">{pkg.summary}</p>
-
-                  <div className="mt-5 flex flex-wrap items-baseline gap-2">
-                    <span className={cn(MARKETING_STAT_VALUE, 'text-2xl text-neutral-900')}>
-                      {formatCurrency(pkg.pricing?.price_pkr || 0, 'PKR')}
-                    </span>
-                    <span className="text-sm font-medium text-neutral-500">/ month</span>
-                    <span className="text-xs font-medium text-neutral-400">
-                      on {tier?.name || pkg.recommendedPlanTier} tier base
-                    </span>
-                  </div>
-
-                  <ul className="mt-4 grid gap-2 sm:grid-cols-2">
-                    {highlights.map((line) => (
-                      <li key={line} className="flex items-start gap-2 text-sm font-medium text-neutral-700">
-                        <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" aria-hidden />
-                        {line}
-                      </li>
-                    ))}
-                  </ul>
-
-                  <ul className="mt-4 flex flex-wrap gap-2">
-                    {[
-                      `${limits.max_products?.toLocaleString() || '10k+'} products`,
-                      `${limits.max_warehouses || 8} warehouses`,
-                      `${limits.max_pos_terminals || 6} POS`,
-                    ].map((chip) => (
-                      <li
-                        key={chip}
-                        className="rounded-full border border-neutral-200 bg-white px-3 py-1 text-xs font-semibold text-neutral-600"
+                  <div className="flex flex-1 flex-col p-6 sm:p-7">
+                    <div className="flex items-start gap-4">
+                      <div
+                        className={cn(
+                          'flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-white shadow-brand',
+                          isMilk ? 'bg-sky-600' : 'bg-brand-primary'
+                        )}
                       >
-                        {chip}
-                      </li>
-                    ))}
-                  </ul>
+                        <Icon className="h-5 w-5" aria-hidden />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="text-lg font-semibold text-neutral-900">{nav?.label || pkg.name}</h3>
+                          {pkg.pricing?.badge ? (
+                            <span
+                              className={cn(
+                                'rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide',
+                                isMilk
+                                  ? 'bg-sky-600/10 text-sky-800'
+                                  : 'bg-brand-primary/10 text-brand-primary'
+                              )}
+                            >
+                              {pkg.pricing.badge}
+                            </span>
+                          ) : null}
+                        </div>
+                        <p className="mt-1 text-sm font-medium text-neutral-600">{pkg.tagline}</p>
+                      </div>
+                    </div>
 
-                  <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-                    <Button asChild className="font-semibold">
-                      <Link href={detailHref}>
-                        Explore plan
-                        <ArrowRight className="ml-2 h-4 w-4" aria-hidden />
-                      </Link>
-                    </Button>
-                    <Button asChild variant="outline" className="font-semibold">
-                      <Link href={registerHref}>Start trial</Link>
-                    </Button>
-                    {demoHref ? (
-                      <Button asChild variant="ghost" className="font-semibold text-neutral-700">
-                        <Link href={demoHref} target="_blank" rel="noopener noreferrer">
-                          Demo store
-                          <ExternalLink className="ml-2 h-3.5 w-3.5" aria-hidden />
+                    <p className="mt-4 text-sm leading-relaxed text-neutral-600">{pkg.summary}</p>
+
+                    {isMilk && Array.isArray(content?.outcomes) && content.outcomes.length > 0 ? (
+                      <ul className="mt-4 grid gap-2 sm:grid-cols-2">
+                        {content.outcomes.slice(0, 4).map((item) => (
+                          <li
+                            key={item.metric}
+                            className="rounded-xl border border-sky-100 bg-sky-50/60 px-3 py-2.5"
+                          >
+                            <p className={cn(MARKETING_STAT_VALUE, 'text-base text-sky-800')}>{item.metric}</p>
+                            <p className="mt-0.5 text-xs font-semibold text-neutral-700">{item.label}</p>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
+
+                    <div className="mt-5 flex flex-wrap items-baseline gap-2">
+                      <span className={cn(MARKETING_STAT_VALUE, 'text-2xl text-neutral-900')}>
+                        {formatCurrency(pkg.pricing?.price_pkr || 0, 'PKR')}
+                      </span>
+                      <span className="text-sm font-medium text-neutral-500">/ month</span>
+                      <span className="text-xs font-medium text-neutral-400">
+                        on {tier?.name || pkg.recommendedPlanTier} tier base
+                      </span>
+                    </div>
+
+                    <ul className="mt-4 grid gap-2 sm:grid-cols-2">
+                      {highlights.map((line) => (
+                        <li key={line} className="flex items-start gap-2 text-sm font-medium text-neutral-700">
+                          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" aria-hidden />
+                          {line}
+                        </li>
+                      ))}
+                    </ul>
+
+                    <ul className="mt-4 flex flex-wrap gap-2">
+                      {[
+                        `${limits.max_products?.toLocaleString() || '10k+'} products`,
+                        `${limits.max_warehouses || 8} warehouses`,
+                        `${limits.max_pos_terminals || 6} POS`,
+                      ].map((chip) => (
+                        <li
+                          key={chip}
+                          className="rounded-full border border-neutral-200 bg-white px-3 py-1 text-xs font-semibold text-neutral-600"
+                        >
+                          {chip}
+                        </li>
+                      ))}
+                    </ul>
+
+                    <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                      <Button asChild className={cn('font-semibold', isMilk && 'bg-sky-600 hover:bg-sky-700')}>
+                        <Link href={detailHref}>
+                          {isMilk ? 'Explore milk shop plan' : 'Explore plan'}
+                          <ArrowRight className="ml-2 h-4 w-4" aria-hidden />
                         </Link>
                       </Button>
-                    ) : null}
+                      <Button asChild variant="outline" className="font-semibold">
+                        <Link href={registerHref}>Start trial</Link>
+                      </Button>
+                      {demoHref ? (
+                        <Button asChild variant="ghost" className="font-semibold text-neutral-700">
+                          <Link href={demoHref} target="_blank" rel="noopener noreferrer">
+                            Demo store
+                            <ExternalLink className="ml-2 h-3.5 w-3.5" aria-hidden />
+                          </Link>
+                        </Button>
+                      ) : null}
+                    </div>
                   </div>
                 </article>
               );

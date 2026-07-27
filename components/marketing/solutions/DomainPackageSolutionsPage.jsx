@@ -4,6 +4,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import * as LucideIcons from 'lucide-react';
 import { ArrowRight, CheckCircle2, Quote } from 'lucide-react';
 import MarketingLayout from '@/components/marketing/layout/MarketingLayout';
@@ -102,6 +103,10 @@ export default function DomainPackageSolutionsPage({ pkg, content }) {
   const unifiedSlides = buildUnifiedPackageSlides(pkg, content, verticalSlides);
   const demoHref = pkg.demoStoreDomain ? getDemoStoreHref(pkg.demoStoreDomain) : null;
 
+  const painPoints = Array.isArray(content.painPoints) ? content.painPoints : [];
+  const outcomes = Array.isArray(content.outcomes) ? content.outcomes : [];
+  const featureShowcases = Array.isArray(content.featureShowcases) ? content.featureShowcases : [];
+
   const guideSteps =
     Array.isArray(content.guideSteps) && content.guideSteps.length > 0
       ? content.guideSteps
@@ -195,7 +200,109 @@ export default function DomainPackageSolutionsPage({ pkg, content }) {
         </div>
       </MarketingSection>
 
-      <MarketingSection id="channels" className="border-b border-neutral-200/80 bg-neutral-50">
+      {painPoints.length > 0 ? (
+        <MarketingSection id="problems" className="border-b border-neutral-200/80 bg-neutral-50">
+          <SectionIntro
+            eyebrow="Problems we solve"
+            title={content.problemHeading || 'What slows operators down today'}
+            lead={content.problemLead}
+          />
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {painPoints.map((pain) => (
+              <article
+                key={pain.title || pain.body}
+                className="flex h-full flex-col rounded-2xl border border-sky-100/90 bg-white p-5 shadow-sm sm:p-6"
+              >
+                {pain.title ? (
+                  <h3 className="text-base font-semibold text-neutral-900">{pain.title}</h3>
+                ) : null}
+                <p
+                  className={cn(
+                    'text-sm font-medium leading-relaxed text-neutral-600',
+                    pain.title ? 'mt-2' : null
+                  )}
+                >
+                  {pain.body || pain}
+                </p>
+              </article>
+            ))}
+          </div>
+        </MarketingSection>
+      ) : null}
+
+      {outcomes.length > 0 ? (
+        <MarketingSection id="outcomes" className="border-b border-neutral-200/80 bg-white">
+          <SectionIntro
+            eyebrow="Production & productivity"
+            title={content.outcomesHeading || 'How this suite improves daily output'}
+            lead={content.outcomesLead}
+          />
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {outcomes.map((item) => (
+              <article
+                key={item.metric + item.label}
+                className="flex h-full flex-col rounded-2xl border border-neutral-200 bg-gradient-to-br from-sky-50/50 via-white to-white p-5 shadow-sm sm:rounded-3xl sm:p-6"
+              >
+                <p className={cn(MARKETING_STAT_VALUE, 'text-2xl text-sky-700 sm:text-3xl')}>{item.metric}</p>
+                <h3 className="mt-2 text-base font-semibold text-neutral-900">{item.label}</h3>
+                <p className="mt-2 flex-1 text-sm font-medium leading-relaxed text-neutral-600">{item.body}</p>
+              </article>
+            ))}
+          </div>
+        </MarketingSection>
+      ) : null}
+
+      {featureShowcases.length > 0 ? (
+        <MarketingSection id="product-tour" className="border-b border-neutral-200/80 bg-neutral-50">
+          <SectionIntro
+            eyebrow="Feature importance"
+            title={content.featureShowcaseHeading || 'See how the suite works'}
+            lead={content.featureShowcaseLead}
+          />
+          <div className="space-y-8 lg:space-y-12">
+            {featureShowcases.map((feature, idx) => {
+              const reverse = idx % 2 === 1;
+              return (
+                <article
+                  key={feature.title}
+                  className={cn(
+                    'grid items-center gap-6 overflow-hidden rounded-3xl border border-neutral-200 bg-white p-5 shadow-sm sm:p-6 lg:grid-cols-2 lg:gap-10 lg:p-8',
+                    reverse && 'lg:[&>*:first-child]:order-2'
+                  )}
+                >
+                  <div className="space-y-3">
+                    {feature.importance ? (
+                      <span className="inline-flex rounded-full bg-sky-600/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-sky-800">
+                        {feature.importance}
+                      </span>
+                    ) : null}
+                    <h3 className="text-xl font-semibold text-neutral-900 sm:text-2xl">{feature.title}</h3>
+                    <p className="text-sm font-medium leading-relaxed text-neutral-600 sm:text-base">
+                      {feature.body}
+                    </p>
+                    {feature.help ? (
+                      <p className="rounded-2xl border border-sky-100 bg-sky-50/70 px-4 py-3 text-sm font-medium leading-relaxed text-sky-950/80">
+                        {feature.help}
+                      </p>
+                    ) : null}
+                  </div>
+                  <div className="relative aspect-[16/10] overflow-hidden rounded-2xl border border-neutral-200 bg-sky-50/40">
+                    <Image
+                      src={feature.image}
+                      alt={feature.imageAlt || feature.title}
+                      fill
+                      className={cn(feature.object || 'object-cover', 'object-top')}
+                      sizes="(max-width: 1024px) 100vw, 50vw"
+                    />
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        </MarketingSection>
+      ) : null}
+
+      <MarketingSection id="channels" className="border-b border-neutral-200/80 bg-white">
         <SectionIntro
           eyebrow="How operators sell"
           title={content.channelsHeading || 'Built for how you actually run the business'}
@@ -227,7 +334,7 @@ export default function DomainPackageSolutionsPage({ pkg, content }) {
         </div>
       </MarketingSection>
 
-      <MarketingSection id="modules" className="border-b border-neutral-200/80 bg-white">
+      <MarketingSection id="modules" className="border-b border-neutral-200/80 bg-neutral-50">
         <SectionIntro
           eyebrow="Included capabilities"
           title={content.modulesHeading || 'Module mix tuned for your vertical'}
@@ -263,7 +370,7 @@ export default function DomainPackageSolutionsPage({ pkg, content }) {
         />
       </MarketingSection>
 
-      <MarketingSection className="border-b border-neutral-200/80 bg-neutral-50">
+      <MarketingSection className="border-b border-neutral-200/80 bg-white">
         <SectionIntro
           eyebrow="Entitlements"
           title="Pre-enabled plan features"
@@ -284,7 +391,7 @@ export default function DomainPackageSolutionsPage({ pkg, content }) {
         </div>
       </MarketingSection>
 
-      <MarketingSection className="border-b border-neutral-200/80 bg-white">
+      <MarketingSection className="border-b border-neutral-200/80 bg-neutral-50">
         <SectionIntro
           eyebrow="Why operators switch"
           title="Compared to stitched stacks"
@@ -294,7 +401,7 @@ export default function DomainPackageSolutionsPage({ pkg, content }) {
           {pkg.competitorNotes.map((note) => (
             <li
               key={note}
-              className="flex h-full flex-col rounded-2xl border border-neutral-200 bg-neutral-50/60 p-5 shadow-sm"
+              className="flex h-full flex-col rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm"
             >
               <Quote className="mb-3 h-5 w-5 text-brand-primary/70" aria-hidden />
               <p className="flex-1 text-sm font-medium leading-relaxed text-neutral-700">{note}</p>
@@ -303,7 +410,7 @@ export default function DomainPackageSolutionsPage({ pkg, content }) {
         </ul>
       </MarketingSection>
 
-      <MarketingSection id="get-started" className="border-b border-neutral-200/80 bg-neutral-50">
+      <MarketingSection id="get-started" className="border-b border-neutral-200/80 bg-white">
         <SectionIntro
           eyebrow="Owner guide"
           title={content.guideHeading || 'From this page to a live hub'}
@@ -316,7 +423,7 @@ export default function DomainPackageSolutionsPage({ pkg, content }) {
           {guideSteps.map((step, idx) => (
             <li
               key={step.title}
-              className="flex h-full flex-col rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm sm:p-6"
+              className="flex h-full flex-col rounded-2xl border border-neutral-200 bg-neutral-50/60 p-5 shadow-sm sm:p-6"
             >
               <span className="text-[10px] font-semibold uppercase tracking-widest text-neutral-400">
                 Step {String(idx + 1).padStart(2, '0')}

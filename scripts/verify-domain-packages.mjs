@@ -179,7 +179,7 @@ for (const key of EXPECTED_PACKAGES) {
     const heroLines = channelHeroMatch[1]
       .split('\n')
       .filter((line) =>
-        /https?:|fashionStockImage|unsplash|AUTO_PARTS|FITNESS_ASSETS|TENVO_VEHICLES|FURNITURE_MARKETING|PHARMACY_MARKETING/.test(
+        /https?:|fashionStockImage|unsplash|AUTO_PARTS|FITNESS_ASSETS|TENVO_VEHICLES|FURNITURE_MARKETING|PHARMACY_MARKETING|TENVO_IMG/.test(
           line
         )
       );

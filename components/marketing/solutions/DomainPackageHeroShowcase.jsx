@@ -32,6 +32,7 @@ function HeroSlideLayer({ slide, active, priority = false }) {
   const [imgSrc, setImgSrc] = useState(slide.heroImage);
   const fallback =
     'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=1920&q=85&auto=format&fit=crop';
+  const contain = slide.imageFit === 'contain';
 
   useEffect(() => {
     setImgSrc(slide.heroImage);
@@ -41,7 +42,8 @@ function HeroSlideLayer({ slide, active, priority = false }) {
     <div
       className={cn(
         'absolute inset-0 transition-opacity ease-in-out motion-reduce:transition-none',
-        active ? 'z-10 opacity-100' : 'z-0 opacity-0 pointer-events-none'
+        active ? 'z-10 opacity-100' : 'z-0 opacity-0 pointer-events-none',
+        contain && 'bg-sky-950'
       )}
       style={{ transitionDuration: `${FADE_MS}ms` }}
       aria-hidden={!active}
@@ -50,7 +52,10 @@ function HeroSlideLayer({ slide, active, priority = false }) {
       <img
         src={imgSrc}
         alt=""
-        className="h-full w-full object-cover object-center"
+        className={cn(
+          'h-full w-full',
+          contain ? 'object-contain object-center p-3 sm:p-6 lg:p-8' : 'object-cover object-center'
+        )}
         loading={priority ? 'eager' : 'lazy'}
         decoding="async"
         fetchPriority={priority ? 'high' : 'auto'}
@@ -58,7 +63,12 @@ function HeroSlideLayer({ slide, active, priority = false }) {
           if (imgSrc !== fallback) setImgSrc(fallback);
         }}
       />
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-neutral-950 from-[18%] via-neutral-950/60 via-[52%] to-neutral-950/30" />
+      <div
+        className={cn(
+          'pointer-events-none absolute inset-0 bg-gradient-to-t from-neutral-950 via-neutral-950/60 to-neutral-950/30',
+          contain ? 'from-[22%] via-[58%]' : 'from-[18%] via-[52%]'
+        )}
+      />
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-neutral-950/55 via-neutral-950/15 to-transparent" />
     </div>
   );
