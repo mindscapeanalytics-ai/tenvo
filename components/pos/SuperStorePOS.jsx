@@ -935,6 +935,12 @@ export function SuperStorePOS({
                 e.preventDefault();
                 focusScanSearch();
             }
+            if (e.key === 'Enter' && cart.length > 0 && !isProcessing && !showCustomerDialog && !showTaxPanel) {
+                if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
+                    e.preventDefault();
+                    handleCompleteSale();
+                }
+            }
             if (e.key === 'Escape' && searchTerm) {
                 setSearchTerm('');
                 focusScanSearch();
@@ -942,7 +948,7 @@ export function SuperStorePOS({
         };
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [searchTerm, focusScanSearch]);
+    }, [cart.length, isProcessing, searchTerm, showCustomerDialog, showTaxPanel, handleCompleteSale, focusScanSearch]);
 
     // --- Render --------------------------------------------------------------
 
@@ -1100,6 +1106,8 @@ export function SuperStorePOS({
                 onOpenChange={setShowCashTools}
                 businessId={businessId || business?.id}
                 sessionId={hasSession ? session?.id : null}
+                business={business}
+                currencyCode={currencyCode}
                 onRequirePinForPaidOut={(run) => requestApproval('paid_out', run)}
             />
 

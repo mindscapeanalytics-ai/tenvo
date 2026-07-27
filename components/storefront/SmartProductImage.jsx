@@ -7,6 +7,7 @@ import { resolveBrandMonogramUrl } from '@/lib/storefront/storefrontImagePlaceho
 import { isDeadImageUrl } from '@/lib/storefront/deadImageHosts';
 import { normalizeStorefrontRemoteImageUrl } from '@/lib/storefront/productImageFallback';
 import { isAllowedNextImageSrc } from '@/lib/storefront/allowedImageHosts';
+import { resolveImageReferrerPolicy } from '@/lib/storefront/imageReferrerPolicy';
 import {
   inferImageVariantFromWidth,
   resolveStorefrontImageSrc,
@@ -105,6 +106,7 @@ export function SmartProductImage({
   const fitClass = 'object-cover';
 
   const renderPlainImg = (imgSrc) => {
+    const refPolicy = resolveImageReferrerPolicy(imgSrc);
     if (fill) {
       return (
         // eslint-disable-next-line @next/next/no-img-element
@@ -117,6 +119,7 @@ export function SmartProductImage({
           loading={priority ? 'eager' : 'lazy'}
           decoding="async"
           fetchPriority={priority ? 'high' : 'auto'}
+          referrerPolicy={refPolicy}
         />
       );
     }
@@ -133,6 +136,7 @@ export function SmartProductImage({
         loading={priority ? 'eager' : 'lazy'}
         decoding="async"
         fetchPriority={priority ? 'high' : 'auto'}
+        referrerPolicy={refPolicy}
       />
     );
   };
@@ -172,6 +176,7 @@ export function SmartProductImage({
         style={style}
         priority={priority}
         onError={handleError}
+        referrerPolicy={resolveImageReferrerPolicy(renderSrc)}
       />
     );
   }
@@ -187,6 +192,7 @@ export function SmartProductImage({
       style={style}
       priority={priority}
       onError={handleError}
+      referrerPolicy={resolveImageReferrerPolicy(renderSrc)}
     />
   );
 }

@@ -7,16 +7,21 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { recordPosCashMovementAction } from '@/lib/actions/standard/posOperations';
 import { openCashDrawer } from '@/lib/utils/posCashDrawer';
+import { resolvePosSettings } from '@/lib/config/posSettings';
+import { cn } from '@/lib/utils';
 import toast from 'react-hot-toast';
 
 /**
  * Open drawer + paid in / paid out for the active shift.
+ * Drawer kick prints a labeled 58mm slip (not a blank page).
  */
 export function PosCashToolsPanel({
     open,
     onOpenChange,
     businessId,
     sessionId,
+    business,
+    currencyCode,
     onRequirePinForPaidOut,
 }) {
     const [mode, setMode] = useState('paid_in');
@@ -24,15 +29,33 @@ export function PosCashToolsPanel({
     const [reason, setReason] = useState('');
     const [busy, setBusy] = useState(false);
 
+    const posSettings = resolvePosSettings(business);
+    const paperSize = posSettings.paperSize === '80mm' ? '80mm' : '58mm';
+    const businessName = business?.business_name || business?.name || 'Store';
+    const resolvedCurrency = currencyCode || business?.currency || '';
+
+    const kickDrawer = (opts = {}) =>
+        openCashDrawer({
+            businessName,
+            currencyCode: resolvedCurrency,
+            paperSize,
+            ...opts,
+        });
+
     const submitMovement = async () => {
         const run = async () => {
             setBusy(true);
             try {
+                const parsedAmount = parseFloat(amount);
+                if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+                    toast.error('Enter a valid amount');
+                    return;
+                }
                 const res = await recordPosCashMovementAction({
                     businessId,
                     sessionId,
                     type: mode,
-                    amount: parseFloat(amount),
+                    amount: parsedAmount,
                     reason,
                 });
                 if (!res?.success) {
@@ -40,7 +63,11 @@ export function PosCashToolsPanel({
                     return;
                 }
                 toast.success(mode === 'paid_in' ? 'Paid in recorded' : 'Paid out recorded');
-                openCashDrawer({ label: mode });
+                kickDrawer({
+                    label: mode === 'paid_in' ? 'Paid in' : 'Paid out',
+                    amount: parsedAmount,
+                    reason,
+                });
                 setAmount('');
                 setReason('');
                 onOpenChange?.(false);
@@ -66,19 +93,24 @@ export function PosCashToolsPanel({
                     <Button
                         type="button"
                         variant="outline"
-                        className="w-full"
+                        className="w-full font-semibold"
                         onClick={() => {
-                            const ok = openCashDrawer({ label: 'Open drawer' });
+                            const ok = kickDrawer({ label: 'Open cash drawer' });
                             toast[ok ? 'success' : 'error'](
-                                ok ? 'Drawer kick sent to printer' : 'Could not open drawer'
+                                ok
+                                    ? 'Print dialog opened — choose your receipt printer'
+                                    : 'Could not open print dialog'
                             );
                         }}
                     >
                         Open cash drawer
                     </Button>
+                    <p className="text-[11px] font-medium leading-snug text-neutral-500">
+                        Opens a short {paperSize} slip with drawer kick. Select your thermal printer and turn on Save paper.
+                    </p>
 
                     {!sessionId ? (
-                        <p className="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+                        <p className="rounded-lg border border-amber-100 bg-amber-50 px-3 py-2 text-xs text-amber-800">
                             Start a shift to record paid in / paid out.
                         </p>
                     ) : (
@@ -86,6 +118,11 @@ export function PosCashToolsPanel({
                             <div className="grid grid-cols-2 gap-2">
                                 <Button
                                     type="button"
+                                    className={cn(
+                                        mode === 'paid_in'
+                                            ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                                            : ''
+                                    )}
                                     variant={mode === 'paid_in' ? 'default' : 'outline'}
                                     onClick={() => setMode('paid_in')}
                                 >
@@ -93,6 +130,11 @@ export function PosCashToolsPanel({
                                 </Button>
                                 <Button
                                     type="button"
+                                    className={cn(
+                                        mode === 'paid_out'
+                                            ? 'bg-rose-600 text-white hover:bg-rose-700'
+                                            : ''
+                                    )}
                                     variant={mode === 'paid_out' ? 'default' : 'outline'}
                                     onClick={() => setMode('paid_out')}
                                 >
@@ -107,6 +149,7 @@ export function PosCashToolsPanel({
                                     step="0.01"
                                     value={amount}
                                     onChange={(e) => setAmount(e.target.value)}
+                                    inputMode="decimal"
                                 />
                             </div>
                             <div className="space-y-1.5">
@@ -119,7 +162,12 @@ export function PosCashToolsPanel({
                             </div>
                             <Button
                                 type="button"
-                                className="w-full"
+                                className={cn(
+                                    'w-full font-semibold',
+                                    mode === 'paid_in'
+                                        ? 'bg-emerald-600 hover:bg-emerald-700'
+                                        : 'bg-rose-600 hover:bg-rose-700'
+                                )}
                                 disabled={busy || !amount}
                                 onClick={() => void submitMovement()}
                             >

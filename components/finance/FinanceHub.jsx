@@ -4,7 +4,8 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import {
     BookOpen, Receipt, CalendarRange, RefreshCcw,
     Globe, TrendingUp, TrendingDown, ChevronLeft,
-    LayoutDashboard, ChevronRight, Loader2, FileText, ListTree, PenLine, GitMerge,
+    LayoutDashboard, ChevronRight, Loader2, FileText, ListTree, PenLine, Landmark,
+    CreditCard, BadgeDollarSign,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -43,7 +44,7 @@ const FINANCE_TABS = [
     { key: 'accounts', label: 'Chart of Accounts', shortLabel: 'Accounts', icon: ListTree, permission: 'finance.view_gl', feature: 'basic_accounting', group: 'Books' },
     { key: 'journal', label: 'Journal Entries', shortLabel: 'Journal', icon: PenLine, permission: 'finance.view_gl', feature: 'basic_accounting', group: 'Books' },
     { key: 'general-ledger', label: 'General Ledger', shortLabel: 'Ledger', icon: BookOpen, permission: 'finance.view_gl', feature: 'basic_accounting', group: 'Books' },
-    { key: 'reconciliation', label: 'Bank Reconciliation', shortLabel: 'Bank Rec', icon: GitMerge, permission: 'finance.view_gl', feature: 'basic_accounting', group: 'Books' },
+    { key: 'reconciliation', label: 'Bank Reconciliation', shortLabel: 'Bank Rec', icon: Landmark, permission: 'finance.view_gl', feature: 'basic_accounting', group: 'Books' },
     { key: 'expenses', label: 'Expenses', shortLabel: 'Expenses', icon: Receipt, permission: 'finance.manage_expenses', feature: 'expense_tracking', group: 'Cash' },
     { key: 'credit-notes', label: 'Credit Notes', shortLabel: 'Credits', icon: RefreshCcw, permission: 'finance.credit_notes', feature: 'credit_notes', group: 'Cash' },
     { key: 'fiscal', label: 'Fiscal Periods', shortLabel: 'Fiscal', icon: CalendarRange, permission: 'finance.close_period', feature: 'fiscal_periods', group: 'Close' },
@@ -588,8 +589,11 @@ export default function FinanceHub({ businessId, initialTab, businessCategory = 
     const [coverage, setCoverage] = useState(null);
     const [reconciling, setReconciling] = useState(false);
     const [statementsRefreshKey, setStatementsRefreshKey] = useState(0);
-    /** Mobile: tile menu first; tap opens panel. Desktop always shows dock + content. */
-    const [mobileMenuOpen, setMobileMenuOpen] = useState(true);
+    /** Mobile: tile menu first; tap opens panel. Desktop always shows dock + content.
+     * Skip the menu when deep-linking into a specific financeView. */
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(
+      () => !(initialTab != null && String(initialTab).trim() !== '')
+    );
     const inFlightRef = useRef(false);
 
     const packCurrency = resolveDisplayCurrency(
@@ -626,6 +630,10 @@ export default function FinanceHub({ businessId, initialTab, businessCategory = 
             goToPaymentsHub();
             return;
         }
+        if (nav.preferTax) {
+            goToTaxHub();
+            return;
+        }
         setActiveTab(nav.tab);
         if (nav.tab === 'statements') {
             setStatementReport(report || nav.statementReport || 'pl');
@@ -633,7 +641,7 @@ export default function FinanceHub({ businessId, initialTab, businessCategory = 
             setStatementReport(report);
         }
         setMobileMenuOpen(false);
-    }, [goToPaymentsHub]);
+    }, [goToPaymentsHub, goToTaxHub]);
 
     // Load finance data with SWR: paint session cache instantly, always soft-revalidate.
     const loadData = useCallback(async ({ force = false } = {}) => {
@@ -728,13 +736,18 @@ export default function FinanceHub({ businessId, initialTab, businessCategory = 
                     goToPaymentsHub();
                     return;
                 }
+                if (nav.preferTax) {
+                    onInitialTabConsumed?.();
+                    goToTaxHub();
+                    return;
+                }
                 setActiveTab(nav.tab);
                 if (nav.statementReport) setStatementReport(nav.statementReport);
                 setMobileMenuOpen(false);
                 onInitialTabConsumed?.();
             });
         }
-    }, [initialTab, onInitialTabConsumed, goToPaymentsHub]);
+    }, [initialTab, onInitialTabConsumed, goToPaymentsHub, goToTaxHub]);
 
     useEffect(() => {
         if (visibleTabKeys.length === 0) return;
@@ -745,6 +758,10 @@ export default function FinanceHub({ businessId, initialTab, businessCategory = 
                 goToPaymentsHub();
                 return;
             }
+            if (nav.preferTax) {
+                goToTaxHub();
+                return;
+            }
             if (visibleTabKeys.includes(nav.tab)) {
                 setActiveTab(nav.tab);
                 if (nav.statementReport) setStatementReport(nav.statementReport);
@@ -752,7 +769,29 @@ export default function FinanceHub({ businessId, initialTab, businessCategory = 
             }
             setActiveTab(visibleTabKeys[0]);
         });
-    }, [visibleTabKeys, activeTab]);
+    }, [visibleTabKeys, activeTab, goToPaymentsHub, goToTaxHub]);
+
+    const mobileHubLinks = useMemo(
+        () => [
+            {
+                key: 'payments',
+                label: 'Payments',
+                shortLabel: 'Payments',
+                icon: CreditCard,
+                group: 'Hub',
+                hint: 'Receipts & vouchers',
+            },
+            {
+                key: 'gst',
+                label: 'Tax / GST',
+                shortLabel: 'Tax',
+                icon: BadgeDollarSign,
+                group: 'Hub',
+                hint: 'Tax & GST',
+            },
+        ],
+        []
+    );
 
     const renderContent = () => {
         switch (activeTab) {
@@ -886,6 +925,7 @@ export default function FinanceHub({ businessId, initialTab, businessCategory = 
                     <FinanceMobileNav
                         variant="tiles"
                         tabs={visibleTabs}
+                        hubLinks={mobileHubLinks}
                         activeTab={activeTab}
                         onSelect={navigateFinance}
                     />
@@ -893,11 +933,13 @@ export default function FinanceHub({ businessId, initialTab, businessCategory = 
                     <button
                         type="button"
                         onClick={() => setMobileMenuOpen(true)}
-                        className="flex w-full items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-left shadow-sm active:bg-gray-50 dark:border-slate-800 dark:bg-slate-950"
+                        className="flex w-full items-center gap-2.5 rounded-2xl border border-neutral-200 bg-white px-3.5 py-3 text-left shadow-sm transition-colors active:bg-neutral-50 dark:border-slate-800 dark:bg-slate-950"
                     >
-                        <ChevronLeft className="h-4 w-4 shrink-0 text-gray-500" aria-hidden />
-                        <span className="text-xs font-semibold text-gray-500">All sections</span>
-                        <span className="ml-auto truncate text-xs font-semibold text-gray-900 dark:text-gray-100">
+                        <ChevronLeft className="h-4 w-4 shrink-0 text-neutral-500" aria-hidden />
+                        <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400">
+                            All sections
+                        </span>
+                        <span className="ml-auto truncate text-sm font-semibold tracking-tight text-neutral-900 dark:text-neutral-100">
                             {activeTabMeta?.shortLabel || activeTabMeta?.label || 'Finance'}
                         </span>
                     </button>

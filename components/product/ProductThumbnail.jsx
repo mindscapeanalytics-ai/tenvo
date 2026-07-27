@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { Package } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getEffectiveProductImageUrl } from '@/lib/storefront/productImageFallback';
+import { resolveImageReferrerPolicy } from '@/lib/storefront/imageReferrerPolicy';
 
 const SIZE_CLASS = {
   xs: 'h-7 w-7 rounded-md',
@@ -51,6 +52,7 @@ export function ProductThumbnail({
           alt={label}
           loading="lazy"
           decoding="async"
+          referrerPolicy={resolveImageReferrerPolicy(src)}
           className={cn('h-full w-full object-cover', imgClassName)}
           onError={() => setFailed(true)}
         />

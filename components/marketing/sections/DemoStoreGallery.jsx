@@ -38,6 +38,8 @@ import {
   MARKETING_SECTION_HEADING,
 } from '@/lib/utils/marketingLayout';
 import { cn } from '@/lib/utils';
+import { buildUnsplashImageUrl } from '@/lib/storefront/unsplashUrl';
+import { resolveImageReferrerPolicy } from '@/lib/storefront/imageReferrerPolicy';
 
 const ICON_MAP = {
   shirt: Shirt,
@@ -62,6 +64,12 @@ const ICON_MAP = {
 
 const FADE_MS = 700;
 const HOLD_MS = 5200;
+
+/** Last-resort card art when a demo hero CDN fails (hotlink / 404). */
+const DEMO_CARD_HERO_FALLBACK = buildUnsplashImageUrl('1503376780353-7e6692767b70', {
+  w: 900,
+  q: 82,
+});
 
 /**
  * @param {ReturnType<typeof getHeroDemoGalleryItems>[number]} store
@@ -452,6 +460,19 @@ function FeaturedSpotlight({ stores }) {
  */
 function DemoStoreCard({ store, className, compact = false }) {
   const Icon = ICON_MAP[store.icon] || Store;
+  const [heroSrc, setHeroSrc] = useState(store.heroImage || DEMO_CARD_HERO_FALLBACK);
+
+  useEffect(() => {
+    setHeroSrc(store.heroImage || DEMO_CARD_HERO_FALLBACK);
+  }, [store.heroImage]);
+
+  const handleHeroError = () => {
+    if (heroSrc && heroSrc !== DEMO_CARD_HERO_FALLBACK) {
+      setHeroSrc(DEMO_CARD_HERO_FALLBACK);
+      return;
+    }
+    setHeroSrc('');
+  };
 
   return (
     <Link
@@ -474,11 +495,11 @@ function DemoStoreCard({ store, className, compact = false }) {
       )}
     >
       <div className="relative aspect-[16/11] overflow-hidden bg-neutral-100">
-        {store.heroImage ? (
+        {heroSrc ? (
           compact ? (
             // eslint-disable-next-line @next/next/no-img-element -- marquee needs lightweight imgs for smooth GPU scroll
             <img
-              src={store.heroImage}
+              src={heroSrc}
               alt={`${store.name} live demo storefront`}
               className={cn(
                 'absolute inset-0 h-full w-full',
@@ -488,10 +509,12 @@ function DemoStoreCard({ store, className, compact = false }) {
               loading="lazy"
               decoding="async"
               draggable={false}
+              referrerPolicy={resolveImageReferrerPolicy(heroSrc)}
+              onError={handleHeroError}
             />
           ) : (
             <Image
-              src={store.heroImage}
+              src={heroSrc}
               alt={`${store.name} live demo storefront`}
               fill
               className={cn(
@@ -500,6 +523,7 @@ function DemoStoreCard({ store, className, compact = false }) {
                 store.heroObjectPosition || 'object-top'
               )}
               sizes="280px"
+              onError={handleHeroError}
             />
           )
         ) : (

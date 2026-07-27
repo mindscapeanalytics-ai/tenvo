@@ -1383,6 +1383,8 @@ export function PosTerminal({
                 onOpenChange={setShowCashTools}
                 businessId={businessId || business?.id}
                 sessionId={hasSession ? session?.id : null}
+                business={business}
+                currencyCode={posUi.currencyCode}
                 onRequirePinForPaidOut={(run) => requestApproval('paid_out', run)}
             />
 

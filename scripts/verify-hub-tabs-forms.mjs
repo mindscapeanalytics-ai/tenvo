@@ -89,17 +89,28 @@ for (const [raw, tab, view] of financeAliasCases) {
 }
 
 const hubNavCases = [
-  ['trial-balance', 'statements', 'tb', false],
-  ['day-book', 'statements', 'day-book', false],
-  ['vouchers', 'overview', null, true],
-  ['accounts', 'accounts', null, false],
+  ['trial-balance', 'statements', 'tb', false, false],
+  ['day-book', 'statements', 'day-book', false, false],
+  ['vouchers', 'overview', null, true, false],
+  ['payments', 'overview', null, true, false],
+  ['gst', 'overview', null, false, true],
+  ['accounts', 'accounts', null, false, false],
 ];
-for (const [raw, tab, report, preferPayments] of hubNavCases) {
+for (const [raw, tab, report, preferPayments, preferTax] of hubNavCases) {
   const nav = resolveFinanceHubNavigation(raw);
-  if (nav.tab !== tab || (nav.statementReport || null) !== report || Boolean(nav.preferPayments) !== preferPayments) {
-    mark(`hubNav ${raw} → expected ${tab}/${report}/pay=${preferPayments}, got ${nav.tab}/${nav.statementReport}/pay=${Boolean(nav.preferPayments)}`);
+  if (
+    nav.tab !== tab ||
+    (nav.statementReport || null) !== report ||
+    Boolean(nav.preferPayments) !== preferPayments ||
+    Boolean(nav.preferTax) !== preferTax
+  ) {
+    mark(
+      `hubNav ${raw} → expected ${tab}/${report}/pay=${preferPayments}/tax=${preferTax}, got ${nav.tab}/${nav.statementReport}/pay=${Boolean(nav.preferPayments)}/tax=${Boolean(nav.preferTax)}`
+    );
   } else {
-    ok(`hubNav ${raw} → ${nav.tab}${report ? ` + ${report}` : ''}${preferPayments ? ' → payments' : ''}`);
+    ok(
+      `hubNav ${raw} → ${nav.tab}${report ? ` + ${report}` : ''}${preferPayments ? ' → payments' : ''}${preferTax ? ' → tax' : ''}`
+    );
   }
 }
 

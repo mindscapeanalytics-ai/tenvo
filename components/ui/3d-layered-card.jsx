@@ -48,6 +48,7 @@ export default function ThreeDLayeredCard({
             className="absolute inset-0 h-full w-full object-cover object-center motion-safe:transition-transform motion-safe:duration-500 motion-safe:ease-out motion-safe:group-hover:scale-[1.04]"
             loading="lazy"
             decoding="async"
+            referrerPolicy="no-referrer"
           />
         ) : null}
 

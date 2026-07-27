@@ -53,6 +53,8 @@ export function PosCloseShiftDialog({
     const counted = parseFloat(closingCash) || 0;
     const difference = Math.round((counted - expectedCash) * 100) / 100;
     const openingCash = Number(summary?.opening_balance || 0);
+    const cashCollected = Number(summary?.cash_collected || 0);
+    const movementNet = Number(summary?.cash_movement_net || 0);
     const txCount = Number(summary?.tx_count || 0);
     const totalRevenue = Number(summary?.total_revenue || 0);
 
@@ -132,6 +134,21 @@ export function PosCloseShiftDialog({
                                 <span className="font-semibold tabular-nums">{currency}{openingCash.toLocaleString()}</span>
                             </div>
                             <div className="flex justify-between">
+                                <span>Cash sales</span>
+                                <span className="font-semibold tabular-nums">{currency}{cashCollected.toLocaleString()}</span>
+                            </div>
+                            {Math.abs(movementNet) > 0.001 ? (
+                                <div className="flex justify-between">
+                                    <span>Paid in / out (net)</span>
+                                    <span className={cn(
+                                        'font-semibold tabular-nums',
+                                        movementNet >= 0 ? 'text-emerald-700' : 'text-rose-700'
+                                    )}>
+                                        {movementNet >= 0 ? '+' : ''}{currency}{movementNet.toLocaleString()}
+                                    </span>
+                                </div>
+                            ) : null}
+                            <div className="flex justify-between border-t border-gray-100 pt-2">
                                 <span>Expected cash in drawer</span>
                                 <span className="font-semibold tabular-nums text-emerald-700">
                                     {currency}{expectedCash.toLocaleString()}

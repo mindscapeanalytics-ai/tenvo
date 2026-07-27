@@ -121,6 +121,23 @@ includes('lib/hooks/usePosHotkeys.js', "addEventListener('keydown', onKeyDown, t
 includes('lib/hooks/usePosHotkeys.js', 'resolvePosFunctionKey', 'usePosHotkeys uses key resolver');
 includes('lib/utils/posHotkeyHelpers.js', 'focusPosScanInput', 'posHotkeyHelpers exports visible scan focus');
 
+includes('lib/utils/posCashDrawer.js', 'buildCashDrawerSlipHtml', 'cash drawer prints labeled thermal slip');
+if (read('lib/utils/posCashDrawer.js').includes("font-size:1px;color:#fff</style>\n</head><body>${CASH_DRAWER_KICK_SEQUENCE}<span>.</span>")) {
+  mark('cash drawer still uses blank white kick page');
+} else {
+  ok('cash drawer no longer uses blank white kick page');
+}
+includes('lib/print/thermalReceipt.js', 'receiptFooter', 'thermal receipt renders tenant footer');
+includes('lib/print/thermalReceipt.js', 'paperSize', 'thermal receipt is paper-size aware');
+includes('lib/print/thermalReceipt.js', 'printThermalReceiptPdf', 'POS print uses exact-size PDF path');
+includes('lib/print/thermalReceipt.js', 'createThermalReceiptPdf', 'thermal PDF builder exists');
+includes('lib/print/thermalReceipt.js', 'autoPrint', 'thermal PDF uses autoPrint for till print');
+includes('lib/utils/posCashDrawer.js', 'size: ${paperSize} ${pageH}mm', 'cash drawer slip uses fixed thermal page height');
+includes('lib/actions/standard/pos.js', 'cash_movement_net', 'session summary includes paid in/out net');
+includes('components/pos/shared/PosCashToolsPanel.jsx', 'businessName', 'cash tools pass business name into drawer slip');
+includes('lib/config/posSettings.js', "paperSize: '58mm'", 'POS settings default 58mm paper');
+includes('components/pos/SuperStorePOS.jsx', "e.key === 'Enter'", 'SuperStorePOS Enter pays like PosTerminal');
+
 const dash = read('app/business/[category]/components/DashboardTabs.jsx');
 if (!dash.includes('RestaurantPOS') || !dash.includes('SuperStorePOS') || !dash.includes('PosTerminal')) {
   mark('DashboardTabs must mount RestaurantPOS, SuperStorePOS, and PosTerminal');

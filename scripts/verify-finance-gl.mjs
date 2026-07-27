@@ -128,6 +128,11 @@ assert(
 );
 includes('lib/utils/agingBuckets.js', 'parsePaymentTermsDays', 'payment terms day parser');
 includes('components/finance/FinanceMobileNav.jsx', 'GROUP_ORDER', 'Finance nav renders group separators');
+includes('components/finance/FinanceMobileNav.jsx', 'FinanceHubTile', 'Finance mobile uses colored hub tiles');
+includes('lib/finance/financeHubTiles.js', 'FINANCE_TAB_TILE_META', 'Finance tile color map');
+includes('lib/config/tabs.js', "key === 'payments'", 'financeView=payments routes to Payments hub');
+includes('components/reports/GeneralLedgerReport.jsx', 'financeView=vouchers', 'GL payment link uses vouchers alias');
+includes('components/finance/FinanceHub.jsx', 'hubLinks={mobileHubLinks}', 'mobile Finance hub exposes Payments/Tax');
 includes('lib/utils/businessRegionalContext.js', 'resolveDisplayCurrency', 'shared display currency helper');
 includes('components/ExportButton.jsx', 'business,', 'ExportButton accepts business for brand PDF');
 includes('components/reports/GeneralLedgerReport.jsx', 'routeCategory', 'GL links use business category not UUID');

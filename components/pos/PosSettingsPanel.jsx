@@ -138,10 +138,30 @@ export function PosSettingsPanel({ category }) {
 
                         <ToggleRow
                             label="Auto-print receipt after sale"
-                            hint="Opens print dialog when supported after checkout."
+                            hint="Prints an exact-size 58mm/80mm PDF receipt to your connected printer after checkout."
                             checked={settings.autoPrintReceipt}
                             onCheckedChange={(v) => patch('autoPrintReceipt', v)}
                         />
+
+                        <div className="space-y-2">
+                            <Label className="text-sm font-semibold text-slate-800">Receipt paper size</Label>
+                            <Select
+                                value={settings.paperSize === '80mm' ? '80mm' : '58mm'}
+                                onValueChange={(v) => patch('paperSize', v)}
+                            >
+                                <SelectTrigger className="h-11 rounded-xl">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="58mm">58mm thermal (compact)</SelectItem>
+                                    <SelectItem value="80mm">80mm thermal</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <p className="text-xs text-slate-500">
+                                Match your roll width. In the print dialog pick the receipt printer, Actual size (100%), and Save paper / roll paper.
+                            </p>
+                        </div>
+
                         <ToggleRow
                             label="Block expired products"
                             hint="Prevents selling pharmacy or dated inventory past expiry."
@@ -184,7 +204,7 @@ export function PosSettingsPanel({ category }) {
                         />
                         <ToggleRow
                             label="Open cash drawer on cash sale"
-                            hint="Embeds an ESC/POS drawer kick in the same receipt print on cash or split sales (one print job, no blank page)."
+                            hint="When auto-print is off, prints a short labeled drawer slip with ESC/POS kick. With auto-print on, use your printer driver Open drawer on print (exact-size PDF receipts cannot carry ESC/POS)."
                             checked={settings.cashDrawerKickOnCashSale !== false}
                             onCheckedChange={(v) => patch('cashDrawerKickOnCashSale', v)}
                         />

@@ -168,7 +168,7 @@ export function GeneralLedgerReport({ businessId }) {
                 return `${base}?tab=inventory&view=purchases`;
             case 'payment':
             case 'payments':
-                return `${base}?tab=finance&financeView=payments`;
+                return `${base}?tab=finance&financeView=vouchers`;
             default:
                 return null;
         }

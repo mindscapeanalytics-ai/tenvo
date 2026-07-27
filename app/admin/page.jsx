@@ -14,7 +14,7 @@ export default function AdminPage() {
     const { isLoading, isPlatformAdmin } = useBusiness();
 
     return (
-        <main className="max-w-7xl mx-auto px-4 py-6 md:px-6 space-y-6">
+        <main className="max-w-7xl mx-auto px-4 py-5 sm:py-6 md:px-6 space-y-5 sm:space-y-6 pb-[calc(5.5rem+env(safe-area-inset-bottom))] lg:pb-6 min-w-0 overflow-x-hidden">
             <BusinessLoadingBoundary isLoading={isLoading}>
                 {isPlatformAdmin ? (
                     <Suspense
