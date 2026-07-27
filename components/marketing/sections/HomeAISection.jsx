@@ -86,7 +86,7 @@ export default function HomeAISection() {
         <div className="space-y-5 lg:col-span-5">
           <p className={cn(MARKETING_EYEBROW, 'text-brand-primary')}>AI-powered intelligence</p>
           <h2 className="text-3xl font-semibold tracking-tight text-neutral-900 sm:text-4xl lg:text-[2.75rem] lg:leading-[1.1]">
-            Meet your AI Business Manager
+            Meet your <span className="text-brand-primary">AI Business Manager</span>
           </h2>
           <p className={cn(MARKETING_LEAD, 'text-neutral-600')}>
             Make smarter decisions with live operational data, forecasting signals, and an AI
@@ -110,6 +110,7 @@ export default function HomeAISection() {
                 fill
                 className="object-cover object-top"
                 sizes="(max-width: 1024px) 100vw, 420px"
+                quality={78}
               />
             </div>
             <div className="space-y-2 border-t border-brand-100 bg-brand-50/70 px-4 py-3 sm:px-5">

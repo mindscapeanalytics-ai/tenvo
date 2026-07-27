@@ -463,15 +463,17 @@
 
 @keyframes marquee {
   0% {
-    transform: translateX(0%);
+    transform: translate3d(0%, 0, 0);
   }
   100% {
-    transform: translateX(-50%);
+    transform: translate3d(-50%, 0, 0);
   }
 }
 
 .animate-marquee {
   animation: marquee 30s linear infinite;
+  will-change: transform;
+  backface-visibility: hidden;
 }
 
 .animate-marquee:hover {
@@ -480,15 +482,45 @@
 
 @keyframes marquee-partners {
   0% {
-    transform: translateX(0);
+    transform: translate3d(0, 0, 0);
   }
   100% {
-    transform: translateX(-50%);
+    transform: translate3d(-50%, 0, 0);
   }
 }
 
 .animate-marquee-partners {
   animation: marquee-partners 55s linear infinite;
+  will-change: transform;
+  backface-visibility: hidden;
+  transform: translate3d(0, 0, 0);
+}
+
+@keyframes marquee-stores {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+.animate-marquee-stores {
+  animation: marquee-stores 80s linear infinite;
+  will-change: transform;
+  backface-visibility: hidden;
+  transform: translate3d(0, 0, 0);
+  contain: layout style;
+}
+
+.animate-marquee-stores:hover,
+.demo-store-marquee:hover .animate-marquee-stores {
+  animation-play-state: paused;
+}
+
+.demo-store-marquee-card {
+  content-visibility: auto;
+  contain-intrinsic-size: 280px 320px;
 }
 
 @keyframes mesh-drift {
@@ -600,6 +632,7 @@
 @media (prefers-reduced-motion: reduce) {
   .animate-marquee,
   .animate-marquee-partners,
+  .animate-marquee-stores,
   .marketing-mesh-drift,
   .animate-float-gentle,
   .animate-float-gentle-delayed,

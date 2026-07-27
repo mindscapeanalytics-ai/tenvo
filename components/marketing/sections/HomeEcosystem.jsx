@@ -56,7 +56,7 @@ export default function HomeEcosystem() {
       <div className="relative z-10 mx-auto mb-10 max-w-3xl space-y-3 text-center sm:mb-14">
         <p className={MARKETING_EYEBROW}>Beautiful business ecosystem</p>
         <h2 className={MARKETING_SECTION_HEADING}>
-          Everything connected.
+          <span className="text-brand-primary">Everything</span> connected.
           <br className="hidden sm:block" />
           Nothing repeated.
         </h2>

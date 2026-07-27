@@ -1,119 +1,131 @@
 'use client';
 
-import Image from 'next/image';
+import Link from 'next/link';
 import {
+  Car,
   Dumbbell,
-  MonitorSmartphone,
-  Printer,
-  Receipt,
+  Gem,
+  Globe2,
+  Pill,
+  ShoppingBasket,
   Store,
   UtensilsCrossed,
 } from 'lucide-react';
-import { TENVO_IMG } from '@/lib/marketing/tenvoMarketingImages';
 import MarketingSection from '@/components/marketing/layout/MarketingSection';
+import { MARKETING_TRUST_BRAND_MARKS } from '@/lib/marketing/marketingIntegrationLogos';
 import { cn } from '@/lib/utils';
 
-/** Modern product proofs — visual UIs only (no spreadsheet / P&L plates) */
-const TRUST_SHOTS = [
-  {
-    src: TENVO_IMG.milkEasy,
-    label: 'Milk Hub',
-    hint: 'Easy Mode ops',
-    icon: Store,
-    accent: 'from-rose-500/15 to-transparent',
-  },
-  {
-    src: TENVO_IMG.milkPos,
-    label: 'Smart POS',
-    hint: 'Counter ready',
-    icon: MonitorSmartphone,
-    accent: 'from-emerald-500/15 to-transparent',
-  },
-  {
-    src: TENVO_IMG.restaurantStore,
-    label: 'Restaurant',
-    hint: 'Digital menu',
-    icon: UtensilsCrossed,
-    accent: 'from-orange-500/15 to-transparent',
-  },
-  {
-    src: TENVO_IMG.fitnessStore,
-    label: 'Fitness',
-    hint: 'Gym retail',
-    icon: Dumbbell,
-    accent: 'from-violet-500/15 to-transparent',
-  },
-  {
-    src: TENVO_IMG.milkBillWhatsapp,
-    label: 'Billing',
-    hint: 'WhatsApp bills',
-    icon: Receipt,
-    accent: 'from-sky-500/15 to-transparent',
-  },
-  {
-    src: TENVO_IMG.milkBillBilingual,
-    label: 'Receipts',
-    hint: 'Thermal bills',
-    icon: Printer,
-    accent: 'from-amber-500/15 to-transparent',
-  },
+/** Worldwide industry marks — icon only, no product screenshots */
+const INDUSTRY_MARKS = [
+  { label: 'Retail', icon: Store },
+  { label: 'Restaurant', icon: UtensilsCrossed },
+  { label: 'Pharmacy', icon: Pill },
+  { label: 'Grocery', icon: ShoppingBasket },
+  { label: 'Auto', icon: Car },
+  { label: 'Fitness', icon: Dumbbell },
+  { label: 'Jewellery', icon: Gem },
+  { label: 'Global', icon: Globe2 },
 ];
 
+function BrandMarkTile({ mark }) {
+  return (
+    <div
+      className={cn(
+        'inline-flex h-14 min-w-[7.5rem] shrink-0 items-center justify-center rounded-xl',
+        'border border-neutral-200/80 bg-white px-5',
+        'text-neutral-500 transition-colors duration-200',
+        'hover:border-neutral-300 hover:text-neutral-800'
+      )}
+      title={mark.label}
+    >
+      <span className={cn(mark.className)}>{mark.wordmark}</span>
+      <span className="sr-only">{mark.label}</span>
+    </div>
+  );
+}
+
+function IndustryMarkTile({ item }) {
+  const Icon = item.icon;
+  return (
+    <div
+      className={cn(
+        'inline-flex shrink-0 flex-col items-center gap-2 px-3',
+        'text-neutral-400 transition-colors duration-200 hover:text-neutral-700'
+      )}
+      title={item.label}
+    >
+      <span
+        className={cn(
+          'inline-flex h-11 w-11 items-center justify-center rounded-full',
+          'border border-neutral-200/90 bg-white text-neutral-600 shadow-sm'
+        )}
+      >
+        <Icon className="h-5 w-5" strokeWidth={1.6} aria-hidden />
+      </span>
+      <span className="text-[10px] font-semibold uppercase tracking-[0.14em]">
+        {item.label}
+      </span>
+    </div>
+  );
+}
+
 /**
- * Modern trust strip — elevated product cards (no Excel / ledger screenshots).
+ * Worldwide trust strip — integration logos + industry icons only (no UI screenshots).
  */
 export default function HomeProductTrustStrip() {
   return (
     <MarketingSection padding="tight" className="border-b border-neutral-200/80 bg-[#FAFAFA]">
-      <p className="mb-8 text-center text-[10px] font-semibold uppercase tracking-[0.28em] text-neutral-400 sm:mb-10 sm:text-[11px]">
+      <p className="mb-6 text-center text-[10px] font-semibold uppercase tracking-[0.28em] text-neutral-400 sm:mb-8 sm:text-[11px]">
         Trusted by growing businesses around the world
       </p>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-6 lg:gap-4">
-        {TRUST_SHOTS.map((shot) => {
-          const Icon = shot.icon;
-          return (
+      {/* Payment & commerce channel logos */}
+      <div
+        className="relative integration-marquee-fade"
+        aria-label="Commerce and payment integrations"
+      >
+        <div className="flex w-max animate-marquee-partners motion-reduce:animate-none hover:[animation-play-state:paused]">
+          {[0, 1].map((set) => (
             <div
-              key={shot.label}
-              className={cn(
-                'group overflow-hidden rounded-2xl border border-neutral-200/80 bg-white',
-                'shadow-[0_8px_24px_-16px_rgba(15,23,42,0.28)]',
-                'transition-[transform,box-shadow] duration-300',
-                'motion-safe:hover:-translate-y-1 hover:shadow-[0_18px_40px_-20px_rgba(15,23,42,0.35)]'
-              )}
+              key={set}
+              className="flex shrink-0 items-center gap-4 pr-4 sm:gap-5 sm:pr-5"
+              aria-hidden={set === 1}
             >
-              <div className="relative aspect-[5/4] overflow-hidden bg-neutral-100">
-                <Image
-                  src={shot.src}
-                  alt={`TENVO ${shot.label}`}
-                  fill
-                  className="object-cover object-top transition-transform duration-500 motion-safe:group-hover:scale-[1.04]"
-                  sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 16vw"
-                />
-                <div
-                  className={cn(
-                    'pointer-events-none absolute inset-0 bg-gradient-to-t',
-                    shot.accent
-                  )}
-                  aria-hidden
-                />
-                <div className="absolute left-2.5 top-2.5 inline-flex h-7 w-7 items-center justify-center rounded-lg border border-white/70 bg-white/90 text-neutral-700 shadow-sm backdrop-blur-sm">
-                  <Icon className="h-3.5 w-3.5" aria-hidden />
-                </div>
-              </div>
-              <div className="space-y-0.5 px-3 py-3 text-center">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-800">
-                  {shot.label}
-                </p>
-                <p className="text-[10px] font-medium text-neutral-400">{shot.hint}</p>
-              </div>
+              {MARKETING_TRUST_BRAND_MARKS.map((mark) => (
+                <BrandMarkTile key={`${set}-${mark.id}`} mark={mark} />
+              ))}
             </div>
-          );
-        })}
+          ))}
+        </div>
       </div>
 
-      <p className="mt-6 text-center text-xs font-medium text-neutral-500">
-        And many more verticals across retail, hospitality, and services
+      {/* Industry vertical icons */}
+      <div className="mt-8 border-t border-neutral-200/70 pt-8 sm:mt-10">
+        <div
+          className="relative integration-marquee-fade"
+          aria-label="Industries served worldwide"
+        >
+          <div className="flex w-max animate-marquee-partners motion-reduce:animate-none [animation-duration:65s] hover:[animation-play-state:paused]">
+            {[0, 1].map((set) => (
+              <div
+                key={set}
+                className="flex shrink-0 items-center gap-2 pr-6 sm:gap-4 sm:pr-8"
+                aria-hidden={set === 1}
+              >
+                {INDUSTRY_MARKS.map((item) => (
+                  <IndustryMarkTile key={`${set}-${item.label}`} item={item} />
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <p className="mt-6 text-center text-xs font-medium text-neutral-500 sm:mt-8">
+        Commerce, payments, and ops for retail, hospitality, and services.{' '}
+        <Link href="/integrations" className="font-semibold text-brand-primary hover:underline">
+          See integrations
+        </Link>
       </p>
     </MarketingSection>
   );

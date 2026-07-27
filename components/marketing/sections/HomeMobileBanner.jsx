@@ -42,7 +42,7 @@ export default function HomeMobileBanner({ workspaceHref = '/register' }) {
               </div>
 
               <h2 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl lg:text-[2.55rem] lg:leading-[1.12]">
-                Your Business. Anywhere, Anytime.
+                Your Business. <span className="text-red-300">Anywhere, Anytime.</span>
               </h2>
 
               <p className="max-w-md text-sm font-medium leading-relaxed text-white/90 sm:text-base">

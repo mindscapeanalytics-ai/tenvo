@@ -25,7 +25,7 @@ export default function HomeSecurityTrustSection() {
       <div className="relative z-10 mb-10 space-y-3 text-center sm:mb-12">
         <p className={cn(MARKETING_EYEBROW, 'text-sky-700')}>Enterprise-grade security</p>
         <h2 className={cn(MARKETING_H3, 'text-neutral-900')}>
-          Encrypted, backed up, and built for operators who cannot afford downtime
+          <span className="text-brand-primary">Encrypted</span>, backed up, and built for operators who cannot afford downtime
         </h2>
         <p className={cn(MARKETING_LEAD, 'mx-auto max-w-2xl text-neutral-600')}>
           Honest status on what ships today versus what is on the roadmap. No vanity certification

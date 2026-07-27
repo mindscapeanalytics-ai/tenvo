@@ -182,14 +182,14 @@ export default function Home() {
       </ScrollReveal>
 
       <ScrollReveal direction="up" threshold={0.15}>
-        <HomeBusinessPain />
+        <HomeBusinessPain workspaceHref={workspaceHref} />
       </ScrollReveal>
 
       <ScrollReveal direction="up" threshold={0.15}>
         <HomeEcosystem />
       </ScrollReveal>
 
-      {/* LIVE DEMO STOREFRONTS — do not disturb */}
+      {/* LIVE DEMO STOREFRONTS — featured ready-store gallery */}
       <ScrollReveal direction="up" threshold={0.15}>
         <DemoStoreGallery variant="featured" />
       </ScrollReveal>

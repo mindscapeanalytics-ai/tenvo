@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 
 /**
  * Hero product stage — official desktop + mobile dashboard composite
- * (public/tenvo-img/tenvo-dashboard.png, 1536×1024).
+ * (public/tenvo-img/webp/tenvo-dashboard.webp, 1536×1024).
  * Studio black plate is dropped via mix-blend-lighten on the light hero mesh.
  */
 export default function HomeHeroDevicesVisual({ className }) {
@@ -30,7 +30,7 @@ export default function HomeHeroDevicesVisual({ className }) {
         aria-hidden
       />
 
-      {/* Native 3:2 frame matches tenvo-dashboard.png (1536×1024) */}
+      {/* Native 3:2 frame matches tenvo-dashboard.webp */}
       <div className="relative mx-auto aspect-[3/2] w-full mix-blend-lighten">
         <Image
           src={TENVO_IMG.heroDashboardDevices}
@@ -39,6 +39,7 @@ export default function HomeHeroDevicesVisual({ className }) {
           priority
           className="object-contain object-center"
           sizes="(max-width: 640px) 96vw, (max-width: 1024px) 88vw, 720px"
+          quality={80}
         />
       </div>
 

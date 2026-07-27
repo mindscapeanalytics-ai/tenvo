@@ -2,83 +2,138 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowUpRight } from 'lucide-react';
+import {
+  ArrowUpRight,
+  Barcode,
+  MonitorSmartphone,
+  Package,
+  Printer,
+} from 'lucide-react';
 import MarketingSection from '@/components/marketing/layout/MarketingSection';
 import { VERTICAL_COUNT } from '@/lib/marketing/capabilities';
-import { TENVO_IMG_INDUSTRY_CARDS } from '@/lib/marketing/tenvoMarketingImages';
+import { TENVO_IMG } from '@/lib/marketing/tenvoMarketingImages';
 import {
   MARKETING_EYEBROW,
   MARKETING_LEAD,
   MARKETING_SECTION_HEADING,
-  MARKETING_STAT_VALUE,
 } from '@/lib/utils/marketingLayout';
 import { cn } from '@/lib/utils';
 
+const PROOFS = [
+  {
+    icon: MonitorSmartphone,
+    title: 'Hub + phone',
+    body: 'Same Easy Mode workspace on desktop and mobile.',
+  },
+  {
+    icon: Package,
+    title: 'Live inventory',
+    body: 'Low-stock alerts and stock counts stay in sync.',
+  },
+  {
+    icon: Printer,
+    title: 'Counter ready',
+    body: 'Receipts, scan, and payment amount on one sale.',
+  },
+  {
+    icon: Barcode,
+    title: 'Scan to sell',
+    body: 'Barcode flow wired from floor to checkout.',
+  },
+];
+
 /**
- * Light industry showcase using optimized WebP product screenshots.
+ * Inventory / POS ecosystem showcase — pos-inv.webp composite.
  */
 export default function HomeIndustryShowcase() {
   return (
     <MarketingSection
       padding="loose"
-      className="border-b border-neutral-200/80 bg-white"
+      className="border-b border-neutral-200/80 bg-gradient-to-b from-white via-[#F7F7F8] to-white"
     >
-      <div className="mx-auto mb-10 max-w-3xl space-y-3 text-center sm:mb-14">
-        <p className={MARKETING_EYEBROW}>Industry showcase</p>
-        <h2 className={MARKETING_SECTION_HEADING}>Every business. One platform.</h2>
-        <p className={MARKETING_LEAD}>
-          Real TENVO screens from retail, restaurant, supermarket, auto parts, milk, fitness, and
-          finance. {VERTICAL_COUNT}+ industry presets ship with day-one storefront and ops chrome.
-        </p>
-      </div>
+      <div className="grid items-center gap-10 lg:grid-cols-12 lg:gap-10 xl:gap-14">
+        <div className="min-w-0 space-y-6 lg:col-span-5 xl:col-span-4">
+          <div className="space-y-3 sm:space-y-4">
+            <p className={MARKETING_EYEBROW}>Inventory & counter</p>
+            <h2 className={cn(MARKETING_SECTION_HEADING, 'max-w-lg')}>
+              Stock, sales, and hardware in{' '}
+              <span className="text-brand-primary">one picture.</span>
+            </h2>
+            <p className={cn(MARKETING_LEAD, 'max-w-md')}>
+              Desktop hub, mobile ops, thermal receipts, barcode scan, and card
+              payment, wired to the same TENVO workspace. {VERTICAL_COUNT}+
+              industry presets ship day one.
+            </p>
+          </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-5">
-        {TENVO_IMG_INDUSTRY_CARDS.map((item) => (
+          <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+            {PROOFS.map((item) => {
+              const Icon = item.icon;
+              return (
+                <li
+                  key={item.title}
+                  className="flex gap-3 rounded-2xl bg-white p-3.5 ring-1 ring-neutral-200/90"
+                >
+                  <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-primary ring-1 ring-brand-100">
+                    <Icon className="h-[1.125rem] w-[1.125rem]" aria-hidden />
+                  </span>
+                  <div className="min-w-0 pt-0.5">
+                    <p className="text-sm font-semibold text-neutral-900">{item.title}</p>
+                    <p className="mt-0.5 text-xs font-medium leading-relaxed text-neutral-500">
+                      {item.body}
+                    </p>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+
           <Link
-            key={item.title + item.href}
-            href={item.href}
-            className="group overflow-hidden rounded-[1.5rem] border border-neutral-200/90 bg-white shadow-[0_4px_20px_rgba(0,0,0,0.05)] transition-[transform,box-shadow] duration-300 motion-safe:hover:-translate-y-1 hover:shadow-[0_20px_44px_-28px_rgba(15,23,42,0.35)] sm:rounded-[1.75rem]"
+            href="/industries"
+            className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand-primary underline-offset-4 hover:underline"
           >
-            <div className="relative aspect-[4/3] overflow-hidden bg-neutral-100">
+            Browse all industry presets
+            <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />
+          </Link>
+        </div>
+
+        <div className="relative min-w-0 lg:col-span-7 xl:col-span-8">
+          <div
+            className="pointer-events-none absolute -inset-3 rounded-[2.25rem] bg-brand-primary/10 blur-2xl sm:-inset-5"
+            aria-hidden
+          />
+          <div
+            className={cn(
+              'relative overflow-hidden rounded-[1.5rem] bg-neutral-100',
+              'ring-1 ring-neutral-200/90',
+              'shadow-[0_32px_72px_-32px_rgba(15,23,42,0.4)]',
+              'sm:rounded-[1.75rem] lg:rounded-[2rem]'
+            )}
+          >
+            {/* Native 3:2 — pos-inv.webp */}
+            <div className="relative aspect-[3/2] w-full">
               <Image
-                src={item.image}
-                alt={`${item.title} on TENVO`}
+                src={TENVO_IMG.inventoryEcosystem}
+                alt="TENVO inventory hub on desktop and mobile with receipt printer, barcode scanner, and payment terminal"
                 fill
-                className={cn(
-                  'object-cover transition-transform duration-500 motion-safe:group-hover:scale-[1.03]',
-                  item.object || 'object-top'
-                )}
-                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                className="object-cover object-center"
+                sizes="(max-width: 1024px) 96vw, 62vw"
+                quality={80}
               />
             </div>
-            <div className="space-y-2 p-4 sm:p-5">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-brand-primary">
-                    {item.metric}
-                  </p>
-                  <h3 className="mt-1 text-base font-semibold tracking-tight text-neutral-900">
-                    {item.title}
-                  </h3>
-                </div>
-                <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-neutral-800 transition-colors group-hover:bg-brand-primary group-hover:text-white">
-                  <ArrowUpRight className="h-4 w-4" aria-hidden />
-                </span>
-              </div>
-              <p className="text-xs font-medium leading-relaxed text-neutral-500">{item.blurb}</p>
-              <p className={cn(MARKETING_STAT_VALUE, 'sr-only')}>{item.metric}</p>
-            </div>
-          </Link>
-        ))}
-      </div>
+          </div>
 
-      <div className="mt-8 text-center sm:mt-10">
-        <Link
-          href="/industries"
-          className="text-sm font-semibold text-brand-primary underline-offset-4 hover:underline"
-        >
-          Browse all industry presets
-        </Link>
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-2 sm:justify-start lg:mt-5">
+            {['Desktop hub', 'Mobile ops', 'Printer', 'Scanner', 'EDC'].map((tag) => (
+              <span
+                key={tag}
+                className="rounded-full bg-white px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-neutral-600 ring-1 ring-neutral-200"
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
+        </div>
       </div>
     </MarketingSection>
   );

@@ -30,7 +30,9 @@ export default function HomeGrowthSection({ workspaceHref = '/register' }) {
       <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-14">
         <div className="space-y-5">
           <p className={MARKETING_EYEBROW}>Business growth</p>
-          <h2 className={MARKETING_SECTION_HEADING}>Grow from one store to hundreds</h2>
+          <h2 className={MARKETING_SECTION_HEADING}>
+            Grow from one store to <span className="text-brand-primary">hundreds</span>
+          </h2>
           <p className={MARKETING_LEAD}>
             Start with a single counter and online shop. Add warehouses, branches, and sister brands
             without ripping out your stack every time you expand.
@@ -77,6 +79,7 @@ export default function HomeGrowthSection({ workspaceHref = '/register' }) {
               fill
               className="object-cover object-top"
               sizes="(max-width: 1024px) 100vw, 50vw"
+              quality={78}
             />
           </div>
           <div className="grid grid-cols-3 gap-2 border-t border-neutral-100 bg-white p-4 sm:gap-3 sm:p-5">

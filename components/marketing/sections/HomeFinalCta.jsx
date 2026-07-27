@@ -47,7 +47,7 @@ export default function HomeFinalCta({
               Ready to grow
             </p>
             <h2 className="text-3xl font-semibold tracking-tight text-neutral-900 sm:text-4xl lg:text-5xl">
-              Ready to run your business smarter?
+              Ready to run your business <span className="text-brand-primary">smarter?</span>
             </h2>
             <p className="mx-auto max-w-2xl text-sm font-medium leading-relaxed text-neutral-600 sm:text-base">
               Join operators replacing spreadsheets and disconnected apps with one intelligent

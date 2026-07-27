@@ -1,17 +1,19 @@
 'use client';
 
-import Link from 'next/link';
 import Image from 'next/image';
+import Link from 'next/link';
 import {
-  ArrowDown,
-  Calculator,
+  Activity,
+  ArrowUpRight,
+  Bot,
   Check,
-  Layers,
-  LogIn,
-  MessageSquare,
-  X,
+  LayoutDashboard,
+  Smartphone,
 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import MarketingCtaLink from '@/components/marketing/ui/MarketingCtaLink';
 import MarketingSection from '@/components/marketing/layout/MarketingSection';
+import { getBookMeetingHref } from '@/lib/marketing/salesLinks';
 import { TENVO_IMG } from '@/lib/marketing/tenvoMarketingImages';
 import {
   MARKETING_EYEBROW,
@@ -20,175 +22,126 @@ import {
 } from '@/lib/utils/marketingLayout';
 import { cn } from '@/lib/utils';
 
-const CHAOS_TOOLS = ['Inventory', 'Accounting', 'POS', 'Store', 'CRM', 'Marketing'];
-
-const CHAOS_STACK = [
-  { label: 'Chat · Orders', icon: MessageSquare, rot: '-rotate-6', pos: 'left-[6%] top-[14%]' },
-  { label: 'Login · App 3', icon: LogIn, rot: 'rotate-3', pos: 'right-[8%] top-[18%]' },
-  { label: 'Calc · Tax', icon: Calculator, rot: '-rotate-2', pos: 'left-[18%] top-[42%]' },
-  { label: 'Tab · CRM', icon: Layers, rot: 'rotate-6', pos: 'right-[14%] top-[46%]' },
-];
-
-const CONTROL_POINTS = [
-  'One stock picture across counter, web, and warehouse',
-  'Orders, invoices, and payments stay linked',
-  'AI signals and reports without spreadsheet stitching',
+const IMPACT_POINTS = [
+  {
+    icon: LayoutDashboard,
+    title: 'One workspace',
+    body: 'Commerce, finance, inventory, and analytics share the same live picture.',
+  },
+  {
+    icon: Bot,
+    title: 'AI that acts',
+    body: 'Restock alerts, revenue opportunities, and health scores beside your KPIs.',
+  },
+  {
+    icon: Smartphone,
+    title: 'Desk and pocket',
+    body: 'The same hub on desktop and phone so floor teams never lose the thread.',
+  },
+  {
+    icon: Activity,
+    title: 'Live control',
+    body: 'Revenue, cash flow, orders, and inventory health update in one view.',
+  },
 ];
 
 /**
- * Before (fragmented tools, no Excel screenshot) → After (one TENVO Hub).
+ * One TENVO Hub — impact copy + desktop/mobile composite.
  */
-export default function HomeBusinessPain() {
+export default function HomeBusinessPain({ workspaceHref = '/register' }) {
   return (
     <MarketingSection
       padding="loose"
       className="border-b border-neutral-200/80 bg-gradient-to-b from-[#F7F8FA] via-white to-white"
     >
-      <div className="mx-auto mb-10 max-w-3xl space-y-3 text-center sm:mb-14">
-        <p className={MARKETING_EYEBROW}>From chaos to control</p>
-        <h2 className={MARKETING_SECTION_HEADING}>
-          Your business shouldn&apos;t depend on scattered tools and ten different apps
-        </h2>
-        <p className={MARKETING_LEAD}>
-          Disconnected systems. Manual work. Lost time. TENVO replaces the pile of tabs with one
-          intelligent workspace.
-        </p>
-      </div>
-
-      <div className="grid items-stretch gap-5 lg:grid-cols-2 lg:gap-7 xl:gap-8">
-        {/* BEFORE — brand-red panel, white type, fragmented tools collage */}
-        <div
-          className={cn(
-            'relative overflow-hidden rounded-[1.5rem]',
-            'bg-gradient-to-br from-brand-primary via-[#C62828] to-brand-primary-dark',
-            'shadow-[0_24px_60px_-24px_rgba(210,43,43,0.55)]',
-            'ring-1 ring-brand-primary/30 sm:rounded-[1.75rem]'
-          )}
-        >
-          <div className="relative flex min-h-[22rem] flex-col sm:min-h-[26rem] lg:min-h-[28rem]">
-            <div
-              className="pointer-events-none absolute inset-0"
-              style={{
-                backgroundImage:
-                  'radial-gradient(ellipse 65% 45% at 15% 0%, rgba(255,255,255,0.22), transparent), radial-gradient(ellipse 50% 40% at 90% 80%, rgba(0,0,0,0.22), transparent)',
-              }}
-              aria-hidden
-            />
-            <div
-              className="pointer-events-none absolute inset-0 opacity-[0.14]"
-              style={{
-                backgroundImage:
-                  'linear-gradient(rgba(255,255,255,0.35) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.35) 1px, transparent 1px)',
-                backgroundSize: '28px 28px',
-              }}
-              aria-hidden
-            />
-
-            <div className="relative z-10 flex-1 px-5 pt-8 sm:px-7 sm:pt-10">
-              <div className="relative mx-auto h-[11.5rem] w-full max-w-md sm:h-[13rem]">
-                {CHAOS_STACK.map((card) => {
-                  const Icon = card.icon;
-                  return (
-                    <div
-                      key={card.label}
-                      className={cn(
-                        'absolute flex w-[9.5rem] items-center gap-2.5 rounded-xl border border-white/35 bg-white/15 px-3 py-2.5 shadow-lg backdrop-blur-md sm:w-[10.5rem]',
-                        card.rot,
-                        card.pos
-                      )}
-                    >
-                      <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-white text-brand-primary shadow-sm">
-                        <Icon className="h-4 w-4" aria-hidden />
-                      </span>
-                      <div className="min-w-0">
-                        <p className="truncate text-[11px] font-semibold text-white">{card.label}</p>
-                        <p className="text-[9px] font-medium text-white/70">Disconnected</p>
-                      </div>
-                      <X className="ml-auto h-3.5 w-3.5 shrink-0 text-white" aria-hidden />
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="relative z-10 mt-auto space-y-4 p-6 sm:p-8 lg:p-9">
-              <div className="space-y-3">
-                <p className="text-sm font-semibold uppercase tracking-[0.2em] text-white/90">
-                  Before
-                </p>
-                <p className="max-w-md text-2xl font-semibold leading-snug tracking-tight text-white sm:text-[1.65rem]">
-                  Tabs, calculators, and five logins for one order.
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {CHAOS_TOOLS.map((label) => (
-                  <span
-                    key={label}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-white/15 px-3 py-1.5 text-[11px] font-semibold text-white backdrop-blur-md"
-                  >
-                    <X className="h-3 w-3 text-white" strokeWidth={2.75} aria-hidden />
-                    {label}
-                  </span>
-                ))}
-              </div>
-            </div>
+      <div className="grid items-center gap-10 lg:grid-cols-12 lg:gap-10 xl:gap-14">
+        <div className="min-w-0 space-y-6 lg:col-span-5 xl:col-span-4 lg:space-y-7">
+          <div className="space-y-3 sm:space-y-4">
+            <p className={MARKETING_EYEBROW}>One TENVO Hub</p>
+            <h2 className={cn(MARKETING_SECTION_HEADING, 'max-w-lg')}>
+              Stop juggling apps. Run the whole business from{' '}
+              <span className="text-brand-primary">one screen.</span>
+            </h2>
+            <p className={cn(MARKETING_LEAD, 'max-w-md')}>
+              Revenue, inventory, orders, and AI insights stay linked so you decide once and
+              execute everywhere.
+            </p>
           </div>
+
+          <ul className="space-y-3.5">
+            {IMPACT_POINTS.map((item) => {
+              const Icon = item.icon;
+              return (
+                <li key={item.title} className="flex gap-3.5">
+                  <span className="mt-0.5 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-primary ring-1 ring-brand-100">
+                    <Icon className="h-[1.125rem] w-[1.125rem]" aria-hidden />
+                  </span>
+                  <div className="min-w-0 pt-0.5">
+                    <p className="text-sm font-semibold text-neutral-900">{item.title}</p>
+                    <p className="mt-0.5 text-sm font-medium leading-relaxed text-neutral-500">
+                      {item.body}
+                    </p>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+
+          <div className="flex flex-col gap-3 pt-1 sm:flex-row sm:items-center">
+            <Button
+              asChild
+              className="h-12 rounded-xl bg-brand-primary px-6 font-semibold text-white hover:bg-brand-primary-dark"
+            >
+              <Link href={workspaceHref}>Start free trial</Link>
+            </Button>
+            <Button
+              asChild
+              variant="outline"
+              className="h-12 rounded-xl border-neutral-300 px-6 font-semibold"
+            >
+              <MarketingCtaLink href={getBookMeetingHref()}>Book a demo</MarketingCtaLink>
+            </Button>
+          </div>
+
+          <p className="flex items-center gap-2 text-xs font-medium text-neutral-500">
+            <Check className="h-3.5 w-3.5 text-emerald-600" strokeWidth={2.75} aria-hidden />
+            No credit card required
+          </p>
         </div>
 
-        {/* AFTER — One TENVO Hub */}
-        <div
-          className={cn(
-            'flex flex-col overflow-hidden rounded-[1.5rem] border border-sky-200/80 bg-white',
-            'shadow-[0_24px_60px_-28px_rgba(14,165,233,0.28)]',
-            'sm:rounded-[1.75rem]'
-          )}
-        >
-          <div className="flex items-start justify-between gap-3 border-b border-neutral-100 px-5 py-4 sm:px-7 sm:py-5">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-600">
-                After
-              </p>
-              <p className="mt-1 text-xl font-semibold tracking-tight text-neutral-900 sm:text-2xl">
-                One TENVO Hub
-              </p>
+        <div className="relative min-w-0 lg:col-span-7 xl:col-span-8">
+          <div
+            className="pointer-events-none absolute -inset-4 rounded-[2.5rem] bg-brand-primary/5 blur-2xl sm:-inset-6"
+            aria-hidden
+          />
+          <div
+            className={cn(
+              'relative overflow-hidden rounded-[1.5rem] bg-[#F3F4F6]',
+              'ring-1 ring-neutral-200/90',
+              'shadow-[0_28px_70px_-36px_rgba(15,23,42,0.35)]',
+              'sm:rounded-[1.75rem] lg:rounded-[2rem]'
+            )}
+          >
+            {/* Native 3:2 — One-TENVO-Hub.webp */}
+            <div className="relative aspect-[3/2] w-full">
+              <Image
+                src={TENVO_IMG.oneTenvoHub}
+                alt="TENVO Hub on desktop and mobile with live KPIs, AI insights, and unified commerce modules"
+                fill
+                className="object-contain object-center"
+                sizes="(max-width: 1024px) 96vw, 60vw"
+                quality={80}
+              />
             </div>
-            <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white shadow-md shadow-emerald-500/35">
-              <Check className="h-5 w-5" strokeWidth={2.75} aria-hidden />
-            </span>
           </div>
 
-          <div className="relative aspect-[16/11] w-full overflow-hidden bg-neutral-50 sm:aspect-[5/3]">
-            <Image
-              src={TENVO_IMG.retailDashboard}
-              alt="TENVO Easy Mode hub with quick entry, charts, and live metrics"
-              fill
-              className="object-cover object-top"
-              sizes="(max-width: 1024px) 100vw, 50vw"
-            />
-            <div
-              className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-white to-transparent"
-              aria-hidden
-            />
-          </div>
-
-          <div className="flex flex-1 flex-col justify-between gap-5 px-5 pb-6 pt-4 sm:px-7 sm:pb-7">
-            <ul className="space-y-2.5">
-              {CONTROL_POINTS.map((point) => (
-                <li key={point} className="flex items-start gap-2.5 text-sm font-medium text-neutral-600">
-                  <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100">
-                    <Check className="h-3 w-3" strokeWidth={3} aria-hidden />
-                  </span>
-                  {point}
-                </li>
-              ))}
-            </ul>
-
+          <div className="mt-5 flex justify-center lg:justify-start">
             <Link
               href="/features"
-              className="inline-flex items-center justify-center gap-2 self-center rounded-full border-2 border-brand-primary px-5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-brand-primary transition-colors hover:bg-brand-50"
+              className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand-primary underline-offset-4 hover:underline"
             >
-              <ArrowDown className="h-3.5 w-3.5" aria-hidden />
-              Fragmented apps to one OS
+              Explore the full hub
+              <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />
             </Link>
           </div>
         </div>

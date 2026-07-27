@@ -38,7 +38,9 @@ export default function HomeAutomationFlow() {
     >
       <div className="mx-auto mb-10 max-w-3xl space-y-3 text-center sm:mb-14">
         <p className={MARKETING_EYEBROW}>Automation rhythm</p>
-        <h2 className={MARKETING_SECTION_HEADING}>One order. The whole business updates.</h2>
+        <h2 className={MARKETING_SECTION_HEADING}>
+          One order. The whole business <span className="text-brand-primary">updates.</span>
+        </h2>
         <p className={MARKETING_LEAD}>
           Stop copying data between apps. When a customer buys, TENVO keeps stock, documents,
           fulfilment, and reporting moving together.
