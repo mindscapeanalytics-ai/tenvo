@@ -14,6 +14,7 @@ import { SubscriptionBillingBanner } from '@/components/billing/SubscriptionBill
 import { UpgradeNudgeBanner } from '@/components/billing/UpgradeNudgeBanner';
 import { HubMobileBottomNav } from '@/components/layout/HubMobileBottomNav';
 import { PendingApprovalGuard } from '@/components/guards/PendingApprovalGuard';
+import { LazyInstallAppPrompt } from '@/components/pwa/LazyInstallAppPrompt';
 
 export function BusinessShellLayout({ children }) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -50,6 +51,7 @@ export function BusinessShellLayout({ children }) {
                 </div>
                 <HubMobileBottomNav />
                 <UpgradeNudgeBanner />
+                <LazyInstallAppPrompt />
                 <AgenticFloatingChatbot />
             </HubTabProvider>
             </DataProvider>

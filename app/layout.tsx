@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import { openSans } from '@/lib/fonts'
 import { cn } from '@/lib/utils'
@@ -11,11 +11,20 @@ import { BusyModeProvider } from '@/lib/context/BusyModeContext'
 import { DefaultJsonLd } from '@/components/marketing/DefaultJsonLd'
 import { GoogleAnalytics } from '@/components/analytics/GoogleAnalytics'
 import { getSiteUrl } from '@/lib/marketing/site-url'
+import { SITE_NAME } from '@/lib/marketing/seo'
 
 const site = new URL(getSiteUrl())
 
+export const viewport: Viewport = {
+  themeColor: '#0f766e',
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+}
+
 export const metadata: Metadata = {
   metadataBase: site,
+  applicationName: SITE_NAME,
   title: {
     default: 'TENVO: Inventory, POS, storefront, and accounting in one platform',
     template: '%s | TENVO',
@@ -36,17 +45,27 @@ export const metadata: Metadata = {
     'tanvo.store',
   ],
   manifest: '/manifest.webmanifest',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: SITE_NAME,
+  },
+  formatDetection: {
+    telephone: false,
+  },
   icons: {
     icon: [
+      { url: '/icons/icon-32.png', sizes: '32x32', type: 'image/png' },
+      { url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
       { url: '/tenvo.svg', type: 'image/svg+xml' },
       { url: '/favicon.svg', type: 'image/svg+xml' },
     ],
-    shortcut: ['/tenvo.svg'],
-    apple: [{ url: '/tenvo.svg', type: 'image/svg+xml' }],
+    shortcut: ['/icons/icon-32.png'],
+    apple: [{ url: '/icons/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
   },
   other: {
     'msapplication-TileColor': '#0f766e',
-    'theme-color': '#0f766e',
+    'msapplication-TileImage': '/icons/icon-192.png',
   },
 }
 
