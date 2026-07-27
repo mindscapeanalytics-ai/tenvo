@@ -487,6 +487,7 @@ export function StoreSettingsManager({ business, category }) {
       membershipSectionSubtitle: '',
     },
     supermarket: {
+      showFeedSidebar: true,
       showAisleCarousel: true,
       showFreshRail: true,
       showDealsRail: true,
@@ -503,6 +504,7 @@ export function StoreSettingsManager({ business, category }) {
       featuredRailTitle: '',
       dealsRailTitle: '',
       freshRailTitle: '',
+      sidebarDepartments: [],
     },
     booking: {
       meetingUrl: '',
@@ -2303,7 +2305,7 @@ export function StoreSettingsManager({ business, category }) {
                 <CardDescription>
                   {milkShopStore
                     ? 'Categories, brands, and product rails use live inventory by default. Leave catalog lists empty to stay inventory-driven, or add overrides below. Hero slides are under Branding.'
-                    : 'Manage homepage sections: categories, brands, banners, product rails, trust bars, and header links. Leave lists empty to use live inventory where supported. Hero carousel slides are under Branding.'}
+                    : 'Manage the Departments sidebar, homepage aisles, brands, banners, product rails, trust bars, and header links. Leave department lists empty to use the default nested tree plus live inventory. Hero carousel slides are under Branding.'}
                 </CardDescription>
               </CardHeader>
               <CardContent>

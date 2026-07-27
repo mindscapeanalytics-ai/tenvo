@@ -16,8 +16,10 @@ import {
 
 /**
  * Renders storefront product imagery.
- * Supabase URLs use CDN transforms (plain img); allowlisted HTTPS uses next/image;
- * unknown remotes use plain img so next/image never throws Invalid src.
+ * Local /public paths and Supabase URLs use plain img (CDN / static).
+ * Allowlisted HTTPS may use next/image; unknown remotes use plain img so
+ * next/image never throws Invalid src. On Vercel, next.config sets
+ * images.unoptimized unless NEXT_IMAGE_OPTIMIZATION=1 (paid add-on).
  */
 export function SmartProductImage({
   src,
@@ -135,7 +137,11 @@ export function SmartProductImage({
     );
   };
 
-  if (isDataUrl || isSvg) {
+  // Data URLs, SVGs, and same-origin /public assets: serve directly.
+  // Avoids Vercel `/_next/image` 402 when Image Optimization is unpaid, and
+  // skips double-encoding of pre-optimized WebP under /tenvo-img/webp.
+  const isLocalPublicPath = renderSrc.startsWith('/') && !renderSrc.startsWith('//');
+  if (isDataUrl || isSvg || isLocalPublicPath) {
     return renderPlainImg(renderSrc);
   }
 

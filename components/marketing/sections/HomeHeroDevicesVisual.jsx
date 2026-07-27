@@ -1,6 +1,6 @@
 'use client';
 
-import Image from 'next/image';
+import Image from '@/components/marketing/ui/MarketingImage';
 import { TENVO_IMG } from '@/lib/marketing/tenvoMarketingImages';
 import { cn } from '@/lib/utils';
 

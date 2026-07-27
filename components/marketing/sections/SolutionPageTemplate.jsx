@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import Image from 'next/image';
+import Image from '@/components/marketing/ui/MarketingImage';
 import { ArrowRight, Check, ExternalLink } from 'lucide-react';
 import MarketingLayout from '@/components/marketing/layout/MarketingLayout';
 import { Button } from '@/components/ui/button';

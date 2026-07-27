@@ -7,7 +7,7 @@ import CaseStudyCard from '@/components/marketing/cards/CaseStudyCard';
 import { caseStudies } from '@/lib/marketing/case-studies';
 import { useParams } from 'next/navigation';
 import { CheckCircle, TrendingUp, Clock, DollarSign } from 'lucide-react';
-import Image from 'next/image';
+import Image from '@/components/marketing/ui/MarketingImage';
 
 export default function CaseStudyDetailPage() {
   const params = useParams();

@@ -1,6 +1,6 @@
 'use client';
 
-import Image from 'next/image';
+import Image from '@/components/marketing/ui/MarketingImage';
 import Link from 'next/link';
 import { ArrowLeft, Building2, Users, TrendingUp, Clock, CheckCircle2 } from 'lucide-react';
 import MarketingLayout from '@/components/marketing/layout/MarketingLayout';

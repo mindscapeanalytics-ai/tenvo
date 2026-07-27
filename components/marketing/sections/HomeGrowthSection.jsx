@@ -1,6 +1,6 @@
 'use client';
 
-import Image from 'next/image';
+import Image from '@/components/marketing/ui/MarketingImage';
 import Link from 'next/link';
 import { Building2, Network, Store, TrendingUp, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';

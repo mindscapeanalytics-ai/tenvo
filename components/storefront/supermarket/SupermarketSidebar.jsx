@@ -37,10 +37,11 @@ function DepartmentItem({ dept, storeBase, accent, depth = 0, activeCategory, on
           )}
           style={open ? { backgroundColor: `${accent}14`, color: accent } : undefined}
         >
-          <ChevronDown
-            className={cn('h-4 w-4 shrink-0 text-slate-400 transition', open && 'rotate-180')}
-            aria-hidden
-          />
+          {open ? (
+            <ChevronDown className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
+          ) : (
+            <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
+          )}
           <span className="min-w-0 flex-1 truncate">{dept.label}</span>
         </button>
         {open ? (

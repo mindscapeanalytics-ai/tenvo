@@ -1,6 +1,6 @@
 'use client';
 
-import Image from 'next/image';
+import Image from '@/components/marketing/ui/MarketingImage';
 import Link from 'next/link';
 import MarketingLayout from '@/components/marketing/layout/MarketingLayout';
 import { MarketingSection } from '@/components/marketing/layout/MarketingSection';

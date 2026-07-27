@@ -208,6 +208,134 @@ const SUBNAV_FIELDS = [
 const uid = () => `sm-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
 
 /**
+ * Nested DEPARTMENTS tree editor (homepage left rail + Categories drawer).
+ */
+function DepartmentsTreeEditor({ items = [], onChange, max = 20 }) {
+  const updateDept = (index, patch) => {
+    onChange(items.map((item, i) => (i === index ? { ...item, ...patch } : item)));
+  };
+
+  const updateChild = (deptIndex, childIndex, patch) => {
+    const dept = items[deptIndex];
+    const children = (dept.children || []).map((child, i) =>
+      i === childIndex ? { ...child, ...patch } : child
+    );
+    updateDept(deptIndex, { children });
+  };
+
+  const addDept = () => {
+    if (items.length >= max) {
+      toast.error(`Maximum ${max} departments`);
+      return;
+    }
+    onChange([...items, { id: uid(), label: '', slug: '', children: [] }]);
+  };
+
+  const removeDept = (index) => onChange(items.filter((_, i) => i !== index));
+
+  const addChild = (deptIndex) => {
+    const dept = items[deptIndex];
+    const children = [...(dept.children || []), { id: uid(), label: '', slug: '' }];
+    updateDept(deptIndex, { children });
+  };
+
+  const removeChild = (deptIndex, childIndex) => {
+    const dept = items[deptIndex];
+    updateDept(deptIndex, {
+      children: (dept.children || []).filter((_, i) => i !== childIndex),
+    });
+  };
+
+  return (
+    <div className="space-y-3 rounded-lg border p-3">
+      <div>
+        <p className="text-sm font-semibold">Departments sidebar</p>
+        <p className="text-xs text-gray-500">
+          Nested aisle tree for the homepage left rail and Categories drawer. Slugs should match
+          inventory category names (e.g. fresh-produce). Optional link suffix overrides the slug
+          (e.g. ?onSale=true). Leave empty to use the default supermarket departments plus live inventory.
+        </p>
+      </div>
+      {items.map((dept, index) => (
+        <div key={dept.id || index} className="space-y-2 rounded-md border border-dashed p-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-gray-500">Department {index + 1}</span>
+            <Button type="button" variant="ghost" size="sm" className="h-7 text-red-500" onClick={() => removeDept(index)}>
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-3">
+            <div className="space-y-1">
+              <Label className="text-xs">Label</Label>
+              <Input
+                value={dept.label || ''}
+                onChange={(e) => updateDept(index, { label: e.target.value })}
+                placeholder="Fresh Products"
+                className="text-sm"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Category slug</Label>
+              <Input
+                value={dept.slug || ''}
+                onChange={(e) => updateDept(index, { slug: e.target.value })}
+                placeholder="fresh-produce"
+                className="text-sm"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Link suffix (optional)</Label>
+              <Input
+                value={dept.hrefSuffix || ''}
+                onChange={(e) => updateDept(index, { hrefSuffix: e.target.value })}
+                placeholder="?onSale=true"
+                className="text-sm"
+              />
+            </div>
+          </div>
+          {(dept.children || []).length ? (
+            <div className="space-y-2 border-l-2 border-orange-100 pl-3">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">Sub-aisles</p>
+              {(dept.children || []).map((child, childIndex) => (
+                <div key={child.id || childIndex} className="grid gap-2 rounded border border-dashed bg-slate-50/60 p-2 sm:grid-cols-[1fr_1fr_auto]">
+                  <Input
+                    value={child.label || ''}
+                    onChange={(e) => updateChild(index, childIndex, { label: e.target.value })}
+                    placeholder="Fruits"
+                    className="text-sm"
+                  />
+                  <Input
+                    value={child.slug || ''}
+                    onChange={(e) => updateChild(index, childIndex, { slug: e.target.value })}
+                    placeholder="fruits"
+                    className="text-sm"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-9 text-red-500"
+                    onClick={() => removeChild(index, childIndex)}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          ) : null}
+          <Button type="button" variant="outline" size="sm" onClick={() => addChild(index)}>
+            <Plus className="mr-1 h-3.5 w-3.5" /> Add sub-aisle
+          </Button>
+        </div>
+      ))}
+      <Button type="button" variant="outline" size="sm" onClick={addDept}>
+        <Plus className="mr-1 h-3.5 w-3.5" /> Add department
+      </Button>
+    </div>
+  );
+}
+
+/**
  * Full supermarket homepage catalog editor for store owners.
  * Leave lists empty to keep public chrome inventory-driven (especially milk-shop).
  */
@@ -231,6 +359,7 @@ export function SupermarketCatalogEditor({ supermarket = {}, businessId, onChang
       ) : null}
       <div className="grid gap-3 sm:grid-cols-2">
         {[
+          ['showFeedSidebar', 'Homepage departments sidebar', false],
           ['showAisleCarousel', 'Popular categories'],
           ['showUpperPromoTiles', 'Upper promo banners'],
           ['showBrandsRow', 'Trending brands row'],
@@ -301,6 +430,14 @@ export function SupermarketCatalogEditor({ supermarket = {}, businessId, onChang
           </div>
         ))}
       </div>
+
+      {!isMilkShop ? (
+        <DepartmentsTreeEditor
+          items={supermarket.sidebarDepartments || []}
+          onChange={(v) => set('sidebarDepartments', v)}
+          max={24}
+        />
+      ) : null}
 
       <CatalogListEditor
         title="Popular categories"

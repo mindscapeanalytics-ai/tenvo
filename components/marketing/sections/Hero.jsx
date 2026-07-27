@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Image from 'next/image';
+import Image from '@/components/marketing/ui/MarketingImage';
 import Link from 'next/link';
 import MarketingCtaLink from '@/components/marketing/ui/MarketingCtaLink';
 import * as LucideIcons from 'lucide-react';

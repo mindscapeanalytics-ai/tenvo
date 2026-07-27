@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Image from 'next/image';
+import Image from '@/components/marketing/ui/MarketingImage';
 import { Star, Quote, ChevronLeft, ChevronRight } from 'lucide-react';
 import { testimonials as defaultTestimonials } from '@/lib/marketing/testimonials';
 import { cn } from '@/lib/utils';
