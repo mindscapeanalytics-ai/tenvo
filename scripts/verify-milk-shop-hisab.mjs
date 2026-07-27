@@ -23,6 +23,7 @@ import {
   extractMilkHisabPeriodFromNotes,
   abbreviateMilkHisabColumn,
   buildMilkHisabDayBreakdownGrid,
+  formatMilkHisabDayHeaderLine,
   formatMilkHisabDayLine,
   isMilkHisabBillRemindable,
   readMilkHisabPeriodPayment,
@@ -351,7 +352,7 @@ assert(!isMilkHisabBillRemindable({ amount: 100, paymentStatus: 'paid' }), 'paid
 assert(!isMilkHisabBillRemindable({ amount: 0, paymentStatus: 'unpaid' }), 'zero amount not remindable');
 assert(uiSrc.includes('hisabPaidPending'), 'UI warns when generate paid-apply fails');
 assert(uiSrc.includes('BillsActionCluster'), 'UI uses compact bills action cluster');
-assert(uiSrc.includes('Remind sends bill details'), 'UI copy notes bill details in remind');
+assert(uiSrc.includes('58mm bill PDF') || uiSrc.includes('share to WhatsApp'), 'UI copy notes WhatsApp bill PDF share');
 assert(String(MILK_HISAB_COLLECTION_NOTE).includes('Route Hisab'), 'collection note marker');
 assert(uiSrc.includes('HisabKpiStrip') || uiSrc.includes('billStatItems'), 'UI must render period KPIs');
 assert(uiSrc.includes('MobileStatStrip'), 'UI must render mobile KPI strip');
@@ -363,9 +364,13 @@ const remindSrc = readFileSync(remindHelpers, 'utf8');
 assert(remindSrc.includes('buildMilkHisabWhatsAppUrl'), 'WhatsApp wa.me helper required');
 assert(remindSrc.includes('resolveMilkHisabReminderChannels'), 'channel resolver required');
 assert(remindSrc.includes('openWhatsAppSmart'), 'reminders re-export smart WhatsApp open');
+assert(remindSrc.includes('shareOrDownloadMilkHisabBillPdf'), 'WhatsApp remind can share/download bill PDF');
 assert(remindSrc.includes('billLines'), 'reminder copy accepts bill lines');
 assert(remindSrc.includes('Bill:'), 'reminder message embeds bill details');
 assert(uiSrc.includes('openWhatsAppSmart'), 'UI must use smart WhatsApp open');
+assert(uiSrc.includes('createMilkHisabDayBreakdownPdfBlob'), 'UI prepares bill PDF for WhatsApp');
+assert(uiSrc.includes('shareOrDownloadMilkHisabBillPdf'), 'UI shares or downloads bill PDF on remind');
+assert(uiSrc.includes('beforeunload'), 'Daily route warns on unsaved day leave');
 assert(uiSrc.includes('useMilkHisabOffline'), 'UI must use Route Hisab offline hook');
 assert(uiSrc.includes('MilkHisabOfflineBanner'), 'UI must show offline banner');
 assert(uiSrc.includes('Save offline') || uiSrc.includes('queueDaySave'), 'UI must queue offline saves');
@@ -429,6 +434,9 @@ assert(thermalSrc.includes('buildMilkHisabThermalOptsFromRow'), 'thermal helper 
 assert(thermalSrc.includes('printMilkHisabThermalBillFromRow'), 'thermal helper exports row print');
 assert(thermalSrc.includes('printMilkHisabDayBreakdownBill'), 'thermal helper exports day sheet print');
 assert(thermalSrc.includes('buildMilkHisabDayBreakdownHtml'), 'thermal helper builds day sheet HTML');
+assert(thermalSrc.includes('createMilkHisabDayBreakdownPdf'), 'thermal helper builds exact 58mm day PDF');
+assert(thermalSrc.includes('printJsPdfDocument'), 'day sheet print uses PDF MediaBox path');
+assert(thermalSrc.includes('createMilkHisabDayBreakdownPdfBlob'), 'WhatsApp can prepare day bill PDF blob');
 assert(thermalSrc.includes('billLocale'), 'thermal day sheet supports billLocale');
 assert(thermalSrc.includes('Noto Naskh Arabic') || thermalSrc.includes('Noto+Naskh'), 'Urdu HTML loads Naskh');
 
@@ -514,6 +522,15 @@ assert(isMilkHisabWalkInCustomer('Walk-in') === true, 'walk-in detector');
   const line = formatMilkHisabDayLine(grid.days[0], grid.columns);
   assert(/01 /.test(line) && /Y/.test(line) && /N/.test(line), `day line format got: ${line}`);
   assert(line.includes(' '), 'day line keeps spaces for 58mm readability');
+  // Aligned header/day: Y/N centered under 3-char abbrevs (no "Mlk Y" tag duplicate)
+  assert(line.startsWith('01 '), `day line starts with day num: ${line}`);
+  assert(!/Mlk Y|Egg N/.test(line), `day line should not repeat product tags: ${line}`);
+  const header = formatMilkHisabDayHeaderLine(grid.columns);
+  assert(header.startsWith('DD '), `day header starts with DD: ${header}`);
+  assert(
+    header.length === line.length,
+    `header/day width align header=${header.length} (${header}) day=${line.length} (${line})`
+  );
 }
 
 const docNum = readFileSync(resolve(root, 'lib/db/documentNumber.js'), 'utf8');

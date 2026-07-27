@@ -43,7 +43,6 @@ import {
   buildMilkHisabPeriodKpis,
   isMilkHisabBillRemindable,
 } from '@/lib/storefront/milkShopHisab';
-import { openWhatsAppSmart } from '@/lib/utils/whatsappOpen';
 import { isMilkHisabOfflineEnabled, isMilkHisabNetworkFailure } from '@/lib/utils/milkHisabOfflineAccess';
 import { useMilkHisabOffline } from '@/lib/hooks/useMilkHisabOffline';
 import { MilkHisabOfflineBanner } from '@/components/milk/MilkHisabOfflineBanner';
@@ -51,7 +50,9 @@ import {
   printMilkHisabDayBreakdownBill,
   printMilkHisabThermalBill,
   printMilkHisabThermalBillFromRow,
+  createMilkHisabDayBreakdownPdfBlob,
 } from '@/lib/print/milkHisabThermalBill';
+import { openWhatsAppSmart, shareOrDownloadMilkHisabBillPdf } from '@/lib/storefront/milkShopHisabReminders';
 import { MARKETING_STAT_VALUE } from '@/lib/utils/typography';
 import { resolveBusinessCountryIso } from '@/lib/utils/businessRegionalContext';
 
@@ -320,6 +321,16 @@ export function MilkRouteHisab({ businessId, category }) {
     if (view === 'daily') void loadDay();
     else void loadBills();
   }, [lastSyncAt]); // eslint-disable-line react-hooks/exhaustive-deps -- intentional: reload only on sync timestamp
+
+  useEffect(() => {
+    if (!dayDirty || view !== 'daily') return undefined;
+    const onBeforeUnload = (e) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, [dayDirty, view]);
 
   const visibleRows = useMemo(() => {
     const q = filter.trim().toLowerCase();
@@ -799,6 +810,44 @@ export function MilkRouteHisab({ businessId, category }) {
     openWhatsAppSmart(url);
   };
 
+  /**
+   * Prepare 58mm week/month day-sheet PDF for WhatsApp (share when possible, else download).
+   * wa.me cannot attach files; Web Share Level 2 can hand the PDF to WhatsApp on mobile.
+   */
+  const prepareWhatsAppBillPdf = async (row) => {
+    if (!row?.customerId || !billingPeriod || !isOnline) return null;
+    try {
+      const dayRes = await getMilkHisabCustomerDayBreakdownAction({
+        businessId,
+        category,
+        customerId: row.customerId,
+        period: billingPeriod,
+      });
+      if (!dayRes?.success || !dayRes.breakdown?.days?.length) return null;
+      const thermalBusiness = {
+        ...(business || {}),
+        business_name:
+          business?.business_name || business?.name || business?.businessName || 'Milk shop',
+        category: business?.category || category,
+      };
+      return await createMilkHisabDayBreakdownPdfBlob({
+        business: thermalBusiness,
+        breakdown: dayRes.breakdown,
+        customerName: dayRes.customerName || row.customerName || 'Customer',
+        houseNo: dayRes.houseNo || row.houseNo || '',
+        period: dayRes.period || billingPeriod,
+        periodLabel: dayRes.label || periodLabel,
+        invoiceNumber: dayRes.invoiceNumber || row.invoiceNumber || '',
+        grandTotal: dayRes.amount ?? row.amount ?? 0,
+        paymentStatus: dayRes.paymentStatus || row.paymentStatus || 'unpaid',
+        productMeta: dayRes.productMeta || row.productMeta || {},
+      });
+    } catch (err) {
+      console.warn('[MilkRouteHisab] WhatsApp bill PDF prep failed', err);
+      return null;
+    }
+  };
+
   const handleRemindCustomer = async (row, channels = ['hub', 'email', 'whatsapp']) => {
     if (!isOnline) {
       notify.error('Connect to the internet to send reminders');
@@ -814,6 +863,12 @@ export function MilkRouteHisab({ businessId, category }) {
     }
     setRemindingId(row.customerId);
     try {
+      const wantWhatsApp = channels.includes('whatsapp');
+      let pdfPack = null;
+      if (wantWhatsApp) {
+        pdfPack = await prepareWhatsAppBillPdf(row);
+      }
+
       const res = await sendMilkHisabReminderAction({
         businessId,
         category,
@@ -831,14 +886,33 @@ export function MilkRouteHisab({ businessId, category }) {
         notify.error(res?.error || 'Reminder failed');
         return;
       }
-      if (res.whatsappUrl && channels.includes('whatsapp')) {
+
+      if (wantWhatsApp && pdfPack?.blob) {
+        const shareResult = await shareOrDownloadMilkHisabBillPdf({
+          blob: pdfPack.blob,
+          filename: pdfPack.filename,
+          text: res.message || '',
+          title: `${periodLabel || 'Hisab'} bill`,
+        });
+        if (shareResult.shared) {
+          notify.compactSave('Bill PDF shared — pick WhatsApp to send with the file');
+        } else if (shareResult.downloaded) {
+          if (res.whatsappUrl) openWhatsApp(res.whatsappUrl);
+          notify.compactSave('58mm bill PDF downloaded — attach it in WhatsApp');
+        } else if (res.whatsappUrl) {
+          openWhatsApp(res.whatsappUrl);
+        }
+      } else if (res.whatsappUrl && wantWhatsApp) {
         openWhatsApp(res.whatsappUrl);
       }
+
       const parts = [];
       if (res.results?.hub?.ok) parts.push('hub alert');
       if (res.results?.email?.ok) parts.push('email');
-      if (res.results?.whatsapp?.ok) parts.push('WhatsApp app');
-      notify.compactSave(parts.length ? `Reminder: ${parts.join(', ')}` : 'Reminder prepared');
+      if (res.results?.whatsapp?.ok) parts.push('WhatsApp');
+      if (!(wantWhatsApp && pdfPack?.blob)) {
+        notify.compactSave(parts.length ? `Reminder: ${parts.join(', ')}` : 'Reminder prepared');
+      }
       if (res.results?.email?.error && !res.results?.email?.ok) {
         notify.error(res.results.email.error);
       }
@@ -1152,7 +1226,7 @@ export function MilkRouteHisab({ businessId, category }) {
           {billsFromCache ? ' · Offline cache' : ''}
           {' · '}Generate bills, mark Unpaid/Paid, print 58mm
           {urduBillsEnabled ? ' EN or اردو' : ' EN'}
-          {' · '}Remind sends bill details in the message (WhatsApp cannot attach PDF)
+          {' · '}Remind prepares the 58mm bill PDF (share to WhatsApp on phone, or download + attach)
         </p>
       ) : null}
 
