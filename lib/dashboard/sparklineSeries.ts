@@ -88,8 +88,13 @@ export function resolveSparklineSeries(
     chartData: ChartPoint[],
     invoices: InvoiceLike[],
     dateRange: { from: Date; to: Date },
-    kind: 'revenue' | 'orders'
+    kind: 'revenue' | 'orders',
+    dailyRevenueTrend?: Array<{ date: string; revenue: number }>
 ): number[] | undefined {
+    if (kind === 'revenue' && dailyRevenueTrend?.length) {
+        const series = dailyRevenueTrend.map((row) => Number(row.revenue) || 0);
+        if (series.length >= 2 && series.some((v) => v > 0)) return series;
+    }
     return (
         buildSparklineFromChartData(chartData, kind) ??
         buildSparklineFromInvoices(invoices, dateRange, kind)

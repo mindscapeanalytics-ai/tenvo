@@ -10,18 +10,28 @@ import { AdvancedAiAssistantPanel, type AiInsightItem } from './AdvancedAiAssist
 import { AdvancedRemindersCard } from './AdvancedRemindersCard.client';
 import { AdvancedBusinessHealthScoreCard } from './AdvancedBusinessHealthScoreCard.client';
 import { AdvancedRecentActivityCard } from './AdvancedRecentActivityCard.client';
+import { AdvancedSecondaryMetricsSection, type SecondaryMetricItem } from './AdvancedSecondaryMetricsSection.client';
+import { AdvancedChannelMixStrip, type ChannelMixItem } from './AdvancedChannelMixStrip.client';
+import { AdvancedDomainChromeStrip } from './AdvancedDomainChromeStrip.client';
+import { AdvancedDomainOpsStrip } from './AdvancedDomainOpsStrip.client';
 import type { DashboardDatePreset } from './AdvancedPeriodFilter.client';
 
 export interface AdvancedDashboardLayoutProps {
     businessId?: string;
     category?: string;
+    domainKnowledge?: Record<string, unknown>;
+    business?: Record<string, unknown> | null;
     dateRange: { from: Date; to: Date };
     currency?: string;
     periodLabel: string;
     activePreset?: DashboardDatePreset;
     onDateRangePresetChange?: (preset: Exclude<DashboardDatePreset, 'custom'>) => void;
+    domainBadges?: Array<{ label: string; tone?: 'default' | 'season' | 'capability' }>;
+    seasonLabel?: string | null;
     insightStripItems: InsightStripItem[];
     keyPerformanceMetrics: KeyPerformanceMetric[];
+    secondaryMetrics?: SecondaryMetricItem[];
+    channelMixItems?: ChannelMixItem[];
     totalRevenueLabel: string;
     revenueTrend: number;
     chartData?: Array<Record<string, unknown>>;
@@ -41,19 +51,28 @@ export interface AdvancedDashboardLayoutProps {
     };
     activityFeed?: Array<Record<string, unknown>>;
     activityFeedReady?: boolean;
+    domainOpsEnabled?: boolean;
+    formatCurrencyCompact?: (value: number) => string;
     isLoading?: boolean;
     onNavigate?: (actionId: string) => void;
 }
 
 export function AdvancedDashboardLayout({
     businessId,
+    category = 'retail-shop',
+    domainKnowledge,
+    business,
     dateRange,
     currency,
     periodLabel,
     activePreset,
     onDateRangePresetChange,
+    domainBadges = [],
+    seasonLabel,
     insightStripItems,
     keyPerformanceMetrics,
+    secondaryMetrics = [],
+    channelMixItems = [],
     totalRevenueLabel,
     revenueTrend,
     chartData,
@@ -65,12 +84,18 @@ export function AdvancedDashboardLayout({
     healthStats,
     activityFeed,
     activityFeedReady,
+    domainOpsEnabled = true,
+    formatCurrencyCompact,
     isLoading = false,
     onNavigate,
 }: AdvancedDashboardLayoutProps) {
+    const formatValue = formatCurrencyCompact ?? ((value: number) => String(value));
+
     return (
         <div className="grid grid-cols-12 gap-2 lg:gap-3">
             <div className="col-span-12 flex min-w-0 flex-col gap-2 lg:col-span-9">
+                <AdvancedDomainChromeStrip badges={domainBadges} seasonLabel={seasonLabel} />
+
                 <AdvancedInsightStrip items={insightStripItems} onNavigate={onNavigate} />
 
                 <AdvancedKeyPerformanceSection
@@ -81,6 +106,8 @@ export function AdvancedDashboardLayout({
                     onNavigate={onNavigate}
                     isLoading={isLoading}
                 />
+
+                <AdvancedChannelMixStrip channels={channelMixItems} />
 
                 <div className="grid grid-cols-1 items-stretch gap-2 lg:grid-cols-12">
                     <AdvancedRevenueOverviewCard
@@ -121,11 +148,33 @@ export function AdvancedDashboardLayout({
                     />
                 </div>
 
+                <AdvancedSecondaryMetricsSection
+                    metrics={secondaryMetrics}
+                    onNavigate={onNavigate}
+                    isLoading={isLoading}
+                />
+
+                <AdvancedDomainOpsStrip
+                    businessId={businessId}
+                    category={category}
+                    domainKnowledge={domainKnowledge}
+                    business={business}
+                    dateRange={dateRange}
+                    formatCurrencyCompact={formatValue}
+                    onNavigate={onNavigate}
+                    enabled={domainOpsEnabled}
+                />
+
                 <AdvancedBusinessHealthScoreCard stats={healthStats} />
             </div>
 
             <div className="col-span-12 flex min-w-0 flex-col gap-2 lg:col-span-3">
-                <AdvancedAiAssistantPanel insights={aiInsights} onAction={onNavigate} className="shrink-0" />
+                <AdvancedAiAssistantPanel
+                    insights={aiInsights}
+                    onAction={onNavigate}
+                    showEmptyState={aiInsights.length === 0}
+                    className="shrink-0"
+                />
                 <AdvancedRemindersCard data={reminders} onItemClick={onNavigate} />
                 <AdvancedRecentActivityCard
                     businessId={businessId}

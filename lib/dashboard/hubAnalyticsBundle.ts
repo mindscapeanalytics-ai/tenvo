@@ -12,6 +12,15 @@ export type HubAnalyticsChartBundle = {
     categoryData: Array<Record<string, unknown>>;
     categoryRevenueData: Array<Record<string, unknown>>;
     dailyRevenueTrend: Array<Record<string, unknown>>;
+    comparison: Record<string, unknown> | null;
+    orderStatus: {
+        current: Record<string, unknown>;
+        previous: Record<string, unknown>;
+    } | null;
+    kpi?: {
+        retention?: string;
+        retentionDetail?: { repeatCustomers?: number; invoicedCustomers?: number; rate?: number };
+    } | null;
 };
 
 export const EMPTY_HUB_ANALYTICS_BUNDLE: HubAnalyticsChartBundle = {
@@ -20,6 +29,9 @@ export const EMPTY_HUB_ANALYTICS_BUNDLE: HubAnalyticsChartBundle = {
     categoryData: [],
     categoryRevenueData: [],
     dailyRevenueTrend: [],
+    comparison: null,
+    orderStatus: null,
+    kpi: null,
 };
 
 export type CategoryChartRow = {
@@ -44,6 +56,18 @@ export function normalizeHubAnalyticsBundle(data: unknown): HubAnalyticsChartBun
             categoryData: Array.isArray(row.categoryData) ? row.categoryData : [],
             categoryRevenueData: Array.isArray(row.categoryRevenueData) ? row.categoryRevenueData : [],
             dailyRevenueTrend: Array.isArray(row.dailyRevenueTrend) ? row.dailyRevenueTrend : [],
+            comparison:
+                row.comparison && typeof row.comparison === 'object'
+                    ? (row.comparison as Record<string, unknown>)
+                    : null,
+            orderStatus:
+                row.orderStatus && typeof row.orderStatus === 'object'
+                    ? (row.orderStatus as HubAnalyticsChartBundle['orderStatus'])
+                    : null,
+            kpi:
+                row.kpi && typeof row.kpi === 'object'
+                    ? (row.kpi as HubAnalyticsChartBundle['kpi'])
+                    : null,
         };
     }
     return EMPTY_HUB_ANALYTICS_BUNDLE;

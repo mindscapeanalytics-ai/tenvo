@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   TrendingUp,
   ArrowUpRight,
@@ -22,12 +23,12 @@ import {
 } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { HUB_MICRO_LABEL, MARKETING_STAT_VALUE } from '@/lib/utils/typography';
 import { BRAND_PRIMARY, CHART_PALETTE } from '@/lib/theme/brandTokens';
 import {
   EASY_PRESET_OPTIONS,
+  buildTopProductsFromInvoices,
   normalizeExpenseRows,
   normalizeSparklineBars,
 } from '@/lib/dashboard/easyDashboardHelpers';
@@ -37,18 +38,35 @@ import {
   resolveOnlineOrderCount,
   resolveOnlineSalesAmount,
 } from '@/lib/dashboard/retailSimpleActions';
+import { buildRetailTopSellingItems, buildRetailPeriodChartRows, resolveRetailKpiValue } from '@/lib/dashboard/retailSimpleSidebar';
+import { hubSalesPerformanceQueryKey, sameTenantPlaceholderData } from '@/lib/dashboard/hubQueryKeys';
+import { getSalesPerformanceAction } from '@/lib/actions/basic/dashboard';
+import { toAnalyticsIsoDate } from '@/lib/utils/analyticsRange';
 import { isMilkHisabRelevant } from '@/lib/storefront/milkShopHisab';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { MobilePresetPills } from '@/components/mobile/MobileHubPrimitives';
+import { RetailTopSellingCard } from '@/components/dashboard/easy/RetailTopSellingCard.client';
+import {
+  RetailRecentActivityCard,
+  mapAuditActivityRows,
+  mapSalesActivityRows,
+} from '@/components/dashboard/easy/RetailRecentActivityCard.client';
+import { AdvancedRemindersCard } from '@/components/dashboard/advanced/AdvancedRemindersCard.client';
 import toast from 'react-hot-toast';
 
 export interface RetailSimpleDashboardProps {
+  businessId?: string;
   business?: { name?: string } | null;
   category: string;
   domainKnowledge?: Record<string, unknown> | null;
   currency: string;
   periodLabel: string;
   activePreset: string;
+  dateRange?: { from: Date; to: Date };
+  invoices?: Array<Record<string, unknown>>;
+  products?: Array<Record<string, unknown>>;
+  activityFeed?: Array<Record<string, unknown>>;
+  activityFeedReady?: boolean;
   onQuickAction?: (actionId: string) => void;
   onDateRangePresetChange?: (
     preset: 'today' | '7d' | '30d' | 'mtd' | '90d' | 'last_month' | 'ytd'
@@ -57,7 +75,6 @@ export interface RetailSimpleDashboardProps {
   expenseBreakdown?: Array<Record<string, unknown>>;
   dashboardMetrics?: Record<string, unknown> | null;
   formatCurrencyCompact: (amount: number) => string;
-  greeting: string;
   userName: string;
   periodMetrics: {
     currentRevenue: number;
@@ -71,6 +88,7 @@ export interface RetailSimpleDashboardProps {
   isSalesLoading?: boolean;
   isFinanceLoading?: boolean;
   reminders?: { lowStock?: number; overdueInvoices?: number; pendingOrders?: number };
+  remindersLoading?: boolean;
   inventoryValue?: number;
   inStockUnits?: number;
   outstandingAmount?: number;
@@ -161,7 +179,7 @@ function RetailKpiBox({
       type={onClick ? 'button' : undefined}
       onClick={onClick}
       className={cn(
-        'rounded-2xl border border-neutral-200 bg-white p-3.5 text-left shadow-sm transition-colors',
+        'rounded-2xl border border-neutral-200 bg-white p-3.5 text-left shadow-sm transition-colors min-h-[5.5rem]',
         onClick && 'hover:border-neutral-300 hover:bg-neutral-50/80'
       )}
     >
@@ -198,19 +216,24 @@ function ChartSkeleton() {
 
 export function RetailSimpleDashboard(props: RetailSimpleDashboardProps) {
   const {
+    businessId,
     business,
     category,
     domainKnowledge = null,
     currency,
     periodLabel,
     activePreset,
+    dateRange,
+    invoices = [],
+    products = [],
+    activityFeed,
+    activityFeedReady = false,
     onQuickAction,
     onDateRangePresetChange,
     chartData = [],
     expenseBreakdown = [],
     dashboardMetrics = null,
     formatCurrencyCompact,
-    greeting,
     userName,
     periodMetrics,
     onlineSalesAmount: onlineSalesOverride,
@@ -218,6 +241,7 @@ export function RetailSimpleDashboard(props: RetailSimpleDashboardProps) {
     isSalesLoading = false,
     isFinanceLoading = false,
     reminders = {},
+    remindersLoading = false,
     inventoryValue = 0,
     inStockUnits = 0,
     outstandingAmount = 0,
@@ -261,8 +285,77 @@ export function RetailSimpleDashboard(props: RetailSimpleDashboardProps) {
     onQuickAction?.(action.id);
   };
 
-  const revenueBars = useMemo(() => normalizeSparklineBars(chartData, 8), [chartData]);
-  const expenseRows = useMemo(() => normalizeExpenseRows(expenseBreakdown, 5), [expenseBreakdown]);
+  const totalExpense = periodMetrics.currentExpenses;
+
+  const dateFromISO =
+    toAnalyticsIsoDate(dateRange?.from) || toAnalyticsIsoDate(new Date()) || '';
+  const dateToISO =
+    toAnalyticsIsoDate(dateRange?.to) || toAnalyticsIsoDate(new Date()) || '';
+
+  const salesPerfQuery = useQuery({
+    queryKey: hubSalesPerformanceQueryKey(businessId ?? '', dateFromISO, dateToISO, 'all', null),
+    queryFn: async () => {
+      if (!businessId || !dateFromISO || !dateToISO) return null;
+      const res = await getSalesPerformanceAction(businessId, {
+        from: dateFromISO,
+        to: dateToISO,
+        channel: 'all',
+        category: null,
+        topLimit: 50,
+      });
+      const payload = res as unknown as {
+        success?: boolean;
+        topProducts?: Array<Record<string, unknown>>;
+        recentActivity?: Array<Record<string, unknown>>;
+        salesTrend?: Array<Record<string, unknown>>;
+        kpi?: { grossTotal?: number; orderCount?: number; totalUnits?: number };
+      };
+      if (!payload?.success) return null;
+      return {
+        topProducts: Array.isArray(payload.topProducts) ? payload.topProducts : [],
+        recentActivity: Array.isArray(payload.recentActivity) ? payload.recentActivity : [],
+        salesTrend: Array.isArray(payload.salesTrend) ? payload.salesTrend : [],
+        kpi: payload.kpi ?? null,
+      };
+    },
+    enabled: Boolean(businessId && dateFromISO && dateToISO),
+    staleTime: 60_000,
+    placeholderData: (previousData, previousQuery) =>
+      sameTenantPlaceholderData(previousData, previousQuery, businessId),
+  });
+
+  const salesPerfKpi = salesPerfQuery.data?.kpi;
+
+  const displayRevenue = resolveRetailKpiValue(
+    periodMetrics.currentRevenue,
+    Number(salesPerfKpi?.grossTotal)
+  );
+  const displayOrders = resolveRetailKpiValue(
+    periodMetrics.currentOrders,
+    Number(salesPerfKpi?.orderCount)
+  );
+  const unitsSold = resolveRetailKpiValue(
+    periodMetrics.soldUnits,
+    Number(salesPerfKpi?.totalUnits)
+  );
+
+  const revenueBars = useMemo(() => {
+    const periodTrend = buildRetailPeriodChartRows(
+      salesPerfQuery.data?.salesTrend as Array<{ date?: unknown; revenue?: number }> | undefined,
+      totalExpense
+    );
+    if (periodTrend.length > 0) {
+      const maxVal = Math.max(
+        ...periodTrend.map((r) => Math.max(r.revenue, r.expenses)),
+        1
+      );
+      return periodTrend.map((row) => ({
+        ...row,
+        heightPct: Math.max(8, Math.round((row.revenue / maxVal) * 100)),
+      }));
+    }
+    return normalizeSparklineBars(chartData, 8);
+  }, [chartData, salesPerfQuery.data?.salesTrend, totalExpense]);
 
   const salesTrend = useMemo(
     () =>
@@ -273,6 +366,8 @@ export function RetailSimpleDashboard(props: RetailSimpleDashboardProps) {
       })),
     [revenueBars]
   );
+
+  const expenseRows = useMemo(() => normalizeExpenseRows(expenseBreakdown, 5), [expenseBreakdown]);
 
   const expensePie = useMemo(
     () =>
@@ -288,9 +383,44 @@ export function RetailSimpleDashboard(props: RetailSimpleDashboardProps) {
     onlineSalesOverride != null && Number.isFinite(Number(onlineSalesOverride))
       ? Number(onlineSalesOverride)
       : resolveOnlineSalesAmount(dashboardMetrics);
-  const totalSalesAmount = periodMetrics.currentRevenue;
-  const totalExpense = periodMetrics.currentExpenses;
-  const unitsSold = periodMetrics.soldUnits;
+  const totalSalesAmount = displayRevenue;
+
+  const sidebarLoading = salesPerfQuery.isLoading && !salesPerfQuery.data;
+
+  const topSellingItems = useMemo(() => {
+    // Prefer unified sales-performance (invoice + POS + storefront + restaurant).
+    const analyticsRows = salesPerfQuery.data?.topProducts;
+    if (Array.isArray(analyticsRows) && analyticsRows.length > 0) {
+      return buildRetailTopSellingItems(analyticsRows, products, 5);
+    }
+    const fromInvoices = buildTopProductsFromInvoices(
+      invoices,
+      dateRange ?? { from: new Date(), to: new Date() },
+      5
+    );
+    if (fromInvoices.length === 0) return [];
+    return buildRetailTopSellingItems(
+      fromInvoices.map((row) => ({
+        name: row.name,
+        product_id: row.product_id,
+        volume: row.qty,
+        revenue: row.revenue,
+      })),
+      products,
+      5
+    );
+  }, [invoices, dateRange, products, salesPerfQuery.data]);
+
+  const recentActivityItems = useMemo(() => {
+    if (activityFeedReady && Array.isArray(activityFeed) && activityFeed.length > 0) {
+      return mapAuditActivityRows(activityFeed);
+    }
+    const salesRows = salesPerfQuery.data?.recentActivity;
+    if (Array.isArray(salesRows) && salesRows.length > 0) {
+      return mapSalesActivityRows(salesRows);
+    }
+    return [];
+  }, [activityFeed, activityFeedReady, salesPerfQuery.data]);
 
   const easyPresetIds = useMemo(() => new Set(EASY_PRESET_OPTIONS.map((p) => p.id)), []);
   const resolvedPreset = easyPresetIds.has(activePreset) ? activePreset : 'custom';
@@ -309,22 +439,22 @@ export function RetailSimpleDashboard(props: RetailSimpleDashboardProps) {
         </p>
       ) : null}
 
-      {/* Header + period filters */}
-      <div className="flex flex-col gap-3 rounded-2xl border border-neutral-200/80 bg-white px-3 py-3 shadow-sm sm:px-4 sm:py-3.5 lg:flex-row lg:items-center lg:justify-between">
+      {/* Greeting + period */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <h1 className="truncate text-base font-semibold tracking-tight text-neutral-900 sm:text-lg">
-              {business?.name?.trim() || 'Retail Dashboard'}
-            </h1>
-            <Badge variant="secondary" className="text-[10px] font-semibold">
-              Retail Simple
-            </Badge>
-          </div>
-          <p className="mt-0.5 text-xs font-medium text-neutral-500">
-            {greeting}, {userName} · {periodLabel} · {currency}
+          <h1 className="text-xl font-semibold tracking-tight text-neutral-900 sm:text-2xl">
+            Hello, {userName}!
+          </h1>
+          <p className="mt-1 text-sm text-neutral-500">
+            Here&apos;s what&apos;s happening with your business today.
           </p>
+          {business?.name ? (
+            <p className="mt-1 text-xs font-medium text-neutral-400">
+              {business.name} · {periodLabel} · {currency}
+            </p>
+          ) : null}
         </div>
-        <div className="w-full min-w-0 lg:max-w-md">
+        <div className="w-full min-w-0 sm:max-w-md">
           <MobilePresetPills
             compact
             options={presetOptions}
@@ -339,6 +469,8 @@ export function RetailSimpleDashboard(props: RetailSimpleDashboardProps) {
         </div>
       </div>
 
+      <div className="grid grid-cols-12 gap-3 lg:items-stretch lg:gap-4">
+        <div className="col-span-12 flex min-w-0 flex-col gap-4 lg:col-span-9">
       {/* Quick entry — gated colored tiles */}
       <section aria-label="Quick entry">
         <div className="mb-2 flex items-center justify-between gap-2 px-0.5">
@@ -380,6 +512,84 @@ export function RetailSimpleDashboard(props: RetailSimpleDashboardProps) {
             ))}
           </div>
         ) : null}
+      </section>
+
+      {/* Primary KPI strip — wireframe four-up */}
+      <section aria-label="Key metrics">
+        <div className="mb-2 px-0.5">
+          <h2 className="text-[11px] font-semibold uppercase tracking-widest text-neutral-400">
+            Key metrics
+          </h2>
+        </div>
+        <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
+          <RetailKpiBox
+            label={milkRelevant ? 'Total Milk Sold' : 'Units Sold'}
+            value={unitsSold.toLocaleString()}
+            hint={periodLabel}
+            accent="bg-sky-500"
+            isLoading={salesLoading || sidebarLoading}
+            onClick={() => onQuickAction?.(milkOrUnitsAction)}
+          />
+          <RetailKpiBox
+            label="Total Expense"
+            value={formatCurrencyCompact(totalExpense)}
+            hint={periodLabel}
+            accent="bg-rose-500"
+            isLoading={financeLoading}
+            onClick={
+              planCan('expense_tracking')
+                ? () => onQuickAction?.('log-expense')
+                : undefined
+            }
+          />
+          <RetailKpiBox
+            label="Total Revenue"
+            value={formatCurrencyCompact(displayRevenue)}
+            hint={periodLabel}
+            accent="bg-brand-primary"
+            isLoading={salesLoading || sidebarLoading}
+            onClick={() => onQuickAction?.('reports')}
+          />
+          <RetailKpiBox
+            label="Online Orders"
+            value={onlineOrders.toLocaleString()}
+            hint="Storefront"
+            accent="bg-cyan-500"
+            isLoading={salesLoading}
+            onClick={canOpenOrders ? () => onQuickAction?.('orders') : undefined}
+          />
+          <RetailKpiBox
+            label="Online Sales"
+            value={formatCurrencyCompact(onlineSalesAmount)}
+            hint="Storefront revenue"
+            accent="bg-teal-500"
+            isLoading={salesLoading}
+            onClick={canOpenOrders ? () => onQuickAction?.('orders') : undefined}
+          />
+          <RetailKpiBox
+            label="Total Sales"
+            value={formatCurrencyCompact(totalSalesAmount)}
+            hint={`${displayOrders} orders`}
+            accent="bg-emerald-500"
+            isLoading={salesLoading || sidebarLoading}
+            onClick={() => onQuickAction?.('invoices')}
+          />
+          <RetailKpiBox
+            label="Receivables"
+            value={formatCurrencyCompact(outstandingAmount)}
+            hint={`${openInvoicesCount} open`}
+            accent="bg-violet-500"
+            isLoading={financeLoading}
+            onClick={() => onQuickAction?.('invoices')}
+          />
+          <RetailKpiBox
+            label="Low stock"
+            value={String(reminders.lowStock ?? 0)}
+            hint="SKUs to review"
+            accent="bg-amber-500"
+            onClick={() => onQuickAction?.('inventory')}
+          />
+        </div>
       </section>
 
       {/* Graphs — desktop full row; mobile stacked after KPIs for fast entry first */}
@@ -517,78 +727,14 @@ export function RetailSimpleDashboard(props: RetailSimpleDashboardProps) {
         </Card>
       </section>
 
-      {/* KPI strip */}
-      <section aria-label="Key metrics">
+      {/* Shop health — compact second band */}
+      <section aria-label="Shop health">
         <div className="mb-2 px-0.5">
           <h2 className="text-[11px] font-semibold uppercase tracking-widest text-neutral-400">
-            Key metrics
+            Shop health
           </h2>
         </div>
-        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6">
-          <RetailKpiBox
-            label={milkRelevant ? 'Total Milk Sold' : 'Units Sold'}
-            value={unitsSold.toLocaleString()}
-            hint={periodLabel}
-            accent="bg-sky-500"
-            isLoading={salesLoading}
-            onClick={() => onQuickAction?.(milkOrUnitsAction)}
-          />
-          <RetailKpiBox
-            label="Total Expense"
-            value={formatCurrencyCompact(totalExpense)}
-            hint={periodLabel}
-            accent="bg-rose-500"
-            isLoading={financeLoading}
-            onClick={
-              planCan('expense_tracking')
-                ? () => onQuickAction?.('log-expense')
-                : undefined
-            }
-          />
-          <RetailKpiBox
-            label="Total Revenue"
-            value={formatCurrencyCompact(periodMetrics.currentRevenue)}
-            hint={periodLabel}
-            accent="bg-brand-primary"
-            isLoading={salesLoading}
-            onClick={() => onQuickAction?.('reports')}
-          />
-          <RetailKpiBox
-            label="Online Orders"
-            value={onlineOrders.toLocaleString()}
-            hint="Storefront"
-            accent="bg-cyan-500"
-            isLoading={salesLoading}
-            onClick={canOpenOrders ? () => onQuickAction?.('orders') : undefined}
-          />
-          <RetailKpiBox
-            label="Online Sales"
-            value={formatCurrencyCompact(onlineSalesAmount)}
-            hint="Storefront revenue"
-            accent="bg-teal-500"
-            isLoading={salesLoading}
-            onClick={canOpenOrders ? () => onQuickAction?.('orders') : undefined}
-          />
-          <RetailKpiBox
-            label="Total Sales"
-            value={formatCurrencyCompact(totalSalesAmount)}
-            hint={`${periodMetrics.currentOrders} orders`}
-            accent="bg-emerald-500"
-            isLoading={salesLoading}
-            onClick={() => onQuickAction?.('invoices')}
-          />
-        </div>
-      </section>
-
-      {/* Compact shop health — stays on Retail home without stacking Easy tabs */}
-      <section aria-label="Shop health" className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6">
-        <RetailKpiBox
-          label="Low stock"
-          value={String(reminders.lowStock ?? 0)}
-          hint="SKUs to review"
-          accent="bg-amber-500"
-          onClick={() => onQuickAction?.('inventory')}
-        />
+        <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
         <RetailKpiBox
           label="Overdue"
           value={String(reminders.overdueInvoices ?? 0)}
@@ -604,13 +750,6 @@ export function RetailSimpleDashboard(props: RetailSimpleDashboardProps) {
           onClick={() => onQuickAction?.('pending-orders')}
         />
         <RetailKpiBox
-          label="Receivables"
-          value={formatCurrencyCompact(outstandingAmount)}
-          hint={`${openInvoicesCount} open`}
-          accent="bg-violet-500"
-          onClick={() => onQuickAction?.('invoices')}
-        />
-        <RetailKpiBox
           label="Stock value"
           value={formatCurrencyCompact(inventoryValue)}
           hint={`${inStockUnits.toLocaleString()} units`}
@@ -624,6 +763,7 @@ export function RetailSimpleDashboard(props: RetailSimpleDashboardProps) {
           accent="bg-neutral-800"
           onClick={() => onQuickAction?.('reports')}
         />
+        </div>
       </section>
 
       {/* Mobile charts — below KPIs so entry + numbers come first */}
@@ -746,6 +886,29 @@ export function RetailSimpleDashboard(props: RetailSimpleDashboardProps) {
           </Card>
         </div>
       </section>
+        </div>
+
+        <aside className="col-span-12 flex min-w-0 flex-col gap-3 lg:col-span-3 lg:min-h-0">
+          <RetailTopSellingCard
+            items={topSellingItems}
+            formatCurrency={formatCurrencyCompact}
+            isLoading={sidebarLoading}
+          />
+          <RetailRecentActivityCard
+            items={recentActivityItems}
+            formatCurrency={formatCurrencyCompact}
+            isLoading={sidebarLoading && !activityFeedReady}
+            onViewAll={() => onQuickAction?.('invoices')}
+            className="min-h-0 flex-1"
+          />
+          <AdvancedRemindersCard
+            data={reminders}
+            onItemClick={(id) => onQuickAction?.(id)}
+            isLoading={remindersLoading}
+            className="mt-auto shrink-0"
+          />
+        </aside>
+      </div>
     </div>
   );
 }

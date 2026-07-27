@@ -13,10 +13,16 @@ interface RemindersData {
 interface AdvancedRemindersCardProps {
     data?: RemindersData;
     onItemClick?: (id: string) => void;
+    isLoading?: boolean;
     className?: string;
 }
 
-export function AdvancedRemindersCard({ data = {}, onItemClick, className }: AdvancedRemindersCardProps) {
+export function AdvancedRemindersCard({
+    data = {},
+    onItemClick,
+    isLoading = false,
+    className,
+}: AdvancedRemindersCardProps) {
     const items = [
         {
             id: 'low-stock',
@@ -50,7 +56,17 @@ export function AdvancedRemindersCard({ data = {}, onItemClick, className }: Adv
                 <CardTitle className="text-base font-semibold text-slate-900">Reminders</CardTitle>
             </CardHeader>
             <CardContent className="divide-y divide-slate-50 p-0">
-                {items.map((item) => (
+                {isLoading
+                    ? Array.from({ length: 3 }).map((_, i) => (
+                          <div key={i} className="flex animate-pulse items-center justify-between gap-2 px-4 py-3">
+                              <div className="flex items-center gap-2.5">
+                                  <div className="h-8 w-8 rounded-lg bg-slate-100" />
+                                  <div className="h-3.5 w-28 rounded bg-slate-100" />
+                              </div>
+                              <div className="h-5 w-6 rounded bg-slate-100" />
+                          </div>
+                      ))
+                    : items.map((item) => (
                     <button
                         key={item.id}
                         type="button"

@@ -20,6 +20,7 @@ interface AdvancedAiAssistantPanelProps {
     insights: AiInsightItem[];
     onAction?: (actionId: string) => void;
     className?: string;
+    showEmptyState?: boolean;
 }
 
 const DEFAULT_INSIGHTS: AiInsightItem[] = [
@@ -59,8 +60,10 @@ export function AdvancedAiAssistantPanel({
     insights,
     onAction,
     className,
+    showEmptyState = false,
 }: AdvancedAiAssistantPanelProps) {
-    const displayInsights = insights.length > 0 ? insights.slice(0, 3) : DEFAULT_INSIGHTS;
+    const displayInsights =
+        insights.length > 0 ? insights.slice(0, 3) : showEmptyState ? [] : DEFAULT_INSIGHTS.slice(0, 3);
 
     return (
         <Card className={cn('flex flex-col border border-slate-200/80 bg-white shadow-sm', className)}>
@@ -78,14 +81,16 @@ export function AdvancedAiAssistantPanel({
                     </div>
                     <button
                         type="button"
+                        onClick={() => onAction?.('reports')}
                         className="rounded-lg p-1 text-slate-400 hover:bg-slate-50 hover:text-slate-600"
-                        aria-label="More options"
+                        aria-label="View all insights"
                     >
                         <MoreHorizontal className="h-4 w-4" />
                     </button>
                 </div>
             </CardHeader>
             <CardContent className="flex flex-1 flex-col gap-2 p-3">
+                {displayInsights.length > 0 ? (
                 <div className="space-y-2 rounded-xl border border-slate-100 bg-slate-50/40 p-2">
                     {displayInsights.map((insight) => (
                         <div
@@ -116,6 +121,11 @@ export function AdvancedAiAssistantPanel({
                         </div>
                     ))}
                 </div>
+                ) : (
+                    <div className="flex flex-1 items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50/50 p-4 text-center">
+                        <p className="text-xs text-slate-500">No priority actions right now. Metrics look stable for this period.</p>
+                    </div>
+                )}
                 <button
                     type="button"
                     onClick={() => onAction?.('reports')}

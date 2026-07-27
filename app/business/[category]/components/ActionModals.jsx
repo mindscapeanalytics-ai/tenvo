@@ -312,7 +312,7 @@ export function ActionModals({
             </Dialog>
 
             <Dialog open={showPOBuilder} onOpenChange={setShowPOBuilder}>
-                <DialogContent className="max-w-4xl p-0 border-none bg-transparent shadow-none overflow-visible">
+                <DialogContent className="flex max-h-[min(92dvh,900px)] w-[calc(100vw-1rem)] max-w-5xl flex-col gap-0 overflow-hidden border-none bg-transparent p-0 shadow-none sm:w-full lg:max-w-4xl xl:max-w-5xl">
                     <div className="sr-only">
                         <DialogTitle>Purchase Order Builder</DialogTitle>
                     </div>

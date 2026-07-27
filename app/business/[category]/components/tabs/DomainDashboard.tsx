@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
     TrendingUp, Users, ShoppingCart,
     Clock,
@@ -31,11 +32,26 @@ import { RetailSimpleDashboard } from '@/components/dashboard/easy/RetailSimpleD
 import { DomainOperationsPanel } from '@/components/dashboard/easy/DomainOperationsPanel';
 import { useDomainOperationsSnapshot } from '@/lib/hooks/useDomainOperationsSnapshot';
 import { AdvancedDashboardLayout } from '@/components/dashboard/advanced/AdvancedDashboardLayout.client';
+import type { SecondaryMetricItem } from '@/components/dashboard/advanced/AdvancedSecondaryMetricsSection.client';
+import type { ChannelMixItem } from '@/components/dashboard/advanced/AdvancedChannelMixStrip.client';
 import type { AiInsightItem } from '@/components/dashboard/advanced/AdvancedAiAssistantPanel.client';
 import { PerformanceKPIs } from '../islands/portlets/PerformanceKPIs.client';
 import { countLowStockProducts, resolveInvoiceOpenBalance, resolveProductStock } from '@/lib/dashboard/easyDashboardHelpers';
 import { metricActionId } from '@/lib/dashboard/metricNavigation';
 import { resolveSparklineSeries } from '@/lib/dashboard/sparklineSeries';
+import { toAnalyticsIsoDate } from '@/lib/utils/analyticsRange';
+import { hubAnalyticsQueryKey, sameTenantPlaceholderData } from '@/lib/dashboard/hubQueryKeys';
+import {
+    fetchHubAnalyticsBundle,
+    normalizeDailyRevenueTrend,
+} from '@/lib/dashboard/hubAnalyticsBundle';
+import {
+    resolveEasyDomainProfile,
+    getDomainKpiLabels,
+    buildDomainCapabilityBadges,
+    buildDomainSeasonBadge,
+    buildVerticalInsightCards,
+} from '@/lib/dashboard/easyDomainIntelligence';
 import { isPendingInvoice } from '@/lib/utils/analytics';
 import { calculateBusinessHealth } from '@/lib/analytics/health';
 import type { KpiTheme } from '@/lib/dashboard/kpiThemes';
@@ -169,7 +185,21 @@ interface AdvancedDashboardSnapshotLike {
         payables?: number;
         netCashFlow?: number;
         periodRevenue?: number;
+        periodExpenses?: number;
     };
+    comparison?: {
+        priorRevenue?: number;
+        priorOrders?: number;
+        priorCollected?: number;
+        periodRevenue?: number;
+        periodOrders?: number;
+        periodCustomers?: number;
+        priorCustomers?: number;
+    } | null;
+    orderStatus?: {
+        current?: { open?: number; pending?: number; completed?: number; cancelled?: number };
+        previous?: { open?: number; pending?: number; completed?: number; cancelled?: number };
+    } | null;
 }
 
 interface DomainKnowledgeLike {
@@ -254,6 +284,64 @@ export function DomainDashboard({
         [onQuickAction]
     );
 
+    const dateFilter = useMemo(() => {
+        const from = toAnalyticsIsoDate(dateRange.from);
+        const to = toAnalyticsIsoDate(dateRange.to);
+        if (!from || !to) return {};
+        return { from, to };
+    }, [dateRange]);
+
+    const analyticsQuery = useQuery({
+        queryKey: hubAnalyticsQueryKey(
+            activeBusinessId || '__pending__',
+            dateFilter.from || '',
+            dateFilter.to || ''
+        ),
+        enabled: !isEasyMode && Boolean(activeBusinessId && dateFilter.from && dateFilter.to),
+        queryFn: async () => {
+            if (!activeBusinessId) throw new Error('businessId required');
+            return fetchHubAnalyticsBundle(activeBusinessId, dateFilter);
+        },
+        staleTime: 60_000,
+        placeholderData: (previousData, previousQuery) =>
+            sameTenantPlaceholderData(previousData, previousQuery, activeBusinessId),
+    });
+
+    const unifiedComparison = useMemo(
+        () => advancedDashboardSnapshot?.comparison ?? analyticsQuery.data?.comparison ?? null,
+        [advancedDashboardSnapshot?.comparison, analyticsQuery.data?.comparison]
+    );
+
+    const unifiedOrderStatus = useMemo(
+        () => advancedDashboardSnapshot?.orderStatus ?? analyticsQuery.data?.orderStatus ?? null,
+        [advancedDashboardSnapshot?.orderStatus, analyticsQuery.data?.orderStatus]
+    );
+
+    const dailyRevenueTrend = useMemo(
+        () => normalizeDailyRevenueTrend(analyticsQuery.data),
+        [analyticsQuery.data]
+    );
+
+    const easyProfile = useMemo(
+        () =>
+            resolveEasyDomainProfile(
+                category,
+                (domainKnowledge as Record<string, unknown> | undefined) ?? undefined,
+                business ?? undefined
+            ),
+        [category, domainKnowledge, business]
+    );
+    const domainKpiLabels = useMemo(() => getDomainKpiLabels(easyProfile), [easyProfile]);
+    const domainBadges = useMemo(
+        () =>
+            buildDomainCapabilityBadges(easyProfile).map((badge) => ({
+                label: badge.label,
+                tone: 'capability' as const,
+            })),
+        [easyProfile]
+    );
+    const seasonLabel = useMemo(() => buildDomainSeasonBadge(easyProfile)?.label ?? null, [easyProfile]);
+
     const catalogTotalCount = useMemo(
         () => (catalogProductTotal > 0 ? catalogProductTotal : products.length),
         [catalogProductTotal, products.length]
@@ -310,8 +398,11 @@ export function DomainDashboard({
             ? Number(serverOrderCount)
             : (isSalesLoading ? 0 : clientInvoiceCount);
         
-        // Previous period: use server snapshot if available, else calculate from invoices
-        const previousOrders = billableInvoices.filter(inv => inRange(inv?.date, prevFrom, prevTo)).length;
+        // Previous period: unified server comparison when available
+        const previousOrders =
+            unifiedComparison?.priorOrders != null
+                ? Number(unifiedComparison.priorOrders)
+                : billableInvoices.filter((inv) => inRange(inv?.date, prevFrom, prevTo)).length;
 
         const serverRevenueRaw = dashboardMetrics?.revenue;
         const serverRevenue =
@@ -326,9 +417,12 @@ export function DomainDashboard({
         const currentRevenue = serverRevenue !== undefined && serverRevenue !== null
             ? Number(serverRevenue)
             : (isSalesLoading ? 0 : clientRevenue);
-        const previousRevenue = billableInvoices
-            .filter(inv => inRange(inv?.date, prevFrom, prevTo))
-            .reduce((sum, inv) => sum + (Number(inv?.grand_total) || Number(inv?.amount) || 0), 0);
+        const previousRevenue =
+            unifiedComparison?.priorRevenue != null
+                ? Number(unifiedComparison.priorRevenue)
+                : billableInvoices
+                      .filter((inv) => inRange(inv?.date, prevFrom, prevTo))
+                      .reduce((sum, inv) => sum + (Number(inv?.grand_total) || Number(inv?.amount) || 0), 0);
 
         const getExpenseDate = (exp: ExpenseLike) => exp?.date || exp?.expense_date || exp?.created_at;
         const getExpenseAmount = (exp: ExpenseLike) => Number(exp?.amount) || Number(exp?.total) || Number(exp?.grand_total) || 0;
@@ -340,18 +434,24 @@ export function DomainDashboard({
             .filter(exp => inRange(getExpenseDate(exp), prevFrom, prevTo))
             .reduce((sum, exp) => sum + getExpenseAmount(exp), 0);
 
-        const currentCustomers = new Set(
-            validInvoices
-                .filter(inv => inRange(inv?.date, currentFrom, currentTo))
-                .map(inv => inv?.customer_id || inv?.customer_name)
-                .filter(Boolean)
-        ).size;
-        const previousCustomers = new Set(
-            validInvoices
-                .filter(inv => inRange(inv?.date, prevFrom, prevTo))
-                .map(inv => inv?.customer_id || inv?.customer_name)
-                .filter(Boolean)
-        ).size;
+        const currentCustomers =
+            unifiedComparison?.periodCustomers != null
+                ? Number(unifiedComparison.periodCustomers)
+                : new Set(
+                      validInvoices
+                          .filter((inv) => inRange(inv?.date, currentFrom, currentTo))
+                          .map((inv) => inv?.customer_id || inv?.customer_name)
+                          .filter(Boolean)
+                  ).size;
+        const previousCustomers =
+            unifiedComparison?.priorCustomers != null
+                ? Number(unifiedComparison.priorCustomers)
+                : new Set(
+                      validInvoices
+                          .filter((inv) => inRange(inv?.date, prevFrom, prevTo))
+                          .map((inv) => inv?.customer_id || inv?.customer_name)
+                          .filter(Boolean)
+                  ).size;
 
         const soldUnits = billableInvoices
             .filter(inv => inRange(inv?.date, currentFrom, currentTo))
@@ -389,7 +489,7 @@ export function DomainDashboard({
             previousReturnInvoices,
             pendingReturns
         };
-    }, [dateRange, invoices, expenses, dashboardMetrics, isSalesLoading]);
+    }, [dateRange, invoices, expenses, dashboardMetrics, isSalesLoading, unifiedComparison]);
 
     const revenueTrendSigned = calcGrowth(periodMetrics.currentRevenue, periodMetrics.previousRevenue);
 
@@ -443,13 +543,19 @@ export function DomainDashboard({
             ?? dashboardMetrics?.inventory?.lowStockCount
             ?? 0;
         const serverOverdue = dashboardMetrics?.alerts?.overdueInvoices ?? 0;
+        const serverPending = dashboardMetrics?.orders?.pending;
         const catalogLoaded = products.length > 0;
         const preferServerAlerts = hasBootstrapKpis && (isSalesLoading || invoices.length === 0);
         return {
             // Lean bootstrap may unlock inventory before products hydrate — keep server KPIs until then.
             lowStock: (!catalogLoaded || isInventoryLoading) ? serverLow : lowStockFallback,
             overdueInvoices: preferServerAlerts ? serverOverdue : overdueInvoicesFallback,
-            pendingOrders: pendingOrdersFallback,
+            pendingOrders:
+                preferServerAlerts && serverPending != null
+                    ? Number(serverPending)
+                    : invoices.length === 0 && serverPending != null
+                      ? Number(serverPending)
+                      : pendingOrdersFallback,
         };
     }, [
         dashboardMetrics,
@@ -696,6 +802,23 @@ export function DomainDashboard({
     );
 
     const orderStatusCounts = useMemo(() => {
+        if (unifiedOrderStatus?.current) {
+            return {
+                current: {
+                    open: Number(unifiedOrderStatus.current.open) || 0,
+                    pending: Number(unifiedOrderStatus.current.pending) || 0,
+                    completed: Number(unifiedOrderStatus.current.completed) || 0,
+                    cancelled: Number(unifiedOrderStatus.current.cancelled) || 0,
+                },
+                previous: {
+                    open: Number(unifiedOrderStatus.previous?.open) || 0,
+                    pending: Number(unifiedOrderStatus.previous?.pending) || 0,
+                    completed: Number(unifiedOrderStatus.previous?.completed) || 0,
+                    cancelled: Number(unifiedOrderStatus.previous?.cancelled) || 0,
+                },
+            };
+        }
+
         const currentFrom = new Date(dateRange.from);
         const currentTo = new Date(dateRange.to);
         const prevFrom = new Date(currentFrom.getTime() - (currentTo.getTime() - currentFrom.getTime()));
@@ -728,13 +851,15 @@ export function DomainDashboard({
             return { open, pending, completed, cancelled };
         };
 
-        const current = countInRange(currentFrom, currentTo);
-        const previous = countInRange(prevFrom, prevTo);
-        return { current, previous };
-    }, [invoices, dateRange.from, dateRange.to]);
+        return {
+            current: countInRange(currentFrom, currentTo),
+            previous: countInRange(prevFrom, prevTo),
+        };
+    }, [unifiedOrderStatus, invoices, dateRange.from, dateRange.to]);
 
     const keyPerformanceMetrics = useMemo(() => {
-        const revenueSeries = resolveSparklineSeries(chartData, invoices, dateRange, 'revenue') ?? [];
+        const revenueSeries =
+            resolveSparklineSeries(chartData, invoices, dateRange, 'revenue', dailyRevenueTrend) ?? [];
         const orderSeries = resolveSparklineSeries(chartData, invoices, dateRange, 'orders');
         const profitFromChart =
             chartData?.length >= 2 ? chartData.map((p) => Number(p.profit) || 0) : undefined;
@@ -775,7 +900,7 @@ export function DomainDashboard({
             },
             {
                 id: 'orders',
-                label: 'Total Orders',
+                label: domainKpiLabels.ordersLabel || 'Total Orders',
                 value: periodMetrics.currentOrders,
                 comparisonLabel: `vs ${periodMetrics.previousOrders}`,
                 trend: Number(ordersTrend.toFixed(1)),
@@ -803,6 +928,8 @@ export function DomainDashboard({
         chartData,
         invoices,
         dateRange,
+        dailyRevenueTrend,
+        domainKpiLabels.ordersLabel,
         periodMetrics,
         revenueTrendSigned,
         ordersTrend,
@@ -819,8 +946,8 @@ export function DomainDashboard({
     const orderSummaryTiles = useMemo(
         () => [
             {
-                label: 'Open Orders',
-                value: openInvoicesCount,
+                label: 'In Progress',
+                value: orderStatusCounts.current.open,
                 trend: calcGrowth(orderStatusCounts.current.open, orderStatusCounts.previous.open),
                 icon: Package,
                 iconBg: 'bg-blue-50',
@@ -828,7 +955,7 @@ export function DomainDashboard({
             },
             {
                 label: 'Pending Orders',
-                value: remindersData.pendingOrders || orderStatusCounts.current.pending,
+                value: orderStatusCounts.current.pending,
                 trend: calcGrowth(orderStatusCounts.current.pending, orderStatusCounts.previous.pending),
                 icon: ShoppingCart,
                 iconBg: 'bg-amber-50',
@@ -852,7 +979,7 @@ export function DomainDashboard({
                 invertTrend: true,
             },
         ],
-        [openInvoicesCount, remindersData.pendingOrders, orderStatusCounts]
+        [orderStatusCounts, remindersData.pendingOrders]
     );
 
     const inventoryHealthTiles = useMemo(
@@ -888,7 +1015,7 @@ export function DomainDashboard({
                 iconColor: 'text-blue-600',
             },
             {
-                label: 'Inventory Value',
+                label: domainKpiLabels.inventoryLabel || 'Inventory Value',
                 value: formatCurrencyCompact(inventoryValue),
                 actionLabel: 'View Report',
                 actionId: 'reports',
@@ -898,11 +1025,168 @@ export function DomainDashboard({
                 iconColor: 'text-amber-600',
             },
         ],
-        [remindersData.lowStock, outOfStockCount, catalogTotalCount, inventoryValue, formatCurrencyCompact]
+        [remindersData.lowStock, outOfStockCount, catalogTotalCount, inventoryValue, formatCurrencyCompact, domainKpiLabels]
     );
 
+    const channelMixItems = useMemo((): ChannelMixItem[] => {
+        const revenueRaw = dashboardMetrics?.revenue;
+        const channels = dashboardMetrics?.channels;
+        const invoice =
+            Number(typeof revenueRaw === 'object' ? revenueRaw?.invoices : 0) ||
+            Number(channels?.invoice) ||
+            0;
+        const pos =
+            Number(typeof revenueRaw === 'object' ? revenueRaw?.pos : 0) || Number(channels?.pos) || 0;
+        const storefront =
+            Number(typeof revenueRaw === 'object' ? revenueRaw?.storefront : 0) ||
+            Number(channels?.storefront) ||
+            0;
+        const total = invoice + pos + storefront;
+        if (total <= 0) return [];
+
+        const rows: ChannelMixItem[] = [
+            { id: 'invoice', label: 'Invoices', value: formatCurrencyCompact(invoice), sharePct: (invoice / total) * 100 },
+            { id: 'pos', label: 'POS', value: formatCurrencyCompact(pos), sharePct: (pos / total) * 100 },
+            {
+                id: 'storefront',
+                label: 'Storefront',
+                value: formatCurrencyCompact(storefront),
+                sharePct: (storefront / total) * 100,
+            },
+        ];
+        return rows.filter((row) => row.sharePct > 0).sort((a, b) => b.sharePct - a.sharePct);
+    }, [dashboardMetrics?.revenue, dashboardMetrics?.channels, formatCurrencyCompact]);
+
+    const secondaryMetrics = useMemo((): SecondaryMetricItem[] => {
+        const receivables = Number(
+            advancedDashboardSnapshot?.finance?.receivables ??
+                accountingSummary?.accountsReceivable ??
+                outstandingAmount
+        );
+        const netMarginPct =
+            periodMetrics.currentRevenue > 0
+                ? ((netProfitValue / periodMetrics.currentRevenue) * 100).toFixed(1)
+                : '0.0';
+
+        const topProduct = analyticsQuery.data?.topProducts?.[0] as Record<string, unknown> | undefined;
+        const retentionRate = analyticsQuery.data?.kpi?.retention;
+        const retentionDetail = analyticsQuery.data?.kpi?.retentionDetail;
+
+        const metrics: SecondaryMetricItem[] = [
+            {
+                id: 'receivables',
+                label: 'Receivables',
+                value: formatCurrencyCompact(receivables),
+                hint: 'Outstanding customer balance',
+                actionId: 'payments',
+            },
+            {
+                id: 'aov',
+                label: 'Avg Order Value',
+                value: formatCurrencyCompact(avgOrderValue),
+                hint: `${periodMetrics.currentOrders} orders in period`,
+                actionId: 'reports',
+            },
+            {
+                id: 'margin',
+                label: 'Net Margin',
+                value: `${netMarginPct}%`,
+                hint: 'Profit as % of revenue',
+                tone: Number(netMarginPct) >= 0 ? 'text-emerald-700' : 'text-rose-600',
+                actionId: 'view-profit-loss',
+            },
+            {
+                id: 'customers',
+                label: 'Customers',
+                value: periodMetrics.currentCustomers,
+                hint: `vs ${periodMetrics.previousCustomers} prior period`,
+                actionId: 'customers',
+            },
+        ];
+
+        if (retentionRate) {
+            metrics.push({
+                id: 'retention',
+                label: 'Retention',
+                value: retentionRate,
+                hint: retentionDetail?.repeatCustomers
+                    ? `${retentionDetail.repeatCustomers} repeat buyers`
+                    : 'Repeat customer rate',
+                tone: 'text-indigo-700',
+                actionId: 'customers',
+            });
+        }
+
+        metrics.push(
+            {
+                id: 'returns',
+                label: 'Pending Returns',
+                value: periodMetrics.pendingReturns,
+                hint: 'Return requests in period',
+                tone: periodMetrics.pendingReturns > 0 ? 'text-amber-600' : undefined,
+                actionId: metricActionId('pending_returns'),
+            },
+            {
+                id: 'warehouse',
+                label: 'Warehouse Util.',
+                value: warehouseUtilizationDisplay,
+                hint: warehouseUtilizationDetail,
+                actionId: metricActionId('warehouse_util'),
+            }
+        );
+
+        if (topProduct?.name) {
+            metrics.push({
+                id: 'top_product',
+                label: 'Top Product',
+                value: String(topProduct.name).slice(0, 18),
+                hint: formatCurrencyCompact(Number(topProduct.revenue) || 0),
+                actionId: 'reports',
+            });
+        }
+
+        return metrics;
+    }, [
+        advancedDashboardSnapshot?.finance?.receivables,
+        accountingSummary?.accountsReceivable,
+        outstandingAmount,
+        netProfitValue,
+        periodMetrics,
+        formatCurrencyCompact,
+        avgOrderValue,
+        warehouseUtilizationDisplay,
+        warehouseUtilizationDetail,
+        analyticsQuery.data?.topProducts,
+        analyticsQuery.data?.kpi,
+    ]);
+
     const aiInsights = useMemo((): AiInsightItem[] => {
-        const items: AiInsightItem[] = [];
+        const verticalCards = buildVerticalInsightCards(easyProfile, {
+            reminders: remindersData,
+            coverageDays,
+            revenueTrend: revenueTrendSigned,
+        }).map((card, index) => ({
+            id: `vertical-${index}-${card.title}`,
+            title: card.title,
+            description: card.text,
+            actionLabel: 'View Details',
+            actionId: card.actionTab || 'reports',
+            icon: Zap,
+            iconBg:
+                card.tone === 'rose'
+                    ? 'bg-rose-50'
+                    : card.tone === 'amber'
+                      ? 'bg-amber-50'
+                      : 'bg-indigo-50',
+            iconColor:
+                card.tone === 'rose'
+                    ? 'text-rose-600'
+                    : card.tone === 'amber'
+                      ? 'text-amber-600'
+                      : 'text-indigo-600',
+        }));
+
+        const items: AiInsightItem[] = [...verticalCards];
 
         if (remindersData.lowStock > 0) {
             items.push({
@@ -922,7 +1206,7 @@ export function DomainDashboard({
                 id: 'collections',
                 title: 'Payment Due',
                 description: `${remindersData.overdueInvoices} overdue invoice${remindersData.overdueInvoices > 1 ? 's' : ''} need follow-up.`,
-                actionLabel: 'Pay Now',
+                actionLabel: 'Collect',
                 actionId: 'payments',
                 icon: Wallet,
                 iconBg: 'bg-emerald-50',
@@ -945,7 +1229,7 @@ export function DomainDashboard({
             const marginPct = ((netProfitValue / periodMetrics.currentRevenue) * 100).toFixed(0);
             items.push({
                 id: 'margin',
-                title: 'Revenue Opportunity',
+                title: 'Margin Opportunity',
                 description: `Net margin is ${marginPct}%. Bundle high-margin SKUs to lift profit.`,
                 actionLabel: 'View Details',
                 actionId: 'reports',
@@ -955,10 +1239,16 @@ export function DomainDashboard({
             });
         }
 
-        return items.slice(0, 3);
+        const seen = new Set<string>();
+        return items.filter((item) => {
+            if (seen.has(item.title)) return false;
+            seen.add(item.title);
+            return true;
+        }).slice(0, 3);
     }, [
-        remindersData.lowStock,
-        remindersData.overdueInvoices,
+        easyProfile,
+        remindersData,
+        coverageDays,
         revenueTrendSigned,
         campaignEnabled,
         netProfitValue,
@@ -1124,7 +1414,7 @@ export function DomainDashboard({
                 id: 'profit',
                 label: '',
                 value: formatCurrencyCompact(netProfitValue),
-                sublabel: 'Potential profit',
+                sublabel: 'Net profit',
                 tone: 'teal' as const,
                 actionId: metricActionId('net_profit'),
             },
@@ -1266,19 +1556,24 @@ export function DomainDashboard({
                         </p>
                     ) : null}
                     <RetailSimpleDashboard
+                        businessId={activeBusinessId}
                         business={business}
                         category={category}
                         domainKnowledge={domainKnowledge as Record<string, unknown> | undefined}
                         currency={resolvedCurrency}
                         periodLabel={periodLabel}
                         activePreset={activePreset}
+                        dateRange={dateRange}
+                        invoices={invoices as unknown as Array<Record<string, unknown>>}
+                        products={products as unknown as Array<Record<string, unknown>>}
+                        activityFeed={activityFeed as Array<Record<string, unknown>> | undefined}
+                        activityFeedReady={Boolean(isDataLoaded || (!isSalesLoading && !isFinanceLoading))}
                         onQuickAction={onQuickAction}
                         onDateRangePresetChange={onDateRangePresetChange}
                         chartData={chartData}
                         expenseBreakdown={expenseBreakdown as unknown as Array<Record<string, unknown>>}
                         dashboardMetrics={dashboardMetrics as unknown as Record<string, unknown> | null}
                         formatCurrencyCompact={formatCurrencyCompact}
-                        greeting={greeting}
                         userName={userName}
                         periodMetrics={{
                             currentRevenue: periodMetrics.currentRevenue,
@@ -1290,6 +1585,11 @@ export function DomainDashboard({
                         isSalesLoading={salesTilesLoading}
                         isFinanceLoading={financeTilesLoading}
                         reminders={remindersData}
+                        remindersLoading={
+                            metricsPending ||
+                            ((isInventoryLoading && products.length === 0) ||
+                                (isSalesLoading && invoices.length === 0 && !hasBootstrapKpis))
+                        }
                         inventoryValue={inventoryValue}
                         inStockUnits={inStockUnits}
                         outstandingAmount={outstandingAmount}
@@ -1503,19 +1803,26 @@ export function DomainDashboard({
                     key={activeBusinessId || 'dashboard'}
                     businessId={activeBusinessId}
                     category={category}
+                    domainKnowledge={domainKnowledge as Record<string, unknown> | undefined}
+                    business={business as Record<string, unknown> | null}
                     dateRange={dateRange}
                     currency={resolvedCurrency}
                     periodLabel={periodLabel}
                     activePreset={activePreset}
                     onDateRangePresetChange={(preset) => {
+                        if (preset === 'yesterday') return;
                         onDateRangePresetChange?.(preset);
                     }}
+                    domainBadges={domainBadges}
+                    seasonLabel={seasonLabel}
                     insightStripItems={insightStripItems}
                     keyPerformanceMetrics={keyPerformanceMetrics}
+                    secondaryMetrics={secondaryMetrics}
+                    channelMixItems={channelMixItems}
                     totalRevenueLabel={formatCurrencyCompact(periodMetrics.currentRevenue)}
                     revenueTrend={Number(revenueTrendSigned.toFixed(1))}
                     chartData={chartData}
-                    invoices={invoices}
+                    invoices={invoices as Array<Record<string, unknown>>}
                     orderSummaryTiles={orderSummaryTiles}
                     inventoryHealthTiles={inventoryHealthTiles}
                     aiInsights={aiInsights}
@@ -1523,6 +1830,8 @@ export function DomainDashboard({
                     healthStats={healthStats}
                     activityFeed={activityFeed as Array<Record<string, unknown>> | undefined}
                     activityFeedReady={Boolean(isDataLoaded || (!isSalesLoading && !isFinanceLoading))}
+                    domainOpsEnabled={Boolean(isDataLoaded && !isFinanceLoading && !isSalesLoading)}
+                    formatCurrencyCompact={formatCurrencyCompact}
                     isLoading={metricsPending}
                     onNavigate={handleMetricNavigate}
                 />

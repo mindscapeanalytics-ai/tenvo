@@ -73,6 +73,18 @@ if (!retailSimple.includes('Lock')) {
 if (!retailSimple.includes('Shop health')) {
   mark('RetailSimpleDashboard must include compact shop health KPIs');
 }
+if (!retailSimple.includes('RetailTopSellingCard')) {
+  mark('RetailSimpleDashboard must render Top Selling Items sidebar');
+}
+if (!retailSimple.includes('RetailRecentActivityCard')) {
+  mark('RetailSimpleDashboard must render Recent Activity sidebar');
+}
+if (!retailSimple.includes('lg:col-span-9') || !retailSimple.includes('lg:col-span-3')) {
+  mark('RetailSimpleDashboard must use main + sidebar grid (9/3 columns)');
+}
+if (!retailSimple.includes('getSalesPerformanceAction')) {
+  mark('RetailSimpleDashboard must load unified top sellers from sales performance');
+}
 if (!retailSimple.includes('hidden lg:grid') || !retailSimple.includes('lg:hidden')) {
   mark('RetailSimpleDashboard must use dual-layout for graphs (desktop vs mobile)');
 }

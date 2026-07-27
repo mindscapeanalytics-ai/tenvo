@@ -14,6 +14,7 @@ import { Combobox } from '@/components/ui/combobox';
 import { formatCurrency } from '@/lib/currency';
 import { useFormRegionalContext } from '@/lib/hooks/useFormRegionalContext';
 import { calculatePurchaseLineTotal, calculatePurchaseTotals } from '@/lib/utils/purchaseTotals';
+import { resolveInventoryDomainFeatures } from '@/lib/utils/inventoryDomainFeatures';
 import { showActionError } from '@/lib/utils/formErrorHandler';
 import { purchaseAPI } from '@/lib/api/purchases';
 import { productAPI } from '@/lib/api/product';
@@ -21,14 +22,48 @@ import { vendorAPI } from '@/lib/api/vendors';
 import { warehouseAPI } from '@/lib/api/warehouse';
 import { QuickVendorForm } from '@/components/QuickVendorForm';
 import { QuickWarehouseForm } from '@/components/QuickWarehouseForm';
+import { POMobileLineItems } from '@/components/purchase/POMobileLineItems';
 import toast from 'react-hot-toast';
 import { purchaseSchema, validateWithSchema } from '@/lib/validation/schemas';
 import { PURCHASE_STATUSES } from '@/lib/constants/purchaseStatus';
 import { cn } from '@/lib/utils';
+import { MOBILE_NO_ZOOM_TEXT } from '@/lib/utils/formMobileStyles';
+
+const PO_LINE_GRID =
+    'minmax(0,1fr) minmax(3.5rem,4.5rem) minmax(4.5rem,5.75rem) minmax(3.25rem,4.25rem) minmax(4.5rem,5.75rem) 2.25rem';
+
+function createEmptyLine(defaultTaxRate = 0) {
+    return {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+        productId: '',
+        description: '',
+        quantity: 1,
+        unitCost: 0,
+        taxRate: Number(defaultTaxRate) || 0,
+        batchNumber: '',
+        expiryDate: '',
+        total: 0,
+    };
+}
+
+function isValidPurchaseLine(item) {
+    return Boolean(item?.productId) && Number(item?.quantity) > 0 && Number(item?.unitCost) >= 0;
+}
+
+function warehouseDescription(w) {
+    return [w?.address, w?.city, w?.location].filter(Boolean).join(', ');
+}
 
 export default function EnhancedPOBuilder({ businessId, onSuccess, onCancel, category = 'retail-shop', colors }) {
     const accentColor = colors?.primary || '#059669';
-    const { currency, defaultTaxRate } = useFormRegionalContext(category);
+    const { currency, defaultTaxRate, domainKnowledge, taxLabel, business } = useFormRegionalContext(category);
+
+    const domainFeatures = useMemo(
+        () => resolveInventoryDomainFeatures(category, { domainKnowledge, business }),
+        [category, domainKnowledge, business]
+    );
+    const showBatchFields = domainFeatures.batchTrackingEnabled;
+    const showExpiryFields = domainFeatures.expiryTrackingEnabled;
 
     const [loading, setLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -49,17 +84,7 @@ export default function EnhancedPOBuilder({ businessId, onSuccess, onCancel, cat
         status: 'draft',
     }));
 
-    const [items, setItems] = useState(() => [{
-        id: Date.now(),
-        productId: '',
-        description: '',
-        quantity: 1,
-        unitCost: 0,
-        taxRate: 0,
-        batchNumber: '',
-        expiryDate: '',
-        total: 0,
-    }]);
+    const [items, setItems] = useState(() => [createEmptyLine(0)]);
 
     useEffect(() => {
         async function loadData() {
@@ -72,15 +97,18 @@ export default function EnhancedPOBuilder({ businessId, onSuccess, onCancel, cat
                     warehouseAPI.getLocations(businessId),
                 ]);
                 if (vendResult.status === 'fulfilled') setVendors(vendResult.value || []);
-                else toast.error('Could not load vendors');
+                else toast.error('Could not load suppliers');
 
                 if (prodResult.status === 'fulfilled') setProducts(prodResult.value || []);
                 else toast.error('Could not load products');
 
                 if (whResult.status === 'fulfilled') {
-                    const locs = whResult.value || [];
+                    const locs = (whResult.value || []).filter((w) => w?.is_active !== false);
                     setWarehouses(locs);
-                    if (locs.length > 0) setHeader(p => ({ ...p, warehouseId: locs[0].id }));
+                    if (locs.length > 0) {
+                        const primary = locs.find((w) => w.is_primary) || locs[0];
+                        setHeader((p) => ({ ...p, warehouseId: p.warehouseId || primary.id }));
+                    }
                 } else {
                     toast.error('Could not load warehouses');
                 }
@@ -91,38 +119,95 @@ export default function EnhancedPOBuilder({ businessId, onSuccess, onCancel, cat
         loadData();
     }, [businessId]);
 
-    const addItem = () => setItems(prev => [...prev, {
-        id: Date.now(), productId: '', description: '',
-        quantity: 1, unitCost: 0, taxRate: 0,
-        batchNumber: '', expiryDate: '', total: 0,
-    }]);
+    const addItem = () => setItems((prev) => [...prev, createEmptyLine(defaultTaxRate)]);
 
     const updateItem = (id, field, value) => {
-        setItems(prev => prev.map(item => {
-            if (item.id !== id) return item;
-            const updated = { ...item, [field]: value };
-            if (field === 'productId') {
-                const prod = products.find(p => p.id === value);
-                if (prod) {
-                    updated.description = prod.name;
-                    updated.unitCost = parseFloat(prod.cost_price || prod.price || 0);
-                    updated.taxRate = parseFloat(prod.tax_percent || defaultTaxRate || 0);
+        if (field === 'productId' && value) {
+            const duplicate = items.find(
+                (row) => row.id !== id && String(row.productId) === String(value)
+            );
+            if (duplicate) {
+                const prod = products.find((p) => String(p.id) === String(value));
+                const name = prod?.name || 'This product';
+                const merge = window.confirm(
+                    `${name} is already on another line. Increase quantity on the existing line instead?`
+                );
+                if (merge) {
+                    setItems((prev) => {
+                        const next = prev
+                            .map((item) => {
+                                if (item.id !== duplicate.id) return item;
+                                const quantity = Number(item.quantity || 0) + 1;
+                                return {
+                                    ...item,
+                                    quantity,
+                                    total: calculatePurchaseLineTotal(
+                                        quantity,
+                                        item.unitCost,
+                                        item.taxRate
+                                    ),
+                                };
+                            })
+                            .filter((item) => item.id !== id);
+                        return next.length > 0 ? next : [createEmptyLine(defaultTaxRate)];
+                    });
+                    return;
                 }
             }
-            if (['quantity', 'unitCost', 'taxRate', 'productId'].includes(field)) {
-                updated.total = calculatePurchaseLineTotal(
-                    updated.quantity,
-                    updated.unitCost,
-                    updated.taxRate
-                );
-            }
-            return updated;
-        }));
+        }
+
+        setItems((prev) =>
+            prev.map((item) => {
+                if (item.id !== id) return item;
+                const updated = { ...item, [field]: value };
+                if (field === 'productId') {
+                    const prod = products.find((p) => String(p.id) === String(value));
+                    if (prod) {
+                        updated.description = prod.name;
+                        updated.unitCost = parseFloat(prod.cost_price || prod.price || 0);
+                        updated.taxRate = parseFloat(prod.tax_percent || defaultTaxRate || 0);
+                    }
+                }
+                if (['quantity', 'unitCost', 'taxRate', 'productId'].includes(field)) {
+                    updated.total = calculatePurchaseLineTotal(
+                        updated.quantity,
+                        updated.unitCost,
+                        updated.taxRate
+                    );
+                }
+                return updated;
+            })
+        );
     };
 
     const removeItem = (id) => setItems(prev => prev.filter(i => i.id !== id));
 
-    const totals = useMemo(() => calculatePurchaseTotals(items), [items]);
+    const validItems = useMemo(() => items.filter(isValidPurchaseLine), [items]);
+
+    const validLineTotals = useMemo(() => calculatePurchaseTotals(validItems), [validItems]);
+
+    const lineSummary = useMemo(() => {
+        const productCount = validItems.length;
+        const unitCount = validItems.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
+        return { productCount, unitCount };
+    }, [validItems]);
+
+    const canSubmit = Boolean(
+        header.vendorId &&
+            header.warehouseId &&
+            validItems.length > 0 &&
+            !isSubmitting
+    );
+
+    const productOptions = useMemo(
+        () =>
+            products.map((p) => ({
+                value: String(p.id),
+                label: p.name,
+                description: `${p.sku ? `SKU: ${p.sku}` : ''} ${p.cost_price ? `· ${currency}${p.cost_price}` : ''}`.trim(),
+            })),
+        [products, currency]
+    );
 
     const mapItemForApi = (item) => ({
         product_id: item.productId,
@@ -137,26 +222,58 @@ export default function EnhancedPOBuilder({ businessId, onSuccess, onCancel, cat
     });
 
     const handleSubmit = async () => {
-        const validItems = items.filter(i => i.productId && Number(i.unitCost || 0) > 0 && Number(i.quantity || 0) > 0);
-        if (validItems.length === 0) {
-            toast.error('Add at least one item with a product, quantity, and cost');
+        if (!header.vendorId) {
+            toast.error('Please select a supplier');
             return;
         }
-        if (!header.vendorId) return toast.error('Please select a vendor');
-        if (!header.warehouseId) return toast.error('Please select a warehouse');
+        if (!header.warehouseId) {
+            toast.error('Please select a warehouse');
+            return;
+        }
+        if (!header.purchaseNumber?.trim()) {
+            toast.error('PO number is required');
+            return;
+        }
+        if (validItems.length === 0) {
+            toast.error('Add at least one line with a product, quantity, and unit cost');
+            return;
+        }
+
+        const isReceived = header.status === PURCHASE_STATUSES.RECEIVED;
+        if (showBatchFields && isReceived) {
+            const missingBatch = validItems.find((item) => !String(item.batchNumber || '').trim());
+            if (missingBatch) {
+                toast.error('Batch number is required for Direct Inward on this business type');
+                return;
+            }
+        }
+        if (showExpiryFields && isReceived) {
+            const missingExpiry = validItems.find((item) => !item.expiryDate);
+            if (missingExpiry) {
+                toast.error('Expiry date is required for Direct Inward on this business type');
+                return;
+            }
+        }
+
+        if (isReceived) {
+            const confirmed = window.confirm(
+                `Receive stock now for ${validItems.length} product${validItems.length === 1 ? '' : 's'} (${formatCurrency(validLineTotals.grandTotal, currency)})? Inventory and payables will update immediately.`
+            );
+            if (!confirmed) return;
+        }
 
         const mappedItems = validItems.map(mapItemForApi);
         const validation = validateWithSchema(purchaseSchema, {
             business_id: businessId,
             vendor_id: header.vendorId,
-            purchase_number: header.purchaseNumber,
+            purchase_number: header.purchaseNumber.trim(),
             date: header.date,
             warehouse_id: header.warehouseId,
             status: header.status,
             items: mappedItems,
-            subtotal: totals.subtotal,
-            tax_total: totals.taxTotal,
-            total_amount: totals.total,
+            subtotal: validLineTotals.subtotal,
+            tax_total: validLineTotals.taxTotal,
+            total_amount: validLineTotals.total,
             notes: header.notes || null,
         });
         if (!validation.success) {
@@ -170,17 +287,17 @@ export default function EnhancedPOBuilder({ businessId, onSuccess, onCancel, cat
                 business_id: businessId,
                 vendor_id: header.vendorId,
                 warehouse_id: header.warehouseId,
-                purchase_number: header.purchaseNumber,
+                purchase_number: header.purchaseNumber.trim(),
                 date: header.date,
                 notes: header.notes,
                 status: header.status,
-                subtotal: totals.subtotal,
-                tax_total: totals.taxTotal,
-                total_amount: totals.total,
+                subtotal: validLineTotals.subtotal,
+                tax_total: validLineTotals.taxTotal,
+                total_amount: validLineTotals.total,
                 items: mappedItems,
             });
             toast.success(
-                header.status === PURCHASE_STATUSES.RECEIVED
+                isReceived
                     ? 'Purchase received and stock updated'
                     : 'Purchase order saved successfully'
             );
@@ -210,7 +327,7 @@ export default function EnhancedPOBuilder({ businessId, onSuccess, onCancel, cat
     const selectedWarehouse = warehouses.find(w => String(w.id) === String(header.warehouseId));
 
     return (
-        <div className="bg-white rounded-2xl shadow-2xl border border-slate-100 flex flex-col overflow-hidden max-h-[92vh] max-w-[1400px] mx-auto w-full">
+        <div className="bg-white rounded-2xl shadow-2xl border border-slate-100 flex flex-col overflow-hidden max-h-[min(92dvh,900px)] w-full">
 
             {/* ── Modal Header ─────────────────────────────────────── */}
             <div className="flex items-center justify-between px-4 py-3.5 sm:px-6 sm:py-4 border-b border-slate-100 bg-slate-50/60 shrink-0">
@@ -249,10 +366,10 @@ export default function EnhancedPOBuilder({ businessId, onSuccess, onCancel, cat
 
                 {/* ── Section 1: Header Fields ─────────────────────── */}
                 <div className="px-4 pt-4 pb-3 sm:px-6 sm:pt-5 sm:pb-4 border-b border-slate-50">
-                    <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2 sm:gap-x-5 sm:gap-y-4 lg:grid-cols-4">
+                    <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2 sm:gap-x-5 sm:gap-y-4">
 
-                        {/* Vendor */}
-                        <div className="sm:col-span-2 lg:col-span-1 space-y-1.5">
+                        {/* Supplier */}
+                        <div className="space-y-1.5 sm:col-span-1">
                             <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-1">
                                 <Building2 className="w-3 h-3" /> Supplier *
                             </Label>
@@ -261,8 +378,9 @@ export default function EnhancedPOBuilder({ businessId, onSuccess, onCancel, cat
                                     options={vendors.map(v => ({ value: String(v.id), label: v.name, description: v.city || v.phone || '' }))}
                                     value={String(header.vendorId)}
                                     onChange={val => setHeader(p => ({ ...p, vendorId: val }))}
-                                    placeholder="Select vendor…"
-                                    className="h-9 text-sm flex-1 min-w-0"
+                                    placeholder={vendors.length ? 'Select supplier…' : 'Add a supplier first'}
+                                    emptyText="No suppliers yet — use + to add one"
+                                    className={cn('h-9 text-sm flex-1 min-w-0', MOBILE_NO_ZOOM_TEXT)}
                                 />
                                 <Button size="icon" variant="outline"
                                     className="h-9 w-9 shrink-0 border-dashed border-slate-300 text-slate-400 hover:text-emerald-600 hover:border-emerald-300"
@@ -281,17 +399,18 @@ export default function EnhancedPOBuilder({ businessId, onSuccess, onCancel, cat
                         </div>
 
                         {/* Warehouse */}
-                        <div className="sm:col-span-2 lg:col-span-1 space-y-1.5">
+                        <div className="space-y-1.5 sm:col-span-1">
                             <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-1">
                                 <Warehouse className="w-3 h-3" /> Warehouse *
                             </Label>
                             <div className="flex gap-1.5">
                                 <Combobox
-                                    options={warehouses.map(w => ({ value: String(w.id), label: w.name, description: w.location || '' }))}
+                                    options={warehouses.map(w => ({ value: String(w.id), label: w.name, description: warehouseDescription(w) }))}
                                     value={String(header.warehouseId)}
                                     onChange={val => setHeader(p => ({ ...p, warehouseId: val }))}
-                                    placeholder="Select warehouse…"
-                                    className="h-9 text-sm flex-1 min-w-0"
+                                    placeholder={warehouses.length ? 'Select warehouse…' : 'Add a warehouse first'}
+                                    emptyText="No warehouses yet — use + to add one"
+                                    className={cn('h-9 text-sm flex-1 min-w-0', MOBILE_NO_ZOOM_TEXT)}
                                 />
                                 <Button size="icon" variant="outline"
                                     className="h-9 w-9 shrink-0 border-dashed border-slate-300 text-slate-400 hover:text-emerald-600 hover:border-emerald-300"
@@ -299,25 +418,25 @@ export default function EnhancedPOBuilder({ businessId, onSuccess, onCancel, cat
                                     <Plus className="w-3.5 h-3.5" />
                                 </Button>
                             </div>
-                            {selectedWarehouse?.location && (
-                                <p className="text-[10px] text-slate-400 pl-0.5 truncate">{selectedWarehouse.location}</p>
+                            {warehouseDescription(selectedWarehouse) && (
+                                <p className="text-[10px] text-slate-400 pl-0.5 truncate">{warehouseDescription(selectedWarehouse)}</p>
                             )}
                         </div>
 
                         {/* PO Number */}
-                        <div className="space-y-1.5">
+                        <div className="space-y-1.5 sm:col-span-1">
                             <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-1">
                                 <Hash className="w-3 h-3" /> PO Number
                             </Label>
                             <Input
                                 value={header.purchaseNumber}
                                 onChange={e => setHeader(p => ({ ...p, purchaseNumber: e.target.value }))}
-                                className="h-9 text-sm font-mono font-semibold bg-slate-50 border-slate-200"
+                                className={cn('h-9 text-sm font-mono font-semibold border-slate-200 w-full min-w-0', MOBILE_NO_ZOOM_TEXT)}
                             />
                         </div>
 
                         {/* Date */}
-                        <div className="space-y-1.5">
+                        <div className="space-y-1.5 sm:col-span-1">
                             <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-1">
                                 <CalendarDays className="w-3 h-3" /> Date
                             </Label>
@@ -325,7 +444,7 @@ export default function EnhancedPOBuilder({ businessId, onSuccess, onCancel, cat
                                 type="date"
                                 value={header.date}
                                 onChange={e => setHeader(p => ({ ...p, date: e.target.value }))}
-                                className="h-9 text-sm border-slate-200"
+                                className={cn('h-9 text-sm border-slate-200 w-full min-w-[10.5rem]', MOBILE_NO_ZOOM_TEXT)}
                             />
                         </div>
                     </div>
@@ -367,117 +486,174 @@ export default function EnhancedPOBuilder({ businessId, onSuccess, onCancel, cat
                 <div className="px-4 py-3 sm:px-6 sm:py-4">
                     <div className="flex items-center justify-between mb-3 gap-2">
                         <h3 className="text-[11px] sm:text-xs font-bold uppercase tracking-widest text-slate-500 flex items-center gap-1.5 min-w-0">
-                            <Package className="w-3 sm:w-3.5 h-3 sm:h-3.5 shrink-0" /> 
+                            <Package className="w-3 sm:w-3.5 h-3 sm:h-3.5 shrink-0" />
                             <span className="truncate">Line Items</span>
                             <span className="ml-1 bg-slate-100 text-slate-500 text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0">
-                                {items.length}
+                                {validItems.length}/{items.length}
                             </span>
                         </h3>
                         <Button size="sm" variant="outline" onClick={addItem}
                             className="h-7 px-2.5 sm:px-3 text-[10px] sm:text-[11px] font-bold border-dashed border-slate-300 text-slate-500 hover:text-emerald-600 hover:border-emerald-300 shrink-0">
-                            <Plus className="w-3 h-3 sm:mr-1" /> 
+                            <Plus className="w-3 h-3 sm:mr-1" />
                             <span className="hidden sm:inline">Add Item</span>
+                            <span className="sm:hidden">Add</span>
                         </Button>
                     </div>
 
-                    <div className="-mx-2 overflow-x-auto px-2 sm:mx-0 sm:px-0">
-                    <div className="min-w-[580px] rounded-xl border border-slate-100 overflow-hidden shadow-sm">
-                        {/* Table Header */}
-                        <div className="grid bg-slate-50 border-b border-slate-100 text-[10px] font-bold uppercase tracking-widest text-slate-400"
-                            style={{ gridTemplateColumns: '1fr 70px 90px 68px 95px 36px' }}>
-                            <div className="px-2 sm:px-3 py-2">Product</div>
-                            <div className="px-1.5 sm:px-2 py-2 text-center">Qty</div>
-                            <div className="px-1.5 sm:px-2 py-2 text-right">Unit Cost</div>
-                            <div className="px-1.5 sm:px-2 py-2 text-right">Tax %</div>
-                            <div className="px-1.5 sm:px-2 py-2 text-right">Total</div>
-                            <div className="px-1 sm:px-2 py-2" />
-                        </div>
+                    {/* Mobile — stacked cards */}
+                    <div className="lg:hidden">
+                        <POMobileLineItems
+                            items={items}
+                            products={products}
+                            currency={currency}
+                            updateItem={updateItem}
+                            removeItem={removeItem}
+                            addItem={addItem}
+                            showBatchFields={showBatchFields}
+                            showExpiryFields={showExpiryFields}
+                            taxLabel={taxLabel || 'Tax'}
+                        />
+                    </div>
 
-                        {/* Rows */}
-                        <div className="divide-y divide-slate-50">
-                            {items.map((item) => {
-                                const base = parseFloat(item.quantity || 0) * parseFloat(item.unitCost || 0);
-                                const tax = base * parseFloat(item.taxRate || 0) / 100;
-                                return (
-                                    <div key={item.id}
-                                        className="grid items-center hover:bg-slate-50/60 transition-colors group"
-                                        style={{ gridTemplateColumns: '1fr 70px 90px 68px 95px 36px' }}>
+                    {/* Desktop — compact grid table */}
+                    <div className="hidden lg:block">
+                        <div className="rounded-xl border border-slate-100 overflow-hidden shadow-sm">
+                            <div
+                                className="grid bg-slate-50 border-b border-slate-100 text-[10px] font-bold uppercase tracking-widest text-slate-400"
+                                style={{ gridTemplateColumns: PO_LINE_GRID }}
+                            >
+                                <div className="px-3 py-2">Product</div>
+                                <div className="px-2 py-2 text-center">Qty</div>
+                                <div className="px-2 py-2 text-right">Unit Cost</div>
+                                <div className="px-2 py-2 text-right">{taxLabel || 'Tax'} %</div>
+                                <div className="px-2 py-2 text-right">Total</div>
+                                <div className="px-1 py-2" />
+                            </div>
 
-                                        {/* Product */}
-                                        <div className="px-2 sm:px-3 py-2 min-w-0">
-                                            <Combobox
-                                                options={products.map(p => ({
-                                                    value: p.id,
-                                                    label: p.name,
-                                                    description: `${p.sku ? `SKU: ${p.sku}` : ''} ${p.cost_price ? `· ${currency}${p.cost_price}` : ''}`.trim(),
-                                                }))}
-                                                value={item.productId}
-                                                onChange={val => updateItem(item.id, 'productId', val)}
-                                                placeholder="Select…"
-                                                className="h-8 text-xs border-transparent bg-transparent hover:bg-white hover:border-slate-200 focus-within:bg-white focus-within:border-slate-300 transition-all"
-                                            />
-                                        </div>
+                            <div className="divide-y divide-slate-50">
+                                {items.map((item) => {
+                                    const base = parseFloat(item.quantity || 0) * parseFloat(item.unitCost || 0);
+                                    const tax = base * parseFloat(item.taxRate || 0) / 100;
+                                    const rowValid = isValidPurchaseLine(item);
+                                    return (
+                                        <div key={item.id} className={cn(rowValid ? '' : 'bg-amber-50/40')}>
+                                            <div
+                                                className="grid items-center transition-colors group hover:bg-slate-50/60"
+                                                style={{ gridTemplateColumns: PO_LINE_GRID }}
+                                            >
+                                            <div className="px-3 py-2 min-w-0">
+                                                <Combobox
+                                                    options={productOptions}
+                                                    value={String(item.productId || '')}
+                                                    onChange={val => updateItem(item.id, 'productId', val)}
+                                                    placeholder="Select product…"
+                                                    emptyText="No products found"
+                                                    className="h-8 text-xs border-transparent bg-transparent hover:bg-white hover:border-slate-200 focus-within:bg-white focus-within:border-slate-300 transition-all"
+                                                />
+                                            </div>
 
-                                        {/* Qty */}
-                                        <div className="px-1.5 sm:px-2 py-2">
-                                            <Input type="number" min={0}
-                                                value={item.quantity}
-                                                onChange={e => updateItem(item.id, 'quantity', e.target.value)}
-                                                className="h-8 text-center text-xs font-semibold px-1 border-slate-200 bg-white"
-                                            />
-                                        </div>
+                                            <div className="px-2 py-2">
+                                                <Input
+                                                    type="number"
+                                                    min={0}
+                                                    inputMode="decimal"
+                                                    value={item.quantity}
+                                                    onChange={e => updateItem(item.id, 'quantity', e.target.value)}
+                                                    className="h-8 text-center text-xs font-semibold px-1 border-slate-200 bg-white tabular-nums"
+                                                />
+                                            </div>
 
-                                        {/* Unit Cost */}
-                                        <div className="px-1.5 sm:px-2 py-2">
-                                            <Input type="number" min={0} step="0.01"
-                                                value={item.unitCost}
-                                                onChange={e => updateItem(item.id, 'unitCost', e.target.value)}
-                                                className="h-8 text-right text-xs font-semibold px-1.5 border-slate-200 bg-white"
-                                            />
-                                        </div>
+                                            <div className="px-2 py-2">
+                                                <Input
+                                                    type="number"
+                                                    min={0}
+                                                    step="0.01"
+                                                    inputMode="decimal"
+                                                    value={item.unitCost}
+                                                    onChange={e => updateItem(item.id, 'unitCost', e.target.value)}
+                                                    className="h-8 text-right text-xs font-semibold px-1.5 border-slate-200 bg-white tabular-nums"
+                                                />
+                                            </div>
 
-                                        {/* Tax % */}
-                                        <div className="px-1.5 sm:px-2 py-2">
-                                            <Input type="number" min={0} max={100}
-                                                value={item.taxRate}
-                                                onChange={e => updateItem(item.id, 'taxRate', e.target.value)}
-                                                className="h-8 text-right text-xs px-1.5 border-slate-200 bg-white"
-                                            />
-                                        </div>
+                                            <div className="px-2 py-2">
+                                                <Input
+                                                    type="number"
+                                                    min={0}
+                                                    max={100}
+                                                    inputMode="decimal"
+                                                    value={item.taxRate}
+                                                    onChange={e => updateItem(item.id, 'taxRate', e.target.value)}
+                                                    className="h-8 text-right text-xs px-1.5 border-slate-200 bg-white tabular-nums"
+                                                />
+                                            </div>
 
-                                        {/* Total */}
-                                        <div className="px-1.5 sm:px-2 py-2 text-right">
-                                            <p className="text-xs font-bold text-slate-800 truncate">{formatCurrency(item.total, currency)}</p>
-                                            {item.taxRate > 0 && (
-                                                <p className="text-[9px] sm:text-[10px] text-slate-400 leading-tight truncate">
-                                                    {formatCurrency(base, currency)}+{formatCurrency(tax, currency)}
+                                            <div className="px-2 py-2 text-right min-w-0">
+                                                <p className="text-xs font-bold text-slate-800 truncate tabular-nums">
+                                                    {formatCurrency(item.total, currency)}
                                                 </p>
+                                                {item.taxRate > 0 && (
+                                                    <p className="text-[10px] text-slate-400 leading-tight truncate tabular-nums">
+                                                        {formatCurrency(base, currency)}+{formatCurrency(tax, currency)}
+                                                    </p>
+                                                )}
+                                            </div>
+
+                                            <div className="px-1 py-2 flex justify-center">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeItem(item.id)}
+                                                    disabled={items.length === 1}
+                                                    className="w-6 h-6 rounded-full flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                                                    aria-label="Remove line"
+                                                >
+                                                    <Trash2 className="w-3 h-3" />
+                                                </button>
+                                            </div>
+                                            </div>
+
+                                            {(showBatchFields || showExpiryFields) && (
+                                                <div className="grid grid-cols-2 gap-2 border-t border-slate-50 bg-slate-50/40 px-3 py-2">
+                                                    {showBatchFields ? (
+                                                        <div className="min-w-0 space-y-1">
+                                                            <Label className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                                                                Batch No.
+                                                            </Label>
+                                                            <Input
+                                                                value={item.batchNumber || ''}
+                                                                onChange={(e) => updateItem(item.id, 'batchNumber', e.target.value)}
+                                                                placeholder="Lot / batch"
+                                                                className="h-8 text-xs border-slate-200 bg-white"
+                                                            />
+                                                        </div>
+                                                    ) : null}
+                                                    {showExpiryFields ? (
+                                                        <div className="min-w-0 space-y-1">
+                                                            <Label className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                                                                Expiry
+                                                            </Label>
+                                                            <Input
+                                                                type="date"
+                                                                value={item.expiryDate || ''}
+                                                                onChange={(e) => updateItem(item.id, 'expiryDate', e.target.value)}
+                                                                className="h-8 text-xs border-slate-200 bg-white min-w-0"
+                                                            />
+                                                        </div>
+                                                    ) : null}
+                                                </div>
                                             )}
                                         </div>
-
-                                        {/* Delete */}
-                                        <div className="px-0.5 sm:px-1 py-2 flex justify-center">
-                                            <button
-                                                onClick={() => removeItem(item.id)}
-                                                disabled={items.length === 1}
-                                                className="w-6 h-6 rounded-full flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all disabled:opacity-30 disabled:cursor-not-allowed">
-                                                <Trash2 className="w-3 h-3" />
-                                            </button>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-
-                        {/* Empty state */}
-                        {items.length === 0 && (
-                            <div className="py-8 text-center text-slate-400">
-                                <Package className="w-8 h-8 mx-auto mb-2 text-slate-200" />
-                                <p className="text-sm font-medium">No items added</p>
-                                <p className="text-xs mt-0.5">Click &quot;Add Item&quot; to get started</p>
+                                    );
+                                })}
                             </div>
-                        )}
-                    </div>
+
+                            {items.length === 0 && (
+                                <div className="py-8 text-center text-slate-400">
+                                    <Package className="w-8 h-8 mx-auto mb-2 text-slate-200" />
+                                    <p className="text-sm font-medium">No items added</p>
+                                    <p className="text-xs mt-0.5">Click &quot;Add Item&quot; to get started</p>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
 
@@ -502,29 +678,37 @@ export default function EnhancedPOBuilder({ businessId, onSuccess, onCancel, cat
                     <div className="bg-slate-50 rounded-xl border border-slate-100 p-3.5 sm:p-4 space-y-2.5 self-start order-1 md:order-2">
                         <div className="flex justify-between items-center text-sm text-slate-600">
                             <span className="font-medium">Subtotal</span>
-                            <span className="font-semibold tabular-nums">{formatCurrency(totals.subtotal, currency)}</span>
+                            <span className="font-semibold tabular-nums">
+                                {formatCurrency(validLineTotals.subtotal, currency)}
+                            </span>
                         </div>
-                        {totals.taxTotal > 0 && (
+                        {validLineTotals.taxTotal > 0 && (
                             <div className="flex justify-between items-center text-sm text-slate-500">
-                                <span>Sales Tax</span>
-                                <span className="tabular-nums">{formatCurrency(totals.taxTotal, currency)}</span>
+                                <span>Tax</span>
+                                <span className="tabular-nums">
+                                    {formatCurrency(validLineTotals.taxTotal, currency)}
+                                </span>
                             </div>
                         )}
                         <div className="flex justify-between items-center pt-2.5 border-t border-slate-200">
                             <span className="text-sm sm:text-base font-bold text-slate-800">Grand Total</span>
                             <span className="text-lg sm:text-xl font-semibold tabular-nums" style={{ color: accentColor }}>
-                                {formatCurrency(totals.grandTotal, currency)}
+                                {formatCurrency(validLineTotals.grandTotal, currency)}
                             </span>
                         </div>
 
-                        {/* Item count summary */}
                         <div className="pt-1 text-[10px] text-slate-400 flex items-center gap-1">
                             <Package className="w-3 h-3 shrink-0" />
                             <span className="truncate">
-                                {items.filter(i => i.productId).length} product{items.filter(i => i.productId).length !== 1 ? 's' : ''} ·{' '}
-                                {items.reduce((s, i) => s + parseFloat(i.quantity || 0), 0)} units total
+                                {lineSummary.productCount} product{lineSummary.productCount !== 1 ? 's' : ''} ·{' '}
+                                {lineSummary.unitCount} unit{lineSummary.unitCount !== 1 ? 's' : ''} total
                             </span>
                         </div>
+                        {validItems.length === 0 && items.length > 0 ? (
+                            <p className="text-[10px] text-amber-600">
+                                Select a product and enter quantity on each line to include it in totals.
+                            </p>
+                        ) : null}
                     </div>
                 </div>
             </div>
@@ -533,13 +717,18 @@ export default function EnhancedPOBuilder({ businessId, onSuccess, onCancel, cat
             <div className="shrink-0 border-t border-slate-100 bg-white px-4 py-3 sm:px-6 sm:py-3.5 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 sm:gap-3">
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] sm:text-[11px] text-slate-400 order-2 sm:order-1">
                     {!header.vendorId && (
-                        <span className="flex items-center gap-1 text-amber-500 whitespace-nowrap">
-                            <AlertCircle className="w-3 h-3 shrink-0" /> Vendor required
+                        <span className="flex items-center gap-1 text-amber-600 whitespace-nowrap">
+                            <AlertCircle className="w-3 h-3 shrink-0" /> Supplier required
                         </span>
                     )}
                     {!header.warehouseId && (
-                        <span className="flex items-center gap-1 text-amber-500 whitespace-nowrap">
+                        <span className="flex items-center gap-1 text-amber-600 whitespace-nowrap">
                             <AlertCircle className="w-3 h-3 shrink-0" /> Warehouse required
+                        </span>
+                    )}
+                    {validItems.length === 0 && (
+                        <span className="flex items-center gap-1 text-amber-600 whitespace-nowrap">
+                            <AlertCircle className="w-3 h-3 shrink-0" /> Add at least one complete line
                         </span>
                     )}
                 </div>
@@ -550,7 +739,7 @@ export default function EnhancedPOBuilder({ businessId, onSuccess, onCancel, cat
                     </Button>
                     <Button
                         onClick={handleSubmit}
-                        disabled={isSubmitting}
+                        disabled={!canSubmit}
                         className="h-9 px-4 sm:px-5 text-sm font-bold rounded-lg text-white shadow-sm transition-all hover:opacity-90 disabled:opacity-60 flex-1 sm:flex-initial"
                         style={{ backgroundColor: accentColor }}>
                         {isSubmitting
@@ -569,8 +758,12 @@ export default function EnhancedPOBuilder({ businessId, onSuccess, onCancel, cat
                     <div className="sr-only"><DialogTitle>Add New Vendor</DialogTitle></div>
                     <QuickVendorForm
                         onSave={(v) => {
-                            setVendors(prev => [...prev, v]);
-                            setHeader(p => ({ ...p, vendorId: v.id }));
+                            if (!v?.id) return;
+                            setVendors((prev) => {
+                                if (prev.some((row) => String(row.id) === String(v.id))) return prev;
+                                return [...prev, v];
+                            });
+                            setHeader((p) => ({ ...p, vendorId: String(v.id) }));
                             setShowVendorForm(false);
                         }}
                         onCancel={() => setShowVendorForm(false)}
@@ -583,8 +776,12 @@ export default function EnhancedPOBuilder({ businessId, onSuccess, onCancel, cat
                     <div className="sr-only"><DialogTitle>Add Storage Location</DialogTitle></div>
                     <QuickWarehouseForm
                         onSave={(w) => {
-                            setWarehouses(prev => [...prev, w]);
-                            setHeader(p => ({ ...p, warehouseId: w.id }));
+                            if (!w?.id) return;
+                            setWarehouses((prev) => {
+                                if (prev.some((row) => String(row.id) === String(w.id))) return prev;
+                                return [...prev, w];
+                            });
+                            setHeader((p) => ({ ...p, warehouseId: String(w.id) }));
                             setShowWarehouseForm(false);
                         }}
                         onCancel={() => setShowWarehouseForm(false)}
