@@ -16,18 +16,27 @@ function serializeAffiliate(row) {
 }
 
 /**
- * Affiliate lookup API (legacy path kept for email bookmark / tooling compatibility).
+ * Legacy affiliate tooling path — platform admins only (no public email PII).
  *
- * GET ?email=partner@example.com → single-partner lookup (same shape as before)
- * GET (no email) → platform-admin only full list (no longer public)
+ * Prefer GET /api/affiliates/lookup for authenticated partner self-lookup.
+ *
+ * GET ?email=partner@example.com → single-partner lookup
+ * GET (no email) → full list
  */
 export async function GET(request) {
+  const session = await getServerSession();
+  if (!session?.user || !isPlatformLevel(session.user)) {
+    return NextResponse.json(
+      { error: 'Platform administrator access required', code: 'FORBIDDEN' },
+      { status: 403 }
+    );
+  }
+
   const { searchParams } = new URL(request.url);
   const emailRaw = searchParams.get('email');
   const email = typeof emailRaw === 'string' ? emailRaw.trim() : '';
 
   try {
-    // ── Public / partner: lookup by email (as before) ───────────────────────
     if (email) {
       const cleanEmail = email.toLowerCase();
       const rows = await prisma.$queryRaw`
@@ -43,18 +52,6 @@ export async function GET(request) {
         found: Boolean(affiliate),
         affiliate,
       });
-    }
-
-    // ── Full list: platform admins only (was previously open — closed for security) ─
-    const session = await getServerSession();
-    if (!session?.user || !isPlatformLevel(session.user)) {
-      return NextResponse.json(
-        {
-          error: 'Email is required. Use ?email= to look up a partner, or sign in as a platform admin to list all.',
-          code: 'EMAIL_REQUIRED',
-        },
-        { status: 400 }
-      );
     }
 
     const rows = await prisma.$queryRaw`

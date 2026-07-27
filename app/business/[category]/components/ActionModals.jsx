@@ -2,6 +2,7 @@
 // v2: Removed ActionModalsHeader
 
 import React from 'react';
+import dynamic from 'next/dynamic';
 import {
     Dialog,
     DialogContent,
@@ -23,21 +24,46 @@ import {
     Truck,
     ShoppingCart,
 } from 'lucide-react';
-import { VendorForm } from '@/components/VendorForm';
-import EnhancedPOBuilder from '@/components/EnhancedPOBuilder';
-import { ProductForm } from '@/components/ProductForm';
-import { ProductWizard } from '@/components/inventory/ProductWizard';
-import { EnhancedInvoiceBuilder } from '@/components/EnhancedInvoiceBuilder';
-import { QuickInvoiceModal } from '@/components/invoice/QuickInvoiceModal';
-import { PaymentModal } from '@/components/invoice/PaymentModal';
-import { CustomerForm } from '@/components/CustomerForm';
-import { ExpenseEntryForm } from '@/components/ExpenseEntryForm';
 import toast from 'react-hot-toast';
 import { EntityDetailsDialog } from '@/components/EntityDetailsDialog';
 import { getNavItemAccess } from '@/lib/rbac/permissions';
 import { useBusiness } from '@/lib/context/BusinessContext';
 import { isPosRelevant } from '@/lib/config/domains';
 import { useResolvedBusinessId } from '@/lib/hooks/useResolvedBusinessId';
+
+const VendorForm = dynamic(
+    () => import('@/components/VendorForm').then((m) => ({ default: m.VendorForm })),
+    { ssr: false }
+);
+const EnhancedPOBuilder = dynamic(() => import('@/components/EnhancedPOBuilder'), { ssr: false });
+const ProductForm = dynamic(
+    () => import('@/components/ProductForm').then((m) => ({ default: m.ProductForm })),
+    { ssr: false }
+);
+const ProductWizard = dynamic(
+    () => import('@/components/inventory/ProductWizard').then((m) => ({ default: m.ProductWizard })),
+    { ssr: false }
+);
+const EnhancedInvoiceBuilder = dynamic(
+    () => import('@/components/EnhancedInvoiceBuilder').then((m) => ({ default: m.EnhancedInvoiceBuilder })),
+    { ssr: false }
+);
+const QuickInvoiceModal = dynamic(
+    () => import('@/components/invoice/QuickInvoiceModal').then((m) => ({ default: m.QuickInvoiceModal })),
+    { ssr: false }
+);
+const PaymentModal = dynamic(
+    () => import('@/components/invoice/PaymentModal').then((m) => ({ default: m.PaymentModal })),
+    { ssr: false }
+);
+const CustomerForm = dynamic(
+    () => import('@/components/CustomerForm').then((m) => ({ default: m.CustomerForm })),
+    { ssr: false }
+);
+const ExpenseEntryForm = dynamic(
+    () => import('@/components/ExpenseEntryForm').then((m) => ({ default: m.ExpenseEntryForm })),
+    { ssr: false }
+);
 
 export function ActionModals({
     // Visibility States

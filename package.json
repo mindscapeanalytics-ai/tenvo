@@ -80,6 +80,7 @@
     "verify:about-storefront": "bun scripts/verify-about-storefront.mjs",
     "verify:hub-business-id": "bun scripts/verify-hub-business-id.mjs",
     "verify:finance-gl": "node scripts/verify-finance-gl.mjs",
+    "verify:enterprise-integrity": "node scripts/verify-enterprise-integrity.mjs",
     "verify:pos-offline": "node scripts/verify-pos-offline.mjs",
     "verify:pwa-install": "node scripts/verify-pwa-install.mjs",
     "icons:pwa": "node scripts/generate-pwa-icons.mjs",

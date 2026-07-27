@@ -24,9 +24,7 @@ import { setPendingInventoryFocus, setPendingExcelMode } from '@/lib/utils/hubNa
 import { useHubTab } from '@/lib/context/HubTabContext';
 import { Button } from '@/components/ui/button';
 import { Tabs } from '@/components/ui/tabs';
-import { ProductForm } from '@/components/ProductForm';
-import { EnhancedInvoiceBuilder } from '@/components/EnhancedInvoiceBuilder';
-import { CustomerForm } from '@/components/CustomerForm';
+import dynamic from 'next/dynamic';
 import { SetupWizard } from '@/components/onboarding/SetupWizard';
 import { getDomainColors } from '@/lib/domainColors';
 import { getDomainKnowledgeForBusiness } from '@/lib/utils/businessRegionalContext';
@@ -40,7 +38,6 @@ import { useData } from '@/lib/context/DataContext';
 import { isBatchTrackingEnabled, isSerialTrackingEnabled } from '@/lib/utils/domainHelpers';
 import { filterMeaningfulBatches, filterMeaningfulSerials } from '@/lib/utils/inventoryTrackingHelpers';
 import { isEntitlementError, getEntitlementErrorMessage, markEntitlementErrorHandled } from '@/lib/utils/subscriptionErrors';
-import { ActionModals } from './components/ActionModals';
 import { DashboardTabs } from './components/DashboardTabs';
 import { BusinessLoadingBoundary } from '@/components/guards/BusinessLoadingBoundary';
 import { useHubReady } from '@/lib/hooks/useHubReady';
@@ -51,6 +48,11 @@ import { QUICK_ACTION_IDS } from '@/lib/config/quickActions';
 import { normalizeDashboardTab, resolveDashboardTab, resolveFinanceViewForTab } from '@/lib/config/tabs';
 import { prefetchHubTabChunk } from '@/lib/utils/hubTabNavigation';
 import { TRIAL_CONFIG } from '@/lib/config/platform';
+
+const ActionModals = dynamic(
+  () => import('./components/ActionModals').then((m) => ({ default: m.ActionModals })),
+  { ssr: false }
+);
 
 /**
  * Role-based / vertical dashboard templates emit string action ids (`view-*`, etc.).
@@ -608,14 +610,14 @@ function BusinessDashboardContent() {
 
     if (['batches', 'pos'].includes(activeTab)) {
       if (!moduleReady.inventoryCatalog && !loadingModules.inventory) {
-        void fetchInventory({ force: true, fullCatalog: true, detailLevel: 'grid', loadAllPages: true });
+        // Warm first grid page only — scan/offline catalog cover the rest (no full RAM drain).
+        void fetchInventory({ force: true, fullCatalog: true, detailLevel: 'grid' });
       } else if (
         moduleReady.inventoryCatalog &&
         !loadingModules.inventory &&
-        (inventoryNeedsGridUpgrade || hasMoreProducts)
+        inventoryNeedsGridUpgrade
       ) {
-        // POS needs complete catalog (Busy/Zoho till) — drain remaining pages at grid depth.
-        void fetchInventory({ force: true, fullCatalog: true, detailLevel: 'grid', loadAllPages: true });
+        void fetchInventory({ force: true, fullCatalog: true, detailLevel: 'grid' });
       }
       return;
     }
@@ -1813,7 +1815,7 @@ function BusinessDashboardContent() {
         // Avoid fetchFinance(force) overwrite of Overview SOT + fat sales/full fan.
         void Promise.allSettled([
           fetchSales({ force: true, mode: 'invoices' }),
-          fetchInventory({ force: true, fullCatalog: true, detailLevel: 'grid', loadAllPages: true }),
+          fetchInventory({ force: true, fullCatalog: true, detailLevel: 'list' }),
         ]);
         scheduleAnalyticsRefresh?.();
         return {
