@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useMemo, useCallback } from 'react';
+import { useMemo, useCallback } from 'react';
 import {
     TrendingUp, Users, ShoppingCart,
-    CreditCard, Clock,
+    Clock,
     Zap,
     Boxes, Warehouse, RotateCcw, BadgeDollarSign,
-    Package, FileText, BarChart3, Plus, Wallet, Table2
+    Package, PackageCheck, PackageX, FileText, BarChart3, Plus, Wallet, Table2,
+    DollarSign, AlertTriangle,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -18,8 +19,6 @@ import { getDomainColors } from '@/lib/domainColors';
 import { isCampaignRelevant } from '@/lib/config/domains';
 import { getDomainKnowledge } from '@/lib/domainKnowledge';
 import { KPIMeter } from '../islands/portlets/KPIMeter.client';
-import { DomainMetricCard } from '../islands/DomainMetricCard.client';
-import { PeriodSnapshotCard } from '../islands/PeriodSnapshotCard.client';
 import { QuickActionTiles } from '../islands/portlets/QuickActionTiles.client';
 import { RemindersPortlet } from '../islands/portlets/RemindersPortlet.client';
 import { RecentActivityFeed } from '../islands/portlets/RecentActivityFeed.client';
@@ -31,13 +30,14 @@ import { EasyBusinessDashboard } from '@/components/dashboard/easy/EasyBusinessD
 import { RetailSimpleDashboard } from '@/components/dashboard/easy/RetailSimpleDashboard';
 import { DomainOperationsPanel } from '@/components/dashboard/easy/DomainOperationsPanel';
 import { useDomainOperationsSnapshot } from '@/lib/hooks/useDomainOperationsSnapshot';
-import { FinanceHeroStrip } from '@/components/dashboard/advanced/FinanceHeroStrip.client';
+import { AdvancedDashboardLayout } from '@/components/dashboard/advanced/AdvancedDashboardLayout.client';
+import type { AiInsightItem } from '@/components/dashboard/advanced/AdvancedAiAssistantPanel.client';
 import { PerformanceKPIs } from '../islands/portlets/PerformanceKPIs.client';
 import { countLowStockProducts, resolveInvoiceOpenBalance, resolveProductStock } from '@/lib/dashboard/easyDashboardHelpers';
-import { buildFinanceHeroMetrics } from '@/lib/dashboard/buildFinanceHeroMetrics';
 import { metricActionId } from '@/lib/dashboard/metricNavigation';
 import { resolveSparklineSeries } from '@/lib/dashboard/sparklineSeries';
 import { isPendingInvoice } from '@/lib/utils/analytics';
+import { calculateBusinessHealth } from '@/lib/analytics/health';
 import type { KpiTheme } from '@/lib/dashboard/kpiThemes';
 
 // ===============================================================
@@ -181,22 +181,6 @@ interface DomainKnowledgeLike {
     intelligence?: Record<string, unknown>;
 }
 
-interface MetricCardProps {
-    label: string;
-    value: string | number;
-    subValue?: string;
-    trend?: number;
-    trendHint?: string;
-    icon: React.ElementType;
-    colorClass?: string;
-    theme?: KpiTheme;
-    className?: string;
-    sparkline?: number[];
-    invertTrendColor?: boolean;
-    actionId?: string;
-    isLoading?: boolean;
-}
-
 // ===============================================================
 // MAIN COMPONENT
 // ===============================================================
@@ -226,11 +210,10 @@ export function DomainDashboard({
     isExpensesLoading = false,
     isDataLoaded = false,
     activityFeed,
-    productTotal: _productTotal = 0,
+    productTotal: catalogProductTotal = 0,
     hasMoreProducts: _hasMoreProducts = false,
     onLoadMoreProducts: _onLoadMoreProducts,
 }: DomainDashboardProps) {
-    void _productTotal;
     void _hasMoreProducts;
     void _onLoadMoreProducts;
     const { business, currency: businessCurrency } = useBusiness() as {
@@ -265,9 +248,15 @@ export function DomainDashboard({
     );
     const handleMetricNavigate = useCallback(
         (actionId: string) => {
+            if (!actionId) return;
             onQuickAction?.(actionId);
         },
         [onQuickAction]
+    );
+
+    const catalogTotalCount = useMemo(
+        () => (catalogProductTotal > 0 ? catalogProductTotal : products.length),
+        [catalogProductTotal, products.length]
     );
     const clamp = (value: number, min = 0, max = 100) => Math.max(min, Math.min(max, value));
 
@@ -401,11 +390,6 @@ export function DomainDashboard({
             pendingReturns
         };
     }, [dateRange, invoices, expenses, dashboardMetrics, isSalesLoading]);
-
-    // Track expense context
-    const totalExpenses = useMemo(() =>
-        expenseBreakdown.reduce((sum, exp) => sum + (exp.value || 0), 0)
-        , [expenseBreakdown]);
 
     const revenueTrendSigned = calcGrowth(periodMetrics.currentRevenue, periodMetrics.previousRevenue);
 
@@ -613,116 +597,6 @@ export function DomainDashboard({
     const stockCheckRecencyDisplay = `${stockCheckRecencyValue}d`;
     const stockCheckRecencyDetail = stockCheckRecency === null ? 'No stock touch timestamps yet' : 'Since last stock touch';
 
-    /** Period snapshot: operational + financial metrics (excludes hero KPI duplicates). */
-    const periodSnapshotMetrics = useMemo(
-        () => [
-            {
-                label: 'Open Invoices',
-                value: openInvoicesCount,
-                tone: openInvoicesCount > 0 ? 'text-amber-600' : 'text-slate-800',
-                icon: FileText,
-                actionId: metricActionId('open_invoices'),
-            },
-            {
-                label: 'Pending Orders',
-                value: remindersData.pendingOrders || 0,
-                tone: remindersData.pendingOrders > 0 ? 'text-amber-600' : 'text-slate-800',
-                icon: ShoppingCart,
-                actionId: metricActionId('pending_orders'),
-            },
-            {
-                label: 'Units Sold',
-                value: periodMetrics.soldUnits.toLocaleString(),
-                tone: periodMetrics.soldUnits > 0 ? 'text-slate-900' : 'text-slate-400',
-                icon: BarChart3,
-                actionId: metricActionId('units_sold'),
-            },
-            {
-                label: 'Paid Order Ratio',
-                value: paidOrderRateDisplay,
-                tone: paidOrderRate !== null && paidOrderRate < 60 ? 'text-rose-600' : 'text-slate-800',
-                icon: CreditCard,
-                actionId: metricActionId('paid_order_ratio'),
-            },
-            {
-                label: 'Coverage Days',
-                value: coverageDays == null ? '—' : coverageDays > 365 ? '365+' : coverageDays,
-                tone: 'text-slate-900',
-                icon: Warehouse,
-                actionId: metricActionId('coverage_days'),
-            },
-            {
-                label: 'In-Stock Units',
-                value: inStockUnits.toLocaleString(),
-                tone: 'text-slate-900',
-                icon: Boxes,
-                actionId: metricActionId('in_stock_units'),
-            },
-            {
-                label: 'Period Expenses',
-                value: formatCurrencyCompact(
-                    periodMetrics.currentExpenses > 0 ? periodMetrics.currentExpenses : totalExpenses
-                ),
-                tone: 'text-slate-900',
-                icon: CreditCard,
-                actionId: metricActionId('period_expenses'),
-            },
-            {
-                label: 'Active Customers',
-                value: periodMetrics.currentCustomers.toLocaleString(),
-                tone: 'text-slate-900',
-                icon: Users,
-                actionId: metricActionId('active_customers'),
-            },
-            {
-                label: 'Avg Order Value',
-                value: formatCurrencyCompact(avgOrderValue),
-                tone: 'text-slate-900',
-                icon: TrendingUp,
-                actionId: metricActionId('avg_order_value'),
-            },
-            {
-                label: 'Return Rate',
-                value: `${returnRate.toFixed(1)}%`,
-                tone: returnRate > 5 ? 'text-rose-600' : 'text-slate-800',
-                icon: RotateCcw,
-                actionId: metricActionId('return_rate'),
-            },
-            {
-                label: 'Outstanding A/R',
-                value: formatCurrencyCompact(outstandingAmount),
-                tone: outstandingAmount > 0 ? 'text-amber-700' : 'text-slate-800',
-                icon: BadgeDollarSign,
-                actionId: metricActionId('outstanding_ar'),
-            },
-            {
-                label: 'Stock Check',
-                value: stockCheckRecencyDisplay,
-                tone: stockCheckRecencyValue > 30 ? 'text-amber-600' : 'text-slate-800',
-                icon: Clock,
-                actionId: metricActionId('stock_check'),
-            },
-        ],
-        [
-            openInvoicesCount,
-            remindersData.pendingOrders,
-            periodMetrics.soldUnits,
-            periodMetrics.currentExpenses,
-            periodMetrics.currentCustomers,
-            paidOrderRateDisplay,
-            paidOrderRate,
-            coverageDays,
-            inStockUnits,
-            totalExpenses,
-            formatCurrencyCompact,
-            avgOrderValue,
-            returnRate,
-            outstandingAmount,
-            stockCheckRecencyDisplay,
-            stockCheckRecencyValue,
-        ]
-    );
-
     /** Compact header strip: cash + throughput (low stock stays in reminders only). */
     const dashboardHeaderHighlights = useMemo(
         () => [
@@ -801,101 +675,322 @@ export function DomainDashboard({
         return labels[activePreset];
     }, [activePreset]);
 
-    const activePresetDisplayLabel = useMemo(() => {
-        const labels: Record<
-            'today' | '7d' | '30d' | '90d' | 'mtd' | 'last_month' | 'ytd' | 'custom',
-            string
-        > = {
-            today: 'Today',
-            '7d': 'Last 7 days',
-            '30d': 'Last 30 days',
-            '90d': 'Last 90 days',
-            mtd: 'Month to date',
-            last_month: 'Last month',
-            ytd: 'Year to date',
-            custom: 'Custom range',
-        };
-        return labels[activePreset];
-    }, [activePreset]);
+    const netProfitValue = useMemo(() => {
+        const fin = advancedDashboardSnapshot?.finance;
+        const gl = accountingSummary;
+        return Number(fin?.netProfit ?? gl?.grossProfit ?? 0);
+    }, [advancedDashboardSnapshot, accountingSummary]);
 
-    const topStripKpis = useMemo((): MetricCardProps[] => {
+    const previousNetProfitEstimate = useMemo(() => {
+        return periodMetrics.previousRevenue - periodMetrics.previousExpenses;
+    }, [periodMetrics.previousRevenue, periodMetrics.previousExpenses]);
+
+    const netProfitTrend = useMemo(
+        () => calcGrowth(netProfitValue, previousNetProfitEstimate),
+        [netProfitValue, previousNetProfitEstimate]
+    );
+
+    const outOfStockCount = useMemo(
+        () => products.filter((p) => resolveProductStock(p) <= 0).length,
+        [products]
+    );
+
+    const orderStatusCounts = useMemo(() => {
+        const currentFrom = new Date(dateRange.from);
+        const currentTo = new Date(dateRange.to);
+        const prevFrom = new Date(currentFrom.getTime() - (currentTo.getTime() - currentFrom.getTime()));
+        const prevTo = new Date(currentTo.getTime() - (currentTo.getTime() - currentFrom.getTime()));
+
+        const countInRange = (from: Date, to: Date) => {
+            let open = 0;
+            let pending = 0;
+            let completed = 0;
+            let cancelled = 0;
+            for (const inv of invoices) {
+                const raw = inv?.date;
+                const parsed = raw ? new Date(raw) : null;
+                if (!parsed || Number.isNaN(parsed.getTime()) || parsed < from || parsed > to) continue;
+                const status = String(inv?.status || '').toLowerCase();
+                if (status === 'cancelled' || status === 'voided') {
+                    cancelled += 1;
+                    continue;
+                }
+                if (status === 'paid') {
+                    completed += 1;
+                    continue;
+                }
+                if (isPendingInvoice(inv as Record<string, unknown>)) {
+                    pending += 1;
+                    continue;
+                }
+                if (!['draft'].includes(status)) open += 1;
+            }
+            return { open, pending, completed, cancelled };
+        };
+
+        const current = countInRange(currentFrom, currentTo);
+        const previous = countInRange(prevFrom, prevTo);
+        return { current, previous };
+    }, [invoices, dateRange.from, dateRange.to]);
+
+    const keyPerformanceMetrics = useMemo(() => {
+        const revenueSeries = resolveSparklineSeries(chartData, invoices, dateRange, 'revenue') ?? [];
         const orderSeries = resolveSparklineSeries(chartData, invoices, dateRange, 'orders');
-        const revenueSeries = resolveSparklineSeries(chartData, invoices, dateRange, 'revenue');
+        const profitFromChart =
+            chartData?.length >= 2 ? chartData.map((p) => Number(p.profit) || 0) : undefined;
+        const profitSeries =
+            profitFromChart && profitFromChart.length >= 2 ? profitFromChart : revenueSeries;
+        const cashSeries =
+            revenueSeries.length >= 2
+                ? revenueSeries.map((v, i) => {
+                      const expSlice = periodMetrics.currentExpenses / Math.max(revenueSeries.length, 1);
+                      return Math.max(0, v - (expSlice * (i + 1)) / revenueSeries.length);
+                  })
+                : undefined;
 
         return [
             {
-                label: 'Orders In Period',
-                value: periodMetrics.currentOrders,
-                subValue: periodLabel,
-                trend: Number(ordersTrend.toFixed(1)),
-                icon: ShoppingCart,
-                theme: 'cyan' as const,
-                sparkline: orderSeries,
-                actionId: metricActionId('orders'),
-                isLoading: salesTilesLoading,
-            },
-            {
-                label: 'Revenue In Period',
+                id: 'revenue',
+                label: 'Total Revenue',
                 value: formatCurrencyCompact(periodMetrics.currentRevenue),
-                subValue: periodLabel,
+                comparisonLabel: `vs ${formatCurrencyCompact(periodMetrics.previousRevenue)}`,
                 trend: Number(revenueTrendSigned.toFixed(1)),
-                icon: BadgeDollarSign,
-                theme: 'emerald' as const,
+                icon: DollarSign,
+                theme: 'blue' as KpiTheme,
                 sparkline: revenueSeries,
                 actionId: metricActionId('revenue'),
                 isLoading: salesTilesLoading,
             },
             {
-                label: 'Inventory Value',
-                value: formatCurrencyCompact(inventoryValue),
-                subValue: 'Stock at cost / GL',
-                trend: undefined,
-                icon: Boxes,
-                theme: 'violet' as const,
-                actionId: metricActionId('inventory_value'),
-                isLoading: inventoryTilesLoading || (financeTilesLoading && dashboardMetrics?.inventory == null),
+                id: 'net_profit',
+                label: 'Net Profit',
+                value: formatCurrencyCompact(netProfitValue),
+                comparisonLabel: `vs ${formatCurrencyCompact(previousNetProfitEstimate)}`,
+                trend: Number(netProfitTrend.toFixed(1)),
+                icon: BadgeDollarSign,
+                theme: (netProfitValue >= 0 ? 'emerald' : 'rose') as KpiTheme,
+                sparkline: profitSeries.length >= 2 ? profitSeries : revenueSeries,
+                actionId: metricActionId('net_profit'),
+                isLoading: financeTilesLoading,
             },
             {
-                label: 'Overdue',
-                value: remindersData.overdueInvoices,
-                subValue: remindersData.overdueInvoices > 0 ? 'Needs collections follow-up' : 'All clear',
-                trend: undefined,
-                trendHint: remindersData.overdueInvoices > 0
-                    ? `${remindersData.overdueInvoices} invoice${remindersData.overdueInvoices > 1 ? 's' : ''} past due`
-                    : undefined,
-                icon: Clock,
-                theme: 'rose' as const,
-                invertTrendColor: true,
-                actionId: metricActionId('overdue'),
+                id: 'orders',
+                label: 'Total Orders',
+                value: periodMetrics.currentOrders,
+                comparisonLabel: `vs ${periodMetrics.previousOrders}`,
+                trend: Number(ordersTrend.toFixed(1)),
+                icon: ShoppingCart,
+                theme: 'amber' as KpiTheme,
+                sparkline: orderSeries,
+                actionId: metricActionId('orders'),
                 isLoading: salesTilesLoading,
+            },
+            {
+                id: 'cash_flow',
+                label: 'Cash Flow',
+                value: formatCurrencyCompact(periodCashFlow),
+                comparisonLabel: `vs ${formatCurrencyCompact(periodMetrics.previousRevenue - periodMetrics.previousExpenses)}`,
+                trend: Number(periodCashFlowGrowth.toFixed(1)),
+                icon: Wallet,
+                theme: 'violet' as KpiTheme,
+                sparkline:
+                    (cashSeries ?? revenueSeries).length >= 2 ? (cashSeries ?? revenueSeries) : undefined,
+                actionId: metricActionId('cash_flow'),
+                isLoading: financeTilesLoading,
             },
         ];
     }, [
         chartData,
         invoices,
         dateRange,
-        periodMetrics.currentOrders,
-        periodMetrics.currentRevenue,
-        ordersTrend,
+        periodMetrics,
         revenueTrendSigned,
-        inventoryValue,
-        remindersData.overdueInvoices,
+        ordersTrend,
+        netProfitValue,
+        netProfitTrend,
+        previousNetProfitEstimate,
+        periodCashFlow,
+        periodCashFlowGrowth,
         formatCurrencyCompact,
-        periodLabel,
         salesTilesLoading,
-        inventoryTilesLoading,
         financeTilesLoading,
-        dashboardMetrics?.inventory,
     ]);
 
-    const financeHeroMetrics = useMemo(
-        () =>
-            buildFinanceHeroMetrics(
-                advancedDashboardSnapshot,
-                accountingSummary,
-                formatCurrencyCompact
-            ),
-        [advancedDashboardSnapshot, accountingSummary, formatCurrencyCompact]
+    const orderSummaryTiles = useMemo(
+        () => [
+            {
+                label: 'Open Orders',
+                value: openInvoicesCount,
+                trend: calcGrowth(orderStatusCounts.current.open, orderStatusCounts.previous.open),
+                icon: Package,
+                iconBg: 'bg-blue-50',
+                iconColor: 'text-blue-600',
+            },
+            {
+                label: 'Pending Orders',
+                value: remindersData.pendingOrders || orderStatusCounts.current.pending,
+                trend: calcGrowth(orderStatusCounts.current.pending, orderStatusCounts.previous.pending),
+                icon: ShoppingCart,
+                iconBg: 'bg-amber-50',
+                iconColor: 'text-amber-600',
+            },
+            {
+                label: 'Completed Orders',
+                value: orderStatusCounts.current.completed,
+                trend: calcGrowth(orderStatusCounts.current.completed, orderStatusCounts.previous.completed),
+                icon: PackageCheck,
+                iconBg: 'bg-emerald-50',
+                iconColor: 'text-emerald-600',
+            },
+            {
+                label: 'Cancelled Orders',
+                value: orderStatusCounts.current.cancelled,
+                trend: calcGrowth(orderStatusCounts.current.cancelled, orderStatusCounts.previous.cancelled),
+                icon: PackageX,
+                iconBg: 'bg-rose-50',
+                iconColor: 'text-rose-600',
+                invertTrend: true,
+            },
+        ],
+        [openInvoicesCount, remindersData.pendingOrders, orderStatusCounts]
+    );
+
+    const inventoryHealthTiles = useMemo(
+        () => [
+            {
+                label: 'Low Stock Items',
+                value: remindersData.lowStock,
+                actionLabel: 'View Items',
+                actionId: 'low-stock',
+                actionTone: 'rose' as const,
+                icon: AlertTriangle,
+                iconBg: 'bg-rose-50',
+                iconColor: 'text-rose-600',
+            },
+            {
+                label: 'Out of Stock Items',
+                value: outOfStockCount,
+                actionLabel: 'View Items',
+                actionId: 'inventory',
+                actionTone: 'teal' as const,
+                icon: PackageX,
+                iconBg: 'bg-teal-50',
+                iconColor: 'text-teal-600',
+            },
+            {
+                label: 'Total Items',
+                value: catalogTotalCount.toLocaleString(),
+                actionLabel: 'All Items',
+                actionId: 'inventory',
+                actionTone: 'blue' as const,
+                icon: Boxes,
+                iconBg: 'bg-blue-50',
+                iconColor: 'text-blue-600',
+            },
+            {
+                label: 'Inventory Value',
+                value: formatCurrencyCompact(inventoryValue),
+                actionLabel: 'View Report',
+                actionId: 'reports',
+                actionTone: 'amber' as const,
+                icon: BadgeDollarSign,
+                iconBg: 'bg-amber-50',
+                iconColor: 'text-amber-600',
+            },
+        ],
+        [remindersData.lowStock, outOfStockCount, catalogTotalCount, inventoryValue, formatCurrencyCompact]
+    );
+
+    const aiInsights = useMemo((): AiInsightItem[] => {
+        const items: AiInsightItem[] = [];
+
+        if (remindersData.lowStock > 0) {
+            items.push({
+                id: 'restock',
+                title: `Restock ${remindersData.lowStock} low-stock item${remindersData.lowStock > 1 ? 's' : ''}`,
+                description: 'Safety stock is running low. Replenish before you miss sales.',
+                actionLabel: 'View Details',
+                actionId: 'low-stock',
+                icon: Package,
+                iconBg: 'bg-violet-50',
+                iconColor: 'text-violet-600',
+            });
+        }
+
+        if (remindersData.overdueInvoices > 0) {
+            items.push({
+                id: 'collections',
+                title: 'Payment Due',
+                description: `${remindersData.overdueInvoices} overdue invoice${remindersData.overdueInvoices > 1 ? 's' : ''} need follow-up.`,
+                actionLabel: 'Pay Now',
+                actionId: 'payments',
+                icon: Wallet,
+                iconBg: 'bg-emerald-50',
+                iconColor: 'text-emerald-600',
+            });
+        }
+
+        if (revenueTrendSigned <= 0 && campaignEnabled) {
+            items.push({
+                id: 'campaign',
+                title: 'Revenue Opportunity',
+                description: 'Launch a targeted campaign to recover demand momentum.',
+                actionLabel: 'View Details',
+                actionId: 'campaigns',
+                icon: TrendingUp,
+                iconBg: 'bg-blue-50',
+                iconColor: 'text-blue-600',
+            });
+        } else if (netProfitValue > 0 && periodMetrics.currentRevenue > 0) {
+            const marginPct = ((netProfitValue / periodMetrics.currentRevenue) * 100).toFixed(0);
+            items.push({
+                id: 'margin',
+                title: 'Revenue Opportunity',
+                description: `Net margin is ${marginPct}%. Bundle high-margin SKUs to lift profit.`,
+                actionLabel: 'View Details',
+                actionId: 'reports',
+                icon: TrendingUp,
+                iconBg: 'bg-blue-50',
+                iconColor: 'text-blue-600',
+            });
+        }
+
+        return items.slice(0, 3);
+    }, [
+        remindersData.lowStock,
+        remindersData.overdueInvoices,
+        revenueTrendSigned,
+        campaignEnabled,
+        netProfitValue,
+        periodMetrics.currentRevenue,
+    ]);
+
+    const healthStats = useMemo(
+        () => ({
+            revenue: periodMetrics.currentRevenue,
+            grossProfit: netProfitValue,
+            inventoryValue,
+            accountsReceivable: Number(accountingSummary?.accountsReceivable ?? outstandingAmount),
+            lowStockCount: remindersData.lowStock,
+            totalProducts: catalogTotalCount,
+            pendingInvoices: remindersData.pendingOrders || openInvoicesCount,
+        }),
+        [
+            periodMetrics.currentRevenue,
+            netProfitValue,
+            inventoryValue,
+            accountingSummary?.accountsReceivable,
+            outstandingAmount,
+            remindersData.lowStock,
+            remindersData.pendingOrders,
+            catalogTotalCount,
+            openInvoicesCount,
+        ]
+    );
+
+    const businessHealthScore = useMemo(
+        () => calculateBusinessHealth(healthStats),
+        [healthStats]
     );
 
     const intelligentInsights = useMemo(() => {
@@ -997,6 +1092,61 @@ export function DomainDashboard({
 
         return insights;
     }, [remindersData, campaignEnabled, revenueTrendSigned, periodMetrics.currentExpenses, expenseTrend, domainKnowledge?.intelligence]);
+
+    const insightStripItems = useMemo(() => {
+        const alertCount =
+            (remindersData.lowStock > 0 ? 1 : 0) +
+            (remindersData.overdueInvoices > 0 ? 1 : 0) +
+            (remindersData.pendingOrders > 0 ? 1 : 0);
+        const opportunityCount = Math.max(
+            aiInsights.length,
+            intelligentInsights.filter((i) => i.tone === 'emerald' || i.tone === 'indigo').length
+        );
+
+        return [
+            {
+                id: 'opportunities',
+                label: '',
+                value: `${opportunityCount} ${opportunityCount === 1 ? 'Opportunity' : 'Opportunities'}`,
+                sublabel: 'Increase your profit',
+                tone: 'emerald' as const,
+                actionId: metricActionId('efficiency'),
+            },
+            {
+                id: 'alerts',
+                label: '',
+                value: `${alertCount} ${alertCount === 1 ? 'Alert' : 'Alerts'}`,
+                sublabel: 'Action needed',
+                tone: alertCount > 0 ? ('amber' as const) : ('slate' as const),
+                actionId: metricActionId('inventory_value'),
+            },
+            {
+                id: 'profit',
+                label: '',
+                value: formatCurrencyCompact(netProfitValue),
+                sublabel: 'Potential profit',
+                tone: 'teal' as const,
+                actionId: metricActionId('net_profit'),
+            },
+            {
+                id: 'health',
+                label: '',
+                value: `${businessHealthScore}%`,
+                sublabel: 'Business health score',
+                tone: 'violet' as const,
+                actionId: metricActionId('efficiency'),
+            },
+        ];
+    }, [
+        remindersData.lowStock,
+        remindersData.overdueInvoices,
+        remindersData.pendingOrders,
+        aiInsights.length,
+        intelligentInsights,
+        formatCurrencyCompact,
+        netProfitValue,
+        businessHealthScore,
+    ]);
 
     // Easy/Advanced tiles unlock from owning modules — do not gate the cockpit on expenses list.
     const metricsPending =
@@ -1221,7 +1371,12 @@ export function DomainDashboard({
     // ===============================================================
 
     const advancedUserName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'there';
-    const advancedGreeting = new Date().getHours() < 12 ? 'Good morning' : new Date().getHours() < 17 ? 'Good afternoon' : 'Good evening';
+    const advancedGreeting =
+        new Date().getHours() < 12
+            ? 'Good Morning'
+            : new Date().getHours() < 17
+              ? 'Good Afternoon'
+              : 'Good Evening';
     const advancedPresetOptions: Array<{ id: 'today' | '7d' | '30d' | '90d' | 'mtd' | 'last_month' | 'ytd'; label: string }> = [
         { id: 'today', label: 'Today' },
         { id: '7d', label: '7 Days' },
@@ -1344,146 +1499,33 @@ export function DomainDashboard({
                     </Card>
                 )}
 
-                {/* Band: primary KPIs */}
-                <div className="grid grid-cols-2 gap-2 xl:grid-cols-4">
-                    {topStripKpis.map((item) => (
-                        <DomainMetricCard
-                            key={item.label}
-                            label={item.label}
-                            value={item.value}
-                            subValue={item.subValue}
-                            trend={item.trend}
-                            trendHint={item.trendHint}
-                            icon={item.icon}
-                            theme={item.theme}
-                            colorClass={item.colorClass}
-                            sparkline={item.sparkline}
-                            invertTrendColor={item.invertTrendColor}
-                            actionId={item.actionId}
-                            onNavigate={handleMetricNavigate}
-                            className="min-w-0"
-                            isLoading={item.isLoading}
-                        />
-                    ))}
-                </div>
-
-                {/* Band: finance metrics */}
-                <FinanceHeroStrip
-                    metrics={financeHeroMetrics}
+                <AdvancedDashboardLayout
+                    key={activeBusinessId || 'dashboard'}
+                    businessId={activeBusinessId}
+                    category={category}
+                    dateRange={dateRange}
+                    currency={resolvedCurrency}
+                    periodLabel={periodLabel}
+                    activePreset={activePreset}
+                    onDateRangePresetChange={(preset) => {
+                        onDateRangePresetChange?.(preset);
+                    }}
+                    insightStripItems={insightStripItems}
+                    keyPerformanceMetrics={keyPerformanceMetrics}
+                    totalRevenueLabel={formatCurrencyCompact(periodMetrics.currentRevenue)}
+                    revenueTrend={Number(revenueTrendSigned.toFixed(1))}
+                    chartData={chartData}
+                    invoices={invoices}
+                    orderSummaryTiles={orderSummaryTiles}
+                    inventoryHealthTiles={inventoryHealthTiles}
+                    aiInsights={aiInsights}
+                    reminders={remindersData}
+                    healthStats={healthStats}
+                    activityFeed={activityFeed as Array<Record<string, unknown>> | undefined}
+                    activityFeedReady={Boolean(isDataLoaded || (!isSalesLoading && !isFinanceLoading))}
+                    isLoading={metricsPending}
                     onNavigate={handleMetricNavigate}
-                    isLoading={financeTilesLoading}
                 />
-
-                {/* Band: period snapshot */}
-                <PeriodSnapshotCard
-                    dateFrom={new Date(dateRange.from)}
-                    dateTo={new Date(dateRange.to)}
-                    presetLabel={activePresetDisplayLabel}
-                    healthChips={dashboardHeaderHighlights}
-                    metrics={periodSnapshotMetrics}
-                    collapsedCount={6}
-                    onMetricClick={handleMetricNavigate}
-                />
-
-                {/* Band: Visual Studio full width — gutters stay on the 12-col shell */}
-                <div className="min-w-0">
-                    <AnalyticsDashboard
-                        businessId={activeBusinessId}
-                        category={category}
-                        currency={resolvedCurrency}
-                        business={business}
-                        chartData={chartData}
-                        invoices={invoices}
-                        products={products}
-                        colors={colors}
-                        domainKnowledge={domainKnowledge}
-                        dateRange={dateRange}
-                        onQuickAction={onQuickAction}
-                    />
-                </div>
-
-                {/* Band: ops strip — equal thirds (4|4|4) so columns align with the band below */}
-                <div className="grid grid-cols-12 gap-2 items-stretch">
-                    <div className="col-span-4 min-w-0">
-                        <RemindersPortlet data={remindersData} onItemClick={onQuickAction} className="h-full" />
-                    </div>
-                    <div className="col-span-4 min-w-0">
-                        <PerformanceKPIs
-                            className="h-full"
-                            revenue={formatCurrencyCompact(periodMetrics.currentRevenue)}
-                            revenueChange={Number(revenueTrendSigned)}
-                            orders={periodMetrics.currentOrders}
-                            ordersChange={Number(ordersTrend)}
-                            customers={periodMetrics.currentCustomers}
-                            customersChange={Number(customerTrend)}
-                            avgOrderValue={formatCurrencyCompact(avgOrderValue)}
-                        />
-                    </div>
-                    <div className="col-span-4 min-w-0">
-                        <KPIMeter
-                            className="h-full"
-                            title="Domain Efficiency"
-                            value={domainEfficiency}
-                            target={95}
-                            suffix="%"
-                            trendValue={Number(revenueTrendSigned.toFixed(1))}
-                            trendLabel="vs previous period"
-                        />
-                    </div>
-                </div>
-
-                {/* Band: activity · intel · collections — same 4|4|4 spine, equal height, internal scroll */}
-                <div className="grid grid-cols-12 gap-2 items-stretch">
-                    <div className="col-span-4 min-w-0">
-                        <RecentActivityFeed
-                            className="h-full"
-                            businessId={activeBusinessId}
-                            onViewAll={() => onQuickAction?.('reports')}
-                            feedLimit={25}
-                            visibleRows={5}
-                            awaitBootstrap
-                            initialActivities={
-                                isDataLoaded || (!isSalesLoading && !isFinanceLoading)
-                                    ? ((activityFeed as Array<Record<string, unknown>> | undefined) ?? [])
-                                    : undefined
-                            }
-                        />
-                    </div>
-                    <div className="col-span-4 min-w-0">
-                        <MergedActionInsights
-                            className="h-full"
-                            category={category}
-                            domainKnowledge={domainKnowledge as Record<string, unknown> | undefined}
-                            operationalInsights={intelligentInsights}
-                            reminders={remindersData}
-                            onQuickAction={onQuickAction}
-                            sections="all"
-                        />
-                    </div>
-                    <div className="col-span-4 min-w-0">
-                        <DomainOperationsPanel
-                            className="h-full"
-                            businessId={activeBusinessId}
-                            business={business}
-                            category={category}
-                            domainKnowledge={domainKnowledge as Record<string, unknown> | undefined}
-                            dateRange={dateRange}
-                            periodLabel={periodLabel}
-                            formatCurrencyCompact={formatCurrencyCompact}
-                            onQuickAction={onQuickAction}
-                            isActive
-                            variant="compact"
-                            sections={['collections']}
-                            hideKpiStrip
-                            hideMiddleCharts
-                            hideOrderTimeline
-                            snapshot={advancedOpsSnapshot.snapshot}
-                            snapshotLoading={advancedOpsSnapshot.loading}
-                            snapshotError={advancedOpsSnapshot.error}
-                            onSnapshotRetry={advancedOpsSnapshot.reload}
-                        />
-                    </div>
-                </div>
             </div>
 
             {/* Mobile — hub covers KPIs/actions; show insights & activity only */}

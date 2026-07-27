@@ -30,8 +30,8 @@ export function MetricSparkline({
     const min = Math.min(...series);
     const max = Math.max(...series);
     const range = max - min || 1;
-    const width = 80;
-    const height = 32;
+    const width = 120;
+    const height = 28;
     const padding = 2;
 
     const coords = series.map((value, index) => {
@@ -52,10 +52,17 @@ export function MetricSparkline({
     const defaultStroke = isPositive ? 'stroke-emerald-500' : 'stroke-rose-400';
     const defaultFill = isPositive ? 'fill-emerald-500/20' : 'fill-rose-400/15';
 
+    const fullWidth = Boolean(className?.includes('w-full'));
+
     return (
         <svg
             viewBox={`0 0 ${width} ${height}`}
-            className={cn('h-8 w-[5rem] shrink-0', className)}
+            className={cn(
+                'h-7 shrink-0',
+                fullWidth ? 'w-full min-w-0' : 'w-[5rem]',
+                className
+            )}
+            preserveAspectRatio={fullWidth ? 'none' : 'xMidYMid meet'}
             aria-hidden
         >
             {filled && areaPath ? (

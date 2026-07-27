@@ -62,7 +62,7 @@ import { MOBILE_TAB_LABELS, MOBILE_MINIMAL_HEADER_TABS, MOBILE_HIDE_HEADER_QUICK
 export function Header({ onMenuClick }) {
     const { dateRange, setDateRange, searchQuery, setSearchQuery } = useFilters();
     const { business } = useBusiness();
-    const { isEasyMode, isRetailSimpleDashboard } = useAppMode();
+    const { isEasyMode, isRetailSimpleDashboard, modeReady } = useAppMode();
     const {
         products,
         invoices,
@@ -326,7 +326,11 @@ export function Header({ onMenuClick }) {
                         </span>
                     </div>
 
-                    {!minimalMobileHeader && !isEasyMode && (
+                    {!minimalMobileHeader && !modeReady ? (
+                        <div className="h-7 w-[4.5rem] shrink-0" aria-hidden />
+                    ) : null}
+
+                    {!minimalMobileHeader && modeReady && !isEasyMode && (
                         <div className="flex shrink-0 items-center gap-0.5">
                             <DateRangePicker
                                 minimal
@@ -346,7 +350,7 @@ export function Header({ onMenuClick }) {
                         </div>
                     )}
 
-                    {!minimalMobileHeader && isEasyMode && (
+                    {!minimalMobileHeader && modeReady && isEasyMode && (
                         <Button
                             size="icon"
                             variant="ghost"
@@ -579,7 +583,10 @@ export function Header({ onMenuClick }) {
                 {/* Right: actions */}
                 <div className="flex shrink-0 items-center gap-1">
                     {/* Date range: all breakpoints in advanced mode (popover stays usable on small screens). */}
-                    {!isEasyMode && (
+                    {!modeReady ? (
+                        <div className="hidden h-8 w-[12rem] shrink-0 sm:block" aria-hidden />
+                    ) : null}
+                    {modeReady && !isEasyMode && (
                         <div className="flex items-center gap-1 sm:gap-1.5 border-r border-gray-100 pr-1.5 sm:pr-2 min-w-0">
                             <DateRangePicker
                                 date={dateRange}
@@ -599,7 +606,7 @@ export function Header({ onMenuClick }) {
                     )}
 
                     {/* Easy mode: simple refresh */}
-                    {isEasyMode && (
+                    {modeReady && isEasyMode && (
                         <Button
                             size="icon"
                             variant="ghost"
