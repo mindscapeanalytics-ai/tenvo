@@ -41,10 +41,12 @@ export function AdvancedPeriodFilter({
     const disabled = !onPresetChange;
 
     return (
+        <div className={cn('inline-flex', className)}>
         <DropdownMenu>
-            <DropdownMenuTrigger asChild disabled={disabled}>
+            <DropdownMenuTrigger asChild>
                 <button
                     type="button"
+                    disabled={disabled}
                     className={cn(
                         'inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white font-medium text-slate-600 shadow-sm',
                         compact ? 'px-2 py-0.5 text-[11px]' : 'px-2 py-1 text-xs',
@@ -76,5 +78,6 @@ export function AdvancedPeriodFilter({
                 </DropdownMenuContent>
             ) : null}
         </DropdownMenu>
+        </div>
     );
 }
