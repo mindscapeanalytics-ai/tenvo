@@ -41,6 +41,8 @@ export function PosCashToolsPanel({
             paperSize,
             ...opts,
         });
+
+    const submitMovement = async () => {
         const run = async () => {
             setBusy(true);
             try {
