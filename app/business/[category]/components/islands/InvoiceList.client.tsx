@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Pencil, Trash2, Plus, FileText, CreditCard, AlertCircle, CheckCircle2, Clock, Eye, Upload, Download } from 'lucide-react';
+import { Pencil, Trash2, Plus, FileText, CreditCard, AlertCircle, CheckCircle2, Clock, Eye, Upload, Download, Printer } from 'lucide-react';
 import { formatCurrency, type CurrencyCode } from '@/lib/currency';
 import { DataTable } from '@/components/DataTable';
 import { cn } from '@/lib/utils';
@@ -14,6 +14,9 @@ import { BulkDeleteConfirmModal } from '@/components/invoice/BulkDeleteConfirmMo
 import { MobileTabHeader, MobileStatStrip } from '@/components/mobile/MobileTabHeader';
 import { InvoiceMobileList } from '@/components/invoice/mobile/InvoiceMobileList';
 import { MOBILE_BOTTOM_NAV_CLASS, MOBILE_FLOATING_Z, MOBILE_MODULE_FAB_RIGHT } from '@/lib/utils/mobileLayout';
+import { useBusiness } from '@/lib/context/BusinessContext';
+import { printInvoiceThermalFromRow } from '@/lib/print/clientInvoicePrint';
+import toast from 'react-hot-toast';
 
 interface InvoiceListProps {
     invoices: Invoice[];
@@ -44,6 +47,7 @@ export function InvoiceList({
     category = 'retail-shop',
     colors = { primary: '#10B981' }
 }: InvoiceListProps) {
+    const { business } = useBusiness();
     // Modals state
     const [showImportModal, setShowImportModal] = useState(false);
     const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
@@ -148,6 +152,16 @@ export function InvoiceList({
         // If data provided, export selected rows, otherwise export all
         const exportData = data || invoices;
         onExport(exportData);
+    };
+
+    const handleThermalPrint = (invoice: Invoice) => {
+        if (!business) {
+            toast.error('No business selected');
+            return;
+        }
+        void printInvoiceThermalFromRow(invoice, business, category).then((ok) => {
+            if (ok === false) toast.error('Could not open thermal print');
+        });
     };
 
     const getPaymentStatusBadge = (invoice: Invoice, compact = false) => {
@@ -519,6 +533,15 @@ export function InvoiceList({
                                 >
                                     <Eye className="w-4 h-4" />
                                 </Button>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleThermalPrint(row.original)}
+                                    className="h-8 w-8 text-slate-600 hover:text-slate-900"
+                                    title="Print thermal receipt"
+                                >
+                                    <Printer className="w-4 h-4" />
+                                </Button>
                                 {row.original.payment_status !== 'paid' &&
                                     row.original.status !== 'voided' && (
                                         <Button
@@ -566,6 +589,7 @@ export function InvoiceList({
                                 onRecordPayment={onRecordPayment}
                                 onDelete={onInvoiceDelete}
                                 onAdd={onAdd}
+                                onPrintThermal={handleThermalPrint}
                                 renderPaymentBadge={(inv) => getPaymentStatusBadge(inv, true)}
                                 renderAging={calculateAging}
                             />

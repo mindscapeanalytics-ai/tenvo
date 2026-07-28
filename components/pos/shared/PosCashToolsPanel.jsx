@@ -41,8 +41,6 @@ export function PosCashToolsPanel({
             paperSize,
             ...opts,
         });
-
-    const submitMovement = async () => {
         const run = async () => {
             setBusy(true);
             try {
@@ -95,12 +93,13 @@ export function PosCashToolsPanel({
                         variant="outline"
                         className="w-full font-semibold"
                         onClick={() => {
-                            const ok = kickDrawer({ label: 'Open cash drawer' });
-                            toast[ok ? 'success' : 'error'](
-                                ok
-                                    ? 'Print dialog opened — choose your receipt printer'
-                                    : 'Could not open print dialog'
-                            );
+                            void kickDrawer({ label: 'Open cash drawer' }).then((ok) => {
+                                toast[ok ? 'success' : 'error'](
+                                    ok
+                                        ? 'Print dialog opened — choose your receipt printer'
+                                        : 'Could not open print dialog'
+                                );
+                            });
                         }}
                     >
                         Open cash drawer

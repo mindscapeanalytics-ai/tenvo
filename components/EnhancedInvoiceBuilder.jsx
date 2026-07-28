@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { generateInvoicePDF } from '@/lib/pdf';
+import { printInvoiceThermalFromRow } from '@/lib/print/clientInvoicePrint';
 import { PakistaniPaymentSelector } from '@/components/payment/PakistaniPaymentSelector';
 import { PakistaniTaxCalculator } from '@/components/tax/PakistaniTaxCalculator';
 import { calculatePakistaniTax, generateFBRInvoice, formatNTN, getTaxCategoryForDomain } from '@/lib/tax/pakistaniTax';
@@ -1100,6 +1101,42 @@ export function EnhancedInvoiceBuilder({
     }
   };
 
+  /** Exact-size 58mm/80mm thermal receipt (same path as POS). */
+  const handlePrintThermal = async () => {
+    if (!business) {
+      toast.error('No business selected');
+      return;
+    }
+    setIsExporting(true);
+    try {
+      const draftInvoice = {
+        invoice_number: invoice.invoiceNumber || 'DRAFT',
+        date: invoice.date || new Date().toISOString(),
+        customer_name: invoice.customer?.name || null,
+        payment_method: invoice.paymentMethod || 'cash',
+        subtotal: totals.subtotal,
+        tax_total: totals.tax || totals.taxAmount || 0,
+        discount_total: totals.discount || totals.discountAmount || 0,
+        grand_total: totals.total,
+        items: (invoice.items || []).map((item) => ({
+          name: item.name || item.product_name || 'Item',
+          sku: item.sku,
+          quantity: item.quantity,
+          unit_price: item.rate ?? item.unitPrice ?? item.unit_price ?? 0,
+          amount: item.amount ?? item.total ?? ((item.rate || 0) * (item.quantity || 1)),
+        })),
+      };
+      const ok = await printInvoiceThermalFromRow(draftInvoice, business, category);
+      if (ok === false) toast.error('Could not open thermal print');
+      else toast.success('Thermal receipt opened');
+    } catch (error) {
+      console.error('Error printing thermal receipt:', error);
+      toast.error('Failed to print thermal receipt');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   // Handle tax calculation from calculator
   const handleTaxCalculation = (taxBreakdown) => {
     setInvoice(prev => ({
@@ -1844,18 +1881,26 @@ export function EnhancedInvoiceBuilder({
                   <DropdownMenuItem onClick={() => toast.success('Link generated for WhatsApp message')}>
                     WhatsApp share
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleExportPDF} disabled={isSaving || isExporting}>
+                  <DropdownMenuItem onClick={handlePrintThermal} disabled={isSaving || isExporting}>
                     <Printer className="mr-2 h-4 w-4" />
-                    Print / PDF
+                    Thermal receipt
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleExportPDF} disabled={isSaving || isExporting}>
+                    <Download className="mr-2 h-4 w-4" />
+                    A4 invoice PDF
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
               <Button type="button" variant="ghost" onClick={onClose} className="h-9 flex-1 rounded-md px-4 text-sm font-medium text-slate-500 hover:bg-slate-100 sm:flex-none">
                 Cancel
               </Button>
-              <Button type="button" variant="outline" onClick={handleExportPDF} disabled={isSaving || isExporting} className="hidden h-9 rounded-md border-slate-200 px-3 text-sm font-medium text-slate-700 shadow-sm sm:inline-flex">
+              <Button type="button" variant="outline" onClick={handlePrintThermal} disabled={isSaving || isExporting} className="hidden h-9 rounded-md border-slate-200 px-3 text-sm font-medium text-slate-700 shadow-sm sm:inline-flex">
                 {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Printer className="mr-2 h-4 w-4 text-slate-500" />}
-                Print
+                Thermal
+              </Button>
+              <Button type="button" variant="outline" onClick={handleExportPDF} disabled={isSaving || isExporting} className="hidden h-9 rounded-md border-slate-200 px-3 text-sm font-medium text-slate-700 shadow-sm sm:inline-flex">
+                {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4 text-slate-500" />}
+                A4 PDF
               </Button>
               <Button type="button" disabled={isSaving} onClick={handleSave} className="h-9 flex-1 rounded-md bg-emerald-600 px-4 text-sm font-medium text-white shadow-sm hover:bg-emerald-700 sm:flex-none">
                 {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}

@@ -26,6 +26,7 @@ import { EnhancedInvoiceBuilder } from './EnhancedInvoiceBuilder';
 import { customerAPI, vendorAPI } from '@/lib/api';
 import toast from 'react-hot-toast';
 import { HUB_ENTITY_DIALOG } from '@/lib/utils/formMobileStyles';
+import { printInvoicePdfFromRow, printInvoiceThermalFromRow } from '@/lib/print/clientInvoicePrint';
 
 export function EntityDetailsDialog({ item: initialItem, type, open, onClose, category = 'retail-shop' }) {
     const { business, currency: businessCurrency } = useBusiness();
@@ -47,6 +48,24 @@ export function EntityDetailsDialog({ item: initialItem, type, open, onClose, ca
     }
 
     const handlePrint = () => { window.print(); };
+
+    const handlePrintInvoiceThermal = () => {
+        if (!business?.id) {
+            toast.error('No business selected');
+            return;
+        }
+        void printInvoiceThermalFromRow(item, business, category).then((ok) => {
+            if (ok === false) toast.error('Could not open thermal print');
+        });
+    };
+
+    const handlePrintInvoicePdf = () => {
+        if (!business?.id) {
+            toast.error('No business selected');
+            return;
+        }
+        printInvoicePdfFromRow(item, business, category);
+    };
 
     const handleUpdateSuccess = (updatedData) => {
         setItem(updatedData);
@@ -320,7 +339,20 @@ export function EntityDetailsDialog({ item: initialItem, type, open, onClose, ca
 
                 <div className="flex shrink-0 flex-col gap-3 border-t border-gray-100 bg-gray-50/80 p-4 backdrop-blur-md sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex flex-wrap gap-2">
-                        <Button variant="outline" size="sm" onClick={handlePrint} className="rounded-xl bg-white border-gray-200 text-gray-600 hover:text-gray-900 hover:border-gray-300 px-3"><Printer className="w-3.5 h-3.5 mr-2" /><span className="text-[10px] font-semibold uppercase tracking-widest">Print</span></Button>
+                        {type === 'invoice' ? (
+                            <>
+                                <Button variant="outline" size="sm" onClick={handlePrintInvoiceThermal} className="rounded-xl bg-white border-gray-200 text-gray-600 hover:text-gray-900 hover:border-gray-300 px-3">
+                                    <Printer className="w-3.5 h-3.5 mr-2" />
+                                    <span className="text-[10px] font-semibold uppercase tracking-widest">Thermal Receipt</span>
+                                </Button>
+                                <Button variant="outline" size="sm" onClick={handlePrintInvoicePdf} className="rounded-xl bg-white border-gray-200 text-gray-600 hover:text-gray-900 hover:border-gray-300 px-3">
+                                    <FileText className="w-3.5 h-3.5 mr-2" />
+                                    <span className="text-[10px] font-semibold uppercase tracking-widest">A4 PDF</span>
+                                </Button>
+                            </>
+                        ) : (
+                            <Button variant="outline" size="sm" onClick={handlePrint} className="rounded-xl bg-white border-gray-200 text-gray-600 hover:text-gray-900 hover:border-gray-300 px-3"><Printer className="w-3.5 h-3.5 mr-2" /><span className="text-[10px] font-semibold uppercase tracking-widest">Print</span></Button>
+                        )}
                         <Button variant="outline" size="sm" onClick={() => copyToClipboard(JSON.stringify(item), "Item data")} className="rounded-xl bg-white border-gray-200 text-gray-600 hover:text-gray-900 hover:border-gray-300 px-3"><Copy className="w-3.5 h-3.5 mr-2" /><span className="text-[10px] font-semibold uppercase tracking-widest">Copy</span></Button>
                     </div>
                     <div className="flex items-center gap-2 sm:gap-3">

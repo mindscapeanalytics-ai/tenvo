@@ -10,6 +10,7 @@ import {
   Trash2,
   FileText,
   Plus,
+  Printer,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
@@ -75,6 +76,7 @@ export interface InvoiceMobileListProps {
   onRecordPayment?: (invoice: InvoiceMobileRow) => void;
   onDelete?: (id: string) => void;
   onAdd?: () => void;
+  onPrintThermal?: (invoice: InvoiceMobileRow) => void;
   renderPaymentBadge?: (invoice: InvoiceMobileRow) => ReactNode;
   renderAging?: (invoice: InvoiceMobileRow) => ReactNode;
 }
@@ -101,6 +103,7 @@ export function InvoiceMobileList({
   onRecordPayment,
   onDelete,
   onAdd,
+  onPrintThermal,
   renderPaymentBadge,
   renderAging,
 }: InvoiceMobileListProps) {
@@ -297,6 +300,13 @@ export function InvoiceMobileList({
           <div className={MOBILE_BOTTOM_SHEET_BODY}>
             <div className="space-y-2">
               <MobileActionRow icon={Eye} label="View invoice" onClick={() => runAction(onView)} />
+              {onPrintThermal && (
+                <MobileActionRow
+                  icon={Printer}
+                  label="Print thermal receipt"
+                  onClick={() => runAction(onPrintThermal)}
+                />
+              )}
               {canRecordPayment && onRecordPayment && (
                 <MobileActionRow
                   icon={CreditCard}
