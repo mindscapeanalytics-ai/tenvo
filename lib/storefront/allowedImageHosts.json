@@ -22,6 +22,7 @@
     { "protocol": "https", "hostname": "**.rocketcdn.me" },
     { "protocol": "https", "hostname": "wartsila.com" },
     { "protocol": "https", "hostname": "www.wartsila.com" },
+    { "protocol": "https", "hostname": "assets.website-files.com" },
     { "protocol": "https", "hostname": "**.website-files.com" },
     { "protocol": "https", "hostname": "synergize.pk" },
     { "protocol": "https", "hostname": "www.synergize.pk" },
