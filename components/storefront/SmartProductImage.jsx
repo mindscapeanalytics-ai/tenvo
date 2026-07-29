@@ -10,6 +10,7 @@ import { isAllowedNextImageSrc } from '@/lib/storefront/allowedImageHosts';
 import { resolveImageReferrerPolicy } from '@/lib/storefront/imageReferrerPolicy';
 import {
   inferImageVariantFromWidth,
+  inferImageVariantFromSizes,
   resolveStorefrontImageSrc,
   shouldUseDirectCdnImage,
   buildSupabaseObjectPublicUrl,
@@ -150,7 +151,9 @@ export function SmartProductImage({
   }
 
   const variant =
-    imageVariant || inferImageVariantFromWidth(width || (fill ? 512 : undefined));
+    imageVariant ||
+    inferImageVariantFromSizes(sizes) ||
+    inferImageVariantFromWidth(width || (fill ? 512 : undefined));
   const cdnSrc = useObjectPublicFallback
     ? buildSupabaseObjectPublicUrl(renderSrc)
     : resolveStorefrontImageSrc(renderSrc, { variant });

@@ -64,8 +64,7 @@ export function ProductCard({ product, businessDomain, variant = 'default' }) {
       })
     : null;
   const displayImage = getEffectiveProductImageUrl(product, business?.category);
-  const imageFallback =
-    product?.image_url?.trim()
+  const imageFallback = displayImage
       ? getFallbackProductImageUrl(product, business?.category, product.category_name || product.category)
       : undefined;
   const inWishlist = isInWishlist(product.id);
@@ -204,6 +203,7 @@ export function ProductCard({ product, businessDomain, variant = 'default' }) {
               src={displayImage}
               alt={product.name}
               fill
+              imageVariant={isDense ? 'thumb' : 'card'}
               fallbackSrc={imageFallback && imageFallback !== displayImage ? imageFallback : undefined}
               className={cn(
                 'transition-transform duration-500 group-hover:scale-[1.03]',

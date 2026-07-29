@@ -351,8 +351,10 @@ if (!productImagesUtil.includes('export const MAX_PRODUCT_IMAGES = 3')) {
   fail('productImages.js missing productImagesFromUrls');
 } else if (!productImagesUtil.includes('return true') || !productImagesUtil.includes('isMultiProductImagesEnabled')) {
   fail('isMultiProductImagesEnabled must always return true (all domains)');
+} else if (!productImagesUtil.includes('resolveStorefrontProductGallery') || !productImagesUtil.includes('enrichProductWithNormalizedImages')) {
+  fail('productImages.js must export storefront gallery resolvers');
 } else {
-  pass('productImages helpers: max 3, enabled for all domains');
+  pass('productImages helpers: max 3, enabled for all domains, storefront gallery');
 }
 
 const productForm = read('components/ProductForm.jsx');
@@ -360,6 +362,20 @@ if (!productForm.includes('ProductImageManager') || !productForm.includes('produ
   fail('ProductForm must wire ProductImageManager + productImagesFromUrls');
 } else {
   pass('ProductForm Media tab wires gallery helpers');
+}
+
+const pdpPage = read('app/store/[businessDomain]/products/[slug]/page.jsx');
+if (!pdpPage.includes('resolveStorefrontProductGallery')) {
+  fail('PDP must build gallery via resolveStorefrontProductGallery');
+} else {
+  pass('PDP product gallery uses resolveStorefrontProductGallery');
+}
+
+const productGallery = read('components/storefront/ProductGallery.jsx');
+if (!productGallery.includes('isSlider') || !productGallery.includes('onTouchEnd')) {
+  fail('ProductGallery must expose multi-image slider + touch swipe');
+} else {
+  pass('ProductGallery multi-image slider wired');
 }
 
 const imageManager = read('components/ProductImageManager.jsx');

@@ -36,6 +36,37 @@ const smartSrc = fs.readFileSync(
 );
 assert.match(smartSrc, /isAllowedNextImageSrc/, 'SmartProductImage must gate next/image by allowlist');
 assert.match(smartSrc, /isDeadImageUrl/, 'SmartProductImage must skip dead hosts');
+assert.match(smartSrc, /resolveStorefrontImageSrc/, 'SmartProductImage must use sized CDN delivery');
+assert.match(smartSrc, /inferImageVariantFromSizes/, 'SmartProductImage must infer variant from sizes');
+
+const {
+  resolveStorefrontImageSrc,
+  buildPrebuiltProductVariantUrl,
+  stripProductVariantSuffix,
+  inferImageVariantFromSizes,
+} = await import('../lib/storefront/supabaseImageUrl.js');
+
+const sample =
+  'https://abc.supabase.co/storage/v1/object/public/products/images/biz/123-shoe.webp';
+const cardSrc = resolveStorefrontImageSrc(sample, { variant: 'card' });
+assert.match(cardSrc, /\/render\/image\/public\//, 'card variant should use CDN transform by default');
+assert.match(cardSrc, /width=512/, 'card transform width 512');
+
+const thumbPrebuilt = buildPrebuiltProductVariantUrl(sample, 'thumb');
+assert.ok(thumbPrebuilt?.includes('-thumb.webp'), 'prebuilt thumb sibling URL');
+assert.equal(
+  stripProductVariantSuffix('images/biz/123-shoe-card.webp'),
+  'images/biz/123-shoe.webp'
+);
+assert.equal(inferImageVariantFromSizes('80px'), 'thumb');
+assert.equal(inferImageVariantFromSizes('(max-width: 768px) 100vw, 50vw'), 'detail');
+
+const productCard = fs.readFileSync(path.join(root, 'components/storefront/ProductCard.jsx'), 'utf8');
+assert.match(productCard, /imageVariant=\{isDense \? 'thumb' : 'card'\}/, 'ProductCard must request card/thumb CDN size');
+
+const gallery = fs.readFileSync(path.join(root, 'components/storefront/ProductGallery.jsx'), 'utf8');
+assert.match(gallery, /imageVariant="detail"/, 'PDP main image must use detail variant');
+assert.match(gallery, /imageVariant="thumb"/, 'PDP thumbs must use thumb variant');
 
 assert.equal(isAllowedNextImageSrc('https://images.unsplash.com/photo-1'), true);
 assert.equal(isAllowedNextImageSrc('https://www.gulahmedshop.com/cdn/shop/x.webp'), true);

@@ -274,11 +274,12 @@ export function SearchBar({ businessDomain, initialQuery = '', onClose, dark = f
                 >
                   {/* Product Image */}
                   <div className="relative w-14 h-14 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
-                    {product.image_url ? (
+                    {(product.image_url || product.images?.[0]?.url) ? (
                       <SmartProductImage
-                        src={product.image_url}
+                        src={product.image_url || product.images?.[0]?.url}
                         alt={product.name}
                         fill
+                        imageVariant="thumb"
                         className="object-cover"
                         sizes="56px"
                       />

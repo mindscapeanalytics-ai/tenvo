@@ -13,6 +13,7 @@ import { Truck, Shield, RotateCcw } from 'lucide-react';
 import { resolveStorefrontCurrency } from '@/lib/storefront/storefrontRegional';
 import { formatCurrency } from '@/lib/currency';
 import { getOpenGraphProductImageUrl, getEffectiveProductImageUrl } from '@/lib/storefront/productImageFallback';
+import { resolveStorefrontProductGallery } from '@/lib/utils/productImages';
 import { buildProductJsonLd } from '@/lib/storefront/jsonLd';
 import { isAutoDealershipStore } from '@/lib/storefront/autoDealership';
 import { DealershipProductActions } from '@/components/storefront/sections/dealership/DealershipProductActions';
@@ -110,15 +111,10 @@ function ProductContent({ product, relatedProducts, businessDomain, settings, bu
     currency: storeCurrency,
   });
 
-  // Prepare images array, merchant uploads first; else name-aware catalog fallback
-  const images =
-    product.images?.length > 0
-      ? product.images
-      : product.image_url?.trim()
-        ? [{ url: product.image_url.trim(), alt: product.name }]
-        : catalogImage
-          ? [{ url: catalogImage, alt: product.name }]
-          : [];
+  // Normalize gallery (max 3); never prefer empty/garbage JSON over image_url
+  const images = resolveStorefrontProductGallery(product, {
+    catalogFallback: catalogImage,
+  });
   
   const threshold = settings?.freeShippingThreshold || 2000;
   const returnDays = settings?.returnPolicyDays || 7;
