@@ -40,21 +40,29 @@ export function SmartProductImage({
   const safeSrc = isDeadImageUrl(src)
     ? ''
     : normalizeStorefrontRemoteImageUrl(src || '');
-  const [currentSrc, setCurrentSrc] = useState(safeSrc);
+  const safeFallback =
+    fallbackSrc && !isDeadImageUrl(fallbackSrc)
+      ? normalizeStorefrontRemoteImageUrl(fallbackSrc)
+      : '';
+  const [currentSrc, setCurrentSrc] = useState(safeSrc || safeFallback);
   const [failed, setFailed] = useState(false);
   const [fallbackFailed, setFallbackFailed] = useState(false);
   const [useObjectPublicFallback, setUseObjectPublicFallback] = useState(false);
 
   useEffect(() => {
-    setCurrentSrc(safeSrc);
+    setCurrentSrc(safeSrc || safeFallback);
     setFailed(false);
     setFallbackFailed(false);
     setUseObjectPublicFallback(false);
-  }, [safeSrc]);
+  }, [safeSrc, safeFallback]);
 
-  const activeSrc = failed && fallbackSrc && !isDeadImageUrl(fallbackSrc) && !fallbackFailed
-    ? fallbackSrc
-    : currentSrc;
+  // Prefer primary; if empty or failed, use fallback immediately (category tiles often have no src).
+  const activeSrc =
+    failed || !currentSrc
+      ? safeFallback && !fallbackFailed
+        ? safeFallback
+        : ''
+      : currentSrc;
   const monogramSrc =
     placeholderLabel && !activeSrc
       ? resolveBrandMonogramUrl(placeholderLabel)
@@ -62,18 +70,18 @@ export function SmartProductImage({
 
   const handleError = () => {
     if (
-      shouldUseDirectCdnImage(currentSrc) &&
+      shouldUseDirectCdnImage(currentSrc || activeSrc) &&
       !useObjectPublicFallback &&
       !failed
     ) {
       setUseObjectPublicFallback(true);
       return;
     }
-    if (fallbackSrc && !failed && !isDeadImageUrl(fallbackSrc)) {
+    if (safeFallback && !failed) {
       setFailed(true);
       return;
     }
-    if (fallbackSrc && failed && !fallbackFailed) {
+    if (safeFallback && failed && !fallbackFailed) {
       setFallbackFailed(true);
       setCurrentSrc('');
       return;

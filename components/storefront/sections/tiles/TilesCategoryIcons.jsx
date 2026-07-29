@@ -7,6 +7,10 @@ import { cn } from '@/lib/utils';
 import { STORE_SECTION_HEADING } from '@/lib/utils/typography';
 
 function CategoryTile({ cat }) {
+  const fallback =
+    typeof cat.image === 'string' && cat.image.trim()
+      ? cat.image
+      : 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=400&q=80&auto=format&fit=crop';
   return (
     <Link
       href={cat.href}
@@ -20,9 +24,11 @@ function CategoryTile({ cat }) {
         )}
       >
         <SmartProductImage
-          src={cat.image}
+          src={cat.image || fallback}
           alt={cat.label || ''}
           fill
+          imageVariant="thumb"
+          fallbackSrc={fallback}
           sizes="72px"
           className="object-cover transition duration-500 motion-safe:group-hover:scale-110"
         />

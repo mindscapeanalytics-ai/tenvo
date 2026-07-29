@@ -192,22 +192,15 @@ export function FitnessHomeSections({
                 className="group flex w-[4.75rem] shrink-0 snap-start flex-col items-center gap-2 text-center active:scale-[0.97]"
               >
                 <div className="relative h-[4.25rem] w-[4.25rem] overflow-hidden rounded-2xl border border-white/10 bg-zinc-900 active:border-rose-500/40">
-                  {cat.image ? (
                     <SmartProductImage
-                      src={cat.image}
+                      src={cat.image || resolveFitnessImageFallback(cat.label || cat.id || 'category')}
                       alt={cat.label}
                       fill
+                      imageVariant="thumb"
                       fallbackSrc={resolveFitnessImageFallback(cat.label || cat.id || 'category')}
                       className="object-cover"
                       sizes="80px"
                     />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-zinc-800 to-zinc-950">
-                      <span className="text-[10px] font-bold uppercase tracking-wide text-white/40">
-                        {String(cat.label || '?').slice(0, 3)}
-                      </span>
-                    </div>
-                  )}
                 </div>
                 <span className="line-clamp-2 text-[10px] font-semibold leading-tight text-white/80">
                   {cat.label}
@@ -224,22 +217,15 @@ export function FitnessHomeSections({
                 className="group flex flex-col items-center gap-2 rounded-2xl border border-transparent p-1 text-center active:scale-[0.97]"
               >
                 <div className="relative h-[4.5rem] w-[4.5rem] overflow-hidden rounded-2xl border border-white/10 bg-zinc-900 lg:group-hover:border-rose-500/40 lg:group-hover:shadow-[0_0_20px_rgba(225,29,72,0.25)]">
-                  {cat.image ? (
                     <SmartProductImage
-                      src={cat.image}
+                      src={cat.image || resolveFitnessImageFallback(cat.label || cat.id || 'category')}
                       alt={cat.label}
                       fill
+                      imageVariant="thumb"
                       fallbackSrc={resolveFitnessImageFallback(cat.label || cat.id || 'category')}
                       className="object-cover transition duration-300 motion-safe:group-hover:scale-105"
                       sizes="96px"
                     />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-zinc-800 to-zinc-950">
-                      <span className="text-[10px] font-bold uppercase tracking-wide text-white/40">
-                        {String(cat.label || '?').slice(0, 3)}
-                      </span>
-                    </div>
-                  )}
                 </div>
                 <span className="line-clamp-2 text-[11px] font-semibold leading-tight text-white/80">
                   {cat.label}

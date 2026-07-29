@@ -357,6 +357,12 @@ if (!productImagesUtil.includes('export const MAX_PRODUCT_IMAGES = 3')) {
   pass('productImages helpers: max 3, enabled for all domains, storefront gallery');
 }
 
+if (!composite.includes('intentionalGallery') || !composite.includes('delete sanitizedData.image_url')) {
+  fail('Composite upsert must not wipe images on empty Busy/Excel stock saves');
+} else {
+  pass('Composite upsert guards against accidental image wipe');
+}
+
 const productForm = read('components/ProductForm.jsx');
 if (!productForm.includes('ProductImageManager') || !productForm.includes('productImagesFromUrls')) {
   fail('ProductForm must wire ProductImageManager + productImagesFromUrls');
@@ -376,6 +382,13 @@ if (!productGallery.includes('isSlider') || !productGallery.includes('onTouchEnd
   fail('ProductGallery must expose multi-image slider + touch swipe');
 } else {
   pass('ProductGallery multi-image slider wired');
+}
+
+const electronicsHome = read('components/storefront/sections/electronics/ElectronicsHomeSections.jsx');
+if (!electronicsHome.includes('StoreMarqueeRow') || !electronicsHome.includes('ElectronicsCategoryTile')) {
+  fail('Electronics Shop by category must use StoreMarqueeRow auto-scroll');
+} else {
+  pass('Electronics category marquee wired');
 }
 
 const imageManager = read('components/ProductImageManager.jsx');

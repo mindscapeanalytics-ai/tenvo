@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { ArrowRight, ShieldCheck, Star, Truck, RefreshCw, CreditCard, MapPin, Phone } from 'lucide-react';
 import { SmartProductImage } from '@/components/storefront/SmartProductImage';
 import { StoreProductRail } from '@/components/storefront/StoreProductRail';
+import { StoreMarqueeRow } from '@/components/storefront/sections/shared/StoreMarqueeRow';
 import { cn } from '@/lib/utils';
 import { STORE_SECTION_HEADING } from '@/lib/utils/typography';
 import { resolveStoreContact } from '@/lib/storefront/businessContact';
@@ -23,6 +24,34 @@ const TRUST_ICONS = {
   truck: Truck,
   refresh: RefreshCw,
 };
+
+function ElectronicsCategoryTile({ tile, businessCategory }) {
+  const fallback = resolveElectronicsCategoryFallbackImage(tile, businessCategory);
+  return (
+    <Link
+      href={tile.href}
+      className="group block w-full overflow-hidden rounded-2xl border border-slate-100 bg-white motion-safe:transition motion-safe:hover:border-slate-200"
+    >
+      <div className="relative aspect-square bg-slate-100">
+        <SmartProductImage
+          src={tile.image || fallback}
+          alt={tile.label || 'Category'}
+          fill
+          imageVariant="card"
+          className="object-cover motion-safe:transition motion-safe:duration-500 motion-safe:group-hover:scale-[1.03]"
+          fallbackSrc={fallback}
+          sizes="160px"
+        />
+      </div>
+      <div className="p-2.5 sm:p-3">
+        <p className="line-clamp-1 text-xs font-semibold text-slate-900 sm:text-sm">{tile.label}</p>
+        {tile.description ? (
+          <p className="mt-0.5 line-clamp-1 text-[10px] text-slate-500 sm:text-[11px]">{tile.description}</p>
+        ) : null}
+      </div>
+    </Link>
+  );
+}
 
 /**
  * Elevated electronics homepage — appliances, gadgets, installment enquiry.
@@ -59,6 +88,7 @@ export function ElectronicsHomeSections({
   const contact = resolveStoreContact({ business, settings });
   const phoneHref = contact.phone ? `tel:${String(contact.phone).replace(/\s+/g, '')}` : null;
   const locationLine = contact.fullAddress || contact.city || config.defaultLocation;
+  const categoryMarqueeDuration = Math.max(32, Math.min(52, 20 + categoryTiles.length * 3));
 
   return (
     <>
@@ -102,31 +132,16 @@ export function ElectronicsHomeSections({
                 View all <ArrowRight className="h-4 w-4" aria-hidden />
               </Link>
             </div>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-              {categoryTiles.map((tile) => (
-                <Link
-                  key={tile.id || tile.label}
-                  href={tile.href}
-                  className="group overflow-hidden rounded-2xl border border-slate-100 bg-white motion-safe:transition motion-safe:hover:border-slate-200"
-                >
-                  <div className="relative aspect-square bg-slate-100">
-                    <SmartProductImage
-                      src={tile.image}
-                      alt=""
-                      fill
-                      className="object-cover motion-safe:transition motion-safe:duration-500 motion-safe:group-hover:scale-[1.03]"
-                      fallbackSrc={resolveElectronicsCategoryFallbackImage(tile, businessCategory)}
-                    />
-                  </div>
-                  <div className="p-3">
-                    <p className="text-sm font-semibold text-slate-900">{tile.label}</p>
-                    {tile.description ? (
-                      <p className="mt-0.5 line-clamp-1 text-[11px] text-slate-500">{tile.description}</p>
-                    ) : null}
-                  </div>
-                </Link>
-              ))}
-            </div>
+            <StoreMarqueeRow
+              items={categoryTiles}
+              fadeFrom="muted"
+              durationSec={categoryMarqueeDuration}
+              slideClassName="w-[7.5rem] sm:w-[9rem]"
+              gapClassName="gap-3 pr-3 sm:gap-4 sm:pr-4"
+              renderItem={(tile) => (
+                <ElectronicsCategoryTile tile={tile} businessCategory={businessCategory} />
+              )}
+            />
           </div>
         </section>
       )}
@@ -275,3 +290,5 @@ export function ElectronicsHomeSections({
     </>
   );
 }
+
+export default ElectronicsHomeSections;

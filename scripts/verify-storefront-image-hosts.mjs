@@ -36,6 +36,7 @@ const smartSrc = fs.readFileSync(
 );
 assert.match(smartSrc, /isAllowedNextImageSrc/, 'SmartProductImage must gate next/image by allowlist');
 assert.match(smartSrc, /isDeadImageUrl/, 'SmartProductImage must skip dead hosts');
+assert.match(smartSrc, /safeSrc \|\| safeFallback/, 'SmartProductImage must use fallbackSrc when primary src is empty');
 assert.match(smartSrc, /resolveStorefrontImageSrc/, 'SmartProductImage must use sized CDN delivery');
 assert.match(smartSrc, /inferImageVariantFromSizes/, 'SmartProductImage must infer variant from sizes');
 

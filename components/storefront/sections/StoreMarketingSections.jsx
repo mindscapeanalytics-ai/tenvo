@@ -104,8 +104,10 @@ export function StoreMarketingSections({
                 src={section.imageUrl}
                 alt={section.title || 'Store promotion'}
                 fill
+                imageVariant="hero"
                 className={fitClass}
                 sizes="(max-width: 768px) 100vw, 1400px"
+                fallbackSrc="https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1400&q=80&auto=format&fit=crop"
               />
             </div>
           );

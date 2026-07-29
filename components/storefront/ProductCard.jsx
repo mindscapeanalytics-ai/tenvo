@@ -64,9 +64,13 @@ export function ProductCard({ product, businessDomain, variant = 'default' }) {
       })
     : null;
   const displayImage = getEffectiveProductImageUrl(product, business?.category);
-  const imageFallback = displayImage
-      ? getFallbackProductImageUrl(product, business?.category, product.category_name || product.category)
-      : undefined;
+  const imageFallback = getFallbackProductImageUrl(
+    product,
+    business?.category,
+    product.category_name || product.category
+  );
+  const resolvedFallback =
+    imageFallback && imageFallback !== displayImage ? imageFallback : undefined;
   const inWishlist = isInWishlist(product.id);
   const isDense = variant === 'dense';
   const isCompact = variant === 'compact' || isDense;
@@ -204,7 +208,7 @@ export function ProductCard({ product, businessDomain, variant = 'default' }) {
               alt={product.name}
               fill
               imageVariant={isDense ? 'thumb' : 'card'}
-              fallbackSrc={imageFallback && imageFallback !== displayImage ? imageFallback : undefined}
+              fallbackSrc={resolvedFallback}
               className={cn(
                 'transition-transform duration-500 group-hover:scale-[1.03]',
                 fitnessStore || (footwearStore && isDense) ? 'object-contain p-2' : 'object-cover'

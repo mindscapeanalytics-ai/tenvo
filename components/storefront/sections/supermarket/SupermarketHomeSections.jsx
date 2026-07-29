@@ -21,6 +21,7 @@ import {
 } from '@/lib/storefront/supermarketStorefront';
 import { filterProductsByCategorySlug } from '@/lib/storefront/elevatedStorefrontTenant';
 import { isMilkShopStore } from '@/lib/storefront/milkShopStorefront';
+import { getFallbackProductImageUrl } from '@/lib/storefront/productImageFallback';
 import { SupermarketBrandsMarquee } from '@/components/storefront/sections/supermarket/SupermarketBrandsMarquee';
 
 const TRUST_ICONS = { fresh: Leaf, delivery: Truck, prices: ShieldCheck, cod: ShieldCheck, default: Clock };
@@ -172,21 +173,19 @@ export function SupermarketHomeSections({
                 style={{ '--cat-accent': accent }}
               >
                 <div className="relative aspect-square w-full overflow-hidden bg-slate-50">
-                  {cat.image ? (
                     <SmartProductImage
                       src={cat.image}
-                      alt={cat.label || ''}
+                      alt={cat.label || 'Category'}
                       fill
+                      imageVariant="thumb"
                       className="object-cover transition duration-300 group-hover:scale-[1.03]"
+                      fallbackSrc={getFallbackProductImageUrl(
+                        { name: cat.label || cat.id || 'grocery', id: cat.id || cat.slug },
+                        businessCategory || 'supermarket',
+                        cat.label
+                      )}
+                      sizes="120px"
                     />
-                  ) : (
-                    <div
-                      className="flex h-full w-full items-center justify-center text-sm font-bold"
-                      style={{ color: accent, backgroundColor: `${accent}12` }}
-                    >
-                      {cat.label?.slice(0, 2)?.toUpperCase()}
-                    </div>
-                  )}
                 </div>
                 <p className="line-clamp-2 px-1.5 py-2 text-center text-[10px] font-semibold leading-tight text-slate-700 sm:text-[11px]">
                   {cat.label}
