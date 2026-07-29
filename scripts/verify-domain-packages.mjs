@@ -216,6 +216,16 @@ if (!read('package.json').includes('verify:billing-packages')) mark('npm script 
 if (fs.existsSync(path.join(root, 'app/solutions/clothing-commerce/page.jsx'))) {
   mark('legacy clothing-commerce page should be removed in favor of [slug] route');
 }
+for (const legacy of [
+  'pharmacy-commerce',
+  'auto-parts-commerce',
+  'furniture-commerce',
+  'fitness-commerce',
+]) {
+  if (fs.existsSync(path.join(root, `app/solutions/${legacy}/page.jsx`))) {
+    mark(`legacy ${legacy} page should be removed in favor of [slug] DomainPackageSolutionsPage`);
+  }
+}
 
 if (failed) {
   console.error('verify-domain-packages: failures above');

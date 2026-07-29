@@ -36,6 +36,12 @@
     { "protocol": "https", "hostname": "**.gtr.com.pk" },
     { "protocol": "https", "hostname": "gtrweb.mediaidee.com" },
     { "protocol": "https", "hostname": "technotyre.com" },
-    { "protocol": "https", "hostname": "**.technotyre.com" }
+    { "protocol": "https", "hostname": "**.technotyre.com" },
+    { "protocol": "https", "hostname": "m.media-amazon.com" },
+    { "protocol": "https", "hostname": "static.nike.com" },
+    { "protocol": "https", "hostname": "www.khazanay.pk" },
+    { "protocol": "https", "hostname": "cdn.shopify.com" },
+    { "protocol": "https", "hostname": "images.footlocker.com" },
+    { "protocol": "https", "hostname": "assets.footlocker.com" }
   ]
 }

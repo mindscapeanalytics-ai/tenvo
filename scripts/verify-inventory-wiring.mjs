@@ -335,6 +335,57 @@ if (!dataContext.includes('isStale()')) {
   pass('DataContext guards stale business fetches');
 }
 
+// --- Product image gallery (upload + persist) ---
+if (!composite.includes("'images'") && !composite.includes('"images"')) {
+  fail('Composite upsert safeFields must include images gallery JSON');
+} else if (!composite.includes('productImagesFromUrls') || !composite.includes('normalizeProductImageUrls')) {
+  fail('Composite upsert must normalize images via productImages helpers');
+} else {
+  pass('Composite upsert persists and normalizes products.images');
+}
+
+const productImagesUtil = read('lib/utils/productImages.js');
+if (!productImagesUtil.includes('export const MAX_PRODUCT_IMAGES = 3')) {
+  fail('productImages.js must export MAX_PRODUCT_IMAGES = 3');
+} else if (!productImagesUtil.includes('export function productImagesFromUrls')) {
+  fail('productImages.js missing productImagesFromUrls');
+} else if (!productImagesUtil.includes('return true') || !productImagesUtil.includes('isMultiProductImagesEnabled')) {
+  fail('isMultiProductImagesEnabled must always return true (all domains)');
+} else {
+  pass('productImages helpers: max 3, enabled for all domains');
+}
+
+const productForm = read('components/ProductForm.jsx');
+if (!productForm.includes('ProductImageManager') || !productForm.includes('productImagesFromUrls')) {
+  fail('ProductForm must wire ProductImageManager + productImagesFromUrls');
+} else {
+  pass('ProductForm Media tab wires gallery helpers');
+}
+
+const imageManager = read('components/ProductImageManager.jsx');
+if (!imageManager.includes('uploadOptimizedImage')) {
+  fail('ProductImageManager must call uploadOptimizedImage');
+} else if (imageManager.includes("id: 'auto'") || imageManager.includes('Auto-fetch from internet')) {
+  fail('ProductImageManager must not expose retired Unsplash Auto tab');
+} else {
+  pass('ProductImageManager uses optimized upload (Upload + URL only)');
+}
+
+const uploadRoute = read('app/api/upload/product-image/route.js');
+if (!uploadRoute.includes('status: 410') && !uploadRoute.includes('status:410')) {
+  fail('product-image GET must return 410 for retired auto-fetch');
+} else if (uploadRoute.includes('source.unsplash.com')) {
+  fail('product-image GET must not use deprecated source.unsplash.com');
+} else {
+  pass('product-image GET retires Unsplash auto-fetch with 410');
+}
+
+if (!productService.includes('productImagesFromUrls') || !productService.includes('normalizeProductImageUrls')) {
+  fail('ProductService create/update must normalize images gallery');
+} else {
+  pass('ProductService normalizes images on create/update');
+}
+
 if (failed) {
   console.error('\nverify:inventory-wiring FAILED');
   process.exit(1);

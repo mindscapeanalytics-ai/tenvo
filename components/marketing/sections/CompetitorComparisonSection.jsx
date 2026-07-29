@@ -96,7 +96,7 @@ function Cell({ value }) {
 /**
  * Outcome-focused comparison (not a feature spec sheet).
  */
-export default function CompetitorComparisonSection() {
+export default function CompetitorComparisonSection({ id = 'compare', showFooterCtas = true }) {
   const columns = [
     { key: 'shopify', label: 'Storefront-first', sub: 'e.g. Shopify-style' },
     { key: 'zoho', label: 'Multi-app suites', sub: 'e.g. Zoho-style' },
@@ -104,7 +104,7 @@ export default function CompetitorComparisonSection() {
   ];
 
   return (
-    <section className={cn('relative overflow-hidden border-b border-neutral-200/80 bg-white', MARKETING_SECTION_LOOSE)}>
+    <section id={id} className={cn('relative overflow-hidden border-b border-neutral-200/80 bg-white scroll-mt-28', MARKETING_SECTION_LOOSE)}>
       <div
         className="pointer-events-none absolute inset-0 opacity-[0.07]"
         style={{
@@ -201,7 +201,7 @@ export default function CompetitorComparisonSection() {
             <Link href="/register">See TENVO on your data</Link>
           </Button>
           <Button asChild variant="outline" className="h-11 rounded-xl border-2 px-6 font-bold sm:h-12 sm:px-8">
-            <Link href="/why-tenvo">Read the full story</Link>
+            <Link href="/features">Explore platform features</Link>
           </Button>
         </div>
       </div>

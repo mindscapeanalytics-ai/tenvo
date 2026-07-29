@@ -10,6 +10,7 @@ import { isFashionEditorialStore } from '@/lib/storefront/fashionEditorial';
 import { isPharmacyElevatedStore } from '@/lib/storefront/pharmacyStorefront';
 import { isTyreElevatedStore } from '@/lib/storefront/tyreStorefront';
 import { isElectronicsElevatedStore } from '@/lib/storefront/electronicsStorefront';
+import { isFootwearElevatedStore } from '@/lib/storefront/footwearStorefront';
 import { resolvePharmacyProductMeta } from '@/lib/storefront/pharmacyProducts';
 import { resolveSourcingBadge, buildElectronicsAttributeRows } from '@/lib/storefront/productAttributeChips';
 import { ProductAttributeList } from '@/components/storefront/ProductAttributeList';
@@ -29,12 +30,14 @@ export function ProductInfo({ product, businessDomain }) {
   const showFashionMeta = isFashionEditorialStore(categoryKey);
   const showTyreMeta = isTyreElevatedStore(categoryKey);
   const showElectronicsMeta = isElectronicsElevatedStore(categoryKey);
+  const showFootwearMeta = isFootwearElevatedStore(categoryKey);
   const pharmacyStore = isPharmacyElevatedStore(categoryKey);
   const pharmacyMeta = pharmacyStore ? resolvePharmacyProductMeta(product) : null;
 
   const { stock: displayStock, isOutOfStock, isLowStock } = getStorefrontStockState(product);
 
-  const sourcingBadge = showFashionMeta || showTyreMeta ? resolveSourcingBadge(product.domain_data) : null;
+  const sourcingBadge =
+    showFashionMeta || showTyreMeta || showFootwearMeta ? resolveSourcingBadge(product.domain_data) : null;
   const electronicsWarranty = showElectronicsMeta
     ? buildElectronicsAttributeRows(product).find((row) => row.key === 'warranty')?.value
     : null;
@@ -133,7 +136,7 @@ export function ProductInfo({ product, businessDomain }) {
         <p className="text-gray-600 leading-relaxed">{product.description}</p>
       ) : null}
 
-      {(showFashionMeta || showPartsMeta || showMarineMeta || showTyreMeta || showElectronicsMeta || product.sku) ? (
+      {(showFashionMeta || showPartsMeta || showMarineMeta || showTyreMeta || showElectronicsMeta || showFootwearMeta || product.sku) ? (
         <ProductAttributeList
           product={product}
           businessDomain={businessDomain}
@@ -142,6 +145,7 @@ export function ProductInfo({ product, businessDomain }) {
           showMarineMeta={showMarineMeta}
           showTyreMeta={showTyreMeta}
           showElectronicsMeta={showElectronicsMeta}
+          showFootwearMeta={showFootwearMeta}
           hideBadgeKeys={[
             ...(sourcingBadge ? ['sourcing'] : []),
             ...(electronicsWarranty ? ['warranty'] : []),

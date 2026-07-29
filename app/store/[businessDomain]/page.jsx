@@ -23,6 +23,7 @@ import { isPharmacyElevatedStore, formatPharmacyStoreName, getPharmacyHeroSlides
 import { isFurnitureElevatedStore, formatFurnitureStoreName, getFurnitureHeroSlides, resolveFurnitureQuickSearchTerms } from '@/lib/storefront/furnitureStorefront';
 import { isTilesElevatedStore, formatTilesStoreName, getTilesHeroSlides, resolveTilesQuickSearchTerms } from '@/lib/storefront/tilesStorefront';
 import { formatTyreStoreName, getTyreHeroSlides, resolveTyreQuickSearchTerms, resolveTyreShowcaseProducts, isTyreElevatedStore } from '@/lib/storefront/tyreStorefront';
+import { formatFootwearStoreName, getFootwearHeroSlides, resolveFootwearQuickSearchTerms, resolveFootwearShowcaseProducts, isFootwearElevatedStore } from '@/lib/storefront/footwearStorefront';
 import { formatElectronicsStoreName, getElectronicsHeroSlides, resolveElectronicsQuickSearchTerms, resolveElectronicsShowcaseProducts, isElectronicsElevatedStore } from '@/lib/storefront/electronicsStorefront';
 import { isRestaurantElevatedStore, formatRestaurantStoreName, getRestaurantHeroSlides, resolveRestaurantQuickSearchTerms } from '@/lib/storefront/restaurantStorefront';
 import { isFitnessElevatedStore, formatFitnessStoreName, getFitnessHeroSlides, resolveFitnessHeroQuickLinks, resolveFitnessShowcaseProducts } from '@/lib/storefront/fitnessStorefront';
@@ -81,6 +82,8 @@ export async function generateMetadata({ params }) {
     ? formatPharmacyStoreName(business.business_name)
     : isTyreElevatedStore(business.category)
       ? formatTyreStoreName(business.business_name)
+    : isFootwearElevatedStore(business.category)
+      ? formatFootwearStoreName(business.business_name)
     : isElectronicsElevatedStore(business.category)
       ? formatElectronicsStoreName(business.business_name)
     : isTilesElevatedStore(business.category)
@@ -110,6 +113,9 @@ export async function generateMetadata({ params }) {
   } else if (isTyreElevatedStore(business.category)) {
     description = description || `Shop local and imported tyres, alloy rims, and fitting services at ${storeName}.`;
     keywords = `${storeName}, tyre store, tyres, alloy rims, fitting${business.city ? `, ${business.city}` : ''}`;
+  } else if (isFootwearElevatedStore(business.category)) {
+    description = description || `Shop men's, women's, and kids shoes, sneakers, and sports footwear at ${storeName}.`;
+    keywords = `${storeName}, shoe store, footwear, sneakers, sports shoes${business.city ? `, ${business.city}` : ''}`;
   } else if (isElectronicsElevatedStore(business.category)) {
     description = description || `Shop appliances, gadgets, and branded electronics at ${storeName}.`;
     keywords = `${storeName}, electronics store, appliances, gadgets${business.city ? `, ${business.city}` : ''}`;
@@ -203,6 +209,7 @@ export default async function StoreHomePage({ params }) {
   const furnitureElevatedHero = heroPreset.type === 'furniture-elevated';
   const tilesElevatedHero = heroPreset.type === 'tiles-elevated';
   const tyreElevatedHero = heroPreset.type === 'tyre-elevated';
+  const footwearElevatedHero = heroPreset.type === 'footwear-elevated';
   const electronicsElevatedHero = heroPreset.type === 'electronics-elevated';
   const restaurantElevatedHero = heroPreset.type === 'restaurant-elevated';
   const fitnessElevatedHero = heroPreset.type === 'fitness-elevated';
@@ -210,11 +217,11 @@ export default async function StoreHomePage({ params }) {
   const autoPartsHero = finderHero && isAutoPartsStore(business.category);
   const marinePartsHero = finderHero && isMarinePartsStore(business.category);
   const jewelleryElevatedHero = heroPreset.type === 'jewellery-elevated';
-  const skipHomeNavSections = finderHero || editorialHero || dealershipHero || marketplaceHero || pharmacyElevatedHero || furnitureElevatedHero || tilesElevatedHero || tyreElevatedHero || electronicsElevatedHero || restaurantElevatedHero || fitnessElevatedHero || supermarketElevatedHero || jewelleryElevatedHero || marinePartsHero;
+  const skipHomeNavSections = finderHero || editorialHero || dealershipHero || marketplaceHero || pharmacyElevatedHero || furnitureElevatedHero || tilesElevatedHero || tyreElevatedHero || footwearElevatedHero || electronicsElevatedHero || restaurantElevatedHero || fitnessElevatedHero || supermarketElevatedHero || jewelleryElevatedHero || marinePartsHero;
   const copy = getStoreHomeCopy(business, domainCfg, landing);
   const contact = resolveStoreContact({ business, settings });
 
-  const needsCatalogBackfill = !editorialHero && !dealershipHero && !marketplaceHero && !autoPartsHero && !marinePartsHero && !furnitureElevatedHero && !tilesElevatedHero && !tyreElevatedHero && !electronicsElevatedHero && !restaurantElevatedHero && !fitnessElevatedHero && !supermarketElevatedHero && !jewelleryElevatedHero;
+  const needsCatalogBackfill = !editorialHero && !dealershipHero && !marketplaceHero && !autoPartsHero && !marinePartsHero && !furnitureElevatedHero && !tilesElevatedHero && !tyreElevatedHero && !footwearElevatedHero && !electronicsElevatedHero && !restaurantElevatedHero && !fitnessElevatedHero && !supermarketElevatedHero && !jewelleryElevatedHero;
 
   const catalogPlan = buildStoreHomeCatalogPlan({
     editorialHero,
@@ -224,6 +231,7 @@ export default async function StoreHomePage({ params }) {
     furnitureElevatedHero,
     tilesElevatedHero,
     tyreElevatedHero,
+    footwearElevatedHero,
     electronicsElevatedHero,
     restaurantElevatedHero,
     fitnessElevatedHero,
@@ -249,6 +257,7 @@ export default async function StoreHomePage({ params }) {
     furnitureCatalogResult,
     tilesCatalogResult,
     tyreCatalogResult,
+    footwearCatalogResult,
     electronicsCatalogResult,
     restaurantCatalogResult,
     fitnessCatalogResult,
@@ -264,6 +273,7 @@ export default async function StoreHomePage({ params }) {
     furnitureElevatedHero,
     tilesElevatedHero,
     tyreElevatedHero,
+    footwearElevatedHero,
     electronicsElevatedHero,
     restaurantElevatedHero,
     fitnessElevatedHero,
@@ -439,6 +449,12 @@ export default async function StoreHomePage({ params }) {
       : buildTopPicksProducts(featuredProducts, popularityBackfill, 48),
     businessDomain
   );
+  const footwearProducts = resolveFootwearShowcaseProducts(
+    footwearCatalogResult?.success
+      ? footwearCatalogResult.products
+      : buildTopPicksProducts(featuredProducts, popularityBackfill, 48),
+    businessDomain
+  );
   const electronicsProducts = resolveElectronicsShowcaseProducts(
     electronicsCatalogResult?.success
       ? electronicsCatalogResult.products
@@ -475,6 +491,7 @@ export default async function StoreHomePage({ params }) {
   const furnitureStoreName = formatFurnitureStoreName(business.business_name);
   const tilesStoreName = tilesElevatedHero ? formatTilesStoreName(business.business_name) : '';
   const tyreStoreName = tyreElevatedHero ? formatTyreStoreName(business.business_name) : '';
+  const footwearStoreName = footwearElevatedHero ? formatFootwearStoreName(business.business_name) : '';
   const electronicsStoreName = electronicsElevatedHero ? formatElectronicsStoreName(business.business_name) : '';
   const supermarketStoreName = formatSupermarketStoreName(business.business_name);
   const coverImageUrl = business.cover_image_url?.startsWith('http') ? business.cover_image_url : null;
@@ -618,6 +635,21 @@ export default async function StoreHomePage({ params }) {
               products: tyreProducts,
             }),
           }
+      : footwearElevatedHero
+        ? {
+            ...heroPreset,
+            settings,
+            storeName: footwearStoreName || formatFootwearStoreName(business.business_name),
+            businessCategory: business.category,
+            quickSearchTerms: resolveFootwearQuickSearchTerms(settings, footwearProducts, categories, businessDomain),
+            slides: getFootwearHeroSlides(heroPreset.base, settings, {
+              storeName: footwearStoreName || formatFootwearStoreName(business.business_name),
+              businessDomain,
+              businessDescription: business.description || settings?.description,
+              coverImage: coverImageUrl,
+              products: footwearProducts,
+            }),
+          }
       : electronicsElevatedHero
         ? {
             ...heroPreset,
@@ -670,7 +702,7 @@ export default async function StoreHomePage({ params }) {
         ? 'bg-black text-white'
         : editorialHero
           ? 'bg-stone-50 text-slate-900'
-          : dealershipHero || marketplaceHero || pharmacyElevatedHero || furnitureElevatedHero || tilesElevatedHero || tyreElevatedHero || electronicsElevatedHero || restaurantElevatedHero || supermarketElevatedHero || autoPartsHero || marinePartsHero
+          : dealershipHero || marketplaceHero || pharmacyElevatedHero || furnitureElevatedHero || tilesElevatedHero || tyreElevatedHero || footwearElevatedHero || electronicsElevatedHero || restaurantElevatedHero || supermarketElevatedHero || autoPartsHero || marinePartsHero
             ? restaurantElevatedHero
               ? 'bg-zinc-50 text-zinc-900'
               : 'bg-white text-slate-900'
@@ -678,7 +710,7 @@ export default async function StoreHomePage({ params }) {
     )}>
 
       {/* ── Announcement Banner ─────────────────────────────────────────────── */}
-      {hero.banner && !editorialHero && !dealershipHero && !marketplaceHero && !pharmacyElevatedHero && !furnitureElevatedHero && !tilesElevatedHero && !tyreElevatedHero && !electronicsElevatedHero && !restaurantElevatedHero && !fitnessElevatedHero && !supermarketElevatedHero && !jewelleryElevatedHero && !marinePartsHero ? (
+      {hero.banner && !editorialHero && !dealershipHero && !marketplaceHero && !pharmacyElevatedHero && !furnitureElevatedHero && !tilesElevatedHero && !tyreElevatedHero && !footwearElevatedHero && !electronicsElevatedHero && !restaurantElevatedHero && !fitnessElevatedHero && !supermarketElevatedHero && !jewelleryElevatedHero && !marinePartsHero ? (
         <div
           className="md:hidden text-white text-center py-2 px-4 text-xs font-medium truncate"
           style={{ backgroundColor: accent }}
@@ -905,6 +937,21 @@ export default async function StoreHomePage({ params }) {
           businessDescription={business.description || settings?.description}
         />
       )}
+      {footwearElevatedHero && (
+        <LazyVerticalHomeSections
+          variant="footwear"
+          businessDomain={businessDomain}
+          businessCategory={business.category}
+          categories={categories}
+          products={footwearProducts}
+          currency={storeCurrency}
+          accent={accent}
+          base={heroPreset.base}
+          settings={settings}
+          storeName={footwearStoreName || formatFootwearStoreName(business.business_name)}
+          businessDescription={business.description || settings?.description}
+        />
+      )}
       {electronicsElevatedHero && (
         <ElectronicsFeedLayout
           storeBase={heroPreset.base}
@@ -1070,7 +1117,7 @@ export default async function StoreHomePage({ params }) {
       />
       )}
 
-      {!editorialHero && !dealershipHero && !marketplaceHero && !pharmacyElevatedHero && !furnitureElevatedHero && !tilesElevatedHero && !tyreElevatedHero && !electronicsElevatedHero && !restaurantElevatedHero && !fitnessElevatedHero && !supermarketElevatedHero && !autoPartsHero && !marinePartsHero && !jewelleryElevatedHero && (
+      {!editorialHero && !dealershipHero && !marketplaceHero && !pharmacyElevatedHero && !furnitureElevatedHero && !tilesElevatedHero && !tyreElevatedHero && !footwearElevatedHero && !electronicsElevatedHero && !restaurantElevatedHero && !fitnessElevatedHero && !supermarketElevatedHero && !autoPartsHero && !marinePartsHero && !jewelleryElevatedHero && (
         <DomainDealStrip dealStrip={landing.dealStrip} accent={accent} accentDark={accentDark} />
       )}
 
@@ -1125,7 +1172,7 @@ export default async function StoreHomePage({ params }) {
       )}
 
       {/* ── Featured / primary catalog ───────────────────────────────────── */}
-      {featuredRow.length > 0 && !editorialHero && !dealershipHero && !marketplaceHero && !pharmacyElevatedHero && !furnitureElevatedHero && !tilesElevatedHero && !tyreElevatedHero && !electronicsElevatedHero && !restaurantElevatedHero && !fitnessElevatedHero && !supermarketElevatedHero && !autoPartsHero && !marinePartsHero && !jewelleryElevatedHero && (
+      {featuredRow.length > 0 && !editorialHero && !dealershipHero && !marketplaceHero && !pharmacyElevatedHero && !furnitureElevatedHero && !tilesElevatedHero && !tyreElevatedHero && !footwearElevatedHero && !electronicsElevatedHero && !restaurantElevatedHero && !fitnessElevatedHero && !supermarketElevatedHero && !autoPartsHero && !marinePartsHero && !jewelleryElevatedHero && (
         <section className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-8 py-4 sm:py-10">
           <StoreSectionHeader
             title={copy.featuredTitle}
@@ -1157,7 +1204,7 @@ export default async function StoreHomePage({ params }) {
       )}
 
       {/* ── Fallback primary grid when no featured flag ──────────────────── */}
-      {featuredRow.length === 0 && newArrivalsRaw.length > 0 && !editorialHero && !dealershipHero && !marketplaceHero && !pharmacyElevatedHero && !furnitureElevatedHero && !tilesElevatedHero && !tyreElevatedHero && !electronicsElevatedHero && !restaurantElevatedHero && !fitnessElevatedHero && !supermarketElevatedHero && !autoPartsHero && !marinePartsHero && !jewelleryElevatedHero && (
+      {featuredRow.length === 0 && newArrivalsRaw.length > 0 && !editorialHero && !dealershipHero && !marketplaceHero && !pharmacyElevatedHero && !furnitureElevatedHero && !tilesElevatedHero && !tyreElevatedHero && !footwearElevatedHero && !electronicsElevatedHero && !restaurantElevatedHero && !fitnessElevatedHero && !supermarketElevatedHero && !autoPartsHero && !marinePartsHero && !jewelleryElevatedHero && (
         <section className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-8 py-4 sm:py-10">
           <StoreSectionHeader
             title={copy.shopAllTitle}
@@ -1179,7 +1226,7 @@ export default async function StoreHomePage({ params }) {
       {/* ── On Sale (retail grid). Editorial stores use the fashion Offers rail
              (FashionDepartmentSections) instead, so skip this to avoid a
              duplicate section and a retail-vs-editorial card clash. ───────── */}
-      {onSaleRow.length >= 1 && !editorialHero && !dealershipHero && !marketplaceHero && !pharmacyElevatedHero && !furnitureElevatedHero && !tilesElevatedHero && !tyreElevatedHero && !electronicsElevatedHero && !restaurantElevatedHero && !fitnessElevatedHero && !supermarketElevatedHero && !autoPartsHero && !marinePartsHero && !jewelleryElevatedHero && (
+      {onSaleRow.length >= 1 && !editorialHero && !dealershipHero && !marketplaceHero && !pharmacyElevatedHero && !furnitureElevatedHero && !tilesElevatedHero && !tyreElevatedHero && !footwearElevatedHero && !electronicsElevatedHero && !restaurantElevatedHero && !fitnessElevatedHero && !supermarketElevatedHero && !autoPartsHero && !marinePartsHero && !jewelleryElevatedHero && (
         <section className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-8 py-4 sm:py-10">
           <StoreSectionHeader
             title={copy.onSaleTitle}
@@ -1211,7 +1258,7 @@ export default async function StoreHomePage({ params }) {
       ) : null}
 
       {/* ── Free shipping promo (desktop), skip elevated / B2B parts templates ─ */}
-      {!editorialHero && !dealershipHero && !marketplaceHero && !pharmacyElevatedHero && !furnitureElevatedHero && !tilesElevatedHero && !tyreElevatedHero && !electronicsElevatedHero && !restaurantElevatedHero && !fitnessElevatedHero && !supermarketElevatedHero && !jewelleryElevatedHero && !marinePartsHero && !autoPartsHero && (
+      {!editorialHero && !dealershipHero && !marketplaceHero && !pharmacyElevatedHero && !furnitureElevatedHero && !tilesElevatedHero && !tyreElevatedHero && !footwearElevatedHero && !electronicsElevatedHero && !restaurantElevatedHero && !fitnessElevatedHero && !supermarketElevatedHero && !jewelleryElevatedHero && !marinePartsHero && !autoPartsHero && (
       <section className="hidden md:block mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
         <div
           className="relative overflow-hidden rounded-3xl p-8 sm:p-12"
@@ -1248,7 +1295,7 @@ export default async function StoreHomePage({ params }) {
       )}
 
       {/* ── New Arrivals (only when catalog has more beyond featured) ───────── */}
-      {showNewArrivals && !editorialHero && !dealershipHero && !marketplaceHero && !pharmacyElevatedHero && !furnitureElevatedHero && !tilesElevatedHero && !tyreElevatedHero && !electronicsElevatedHero && !restaurantElevatedHero && !fitnessElevatedHero && !supermarketElevatedHero && !jewelleryElevatedHero && (
+      {showNewArrivals && !editorialHero && !dealershipHero && !marketplaceHero && !pharmacyElevatedHero && !furnitureElevatedHero && !tilesElevatedHero && !tyreElevatedHero && !footwearElevatedHero && !electronicsElevatedHero && !restaurantElevatedHero && !fitnessElevatedHero && !supermarketElevatedHero && !jewelleryElevatedHero && (
         <section className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-8 py-4 sm:py-10">
           <StoreSectionHeader
             title={copy.newArrivalsTitle}
@@ -1268,7 +1315,7 @@ export default async function StoreHomePage({ params }) {
       )}
 
       {/* ── Mobile buyer support ───────────────────────────────────────────── */}
-      {!dealershipHero && !marketplaceHero && !pharmacyElevatedHero && !furnitureElevatedHero && !tilesElevatedHero && !tyreElevatedHero && !electronicsElevatedHero && !restaurantElevatedHero && !fitnessElevatedHero && !supermarketElevatedHero && !jewelleryElevatedHero && (
+      {!dealershipHero && !marketplaceHero && !pharmacyElevatedHero && !furnitureElevatedHero && !tilesElevatedHero && !tyreElevatedHero && !footwearElevatedHero && !electronicsElevatedHero && !restaurantElevatedHero && !fitnessElevatedHero && !supermarketElevatedHero && !jewelleryElevatedHero && (
       <StoreBuyerSupportStrip businessDomain={businessDomain} accent={accent} />
       )}
 

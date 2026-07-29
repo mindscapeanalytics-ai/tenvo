@@ -22,6 +22,7 @@ import {
 } from '@/lib/storefront/fitnessStorefront';
 import { isPharmacyElevatedStore } from '@/lib/storefront/pharmacyStorefront';
 import { isTyreElevatedStore } from '@/lib/storefront/tyreStorefront';
+import { isFootwearElevatedStore } from '@/lib/storefront/footwearStorefront';
 import { isElectronicsElevatedStore } from '@/lib/storefront/electronicsStorefront';
 import { isPrescriptionRequiredProduct, buildPharmacyPrescriptionContactHref } from '@/lib/storefront/pharmacyProducts';
 import { PharmacyPrescriptionCta } from '@/components/storefront/pharmacy/PharmacyPrescriptionCta';
@@ -50,6 +51,7 @@ export function ProductCard({ product, businessDomain, variant = 'default' }) {
   const fitnessStore = isFitnessElevatedStore(business?.category);
   const pharmacyStore = isPharmacyElevatedStore(business?.category);
   const tyreStore = isTyreElevatedStore(business?.category);
+  const footwearStore = isFootwearElevatedStore(business?.category);
   const electronicsStore = isElectronicsElevatedStore(business?.category);
   const requiresPrescription = pharmacyStore && isPrescriptionRequiredProduct(product);
   const bookableFitness = fitnessStore && isFitnessBookableProduct(product);
@@ -82,9 +84,19 @@ export function ProductCard({ product, businessDomain, variant = 'default' }) {
   const showPartsMeta = isAutoPartsFinderStore(business?.category);
   const showMarineMeta = isMarinePartsFinderStore(business?.category);
   const showFashionMeta = isFashionEditorialStore(business?.category);
-  const sourcingBadge = showFashionMeta || tyreStore ? resolveSourcingBadge(product.domain_data) : null;
+  const sourcingBadge = showFashionMeta || tyreStore || footwearStore ? resolveSourcingBadge(product.domain_data) : null;
   const tyreSizeHint = tyreStore
     ? buildTyreAttributeRows(product).find((row) => row.key === 'tyresize')?.value
+    : '';
+  const footwearHint = footwearStore
+    ? (() => {
+        const dd = product.domain_data || {};
+        const size = dd.size ? `Size ${dd.size}` : '';
+        const condition = String(dd.condition || '')
+          .replace(/_/g, ' ')
+          .replace(/\b\w/g, (c) => c.toUpperCase());
+        return [size, condition].filter(Boolean).join(' · ');
+      })()
     : '';
   const electronicsHint = electronicsStore
     ? (() => {
@@ -195,7 +207,7 @@ export function ProductCard({ product, businessDomain, variant = 'default' }) {
               fallbackSrc={imageFallback && imageFallback !== displayImage ? imageFallback : undefined}
               className={cn(
                 'transition-transform duration-500 group-hover:scale-[1.03]',
-                fitnessStore ? 'object-contain p-2' : 'object-cover'
+                fitnessStore || (footwearStore && isDense) ? 'object-contain p-2' : 'object-cover'
               )}
               sizes={
                 isDense
@@ -212,7 +224,13 @@ export function ProductCard({ product, businessDomain, variant = 'default' }) {
 
         <div className="pointer-events-none absolute left-2 top-2 z-10 flex flex-col gap-1">
           {discount > 0 && (
-            <Badge className="border-0 bg-red-600 px-1.5 py-0 text-[10px] font-bold text-white">
+            <Badge
+              className={cn(
+                'border-0 px-1.5 py-0 text-[10px] font-bold',
+                footwearStore ? 'text-zinc-950' : 'bg-red-600 text-white'
+              )}
+              style={footwearStore ? { backgroundColor: accent } : undefined}
+            >
               -{discount}%
             </Badge>
           )}
@@ -295,7 +313,7 @@ export function ProductCard({ product, businessDomain, variant = 'default' }) {
           </button>
         )}
 
-        {isDense && categoryLabel && (
+        {isDense && categoryLabel && !footwearStore && (
           <div className="pointer-events-none absolute bottom-2 left-2 z-10">
             <span className={cn(
               'rounded-md px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide shadow-sm',
@@ -404,15 +422,20 @@ export function ProductCard({ product, businessDomain, variant = 'default' }) {
         {tyreStore && tyreSizeHint && !isDense && (
           <p className="truncate text-[10px] font-semibold text-zinc-600">{tyreSizeHint}</p>
         )}
+        {footwearStore && footwearHint && !isDense && (
+          <p className="truncate text-[10px] font-semibold text-zinc-600">{footwearHint}</p>
+        )}
 
         {electronicsStore && electronicsHint && !isDense && (
           <p className="truncate text-[10px] font-semibold text-slate-600">{electronicsHint}</p>
         )}
 
-        {product.rating && !isDense && (
+        {product.rating && (!isDense || footwearStore) && (
           <div className="flex items-center gap-1">
             <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
-            <span className="text-xs font-semibold text-slate-700">{Number(product.rating).toFixed(1)}</span>
+            <span className={cn('text-xs font-semibold', fitnessStore ? 'text-white' : 'text-slate-700')}>
+              {Number(product.rating).toFixed(1)}
+            </span>
             {product.review_count > 0 && (
               <span className="text-xs text-slate-400">({product.review_count})</span>
             )}
@@ -423,9 +446,10 @@ export function ProductCard({ product, businessDomain, variant = 'default' }) {
           <span
             className={cn(
               'store-price font-semibold tabular-nums',
-              fitnessStore ? 'text-white' : 'text-slate-900',
+              fitnessStore ? 'text-white' : footwearStore && discount > 0 ? '' : 'text-slate-900',
               isDense ? 'text-xs sm:text-sm' : 'text-sm sm:text-base'
             )}
+            style={footwearStore && discount > 0 ? { color: accent } : undefined}
           >
             {formatCurrency(product.price, currency)}
           </span>

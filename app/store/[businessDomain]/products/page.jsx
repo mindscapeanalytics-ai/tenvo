@@ -21,6 +21,7 @@ import {
 import { isRestaurantElevatedStore, resolveRestaurantTheme } from '@/lib/storefront/restaurantStorefront';
 import { isPharmacyElevatedStore } from '@/lib/storefront/pharmacyStorefront';
 import { isTyreElevatedStore, enrichTyreProductsWithSeedImages } from '@/lib/storefront/tyreStorefront';
+import { isFootwearElevatedStore, enrichFootwearProductsWithSeedImages } from '@/lib/storefront/footwearStorefront';
 import { isElectronicsElevatedStore, enrichElectronicsProductsWithSeedImages } from '@/lib/storefront/electronicsStorefront';
 import { ElectronicsShopLayout } from '@/components/storefront/electronics/ElectronicsShopLayout';
 import {
@@ -93,6 +94,7 @@ export default async function ProductsPage({ params, searchParams }) {
   const restaurantStore = isRestaurantElevatedStore(business.category);
   const pharmacyStore = isPharmacyElevatedStore(business.category);
   const tyreStore = isTyreElevatedStore(business.category);
+  const footwearStore = isFootwearElevatedStore(business.category);
   const electronicsStore = isElectronicsElevatedStore(business.category);
 
   // Parse filters from search params
@@ -119,6 +121,8 @@ export default async function ProductsPage({ params, searchParams }) {
     fabric: typeof sp?.fabric === 'string' ? sp.fabric : undefined,
     sourcing: typeof sp?.sourcing === 'string' ? sp.sourcing : undefined,
     size: typeof sp?.size === 'string' ? sp.size : undefined,
+    gender: typeof sp?.gender === 'string' ? sp.gender : undefined,
+    style: typeof sp?.style === 'string' ? sp.style : undefined,
     equipmentType: typeof sp?.equipmentType === 'string' ? sp.equipmentType : undefined,
     vesselType: typeof sp?.vesselType === 'string' ? sp.vesselType : undefined,
     systemCondition: typeof sp?.systemCondition === 'string' ? sp.systemCondition : undefined,
@@ -174,7 +178,13 @@ export default async function ProductsPage({ params, searchParams }) {
                   ? 'Shop medicines'
                   : tyreStore
                     ? 'Shop tyres & wheels'
-                    : 'All products';
+                    : footwearStore
+                      ? filters.gender
+                        ? `${String(filters.gender).charAt(0).toUpperCase()}${String(filters.gender).slice(1)}'s shoes`
+                        : filters.style
+                          ? `${filters.style} shoes`
+                          : 'Shop shoes'
+                      : 'All products';
 
   if (restaurantStore) {
     const settings = storeSettings;
@@ -680,6 +690,10 @@ async function ProductGridContent({
 
   if (tyreStore) {
     products = enrichTyreProductsWithSeedImages(products, businessDomain);
+  }
+
+  if (footwearStore) {
+    products = enrichFootwearProductsWithSeedImages(products, businessDomain);
   }
 
   if (electronicsStore) {

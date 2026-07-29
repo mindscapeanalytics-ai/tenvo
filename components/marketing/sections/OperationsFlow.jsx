@@ -2,22 +2,27 @@
 
 import { useState, useEffect } from 'react';
 import * as LucideIcons from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
+import { marketingContent } from '@/lib/marketing/content';
+import {
+  MARKETING_CONTAINER,
+  MARKETING_EYEBROW,
+  MARKETING_LEAD,
+  MARKETING_SECTION,
+  MARKETING_SECTION_HEADING,
+} from '@/lib/utils/marketingLayout';
+import { cn } from '@/lib/utils';
+
+const DEFAULT_FLOW = marketingContent.operationsFlow;
 
 /**
- * OperationsFlow Component
- * 
- * Displays the 3-step operational flow: Capture -> Operate -> Control
- * Shows how the system works in a clear, visual manner.
- * 
- * @param {Object} props
- * @param {string} props.title - Section title
- * @param {string} props.subtitle - Section subtitle
- * @param {Array} props.steps - Array of step objects with icon, title, description
+ * Three-step operational flow: capture → operate → control.
  */
 export default function OperationsFlow({
-  title,
-  subtitle,
-  steps = []
+  id = 'how-it-works',
+  title = DEFAULT_FLOW.title,
+  subtitle = DEFAULT_FLOW.subtitle,
+  steps = DEFAULT_FLOW.steps,
 }) {
   const [mounted, setMounted] = useState(false);
 
@@ -25,70 +30,57 @@ export default function OperationsFlow({
     setMounted(true);
   }, []);
 
+  if (!steps?.length) return null;
+
   return (
-    <section className="py-16 lg:py-24 bg-white">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Section header */}
-        <div className="max-w-3xl mx-auto text-center mb-16">
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-neutral-900 mb-4">
-            {title}
-          </h2>
-          <p className="text-lg sm:text-xl text-neutral-600 leading-relaxed">
-            {subtitle}
-          </p>
+    <section
+      id={id}
+      className={cn(MARKETING_SECTION, 'scroll-mt-28 border-b border-neutral-200/80 bg-neutral-50')}
+    >
+      <div className={MARKETING_CONTAINER}>
+        <div className="mx-auto mb-8 max-w-3xl text-center sm:mb-10 lg:mb-12">
+          <p className={cn(MARKETING_EYEBROW, 'mb-3')}>How it works</p>
+          <h2 className={MARKETING_SECTION_HEADING}>{title}</h2>
+          {subtitle ? <p className={cn(MARKETING_LEAD, 'mt-4')}>{subtitle}</p> : null}
         </div>
 
-        {/* Steps grid */}
-        <div className="grid md:grid-cols-3 gap-8 lg:gap-12 max-w-6xl mx-auto">
+        <div className="mx-auto grid max-w-6xl gap-6 md:grid-cols-3 md:gap-8">
           {steps.map((step, index) => {
             const StepIcon = step.icon ? LucideIcons[step.icon] : null;
-            
+
             return (
-              <div
-                key={step.id}
-                className={`relative ${mounted ? 'animate-fade-in-up' : 'opacity-0'}`}
-                style={{ animationDelay: `${index * 150}ms` }}
-              >
-                {/* Connector line (hidden on mobile, shown on desktop between steps) */}
-                {index < steps.length - 1 && (
-                  <div className="hidden md:block absolute top-16 left-full w-full h-0.5 bg-brand-primary -translate-x-1/2 z-0" />
+              <article
+                key={step.id || step.title}
+                className={cn(
+                  'relative rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm sm:p-8',
+                  'motion-safe:transition-[border-color,box-shadow] motion-safe:duration-300 motion-safe:hover:border-brand-primary/25 motion-safe:hover:shadow-md',
+                  mounted ? 'animate-fade-in-up' : 'opacity-0'
                 )}
+                style={{ animationDelay: `${index * 120}ms` }}
+              >
+                <span className="absolute right-5 top-5 text-[10px] font-semibold tabular-nums text-neutral-400">
+                  {String(index + 1).padStart(2, '0')}
+                </span>
 
-                <div className="relative bg-white rounded-2xl p-8 border-2 border-neutral-200 hover:border-brand-300 hover:shadow-xl transition-all duration-300 group">
-                  {/* Step number badge */}
-                  <div className="absolute -top-4 -right-4 w-10 h-10 bg-brand-primary text-white rounded-full flex items-center justify-center font-bold text-lg shadow-lg">
-                    {index + 1}
+                {StepIcon ? (
+                  <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-brand-primary/10 text-brand-primary">
+                    <StepIcon className="h-5 w-5" aria-hidden />
                   </div>
+                ) : null}
 
-                  {/* Icon */}
-                  {StepIcon && (
-                    <div className="w-16 h-16 bg-brand-50 rounded-xl flex items-center justify-center mb-6 group-hover:bg-brand-100 transition-colors duration-300">
-                      <StepIcon className="w-8 h-8 text-brand-primary" />
-                    </div>
-                  )}
-
-                  {/* Title */}
-                  <h3 className="text-2xl font-bold text-neutral-900 mb-3">
-                    {step.title}
-                  </h3>
-
-                  {/* Description */}
-                  <p className="text-neutral-600 leading-relaxed">
-                    {step.description}
-                  </p>
-                </div>
-              </div>
+                <h3 className="text-lg font-semibold text-neutral-900">{step.title}</h3>
+                <p className="mt-2 text-sm font-medium leading-relaxed text-neutral-600">
+                  {step.description}
+                </p>
+              </article>
             );
           })}
         </div>
 
-        {/* Bottom decorative element */}
-        <div className="mt-16 flex justify-center">
-          <div className="flex items-center gap-2 text-sm text-neutral-500">
-            <LucideIcons.ArrowRight className="w-4 h-4" />
-            <span>Seamless integration across all steps</span>
-          </div>
-        </div>
+        <p className="mt-8 flex items-center justify-center gap-2 text-sm font-medium text-neutral-500">
+          <ArrowRight className="h-4 w-4 shrink-0" aria-hidden />
+          Same catalog from import through POS, storefront, and finance
+        </p>
       </div>
     </section>
   );

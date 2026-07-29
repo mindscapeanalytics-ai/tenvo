@@ -45,13 +45,14 @@ export default function MarketingCrmSolutionsPage() {
     <MarketingLayout>
       <Hero
         variant="centered"
+        sectionClassName="border-b border-neutral-200/80"
         badge="Growth & customer experience"
         title={
           <>
             Marketing & CRM that share <span className="text-brand-primary">one source of truth</span>
           </>
         }
-        subtitle="Campaigns, loyalty, analytics, and B2B selling - wired to the same products, orders, and payments as your storefront and POS. Positioned for teams comparing TENVO to stitched Current Solutions + spreadsheets."
+        subtitle="Campaigns, loyalty, analytics, and B2B selling wired to the same products, orders, and payments as your storefront and POS. Built for teams comparing TENVO to stitched storefront + CRM + spreadsheet stacks."
         primaryCTA={{ text: 'Start free trial', href: '/register' }}
         secondaryCTA={{ text: 'Compare positioning', href: '/why-tenvo' }}
       />
@@ -61,12 +62,28 @@ export default function MarketingCrmSolutionsPage() {
           <div className="mx-auto mb-8 max-w-3xl text-center sm:mb-10 lg:mb-14">
             <p className={cn(MARKETING_EYEBROW, 'mb-3')}>Why this page exists</p>
             <h2 className={MARKETING_SECTION_HEADING}>
-              Subscribers choose suites that cover operations and growth
+              Operations suites first, growth modules on the same ledger
             </h2>
             <p className={cn(MARKETING_LEAD, 'mt-4')}>
-              Shopify wins on storefront + apps; Zoho wins on breadth. TENVO&apos;s story is{' '}
-              <strong className="font-semibold text-neutral-800">one hub</strong>: when campaigns and CRM read the same stock and
-              arguments about which system is right.
+              Shopify wins on storefront plus apps. Zoho wins on breadth. TENVO&apos;s story is{' '}
+              <strong className="font-semibold text-neutral-800">one hub</strong>: campaigns and CRM read the same stock and
+              orders as POS, so teams stop arguing about which system is right.
+            </p>
+            <p className={cn(MARKETING_LEAD, 'mt-3 text-sm')}>
+              Pick an Industry Plan for day-one vertical packaging, then return here for loyalty, campaigns, and quotations.
+              Examples:{' '}
+              <Link href="/solutions/clothing-commerce" className="font-semibold text-brand-primary underline-offset-2 hover:underline">
+                Clothing
+              </Link>
+              {', '}
+              <Link href="/solutions/milk-commerce" className="font-semibold text-brand-primary underline-offset-2 hover:underline">
+                Milk
+              </Link>
+              {', '}
+              <Link href="/solutions/pharmacy-commerce" className="font-semibold text-brand-primary underline-offset-2 hover:underline">
+                Pharmacy
+              </Link>
+              .
             </p>
           </div>
 

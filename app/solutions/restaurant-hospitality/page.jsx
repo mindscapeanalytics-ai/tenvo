@@ -10,100 +10,100 @@ import {
 } from 'lucide-react';
 import SolutionPageTemplate from '@/components/marketing/sections/SolutionPageTemplate';
 import { getDemoStoreHeroByDomain } from '@/lib/marketing/demoStoreGalleryMeta';
+import { PLAN_TIERS } from '@/lib/config/plans';
+import { formatCurrency } from '@/lib/currency';
 
 const HERO_IMAGE = getDemoStoreHeroByDomain('demo-restaurant');
+const business = PLAN_TIERS.business;
 
 export default function RestaurantHospitalityPage() {
   return (
     <SolutionPageTemplate
-      badge="Restaurant & Café"
+      badge="Restaurant & Café · Partial depth"
       title={
         <>
           Restaurant POS with <br />
-          <span className="text-brand-primary">kitchen display integration</span>
+          <span className="text-brand-primary">menu, modes, and kitchen flow</span>
         </>
       }
-      subtitle="Manage dine-in, takeaway, and delivery orders with digital menus, kitchen coordination, and table management in one hospitality platform."
+      subtitle="Dine-in, takeaway, and delivery on one restaurant ledger with a Foodpanda-style public menu. Kitchen display is Partial on Business+. Not a separate Industry Plan SKU yet. Confirm KDS depth on a demo."
       heroImage={HERO_IMAGE}
-      heroImageAlt="Restaurant POS and kitchen display system"
-
-      problemStatement="Restaurants need more than a cash register"
+      heroImageAlt="Restaurant POS and digital menu"
+      includeTestimonials={false}
+      problemStatement="Restaurants need more than a generic retail till"
       painPoints={[
         'Paper tickets get lost between front desk and kitchen',
-        'No real-time visibility of table occupancy and order status',
-        'Separate systems for dine-in, takeaway, and delivery',
-        'Kitchen staff cannot prioritize orders or manage prep time',
-        'Daily sales reconciliation takes hours of manual work',
-        'Cannot track ingredient costs and menu profitability',
+        'Dine-in, takeaway, and delivery tracked in separate tools',
+        'Online menu that does not share the kitchen queue',
+        'Table number and delivery fee rules living in staff memory',
+        'End-of-day reconciliation across channels takes too long',
+        'Buying software that overclaims full workforce HR depth',
       ]}
-
-      solutionTitle="Complete restaurant operations platform"
-      solutionDescription="TENVO connects your front desk, kitchen, and delivery workflows. Digital orders flow instantly to kitchen displays, staff track table status in real-time, and daily reports show exactly what sold and what's profitable."
-
+      solutionTitle="Restaurant-cafe vertical on the TENVO hub"
+      solutionDescription="RestaurantPOS, elevated storefront menu, sticky bag bar multi-add, and order modes that persist through checkout into restaurant_orders. KDS is Available as Partial on Business+. Attendance/shift UIs stay early. Payroll depth is Business+ with honest caveats."
       features={[
         {
           icon: ChefHat,
-          title: 'Kitchen Display System',
+          title: 'Kitchen display (Partial)',
           description:
-            'Orders appear on kitchen screens instantly. Chefs mark items complete, and front desk sees live prep status.',
+            'Kitchen display flows on Business+. Confirm prep-status depth on a demo before buying primarily for KDS.',
         },
         {
           icon: UtensilsCrossed,
-          title: 'Table Management',
+          title: 'Order modes',
           description:
-            'Visual floor plan, table assignments, merge tables, split bills, and track dine-in vs takeaway orders separately.',
+            'Delivery, takeaway (collection), and dine-in with table number where required. Fees recalculated server-side from Store Settings.',
         },
         {
           icon: Receipt,
-          title: 'Digital Menu & POS',
+          title: 'Restaurant POS',
           description:
-            'Touch-optimized menu with modifiers, combo deals, and quick order entry. Print KOTs and customer receipts.',
+            'Dedicated restaurant till on the restaurant_orders ledger (not generic retail POS), with receipts and open-order style kitchen flow.',
         },
         {
           icon: Clock,
-          title: 'Order Mode Tracking',
+          title: 'Quiet multi-add menu',
           description:
-            'Separate order flows for dine-in, takeaway, and delivery with mode-specific pricing and preparation instructions.',
+            'Public digital menu stays on-page while guests build the bag. Sticky View bag / Checkout for faster multi-item orders.',
         },
         {
           icon: Smartphone,
-          title: 'Online Ordering',
+          title: 'Online ordering',
           description:
-            'Branded online menu for takeaway and delivery. Orders flow into the same kitchen queue as walk-ins.',
+            'Branded elevated restaurant storefront. Orders land in the same hub fulfilment path as walk-ins.',
         },
         {
           icon: Users,
-          title: 'Staff & Shift Management',
+          title: 'Staff & payroll caveats',
           description:
-            'Track waiter performance, cashier shifts, and kitchen efficiency. Daily sales reports per shift and staff member.',
+            'Payroll runs on Business+. Attendance and shift scheduling UIs are early. Confirm HR scope on a meeting before buying for workforce depth.',
         },
       ]}
-
       demoStoreName="Restaurant"
       demoStoreUrl="/store/demo-restaurant"
-      demoStoreDescription="Try our full-featured restaurant demo with digital menu, table management, and order tracking."
-
+      demoStoreDescription="Try the Roll Inn style demo menu and order modes. Use a sales walkthrough for KDS and plan fit."
       recommendedPlan={{
-        name: 'Business',
-        tagline: 'For restaurants with kitchen display needs',
-        price: 'PKR 39,500',
+        name: business?.name || 'Business',
+        tagline: 'Recommended when you need kitchen display and broader hospitality modules',
+        price: formatCurrency(business?.price_pkr || 0, 'PKR'),
+        description:
+          'Professional can cover lighter cafe retail. Business is the honest tier when KDS and deeper ops matter. See Pricing for Free/Starter POS entry.',
       }}
       planFeatures={[
-        'Kitchen Display System (KDS)',
-        'Table management and floor plan',
-        'Order mode tracking (dine-in/takeaway/delivery)',
-        'Online menu and ordering',
-        'Staff and shift management',
-        'Recipe costing and profitability',
-        'Daily sales and kitchen performance reports',
-        'Multi-location support',
+        'RestaurantPOS + restaurant_orders ledger',
+        'Elevated digital menu and online orders',
+        'Delivery / takeaway / dine-in modes',
+        'Kitchen display on Business+ (Partial)',
+        'Owner delivery fees from Store Settings',
+        'Hub order fulfilment for online tickets',
+        'Inventory shared with retail catalog where used',
+        'HR/attendance: early UIs (confirm on demo)',
       ]}
-
       successMetrics={[
-        { value: 'Zero', label: 'Lost tickets' },
-        { value: '25%', label: 'Faster table turnover' },
-        { value: '30%', label: 'More online orders' },
-        { value: '5 mins', label: 'Daily reconciliation' },
+        { value: '3 modes', label: 'Dine-in · takeaway · delivery' },
+        { value: '1 menu', label: 'Public + kitchen path' },
+        { value: 'Partial', label: 'KDS on Business+' },
+        { value: 'demo', label: 'Live menu preview' },
       ]}
     />
   );

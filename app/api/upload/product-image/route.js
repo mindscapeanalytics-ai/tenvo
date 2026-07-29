@@ -210,10 +210,10 @@ export async function POST(request) {
 }
 
 /**
- * GET /api/upload/product-image?q=product+name&category=retail
+ * GET /api/upload/product-image
  *
- * Auto-fetch a relevant product image from Unsplash by search query.
- * Returns a direct Unsplash CDN URL (no API key needed for source.unsplash.com).
+ * Auto-fetch via Unsplash source URLs is retired (legacy Unsplash source endpoint deprecated).
+ * Use Upload or URL paste in ProductImageManager instead.
  */
 export async function GET(request) {
   try {
@@ -222,27 +222,13 @@ export async function GET(request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { searchParams } = new URL(request.url);
-    const q = searchParams.get('q')?.trim();
-    const category = searchParams.get('category')?.trim() || '';
-
-    if (!q) {
-      return NextResponse.json({ error: 'Search query required' }, { status: 400 });
-    }
-
-    const terms = [q, category].filter(Boolean).join(' ');
-    const encoded = encodeURIComponent(terms);
-    const unsplashUrl = `https://source.unsplash.com/800x800/?${encoded}`;
-
-    const res = await fetch(unsplashUrl, { method: 'HEAD', redirect: 'follow' });
-    const finalUrl = res.url;
-
-    if (!finalUrl || finalUrl.includes('unsplash.com/photo/') === false) {
-      const fallbackUrl = `https://source.unsplash.com/800x800/?${encodeURIComponent(q)}`;
-      return NextResponse.json({ success: true, url: fallbackUrl, source: 'unsplash' });
-    }
-
-    return NextResponse.json({ success: true, url: finalUrl, source: 'unsplash' });
+    return NextResponse.json(
+      {
+        error:
+          'Auto-fetch is unavailable. Upload a file or paste an https:// image URL instead.',
+      },
+      { status: 410 }
+    );
   } catch (error) {
     console.error('[upload/product-image GET] Error:', error);
     return NextResponse.json({ error: 'Failed to fetch image' }, { status: 500 });

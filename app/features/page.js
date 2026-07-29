@@ -3,16 +3,15 @@
 import Link from 'next/link';
 import MarketingLayout from '@/components/marketing/layout/MarketingLayout';
 import Hero from '@/components/marketing/sections/Hero';
-import FeaturesGrid from '@/components/marketing/sections/FeaturesGrid';
+import FeaturesModuleNav from '@/components/marketing/sections/FeaturesModuleNav';
+import FeaturesInventorySection from '@/components/marketing/sections/FeaturesInventorySection';
 import OperationsFlow from '@/components/marketing/sections/OperationsFlow';
-import CommerceAndIntelligenceSection from '@/components/marketing/sections/CommerceAndIntelligenceSection';
 import HomeSecurityTrustSection from '@/components/marketing/sections/HomeSecurityTrustSection';
 import CTASection from '@/components/marketing/sections/CTASection';
 import MarketingFeatureCard from '@/components/marketing/ui/MarketingFeatureCard';
+import { MarketingSection } from '@/components/marketing/layout/MarketingSection';
 import { FEATURE_PAGE_CARDS } from '@/lib/marketing/homeVisualThemes';
-import { marketingContent } from '@/lib/marketing/content';
 import {
-  MARKETING_CONTAINER,
   MARKETING_EYEBROW,
   MARKETING_LEAD,
   MARKETING_SECTION_HEADING,
@@ -21,80 +20,79 @@ import {
 export default function FeaturesPage() {
   return (
     <MarketingLayout>
-      <Hero
-        variant="centered"
-        badge="Enterprise Capabilities"
-        title={
-          <>
-            Everything You Need to <br />
-            <span className="text-brand-primary">Run Your Business</span>
-          </>
-        }
-        subtitle="Storefront, POS, warehouses, accounting, and Pakistan-ready compliance in one platform - so operators are not paying for a patchwork of global apps that were never designed together."
-        primaryCTA={{
-          text: 'Start free',
-          href: '/register',
-        }}
-        secondaryCTA={{
-          text: 'Why TENVO',
-          href: '/why-tenvo',
-        }}
-      />
-
-      <div id="integrations" className="scroll-mt-28">
-        <FeaturesGrid
-          variant="grid"
-          title="Core ERP Capabilities"
-          subtitle="Integrated modules that work together seamlessly"
-          features={marketingContent.features}
+      <div className="border-b border-neutral-200/80 bg-white">
+        <Hero
+          variant="centered"
+          badge="Platform capabilities"
+          title={
+            <>
+              Everything you need to{' '}
+              <span className="text-brand-primary">run the business</span>
+            </>
+          }
+          subtitle="Storefront, POS, inventory, accounting, and Pakistan-ready tax in one hub. Each module below uses honest Available and Partial labels."
+          primaryCTA={{
+            text: 'Start free',
+            href: '/register',
+          }}
+          secondaryCTA={{
+            text: 'Industry Plans',
+            href: '/industry-plans',
+          }}
         />
-
-        <OperationsFlow />
+        <FeaturesModuleNav embedded />
       </div>
 
-      <CommerceAndIntelligenceSection variant="compact" />
+      <FeaturesInventorySection />
 
-      <section className="bg-white py-10 sm:py-16 lg:py-24">
-        <div className={MARKETING_CONTAINER}>
-          <div className="mx-auto mb-8 max-w-3xl space-y-3 text-center sm:mb-12 sm:space-y-4">
-            <p className={MARKETING_EYEBROW}>Advanced Features</p>
-            <h2 className={MARKETING_SECTION_HEADING}>Built for Scale</h2>
-            <p className={MARKETING_LEAD}>
-              Enterprise-grade features that grow with your business
-            </p>
-          </div>
+      <OperationsFlow />
 
-          <div className="grid gap-6 md:grid-cols-2 md:gap-8">
-            {FEATURE_PAGE_CARDS.map((card) => (
-              <MarketingFeatureCard
-                key={card.id}
-                id={card.id}
-                title={card.title}
-                description={card.description}
-                features={card.features}
-                heroImage={card.heroImage}
-                demoHref={card.href}
-                demoLabel={card.demoLabel}
-                accent={card.accent}
-              />
-            ))}
-          </div>
-          <p className="mx-auto mt-12 max-w-2xl text-center text-sm font-medium text-gray-500">
-            See how TENVO compares to stitched storefront and suite stacks for business buyers on{' '}
-            <Link href="/why-tenvo" className="font-semibold text-brand-primary hover:underline">
-              Why TENVO
-            </Link>
-            .
+      <MarketingSection id="platform-depth" className="border-b border-neutral-200/80 bg-white">
+        <div className="mx-auto mb-8 max-w-3xl space-y-3 text-center sm:mb-10 lg:mb-12">
+          <p className={MARKETING_EYEBROW}>Platform modules</p>
+          <h2 className={MARKETING_SECTION_HEADING}>Finance, channels, and intelligence</h2>
+          <p className={MARKETING_LEAD}>
+            Deep inventory coverage lives above. These cards cover manufacturing, books, tax,
+            storefront, POS, and analytics with plan-honest bullets and product imagery.
           </p>
         </div>
-      </section>
 
-      <HomeSecurityTrustSection />
+        <div className="grid gap-6 md:grid-cols-2 md:gap-8">
+          {FEATURE_PAGE_CARDS.map((card) => (
+            <MarketingFeatureCard
+              key={card.id}
+              id={card.id}
+              title={card.title}
+              description={card.description}
+              features={card.features}
+              heroImage={card.heroImage}
+              demoHref={card.demoLabel ? card.href : undefined}
+              demoLabel={card.demoLabel || undefined}
+              accent={card.accent}
+            />
+          ))}
+        </div>
+        <p className="mx-auto mt-10 max-w-2xl text-center text-sm font-medium text-neutral-500">
+          Vertical packaging and demo storefronts on{' '}
+          <Link href="/industry-plans" className="font-semibold text-brand-primary hover:underline">
+            Industry Plans
+          </Link>
+          . Growth modules on{' '}
+          <Link href="/solutions/marketing-crm" className="font-semibold text-brand-primary hover:underline">
+            Marketing & CRM
+          </Link>
+          .
+        </p>
+      </MarketingSection>
+
+      <div id="security" className="scroll-mt-28">
+        <HomeSecurityTrustSection />
+      </div>
 
       <CTASection
         variant="split"
-        title="Ready to Transform Your Business?"
-        subtitle="Join growing teams using TENVO to streamline inventory, sales, and finance in one workspace."
+        title="Ready to run inventory and sales in one hub?"
+        subtitle="Start free for core catalog and stock, then add warehouses, batch/serial, and channels as you grow."
         primaryCTA={{
           text: 'Start free',
           href: '/register',

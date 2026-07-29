@@ -128,6 +128,7 @@ assert(isFashionEditorialStore('boutique-fashion') === true, 'boutique-fashion i
 assert(isFashionEditorialStore('textile-wholesale') === true, 'textile-wholesale is editorial');
 assert(isFashionEditorialStore('gems-jewellery') === false, 'gems-jewellery excluded from editorial');
 assert(isFashionEditorialStore('textile-mill') === false, 'textile-mill excluded from editorial');
+assert(isFashionEditorialStore('leather-footwear') === false, 'leather-footwear uses elevated footwear, not editorial');
 assert(!FASHION_EDITORIAL_CANONICALS.has('gems-jewellery'), 'gems-jewellery not in editorial canonicals');
 assert(FASHION_EDITORIAL_EXCLUDED.has('textile-mill'), 'textile-mill in editorial excluded set');
 

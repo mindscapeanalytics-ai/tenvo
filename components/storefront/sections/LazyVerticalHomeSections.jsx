@@ -43,6 +43,9 @@ const TilesHomeSections = dynamicSection(() =>
 const TyreHomeSections = dynamicSection(() =>
   import('./tyre/TyreHomeSections').then((m) => ({ default: m.TyreHomeSections }))
 );
+const FootwearHomeSections = dynamicSection(() =>
+  import('./footwear/FootwearHomeSections').then((m) => ({ default: m.FootwearHomeSections }))
+);
 const ElectronicsHomeSections = dynamicSection(() =>
   import('./electronics/ElectronicsHomeSections').then((m) => ({ default: m.ElectronicsHomeSections }))
 );
@@ -77,6 +80,8 @@ export function LazyVerticalHomeSections({ variant, ...props }) {
       return <TilesHomeSections {...props} />;
     case 'tyre':
       return <TyreHomeSections {...props} />;
+    case 'footwear':
+      return <FootwearHomeSections {...props} />;
     case 'electronics':
       return <ElectronicsHomeSections {...props} />;
     case 'restaurant':

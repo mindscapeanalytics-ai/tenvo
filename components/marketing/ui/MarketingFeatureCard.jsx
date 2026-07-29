@@ -39,7 +39,7 @@ export default function MarketingFeatureCard({
         <div className="relative aspect-[21/9] w-full overflow-hidden bg-slate-100">
           <Image
             src={heroImage}
-            alt=""
+            alt={title ? `${title} preview` : ''}
             fill
             className="object-cover motion-safe:transition-transform motion-safe:duration-500 motion-safe:group-hover:scale-[1.02]"
             sizes="(max-width: 768px) 100vw, 50vw"

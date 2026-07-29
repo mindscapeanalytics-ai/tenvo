@@ -10,7 +10,6 @@ import { trackEvent, EVENTS } from '@/lib/analytics/tracking';
 import { cn } from '@/lib/utils';
 import {
   MARKETING_CONTAINER,
-  MARKETING_CONTAINER_NARROW,
   MARKETING_EYEBROW,
   MARKETING_H1,
   MARKETING_LEAD,
@@ -48,7 +47,9 @@ export default function Hero({
   image,
   imageAlt,
   variant = 'default',
-  badge = null
+  badge = null,
+  className,
+  sectionClassName,
 }) {
   // Normalize props - support both naming conventions
   const headlineText = headline || title;
@@ -112,8 +113,13 @@ export default function Hero({
   };
 
   // Render CTA buttons - tracking on Link ensures clicks are captured with asChild/Slot
-  const renderCTAs = () => (
-    <div className="flex w-full min-w-0 flex-col gap-3 sm:flex-row sm:items-stretch sm:gap-4">
+  const renderCTAs = ({ centered = false } = {}) => (
+    <div
+      className={cn(
+        'flex min-w-0 flex-col gap-3 sm:flex-row sm:items-stretch sm:gap-4',
+        centered ? 'w-full sm:w-auto' : 'w-full'
+      )}
+    >
       {primaryCTA && (
         <Button
           asChild
@@ -215,45 +221,52 @@ export default function Hero({
     );
   }
 
-  // Centered variant: Centered text with light themed standard hero matching pricing page
+  // Centered variant: centered text matching pricing / features / solutions CRM pages
   if (variant === 'centered') {
     return (
-      <section className="relative overflow-x-clip border-b border-neutral-200/80 bg-white py-10 sm:py-14 lg:py-24">
-        <div className={cn('relative mx-auto min-w-0 space-y-6 text-center sm:space-y-8', MARKETING_CONTAINER_NARROW)}>
-          <div className={`${mounted ? 'animate-fade-in-up' : 'opacity-0'} space-y-5 sm:space-y-6`}>
-            {renderBadge()}
-            
-            <h1 className={cn('mx-auto max-w-4xl', MARKETING_H1)}>
-              {headlineText}
-            </h1>
-            
-            <p className={cn('mx-auto max-w-2xl', MARKETING_LEAD)}>
-              {subheadlineText}
-            </p>
-            
-            <div className="flex w-full min-w-0 flex-col gap-3 pt-2 sm:flex-row sm:justify-center sm:gap-4 sm:pt-4">
-              {renderCTAs()}
-            </div>
-            
-            {stats && stats.length > 0 && (
-              <div className="grid grid-cols-2 gap-4 border-t border-neutral-200 pt-8 mt-8 sm:flex sm:flex-wrap sm:justify-center sm:gap-8 sm:pt-12 sm:mt-12">
+      <section
+        className={cn(
+          'relative overflow-x-clip bg-white py-10 sm:py-12 lg:py-14',
+          sectionClassName,
+          className
+        )}
+      >
+        <div className={cn('relative mx-auto min-w-0', MARKETING_CONTAINER)}>
+          <div
+            className={cn(
+              'mx-auto flex max-w-3xl flex-col items-center text-center',
+              mounted && 'motion-safe:animate-fade-in-up'
+            )}
+          >
+            {badge ? <div className="flex w-full justify-center">{renderBadge()}</div> : null}
+
+            <h1 className={cn('mt-5 w-full', MARKETING_H1)}>{headlineText}</h1>
+
+            <p className={cn('mt-4 w-full max-w-2xl', MARKETING_LEAD)}>{subheadlineText}</p>
+
+            {(primaryCTA || secondaryCTA) && (
+              <div className="mt-6 flex w-full justify-center">{renderCTAs({ centered: true })}</div>
+            )}
+
+            {stats && stats.length > 0 ? (
+              <div className="mt-10 grid w-full grid-cols-2 gap-4 border-t border-neutral-200 pt-8 sm:flex sm:flex-wrap sm:justify-center sm:gap-8 sm:pt-10">
                 {stats.map((stat, index) => {
                   const StatIcon = stat.icon ? LucideIcons[stat.icon] : null;
-                  
+
                   return (
                     <div key={index} className="text-center">
-                      {StatIcon && (
-                        <div className="flex items-center justify-center w-12 h-12 mx-auto mb-3 rounded-xl bg-slate-100 shadow-sm">
-                          <StatIcon className="w-6 h-6 text-slate-600" />
+                      {StatIcon ? (
+                        <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100 shadow-sm">
+                          <StatIcon className="h-6 w-6 text-slate-600" />
                         </div>
-                      )}
-                      <div className="text-3xl font-bold text-neutral-900">{stat.value}</div>
-                      <div className="text-sm text-neutral-500 mt-1">{stat.label}</div>
+                      ) : null}
+                      <div className="text-2xl font-semibold text-neutral-900 sm:text-3xl">{stat.value}</div>
+                      <div className="mt-1 text-sm font-medium text-neutral-500">{stat.label}</div>
                     </div>
                   );
                 })}
               </div>
-            )}
+            ) : null}
           </div>
         </div>
       </section>

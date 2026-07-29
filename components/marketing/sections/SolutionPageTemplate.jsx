@@ -19,8 +19,9 @@ import TestimonialCarousel from '../TestimonialCarousel';
 import { getBookMeetingHref } from '@/lib/marketing/salesLinks';
 
 /**
- * Reusable solution page template for vertical-specific landing pages.
- * Used for domain packages like auto-parts-commerce, pharmacy-commerce, etc.
+ * Reusable solution page template for non-package vertical landings
+ * (e.g. supermarket-grocery, restaurant-hospitality).
+ * Domain commercial suites use DomainPackageSolutionsPage instead.
  */
 
 export default function SolutionPageTemplate({

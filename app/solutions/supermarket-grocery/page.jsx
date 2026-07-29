@@ -10,8 +10,11 @@ import {
 } from 'lucide-react';
 import SolutionPageTemplate from '@/components/marketing/sections/SolutionPageTemplate';
 import { getDemoStoreHeroByDomain } from '@/lib/marketing/demoStoreGalleryMeta';
+import { PLAN_TIERS } from '@/lib/config/plans';
+import { formatCurrency } from '@/lib/currency';
 
 const HERO_IMAGE = getDemoStoreHeroByDomain('demo-supermarket');
+const professional = PLAN_TIERS.professional;
 
 export default function SupermarketGroceryPage() {
   return (
@@ -19,91 +22,88 @@ export default function SupermarketGroceryPage() {
       badge="Supermarket & Grocery"
       title={
         <>
-          Supermarket management <br />
+          Supermarket operations <br />
           <span className="text-brand-primary">from receiving to checkout</span>
         </>
       }
-      subtitle="Manage fresh produce, packaged goods, weight-based items, and high-turnover inventory with TENVO's grocery-optimized platform."
+      subtitle="Weight-aware POS, perishable-aware inventory, promotions, and an elevated public store on one hub. Honest scope: not a separate Industry Plan SKU yet. Start from Free/Starter POS or Professional for multi-location depth."
       heroImage={HERO_IMAGE}
       heroImageAlt="Supermarket inventory and POS system"
-
-      problemStatement="Grocery stores face high-velocity, perishable inventory"
+      includeTestimonials={false}
+      problemStatement="Grocery stores need high-velocity checkout and perishable discipline"
       painPoints={[
-        'Tracking thousands of SKUs with varying shelf lives',
-        'Weight-based pricing for fresh produce and bulk items',
-        'Managing promotions, discounts, and loyalty programs',
-        'High-frequency stock-outs and overstocking of perishables',
-        'Multiple suppliers, daily deliveries, and rapid turnover',
-        'Checkout speed and accuracy for high customer volume',
+        'Thousands of SKUs with mixed shelf lives and daily receiving',
+        'Weight-based pricing for fresh produce and bulk lines',
+        'Promotions and loyalty that must hit the same till as barcode sales',
+        'Stock-outs and wastage when FEFO and low-stock signals are missing',
+        'Multi-supplier deliveries without a clean purchase/receive path',
+        'Online grocery orders that disagree with counter stock',
       ]}
-
-      solutionTitle="Purpose-built for grocery and FMCG retail"
-      solutionDescription="TENVO handles weight-based items, batch tracking for perishables, rapid checkout with barcode scanning, and supplier management for daily deliveries. Track fresh produce separately from packaged goods with category-specific expiry rules."
-
+      solutionTitle="Retail OS tuned for grocery velocity"
+      solutionDescription="TENVO SuperStore POS handles barcode and weight-aware lines, hub inventory covers batch/expiry where enabled, and the supermarket elevated storefront shares the same catalog. Loyalty and campaigns attach on supported plans. Live FBR IRIS filing remains Roadmap."
       features={[
         {
           icon: Scale,
-          title: 'Weight-Based Items',
+          title: 'Weight-aware lines',
           description:
-            'Per-kg pricing for fresh produce, meat, and bulk items. Digital scale integration and tare weight management.',
+            'Per-kg style selling for fresh and bulk items in SuperStore POS. Pair with barcode for packaged SKUs on the same till.',
         },
         {
           icon: ShoppingBasket,
-          title: 'Rapid Checkout POS',
+          title: 'Rapid checkout POS',
           description:
-            'Barcode scanning, quick item search, and fast tender workflows. Handle high customer volume with minimal training.',
+            'Barcode lookup, product imagery, hold sales, and thermal receipts. Camera scan on plan gate via shared PosCameraScanner.',
         },
         {
           icon: Tag,
-          title: 'Promotions & Discounts',
+          title: 'Promotions & loyalty',
           description:
-            'Buy-one-get-one, percentage discounts, bundle deals, and loyalty card integration. Scheduled start/end dates.',
+            'Promotions and loyalty programs wired to POS and invoices on Professional+ (not a disconnected coupon app).',
         },
         {
           icon: BarChart3,
-          title: 'Perishable Tracking',
+          title: 'Perishable awareness',
           description:
-            'Separate expiry tracking for fresh vs packaged goods. Automated alerts for near-expiry produce and dairy.',
+            'Batch and near-expiry workflows where domain inventory features enable them. FEFO-friendly for chill and fresh categories.',
         },
         {
           icon: Truck,
-          title: 'Supplier Management',
+          title: 'Purchasing & receiving',
           description:
-            'Track daily deliveries from multiple suppliers. Purchase order management and receiving documentation.',
+            'Purchase orders and receiving documentation in the hub so daily supplier drops land against real stock.',
         },
         {
           icon: Users,
-          title: 'Customer Loyalty',
+          title: 'Elevated grocery store',
           description:
-            'Digital loyalty cards, points accumulation, and redemption at checkout. Targeted promotions for repeat customers.',
+            'Public supermarket storefront with category drawer chrome and hub order fulfilment. Open demo-supermarket to preview.',
         },
       ]}
-
       demoStoreName="Supermarket"
       demoStoreUrl="/store/demo-supermarket"
-      demoStoreDescription="Browse our grocery demo with 1,000+ SKUs, weight-based items, and promotional pricing."
-
+      demoStoreDescription="Browse the grocery demo storefront with live-style catalog rails. Confirm exact plan limits on Pricing."
       recommendedPlan={{
-        name: 'Professional',
-        tagline: 'Essential for supermarkets and grocery chains',
-        price: 'PKR 24,500',
+        name: professional?.name || 'Professional',
+        tagline: 'Strong fit for multi-SKU grocery with loyalty and finance depth',
+        price: formatCurrency(professional?.price_pkr || 0, 'PKR'),
+        description:
+          'Free and Starter cover core POS and inventory for smaller starts. Professional adds the depth most supermarket operators want before Enterprise custom limits.',
       }}
       planFeatures={[
-        'Unlimited products and categories',
-        'Weight-based item pricing',
-        'Barcode scanning and rapid checkout',
-        'Promotions and discount campaigns',
-        'Batch and expiry tracking',
-        '5 locations with inter-store transfers',
-        'Loyalty program integration',
-        'Supplier and purchase order management',
+        'Weight-aware and barcode POS (SuperStore)',
+        'Elevated supermarket storefront + order hub',
+        'Promotions and loyalty on supported tiers',
+        'Batch / expiry awareness where enabled',
+        'Purchase orders and receiving',
+        'Multi-warehouse on Professional+',
+        'Offline POS Phase 1 on plan gate',
+        'Tax summaries (Partial; live FBR IRIS is Roadmap)',
       ]}
-
       successMetrics={[
-        { value: '1,000+', label: 'SKUs managed' },
-        { value: '30 sec', label: 'Avg checkout time' },
-        { value: '20%', label: 'Reduced wastage' },
-        { value: 'PKR 5M', label: 'Monthly revenue' },
+        { value: '1 hub', label: 'Counter + online stock' },
+        { value: 'kg + scan', label: 'Fresh and pack dairy/produce' },
+        { value: 'Partial', label: 'Tax depth (honest label)' },
+        { value: 'demo', label: 'Live storefront preview' },
       ]}
     />
   );

@@ -37,6 +37,7 @@ import { isPharmacyElevatedStore } from '@/lib/storefront/pharmacyStorefront';
 import { isFurnitureElevatedStore } from '@/lib/storefront/furnitureStorefront';
 import { isTilesElevatedStore } from '@/lib/storefront/tilesStorefront';
 import { isTyreElevatedStore } from '@/lib/storefront/tyreStorefront';
+import { isFootwearElevatedStore } from '@/lib/storefront/footwearStorefront';
 import { isElectronicsElevatedStore } from '@/lib/storefront/electronicsStorefront';
 import { isFitnessElevatedStore } from '@/lib/storefront/fitnessStorefront';
 import { isSupermarketElevatedStore } from '@/lib/storefront/supermarketStorefront';
@@ -443,6 +444,29 @@ export function StoreSettingsManager({ business, category }) {
       brandStory2Cta: '',
       brandStory2Href: '',
     },
+    footwear: {
+      showSaleHero: true,
+      showPromoStrip: true,
+      showJustForYou: true,
+      showEnergyBand: true,
+      showRotationMosaic: true,
+      showThreeUp: true,
+      showFeatureSplit: true,
+      showCategoryTiles: true,
+      showBrandGrid: true,
+      showRewardsCta: true,
+      showTrustStrip: true,
+      showSizeFinder: true,
+      showTestimonials: false,
+      showMarketingBanners: true,
+      searchPlaceholder: '',
+      sizeGuideLabel: '',
+      featuredRailTitle: '',
+      featuredRailSubtitle: '',
+      saleHeroTitle: '',
+      saleHeroSubtitle: '',
+      promoStripText: '',
+    },
     electronics: {
       showTrustStrip: true,
       showCategoryTiles: true,
@@ -583,12 +607,13 @@ export function StoreSettingsManager({ business, category }) {
   const furnitureStore = isFurnitureElevatedStore(category || business?.category);
   const tilesStore = isTilesElevatedStore(category || business?.category);
   const tyreStore = isTyreElevatedStore(category || business?.category);
+  const footwearStore = isFootwearElevatedStore(category || business?.category);
   const electronicsStore = isElectronicsElevatedStore(category || business?.category);
   const fitnessStore = isFitnessElevatedStore(category || business?.category);
   const supermarketStore = isSupermarketElevatedStore(category || business?.category);
   const milkShopStore = isMilkShopStore(category || business?.category);
   const jewelleryStore = isJewelleryStore(category || business?.category);
-  const fashionStore = supportsFashionGulSections(category || business?.category) && !jewelleryStore;
+  const fashionStore = supportsFashionGulSections(category || business?.category) && !jewelleryStore && !footwearStore;
   const heroPreviewPreset = useMemo(() => {
     const domain = settings.storeDomain || business?.domain || 'preview';
     return getHeroPreset(
@@ -663,7 +688,7 @@ export function StoreSettingsManager({ business, category }) {
         settingsHydratedRef.current = true;
       }
       if (
-        (supportsFashionGulSections(category || business?.category) && !isJewelleryStore(category || business?.category))
+        (supportsFashionGulSections(category || business?.category) && !isJewelleryStore(category || business?.category) && !isFootwearElevatedStore(category || business?.category))
         || isJewelleryStore(category || business?.category)
       ) {
         const categoryResult = await getCategories(business.id);
@@ -739,6 +764,11 @@ export function StoreSettingsManager({ business, category }) {
     setSettings((prev) => ({
       ...prev,
       tyre: { ...(prev.tyre || {}), [key]: val },
+    }));
+  const setFootwear = (key, val) =>
+    setSettings((prev) => ({
+      ...prev,
+      footwear: { ...(prev.footwear || {}), [key]: val },
     }));
   const setElectronics = (key, val) =>
     setSettings((prev) => ({
@@ -2805,6 +2835,108 @@ export function StoreSettingsManager({ business, category }) {
                 </div>
                 <p className="text-xs text-gray-500">
                   Hero carousel slides are under Branding. Uploaded slides override tyre template defaults.
+                </p>
+              </CardContent>
+            </Card>
+          ) : null}
+
+          {footwearStore ? (
+            <Card>
+              <CardHeader className="pb-4">
+                <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                  <Megaphone className="w-4 h-4" /> Footwear storefront
+                </CardTitle>
+                <CardDescription>
+                  Foot Locker-style homepage modules. Brand color defaults to web yellow (#FFDA00); override under Branding.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {[
+                    ['showSaleHero', 'Split sale hero', false],
+                    ['showPromoStrip', 'Dark promo strip under hero', false],
+                    ['showJustForYou', 'Just for you product rail', false],
+                    ['showEnergyBand', 'Bring the energy band', false],
+                    ['showRotationMosaic', 'Refresh the rotation mosaic', false],
+                    ['showThreeUp', 'Three editorial banners', false],
+                    ['showFeatureSplit', 'Featured brand split', false],
+                    ['showTrendingRail', 'Trending product rail', false],
+                    ['showCategoryTiles', 'Men / Women / Kids / Accessories', false],
+                    ['showBrandGrid', 'Shop top brands grid', false],
+                    ['showRewardsCta', 'Rewards / join CTA', false],
+                    ['showTrustStrip', 'Footer trust benefits', false],
+                    ['showMarketingBanners', 'Custom marketing banners', true],
+                  ].map(([key, label, optIn]) => (
+                    <div key={key} className="flex items-center gap-2">
+                      <Switch
+                        checked={optIn ? settings.footwear?.[key] === true : settings.footwear?.[key] !== false}
+                        onCheckedChange={(v) => setFootwear(key, v)}
+                      />
+                      <Label className="text-sm">{label}</Label>
+                    </div>
+                  ))}
+                </div>
+                <Separator />
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label>Sale hero title</Label>
+                    <Input
+                      value={settings.footwear?.saleHeroTitle || ''}
+                      onChange={(e) => setFootwear('saleHeroTitle', e.target.value)}
+                      placeholder="Huge savings: up to 40% off"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Sale hero subtitle</Label>
+                    <Input
+                      value={settings.footwear?.saleHeroSubtitle || ''}
+                      onChange={(e) => setFootwear('saleHeroSubtitle', e.target.value)}
+                      placeholder="Nike, Adidas, New Balance and more"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Just for you title</Label>
+                    <Input
+                      value={settings.footwear?.featuredRailTitle || ''}
+                      onChange={(e) => setFootwear('featuredRailTitle', e.target.value)}
+                      placeholder="Just for you"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Trending rail title</Label>
+                    <Input
+                      value={settings.footwear?.trendingRailTitle || ''}
+                      onChange={(e) => setFootwear('trendingRailTitle', e.target.value)}
+                      placeholder="Trending now"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Promo strip text</Label>
+                    <Input
+                      value={settings.footwear?.promoStripText || ''}
+                      onChange={(e) => setFootwear('promoStripText', e.target.value)}
+                      placeholder="Members get exclusive drops…"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Search placeholder</Label>
+                    <Input
+                      value={settings.footwear?.searchPlaceholder || ''}
+                      onChange={(e) => setFootwear('searchPlaceholder', e.target.value)}
+                      placeholder="Search brand, style, or size…"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Size guide label</Label>
+                    <Input
+                      value={settings.footwear?.sizeGuideLabel || ''}
+                      onChange={(e) => setFootwear('sizeGuideLabel', e.target.value)}
+                      placeholder="Size guide"
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500">
+                  Homepage uses Foot Locker structure with yellow accents. Extra banners: Marketing sections editor.
                 </p>
               </CardContent>
             </Card>

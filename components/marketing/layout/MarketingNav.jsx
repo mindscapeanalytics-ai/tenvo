@@ -120,7 +120,7 @@ export default function MarketingNav({
   const verticalHrefs = {
     pos: '/features#pos-hospitality',
     manufacturing: '/features#manufacturing',
-    'sales-pipeline': '/solutions/clothing-commerce#wholesale',
+    'sales-pipeline': '/solutions/marketing-crm#sales-suite',
     storefront: '/features#storefront',
     restaurant: '/features#pos-hospitality',
   };

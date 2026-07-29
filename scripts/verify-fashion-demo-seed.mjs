@@ -11,7 +11,7 @@ import { getFashionEditorialConfig } from '../lib/storefront/fashionEditorial.js
 dotenv.config({ path: resolve(process.cwd(), '.env.local') });
 dotenv.config();
 
-const DOMAINS = ['demo-boutique', 'demo-textile', 'demo-jewellery', 'demo-footwear'];
+const DOMAINS = ['demo-boutique', 'demo-textile', 'demo-jewellery'];
 const errors = [];
 
 const pool = createPool();

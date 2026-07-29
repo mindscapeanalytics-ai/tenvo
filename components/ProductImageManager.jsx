@@ -2,8 +2,8 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react';
 import {
-  Upload, Link2, Sparkles, X, Check, Loader2,
-  ImagePlus, RefreshCw, Trash2,
+  Upload, Link2, Check, Loader2,
+  ImagePlus, Trash2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,7 +15,7 @@ import { MAX_PRODUCT_IMAGES } from '@/lib/utils/productImages';
 
 /**
  * Product image field for inventory forms.
- * Single image (default) or up to 3 optimized WebP uploads when maxImages > 1.
+ * Up to 3 optimized WebP uploads (or HTTPS URL paste). First image is primary.
  *
  * @param {{
  *   value?: string;
@@ -33,9 +33,9 @@ export function ProductImageManager({
   values,
   onChange,
   onChangeImages,
-  maxImages = 1,
-  productName = '',
-  category = '',
+  maxImages = MAX_PRODUCT_IMAGES,
+  productName: _productName = '',
+  category: _category = '',
   businessId = '',
 }) {
   const limit = Math.min(Math.max(1, maxImages), MAX_PRODUCT_IMAGES);
@@ -52,7 +52,6 @@ export function ProductImageManager({
   const [urlInput, setUrlInput] = useState('');
   const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [fetching, setFetching] = useState(false);
   const [activeSlot, setActiveSlot] = useState(0);
   const fileRef = useRef(null);
 
@@ -141,41 +140,9 @@ export function ProductImageManager({
     toast.success('Image URL applied');
   };
 
-  const autoFetch = async () => {
-    const q = productName.trim();
-    if (!q) {
-      toast.error('Enter a product name first');
-      return;
-    }
-    if (!canAddMore && activeSlot >= urls.length) {
-      toast.error(`Maximum ${limit} images allowed`);
-      return;
-    }
-    setFetching(true);
-    try {
-      const params = new URLSearchParams({ q, category });
-      const res = await fetch(`/api/upload/product-image?${params}`);
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Fetch failed');
-      const next = [...urls];
-      if (activeSlot < next.length) {
-        next[activeSlot] = data.url;
-      } else {
-        next.push(data.url);
-      }
-      commitUrls(next);
-      toast.success('Image fetched from internet');
-    } catch (err) {
-      toast.error(err.message || 'Could not fetch image');
-    } finally {
-      setFetching(false);
-    }
-  };
-
   const TABS = [
     { id: 'upload', label: 'Upload', icon: Upload },
     { id: 'url', label: 'URL', icon: Link2 },
-    { id: 'auto', label: 'Auto', icon: Sparkles },
   ];
 
   const primaryPreview = urls[0] || '';
@@ -337,55 +304,6 @@ export function ProductImageManager({
               <Check className="h-4 w-4" />
             </Button>
           </div>
-        </div>
-      )}
-
-      {tab === 'auto' && (
-        <div className="space-y-3">
-          <div className="rounded-2xl border border-purple-100 bg-gradient-to-br from-purple-50 to-blue-50 p-4">
-            <p className="mb-1 flex items-center gap-1.5 text-sm font-semibold text-purple-800">
-              <Sparkles className="h-4 w-4" />
-              Auto-fetch from internet
-            </p>
-            <p className="mb-3 text-xs text-purple-600">
-              Finds a relevant image from Unsplash using your product name
-              {productName ? (
-                <>
-                  , will search for <strong>&quot;{productName}&quot;</strong>
-                </>
-              ) : (
-                ' (enter a product name first)'
-              )}
-            </p>
-            <Button
-              type="button"
-              onClick={autoFetch}
-              disabled={fetching || !productName.trim()}
-              className="w-full gap-2 rounded-xl"
-            >
-              {fetching ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" /> Fetching…
-                </>
-              ) : (
-                <>
-                  <Sparkles className="h-4 w-4" /> Fetch Image
-                </>
-              )}
-            </Button>
-          </div>
-          {primaryPreview ? (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={autoFetch}
-              disabled={fetching}
-              className="w-full gap-2 rounded-xl text-xs"
-            >
-              <RefreshCw className={cn('h-3.5 w-3.5', fetching && 'animate-spin')} />
-              Try a different image
-            </Button>
-          ) : null}
         </div>
       )}
     </div>

@@ -4,11 +4,13 @@ import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { ChevronLeft, ChevronRight, ArrowRight } from 'lucide-react';
 import { ProductCard } from '@/components/storefront/ProductCard';
+import { StoreMarqueeRow } from '@/components/storefront/sections/shared/StoreMarqueeRow';
 import { cn } from '@/lib/utils';
 import { STORE_SECTION_HEADING } from '@/lib/utils/typography';
 import {
   STORE_PRODUCT_RAIL_TRACK_CLASS,
   STORE_PRODUCT_RAIL_ITEM_CLASS,
+  STORE_PRODUCT_RAIL_MARQUEE_SLIDE_CLASS,
   ensureRailProducts,
   resolveRailProductId,
 } from '@/lib/utils/storefrontProductRail';
@@ -16,6 +18,7 @@ import { useRailAutoScroll } from '@/lib/hooks/storefront/useRailAutoScroll';
 
 /**
  * Shared storefront product rail — 6 equal columns on lg, backfilled from catalog pool.
+ * Pass `marquee` for gym-style seamless CSS auto-scroll (dual track, pause on hover).
  */
 export function StoreProductRail({
   title,
@@ -32,6 +35,10 @@ export function StoreProductRail({
   maxItems = 12,
   accentColor,
   autoScroll = false,
+  /** Gym / fitness-style continuous CSS marquee (preferred over stepped autoScroll). */
+  marquee = false,
+  marqueeDurationSec = 42,
+  marqueeReverse = false,
   /** Optional card override (e.g. restaurant quiet-add menu cards). */
   CardComponent = ProductCard,
   cardAccent,
@@ -40,12 +47,18 @@ export function StoreProductRail({
   const [canLeft, setCanLeft] = useState(false);
   const [canRight, setCanRight] = useState(false);
 
-  useRailAutoScroll(trackRef, { enabled: autoScroll, interval: 4000, cooldown: 6000 });
-
   const railProducts = useMemo(
     () => ensureRailProducts(products, catalogPool ?? products, minItems, maxItems),
     [products, catalogPool, minItems, maxItems]
   );
+
+  const useMarquee = marquee && railProducts.length >= 4;
+
+  useRailAutoScroll(trackRef, {
+    enabled: autoScroll && !useMarquee,
+    interval: 4000,
+    cooldown: 6000,
+  });
 
   const update = useCallback(() => {
     const el = trackRef.current;
@@ -55,6 +68,7 @@ export function StoreProductRail({
   }, []);
 
   useEffect(() => {
+    if (useMarquee) return undefined;
     update();
     const el = trackRef.current;
     if (!el) return undefined;
@@ -64,7 +78,7 @@ export function StoreProductRail({
       el.removeEventListener('scroll', update);
       window.removeEventListener('resize', update);
     };
-  }, [railProducts, update]);
+  }, [railProducts, update, useMarquee]);
 
   const scroll = (dir) => {
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -74,6 +88,15 @@ export function StoreProductRail({
   };
 
   if (!railProducts.length) return null;
+
+  const renderCard = (product) => (
+    <CardComponent
+      product={product}
+      businessDomain={businessDomain}
+      variant={cardVariant}
+      accent={cardAccent || accentColor}
+    />
+  );
 
   return (
     <section id={id} className={cn('py-8 sm:py-12', className)}>
@@ -97,38 +120,51 @@ export function StoreProductRail({
                 <ArrowRight className="h-4 w-4" />
               </Link>
             ) : null}
-            <button
-              type="button"
-              onClick={() => scroll(-1)}
-              disabled={!canLeft}
-              className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-600 transition hover:border-emerald-300 disabled:opacity-30"
-              aria-label="Previous"
-            >
-              <ChevronLeft className="h-5 w-5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => scroll(1)}
-              disabled={!canRight}
-              className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-600 transition hover:border-emerald-300 disabled:opacity-30"
-              aria-label="Next"
-            >
-              <ChevronRight className="h-5 w-5" />
-            </button>
+            {!useMarquee ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => scroll(-1)}
+                  disabled={!canLeft}
+                  className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-600 transition hover:border-emerald-300 disabled:opacity-30"
+                  aria-label="Previous"
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => scroll(1)}
+                  disabled={!canRight}
+                  className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-600 transition hover:border-emerald-300 disabled:opacity-30"
+                  aria-label="Next"
+                >
+                  <ChevronRight className="h-5 w-5" />
+                </button>
+              </>
+            ) : null}
           </div>
         </div>
-        <div ref={trackRef} className={STORE_PRODUCT_RAIL_TRACK_CLASS}>
-          {railProducts.map((product) => (
-            <div key={resolveRailProductId(product)} className={STORE_PRODUCT_RAIL_ITEM_CLASS}>
-              <CardComponent
-                product={product}
-                businessDomain={businessDomain}
-                variant={cardVariant}
-                accent={cardAccent || accentColor}
-              />
-            </div>
-          ))}
-        </div>
+
+        {useMarquee ? (
+          <StoreMarqueeRow
+            items={railProducts}
+            enabled
+            fadeFrom="white"
+            durationSec={marqueeDurationSec}
+            reverse={marqueeReverse}
+            slideClassName={STORE_PRODUCT_RAIL_MARQUEE_SLIDE_CLASS}
+            gapClassName="gap-3 pr-3 sm:gap-4 sm:pr-4"
+            renderItem={(product) => renderCard(product)}
+          />
+        ) : (
+          <div ref={trackRef} className={STORE_PRODUCT_RAIL_TRACK_CLASS}>
+            {railProducts.map((product) => (
+              <div key={resolveRailProductId(product)} className={STORE_PRODUCT_RAIL_ITEM_CLASS}>
+                {renderCard(product)}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );
