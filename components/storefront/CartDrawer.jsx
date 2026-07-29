@@ -14,6 +14,7 @@ import { formatCurrency } from '@/lib/currency';
 import { cn } from '@/lib/utils';
 import { useCart } from '@/lib/hooks/storefront/useCart';
 import { useStorefront } from '@/lib/context/StorefrontContext';
+import { getEffectiveProductImageUrl } from '@/lib/storefront/productImageFallback';
 import { isRestaurantElevatedStore } from '@/lib/storefront/restaurantStorefront';
 import { RESTAURANT_CART_DRAWER_UI, RESTAURANT_CHECKOUT_UI } from '@/lib/storefront/restaurantMenu';
 import { useRestaurantChromeOptional } from '@/components/storefront/restaurant/RestaurantChromeContext';
@@ -186,19 +187,14 @@ export function CartDrawer() {
                       className="flex-shrink-0"
                     >
                       <div className="w-18 h-18 w-[72px] h-[72px] bg-gray-100 rounded-xl overflow-hidden">
-                        {item.image ? (
-                          <SmartProductImage
-                            src={item.image}
-                            alt={item.name}
-                            width={72}
-                            height={72}
-                            className="object-cover w-full h-full"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <Package className="w-6 h-6 text-gray-300" />
-                          </div>
-                        )}
+                        <SmartProductImage
+                          src={item.image || getEffectiveProductImageUrl(item, business?.category)}
+                          alt={item.name}
+                          width={72}
+                          height={72}
+                          fallbackSrc={getEffectiveProductImageUrl(item, business?.category)}
+                          className="object-cover w-full h-full"
+                        />
                       </div>
                     </Link>
 

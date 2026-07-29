@@ -63,9 +63,10 @@ export function SmartProductImage({
         ? safeFallback
         : ''
       : currentSrc;
+  const monogramLabel = placeholderLabel || alt || '';
   const monogramSrc =
-    placeholderLabel && !activeSrc
-      ? resolveBrandMonogramUrl(placeholderLabel)
+    monogramLabel && !activeSrc
+      ? resolveBrandMonogramUrl(monogramLabel)
       : '';
 
   const handleError = () => {

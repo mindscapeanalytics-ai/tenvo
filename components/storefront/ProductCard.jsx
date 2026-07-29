@@ -69,8 +69,7 @@ export function ProductCard({ product, businessDomain, variant = 'default' }) {
     business?.category,
     product.category_name || product.category
   );
-  const resolvedFallback =
-    imageFallback && imageFallback !== displayImage ? imageFallback : undefined;
+  const resolvedFallback = imageFallback || undefined;
   const inWishlist = isInWishlist(product.id);
   const isDense = variant === 'dense';
   const isCompact = variant === 'compact' || isDense;
