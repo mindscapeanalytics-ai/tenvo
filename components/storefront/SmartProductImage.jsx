@@ -48,12 +48,14 @@ export function SmartProductImage({
   const [failed, setFailed] = useState(false);
   const [fallbackFailed, setFallbackFailed] = useState(false);
   const [useObjectPublicFallback, setUseObjectPublicFallback] = useState(false);
+  const [usePlainImg, setUsePlainImg] = useState(false);
 
   useEffect(() => {
     setCurrentSrc(safeSrc || safeFallback);
     setFailed(false);
     setFallbackFailed(false);
     setUseObjectPublicFallback(false);
+    setUsePlainImg(false);
   }, [safeSrc, safeFallback]);
 
   // Prefer primary; if empty or failed, use fallback immediately (category tiles often have no src).
@@ -69,6 +71,10 @@ export function SmartProductImage({
       ? resolveBrandMonogramUrl(monogramLabel)
       : '';
 
+  const isLocalPublic = activeSrc.startsWith('/') && !activeSrc.startsWith('//');
+  const isData = activeSrc.startsWith('data:');
+  const isSvgType = /\.svg(\?|$)/i.test(activeSrc);
+
   const handleError = () => {
     if (
       shouldUseDirectCdnImage(currentSrc || activeSrc) &&
@@ -76,6 +82,11 @@ export function SmartProductImage({
       !failed
     ) {
       setUseObjectPublicFallback(true);
+      return;
+    }
+    // If next/image failed for a remote URL (e.g. optimizer hotlink 403), try plain <img> with no-referrer
+    if (!usePlainImg && !failed && (currentSrc || activeSrc) && !isLocalPublic && !isData && !isSvgType) {
+      setUsePlainImg(true);
       return;
     }
     if (safeFallback && !failed) {
@@ -172,8 +183,8 @@ export function SmartProductImage({
     return renderPlainImg(cdnSrc);
   }
 
-  // Unknown remotes: plain <img> — next/image throws Invalid src when host is not allowlisted.
-  if (!isAllowedNextImageSrc(renderSrc)) {
+  // Plain <img> fallback if next/image failed or host is not allowlisted
+  if (usePlainImg || !isAllowedNextImageSrc(renderSrc)) {
     return renderPlainImg(renderSrc);
   }
 

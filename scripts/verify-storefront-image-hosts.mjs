@@ -71,11 +71,10 @@ assert.match(gallery, /imageVariant="thumb"/, 'PDP thumbs must use thumb variant
 
 assert.equal(isAllowedNextImageSrc('https://images.unsplash.com/photo-1'), true);
 assert.equal(isAllowedNextImageSrc('https://www.gulahmedshop.com/cdn/shop/x.webp'), true);
-assert.equal(isAllowedNextImageSrc('https://imraneshop.com/pub/media/x.jpg'), false);
+assert.equal(isAllowedNextImageSrc('https://imraneshop.com/pub/media/x.jpg'), true);
 assert.equal(isAllowedNextImageSrc('/storefront/local.png'), true);
 
-assert.equal(isDeadImageUrl('https://imraneshop.com/pub/media/x.jpg'), true);
-assert.equal(isDeadImageUrl('https://www.imraneshop.com/x.jpg'), true);
+assert.equal(isDeadImageUrl('https://cloud.superme.al/x.jpg'), true);
 assert.equal(isDeadImageUrl('https://images.unsplash.com/photo-1592899677977-99c296376d88'), true);
 
 for (const p of ELECTRONICS_SEED_PRODUCTS) {

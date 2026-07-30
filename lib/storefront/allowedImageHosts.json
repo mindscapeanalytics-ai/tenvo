@@ -43,6 +43,8 @@
     { "protocol": "https", "hostname": "www.khazanay.pk" },
     { "protocol": "https", "hostname": "cdn.shopify.com" },
     { "protocol": "https", "hostname": "images.footlocker.com" },
+    { "protocol": "https", "hostname": "imraneshop.com" },
+    { "protocol": "https", "hostname": "**.imraneshop.com" },
     { "protocol": "https", "hostname": "assets.footlocker.com" }
   ]
 }
