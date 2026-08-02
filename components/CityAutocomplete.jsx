@@ -52,6 +52,7 @@ export function CityAutocomplete({ value, onChange, required = false, className 
                         variant="outline"
                         role="combobox"
                         aria-expanded={open}
+                        data-city-input
                         className="h-9 w-full justify-between rounded-lg border-gray-200 bg-white text-sm font-medium"
                     >
                         <div className="flex items-center gap-2 truncate min-w-0">

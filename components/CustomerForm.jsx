@@ -279,9 +279,9 @@ export function CustomerForm({
     return (
         <Card className={cn(
             'flex w-full flex-col overflow-hidden border-wine/15 shadow-xl',
-            embedded ? 'border-none shadow-none rounded-none' : 'max-w-2xl rounded-2xl max-h-[min(88vh,820px)]'
+            embedded ? 'border-none shadow-none rounded-none' : 'max-w-6xl rounded-2xl max-h-[min(92vh,900px)]'
         )}>
-            <CardHeader className="shrink-0 space-y-1 border-b border-wine/10 bg-wine/[0.03] px-3 py-3 sm:px-5 sm:py-4">
+            <CardHeader className="shrink-0 space-y-1 border-b border-wine/10 bg-wine/[0.03] px-4 py-3 sm:px-6 sm:py-3.5">
                 <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 space-y-0.5">
                         <CardTitle className="flex flex-wrap items-center gap-2 text-base font-bold text-wine">
@@ -300,7 +300,7 @@ export function CustomerForm({
                             )}
                         </CardTitle>
                         <CardDescription className="text-xs text-wine/60">
-                            Only name is required — add phone, location, and tax details when you need them
+                            Press Tab to move between fields • Only name is required
                         </CardDescription>
                     </div>
                     {onClose && (
@@ -347,18 +347,30 @@ export function CustomerForm({
                         </TabsList>
                     )}
 
-                    <TabsContent value="basic" className="mt-0 space-y-4">
-                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                            <div className="space-y-1.5">
-                                <Label className={MOBILE_LABEL_CLASS}>Customer Name *</Label>
-                                <Input value={formData.name || ''} onChange={(e) => handleInputChange('name', e.target.value)} placeholder="Full Name / Company" className={MOBILE_INPUT_CLASS} />
+                    <TabsContent value="basic" className="mt-0 space-y-5">
+                        <div className="grid grid-cols-1 gap-x-6 gap-y-4 md:grid-cols-3">
+                            <div className="space-y-1.5 md:col-span-2">
+                                <Label className={cn(MOBILE_LABEL_CLASS, 'font-semibold text-gray-700')}>Customer Name *</Label>
+                                <Input 
+                                    value={formData.name || ''} 
+                                    onChange={(e) => handleInputChange('name', e.target.value)} 
+                                    placeholder="Enter full name or company name" 
+                                    className={cn(MOBILE_INPUT_CLASS, 'h-10 text-[15px]')}
+                                    autoFocus
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                            e.preventDefault();
+                                            document.querySelector('input[name="phone-local"]')?.focus();
+                                        }
+                                    }}
+                                />
                                 {errors?.name && <FormError message={errors.name} />}
                             </div>
                             <div className="space-y-1.5">
-                                <Label className={MOBILE_LABEL_CLASS}>Phone</Label>
+                                <Label className={cn(MOBILE_LABEL_CLASS, 'font-semibold text-gray-700')}>Phone</Label>
                                 <div className="flex gap-2">
                                     <Select value={countryCode} onValueChange={setCountryCode}>
-                                        <SelectTrigger className="h-9 w-[100px] rounded-lg">
+                                        <SelectTrigger className="h-10 w-[100px] rounded-lg text-sm">
                                             <SelectValue placeholder="Code" />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -369,26 +381,72 @@ export function CustomerForm({
                                     </Select>
                                     <div className="relative flex-1">
                                         <Smartphone className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                                        <Input value={localPhone} onChange={(e) => setLocalPhone(e.target.value.replace(/[^\d\s-]/g, ''))} placeholder="300 1234567" className={cn(MOBILE_INPUT_CLASS, 'pl-9')} />
+                                        <Input 
+                                            name="phone-local"
+                                            value={localPhone} 
+                                            onChange={(e) => setLocalPhone(e.target.value.replace(/[^\d\s-]/g, ''))} 
+                                            placeholder="300 1234567" 
+                                            className={cn(MOBILE_INPUT_CLASS, 'pl-9 h-10 text-[15px]')}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') {
+                                                    e.preventDefault();
+                                                    document.querySelector('input[type="email"]')?.focus();
+                                                }
+                                            }}
+                                        />
                                     </div>
                                 </div>
                                 {errors?.phone && <FormError message={errors.phone} />}
                             </div>
-                            <div className="space-y-1.5">
-                                <Label className={MOBILE_LABEL_CLASS}>Email</Label>
-                                <Input value={formData.email || ''} onChange={(e) => handleInputChange('email', e.target.value)} placeholder="customer@example.com" className={MOBILE_INPUT_CLASS} />
+                            <div className="space-y-1.5 md:col-span-2">
+                                <Label className={cn(MOBILE_LABEL_CLASS, 'font-semibold text-gray-700')}>Email</Label>
+                                <Input 
+                                    type="email"
+                                    value={formData.email || ''} 
+                                    onChange={(e) => handleInputChange('email', e.target.value)} 
+                                    placeholder="customer@example.com" 
+                                    className={cn(MOBILE_INPUT_CLASS, 'h-10 text-[15px]')}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                            e.preventDefault();
+                                            const cityInput = document.querySelector('[data-city-input]');
+                                            cityInput?.focus();
+                                        }
+                                    }}
+                                />
                                 {errors?.email && <FormError message={errors.email} />}
                             </div>
                             <div className="space-y-1.5">
-                                <CityAutocomplete value={formData.city} onChange={(val) => handleInputChange('city', val)} required={false} />
+                                <CityAutocomplete 
+                                    value={formData.city} 
+                                    onChange={(val) => handleInputChange('city', val)} 
+                                    required={false}
+                                />
                                 {errors?.city && <FormError message={errors.city} />}
                             </div>
-                            <div className="space-y-1.5 md:col-span-2">
-                                <MarketLocationSelector value={formData.market_location} onChange={(val) => handleInputChange('market_location', val)} city={formData.city} required={false} language="en" />
+                            <div className="space-y-1.5 md:col-span-3">
+                                <MarketLocationSelector 
+                                    value={formData.market_location} 
+                                    onChange={(val) => handleInputChange('market_location', val)} 
+                                    city={formData.city} 
+                                    required={false} 
+                                    language="en" 
+                                />
                             </div>
-                            <div className="space-y-1.5 md:col-span-2">
-                                <Label className={MOBILE_LABEL_CLASS}>Billing Address</Label>
-                                <Input value={formData.address || ''} onChange={(e) => handleInputChange('address', e.target.value)} placeholder="Shop #, Market, Area" className={MOBILE_INPUT_CLASS} />
+                            <div className="space-y-1.5 md:col-span-3">
+                                <Label className={cn(MOBILE_LABEL_CLASS, 'font-semibold text-gray-700')}>Billing Address</Label>
+                                <Input 
+                                    value={formData.address || ''} 
+                                    onChange={(e) => handleInputChange('address', e.target.value)} 
+                                    placeholder="Shop #, Market, Area, Street" 
+                                    className={cn(MOBILE_INPUT_CLASS, 'h-10 text-[15px]')}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' && !isEasyMode && !isWaterRoute) {
+                                            e.preventDefault();
+                                            setActiveTab('tax');
+                                        }
+                                    }}
+                                />
                             </div>
                         </div>
 
@@ -425,41 +483,117 @@ export function CustomerForm({
                         )}
 
                         {isEasyMode && !isWaterRoute && (
-                            <div className="grid grid-cols-1 gap-4 border-t border-gray-100 pt-4 md:grid-cols-2">
+                            <div className="grid grid-cols-1 gap-x-6 gap-y-4 border-t border-gray-200 pt-5 md:grid-cols-3">
                                 <div className="space-y-1.5">
-                                    <Label className={MOBILE_LABEL_CLASS}>Credit Limit ({currency})</Label>
-                                    <Input type="number" value={formData.credit_limit || ''} onChange={(e) => handleInputChange('credit_limit', e.target.value)} placeholder="0" className={MOBILE_INPUT_CLASS} />
+                                    <Label className={cn(MOBILE_LABEL_CLASS, 'font-semibold text-gray-700 flex items-center gap-1.5')}>
+                                        <Wallet className="h-3.5 w-3.5" />
+                                        Credit Limit ({currency})
+                                    </Label>
+                                    <Input 
+                                        type="number" 
+                                        value={formData.credit_limit || ''} 
+                                        onChange={(e) => handleInputChange('credit_limit', e.target.value)} 
+                                        placeholder="0" 
+                                        className={cn(MOBILE_INPUT_CLASS, 'h-10 text-[15px] tabular-nums')}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                                e.preventDefault();
+                                                document.querySelector('input[name="opening-balance"]')?.focus();
+                                            }
+                                        }}
+                                    />
                                 </div>
                                 <div className="space-y-1.5">
-                                    <Label className={MOBILE_LABEL_CLASS}>Opening Balance ({currency})</Label>
-                                    <Input type="number" value={formData.opening_balance || ''} onChange={(e) => handleInputChange('opening_balance', e.target.value)} placeholder="0" className={MOBILE_INPUT_CLASS} />
+                                    <Label className={cn(MOBILE_LABEL_CLASS, 'font-semibold text-gray-700')}>Opening Balance ({currency})</Label>
+                                    <Input 
+                                        type="number" 
+                                        name="opening-balance"
+                                        value={formData.opening_balance || ''} 
+                                        onChange={(e) => handleInputChange('opening_balance', e.target.value)} 
+                                        placeholder="0" 
+                                        className={cn(MOBILE_INPUT_CLASS, 'h-10 text-[15px] tabular-nums')}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                                e.preventDefault();
+                                                handleSubmit();
+                                            }
+                                        }}
+                                    />
                                 </div>
                             </div>
                         )}
                     </TabsContent>
 
                     {!isWaterRoute && (
-                        <TabsContent value="tax" className="mt-0 space-y-4">
-                            <div className="grid grid-cols-1 gap-4 rounded-xl border border-dashed border-gray-200 bg-gray-50/50 p-4 md:grid-cols-2">
+                        <TabsContent value="tax" className="mt-0 space-y-5">
+                            <div className="grid grid-cols-1 gap-x-6 gap-y-4 rounded-xl border border-gray-200 bg-gray-50/50 p-5 md:grid-cols-3">
                                 {isPakistanMarket ? (
                                     <>
                                         <div className="space-y-1.5">
-                                            <Label className={MOBILE_LABEL_CLASS}>CNIC</Label>
-                                            <Input value={formData.cnic || ''} onChange={handleCNICChange} placeholder="42201-1234567-1" className={cn(MOBILE_INPUT_CLASS, 'font-mono')} maxLength={15} />
+                                            <Label className={cn(MOBILE_LABEL_CLASS, 'font-semibold text-gray-700')}>CNIC</Label>
+                                            <Input 
+                                                value={formData.cnic || ''} 
+                                                onChange={handleCNICChange} 
+                                                placeholder="42201-1234567-1" 
+                                                className={cn(MOBILE_INPUT_CLASS, 'font-mono h-10 text-[15px]')} 
+                                                maxLength={15}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter') {
+                                                        e.preventDefault();
+                                                        document.querySelector('input[name="ntn-input"]')?.focus();
+                                                    }
+                                                }}
+                                            />
                                             {errors?.cnic && <FormError message={errors.cnic} />}
                                         </div>
                                         <div className="space-y-1.5">
-                                            <Label className={MOBILE_LABEL_CLASS}>{taxIdLabel || 'NTN'}</Label>
-                                            <Input value={formData.ntn || ''} onChange={handleNTNChange} placeholder="1234567-8" className={cn(MOBILE_INPUT_CLASS, 'font-mono')} maxLength={9} />
+                                            <Label className={cn(MOBILE_LABEL_CLASS, 'font-semibold text-gray-700')}>{taxIdLabel || 'NTN'}</Label>
+                                            <Input 
+                                                name="ntn-input"
+                                                value={formData.ntn || ''} 
+                                                onChange={handleNTNChange} 
+                                                placeholder="1234567-8" 
+                                                className={cn(MOBILE_INPUT_CLASS, 'font-mono h-10 text-[15px]')} 
+                                                maxLength={9}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter') {
+                                                        e.preventDefault();
+                                                        document.querySelector('input[name="srn-input"]')?.focus();
+                                                    }
+                                                }}
+                                            />
                                             {errors?.ntn && <FormError message={errors.ntn} />}
                                         </div>
                                         <div className="space-y-1.5">
-                                            <Label className={MOBILE_LABEL_CLASS}>SRN</Label>
-                                            <Input value={formData.srn || ''} onChange={(e) => handleInputChange('srn', e.target.value)} placeholder="12-34-5678-910-1" className={cn(MOBILE_INPUT_CLASS, 'font-mono')} />
+                                            <Label className={cn(MOBILE_LABEL_CLASS, 'font-semibold text-gray-700')}>SRN</Label>
+                                            <Input 
+                                                name="srn-input"
+                                                value={formData.srn || ''} 
+                                                onChange={(e) => handleInputChange('srn', e.target.value)} 
+                                                placeholder="12-34-5678-910-1" 
+                                                className={cn(MOBILE_INPUT_CLASS, 'font-mono h-10 text-[15px]')}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter') {
+                                                        e.preventDefault();
+                                                        document.querySelector('select[name="filer-status"]')?.focus();
+                                                    }
+                                                }}
+                                            />
                                         </div>
                                         <div className="space-y-1.5">
-                                            <Label className={MOBILE_LABEL_CLASS}>FBR Filer Status</Label>
-                                            <select className={cn(MOBILE_INPUT_CLASS, 'w-full border border-input bg-background px-3')} value={formData.filer_status || 'none'} onChange={(e) => handleInputChange('filer_status', e.target.value)}>
+                                            <Label className={cn(MOBILE_LABEL_CLASS, 'font-semibold text-gray-700')}>FBR Filer Status</Label>
+                                            <select 
+                                                name="filer-status"
+                                                className={cn(MOBILE_INPUT_CLASS, 'w-full border border-input bg-background px-3 h-10 text-[15px]')} 
+                                                value={formData.filer_status || 'none'} 
+                                                onChange={(e) => handleInputChange('filer_status', e.target.value)}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter') {
+                                                        e.preventDefault();
+                                                        document.querySelector('input[name="credit-limit"]')?.focus();
+                                                    }
+                                                }}
+                                            >
                                                 <option value="none">Not Verified</option>
                                                 <option value="active">Active (Filer)</option>
                                                 <option value="inactive">Inactive (Non-Filer)</option>
@@ -467,19 +601,59 @@ export function CustomerForm({
                                         </div>
                                     </>
                                 ) : (
-                                    <div className="space-y-1.5 md:col-span-2">
-                                        <Label className={MOBILE_LABEL_CLASS}>{taxIdLabel}</Label>
-                                        <Input value={formData.ntn || ''} onChange={(e) => handleInputChange('ntn', e.target.value)} placeholder={`${taxIdLabel} / registration number`} className={MOBILE_INPUT_CLASS} />
+                                    <div className="space-y-1.5 md:col-span-3">
+                                        <Label className={cn(MOBILE_LABEL_CLASS, 'font-semibold text-gray-700')}>{taxIdLabel}</Label>
+                                        <Input 
+                                            value={formData.ntn || ''} 
+                                            onChange={(e) => handleInputChange('ntn', e.target.value)} 
+                                            placeholder={`${taxIdLabel} / registration number`} 
+                                            className={cn(MOBILE_INPUT_CLASS, 'h-10 text-[15px]')}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') {
+                                                    e.preventDefault();
+                                                    document.querySelector('input[name="credit-limit"]')?.focus();
+                                                }
+                                            }}
+                                        />
                                         {errors?.ntn && <FormError message={errors.ntn} />}
                                     </div>
                                 )}
                                 <div className="space-y-1.5">
-                                    <Label className={MOBILE_LABEL_CLASS}>Credit Limit ({currency})</Label>
-                                    <Input type="number" value={formData.credit_limit || ''} onChange={(e) => handleInputChange('credit_limit', e.target.value)} placeholder="0" className={MOBILE_INPUT_CLASS} />
+                                    <Label className={cn(MOBILE_LABEL_CLASS, 'font-semibold text-gray-700 flex items-center gap-1.5')}>
+                                        <Wallet className="h-3.5 w-3.5" />
+                                        Credit Limit ({currency})
+                                    </Label>
+                                    <Input 
+                                        type="number" 
+                                        name="credit-limit"
+                                        value={formData.credit_limit || ''} 
+                                        onChange={(e) => handleInputChange('credit_limit', e.target.value)} 
+                                        placeholder="0" 
+                                        className={cn(MOBILE_INPUT_CLASS, 'h-10 text-[15px] tabular-nums')}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                                e.preventDefault();
+                                                document.querySelector('input[name="opening-balance-tax"]')?.focus();
+                                            }
+                                        }}
+                                    />
                                 </div>
                                 <div className="space-y-1.5">
-                                    <Label className={MOBILE_LABEL_CLASS}>Opening Balance ({currency})</Label>
-                                    <Input type="number" value={formData.opening_balance || ''} onChange={(e) => handleInputChange('opening_balance', e.target.value)} placeholder="0" className={MOBILE_INPUT_CLASS} />
+                                    <Label className={cn(MOBILE_LABEL_CLASS, 'font-semibold text-gray-700')}>Opening Balance ({currency})</Label>
+                                    <Input 
+                                        type="number" 
+                                        name="opening-balance-tax"
+                                        value={formData.opening_balance || ''} 
+                                        onChange={(e) => handleInputChange('opening_balance', e.target.value)} 
+                                        placeholder="0" 
+                                        className={cn(MOBILE_INPUT_CLASS, 'h-10 text-[15px] tabular-nums')}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                                e.preventDefault();
+                                                handleSubmit();
+                                            }
+                                        }}
+                                    />
                                 </div>
                             </div>
                         </TabsContent>
@@ -531,11 +705,32 @@ export function CustomerForm({
                 </Tabs>
             </CardContent>
 
-            <div className={cn(MOBILE_FORM_FOOTER, 'flex items-center justify-end gap-2')}>
-                <Button type="button" variant="ghost" onClick={onClose} className="h-9 text-gray-500">Cancel</Button>
-                <Button type="button" onClick={handleSubmit} disabled={isLoading} className="h-9 bg-emerald-600 px-6 hover:bg-emerald-700">
-                    {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : (initialData ? 'Update Customer' : 'Add Customer')}
-                </Button>
+            <div className={cn(MOBILE_FORM_FOOTER, 'flex items-center justify-between gap-3 border-t bg-gray-50/50')}>
+                <div className="text-xs text-gray-500 hidden sm:block">
+                    Press <kbd className="px-1.5 py-0.5 bg-white border border-gray-300 rounded text-[10px] font-mono shadow-sm">Enter</kbd> to move between fields
+                </div>
+                <div className="flex items-center gap-2 ml-auto">
+                    <Button 
+                        type="button" 
+                        variant="ghost" 
+                        onClick={onClose} 
+                        className="h-10 px-5 text-gray-600 hover:text-gray-900"
+                    >
+                        Cancel
+                    </Button>
+                    <Button 
+                        type="button" 
+                        onClick={handleSubmit} 
+                        disabled={isLoading} 
+                        className="h-10 bg-emerald-600 px-8 text-[15px] font-semibold hover:bg-emerald-700 shadow-sm"
+                    >
+                        {isLoading ? (
+                            <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...</>
+                        ) : (
+                            initialData ? 'Update Customer' : 'Add Customer'
+                        )}
+                    </Button>
+                </div>
             </div>
         </Card>
     );
