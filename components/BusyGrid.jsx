@@ -422,15 +422,13 @@ export function BusyGrid({
                 const targetAccessorKey = columns[targetCol]?.accessorKey;
                 const initialValue = getValue(lastRow, targetAccessorKey) ?? '';
                 
-                // Schedule state updates after effect completion
-                const timeoutId = setTimeout(() => {
+                // Schedule state updates after effect completion to avoid cascading renders
+                queueMicrotask(() => {
                     setSelectedCell({ row: newRowIndex, col: targetCol });
                     setEditingCell({ row: newRowIndex, col: targetCol });
                     setEditValue(initialValue);
                     gridRef.current?.focus({ preventScroll: true });
-                }, 0);
-                
-                return () => clearTimeout(timeoutId);
+                });
             }
         }
         prevDataLenRef.current = sortedData.length;
