@@ -324,6 +324,7 @@ export default function MarketingFooter({ variant = 'default' }) {
                       aria-hidden
                     />
                     <Input
+                      id="marketing-footer-newsletter-email"
                       type="email"
                       placeholder="Work email"
                       value={email}

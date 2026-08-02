@@ -20,6 +20,7 @@ import {
   formatSupermarketStoreName,
 } from '@/lib/storefront/supermarketStorefront';
 import { filterProductsByCategorySlug } from '@/lib/storefront/elevatedStorefrontTenant';
+import { isWaterShopStore, getWaterShopConfig } from '@/lib/storefront/waterShopStorefront';
 import { isMilkShopStore } from '@/lib/storefront/milkShopStorefront';
 import { getFallbackProductImageUrl } from '@/lib/storefront/productImageFallback';
 import { SupermarketBrandsMarquee } from '@/components/storefront/sections/supermarket/SupermarketBrandsMarquee';
@@ -90,6 +91,8 @@ export function SupermarketHomeSections({
   const config = getSupermarketConfig(settings, businessDomain, businessCategory);
   const titles = config.sectionTitles;
   const displayName = formatSupermarketStoreName(storeName);
+  const waterShop = isWaterShopStore(businessCategory);
+  const waterCfg = waterShop ? getWaterShopConfig(settings) : null;
   const milkShop = isMilkShopStore(businessCategory);
   const ctx = { categories, businessDomain, products, businessCategory };
 
@@ -156,6 +159,49 @@ export function SupermarketHomeSections({
           </div>
         </section>
       )}
+
+      {waterShop && waterCfg?.showHowItWorks !== false && waterCfg?.howItWorks?.length ? (
+        <section className="rounded-xl border border-sky-100 bg-gradient-to-br from-sky-50 via-white to-cyan-50 px-4 py-5 sm:px-6">
+          <h2 className="text-center text-base font-semibold text-slate-900 sm:text-lg">
+            How our delivery service works
+          </h2>
+          <p className="mx-auto mt-1 max-w-2xl text-center text-xs text-slate-500 sm:text-sm">
+            Crystal clear water the easy way — sign up, receive bottles, weekly refill, manage your account.
+          </p>
+          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {waterCfg.howItWorks.map((step, idx) => (
+              <div
+                key={step.id || idx}
+                className="rounded-lg border border-sky-100/80 bg-white/90 px-3 py-3 shadow-sm"
+              >
+                <p
+                  className="text-[10px] font-semibold uppercase tracking-wide"
+                  style={{ color: accent }}
+                >
+                  Step {idx + 1}
+                </p>
+                <p className="mt-1 text-sm font-semibold text-slate-900">{step.title}</p>
+                <p className="mt-1 text-[11px] leading-snug text-slate-500">{step.desc}</p>
+              </div>
+            ))}
+          </div>
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+            <Link
+              href={productsUrl}
+              className="inline-flex h-9 items-center rounded-lg px-4 text-sm font-semibold text-white shadow-sm"
+              style={{ backgroundColor: accent }}
+            >
+              Shop water now
+            </Link>
+            <Link
+              href={`${storeBase}/contact`}
+              className="inline-flex h-9 items-center rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              Contact / UAN
+            </Link>
+          </div>
+        </section>
+      ) : null}
 
       {categoryIcons.length > 0 && (
         <section>

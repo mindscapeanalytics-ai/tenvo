@@ -112,7 +112,7 @@ const DOMAIN_CATEGORY_BLUEPRINTS = [
         id: 'retail',
         name: 'Retail & Shops',
         icon: Store,
-        domains: ['retail-shop', 'textile-wholesale', 'grocery', 'fmcg', 'ecommerce', 'garments', 'mobile', 'mobile-repairing', 'electronics-goods', 'boutique-fashion', 'leather-footwear', 'bookshop-stationery', 'supermarket', 'tyre-shop', 'milk-shop', 'bakery-confectionery']
+        domains: ['retail-shop', 'textile-wholesale', 'grocery', 'fmcg', 'ecommerce', 'garments', 'mobile', 'mobile-repairing', 'electronics-goods', 'boutique-fashion', 'leather-footwear', 'bookshop-stationery', 'supermarket', 'tyre-shop', 'milk-shop', 'water-delivery', 'bakery-confectionery']
     },
     {
         id: 'hospitality',

@@ -28,6 +28,7 @@ const EXPECTED_PACKAGES = [
   'furniture-commerce',
   'fitness-commerce',
   'milk-commerce',
+  'water-commerce',
 ];
 
 const catalog = read('lib/config/domainPackages.js');
@@ -55,6 +56,7 @@ if (!features.includes('VEHICLE_SHOWROOM_FEATURE_OVERRIDES')) mark('showroom fea
 if (!features.includes('FURNITURE_COMMERCE_FEATURE_OVERRIDES')) mark('furniture feature overrides');
 if (!features.includes('FITNESS_COMMERCE_FEATURE_OVERRIDES')) mark('fitness feature overrides');
 if (!features.includes('MILK_COMMERCE_FEATURE_OVERRIDES')) mark('milk feature overrides');
+if (!features.includes('WATER_COMMERCE_FEATURE_OVERRIDES')) mark('water feature overrides');
 if (!features.includes("buildDomainPackageFeatureOverrides('professional'")) {
   mark('milk package must build overrides from professional tier');
 }
@@ -62,6 +64,9 @@ if (!features.includes("buildDomainPackageFeatureOverrides('professional'")) {
 const easyIntel = read('lib/dashboard/easyDomainIntelligence.js');
 if (!easyIntel.includes("'milk-shop':") && !easyIntel.includes('milk-shop:')) {
   mark('easyDomainIntelligence must define milk-shop VERTICAL_PLAYBOOKS entry');
+}
+if (!easyIntel.includes("'water-delivery':") && !easyIntel.includes('water-delivery:')) {
+  mark('easyDomainIntelligence must define water-delivery VERTICAL_PLAYBOOKS entry');
 }
 if (!easyIntel.includes("actionTab: 'route-hisab'")) {
   mark('milk-shop Easy playbook must actionTab route-hisab');
@@ -106,13 +111,15 @@ if (!dynamicLayout.includes('generateMetadata')) mark('dynamic solutions layout 
 
 if (!billingCards.includes('listDomainPackageBillableSkus')) mark('billing cards use catalog-resolved prices');
 if (!billingCards.includes('milk-commerce')) mark('billing cards icon map must include milk-commerce');
+if (!billingCards.includes('water-commerce')) mark('billing cards icon map must include water-commerce');
 
 if (!domainPackageNav.includes('listIndustryPlanNavItems')) mark('domain package nav helper');
 if (!domainPackageNav.includes("hubPath: '/industry-plans'")) mark('industry plans hub path');
 if (!domainPackageNav.includes('milk-commerce')) mark('domain package nav must include milk-commerce');
+if (!domainPackageNav.includes('water-commerce')) mark('domain package nav must include water-commerce');
 if (!marketingNav.includes('INDUSTRY_PLANS_NAV')) mark('marketing nav industry plans dropdown');
-if (!marketingNav.includes('Dumbbell') || !marketingNav.includes('Milk')) {
-  mark('MarketingNav industryPlanIcons must include Dumbbell and Milk');
+if (!marketingNav.includes('Dumbbell') || !marketingNav.includes('Milk') || !marketingNav.includes('Droplets')) {
+  mark('MarketingNav industryPlanIcons must include Dumbbell, Milk, and Droplets');
 }
 if (!industryPlansPage.includes('IndustryPlansHubPage')) mark('industry plans hub page');
 if (!solutionsPage.includes('get-started') || !solutionsPage.includes('guideSteps')) {

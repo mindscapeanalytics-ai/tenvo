@@ -1,0 +1,93 @@
+{
+  "source": "https://culligan.com.pk/our-water/home-delivery",
+  "fetchedAt": "2026-07-31T23:08:25.231Z",
+  "note": "Reference prices/images from Culligan PK home delivery. Tenvo demo uses Tenvo branding.",
+  "depositNote": "19L min order 3 units; security deposit ~PKR 800 per bottle (refundable on account close).",
+  "couponNote": "Coupon book 11×19L ≈ Rs 4070 (~Rs 370/bottle).",
+  "workflow": [
+    "Sign up or call UAN",
+    "Receive bottles & pay (cash / account)",
+    "Weekly refill on fixed delivery day",
+    "Manage account / skip / change qty online"
+  ],
+  "images": [
+    "http://culligan.com.pk/images/backend-images/MetaTags/product-meta-image4274750.png",
+    "https://culligan.com.pk/images/fevicon.png",
+    "http://culligan.com.pk/front/wp-content/uploads/2018/12/banner-sales-request-new-123b1.jpg",
+    "https://culligan.com.pk/front/wp-content/uploads/2018/10/CULLIGAN.png",
+    "https://culligan.com.pk/images/backend-images/product/large/product-images8741971.png",
+    "https://culligan.com.pk/images/backend-images/product/large/product-images3915686.png",
+    "https://culligan.com.pk/images/backend-images/product/large/featured-image9133779.jpg",
+    "https://culligan.com.pk/images/backend-images/product/large/featured-image2783324.jpg",
+    "https://culligan.com.pk/images/backend-images/product/large/featured-image5528658.jpg",
+    "https://culligan.com.pk/images/backend-images/product/large/product-images2738794.jpg",
+    "https://culligan.com.pk/front/wp-content/uploads/2018/10/CULLIGAN-1.png"
+  ],
+  "priceSamples": [
+    0,
+    0,
+    4070,
+    370,
+    10,
+    370
+  ],
+  "products": [
+    {
+      "name": "12 Litre Bottle",
+      "price": 275,
+      "skuHint": "12L",
+      "image": "http://culligan.com.pk/images/backend-images/MetaTags/product-meta-image4274750.png"
+    },
+    {
+      "name": "19 Litre Bottle",
+      "price": 380,
+      "skuHint": "19L",
+      "image": "http://culligan.com.pk/images/backend-images/MetaTags/product-meta-image4274750.png"
+    },
+    {
+      "name": "Cradle Tap Stand",
+      "price": 1000,
+      "skuHint": "cradle",
+      "image": "http://culligan.com.pk/images/backend-images/MetaTags/product-meta-image4274750.png"
+    },
+    {
+      "name": "Electronic Dispenser",
+      "price": 2000,
+      "skuHint": "electronic",
+      "image": "http://culligan.com.pk/images/backend-images/MetaTags/product-meta-image4274750.png"
+    },
+    {
+      "name": "Homage Dispenser",
+      "price": 27500,
+      "skuHint": "homage",
+      "image": "http://culligan.com.pk/images/backend-images/MetaTags/product-meta-image4274750.png"
+    },
+    {
+      "name": "Tabletop Dispenser",
+      "price": 950,
+      "skuHint": "tabletop",
+      "image": "http://culligan.com.pk/images/backend-images/MetaTags/product-meta-image4274750.png"
+    },
+    {
+      "name": "500 ml Bottle (Case of 12)",
+      "price": null,
+      "skuHint": "500",
+      "image": "http://culligan.com.pk/images/backend-images/MetaTags/product-meta-image4274750.png"
+    }
+  ],
+  "rawMentions": [
+    "cradle tap-stand or Hot &amp; Cold water dispe",
+    "12 Litre Bottle",
+    "500 ml Bottle (Case of 12)&rdquo; to your cart\" rel=\"nofollow\">Sub",
+    "19 Litre Bottle",
+    "500 ml Bottle (Case of 12)&rdquo; to your cart\" rel=\"nofollow\">Sub",
+    "cradle-tap-stand\" class=\"woocommerce-LoopProdu",
+    "cradle-tap-stand\">\n                           ",
+    "Cradle Tap Stand",
+    "Electronic Dispenser",
+    "Homage Dispenser",
+    "Tabletop Dispenser",
+    "19 litre bottle is 3 units. The security deposit for which is Pkr 800 each.",
+    "19 litre bottle. Thus, a saving of Rs 10 (2.9%) per 19 liter bottle against cash pay mod"
+  ]
+}

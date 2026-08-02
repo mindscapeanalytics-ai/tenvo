@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Menu, X, ChevronDown, Package, Receipt, Briefcase, Store, Factory, Globe, ShoppingBag, UtensilsCrossed, Megaphone, Heart, Brain, Shirt, Pill, Cog, CarFront, Sofa, Dumbbell, Milk, Sparkles, ArrowRight } from 'lucide-react';
+import { Menu, X, ChevronDown, Package, Receipt, Briefcase, Store, Factory, Globe, ShoppingBag, UtensilsCrossed, Megaphone, Heart, Brain, Shirt, Pill, Cog, CarFront, Sofa, Dumbbell, Milk, Droplets, Sparkles, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { trackNavMenuOpen, trackCTAClick } from '@/lib/analytics/tracking';
 import { useAuth } from '@/lib/context/AuthContext';
@@ -100,6 +100,7 @@ export default function MarketingNav({
     Sofa,
     Dumbbell,
     Milk,
+    Droplets,
     Sparkles,
   };
 

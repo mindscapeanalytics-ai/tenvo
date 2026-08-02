@@ -28,7 +28,12 @@ import {
   isPosRelevant, isHospitality, isCampaignRelevant, isMembershipRelevant
 } from '@/lib/config/domains';
 import { isMilkHisabRelevant } from '@/lib/storefront/milkShopHisab';
+import { isWaterHisabRelevant, isRouteHisabRelevant } from '@/lib/storefront/waterShopHisab';
 import { isMilkShopHubNavAllowed, mergeMilkShopLeanNavSettings } from '@/lib/config/milkShopHubNav';
+import {
+  isWaterDeliveryHubNavAllowed,
+  mergeWaterDeliveryLeanNavSettings,
+} from '@/lib/config/waterDeliveryHubNav';
 import { prefetchHubTabChunk } from '@/lib/utils/hubTabNavigation';
 import { useHubTab } from '@/lib/context/HubTabContext';
 import toast from 'react-hot-toast';
@@ -231,6 +236,8 @@ export function Sidebar({ isOpen, onClose, isSidebarCollapsed, setIsSidebarColla
   const campaignRelevant = isCampaignRelevantDomain(category, domainKnowledge);
   const membershipRelevant = isMembershipRelevant(category);
   const milkHisabRelevant = isMilkHisabRelevant(category);
+  const waterHisabRelevant = isWaterHisabRelevant(category);
+  const routeHisabRelevant = isRouteHisabRelevant(category);
   const [hasHydrated, setHasHydrated] = useState(false);
 
   useEffect(() => {
@@ -305,10 +312,13 @@ export function Sidebar({ isOpen, onClose, isSidebarCollapsed, setIsSidebarColla
     if (item.domainRule === 'membershipRelevant' && !membershipRelevant) {
       return { visible: false, locked: false, requiredPlan: null };
     }
-    if (item.domainRule === 'milkHisab' && !milkHisabRelevant) {
+    if (item.domainRule === 'milkHisab' && !routeHisabRelevant) {
       return { visible: false, locked: false, requiredPlan: null };
     }
     if (!isMilkShopHubNavAllowed(item.key, category)) {
+      return { visible: false, locked: false, requiredPlan: null };
+    }
+    if (!isWaterDeliveryHubNavAllowed(item.key, category)) {
       return { visible: false, locked: false, requiredPlan: null };
     }
 
@@ -327,7 +337,10 @@ export function Sidebar({ isOpen, onClose, isSidebarCollapsed, setIsSidebarColla
     }
 
     // RBAC + Subscription check via the permissions system
-    const navSettings = mergeMilkShopLeanNavSettings(business?.settings, category);
+    const navSettings = mergeWaterDeliveryLeanNavSettings(
+      mergeMilkShopLeanNavSettings(business?.settings, category),
+      category
+    );
     return getNavItemAccess(item.key, effectiveRole, planTier, navSettings, business?.platformFeatureOverrides, moduleAccess);
   };
 

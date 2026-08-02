@@ -12,7 +12,7 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { printInvoicePdfFromRow, printInvoiceThermalFromRow } from '@/lib/print/clientInvoicePrint';
+import { printInvoiceThermalFromRow, downloadStandardInvoicePdfFromRow } from '@/lib/print/clientInvoicePrint';
 
 interface RecentInvoicesProps {
     invoices: any[];
@@ -23,6 +23,13 @@ interface RecentInvoicesProps {
 }
 
 export function RecentInvoices({ invoices, currency, business, category = 'retail-shop', onViewInvoice }: RecentInvoicesProps) {
+    const handleStandardPdf = (invoice: any) => {
+        if (!business) return;
+        void downloadStandardInvoicePdfFromRow(invoice, business, category, {
+            businessId: (business as { id?: string }).id,
+        });
+    };
+
     const getStatusColor = (status: string) => {
         switch (status?.toLowerCase()) {
             case 'paid':
@@ -116,15 +123,19 @@ export function RecentInvoices({ invoices, currency, business, category = 'retai
                                                 </DropdownMenuItem>
                                                 <DropdownMenuItem
                                                     className="rounded-lg gap-2 text-xs font-bold cursor-pointer"
-                                                    onSelect={() => printInvoiceThermalFromRow(invoice, business, category)}
+                                                    onSelect={() => handleStandardPdf(invoice)}
                                                 >
-                                                    <Printer className="w-3.5 h-3.5" /> 58mm Print
+                                                    <Download className="w-3.5 h-3.5" /> A4 Invoice
                                                 </DropdownMenuItem>
                                                 <DropdownMenuItem
                                                     className="rounded-lg gap-2 text-xs font-bold cursor-pointer"
-                                                    onSelect={() => printInvoicePdfFromRow(invoice, business, category)}
+                                                    onSelect={() =>
+                                                        printInvoiceThermalFromRow(invoice, business, category, {
+                                                            businessId: (business as { id?: string })?.id,
+                                                        })
+                                                    }
                                                 >
-                                                    <Download className="w-3.5 h-3.5" /> PDF
+                                                    <Printer className="w-3.5 h-3.5" /> Thermal receipt
                                                 </DropdownMenuItem>
                                             </DropdownMenuContent>
                                         </DropdownMenu>

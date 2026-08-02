@@ -6,6 +6,9 @@ import { CategoryPerformanceWidget } from '@/components/dashboard/widgets/Catego
 import { InventoryValuationWidget } from '@/components/dashboard/widgets/InventoryValuationWidget';
 import { WarehouseDistributionWidget } from '@/components/dashboard/widgets/WarehouseDistributionWidget';
 import { BatchExpiryWidget } from '@/components/dashboard/widgets/BatchExpiryWidget';
+import { Plus, Package, Users, BarChart3, Droplets, Milk } from 'lucide-react';
+import { isWaterHisabRelevant } from '@/lib/storefront/waterShopHisab';
+import { isMilkHisabRelevant } from '@/lib/storefront/milkShopHisab';
 
 /**
  * RetailDashboard Component
@@ -62,12 +65,26 @@ export function RetailDashboard({ businessId, category, onQuickAction }) {
   ], []);
 
   // Retail-specific quick actions
-  const retailQuickActions = useMemo(() => [
-    { label: 'New Invoice', action: 'new-invoice', icon: 'Plus' },
-    { label: 'Add Product', action: 'add-product', icon: 'Package' },
-    { label: 'New Customer', action: 'new-customer', icon: 'User' },
-    { label: 'Reports', action: 'reports', icon: 'BarChart' }
-  ], []);
+  const retailQuickActions = useMemo(() => {
+    const isWater = isWaterHisabRelevant(category);
+    const isMilk = isMilkHisabRelevant(category);
+
+    const actions = [];
+    if (isWater) {
+      actions.push({ label: 'Water Route', action: 'route-hisab', icon: Droplets, color: 'text-sky-700 bg-sky-50 hover:bg-sky-100 border-sky-200' });
+    } else if (isMilk) {
+      actions.push({ label: 'Milk Record', action: 'route-hisab', icon: Milk, color: 'text-sky-700 bg-sky-50 hover:bg-sky-100 border-sky-200' });
+    }
+
+    actions.push(
+      { label: 'New Invoice', action: 'new-invoice', icon: Plus, color: 'text-wine bg-wine/10 hover:bg-wine/20 border-wine/20' },
+      { label: 'Add Product', action: 'add-product', icon: Package, color: 'text-blue-700 bg-blue-50 hover:bg-blue-100 border-blue-200' },
+      { label: 'New Customer', action: 'new-customer', icon: Users, color: 'text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border-emerald-200' },
+      { label: 'Reports', action: 'reports', icon: BarChart3, color: 'text-orange-700 bg-orange-50 hover:bg-orange-100 border-orange-200' }
+    );
+
+    return actions;
+  }, [category]);
 
   // Retail-specific alerts
   const retailAlerts = useMemo(() => {
@@ -95,6 +112,23 @@ export function RetailDashboard({ businessId, category, onQuickAction }) {
         customQuickActions={retailQuickActions}
         customAlerts={retailAlerts}
       />
+
+      {/* Quick Actions Grid */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+        {retailQuickActions.map((action, idx) => {
+          const Icon = action.icon;
+          return (
+            <button
+              key={idx}
+              onClick={() => onQuickAction?.(action.action)}
+              className={`flex items-center gap-3 p-3.5 rounded-xl shadow-sm border transition-all text-left ${action.color}`}
+            >
+              <Icon className="w-5 h-5 flex-shrink-0" />
+              <span className="font-semibold text-sm">{action.label}</span>
+            </button>
+          );
+        })}
+      </div>
 
       {/* Retail-Specific Widgets Section */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

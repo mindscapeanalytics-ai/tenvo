@@ -10,6 +10,7 @@ import { Package } from 'lucide-react';
 import { lazyHubTab } from '@/lib/utils/lazyHubTab';
 import { isPosRelevant, isHospitality, isCampaignRelevant, isMembershipRelevant } from '@/lib/config/domains';
 import { isMilkHisabRelevant } from '@/lib/storefront/milkShopHisab';
+import { isWaterHisabRelevant, isRouteHisabRelevant } from '@/lib/storefront/waterShopHisab';
 import { resolvePosVariant } from '@/lib/config/posDomains';
 import { useResolvedBusinessId } from '@/lib/hooks/useResolvedBusinessId';
 
@@ -40,6 +41,7 @@ const FinanceHub = lazyHubTab(() => import('@/components/finance/FinanceHub'));
 const PayrollDashboard = lazyHubTab(() => import('@/components/hr/PayrollDashboard').then(mod => mod.PayrollDashboard));
 const AttendanceTracker = lazyHubTab(() => import('@/components/hr/AttendanceTracker').then(mod => mod.AttendanceTracker));
 const MilkRouteHisab = lazyHubTab(() => import('@/components/milk/MilkRouteHisab').then(mod => mod.MilkRouteHisab));
+const WaterRouteHisab = lazyHubTab(() => import('@/components/water/WaterRouteHisab').then(mod => mod.WaterRouteHisab));
 const ShiftScheduler = lazyHubTab(() => import('@/components/hr/ShiftScheduler').then(mod => mod.ShiftScheduler));
 const ApprovalInbox = lazyHubTab(() => import('@/components/workflow/ApprovalInbox').then(mod => mod.ApprovalInbox));
 const WorkflowBuilder = lazyHubTab(() => import('@/components/workflow/WorkflowBuilder').then(mod => mod.WorkflowBuilder));
@@ -140,6 +142,8 @@ export function DashboardTabs({
     const campaignRelevant = isCampaignRelevant(category, domainKnowledge);
     const membershipRelevant = isMembershipRelevant(category);
     const milkHisabRelevant = isMilkHisabRelevant(category);
+    const waterHisabRelevant = isWaterHisabRelevant(category);
+    const routeHisabRelevant = isRouteHisabRelevant(category);
 
     // Visit-based forceMount: first open loads once; leave/return keeps state (no tab-switch storms).
     // Inactive panels stay mounted but must be CSS-hidden — see TabsContent data-[state=inactive]:hidden.
@@ -1164,13 +1168,25 @@ export function DashboardTabs({
                           tabKey="route-hisab"
                           role={role}
                           planTier={planTier}
-                          domainCheck={milkHisabRelevant}
-                          domainTitle="Route Hisab is for milk shops"
-                          domainMessage="Daily doorstep delivery and month collection are available for the milk-shop vertical."
-                          featureName="Route Hisab"
+                          domainCheck={routeHisabRelevant}
+                          domainTitle={
+                            waterHisabRelevant
+                              ? 'Daily Route is for water delivery'
+                              : 'Route Hisab is for milk shops'
+                          }
+                          domainMessage={
+                            waterHisabRelevant
+                              ? 'Daily rider delivery and period collection are available for the water-delivery vertical.'
+                              : 'Daily doorstep delivery and month collection are available for the milk-shop vertical.'
+                          }
+                          featureName="Daily Route"
                           onUpgrade={() => handleTabChange('settings')}
                         >
-                            <MilkRouteHisab businessId={activeBusinessId} category={category} />
+                            {waterHisabRelevant ? (
+                              <WaterRouteHisab businessId={activeBusinessId} category={category} />
+                            ) : (
+                              <MilkRouteHisab businessId={activeBusinessId} category={category} />
+                            )}
                         </TabGuard>
                     )}
                 </TabsContent>

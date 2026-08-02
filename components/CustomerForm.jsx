@@ -6,9 +6,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { UsersIcon, Loader2, Sparkles, Building2, Smartphone, Wallet, Globe, X } from 'lucide-react';
+import { UsersIcon, Loader2, Sparkles, Building2, Smartphone, Wallet, Globe, X, Droplets } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { getDomainCustomerFields, normalizeKey } from '@/lib/utils/domainHelpers';
+import { isWaterHisabRelevant } from '@/lib/storefront/waterShopHisab';
 import { DomainFieldRenderer } from './domain/DomainFieldRenderer';
 import { useFormRegionalContext } from '@/lib/hooks/useFormRegionalContext';
 import { getRegionalStandards, getPhoneCountryCodeOptions } from '@/lib/utils/regionalHelpers';
@@ -43,6 +44,7 @@ export function CustomerForm({
     } = useFormRegionalContext(category);
     const standards = registry || getRegionalStandards('PK');
     const { isEasyMode } = useAppMode();
+    const isWaterRoute = isWaterHisabRelevant(category);
     const [isLoading, setIsLoading] = useState(false);
     const [activeTab, setActiveTab] = useState('basic');
     const [errors, setErrors] = useState({});
@@ -318,27 +320,32 @@ export function CustomerForm({
 
             <CardContent className={MOBILE_FORM_BODY}>
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                    <TabsList className={cn(MOBILE_TAB_LIST, isEasyMode ? 'sm:grid-cols-1' : 'sm:grid-cols-3')}>
-                        <TabsTrigger value="basic" className="relative rounded-md text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm">
-                            Basic Details
-                            {['name', 'phone', 'city'].some(k => errors[k]) && (
-                                <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-red-500" />
-                            )}
-                        </TabsTrigger>
-                        {!isEasyMode && (
-                            <>
+                    {!isWaterRoute && (
+                        <TabsList className={cn(
+                            MOBILE_TAB_LIST,
+                            isEasyMode ? (domainFields.length > 0 ? 'sm:grid-cols-2' : 'sm:grid-cols-1') : (domainFields.length > 0 ? 'sm:grid-cols-3' : 'sm:grid-cols-2')
+                        )}>
+                            <TabsTrigger value="basic" className="relative rounded-md text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                                Basic Details
+                                {['name', 'phone', 'city'].some(k => errors[k]) && (
+                                    <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-red-500" />
+                                )}
+                            </TabsTrigger>
+                            {!isEasyMode && (
                                 <TabsTrigger value="tax" className="relative rounded-md text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm">
                                     Financial & Tax
                                     {['ntn', 'cnic', 'srn', 'credit_limit'].some(k => errors[k]) && (
                                         <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-red-500" />
                                     )}
                                 </TabsTrigger>
+                            )}
+                            {domainFields.length > 0 && (
                                 <TabsTrigger value="domain" className="relative rounded-md text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm">
-                                    Domain Info
+                                    {category.includes('water') ? 'Route & Water Details' : 'Domain Info'}
                                 </TabsTrigger>
-                            </>
-                        )}
-                    </TabsList>
+                            )}
+                        </TabsList>
+                    )}
 
                     <TabsContent value="basic" className="mt-0 space-y-4">
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -385,7 +392,39 @@ export function CustomerForm({
                             </div>
                         </div>
 
-                        {isEasyMode && (
+                        {isWaterRoute && domainFields.length > 0 && (
+                            <div className="grid grid-cols-1 gap-4 rounded-xl border border-sky-200 bg-sky-50/50 p-4 md:grid-cols-2 mt-2">
+                                <div className="md:col-span-2 flex items-center gap-2 text-sm font-bold text-sky-800">
+                                    <Droplets className="h-4 w-4" /> Water Route Details
+                                </div>
+                                {domainFields.map(field => {
+                                    const key = normalizeKey(field);
+                                    return (
+                                        <DomainFieldRenderer
+                                            key={field}
+                                            field={key}
+                                            value={formData.domain_data?.[key] || ''}
+                                            onChange={(val) => {
+                                                const nextDomain = { ...formData.domain_data, [key]: val };
+                                                if (key === 'city') {
+                                                    nextDomain.deliveryarea = '';
+                                                    nextDomain.postalcode = '';
+                                                    nextDomain.areacode = '';
+                                                }
+                                                setFormData({ ...formData, domain_data: nextDomain });
+                                            }}
+                                            onDomainPatch={(patch) => {
+                                                setFormData((prev) => ({ ...prev, domain_data: { ...prev.domain_data, ...patch } }));
+                                            }}
+                                            category={category}
+                                            product={formData.domain_data || {}}
+                                        />
+                                    );
+                                })}
+                            </div>
+                        )}
+
+                        {isEasyMode && !isWaterRoute && (
                             <div className="grid grid-cols-1 gap-4 border-t border-gray-100 pt-4 md:grid-cols-2">
                                 <div className="space-y-1.5">
                                     <Label className={MOBILE_LABEL_CLASS}>Credit Limit ({currency})</Label>
@@ -399,52 +438,55 @@ export function CustomerForm({
                         )}
                     </TabsContent>
 
-                    <TabsContent value="tax" className="mt-0 space-y-4">
-                        <div className="grid grid-cols-1 gap-4 rounded-xl border border-dashed border-gray-200 bg-gray-50/50 p-4 md:grid-cols-2">
-                            {isPakistanMarket ? (
-                                <>
-                                    <div className="space-y-1.5">
-                                        <Label className={MOBILE_LABEL_CLASS}>CNIC</Label>
-                                        <Input value={formData.cnic || ''} onChange={handleCNICChange} placeholder="42201-1234567-1" className={cn(MOBILE_INPUT_CLASS, 'font-mono')} maxLength={15} />
-                                        {errors?.cnic && <FormError message={errors.cnic} />}
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <Label className={MOBILE_LABEL_CLASS}>{taxIdLabel || 'NTN'}</Label>
-                                        <Input value={formData.ntn || ''} onChange={handleNTNChange} placeholder="1234567-8" className={cn(MOBILE_INPUT_CLASS, 'font-mono')} maxLength={9} />
+                    {!isWaterRoute && (
+                        <TabsContent value="tax" className="mt-0 space-y-4">
+                            <div className="grid grid-cols-1 gap-4 rounded-xl border border-dashed border-gray-200 bg-gray-50/50 p-4 md:grid-cols-2">
+                                {isPakistanMarket ? (
+                                    <>
+                                        <div className="space-y-1.5">
+                                            <Label className={MOBILE_LABEL_CLASS}>CNIC</Label>
+                                            <Input value={formData.cnic || ''} onChange={handleCNICChange} placeholder="42201-1234567-1" className={cn(MOBILE_INPUT_CLASS, 'font-mono')} maxLength={15} />
+                                            {errors?.cnic && <FormError message={errors.cnic} />}
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <Label className={MOBILE_LABEL_CLASS}>{taxIdLabel || 'NTN'}</Label>
+                                            <Input value={formData.ntn || ''} onChange={handleNTNChange} placeholder="1234567-8" className={cn(MOBILE_INPUT_CLASS, 'font-mono')} maxLength={9} />
+                                            {errors?.ntn && <FormError message={errors.ntn} />}
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <Label className={MOBILE_LABEL_CLASS}>SRN</Label>
+                                            <Input value={formData.srn || ''} onChange={(e) => handleInputChange('srn', e.target.value)} placeholder="12-34-5678-910-1" className={cn(MOBILE_INPUT_CLASS, 'font-mono')} />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <Label className={MOBILE_LABEL_CLASS}>FBR Filer Status</Label>
+                                            <select className={cn(MOBILE_INPUT_CLASS, 'w-full border border-input bg-background px-3')} value={formData.filer_status || 'none'} onChange={(e) => handleInputChange('filer_status', e.target.value)}>
+                                                <option value="none">Not Verified</option>
+                                                <option value="active">Active (Filer)</option>
+                                                <option value="inactive">Inactive (Non-Filer)</option>
+                                            </select>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <div className="space-y-1.5 md:col-span-2">
+                                        <Label className={MOBILE_LABEL_CLASS}>{taxIdLabel}</Label>
+                                        <Input value={formData.ntn || ''} onChange={(e) => handleInputChange('ntn', e.target.value)} placeholder={`${taxIdLabel} / registration number`} className={MOBILE_INPUT_CLASS} />
                                         {errors?.ntn && <FormError message={errors.ntn} />}
                                     </div>
-                                    <div className="space-y-1.5">
-                                        <Label className={MOBILE_LABEL_CLASS}>SRN</Label>
-                                        <Input value={formData.srn || ''} onChange={(e) => handleInputChange('srn', e.target.value)} placeholder="12-34-5678-910-1" className={cn(MOBILE_INPUT_CLASS, 'font-mono')} />
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <Label className={MOBILE_LABEL_CLASS}>FBR Filer Status</Label>
-                                        <select className={cn(MOBILE_INPUT_CLASS, 'w-full border border-input bg-background px-3')} value={formData.filer_status || 'none'} onChange={(e) => handleInputChange('filer_status', e.target.value)}>
-                                            <option value="none">Not Verified</option>
-                                            <option value="active">Active (Filer)</option>
-                                            <option value="inactive">Inactive (Non-Filer)</option>
-                                        </select>
-                                    </div>
-                                </>
-                            ) : (
-                                <div className="space-y-1.5 md:col-span-2">
-                                    <Label className={MOBILE_LABEL_CLASS}>{taxIdLabel}</Label>
-                                    <Input value={formData.ntn || ''} onChange={(e) => handleInputChange('ntn', e.target.value)} placeholder={`${taxIdLabel} / registration number`} className={MOBILE_INPUT_CLASS} />
-                                    {errors?.ntn && <FormError message={errors.ntn} />}
+                                )}
+                                <div className="space-y-1.5">
+                                    <Label className={MOBILE_LABEL_CLASS}>Credit Limit ({currency})</Label>
+                                    <Input type="number" value={formData.credit_limit || ''} onChange={(e) => handleInputChange('credit_limit', e.target.value)} placeholder="0" className={MOBILE_INPUT_CLASS} />
                                 </div>
-                            )}
-                            <div className="space-y-1.5">
-                                <Label className={MOBILE_LABEL_CLASS}>Credit Limit ({currency})</Label>
-                                <Input type="number" value={formData.credit_limit || ''} onChange={(e) => handleInputChange('credit_limit', e.target.value)} placeholder="0" className={MOBILE_INPUT_CLASS} />
+                                <div className="space-y-1.5">
+                                    <Label className={MOBILE_LABEL_CLASS}>Opening Balance ({currency})</Label>
+                                    <Input type="number" value={formData.opening_balance || ''} onChange={(e) => handleInputChange('opening_balance', e.target.value)} placeholder="0" className={MOBILE_INPUT_CLASS} />
+                                </div>
                             </div>
-                            <div className="space-y-1.5">
-                                <Label className={MOBILE_LABEL_CLASS}>Opening Balance ({currency})</Label>
-                                <Input type="number" value={formData.opening_balance || ''} onChange={(e) => handleInputChange('opening_balance', e.target.value)} placeholder="0" className={MOBILE_INPUT_CLASS} />
-                            </div>
-                        </div>
-                    </TabsContent>
+                        </TabsContent>
+                    )}
 
-                    <TabsContent value="domain" className="mt-0 space-y-4">
+                    {!isWaterRoute && (
+                        <TabsContent value="domain" className="mt-0 space-y-4">
                         {domainFields.length > 0 ? (
                             <div className="grid grid-cols-1 gap-4 rounded-xl border border-gray-100 bg-gray-50/50 p-4 md:grid-cols-2">
                                 {domainFields.map(field => {
@@ -454,11 +496,27 @@ export function CustomerForm({
                                             key={field}
                                             field={key}
                                             value={formData.domain_data?.[key] || ''}
-                                            onChange={(val) => setFormData({
-                                                ...formData,
-                                                domain_data: { ...formData.domain_data, [key]: val }
-                                            })}
+                                            onChange={(val) => {
+                                                const nextDomain = { ...formData.domain_data, [key]: val };
+                                                if (key === 'city') {
+                                                    // Refresh area options for the new city; clear stale area/postal.
+                                                    nextDomain.deliveryarea = '';
+                                                    nextDomain.postalcode = '';
+                                                    nextDomain.areacode = '';
+                                                }
+                                                setFormData({
+                                                    ...formData,
+                                                    domain_data: nextDomain,
+                                                });
+                                            }}
+                                            onDomainPatch={(patch) => {
+                                                setFormData((prev) => ({
+                                                    ...prev,
+                                                    domain_data: { ...prev.domain_data, ...patch },
+                                                }));
+                                            }}
                                             category={category}
+                                            product={formData.domain_data || {}}
                                         />
                                     );
                                 })}
@@ -469,6 +527,7 @@ export function CustomerForm({
                             </div>
                         )}
                     </TabsContent>
+                    )}
                 </Tabs>
             </CardContent>
 

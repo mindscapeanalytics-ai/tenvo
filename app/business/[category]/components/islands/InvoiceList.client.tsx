@@ -15,7 +15,7 @@ import { MobileTabHeader, MobileStatStrip } from '@/components/mobile/MobileTabH
 import { InvoiceMobileList } from '@/components/invoice/mobile/InvoiceMobileList';
 import { MOBILE_BOTTOM_NAV_CLASS, MOBILE_FLOATING_Z, MOBILE_MODULE_FAB_RIGHT } from '@/lib/utils/mobileLayout';
 import { useBusiness } from '@/lib/context/BusinessContext';
-import { printInvoiceThermalFromRow } from '@/lib/print/clientInvoicePrint';
+import { printInvoiceThermalFromRow, downloadStandardInvoicePdfFromRow } from '@/lib/print/clientInvoicePrint';
 import toast from 'react-hot-toast';
 
 interface InvoiceListProps {
@@ -154,12 +154,28 @@ export function InvoiceList({
         onExport(exportData);
     };
 
+    const handleStandardInvoicePdf = (invoice: Invoice) => {
+        if (!business) {
+            toast.error('No business selected');
+            return;
+        }
+        void downloadStandardInvoicePdfFromRow(invoice, business, category, {
+            businessId: business.id,
+        }).then(() => {
+            toast.success('Standard invoice PDF downloaded');
+        }).catch(() => {
+            toast.error('Could not download invoice PDF');
+        });
+    };
+
     const handleThermalPrint = (invoice: Invoice) => {
         if (!business) {
             toast.error('No business selected');
             return;
         }
-        void printInvoiceThermalFromRow(invoice, business, category).then((ok) => {
+        void printInvoiceThermalFromRow(invoice, business, category, {
+            businessId: business.id,
+        }).then((ok) => {
             if (ok === false) toast.error('Could not open thermal print');
         });
     };
@@ -536,9 +552,18 @@ export function InvoiceList({
                                 <Button
                                     variant="ghost"
                                     size="icon"
+                                    onClick={() => handleStandardInvoicePdf(row.original)}
+                                    className="h-8 w-8 text-sky-700 hover:text-sky-900"
+                                    title="Download standard A4 invoice"
+                                >
+                                    <FileText className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
                                     onClick={() => handleThermalPrint(row.original)}
                                     className="h-8 w-8 text-slate-600 hover:text-slate-900"
-                                    title="Print thermal receipt"
+                                    title="Print thermal receipt (optional till copy)"
                                 >
                                     <Printer className="w-4 h-4" />
                                 </Button>
@@ -589,6 +614,7 @@ export function InvoiceList({
                                 onRecordPayment={onRecordPayment}
                                 onDelete={onInvoiceDelete}
                                 onAdd={onAdd}
+                                onPrintPdf={handleStandardInvoicePdf}
                                 onPrintThermal={handleThermalPrint}
                                 renderPaymentBadge={(inv) => getPaymentStatusBadge(inv, true)}
                                 renderAging={calculateAging}

@@ -106,6 +106,12 @@ if (!retailActions.includes('buildRetailSimpleSecondaryActions')) {
 if (!retailActions.includes('isMilkHisabRelevant') || !retailActions.includes('route-hisab')) {
   mark('retailSimpleActions must support Milk Record → route-hisab');
 }
+if (!retailActions.includes('isWaterHisabRelevant') || !retailActions.includes('Water Route')) {
+  mark('retailSimpleActions must support Water Route → route-hisab');
+}
+if (!easyIntel.includes("'water-delivery'") || !easyIntel.includes('Bottles & cases sold')) {
+  mark('easyDomainIntelligence must define water-delivery playbook and KPI labels');
+}
 if (!retailActions.includes('resolveOnlineSalesAmount')) {
   mark('retailSimpleActions must resolve Online Sales from hub metrics');
 }

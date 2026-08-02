@@ -23,6 +23,7 @@ import { isPharmacyElevatedStore } from '@/lib/storefront/pharmacyStorefront';
 import { isTyreElevatedStore, enrichTyreProductsWithSeedImages } from '@/lib/storefront/tyreStorefront';
 import { isFootwearElevatedStore, enrichFootwearProductsWithSeedImages } from '@/lib/storefront/footwearStorefront';
 import { isElectronicsElevatedStore, enrichElectronicsProductsWithSeedImages } from '@/lib/storefront/electronicsStorefront';
+import { isWaterShopStore } from '@/lib/storefront/waterShopStorefront';
 import { ElectronicsShopLayout } from '@/components/storefront/electronics/ElectronicsShopLayout';
 import {
   buildPharmacyShopCatalog,
@@ -96,6 +97,7 @@ export default async function ProductsPage({ params, searchParams }) {
   const tyreStore = isTyreElevatedStore(business.category);
   const footwearStore = isFootwearElevatedStore(business.category);
   const electronicsStore = isElectronicsElevatedStore(business.category);
+  const waterSupplyStore = isWaterShopStore(business.category);
 
   // Parse filters from search params
   const filters = {
@@ -184,7 +186,13 @@ export default async function ProductsPage({ params, searchParams }) {
                         : filters.style
                           ? `${filters.style} shoes`
                           : 'Shop shoes'
-                      : 'All products';
+                      : waterSupplyStore
+                        ? categoryMeta
+                          ? categoryMeta.name
+                          : filters.onSale
+                            ? 'Water deals'
+                            : 'Shop water products'
+                        : 'All products';
 
   if (restaurantStore) {
     const settings = storeSettings;
@@ -474,6 +482,10 @@ export default async function ProductsPage({ params, searchParams }) {
                 filters={filters}
                 view={view}
                 fitnessStore={fitnessStore}
+                tyreStore={tyreStore}
+                footwearStore={footwearStore}
+                electronicsStore={electronicsStore}
+                businessCategory={business.category}
                 bookableCategoryRequested={bookableCategoryRequested}
               />
             </Suspense>
@@ -564,6 +576,7 @@ async function ProductGridContent({
   fitnessStore = false,
   pharmacyStore = false,
   tyreStore = false,
+  footwearStore = false,
   electronicsStore = false,
   businessCategory = '',
   bookableCategoryRequested = false,

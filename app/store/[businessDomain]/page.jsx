@@ -35,6 +35,7 @@ import {
   getSupermarketHeroSlides,
   resolveSupermarketQuickSearchTerms,
 } from '@/lib/storefront/supermarketStorefront';
+import { isWaterShopStore } from '@/lib/storefront/waterShopStorefront';
 import { getTenantMeetingUrl, shouldOfferTenantMeetingLink } from '@/lib/storefront/storefrontBooking';
 import { isAutoDealershipStore } from '@/lib/storefront/autoDealership';
 import { TENVO_VEHICLES_METADATA } from '@/lib/storefront/tenvoVehiclesAssets';
@@ -131,8 +132,13 @@ export async function generateMetadata({ params }) {
     description = description || `Train wild at ${storeName}. Shop supplements, memberships, and book personal training online.`;
     keywords = `${storeName}, gym, fitness, supplements${business.city ? `, ${business.city}` : ''}`;
   } else if (isSupermarketElevatedStore(business.category)) {
-    description = description || `Shop fresh groceries and daily essentials at ${storeName}. Same-day delivery on pantry staples, produce, and household favourites.`;
-    keywords = `${storeName}, online grocery, supermarket${business.city ? `, ${business.city}` : ''}`;
+    if (isWaterShopStore(business.category)) {
+      description = description || `Order 19L and 12L water refills, dispensers, and PET cases at ${storeName}. Fixed-day rider delivery across your city.`;
+      keywords = `${storeName}, water delivery, 19L refill, water dispenser, mineral water${business.city ? `, ${business.city}` : ''}`;
+    } else {
+      description = description || `Shop fresh groceries and daily essentials at ${storeName}. Same-day delivery on pantry staples, produce, and household favourites.`;
+      keywords = `${storeName}, online grocery, supermarket${business.city ? `, ${business.city}` : ''}`;
+    }
   } else if (isFashionEditorialStore(business.category)) {
     const meta = getFashionMetadataCopy(business.category, business.city, storeName);
     description = description || meta.description;

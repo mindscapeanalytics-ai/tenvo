@@ -324,23 +324,30 @@ export function buildRegionalTaxCategoryDefaults(countryIso?: string | null): st
   return ['Standard', 'Zero Rated', 'Exempt'];
 }
 
-/** Phone dial-code options for customer/vendor forms — sourced from REGIONAL_REGISTRY only */
+/** Phone dial-code options for customer/vendor forms — sourced from REGIONAL_REGISTRY only (deduplicated by phoneCode) */
 export function getPhoneCountryCodeOptions(): Array<{
   code: string;
   label: string;
   countryIso: string;
 }> {
-  return Object.values(REGIONAL_REGISTRY)
-    .map((r) => ({
+  const seen = new Set<string>();
+  const list: Array<{ code: string; label: string; countryIso: string }> = [];
+
+  for (const r of Object.values(REGIONAL_REGISTRY)) {
+    if (seen.has(r.phoneCode)) continue;
+    seen.add(r.phoneCode);
+    list.push({
       code: r.phoneCode,
       label: `${r.countryName} (${r.phoneCode})`,
       countryIso: r.countryCode,
-    }))
-    .sort((a, b) => {
-      if (a.countryIso === DEFAULT_REGISTRATION_COUNTRY_ISO) return -1;
-      if (b.countryIso === DEFAULT_REGISTRATION_COUNTRY_ISO) return 1;
-      return a.label.localeCompare(b.label);
     });
+  }
+
+  return list.sort((a, b) => {
+    if (a.countryIso === DEFAULT_REGISTRATION_COUNTRY_ISO) return -1;
+    if (b.countryIso === DEFAULT_REGISTRATION_COUNTRY_ISO) return 1;
+    return a.label.localeCompare(b.label);
+  });
 }
 
 /** Wizard / admin dropdowns — sorted with Pakistan first, then A–Z */

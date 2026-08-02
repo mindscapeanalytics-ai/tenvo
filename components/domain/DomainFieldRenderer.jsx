@@ -8,6 +8,12 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { DatePicker } from '@/components/DatePicker';
 import { AlertCircle, Flame, Biohazard, Radiation, ShieldAlert, Pill, Car, Microscope, HelpCircle, Book, Hash } from 'lucide-react';
 import { getFieldLabel, getFieldInputType, isFieldRequired, getDomainKnowledge, normalizeKey, getSelectOptions, getDomainUnitPreview } from '@/lib/utils/domainHelpers';
+import { resolveDomainKey } from '@/lib/config/domainKeyAliases';
+import {
+  getDeliveryAreaSelectOptions,
+  getAllPakistanDeliveryAreaSelectOptions,
+  resolvePostalCodeForArea,
+} from '@/lib/data/pakistanDeliveryAreas';
 import { VehicleCompatibilitySelector, OEMNumberInput, PartNumberInput, WarrantyPeriodInput } from './AutoPartsFields';
 import { SerialNumberInput } from './SerialTracking';
 import { BatchNumberInput } from './BatchTracking';
@@ -27,6 +33,7 @@ export function DomainFieldRenderer({
   product = {},
   className = '',
   error = null, // Accept error prop
+  onDomainPatch = null,
 }) {
   const label = getFieldLabel(field, category);
   const inputType = getFieldInputType(field, category);
@@ -93,7 +100,17 @@ export function DomainFieldRenderer({
           </div>
         );
       case 'select':
-        return <DomainSelect field={field} category={category} value={value} onChange={onChange} error={error} />;
+        return (
+          <DomainSelect
+            field={field}
+            category={category}
+            value={value}
+            onChange={onChange}
+            error={error}
+            contextValues={product}
+            onDomainPatch={onDomainPatch}
+          />
+        );
       case 'vehicle-compatibility':
         return <VehicleCompatibilitySelector value={value || []} onChange={onChange} />;
       case 'oem-number':
@@ -155,25 +172,84 @@ export function DomainFieldRenderer({
   );
 }
 
-function DomainSelect({ field, category, value, onChange, error }) {
-  const rawOptions = getSelectOptions(field, category);
+function DomainSelect({ field, category, value, onChange, error, contextValues = {}, onDomainPatch = null }) {
+  const key = normalizeKey(field);
+  let rawOptions = getSelectOptions(field, category);
+  const isWater = resolveDomainKey(category) === 'water-delivery';
+
+  // Water delivery: city-scoped areas with postal codes in the label + custom area entry via datalist.
+  if (isWater && (key === 'deliveryarea' || key === 'delivery_area')) {
+    const city = String(contextValues?.city || '').trim();
+    const cityOpts = getDeliveryAreaSelectOptions(city);
+    const areaOpts = cityOpts.length ? cityOpts : getAllPakistanDeliveryAreaSelectOptions();
+
+    const handleAreaInput = (e) => {
+      const next = e.target.value;
+      onChange(next);
+      if (typeof onDomainPatch === 'function') {
+        const fromOpt = areaOpts.find((o) => String(o.value).toLowerCase() === String(next).toLowerCase())?.postalCode;
+        const code = fromOpt || resolvePostalCodeForArea(city, next);
+        if (code) onDomainPatch({ postalcode: code, areacode: code });
+      }
+    };
+
+    return (
+      <div className="relative">
+        <Input
+          list="water-delivery-areas-list"
+          value={value || ''}
+          onChange={handleAreaInput}
+          placeholder="Select or type delivery area (e.g. BTK Precinct 11A, DHA Phase 6)…"
+          className={cn(
+            "h-11 rounded-xl border-gray-100 bg-gray-50/30 focus:bg-white transition-all pl-3 text-sm",
+            error ? "border-red-500 bg-red-50" : "hover:border-indigo-100 focus:border-indigo-400"
+          )}
+        />
+        <datalist id="water-delivery-areas-list">
+          {areaOpts.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </datalist>
+      </div>
+    );
+  }
 
   if (!rawOptions || rawOptions.length === 0) {
     return <Input value={value || ''} onChange={e => onChange(e.target.value)} className={error ? "border-red-500 bg-red-50" : ""} />;
   }
 
-  // Normalize options to { value, label } format and filter out empty values
+  // Normalize options to { value, label, postalCode? } and filter out empty values
   const options = rawOptions
-    .map(opt => typeof opt === 'string' ? { value: opt, label: opt } : opt)
-    .filter(opt => opt.value && opt.value.toString().trim() !== '');
+    .map((opt) => {
+      if (typeof opt === 'string') return { value: opt, label: opt, postalCode: null };
+      return {
+        value: opt.value,
+        label: opt.label || opt.value,
+        postalCode: opt.postalCode || null,
+      };
+    })
+    .filter((opt) => opt.value && opt.value.toString().trim() !== '');
+
+  const handleChange = (next) => {
+    onChange(next);
+    if (!isWater || typeof onDomainPatch !== 'function') return;
+    if (key === 'deliveryarea' || key === 'delivery_area') {
+      const city = String(contextValues?.city || '').trim();
+      const fromOpt = options.find((o) => String(o.value) === String(next))?.postalCode;
+      const code = fromOpt || resolvePostalCodeForArea(city, next);
+      if (code) onDomainPatch({ postalcode: code, areacode: code });
+    }
+  };
 
   return (
-    <Select value={value || ''} onValueChange={onChange}>
+    <Select value={value || ''} onValueChange={handleChange}>
       <SelectTrigger className={`h-11 rounded-xl border-gray-100 bg-gray-50/30 focus:bg-white transition-all ${error ? "border-red-500 bg-red-50 focus:ring-red-500" : ""}`}>
         <SelectValue placeholder="Select option..." />
       </SelectTrigger>
       <SelectContent>
-        {options.map(opt => (
+        {options.map((opt) => (
           <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
         ))}
       </SelectContent>

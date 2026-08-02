@@ -26,7 +26,7 @@ import { EnhancedInvoiceBuilder } from './EnhancedInvoiceBuilder';
 import { customerAPI, vendorAPI } from '@/lib/api';
 import toast from 'react-hot-toast';
 import { HUB_ENTITY_DIALOG } from '@/lib/utils/formMobileStyles';
-import { printInvoicePdfFromRow, printInvoiceThermalFromRow } from '@/lib/print/clientInvoicePrint';
+import { printInvoicePdfFromRow, printInvoiceThermalFromRow, downloadStandardInvoicePdfFromRow } from '@/lib/print/clientInvoicePrint';
 
 export function EntityDetailsDialog({ item: initialItem, type, open, onClose, category = 'retail-shop' }) {
     const { business, currency: businessCurrency } = useBusiness();
@@ -54,7 +54,9 @@ export function EntityDetailsDialog({ item: initialItem, type, open, onClose, ca
             toast.error('No business selected');
             return;
         }
-        void printInvoiceThermalFromRow(item, business, category).then((ok) => {
+        void printInvoiceThermalFromRow(item, business, category, {
+            businessId: business.id,
+        }).then((ok) => {
             if (ok === false) toast.error('Could not open thermal print');
         });
     };
@@ -64,7 +66,11 @@ export function EntityDetailsDialog({ item: initialItem, type, open, onClose, ca
             toast.error('No business selected');
             return;
         }
-        printInvoicePdfFromRow(item, business, category);
+        void downloadStandardInvoicePdfFromRow(item, business, category, {
+            businessId: business.id,
+        })
+            .then(() => toast.success('Standard invoice PDF downloaded'))
+            .catch(() => toast.error('Could not download invoice PDF'));
     };
 
     const handleUpdateSuccess = (updatedData) => {
@@ -347,7 +353,7 @@ export function EntityDetailsDialog({ item: initialItem, type, open, onClose, ca
                                 </Button>
                                 <Button variant="outline" size="sm" onClick={handlePrintInvoicePdf} className="rounded-xl bg-white border-gray-200 text-gray-600 hover:text-gray-900 hover:border-gray-300 px-3">
                                     <FileText className="w-3.5 h-3.5 mr-2" />
-                                    <span className="text-[10px] font-semibold uppercase tracking-widest">A4 PDF</span>
+                                    <span className="text-[10px] font-semibold uppercase tracking-widest">A4 Invoice</span>
                                 </Button>
                             </>
                         ) : (

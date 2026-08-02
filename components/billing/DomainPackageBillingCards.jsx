@@ -16,6 +16,7 @@ import {
   Sofa,
   Dumbbell,
   Milk,
+  Droplets,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -35,6 +36,7 @@ const PACKAGE_ICONS = {
   'furniture-commerce': Sofa,
   'fitness-commerce': Dumbbell,
   'milk-commerce': Milk,
+  'water-commerce': Droplets,
 };
 
 function resolveActiveDomainPackageKey(settings) {

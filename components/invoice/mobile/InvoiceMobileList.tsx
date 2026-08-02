@@ -76,6 +76,7 @@ export interface InvoiceMobileListProps {
   onRecordPayment?: (invoice: InvoiceMobileRow) => void;
   onDelete?: (id: string) => void;
   onAdd?: () => void;
+  onPrintPdf?: (invoice: InvoiceMobileRow) => void;
   onPrintThermal?: (invoice: InvoiceMobileRow) => void;
   renderPaymentBadge?: (invoice: InvoiceMobileRow) => ReactNode;
   renderAging?: (invoice: InvoiceMobileRow) => ReactNode;
@@ -103,6 +104,7 @@ export function InvoiceMobileList({
   onRecordPayment,
   onDelete,
   onAdd,
+  onPrintPdf,
   onPrintThermal,
   renderPaymentBadge,
   renderAging,
@@ -300,6 +302,13 @@ export function InvoiceMobileList({
           <div className={MOBILE_BOTTOM_SHEET_BODY}>
             <div className="space-y-2">
               <MobileActionRow icon={Eye} label="View invoice" onClick={() => runAction(onView)} />
+              {onPrintPdf && (
+                <MobileActionRow
+                  icon={FileText}
+                  label="Download A4 invoice"
+                  onClick={() => runAction(onPrintPdf)}
+                />
+              )}
               {onPrintThermal && (
                 <MobileActionRow
                   icon={Printer}
