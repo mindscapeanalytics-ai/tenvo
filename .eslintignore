@@ -1,0 +1,8 @@
+# Ignore node and build artifacts
+node_modules/
+.next/
+out/
+build/
+
+# Ignore scripts that use CommonJS / run-time migration helpers
+scripts/

@@ -12,7 +12,7 @@
     "postinstall": "prisma generate && node scripts/ensure-better-call-zod4.mjs",
     "start": "next start",
     "start:3001": "next start --port 3001",
-    "lint": "eslint .",
+    "lint": "eslint . --ext .js,.mjs,.ts",
     "lint:fix": "node scripts/fix-eslint-issues.mjs && eslint . --fix",
     "test": "vitest",
     "test:coverage": "vitest run --coverage",
@@ -61,7 +61,7 @@
     "verify:vercel-image-delivery": "bun scripts/verify-vercel-image-delivery.mjs",
     "probe:storefront-unsplash": "node scripts/probe-storefront-unsplash.mjs",
     "build:fashion-gul-sections": "node scripts/build-fashion-gul-sections.mjs",
-    "verify:storefront-security": "npm run verify:audit-fixes && npm run verify:storefront-tenancy && npm run verify:storefront-domain-resolution && npm run verify:storefront-checkout-intelligence && npm run verify:storefront-payments && npm run verify:registration-flow && npm run verify:domain-packages",
+    "verify:storefront-security": "npm run verify:audit-fixes && npm run verify:storefront-tenancy && npm run verify:storefront-domain-resolution && npm run verify:storefront-checkout-intelligence[...",
     "verify:campaigns-hub": "node scripts/verify-campaigns-hub.mjs",
     "verify:domain-packages": "node scripts/verify-domain-packages.mjs",
     "verify:stripe-billing-catalog": "node scripts/verify-stripe-billing-catalog.mjs",
@@ -116,7 +116,7 @@
     "verify:showroom-seed": "bun scripts/verify-showroom-seed.mjs",
     "data-lab:verify": "npx tsx scripts/data-lab/verify-demo-wiring.mjs",
     "data-lab:ensure-demos": "npx tsx scripts/data-lab/ensure-demo-storefronts.mjs --refresh-catalog",
-    "data-lab:reset": "node scripts/data-lab/purge-business-data.mjs --confirm PURGE_ALL_BUSINESS_DATA && npx tsx scripts/data-lab/seed-master-demo.mjs && npx tsx scripts/data-lab/verify-demo-wiring.mjs"
+    "data-lab:reset": "node scripts/data-lab/purge-business-data.mjs --confirm PURGE_ALL_BUSINESS_DATA && npx tsx scripts/data-lab/seed-master-demo.mjs && npx tsx scripts/data-lab/verify-demo-wir[...]"
   },
   "dependencies": {
     "@ai-sdk/google": "^3.0.80",
