@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useMemo, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -1068,7 +1068,7 @@ export function DomainDashboard({
         const netMarginPct =
             periodMetrics.currentRevenue > 0
                 ? ((netProfitValue / periodMetrics.currentRevenue) * 100).toFixed(1)
-                : &apos;0.0&apos;;
+                : '0.0';
 
         const topProduct = analyticsQuery.data?.topProducts?.[0] as Record<string, unknown> | undefined;
         const retentionRate = analyticsQuery.data?.kpi?.retention;

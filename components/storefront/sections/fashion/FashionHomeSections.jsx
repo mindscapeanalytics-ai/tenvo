@@ -23,9 +23,9 @@ import { FashionGulAhmedSections } from '@/components/storefront/sections/fashio
 
 function FashionSeoBlock({ storeName, businessCategory, businessDescription, country, settings, businessDomain }) {
   const config = getFashionEditorialConfig(settings, businessDomain, businessCategory);
+  const [expanded, setExpanded] = useState(false);
   if (!config.showSeoBlock) return null;
   const blocks = resolveFashionSeoBlocks(storeName, businessCategory, businessDescription, country);
-  const [expanded, setExpanded] = useState(false);
 
   return (
     <section className="border-t border-stone-200 bg-stone-50/80 py-10 sm:py-14">

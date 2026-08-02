@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import Link from 'next/link';
@@ -124,7 +124,7 @@ function AccessoryCard({ product, businessDomain, businessCategory, currency, ac
   const imageSrc = getEffectiveProductImageUrl(product, businessCategory);
   const imageFallback = getFallbackProductImageUrl(
     product,
-    businessCategory || &apos;vehicle-dealership&apos;,
+    businessCategory || 'vehicle-dealership',
     product.category_name || product.category
   );
 

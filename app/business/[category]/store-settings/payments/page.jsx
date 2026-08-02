@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -237,7 +237,7 @@ export default function PaymentSettingsPage() {
 
   const hasStripe = paymentMethods.some(m => m.provider === 'stripe');
   const hasCOD = paymentMethods.some(m => m.provider === 'cod');
-  const hasCrypto = paymentMethods.some(m => m.provider === &apos;crypto&apos;);
+  const hasCrypto = paymentMethods.some(m => m.provider === 'crypto');
   const isStripeReady = Boolean(stripeConnect?.is_charges_enabled);
 
   return (

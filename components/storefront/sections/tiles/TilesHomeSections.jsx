@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
 import Link from 'next/link';
@@ -60,8 +60,8 @@ export function TilesHomeSections({
     ? filterTilesByCategorySlug(products, activeTabDef.slug).slice(0, 8)
     : [];
 
-  const marbleProducts = filterTilesByCategorySlug(products, &apos;marble&apos;).slice(0, 8);
-  const wallProducts = filterTilesByCategorySlug(products, &apos;wall-tiles&apos;).slice(0, 8);
+  const marbleProducts = filterTilesByCategorySlug(products, 'marble').slice(0, 8);
+  const wallProducts = filterTilesByCategorySlug(products, 'wall-tiles').slice(0, 8);
 
   return (
     <>

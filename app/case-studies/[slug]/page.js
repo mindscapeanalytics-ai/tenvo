@@ -8,6 +8,7 @@ import { caseStudies } from '@/lib/marketing/case-studies';
 import { useParams } from 'next/navigation';
 import { CheckCircle, TrendingUp, Clock, DollarSign } from 'lucide-react';
 import Image from '@/components/marketing/ui/MarketingImage';
+import Link from 'next/link';
 
 export default function CaseStudyDetailPage() {
   const params = useParams();
@@ -22,9 +23,9 @@ export default function CaseStudyDetailPage() {
         <div className="py-24 text-center">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">Case Study Not Found</h1>
           <p className="text-gray-600 mb-8">The case study you&apos;re looking for doesn&apos;t exist.</p>
-          <a href="/case-studies" className="text-brand-primary hover:underline">
+          <Link href="/case-studies" className="text-brand-primary hover:underline">
             View all case studies
-          </a>
+          </Link>
         </div>
       </MarketingLayout>
     );
@@ -140,7 +141,7 @@ export default function CaseStudyDetailPage() {
           {caseStudy.testimonial && (
             <div className="bg-brand-50 rounded-2xl p-8 border-l-4 border-brand-primary">
               <p className="text-lg text-gray-700 italic mb-4">
-                "{caseStudy.testimonial.quote}"
+                &ldquo;{caseStudy.testimonial.quote}&rdquo;
               </p>
               <div className="flex items-center gap-4">
                 {caseStudy.testimonial.avatar && (

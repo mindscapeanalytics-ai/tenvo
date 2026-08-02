@@ -1,4 +1,4 @@
-import MarketingLayout from '@/components/marketing/layout/MarketingLayout';
+﻿import MarketingLayout from '@/components/marketing/layout/MarketingLayout';
 import { MARKETING_CONTAINER } from '@/lib/utils/marketingLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -87,7 +87,7 @@ export default async function AffiliateStatusPage({ searchParams }) {
     ?.filter(r => r.status === 'paid')
     .reduce((sum, r) => sum + Number(r.commission_earned), 0) || 0;
 
-  const isApproved = affiliate?.status === &apos;approved&apos;;
+  const isApproved = affiliate?.status === 'approved';
 
   return (
     <MarketingLayout>
@@ -163,7 +163,7 @@ export default async function AffiliateStatusPage({ searchParams }) {
                   </div>
                 </div>
                 <p className="text-zinc-600 text-sm ml-12">
-                  Your application is pending review by our team. We&apos;ll notify you by email once approved. Check back here anytime.
+                  Your application is pending review by our team. We'll notify you by email once approved. Check back here anytime.
                 </p>
                 <div className="mt-4 ml-12 flex items-center gap-2 text-xs text-amber-700 font-medium bg-amber-100 w-fit px-3 py-1.5 rounded-full">
                   <span className="font-mono">{affiliate.referral_code}</span>

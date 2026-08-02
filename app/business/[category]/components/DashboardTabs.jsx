@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React from 'react';
 import { motion } from 'framer-motion';
@@ -854,7 +854,7 @@ export function DashboardTabs({
                                     currency={currency}
                                     session={posSession}
                                 />
-                            ) : resolvePosVariant(category) === &apos;superstore&apos; ? (
+                            ) : resolvePosVariant(category) === 'superstore' ? (
                                 <SuperStorePOS
                                     businessId={activeBusinessId}
                                     category={category}

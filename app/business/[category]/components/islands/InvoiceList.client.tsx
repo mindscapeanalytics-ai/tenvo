@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -228,19 +228,19 @@ export function InvoiceList({
         switch (status) {
             case 'paid':
                 return <Badge className="bg-green-100 text-green-800">Paid</Badge>;
-            case &apos;draft&apos;:
+            case 'draft':
                 return <Badge className="bg-gray-100 text-gray-800">Draft</Badge>;
-            case &apos;sent&apos;:
+            case 'sent':
                 return <Badge className="bg-blue-100 text-blue-800">Sent</Badge>;
-            case &apos;partial&apos;:
+            case 'partial':
                 return <Badge className="bg-purple-100 text-purple-800">Partial</Badge>;
-            case &apos;awaiting_approval&apos;:
+            case 'awaiting_approval':
                 return <Badge className="bg-amber-100 text-amber-800">Awaiting Approval</Badge>;
-            case &apos;overdue&apos;:
+            case 'overdue':
                 return <Badge className="bg-orange-100 text-orange-800">Overdue</Badge>;
-            case &apos;voided&apos;:
+            case 'voided':
                 return <Badge className="bg-red-100 text-red-800">Voided</Badge>;
-            case &apos;cancelled&apos;:
+            case 'cancelled':
                 return <Badge className="bg-red-100 text-red-800">Cancelled</Badge>;
             default:
                 return <Badge className="bg-yellow-100 text-yellow-800">{status?.replace(/_/g, ' ')}</Badge>;

@@ -1,12 +1,10 @@
-'use client';
-
+import React from 'react';
 import Link from 'next/link';
 import { SmartProductImage } from '@/components/storefront/SmartProductImage';
 import { StoreMarqueeRow } from '@/components/storefront/sections/shared/StoreMarqueeRow';
 import { resolveRestaurantMenuIcon } from '@/lib/storefront/restaurantMenu';
 
 function CategoryTile({ cat, accent }) {
-  const Icon = resolveRestaurantMenuIcon(cat.slug || cat.label);
   const hasImage = Boolean(cat.image);
 
   return (
@@ -30,7 +28,7 @@ function CategoryTile({ cat, accent }) {
               className="flex h-full w-full items-center justify-center bg-red-50"
               style={{ color: accent }}
             >
-              <Icon className="h-6 w-6 sm:h-7 sm:w-7" aria-hidden />
+              {React.createElement(resolveRestaurantMenuIcon(cat.slug || cat.label), { className: 'h-6 w-6 sm:h-7 sm:w-7', 'aria-hidden': true })}
             </div>
           )}
         </div>

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -264,7 +264,7 @@ export default function MultiBusinessPage() {
                     Clear Search
                   </Button>
                 </div>
-              ) : viewMode === &apos;grid&apos; ? (
+              ) : viewMode === 'grid' ? (
                 /* COMPACT GRID VIEW */
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                   {filteredBusinesses.map((biz, idx) => (
@@ -279,8 +279,8 @@ export default function MultiBusinessPage() {
                         <div className="flex items-start justify-between gap-4 mb-4">
                           <div className="w-12 h-12 bg-gradient-to-br from-wine/10 to-wine/5 rounded-xl flex items-center justify-center text-wine shadow-sm group-hover:scale-105 transition-transform duration-300">
                             {biz.category === 'retail-shop' ? <Store className="w-6 h-6" /> :
-                              biz.category === &apos;manufacturing&apos; ? <Factory className="w-6 h-6" /> :
-                                biz.category === &apos;ecommerce&apos; ? <Globe className="w-6 h-6" /> :
+                              biz.category === 'manufacturing' ? <Factory className="w-6 h-6" /> :
+                                biz.category === 'ecommerce' ? <Globe className="w-6 h-6" /> :
                                   <Briefcase className="w-6 h-6" />}
                           </div>
                         </div>
@@ -333,8 +333,8 @@ export default function MultiBusinessPage() {
                       <div className="flex items-center gap-4 flex-1 min-w-0">
                         <div className="w-11 h-11 bg-gradient-to-br from-wine/10 to-wine/5 rounded-xl flex items-center justify-center text-wine group-hover:scale-105 transition-transform flex-shrink-0 shadow-sm">
                           {biz.category === 'retail-shop' ? <Store className="w-5 h-5" /> :
-                            biz.category === &apos;manufacturing&apos; ? <Factory className="w-5 h-5" /> :
-                              biz.category === &apos;ecommerce&apos; ? <Globe className="w-5 h-5" /> :
+                            biz.category === 'manufacturing' ? <Factory className="w-5 h-5" /> :
+                              biz.category === 'ecommerce' ? <Globe className="w-5 h-5" /> :
                                 <Briefcase className="w-5 h-5" />}
                         </div>
                         <div className="min-w-0 flex-1">

@@ -132,10 +132,10 @@ export function ModulePackageCard({
   isSelected = false,
   showPrice = true 
 }) {
-  const module = MODULE_PACKAGES[moduleKey];
+  const modulePackage = MODULE_PACKAGES[moduleKey];
   const Icon = MODULE_ICONS[moduleKey] || Package;
   
-  if (!module) return null;
+  if (!modulePackage) return null;
   
   return (
     <Card 

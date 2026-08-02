@@ -27,9 +27,9 @@ import {
 
 function PharmacySeoBlock({ storeName, businessDescription, country, settings, businessDomain }) {
   const config = getPharmacyConfig(settings, businessDomain);
+  const [expanded, setExpanded] = useState(false);
   if (!config.showSeoBlock) return null;
   const blocks = resolvePharmacySeoBlocks(storeName, businessDescription, country);
-  const [expanded, setExpanded] = useState(false);
   return (
     <section className="border-t border-emerald-100 bg-emerald-50/50 py-10 sm:py-14">
       <div className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-8">

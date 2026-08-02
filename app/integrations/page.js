@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import Link from 'next/link';
 import {
@@ -52,7 +52,7 @@ export default function IntegrationsPage() {
 
   const shipped = INTEGRATIONS_CATALOG.filter((i) => i.status === 'shipped');
   const partial = INTEGRATIONS_CATALOG.filter((i) => i.status === 'partial');
-  const roadmap = INTEGRATIONS_CATALOG.filter((i) => i.status === &apos;roadmap&apos;);
+  const roadmap = INTEGRATIONS_CATALOG.filter((i) => i.status === 'roadmap');
 
   return (
     <MarketingLayout transparentNav={false}>
@@ -70,7 +70,7 @@ export default function IntegrationsPage() {
       <section className={cn(MARKETING_SECTION_LOOSE, 'border-b border-neutral-200/80 bg-white')}>
         <div className={MARKETING_CONTAINER}>
           <p className="mx-auto max-w-3xl text-center text-sm font-medium leading-relaxed text-neutral-600">
-            {MARKETING_DISCLAIMERS.fbr} Prefer TENVO&apos;s built-in storefront and POS when external marketplace connectors are on the roadmap.
+            {MARKETING_DISCLAIMERS.fbr} Prefer TENVO's built-in storefront and POS when external marketplace connectors are on the roadmap.
           </p>
         </div>
       </section>

@@ -300,7 +300,7 @@ export default function PendingApprovalPage() {
 
               <p className="mt-auto border-t border-gray-100 pt-4 text-xs leading-relaxed text-gray-500">
                 We&apos;ll email <span className="font-medium text-gray-700">{business.email}</span>{' '}
-                the moment you're approved. Questions?{' '}
+                the moment you&apos;re approved. Questions?{' '}
                 <a href={`mailto:${supportEmail}`} className="font-medium text-wine hover:underline">
                   {supportEmail}
                 </a>

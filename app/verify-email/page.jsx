@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
@@ -77,7 +77,7 @@ function VerifyEmailContent() {
           </motion.div>
         );
 
-      case &apos;success&apos;:
+      case 'success':
         return (
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
@@ -130,7 +130,7 @@ function VerifyEmailContent() {
           </motion.div>
         );
 
-      case &apos;error&apos;:
+      case 'error':
         return (
           <motion.div
             initial={{ opacity: 0, y: 20 }}

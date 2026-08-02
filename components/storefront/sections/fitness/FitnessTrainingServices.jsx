@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import Link from 'next/link';
 import {
   Calendar, ExternalLink, Dumbbell, UtensilsCrossed, Sparkles,
@@ -127,7 +128,7 @@ function TrainingOverlayCard({
 
       <div className="absolute inset-x-0 bottom-0 flex flex-col gap-3.5 p-5 sm:gap-4 sm:p-6">
         <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-white/15 bg-black/50 px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-white/90 backdrop-blur-sm">
-          <Icon className="h-3.5 w-3.5" aria-hidden />
+          {React.createElement(resolveServiceIcon(product), { className: 'h-3.5 w-3.5', 'aria-hidden': true })}
           {eyebrow}
         </span>
 
