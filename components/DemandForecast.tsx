@@ -75,7 +75,7 @@ export const DemandForecast = memo(function DemandForecast({
         dateRange?.from instanceof Date ? dateRange.from.getTime() : dateRange?.from != null ? String(dateRange.from) : '';
     const rangeToKey =
         dateRange?.to instanceof Date ? dateRange.to.getTime() : dateRange?.to != null ? String(dateRange.to) : '';
-    const dateFilter = useMemo(() => buildDateFilter(dateRange), [rangeFromKey, rangeToKey]);
+    const dateFilter = useMemo(() => buildDateFilter(dateRange), [dateRange]);
 
     useEffect(() => {
         hasForecastCacheRef.current = false;

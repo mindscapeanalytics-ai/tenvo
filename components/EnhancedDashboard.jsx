@@ -2,9 +2,9 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import {
-  TrendingUp, TrendingDown, DollarSign, ShoppingCart, Package, Users,
+  DollarSign, ShoppingCart, Package,
   AlertTriangle, CheckCircle2, Clock, ArrowUpRight, ArrowDownRight,
-  Calendar, Filter, Download, RefreshCw, Bell, Settings, Search, Receipt, FileText,
+  RefreshCw, Bell, Settings, Search, Receipt, FileText,
   Warehouse
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';

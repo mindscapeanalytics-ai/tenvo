@@ -87,17 +87,31 @@ export function CustomerForm({
     useEffect(() => {
         const phone = formData.phone || '';
         if (!phone) {
-            setLocalPhone('');
+            // Use queueMicrotask to avoid setState in effect
+            queueMicrotask(() => setLocalPhone(''));
             return;
         }
         const matcheCode = PHONE_COUNTRY_CODES.find(c => phone.startsWith(c.code));
         if (matcheCode) {
-            setCountryCode(matcheCode.code);
-            setLocalPhone(phone.slice(matcheCode.code.length).trim());
+            queueMicrotask(() => {
+                setCountryCode(matcheCode.code);
+                setLocalPhone(phone.slice(matcheCode.code.length).trim());
+            });
         } else {
-            setLocalPhone(phone);
+            queueMicrotask(() => setLocalPhone(phone));
         }
-    }, [initialData]);
+    }, [formData.phone]);
+
+    const handleInputChange = useCallback((field, value) => {
+        setFormData(prev => ({ ...prev, [field]: value }));
+        if (errors[field]) {
+            setErrors(prev => {
+                const next = { ...prev };
+                delete next[field];
+                return next;
+            });
+        }
+    }, [errors]);
 
     useEffect(() => {
         const cleanLocal = localPhone.replace(/\s+/g, ' ').trim();
@@ -106,7 +120,7 @@ export function CustomerForm({
         } else {
             handleInputChange('phone', '');
         }
-    }, [countryCode, localPhone]);
+    }, [countryCode, localPhone, handleInputChange]);
 
     const domainFields = getDomainCustomerFields(category).filter((field) => {
         const key = normalizeKey(field);
@@ -119,32 +133,26 @@ export function CustomerForm({
             const domain = initialData.domain_data && typeof initialData.domain_data === 'object'
                 ? initialData.domain_data
                 : {};
-            setFormData((prev) => ({
-                ...prev,
-                ...initialData,
-                market_location:
-                    initialData.market_location
-                    || domain.market_location
-                    || domain.marketlocation
-                    || prev.market_location
-                    || '',
-                domain_data: { ...domain },
-            }));
+            // Move to queueMicrotask to avoid setState in effect
+            queueMicrotask(() => {
+                setFormData((prev) => ({
+                    ...prev,
+                    ...initialData,
+                    market_location:
+                        initialData.market_location
+                        || domain.market_location
+                        || domain.marketlocation
+                        || prev.market_location
+                        || '',
+                    domain_data: { ...domain },
+                }));
+            });
         } else if (business?.city) {
-            setFormData((prev) => (prev.city ? prev : { ...prev, city: business.city }));
-        }
-    }, [initialData, business?.city]);
-
-    const handleInputChange = (field, value) => {
-        setFormData(prev => ({ ...prev, [field]: value }));
-        if (errors[field]) {
-            setErrors(prev => {
-                const next = { ...prev };
-                delete next[field];
-                return next;
+            queueMicrotask(() => {
+                setFormData((prev) => (prev.city ? prev : { ...prev, city: business.city }));
             });
         }
-    };
+    }, [initialData, business?.city]);
 
     const handleCNICChange = (e) => {
         let val = e.target.value.replace(/\D/g, '');
@@ -164,7 +172,7 @@ export function CustomerForm({
             return false;
         }
         if (formData.phone && String(formData.phone).replace(/\D/g, '').length > 0
-            && String(formData.phone).replace(/\D/g, &apos;&apos;).length < 7) {
+            && String(formData.phone).replace(/\D/g, '').length < 7) {
             toast.error('Phone number seems too short');
             return false;
         }

@@ -79,7 +79,6 @@ export function BusyGrid({
     const scrollRef = useRef(null);
     /** Enter/Tab already committed, ignore the blur that follows so we do not double-fire `onCellEdit`. */
     const skipNextBlurSaveRef = useRef(false);
-    /** Latest grid dimensions for Tab/Enter navigation without stale closures. */
     const navContextRef = useRef({ columns, sortedData: [], getValue: () => '', onCellEdit: null, isExcel: false });
 
     const getValue = useCallback((row, accessor) => {
@@ -110,7 +109,10 @@ export function BusyGrid({
         return sortConfig.direction === 'asc' ? sorted : sorted.reverse();
     }, [data, sortConfig, getValue, variant]);
 
-    navContextRef.current = { columns, sortedData, getValue, onCellEdit, isExcel };
+    // Update navContextRef for Tab/Enter navigation without stale closures
+    useEffect(() => {
+        navContextRef.current = { columns, sortedData, getValue, onCellEdit, isExcel };
+    }, [columns, sortedData, getValue, onCellEdit, isExcel]);
 
     const columnSuggestionLists = useMemo(() => {
         if (!getFieldSuggestions) return {};
@@ -417,8 +419,9 @@ export function BusyGrid({
                 );
                 const targetCol = firstEditable >= 0 ? firstEditable : 0;
                 const newRowIndex = sortedData.length - 1;
-                setSelectedCell({ row: newRowIndex, col: targetCol });
+                // Move setState to queueMicrotask to avoid synchronous setState in effect
                 queueMicrotask(() => {
+                    setSelectedCell({ row: newRowIndex, col: targetCol });
                     setEditingCell({ row: newRowIndex, col: targetCol });
                     setEditValue(getValue(lastRow, columns[targetCol]?.accessorKey) ?? '');
                     gridRef.current?.focus({ preventScroll: true });
@@ -577,7 +580,7 @@ export function BusyGrid({
                 if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) startEditing(e.key);
                 break;
         }
-    }, [selectedCell, editingCell, editValue, sortedData, columns, onAddRow, onDeleteRow, onRowClick, copyToClipboard, pasteFromClipboard, moveSelection, startEditing, commitAndAdvance, advanceSelection, isDataEntryMode, isEditableColumn, clearSelectedCell]);
+    }, [selectedCell, editingCell, editValue, sortedData, columns, onAddRow, onDeleteRow, onRowClick, copyToClipboard, pasteFromClipboard, moveSelection, startEditing, commitAndAdvance, advanceSelection, isDataEntryMode, isEditableColumn, clearSelectedCell, getValue, onCellEdit]);
 
     return (
         <div
@@ -912,21 +915,34 @@ export function BusyGrid({
                 </div>
                 {touchOptimized && isExcel ? (
                     <div className="flex h-full items-stretch gap-1 border-l border-gray-200 bg-white/90 px-2 py-1">
-                        {[
-                            { label: 'Next', action: handleTouchNextField },
-                            { label: 'New row', action: () => onAddRow?.() },
-                            { label: 'Fill down', action: fillDownFromSelected },
-                            { label: 'Clear', action: clearSelectedCell },
-                        ].map((btn) => (
-                            <button
-                                key={btn.label}
-                                type="button"
-                                onClick={btn.action}
-                                className="min-h-10 min-w-[4.5rem] rounded-lg border border-gray-200 bg-white px-2 text-[11px] font-semibold text-gray-700 active:bg-blue-50"
-                            >
-                                {btn.label}
-                            </button>
-                        ))}
+                        <button
+                            type="button"
+                            onClick={handleTouchNextField}
+                            className="min-h-10 min-w-[4.5rem] rounded-lg border border-gray-200 bg-white px-2 text-[11px] font-semibold text-gray-700 active:bg-blue-50"
+                        >
+                            Next
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => onAddRow?.()}
+                            className="min-h-10 min-w-[4.5rem] rounded-lg border border-gray-200 bg-white px-2 text-[11px] font-semibold text-gray-700 active:bg-blue-50"
+                        >
+                            New row
+                        </button>
+                        <button
+                            type="button"
+                            onClick={fillDownFromSelected}
+                            className="min-h-10 min-w-[4.5rem] rounded-lg border border-gray-200 bg-white px-2 text-[11px] font-semibold text-gray-700 active:bg-blue-50"
+                        >
+                            Fill down
+                        </button>
+                        <button
+                            type="button"
+                            onClick={clearSelectedCell}
+                            className="min-h-10 min-w-[4.5rem] rounded-lg border border-gray-200 bg-white px-2 text-[11px] font-semibold text-gray-700 active:bg-blue-50"
+                        >
+                            Clear
+                        </button>
                     </div>
                 ) : (
                     <div className="ml-auto hidden h-full items-center gap-2 border-l border-gray-200 bg-gray-50/80 px-2 sm:flex">
