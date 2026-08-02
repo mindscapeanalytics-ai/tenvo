@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import {
     X, Save, Loader2, Wallet, Calendar, CreditCard, ChevronDown, ChevronUp, Banknote,
 } from 'lucide-react';
@@ -100,23 +100,39 @@ export function ExpenseEntryForm({
         };
     });
 
+    // Track previous business ID to detect changes
+    const prevBusinessIdRef = useRef(business?.id);
+
     // Initialize business ID - only runs when business changes
     useEffect(() => {
-        if (business?.id && formData.businessId !== business.id) {
+        if (business?.id && prevBusinessIdRef.current !== business?.id) {
+            prevBusinessIdRef.current = business?.id;
             setFormData((prev) => ({ ...prev, businessId: business.id }));
         }
-    }, [business?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [business?.id]);
 
     // Load last category from localStorage - only once on mount if no initial category
+    const categoryInitializedRef = useRef(false);
     useEffect(() => {
-        if (initialData?.category || !business?.id) return;
+        if (categoryInitializedRef.current) return;
+        if (initialData?.category || !business?.id) {
+            categoryInitializedRef.current = true;
+            return;
+        }
         const raw = readLastCategory(business.id);
-        if (!raw) return;
+        if (!raw) {
+            categoryInitializedRef.current = true;
+            return;
+        }
         const last = normalizeExpenseCategory(raw);
         const exists = expenseCategories.some((c) => c.value === last);
-        if (!exists || formData.category) return;
+        if (!exists || formData.category) {
+            categoryInitializedRef.current = true;
+            return;
+        }
         setFormData((prev) => ({ ...prev, category: last }));
-    }, [business?.id, expenseCategories, initialData?.category]); // eslint-disable-line react-hooks/exhaustive-deps
+        categoryInitializedRef.current = true;
+    }, [business?.id, expenseCategories, initialData?.category, formData.category]);
 
     useEffect(() => {
         async function fetchAccounts() {
@@ -148,15 +164,22 @@ export function ExpenseEntryForm({
     };
 
     // When GL accounts arrive after a category was already chosen, fill empty account only.
+    const accountSuggestedRef = useRef(false);
     useEffect(() => {
-        if (!formData.category || !glAccounts.length) return;
+        if (!formData.category || !glAccounts.length || accountSuggestedRef.current) return;
         const suggested = suggestAccountForCategory(formData.category, glAccounts);
-        if (!suggested) return;
+        if (!suggested) {
+            accountSuggestedRef.current = true;
+            return;
+        }
         setFormData((prev) => {
-            if (prev.accountId) return prev;
+            if (prev.accountId) {
+                accountSuggestedRef.current = true;
+                return prev;
+            }
+            accountSuggestedRef.current = true;
             return { ...prev, accountId: suggested };
         });
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [glAccounts, formData.category]);
 
     const handleCategoryChange = (val) => {

@@ -103,13 +103,27 @@ export function ExcelImportModal({
   }, [parseResult, selectedSheet]);
 
   // Auto-detect the column mapping whenever the selected sheet's headers change
+  const columnMappingInitializedRef = useRef(false);
+  const prevSheetHeadersRef = useRef(sheetHeaders);
+  
   useEffect(() => {
+    // Reset if headers actually changed
+    if (JSON.stringify(prevSheetHeadersRef.current) !== JSON.stringify(sheetHeaders)) {
+      columnMappingInitializedRef.current = false;
+      prevSheetHeadersRef.current = sheetHeaders;
+    }
+    
+    if (columnMappingInitializedRef.current) return;
+    
     if (sheetHeaders.length === 0) {
+      setColumnMapping({});
+      columnMappingInitializedRef.current = true;
       return;
     }
-    // Use a ref or callback to avoid cascading renders
+    
     const detected = detectColumnMapping(sheetHeaders, { category });
     setColumnMapping(detected);
+    columnMappingInitializedRef.current = true;
   }, [sheetHeaders, category]);
 
   const mappableFields = useMemo(
