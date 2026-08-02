@@ -241,10 +241,10 @@ export default function DomainShowcase({
         {ctaHref && (
           <div className="text-center mt-16 pt-16 border-t border-neutral-200">
             <h3 className="text-2xl font-bold text-neutral-900 mb-4">
-              Don't see your industry?
+              Don&apos;t see your industry?
             </h3>
             <p className="text-lg text-neutral-600 mb-6">
-              TENVO is flexible enough to work for any business. Let's talk about your specific needs.
+              TENVO is flexible enough to work for any business. Let&apos;s talk about your specific needs.
             </p>
             <Button
               asChild

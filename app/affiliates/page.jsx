@@ -72,7 +72,7 @@ export default async function AffiliatesPage({ searchParams }) {
               
               <h1 className="text-3xl sm:text-4xl font-bold text-zinc-900 mb-4 tracking-tight">Become a Partner</h1>
               <p className="text-zinc-600 mb-10 text-lg leading-relaxed">
-                Fill out the application below to join our affiliate program. Once approved, you'll receive a unique referral link to start earning up to 50% commission.
+                Fill out the application below to join our affiliate program. Once approved, you&apos;ll receive a unique referral link to start earning up to 50% commission.
               </p>
               
               {error === 'email_taken' && (
@@ -81,7 +81,7 @@ export default async function AffiliatesPage({ searchParams }) {
                     <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                   </svg>
                   <div>
-                    <p className="font-semibold mb-1">You've already applied!</p>
+                    <p className="font-semibold mb-1">You&apos;ve already applied!</p>
                     <p className="text-amber-700">
                       An application with this email address already exists. {' '}
                       <Link href="/affiliates/status" className="font-bold underline hover:text-amber-900">

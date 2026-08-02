@@ -7,11 +7,7 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { exportProducts } from '@/lib/utils/export';
 import {
-  parseExcelFile,
-  validateImportRow,
-  transformImportedData,
   generateSkuFromName
 } from '@/lib/services/excelImportService';
 import { validateProductData } from '@/lib/services/inventoryValidationService';

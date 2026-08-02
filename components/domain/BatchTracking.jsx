@@ -294,7 +294,7 @@ export function BatchNumberInput({
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex gap-2">
                 <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                 <p className="text-xs text-amber-700">
-                  <strong>Locked:</strong> Committed batches cannot be edited here. Use "Stock Actions" for adjustments.
+                  <strong>Locked:</strong> Committed batches cannot be edited here. Use &quot;Stock Actions&quot; for adjustments.
                 </p>
               </div>
             )}

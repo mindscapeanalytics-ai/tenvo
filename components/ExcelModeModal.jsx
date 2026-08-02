@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { X, Maximize2, Minimize2, Download, Save, Table2, AlertCircle, CheckCircle2, Loader2, Copy, Trash2, Eraser, Undo, Redo, Search, Sparkles, Columns, ChevronDown, Plus, LayoutGrid } from 'lucide-react';
+import { X, Download, Save, Table2, AlertCircle, CheckCircle2, Loader2, Copy, Eraser, Undo, Redo, Search, Columns, ChevronDown, Plus, LayoutGrid } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { BusyGrid } from './BusyGrid';
 import { Button } from '@/components/ui/button';
@@ -13,7 +13,7 @@ import { buildInventoryGridColumns, readGridCellValue } from '@/lib/utils/invent
 import { buildNewInventoryRow, getLastRowForDefaults } from '@/lib/utils/inventoryRowDefaults';
 import { mapProductField } from '@/lib/utils/productFieldMapper';
 import { detectColumnMapping, applyColumnMapping, nestMappedDomainData } from '@/lib/utils/inventoryColumnMapping';
-import { inventoryGridRowKey, inventoryValidationErrorKey } from '@/lib/utils/inventoryRowKey';
+import { inventoryGridRowKey } from '@/lib/utils/inventoryRowKey';
 import { buildSparseHiddenColumnKeys } from '@/lib/utils/inventoryVisualColumnVisibility';
 import { productSchema } from '@/lib/validation/schemas';
 import toast from 'react-hot-toast';
@@ -34,13 +34,12 @@ export function ExcelModeModal({
     onClose,
     data = [],
     columns = [],
-    onCellEdit,
     onAddRow,
     onDeleteRow,
     onSave,
     getFieldSuggestions,
     category = 'retail-shop',
-    entityType = 'products', // Added missing prop
+    entityType = 'products',
     title = 'Excel Data Entry',
     businessId,
     business = null,
@@ -48,7 +47,7 @@ export function ExcelModeModal({
     domainKnowledge = null,
     countryIso = '',
 }) {
-    const [isFullscreen, setIsFullscreen] = useState(true);
+    const [isFullscreen] = useState(true);
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
     const [localData, setLocalData] = useState([]);
     const [isSaving, setIsSaving] = useState(false);
@@ -460,6 +459,7 @@ export function ExcelModeModal({
 
     const handleLocalAddRow = useCallback((initialData = null) => {
         // Ensure we strip ID if coming from a duplicate action
+        // eslint-disable-next-line no-unused-vars
         const { id, _tempId, ...cleanInitialData } = initialData || {};
 
         // Intelligent Naming: If duplicating, append (Copy) or increment

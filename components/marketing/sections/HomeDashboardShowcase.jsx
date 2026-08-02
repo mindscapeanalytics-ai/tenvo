@@ -20,7 +20,7 @@ export default function HomeDashboardShowcase() {
             <span className="text-brand-primary">From one screen.</span>
           </h2>
           <p className="mx-auto max-w-2xl text-lg text-neutral-400">
-            TENVO is not just another app. It's the operating system for modern retail and wholesale. Monitor multi-location stock, approve POs, and watch real-time sales, all at a glance.
+            TENVO is not just another app. It&apos;s the operating system for modern retail and wholesale. Monitor multi-location stock, approve POs, and watch real-time sales, all at a glance.
           </p>
         </ScrollReveal>
 

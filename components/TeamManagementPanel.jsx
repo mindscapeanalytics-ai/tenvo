@@ -558,7 +558,7 @@ export function TeamManagementPanel({ businessId, canManageUsers, canManageBilli
                 placeholder="new.email@company.com"
                 className="rounded-xl"
               />
-              <p className="text-xs text-amber-600 font-semibold">⚠️ This will update the user's login email</p>
+              <p className="text-xs text-amber-600 font-semibold">⚠️ This will update the user&apos;s login email</p>
             </div>
           </div>
           <DialogFooter>

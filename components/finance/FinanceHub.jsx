@@ -826,7 +826,7 @@ export default function FinanceHub({ businessId, initialTab, businessCategory = 
                         }}
                     />
                 );
-            case 'statements':
+            case &apos;statements&apos;:
                 return (
                     <div className="rounded-xl border border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-950 p-4 shadow-sm">
                         <FinancialReports
@@ -837,15 +837,15 @@ export default function FinanceHub({ businessId, initialTab, businessCategory = 
                         />
                     </div>
                 );
-            case 'general-ledger':
+            case &apos;general-ledger&apos;:
                 return (
                     <div className="rounded-xl border border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-950 p-4 shadow-sm">
                         <GeneralLedgerReport businessId={effectiveBusinessId} />
                     </div>
                 );
-            case 'accounts':
+            case &apos;accounts&apos;:
                 return <ChartOfAccountsManager businessId={effectiveBusinessId} accounts={accounts} onRefresh={() => loadData({ force: true })} />;
-            case 'expenses':
+            case &apos;expenses&apos;:
                 return (
                     <ExpenseManager
                         businessId={effectiveBusinessId}
@@ -857,7 +857,7 @@ export default function FinanceHub({ businessId, initialTab, businessCategory = 
                         businessCategory={businessCategory}
                     />
                 );
-            case 'journal':
+            case &apos;journal&apos;:
                 return (
                     <div className="space-y-6">
                         <JournalEntryList
@@ -868,7 +868,7 @@ export default function FinanceHub({ businessId, initialTab, businessCategory = 
                         />
                     </div>
                 );
-            case 'reconciliation':
+            case &apos;reconciliation&apos;:
                 return (
                     <BankReconciliation
                         businessId={effectiveBusinessId}
@@ -876,9 +876,9 @@ export default function FinanceHub({ businessId, initialTab, businessCategory = 
                         accounts={accounts}
                     />
                 );
-            case 'credit-notes':
+            case &apos;credit-notes&apos;:
                 return <CreditNotesPanel businessId={effectiveBusinessId} creditNotes={creditNotes} currency={effectiveCurrency} onRefresh={() => loadData({ force: true })} />;
-            case 'fiscal':
+            case &apos;fiscal&apos;:
                 return (
                     <FiscalPeriodManager
                         businessId={effectiveBusinessId}
@@ -887,7 +887,7 @@ export default function FinanceHub({ businessId, initialTab, businessCategory = 
                         onRefresh={() => loadData({ force: true })}
                     />
                 );
-            case 'exchange':
+            case &apos;exchange&apos;:
                 return (
                     <ExchangeRatesPanel
                         businessId={effectiveBusinessId}

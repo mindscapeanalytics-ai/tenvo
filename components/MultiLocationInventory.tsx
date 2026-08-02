@@ -349,7 +349,7 @@ export function MultiLocationInventory({
         switch (type) {
             case 'showroom':
                 return <Building2 className="w-4 h-4" />;
-            case 'hub':
+            case &apos;hub&apos;:
                 return <MapPin className="w-4 h-4" />;
             default:
                 return <Warehouse className="w-4 h-4" />;

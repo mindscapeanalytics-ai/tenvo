@@ -360,7 +360,7 @@ export function SalesDocumentForm({
                                     {formData.items.length === 0 ? (
                                         <tr>
                                             <td colSpan={(showBatch || showSerial) ? 6 : 5} className="px-4 py-8 text-center text-gray-500">
-                                                No items added. Click "Add Item" to start.
+                                                No items added. Click &quot;Add Item&quot; to start.
                                             </td>
                                         </tr>
                                     ) : (

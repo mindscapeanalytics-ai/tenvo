@@ -169,7 +169,7 @@ export function ReservationManager({ businessId, tables = [], onSave }) {
 
     // Day View -- Time Slots × Tables Grid
     const renderDayView = () => {
-        const dayRes = reservations.filter(r => r.date === dateStr && r.status !== 'cancelled' && r.status !== 'noshow');
+        const dayRes = reservations.filter(r => r.date === dateStr && r.status !== &apos;cancelled&apos; && r.status !== &apos;noshow&apos;);
 
         return (
             <div className="hidden overflow-x-auto lg:block">
@@ -240,7 +240,7 @@ export function ReservationManager({ businessId, tables = [], onSave }) {
             <div className="space-y-2">
                 {weekDays.map(day => {
                     const dayStr = day.toISOString().split('T')[0];
-                    const dayReservations = reservations.filter(r => r.date === dayStr && r.status !== 'cancelled');
+                    const dayReservations = reservations.filter(r => r.date === dayStr && r.status !== &apos;cancelled&apos;);
                     const isToday = dayStr === today;
 
                     return (
@@ -276,7 +276,7 @@ export function ReservationManager({ businessId, tables = [], onSave }) {
                                 <div className="flex gap-1 mt-2">
                                     {TIME_SLOTS.filter((_, i) => i % 2 === 0).map(slot => {
                                         const slotH = parseInt(slot.split(':')[0]);
-                                        const hasBooking = dayReservations.some(r => parseInt(r.time.split(':')[0]) === slotH);
+                                        const hasBooking = dayReservations.some(r => parseInt(r.time.split(&apos;:&apos;)[0]) === slotH);
                                         return (
                                             <div
                                                 key={slot}

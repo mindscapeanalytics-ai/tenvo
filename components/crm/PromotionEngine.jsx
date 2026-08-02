@@ -431,7 +431,7 @@ function PromoCard({ promotion, onEdit, onToggle, onDuplicate, onDelete, currenc
     const getStatus = () => {
         if (!promotion.is_active) return 'paused';
         const now = new Date();
-        if (promotion.start_date && new Date(promotion.start_date) > now) return 'scheduled';
+        if (promotion.start_date && new Date(promotion.start_date) > now) return &apos;scheduled&apos;;
         if (promotion.end_date && new Date(promotion.end_date) < now) return 'expired';
         return 'active';
     };
@@ -615,8 +615,8 @@ export function PromotionEngine({ businessId, currency = 'Rs.', seedPromotions, 
             items = items.filter(p => {
                 const now = new Date();
                 if (filterStatus === 'active') return p.is_active && (!p.end_date || new Date(p.end_date) >= now);
-                if (filterStatus === 'paused') return !p.is_active;
-                if (filterStatus === 'expired') return p.end_date && new Date(p.end_date) < now;
+                if (filterStatus === &apos;paused&apos;) return !p.is_active;
+                if (filterStatus === &apos;expired&apos;) return p.end_date && new Date(p.end_date) < now;
                 return true;
             });
         }

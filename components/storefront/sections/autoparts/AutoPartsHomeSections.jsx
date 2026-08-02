@@ -230,7 +230,7 @@ function TrendingProductCard({ product, businessDomain, businessCategory, curren
   const compare = Number(product.compare_price) || 0;
   const onSale = compare > price;
   const imageSrc = getEffectiveProductImageUrl(product, businessCategory);
-  const badgeColor = accent || '#cd232a';
+  const badgeColor = accent || &apos;#cd232a&apos;;
 
   return (
     <Link href={href} className="group block">
@@ -479,7 +479,7 @@ export function AutoPartsHomeSections({
           {AUTO_PARTS_CATEGORY_RAILS.map((rail) => {
             const pool = parts[rail.id] || [];
             const list = pool.length ? pool : products.filter((p) =>
-              String(p.category || '').toLowerCase().includes(rail.slug)
+              String(p.category || &apos;&apos;).toLowerCase().includes(rail.slug)
             );
             if (list.length < 2) return null;
             return (

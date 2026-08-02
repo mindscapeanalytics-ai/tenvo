@@ -1716,7 +1716,7 @@ export function WaterRouteHisab({ businessId, category }) {
           <Loader2 className="h-5 w-5 animate-spin" />
           Loading…
         </div>
-      ) : view === 'daily' ? (
+      ) : view === &apos;daily&apos; ? (
         <DailySheet
           products={products}
           rows={visibleRows}
@@ -1729,7 +1729,7 @@ export function WaterRouteHisab({ businessId, category }) {
           printingId={printingId}
           readOnly={offlineEnabled && !isOnline && !daySnapshotReady}
         />
-      ) : view === 'rider-shifts' ? (
+      ) : view === &apos;rider-shifts&apos; ? (
         <RiderShiftsSheet
           shifts={riderShifts}
           summary={riderShiftsSummary}
@@ -1739,7 +1739,7 @@ export function WaterRouteHisab({ businessId, category }) {
           currency={currency}
           onSaveShift={handleSaveRiderShift}
         />
-      ) : view === 'bottle-control' ? (
+      ) : view === &apos;bottle-control&apos; ? (
         <BottleControlSheet
           summary={bottleSummary}
           idleCustomers={idleCustomers}
@@ -2491,7 +2491,7 @@ function BillsActionCluster({
             <Mail className="h-3.5 w-3.5" />
           </button>
         </>
-      ) : Number(row.amount) > 0 && String(row.paymentStatus || '').toLowerCase() === 'paid' ? (
+      ) : Number(row.amount) > 0 && String(row.paymentStatus || &apos;&apos;).toLowerCase() === &apos;paid&apos; ? (
         <span className="text-[10px] font-semibold uppercase tracking-wide text-emerald-700">Paid</span>
       ) : null}
     </div>

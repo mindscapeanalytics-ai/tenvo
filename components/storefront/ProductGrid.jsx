@@ -197,7 +197,7 @@ export function ProductGrid({
             <ProductListItem key={product.id} product={product} businessDomain={businessDomain} />
           ))}
         </div>
-      ) : layout === 'rail' ? (
+      ) : layout === &apos;rail&apos; ? (
         <div className={STORE_PRODUCT_RAIL_TRACK_CLASS}>
           {displayProducts.map((product) => (
             <div key={resolveRailProductId(product)} className={STORE_PRODUCT_RAIL_ITEM_CLASS}>

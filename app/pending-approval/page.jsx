@@ -98,7 +98,7 @@ export default function PendingApprovalPage() {
         <Card className="max-w-md w-full p-8 shadow-xl text-center">
           <h2 className="text-2xl font-bold text-gray-900 mb-4">No Registration Found</h2>
           <p className="text-gray-600 mb-6">
-            We couldn't find a pending registration for your account.
+            We couldn&apos;t find a pending registration for your account.
           </p>
           <Button onClick={() => router.push('/register?new=1')} className="w-full">
             Register New Business
@@ -299,7 +299,7 @@ export default function PendingApprovalPage() {
               </div>
 
               <p className="mt-auto border-t border-gray-100 pt-4 text-xs leading-relaxed text-gray-500">
-                We'll email <span className="font-medium text-gray-700">{business.email}</span>{' '}
+                We&apos;ll email <span className="font-medium text-gray-700">{business.email}</span>{' '}
                 the moment you're approved. Questions?{' '}
                 <a href={`mailto:${supportEmail}`} className="font-medium text-wine hover:underline">
                   {supportEmail}

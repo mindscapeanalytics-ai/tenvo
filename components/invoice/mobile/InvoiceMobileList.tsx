@@ -53,7 +53,7 @@ function matchesStatusFilter(inv: InvoiceMobileRow, filter: StatusFilterId) {
   const isOverdue =
     Boolean(inv.due_date) &&
     !isPaid &&
-    inv.status !== 'voided' &&
+    inv.status !== &apos;voided&apos; &&
     new Date(inv.due_date!) < new Date();
 
   if (filter === 'paid') return isPaid;
@@ -110,7 +110,7 @@ export function InvoiceMobileList({
   renderAging,
 }: InvoiceMobileListProps) {
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<StatusFilterId>('all');
+  const [statusFilter, setStatusFilter] = useState<StatusFilterId>(&apos;all&apos;);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [actionInvoice, setActionInvoice] = useState<InvoiceMobileRow | null>(null);
 

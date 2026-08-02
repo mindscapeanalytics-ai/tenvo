@@ -210,7 +210,7 @@ export function KitchenDisplaySystem({ businessId }) {
     // Separate by status
     const pending = queue.filter(o => o.status === 'pending');
     const preparing = queue.filter(o => o.status === 'preparing');
-    const ready = queue.filter(o => o.status === 'ready');
+    const ready = queue.filter(o => o.status === &apos;ready&apos;);
 
     return (
         <div className="space-y-4">

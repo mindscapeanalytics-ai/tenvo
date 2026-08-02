@@ -33,7 +33,7 @@ export function ProductThumbnail({
     [product, businessCategory]
   );
 
-  const label = alt || product?.name || 'Product';
+  const label = alt || product?.name || &apos;Product&apos;;
   const sizeClass = SIZE_CLASS[size] || SIZE_CLASS.sm;
   const showImage = Boolean(src) && !failed;
 

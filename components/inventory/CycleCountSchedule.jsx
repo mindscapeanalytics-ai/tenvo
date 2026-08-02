@@ -443,7 +443,7 @@ export default function CycleCountSchedule({ businessId, onTaskCreated }) {
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#722F37] focus:border-transparent"
             />
             <p className="mt-1 text-xs text-gray-500">
-              Variances within this percentage won't require approval
+              Variances within this percentage won&apos;t require approval
             </p>
             {errors.tolerance_percentage && (
               <p className="mt-1 text-sm text-red-600">{errors.tolerance_percentage}</p>

@@ -57,6 +57,7 @@ export default function Home() {
 
   const [stickyCtaScrollReady, setStickyCtaScrollReady] = useState(false);
   const [stickyCtaDismissed, setStickyCtaDismissed] = useState(false);
+  const [stickyCtaInitialized, setStickyCtaInitialized] = useState(false);
   const STICKY_CTA_DISMISS_KEY = 'tenvo_sticky_cta_dismissed_session';
   const [expandedFaq, setExpandedFaq] = useState(null);
 
@@ -70,16 +71,22 @@ export default function Home() {
     const qs = params.toString();
     window.history.replaceState(null, '', qs ? `?${qs}` : window.location.pathname);
   }, []);
-
+  
   useEffect(() => {
+    if (stickyCtaInitialized) return;
+    
     try {
-      if (typeof window !== 'undefined' && sessionStorage.getItem(STICKY_CTA_DISMISS_KEY) === '1') {
-        setStickyCtaDismissed(true);
+      if (typeof window !== 'undefined') {
+        const dismissed = sessionStorage.getItem(STICKY_CTA_DISMISS_KEY) === '1';
+        if (dismissed) {
+          setStickyCtaDismissed(true);
+        }
       }
     } catch {
       /* ignore private mode */
     }
-  }, []);
+    setStickyCtaInitialized(true);
+  }, [stickyCtaInitialized]);
 
   const dismissStickyCta = () => {
     setStickyCtaDismissed(true);

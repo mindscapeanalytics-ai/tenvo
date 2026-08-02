@@ -263,7 +263,7 @@ export function CustomParametersManager({
                             <option key={option} value={option}>{option}</option>
                           ))}
                         </select>
-                      ) : param.type === 'boolean' ? (
+                      ) : param.type === &apos;boolean&apos; ? (
                         <div className="flex items-center space-x-2">
                           <input
                             type="checkbox"
@@ -273,7 +273,7 @@ export function CustomParametersManager({
                           />
                           <Label className="font-normal">{param.value ? 'Yes' : 'No'}</Label>
                         </div>
-                      ) : param.type === 'date' ? (
+                      ) : param.type === &apos;date&apos; ? (
                         <Input
                           type="date"
                           value={param.value || ''}

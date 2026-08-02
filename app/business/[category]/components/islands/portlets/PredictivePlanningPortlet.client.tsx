@@ -81,7 +81,7 @@ function resolveForecastQuality(item: DemandForecastItem): ForecastQuality {
             label: `${pct}%`,
             badgeClass: 'text-amber-700 bg-amber-50 border-amber-100',
             forecastDisplay: item.forecast > 0 ? String(item.forecast) : '—',
-            forecastTone: item.forecast > 0 ? 'text-wine' : 'text-slate-400',
+            forecastTone: item.forecast > 0 ? &apos;text-wine&apos; : &apos;text-slate-400&apos;,
             showBuildingHint: item.forecast <= 0,
         };
     }

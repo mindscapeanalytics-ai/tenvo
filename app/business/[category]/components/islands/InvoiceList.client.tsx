@@ -228,19 +228,19 @@ export function InvoiceList({
         switch (status) {
             case 'paid':
                 return <Badge className="bg-green-100 text-green-800">Paid</Badge>;
-            case 'draft':
+            case &apos;draft&apos;:
                 return <Badge className="bg-gray-100 text-gray-800">Draft</Badge>;
-            case 'sent':
+            case &apos;sent&apos;:
                 return <Badge className="bg-blue-100 text-blue-800">Sent</Badge>;
-            case 'partial':
+            case &apos;partial&apos;:
                 return <Badge className="bg-purple-100 text-purple-800">Partial</Badge>;
-            case 'awaiting_approval':
+            case &apos;awaiting_approval&apos;:
                 return <Badge className="bg-amber-100 text-amber-800">Awaiting Approval</Badge>;
-            case 'overdue':
+            case &apos;overdue&apos;:
                 return <Badge className="bg-orange-100 text-orange-800">Overdue</Badge>;
-            case 'voided':
+            case &apos;voided&apos;:
                 return <Badge className="bg-red-100 text-red-800">Voided</Badge>;
-            case 'cancelled':
+            case &apos;cancelled&apos;:
                 return <Badge className="bg-red-100 text-red-800">Cancelled</Badge>;
             default:
                 return <Badge className="bg-yellow-100 text-yellow-800">{status?.replace(/_/g, ' ')}</Badge>;

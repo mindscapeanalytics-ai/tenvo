@@ -964,7 +964,7 @@ export function ReportBuilder({ businessId, currency, dateRange: dashboardDateRa
                 </div>
             </div>
 
-            {(selectedSource === 'sales' || widgets.some((w) => w.source === 'sales')) && (
+            {(selectedSource === 'sales' || widgets.some((w) => w.source === &apos;sales&apos;)) && (
                 <SalesInsightsFilterBar
                     channel={salesChannel}
                     category={salesCategory}

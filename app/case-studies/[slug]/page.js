@@ -21,7 +21,7 @@ export default function CaseStudyDetailPage() {
       <MarketingLayout>
         <div className="py-24 text-center">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">Case Study Not Found</h1>
-          <p className="text-gray-600 mb-8">The case study you're looking for doesn't exist.</p>
+          <p className="text-gray-600 mb-8">The case study you&apos;re looking for doesn&apos;t exist.</p>
           <a href="/case-studies" className="text-brand-primary hover:underline">
             View all case studies
           </a>

@@ -67,7 +67,7 @@ export function StatsCard({
     const trendLabel = typeof trend === 'object' ? trend.label : '';
     
     const absValue = Math.abs(trendValue);
-    const trendColor = trendValue > 0 ? 'text-green-600' : trendValue < 0 ? 'text-red-600' : 'text-gray-400';
+    const trendColor = trendValue > 0 ? &apos;text-green-600&apos; : trendValue < 0 ? 'text-red-600' : 'text-gray-400';
     
     return (
       <span className={cn('text-xs font-medium', trendColor)}>

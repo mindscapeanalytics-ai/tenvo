@@ -48,11 +48,11 @@ export function MetricSparkline({
             : '';
 
     const trendUp = (series[series.length - 1] ?? 0) >= (series[0] ?? 0);
-    const isPositive = positiveDirection === 'up' ? trendUp : !trendUp;
-    const defaultStroke = isPositive ? 'stroke-emerald-500' : 'stroke-rose-400';
-    const defaultFill = isPositive ? 'fill-emerald-500/20' : 'fill-rose-400/15';
+    const isPositive = positiveDirection === &apos;up&apos; ? trendUp : !trendUp;
+    const defaultStroke = isPositive ? &apos;stroke-emerald-500&apos; : &apos;stroke-rose-400&apos;;
+    const defaultFill = isPositive ? &apos;fill-emerald-500/20&apos; : &apos;fill-rose-400/15&apos;;
 
-    const fullWidth = Boolean(className?.includes('w-full'));
+    const fullWidth = Boolean(className?.includes(&apos;w-full&apos;));
 
     return (
         <svg

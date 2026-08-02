@@ -120,7 +120,7 @@ export default function LahorePharmacyCase() {
 
             <blockquote className="my-8 border-l-4 border-emerald-500 bg-emerald-50/30 p-6 italic">
               <p className="text-lg font-medium text-neutral-800">
-                "FBR compliance was our biggest headache. We had batch numbers in notebooks, expiry dates in spreadsheets, and GST calculated manually. When the audit notice came, I panicked. We needed a proper system immediately."
+                &quot;FBR compliance was our biggest headache. We had batch numbers in notebooks, expiry dates in spreadsheets, and GST calculated manually. When the audit notice came, I panicked. We needed a proper system immediately.&quot;
               </p>
               <footer className="mt-4 text-sm font-bold text-neutral-900">
                 — Dr. Rizwan Ahmed, Managing Partner
@@ -185,7 +185,7 @@ export default function LahorePharmacyCase() {
 
             <blockquote className="my-8 border-l-4 border-emerald-500 bg-emerald-50/30 p-6 italic">
               <p className="text-lg font-medium text-neutral-800">
-                "The FBR audit that I was dreading became a non-event. We pulled every report they asked for in minutes. The auditor even commented on how organized our records were. TENVO&apos;s audit trail gave us complete peace of mind."
+                &quot;The FBR audit that I was dreading became a non-event. We pulled every report they asked for in minutes. The auditor even commented on how organized our records were. TENVO&apos;s audit trail gave us complete peace of mind.&quot;
               </p>
               <footer className="mt-4 text-sm font-bold text-neutral-900">
                 — Dr. Rizwan Ahmed, after successful audit

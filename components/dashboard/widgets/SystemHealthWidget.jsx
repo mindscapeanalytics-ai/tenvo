@@ -115,7 +115,7 @@ export function SystemHealthWidget({
   }
 
   const overallStatus = health?.errors?.critical > 0 ? 'critical' : 
-                       health?.errors?.warnings > 0 ? 'warning' : 'healthy';
+                       health?.errors?.warnings > 0 ? &apos;warning&apos; : &apos;healthy&apos;;
 
   return (
     <Card className="glass-card border-none">

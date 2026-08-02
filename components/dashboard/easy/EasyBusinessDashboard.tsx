@@ -874,7 +874,7 @@ export function EasyBusinessDashboard(props: EasyBusinessDashboardProps) {
   const easyPresetIds = useMemo(() => new Set(EASY_PRESET_OPTIONS.map((p) => p.id)), []);
   const resolvedPreset = easyPresetIds.has(activePreset) ? activePreset : 'custom';
 
-  const efficiencyTone = domainEfficiency >= 85 ? 'success' : domainEfficiency >= 65 ? 'warning' : 'secondary';
+  const efficiencyTone = domainEfficiency >= 85 ? 'success' : domainEfficiency >= 65 ? &apos;warning&apos; : &apos;secondary&apos;;
 
   return (
     <div className="w-full min-w-0 space-y-3 overflow-x-hidden bg-neutral-50/80 p-0 lg:p-1">

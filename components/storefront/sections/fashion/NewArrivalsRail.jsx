@@ -112,7 +112,7 @@ function NewArrivalCard({ product, businessDomain, businessCategory, currency, v
             <span className="absolute left-2 top-2 z-10 rounded-sm bg-rose-600 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow-sm">
               -{discount}%
             </span>
-          ) : variant === 'offers' ? (
+          ) : variant === &apos;offers&apos; ? (
             <span className="absolute left-2 top-2 z-10 rounded-sm bg-stone-900 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow-sm">
               Sale
             </span>

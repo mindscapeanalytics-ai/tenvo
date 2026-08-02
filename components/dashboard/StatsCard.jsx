@@ -66,7 +66,7 @@ export function StatsCard({
           <div className="flex items-center gap-1 mt-2">
             {trend === 'up' ? (
               <TrendingUp className="h-3 w-3 text-green-600" />
-            ) : trend === 'down' ? (
+            ) : trend === &apos;down&apos; ? (
               <TrendingDown className="h-3 w-3 text-red-600" />
             ) : null}
             <span

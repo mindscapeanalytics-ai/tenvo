@@ -23,7 +23,7 @@ export function ElectronicsCategoryStrip({
   const onSale = searchParams.get('onSale') === 'true';
   const departments = resolveElectronicsSidebarDepartments(settings, root, {
     businessDomain,
-  }).filter((d) => d.id !== 'deals' || true);
+  }).filter((d) => d.id !== &apos;deals&apos; || true);
 
   return (
     <div className="border-b border-slate-100 bg-white">

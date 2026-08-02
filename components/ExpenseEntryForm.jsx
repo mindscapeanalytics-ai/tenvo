@@ -100,25 +100,23 @@ export function ExpenseEntryForm({
         };
     });
 
+    // Initialize business ID - only runs when business changes
     useEffect(() => {
-        if (business?.id) {
-            setFormData((prev) =>
-                prev.businessId === business.id
-                    ? prev
-                    : { ...prev, businessId: business.id }
-            );
+        if (business?.id && formData.businessId !== business.id) {
+            setFormData((prev) => ({ ...prev, businessId: business.id }));
         }
-    }, [business?.id]);
+    }, [business?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
+    // Load last category from localStorage - only once on mount if no initial category
     useEffect(() => {
         if (initialData?.category || !business?.id) return;
         const raw = readLastCategory(business.id);
         if (!raw) return;
         const last = normalizeExpenseCategory(raw);
         const exists = expenseCategories.some((c) => c.value === last);
-        if (!exists) return;
-        setFormData((prev) => (prev.category ? prev : { ...prev, category: last }));
-    }, [business?.id, expenseCategories, initialData?.category]);
+        if (!exists || formData.category) return;
+        setFormData((prev) => ({ ...prev, category: last }));
+    }, [business?.id, expenseCategories, initialData?.category]); // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => {
         async function fetchAccounts() {

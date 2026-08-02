@@ -52,7 +52,7 @@ export default function IntegrationsPage() {
 
   const shipped = INTEGRATIONS_CATALOG.filter((i) => i.status === 'shipped');
   const partial = INTEGRATIONS_CATALOG.filter((i) => i.status === 'partial');
-  const roadmap = INTEGRATIONS_CATALOG.filter((i) => i.status === 'roadmap');
+  const roadmap = INTEGRATIONS_CATALOG.filter((i) => i.status === &apos;roadmap&apos;);
 
   return (
     <MarketingLayout transparentNav={false}>

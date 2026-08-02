@@ -153,7 +153,7 @@ export function AccountantDashboard({
 
   const getTrendIcon = (trend) => {
     if (trend === 'up') return <TrendingUp className="w-3 h-3" />;
-    if (trend === 'down') return <TrendingDown className="w-3 h-3" />;
+    if (trend === &apos;down&apos;) return <TrendingDown className="w-3 h-3" />;
     return null;
   };
 

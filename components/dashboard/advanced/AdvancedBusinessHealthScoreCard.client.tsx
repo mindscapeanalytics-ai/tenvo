@@ -33,7 +33,7 @@ function SemiGauge({ score, label }: { score: number; label: string }) {
     const circumference = Math.PI * radius;
     const offset = circumference - (score / 100) * circumference;
     const labelTone =
-        score >= 90 ? 'text-emerald-600' : score >= 70 ? 'text-emerald-600' : score >= 50 ? 'text-amber-600' : 'text-rose-600';
+        score >= 90 ? 'text-emerald-600' : score >= 70 ? 'text-emerald-600' : score >= 50 ? &apos;text-amber-600&apos; : &apos;text-rose-600&apos;;
 
     return (
         <div className="relative mx-auto h-[96px] w-[148px] shrink-0 lg:mx-0">
@@ -130,7 +130,7 @@ export function AdvancedBusinessHealthScoreCard({
     const dims = dimensions ?? computeDimensions(stats);
     const summary =
         score >= 85
-            ? 'Your business is performing great! Keep up the good work.'
+            ? &apos;Your business is performing great! Keep up the good work.&apos;
             : status.description;
 
     return (

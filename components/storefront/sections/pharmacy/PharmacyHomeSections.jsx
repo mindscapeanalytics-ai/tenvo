@@ -251,7 +251,7 @@ export function PharmacyHomeSections({
                   Never miss your monthly refill
                 </h2>
                 <p className="mt-4 text-sm leading-relaxed text-emerald-50 sm:text-base lg:text-lg">
-                  Set automated refill reminders for your chronic care medicines. We'll notify you before
+                  Set automated refill reminders for your chronic care medicines. We&apos;ll notify you before
                   your supply runs out and help you reorder with a valid prescription when required.
                   Perfect for diabetes care, blood pressure medications, and daily supplements.
                 </p>

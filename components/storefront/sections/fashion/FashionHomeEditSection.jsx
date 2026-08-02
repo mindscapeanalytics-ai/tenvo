@@ -92,7 +92,7 @@ export function FashionHomeEditSection({ section }) {
   const hero = section.tiles.find((t) => t.slot === 'hero') || section.tiles[0];
   const banner = section.tiles.find((t) => t.slot === 'banner');
   const halfLeft = section.tiles.find((t) => t.slot === 'half-left');
-  const halfRight = section.tiles.find((t) => t.slot === 'half-right');
+  const halfRight = section.tiles.find((t) => t.slot === &apos;half-right&apos;);
 
   return (
     <section className="bg-white py-5 sm:py-8">

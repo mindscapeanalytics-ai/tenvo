@@ -25,7 +25,7 @@ interface AdvancedCategoryFilterProps {
 
 export function AdvancedCategoryFilter({ mode, onModeChange, className }: AdvancedCategoryFilterProps) {
     const activeLabel = useMemo(
-        () => CATEGORY_FILTER_OPTIONS.find((option) => option.id === mode)?.label ?? 'By Revenue',
+        () => CATEGORY_FILTER_OPTIONS.find((option) => option.id === mode)?.label ?? &apos;By Revenue&apos;,
         [mode]
     );
 

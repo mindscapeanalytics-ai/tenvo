@@ -128,14 +128,14 @@ export function AdvancedSearch({
                       </option>
                     ))}
                   </select>
-                ) : filter.type === 'date' ? (
+                ) : filter.type === &apos;date&apos; ? (
                   <input
                     type="date"
                     value={activeFilters[filter.key] || ''}
                     onChange={(e) => handleFilterChange(filter.key, e.target.value)}
                     className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl shadow-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all text-sm font-bold text-gray-700"
                   />
-                ) : filter.type === 'number' ? (
+                ) : filter.type === &apos;number&apos; ? (
                   <input
                     type="number"
                     value={activeFilters[filter.key] || ''}

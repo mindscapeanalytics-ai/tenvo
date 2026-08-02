@@ -1403,7 +1403,7 @@ export function InventoryManager({
 
     const handleGlobalShortcuts = (e) => {
       // ALT + 1..7 maps to visible tabs in current business domain
-      if (e.altKey && e.key >= '1' && e.key <= '7') {
+      if (e.altKey && e.key >= &apos;1&apos; && e.key <= '7') {
         const index = Number(e.key) - 1;
         const target = tabSequence[index];
         if (target) {
@@ -1510,7 +1510,7 @@ export function InventoryManager({
         const value = stockCost(p);
         const running = acc.running + value;
         const percentage = totalValue > 0 ? (running / totalValue) * 100 : 0;
-        let category = 'C';
+        let category = &apos;C&apos;;
         if (percentage <= 80) category = 'A';
         else if (percentage <= 95) category = 'B';
         return {
@@ -2423,7 +2423,7 @@ export function InventoryManager({
                   onQuickSave={canEditInventory ? handleInventoryCellEdit : undefined}
                   onAdd={canCreateInventory ? openProductAdd : undefined}
                 />
-              ) : mobileViewMode === 'busy' ? (
+              ) : mobileViewMode === &apos;busy&apos; ? (
                 <div
                   style={{ height: 'min(70vh, calc(100dvh - 14rem))' }}
                   className="flex min-h-[280px] flex-col overflow-hidden rounded-xl border border-gray-100"
@@ -2594,7 +2594,7 @@ export function InventoryManager({
                   }
                 />
               </div>
-            ) : viewMode === 'cards' ? (
+            ) : viewMode === &apos;cards&apos; ? (
               <div className="p-4">
                 <ProductCardGrid
                   products={productsToDisplay}

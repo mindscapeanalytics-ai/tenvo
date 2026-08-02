@@ -20,7 +20,7 @@ function useRestaurantMenuLine(product, businessDomain) {
   const [isBusy, setIsBusy] = useState(false);
 
   const line = cart?.items?.find(
-    (item) => item.productId === product.id && (item.variantId == null || item.variantId === '')
+    (item) => item.productId === product.id && (item.variantId == null || item.variantId === &apos;&apos;)
   );
   const qty = line?.quantity || 0;
   const maxQty = line?.maxQuantity;

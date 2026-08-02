@@ -218,8 +218,8 @@ export function MarketplaceHomeSections({
       : used;
 
   const newDisplay = newTab === 'launches'
-    ? newCars.slice().sort((a, b) => String(b.domain_data?.modelyear || '').localeCompare(String(a.domain_data?.modelyear || '')))
-    : newTab === 'type'
+    ? newCars.slice().sort((a, b) => String(b.domain_data?.modelyear || &apos;&apos;).localeCompare(String(a.domain_data?.modelyear || &apos;&apos;)))
+    : newTab === &apos;type&apos;
       ? newCars
       : newCars;
 

@@ -176,7 +176,7 @@ export default function MarketingAssistantWidget() {
             {loading &&
               !(
                 messages.length > 0 &&
-                messages[messages.length - 1]?.role === 'assistant' &&
+                messages[messages.length - 1]?.role === &apos;assistant&apos; &&
                 messages[messages.length - 1]?.content?.trim()
               ) && (
               <div className="flex items-center gap-2 text-xs font-semibold text-neutral-500">

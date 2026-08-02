@@ -55,7 +55,7 @@ export function BulkDeleteConfirmModal({
 
     // Calculate total amount being deleted
     const totalAmount = selectedInvoices.reduce((sum, inv) => sum + (Number(inv.grand_total) || 0), 0);
-    const paidInvoices = selectedInvoices.filter(inv => inv.payment_status === 'paid' || inv.status === 'paid');
+    const paidInvoices = selectedInvoices.filter(inv => inv.payment_status === &apos;paid&apos; || inv.status === &apos;paid&apos;);
 
     return (
         <Dialog open={isOpen} onOpenChange={handleClose}>

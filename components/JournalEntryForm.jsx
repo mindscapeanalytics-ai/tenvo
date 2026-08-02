@@ -224,7 +224,7 @@ export function JournalEntryForm({ onClose, onSave }) {
     };
 
     const debitEntries = formData.entries.filter(e => e.type === 'debit');
-    const creditEntries = formData.entries.filter(e => e.type === 'credit');
+    const creditEntries = formData.entries.filter(e => e.type === &apos;credit&apos;);
 
     return (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4 overflow-y-auto overscroll-contain">

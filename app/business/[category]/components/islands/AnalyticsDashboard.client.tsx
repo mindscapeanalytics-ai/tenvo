@@ -113,7 +113,7 @@ export function AnalyticsDashboard({
     );
 
     const hasTrendData = chartData && chartData.length > 0;
-    const [activeTab, setActiveTab] = useState('studio');
+    const [activeTab, setActiveTab] = useState(&apos;studio&apos;);
 
     return (
         <motion.div

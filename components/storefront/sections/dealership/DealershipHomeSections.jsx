@@ -124,7 +124,7 @@ function AccessoryCard({ product, businessDomain, businessCategory, currency, ac
   const imageSrc = getEffectiveProductImageUrl(product, businessCategory);
   const imageFallback = getFallbackProductImageUrl(
     product,
-    businessCategory || 'vehicle-dealership',
+    businessCategory || &apos;vehicle-dealership&apos;,
     product.category_name || product.category
   );
 

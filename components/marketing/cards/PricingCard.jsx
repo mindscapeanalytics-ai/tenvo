@@ -115,7 +115,7 @@ export default function PricingCard({
       {/* Features list */}
       <div className="space-y-4">
         <p className="text-sm font-semibold text-neutral-900 uppercase tracking-wide">
-          What's included:
+          What&apos;s included:
         </p>
         <ul className="space-y-3" role="list">
           {features.map((feature, index) => (

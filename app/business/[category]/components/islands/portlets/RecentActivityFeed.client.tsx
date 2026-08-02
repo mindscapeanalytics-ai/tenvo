@@ -108,11 +108,11 @@ export const RecentActivityFeed = memo(function RecentActivityFeed({
         switch (type) {
             case 'invoice':
                 return <FileText className="h-3.5 w-3.5 text-brand-primary" />;
-            case 'payment':
+            case &apos;payment&apos;:
                 return <CreditCard className="h-3.5 w-3.5 text-emerald-500" />;
-            case 'customer':
+            case &apos;customer&apos;:
                 return <UserPlus className="h-3.5 w-3.5 text-brand-primary" />;
-            case 'alert':
+            case &apos;alert&apos;:
                 return <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />;
             default:
                 return <Clock className="h-3.5 w-3.5 text-slate-400" />;

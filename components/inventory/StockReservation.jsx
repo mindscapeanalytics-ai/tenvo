@@ -272,7 +272,7 @@ export function StockReservation({
     const d = new Date(r.reservedUntil);
     return d >= now && d <= twoDaysAhead;
   }).length;
-  const expiredCount = reservationList.filter(r => r.status === 'expired').length;
+  const expiredCount = reservationList.filter(r => r.status === &apos;expired&apos;).length;
 
   return (
     <div className="min-w-0 space-y-6 overflow-x-hidden">

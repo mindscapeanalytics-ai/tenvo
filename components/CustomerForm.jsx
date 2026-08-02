@@ -164,7 +164,7 @@ export function CustomerForm({
             return false;
         }
         if (formData.phone && String(formData.phone).replace(/\D/g, '').length > 0
-            && String(formData.phone).replace(/\D/g, '').length < 7) {
+            && String(formData.phone).replace(/\D/g, &apos;&apos;).length < 7) {
             toast.error('Phone number seems too short');
             return false;
         }

@@ -66,29 +66,29 @@ export function LazyVerticalHomeSections({ variant, ...props }) {
   switch (variant) {
     case 'dealership':
       return <DealershipHomeSections {...props} />;
-    case 'marketplace':
+    case &apos;marketplace&apos;:
       return <MarketplaceHomeSections {...props} />;
-    case 'auto-parts':
+    case &apos;auto-parts&apos;:
       return <AutoPartsHomeSections {...props} />;
-    case 'marine-parts':
+    case &apos;marine-parts&apos;:
       return <MarineHomeSections {...props} />;
-    case 'pharmacy':
+    case &apos;pharmacy&apos;:
       return <PharmacyHomeSections {...props} />;
-    case 'furniture':
+    case &apos;furniture&apos;:
       return <FurnitureHomeSections {...props} />;
-    case 'tiles':
+    case &apos;tiles&apos;:
       return <TilesHomeSections {...props} />;
-    case 'tyre':
+    case &apos;tyre&apos;:
       return <TyreHomeSections {...props} />;
-    case 'footwear':
+    case &apos;footwear&apos;:
       return <FootwearHomeSections {...props} />;
-    case 'electronics':
+    case &apos;electronics&apos;:
       return <ElectronicsHomeSections {...props} />;
-    case 'restaurant':
+    case &apos;restaurant&apos;:
       return <RestaurantHomeSections {...props} />;
-    case 'fitness':
+    case &apos;fitness&apos;:
       return <FitnessHomeSections {...props} />;
-    case 'fashion':
+    case &apos;fashion&apos;:
       return <FashionHomeSections {...props} />;
     default:
       return null;

@@ -77,7 +77,7 @@ function VerifyEmailContent() {
           </motion.div>
         );
 
-      case 'success':
+      case &apos;success&apos;:
         return (
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
@@ -130,7 +130,7 @@ function VerifyEmailContent() {
           </motion.div>
         );
 
-      case 'error':
+      case &apos;error&apos;:
         return (
           <motion.div
             initial={{ opacity: 0, y: 20 }}

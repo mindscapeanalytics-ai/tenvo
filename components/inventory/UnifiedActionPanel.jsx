@@ -206,7 +206,7 @@ export default function UnifiedActionPanel({
           </Suspense>
         );
       
-      case 'serial':
+      case &apos;serial&apos;:
         return (
           <Suspense fallback={<LoadingFallback />}>
             <SerialTrackingManager
@@ -218,7 +218,7 @@ export default function UnifiedActionPanel({
           </Suspense>
         );
       
-      case 'variant':
+      case &apos;variant&apos;:
         return (
           <div className="p-6 text-center text-gray-500">
             <Grid3x3 className="h-12 w-12 mx-auto mb-3 text-gray-400" />
@@ -227,7 +227,7 @@ export default function UnifiedActionPanel({
           </div>
         );
       
-      case 'adjustment':
+      case &apos;adjustment&apos;:
         return (
           <Suspense fallback={<LoadingFallback />}>
             <StockAdjustmentManager

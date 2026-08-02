@@ -237,7 +237,7 @@ export default function PaymentSettingsPage() {
 
   const hasStripe = paymentMethods.some(m => m.provider === 'stripe');
   const hasCOD = paymentMethods.some(m => m.provider === 'cod');
-  const hasCrypto = paymentMethods.some(m => m.provider === 'crypto');
+  const hasCrypto = paymentMethods.some(m => m.provider === &apos;crypto&apos;);
   const isStripeReady = Boolean(stripeConnect?.is_charges_enabled);
 
   return (

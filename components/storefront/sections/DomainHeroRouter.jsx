@@ -49,7 +49,7 @@ export function DomainHeroRouter({
           settings={settings}
         />
       );
-    case 'marine-parts-finder':
+    case &apos;marine-parts-finder&apos;:
       return (
         <MarinePartsFinderHero
           preset={preset}
@@ -60,7 +60,7 @@ export function DomainHeroRouter({
           settings={settings}
         />
       );
-    case 'pharmacy-finder':
+    case &apos;pharmacy-finder&apos;:
       return (
         <PharmacyFinderHero
           preset={preset}
@@ -69,7 +69,7 @@ export function DomainHeroRouter({
           accentDark={accentDark}
         />
       );
-    case 'pharmacy-elevated':
+    case &apos;pharmacy-elevated&apos;:
       return (
         <PharmacyHero
           preset={preset}
@@ -79,7 +79,7 @@ export function DomainHeroRouter({
           contactCity={preset.contactCity}
         />
       );
-    case 'tiles-elevated':
+    case &apos;tiles-elevated&apos;:
       return (
         <TilesHero
           preset={preset}
@@ -89,7 +89,7 @@ export function DomainHeroRouter({
           contactCity={preset.contactCity}
         />
       );
-    case 'tyre-elevated':
+    case &apos;tyre-elevated&apos;:
       return (
         <TyreHero
           preset={preset}
@@ -99,7 +99,7 @@ export function DomainHeroRouter({
           contactCity={preset.contactCity}
         />
       );
-    case 'footwear-elevated':
+    case &apos;footwear-elevated&apos;:
       return (
         <FootwearHero
           preset={preset}
@@ -109,7 +109,7 @@ export function DomainHeroRouter({
           contactCity={preset.contactCity}
         />
       );
-    case 'electronics-elevated':
+    case &apos;electronics-elevated&apos;:
       return (
         <ElectronicsHero
           preset={preset}
@@ -119,7 +119,7 @@ export function DomainHeroRouter({
           contactCity={preset.contactCity}
         />
       );
-    case 'furniture-elevated':
+    case &apos;furniture-elevated&apos;:
       return (
         <FurnitureHero
           preset={preset}
@@ -129,7 +129,7 @@ export function DomainHeroRouter({
           contactCity={preset.contactCity}
         />
       );
-    case 'restaurant-elevated':
+    case &apos;restaurant-elevated&apos;:
       return (
         <RestaurantHero
           preset={preset}
@@ -139,7 +139,7 @@ export function DomainHeroRouter({
           contactCity={preset.contactCity}
         />
       );
-    case 'fitness-elevated':
+    case &apos;fitness-elevated&apos;:
       return (
         <FitnessHero
           preset={preset}
@@ -150,21 +150,21 @@ export function DomainHeroRouter({
           meetingUrl={preset.meetingUrl}
         />
       );
-    case 'fashion-editorial':
+    case &apos;fashion-editorial&apos;:
       return (
         <FashionEditorialHero
           preset={preset}
           accent={accent}
         />
       );
-    case 'auto-dealership':
+    case &apos;auto-dealership&apos;:
       return (
         <DealershipHero
           preset={preset}
           accent={accent}
         />
       );
-    case 'auto-marketplace':
+    case &apos;auto-marketplace&apos;:
       return (
         <MarketplaceHero
           preset={preset}
@@ -173,7 +173,7 @@ export function DomainHeroRouter({
           settings={preset.settings}
         />
       );
-    case 'fashion-finder':
+    case &apos;fashion-finder&apos;:
       return (
         <FashionFinderHero
           preset={preset}
@@ -182,7 +182,7 @@ export function DomainHeroRouter({
           accentDark={accentDark}
         />
       );
-    case 'supermarket-elevated':
+    case &apos;supermarket-elevated&apos;:
       return (
         <SupermarketHero
           preset={preset}
@@ -192,7 +192,7 @@ export function DomainHeroRouter({
           contactCity={preset.contactCity}
         />
       );
-    case 'grocery-finder':
+    case &apos;grocery-finder&apos;:
       return (
         <GroceryFinderHero
           preset={preset}
@@ -200,7 +200,7 @@ export function DomainHeroRouter({
           accent={accent}
         />
       );
-    case 'restaurant-finder':
+    case &apos;restaurant-finder&apos;:
       return (
         <RestaurantFinderHero
           preset={preset}
@@ -209,14 +209,14 @@ export function DomainHeroRouter({
           accentDark={accentDark}
         />
       );
-    case 'jewellery-elevated':
+    case &apos;jewellery-elevated&apos;:
       return (
         <JewelleryHero
           preset={preset}
           accent={accent}
         />
       );
-    case 'commerce-carousel':
+    case &apos;commerce-carousel&apos;:
     default:
       return (
         <CommerceCarouselHero

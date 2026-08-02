@@ -35,7 +35,7 @@ export default function AffiliatesSuccessPage() {
               <h1 className="text-3xl sm:text-4xl font-bold text-zinc-900 mb-4 tracking-tight">Application Received!</h1>
               
               <p className="text-zinc-600 mb-8 text-lg leading-relaxed">
-                Thank you for applying to the Tenvo Partner Program. We're excited to have you on board! 
+                Thank you for applying to the Tenvo Partner Program. We&apos;re excited to have you on board! 
               </p>
 
               <div className="bg-zinc-50 border border-zinc-100 rounded-2xl p-6 mb-10 flex items-start gap-4 text-left">

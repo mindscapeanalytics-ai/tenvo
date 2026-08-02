@@ -854,7 +854,7 @@ export function DashboardTabs({
                                     currency={currency}
                                     session={posSession}
                                 />
-                            ) : resolvePosVariant(category) === 'superstore' ? (
+                            ) : resolvePosVariant(category) === &apos;superstore&apos; ? (
                                 <SuperStorePOS
                                     businessId={activeBusinessId}
                                     category={category}

@@ -45,7 +45,7 @@ export default function GRNView({ poId, businessId, business, onUpdateStatus, co
 
     const isReceived = normalizePurchaseStatus(purchase.status) === PURCHASE_STATUSES.RECEIVED;
     const canReceive = isReceivablePurchaseStatus(purchase.status);
-    const vendorAddress = [purchase.vendor_address, purchase.vendor_city].filter(Boolean).join(', ');
+    const vendorAddress = [purchase.vendor_address, purchase.vendor_city].filter(Boolean).join(&apos;, &apos;);
 
     return (
         <div id="printable-grn" className="space-y-8 animate-in fade-in duration-500 bg-white p-1">

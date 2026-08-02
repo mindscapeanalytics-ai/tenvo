@@ -7,22 +7,19 @@ import {
   CheckCircle,
   XCircle,
   FileUp,
-  Eye,
   ChevronRight,
   AlertCircle,
   Download,
   Filter
 } from 'lucide-react';
 import { Button } from './ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
+import { Card, CardContent } from './ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 import { Badge } from './ui/badge';
 import { toast } from 'react-hot-toast';
 import {
   parseExcelFile,
   validateImportRow,
-  transformImportedData,
-  detectDuplicates,
   generateImportSummary,
   generateSkuFromName,
   detectColumnMapping
@@ -94,7 +91,6 @@ export function ExcelImportModal({
   const [validationResults, setValidationResults] = useState([]);
   const [importSummary, setImportSummary] = useState(null);
   const [selectedSheet, setSelectedSheet] = useState(null);
-  const [showErrorDetails, setShowErrorDetails] = useState(false);
   const [filterMode, setFilterMode] = useState('all'); // all, valid, warnings, errors
   const [importingRows, setImportingRows] = useState([]);
   const [columnMapping, setColumnMapping] = useState({});
@@ -109,10 +105,11 @@ export function ExcelImportModal({
   // Auto-detect the column mapping whenever the selected sheet's headers change
   useEffect(() => {
     if (sheetHeaders.length === 0) {
-      setColumnMapping({});
       return;
     }
-    setColumnMapping(detectColumnMapping(sheetHeaders, { category }));
+    // Use a ref or callback to avoid cascading renders
+    const detected = detectColumnMapping(sheetHeaders, { category });
+    setColumnMapping(detected);
   }, [sheetHeaders, category]);
 
   const mappableFields = useMemo(

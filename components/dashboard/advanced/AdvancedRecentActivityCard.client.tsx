@@ -59,11 +59,11 @@ function ActivityIcon({ type }: { type?: ActivityType }) {
     switch (type) {
         case 'invoice':
             return <FileText className="h-3.5 w-3.5 text-blue-600" />;
-        case 'payment':
+        case &apos;payment&apos;:
             return <CreditCard className="h-3.5 w-3.5 text-emerald-600" />;
-        case 'customer':
+        case &apos;customer&apos;:
             return <UserPlus className="h-3.5 w-3.5 text-violet-600" />;
-        case 'alert':
+        case &apos;alert&apos;:
             return <AlertTriangle className="h-3.5 w-3.5 text-amber-600" />;
         default:
             return <Clock className="h-3.5 w-3.5 text-slate-400" />;

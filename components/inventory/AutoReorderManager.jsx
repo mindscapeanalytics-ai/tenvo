@@ -64,7 +64,7 @@ export function AutoReorderManager({
         const suggestedQty = reorderQuantity > 0 ? Math.max(reorderQuantity, computedQty) : computedQty;
 
         const stockPercentage = (stock / effectiveReorderPoint) * 100;
-        let urgency = 'low';
+        let urgency = &apos;low&apos;;
         if (stock <= 0 || stockPercentage <= 25) urgency = 'critical';
         else if (stockPercentage <= 50) urgency = 'high';
         else if (stockPercentage <= 75) urgency = 'medium';

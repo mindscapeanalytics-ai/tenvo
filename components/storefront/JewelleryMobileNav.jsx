@@ -41,8 +41,8 @@ export function JewelleryMobileNav({
   const [activeTab, setActiveTab] = useState(nav.tabs[0]?.id);
   const activeCategories = nav.tabs.find((t) => t.id === activeTab)?.categories || nav.tabs[0]?.categories || [];
 
-  const signatureLabel = config.signaturePiecesTitle || (mode === 'beauty' ? 'Best Sellers' : 'Signature Pieces');
-  const displayName = business?.business_name || (mode === 'beauty' ? 'Beauty Store' : 'Jewelry Store');
+  const signatureLabel = config.signaturePiecesTitle || (mode === &apos;beauty&apos; ? &apos;Best Sellers&apos; : &apos;Signature Pieces&apos;);
+  const displayName = business?.business_name || (mode === &apos;beauty&apos; ? &apos;Beauty Store&apos; : &apos;Jewelry Store&apos;);
 
   if (!isOpen) return null;
 

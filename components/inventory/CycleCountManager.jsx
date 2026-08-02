@@ -508,7 +508,7 @@ function CycleCountDetailView({ count, products, onClose, onCountDownload, curre
                                                     />
                                                 </td>
                                                 <td className={`px-4 py-2 text-right font-semibold ${
-                                                    variance_qty > 0 ? 'text-red-600' : variance_qty < 0 ? 'text-orange-600' : ''
+                                                    variance_qty > 0 ? &apos;text-red-600&apos; : variance_qty < 0 ? 'text-orange-600' : ''
                                                 }`}>
                                                     {variance_qty > 0 ? '+' : ''}{variance_qty}
                                                 </td>
@@ -544,7 +544,7 @@ function CycleCountDetailView({ count, products, onClose, onCountDownload, curre
                                             <div className="text-right">
                                                 <p className="text-[10px] uppercase text-gray-400">Variance</p>
                                                 <p className={`font-semibold tabular-nums ${
-                                                    variance_qty > 0 ? 'text-red-600' : variance_qty < 0 ? 'text-orange-600' : ''
+                                                    variance_qty > 0 ? &apos;text-red-600&apos; : variance_qty < 0 ? 'text-orange-600' : ''
                                                 }`}>
                                                     {variance_qty > 0 ? '+' : ''}{variance_qty}
                                                 </p>

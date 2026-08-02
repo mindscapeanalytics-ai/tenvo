@@ -1242,7 +1242,7 @@ export function MilkRouteHisab({ businessId, category }) {
           <Loader2 className="h-5 w-5 animate-spin" />
           Loading…
         </div>
-      ) : view === 'daily' ? (
+      ) : view === &apos;daily&apos; ? (
         <DailySheet
           products={products}
           rows={visibleRows}
@@ -1732,7 +1732,7 @@ function BillsActionCluster({
             <Mail className="h-3.5 w-3.5" />
           </button>
         </>
-      ) : Number(row.amount) > 0 && String(row.paymentStatus || '').toLowerCase() === 'paid' ? (
+      ) : Number(row.amount) > 0 && String(row.paymentStatus || &apos;&apos;).toLowerCase() === &apos;paid&apos; ? (
         <span className="text-[10px] font-semibold uppercase tracking-wide text-emerald-700">Paid</span>
       ) : null}
     </div>

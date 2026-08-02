@@ -298,7 +298,7 @@ export default function FinancialReports({ businessId, initialReport = 'pl', ref
                                         <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
                                     </Button>
                                 </>
-                            ) : activeTab === 'bs' ? (
+                            ) : activeTab === &apos;bs&apos; ? (
                                 <>
                                     <div className="flex items-center gap-2 bg-white dark:bg-slate-900 border border-gray-250 dark:border-slate-800 rounded-md px-2 py-1">
                                         <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">As of:</span>
@@ -308,7 +308,7 @@ export default function FinancialReports({ businessId, initialReport = 'pl', ref
                                         <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
                                     </Button>
                                 </>
-                            ) : activeTab === 'cf' ? (
+                            ) : activeTab === &apos;cf&apos; ? (
                                 <>
                                     <div className="flex items-center gap-2 bg-white dark:bg-slate-900 border border-gray-250 dark:border-slate-800 rounded-md px-2 py-1">
                                         <Calendar className="w-4 h-4 text-gray-400" />

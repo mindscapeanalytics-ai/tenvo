@@ -31,9 +31,9 @@ export function ExpertActionPanel({ category, item, onUpdate }) {
   // Custom icons based on domain
   const getDomainIcon = () => {
     if (category?.includes('pharmacy')) return <Stethoscope className="w-4 h-4" />;
-    if (category?.includes('textile')) return <Palette className="w-4 h-4" />;
-    if (category?.includes('auto')) return <Settings className="w-4 h-4" />;
-    if (category?.includes('construction')) return <Hammer className="w-4 h-4" />;
+    if (category?.includes(&apos;textile&apos;)) return <Palette className="w-4 h-4" />;
+    if (category?.includes(&apos;auto&apos;)) return <Settings className="w-4 h-4" />;
+    if (category?.includes(&apos;construction&apos;)) return <Hammer className="w-4 h-4" />;
     return <Zap className="w-4 h-4" />;
   };
 

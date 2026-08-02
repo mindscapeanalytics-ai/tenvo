@@ -72,7 +72,7 @@ export default function IslamabadRestaurantCase() {
                 <h3 className="text-lg font-semibold text-neutral-900">About the Business</h3>
               </div>
               <p className="text-sm font-medium leading-relaxed text-neutral-600">
-                <strong>Flavors Restaurant</strong> is a 50-seat casual dining restaurant in Islamabad's F-7 sector, specializing in Pakistani and continental cuisine. Open since 2019, they serve 200+ customers daily during peak hours.
+                <strong>Flavors Restaurant</strong> is a 50-seat casual dining restaurant in Islamabad&apos;s F-7 sector, specializing in Pakistani and continental cuisine. Open since 2019, they serve 200+ customers daily during peak hours.
               </p>
             </div>
             <div className="space-y-3">
@@ -117,7 +117,7 @@ export default function IslamabadRestaurantCase() {
 
             <blockquote className="my-8 border-l-4 border-orange-500 bg-orange-50/30 p-6 italic">
               <p className="text-lg font-medium text-neutral-800">
-                "Paper tickets were a nightmare. During dinner rush, orders got lost, kitchen staff screamed for clarity, and customers waited 45 minutes for simple dishes. We needed a digital system that actually worked."
+                &quot;Paper tickets were a nightmare. During dinner rush, orders got lost, kitchen staff screamed for clarity, and customers waited 45 minutes for simple dishes. We needed a digital system that actually worked.&quot;
               </p>
               <footer className="mt-4 text-sm font-bold text-neutral-900">
                 — Hamza Malik, General Manager
@@ -126,7 +126,7 @@ export default function IslamabadRestaurantCase() {
 
             <h2 className="mb-4 text-2xl font-semibold text-neutral-900">The TENVO Restaurant POS</h2>
             <p className="font-medium leading-relaxed text-neutral-700">
-              TENVO's restaurant-specific POS was deployed with kitchen display integration:
+              TENVO&apos;s restaurant-specific POS was deployed with kitchen display integration:
             </p>
 
             <div className="my-8 space-y-4">
@@ -213,7 +213,7 @@ export default function IslamabadRestaurantCase() {
 
             <blockquote className="my-8 border-l-4 border-emerald-500 bg-emerald-50/30 p-6 italic">
               <p className="text-lg font-medium text-neutral-800">
-                "The transformation was incredible. Kitchen sees orders instantly, we track table status in real-time, and daily reports show exactly what sold. Our customer complaints dropped by 70%. Best investment we made."
+                &quot;The transformation was incredible. Kitchen sees orders instantly, we track table status in real-time, and daily reports show exactly what sold. Our customer complaints dropped by 70%. Best investment we made.&quot;
               </p>
               <footer className="mt-4 text-sm font-bold text-neutral-900">
                 — Hamza Malik, 2 months after going live

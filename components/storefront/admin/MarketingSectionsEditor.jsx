@@ -433,7 +433,7 @@ export function MarketingSectionsEditor({ sections = [], brandColor, businessId,
                             onChange={(v) => updateSection(section.id, { imageUrl: v })}
                             businessId={businessId}
                           />
-                        ) : section.design === 'gradient' ? (
+                        ) : section.design === &apos;gradient&apos; ? (
                           <div className="grid grid-cols-2 gap-3">
                             <div className="space-y-1.5">
                               <Label>Gradient start</Label>
@@ -454,7 +454,7 @@ export function MarketingSectionsEditor({ sections = [], brandColor, businessId,
                               />
                             </div>
                           </div>
-                        ) : section.design === 'solid' ? (
+                        ) : section.design === &apos;solid&apos; ? (
                           <div className="space-y-1.5">
                             <Label>Background color</Label>
                             <Input

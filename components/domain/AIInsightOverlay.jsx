@@ -81,7 +81,7 @@ export function AIInsightOverlay({ domain, items, businessId }) {
                       insight.type === 'risk' ? "bg-red-100 text-red-600" : "bg-indigo-100 text-indigo-600"
                     )}>
                       {insight.type === 'opportunity' ? <TrendingUp className="w-3 h-3" /> : 
-                       insight.type === 'risk' ? <ShieldAlert className="w-3 h-3" /> : <Lightbulb className="w-3 h-3" />}
+                       insight.type === &apos;risk&apos; ? <ShieldAlert className="w-3 h-3" /> : <Lightbulb className="w-3 h-3" />}
                     </div>
                     <div className="space-y-1">
                       <p className="text-[11px] font-semibold text-gray-900 leading-tight">{insight.title}</p>

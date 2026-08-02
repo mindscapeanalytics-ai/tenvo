@@ -132,7 +132,7 @@ export function QuickVendorForm({ onSave, onCancel }) {
         }
     };
 
-    const fieldClass = (field) => cn(MOBILE_INPUT_CLASS, errors[field] ? 'border-red-500' : '');
+    const fieldClass = (field) => cn(MOBILE_INPUT_CLASS, errors[field] ? &apos;border-red-500&apos; : &apos;&apos;);
 
     return (
         <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">

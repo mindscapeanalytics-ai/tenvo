@@ -469,7 +469,7 @@ export function Sidebar({ isOpen, onClose, isSidebarCollapsed, setIsSidebarColla
                             : (item.key === 'dashboard' ? baseUrl : `${baseUrl}?tab=${item.key}`));
 
                         // Use <a> tag for external links, Link for internal
-                        const NavLink = isExternal ? 'a' : Link;
+                        const NavLink = isExternal ? &apos;a&apos; : Link;
 
                         return (
                           <NavLink

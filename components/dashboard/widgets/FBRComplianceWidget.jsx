@@ -181,7 +181,7 @@ export function FBRComplianceWidget({ businessId, currency: currencyProp, onView
                         <div className="flex items-center gap-2">
                             {complianceData.filingStatus === 'current' ? (
                                 <CheckCircle2 className="w-4 h-4 text-green-600" />
-                            ) : complianceData.filingStatus === 'due' ? (
+                            ) : complianceData.filingStatus === &apos;due&apos; ? (
                                 <Clock className="w-4 h-4 text-orange-600" />
                             ) : (
                                 <AlertCircle className="w-4 h-4 text-red-600" />

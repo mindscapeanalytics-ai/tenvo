@@ -41,28 +41,28 @@ export const PerformanceKPIs = memo(function PerformanceKPIs({
             label: 'Revenue',
             value: revenue,
             change: revenueChange,
-            trend: revenueChange > 0 ? 'up' : revenueChange < 0 ? 'down' : 'neutral',
+            trend: revenueChange > 0 ? &apos;up&apos; : revenueChange < 0 ? 'down' : 'neutral',
             colorClass: 'text-emerald-600',
         },
         {
             label: 'Orders',
             value: orders.toString(),
             change: ordersChange,
-            trend: ordersChange > 0 ? 'up' : ordersChange < 0 ? 'down' : 'neutral',
+            trend: ordersChange > 0 ? &apos;up&apos; : ordersChange < 0 ? 'down' : 'neutral',
             colorClass: 'text-cyan-600',
         },
         {
             label: 'Customers',
             value: customers.toString(),
             change: customersChange,
-            trend: customersChange > 0 ? 'up' : customersChange < 0 ? 'down' : 'neutral',
+            trend: customersChange > 0 ? &apos;up&apos; : customersChange < 0 ? 'down' : 'neutral',
             colorClass: 'text-violet-600',
         },
         {
             label: 'Avg Order',
             value: avgOrderValue,
             change: avgOrderValueChange,
-            trend: avgOrderValueChange && avgOrderValueChange > 0 ? 'up' : avgOrderValueChange && avgOrderValueChange < 0 ? 'down' : 'neutral',
+            trend: avgOrderValueChange && avgOrderValueChange > 0 ? &apos;up&apos; : avgOrderValueChange && avgOrderValueChange < 0 ? 'down' : 'neutral',
             colorClass: 'text-amber-600',
         },
     ];
@@ -96,7 +96,7 @@ export const PerformanceKPIs = memo(function PerformanceKPIs({
                                     >
                                         {kpi.trend === 'up' ? (
                                             <TrendingUp className="h-2.5 w-2.5" aria-hidden />
-                                        ) : kpi.trend === 'down' ? (
+                                        ) : kpi.trend === &apos;down&apos; ? (
                                             <TrendingDown className="h-2.5 w-2.5" aria-hidden />
                                         ) : (
                                             <Minus className="h-2.5 w-2.5" aria-hidden />

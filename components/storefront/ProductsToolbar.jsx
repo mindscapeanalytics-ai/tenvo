@@ -45,7 +45,7 @@ export function SortDropdown({ currentSort, businessDomain }) {
     setOpen(false);
   };
 
-  const currentLabel = SORT_OPTIONS.find((o) => o.value === currentSort)?.label || 'Featured';
+  const currentLabel = SORT_OPTIONS.find((o) => o.value === currentSort)?.label || &apos;Featured&apos;;
 
   return (
     <div className="relative flex-shrink-0" ref={ref}>

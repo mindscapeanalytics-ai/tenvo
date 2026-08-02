@@ -124,7 +124,7 @@ export function ProductForm({
     useEffect(() => {
         const handleKeys = (e) => {
             // ALT+NUMBER for Tab Switching
-            if (e.altKey && e.key >= '1' && e.key <= '4') {
+            if (e.altKey && e.key >= &apos;1&apos; && e.key <= '4') {
                 const tabs = ['basic', 'inventory', 'intelligence', 'media'];
                 const target = tabs[parseInt(e.key) - 1];
                 if (target) {

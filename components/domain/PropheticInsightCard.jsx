@@ -85,7 +85,7 @@ export function PropheticInsightCard({ businessId, category }) {
                             </div>
 
                             <div className="p-4 rounded-2xl bg-gray-50/50 border border-gray-100 text-sm italic text-gray-700 leading-relaxed relative">
-                                <span className="absolute -top-2 -left-1 text-4xl text-gray-200 font-serif opacity-50">"</span>
+                                <span className="absolute -top-2 -left-1 text-4xl text-gray-200 font-serif opacity-50">&quot;</span>
                                 {insight.insight}
                             </div>
 

@@ -190,8 +190,8 @@ export default function PaymentManager({
     const getPaymentParty = (p) =>
         p.party_name
         || (isReceiptType(p.payment_type)
-            ? (p.customer_name || p.customers?.name || 'Customer')
-            : (p.vendor_name || p.vendors?.name || 'Vendor'));
+            ? (p.customer_name || p.customers?.name || &apos;Customer&apos;)
+            : (p.vendor_name || p.vendors?.name || &apos;Vendor&apos;));
 
     const paymentFormDialog = (
         <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
@@ -548,7 +548,7 @@ export default function PaymentManager({
                                     accessorKey: 'actions',
                                     header: 'Actions',
                                     cell: ({ row }) => (
-                                        row.original.source === 'invoice_payment' ? (
+                                        row.original.source === &apos;invoice_payment&apos; ? (
                                             <span className="text-[10px] text-gray-400 font-medium">Invoice pay</span>
                                         ) : (
                                         <Button

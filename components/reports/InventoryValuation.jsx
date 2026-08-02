@@ -130,7 +130,7 @@ export function InventoryValuation({ businessId, costingMethod = 'FIFO', currenc
     // Get unique categories
     const categories = valuation?.products 
         ? ['all', ...new Set(valuation.products.map(p => p.category).filter(Boolean))]
-        : ['all'];
+        : [&apos;all&apos;];
 
     return (
         <div className="min-w-0 space-y-6 overflow-x-hidden">

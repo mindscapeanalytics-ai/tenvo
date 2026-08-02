@@ -169,7 +169,7 @@ export function RetailDashboard({ businessId, category, onQuickAction }) {
         <div className="space-y-3">
           <div className="flex items-center justify-between p-3 bg-white/50 rounded-lg">
             <div>
-              <p className="font-medium">Today's Sales</p>
+              <p className="font-medium">Today&apos;s Sales</p>
               <p className="text-sm text-gray-600">0 invoices, PKR 0</p>
             </div>
             <button 

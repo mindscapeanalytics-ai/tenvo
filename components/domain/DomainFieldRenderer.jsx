@@ -44,13 +44,13 @@ export function DomainFieldRenderer({
   const getFieldIcon = () => {
     const n = normalizeKey(field);
     if (n.includes('drug') || n.includes('license') || n.includes('pharmacy')) return <Pill className="w-3.5 h-3.5" />;
-    if (n.includes('vehicle') || n.includes('car') || n.includes('truck')) return <Car className="w-3.5 h-3.5" />;
-    if (n.includes('hazardous') || n.includes('toxic') || n.includes('danger')) return <Biohazard className="w-3.5 h-3.5" />;
-    if (n.includes('radiation') || n.includes('atomic')) return <Radiation className="w-3.5 h-3.5" />;
-    if (n.includes('flammable') || n.includes('fire')) return <Flame className="w-3.5 h-3.5" />;
-    if (n.includes('isbn') || n.includes('book') || n.includes('author')) return <Book className="w-3.5 h-3.5" />;
-    if (n.includes('model') || n.includes('serial')) return <Hash className="w-3.5 h-3.5" />;
-    if (n.includes('compliance') || n.includes('legal')) return <ShieldAlert className="w-3.5 h-3.5" />;
+    if (n.includes(&apos;vehicle&apos;) || n.includes(&apos;car&apos;) || n.includes(&apos;truck&apos;)) return <Car className="w-3.5 h-3.5" />;
+    if (n.includes(&apos;hazardous&apos;) || n.includes(&apos;toxic&apos;) || n.includes(&apos;danger&apos;)) return <Biohazard className="w-3.5 h-3.5" />;
+    if (n.includes(&apos;radiation&apos;) || n.includes(&apos;atomic&apos;)) return <Radiation className="w-3.5 h-3.5" />;
+    if (n.includes(&apos;flammable&apos;) || n.includes(&apos;fire&apos;)) return <Flame className="w-3.5 h-3.5" />;
+    if (n.includes(&apos;isbn&apos;) || n.includes(&apos;book&apos;) || n.includes(&apos;author&apos;)) return <Book className="w-3.5 h-3.5" />;
+    if (n.includes(&apos;model&apos;) || n.includes(&apos;serial&apos;)) return <Hash className="w-3.5 h-3.5" />;
+    if (n.includes(&apos;compliance&apos;) || n.includes(&apos;legal&apos;)) return <ShieldAlert className="w-3.5 h-3.5" />;
     return <HelpCircle className="w-3.5 h-3.5 text-gray-300" />;
   };
 
@@ -59,7 +59,7 @@ export function DomainFieldRenderer({
     switch (inputType) {
       case 'date':
         return <DatePicker value={value || ''} onChange={onChange} />;
-      case 'number':
+      case &apos;number&apos;:
         return (
           <div className="relative">
             <Input
@@ -89,7 +89,7 @@ export function DomainFieldRenderer({
             )}
           </div>
         );
-      case 'checkbox':
+      case &apos;checkbox&apos;:
         return (
           <div className="flex items-center space-x-2 p-3 bg-gray-50/50 rounded-lg border border-transparent hover:border-blue-100 transition-all">
             <Checkbox checked={!!value} onCheckedChange={(checked) => onChange(checked)} />
@@ -99,7 +99,7 @@ export function DomainFieldRenderer({
             </Label>
           </div>
         );
-      case 'select':
+      case &apos;select&apos;:
         return (
           <DomainSelect
             field={field}
@@ -111,13 +111,13 @@ export function DomainFieldRenderer({
             onDomainPatch={onDomainPatch}
           />
         );
-      case 'vehicle-compatibility':
+      case &apos;vehicle-compatibility&apos;:
         return <VehicleCompatibilitySelector value={value || []} onChange={onChange} />;
-      case 'oem-number':
+      case &apos;oem-number&apos;:
         return <OEMNumberInput value={value} onChange={onChange} required={required} />;
-      case 'part-number':
+      case &apos;part-number&apos;:
         return <PartNumberInput value={value} onChange={onChange} required={required} />;
-      case 'warranty':
+      case &apos;warranty&apos;:
         return <WarrantyPeriodInput value={value} onChange={onChange} required={required} />;
       default:
         return (

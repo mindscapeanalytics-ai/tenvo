@@ -568,7 +568,7 @@ export function ManufacturingModule({
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {productionOrders.filter(o => o.status === 'in-progress').length === 0 && (
+              {productionOrders.filter(o => o.status === &apos;in-progress&apos;).length === 0 && (
                 <p className="text-gray-500 col-span-2 text-center py-10">No active production batches found.</p>
               )}
               {productionOrders.filter(o => o.status === 'in-progress').map((order) => {

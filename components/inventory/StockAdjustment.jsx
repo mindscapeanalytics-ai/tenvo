@@ -165,7 +165,7 @@ export function StockAdjustment({
 
   const totalAdjustments = adjustmentHistory.length;
   const increases = adjustmentHistory.filter(a => a.adjustmentType === 'increase').length;
-  const decreases = adjustmentHistory.filter(a => a.adjustmentType === 'decrease').length;
+  const decreases = adjustmentHistory.filter(a => a.adjustmentType === &apos;decrease&apos;).length;
 
   return (
     <div className="space-y-6">

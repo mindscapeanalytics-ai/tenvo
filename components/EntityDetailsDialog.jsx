@@ -142,14 +142,14 @@ export function EntityDetailsDialog({ item: initialItem, type, open, onClose, ca
 
         switch (type) {
             case 'invoice': icon = <FileText className="w-5 h-5 text-wine" />; title = item.invoice_number || item.number; break;
-            case 'customer': icon = <Users className="w-5 h-5 text-green-500" />; break;
-            case 'vendor': icon = <Truck className="w-5 h-5 text-blue-500" />; break;
-            case 'purchase_order': icon = <ShoppingCart className="w-5 h-5 text-indigo-500" />; subtitle = "Purchase Order"; break;
-            case 'quotation': icon = <ClipboardList className="w-5 h-5 text-orange-500" />; break;
-            case 'sales_order': icon = <TrendingUp className="w-5 h-5 text-emerald-500" />; subtitle = "Sales Order"; break;
-            case 'challan': icon = <Layers className="w-5 h-5 text-gray-500" />; subtitle = "Delivery Challan"; break;
-            case 'bom': icon = <Factory className="w-5 h-5 text-wine-500" />; subtitle = "Bill of Materials"; break;
-            case 'production_order': icon = <Settings className="w-5 h-5 text-slate-500" />; subtitle = "Production Order"; break;
+            case &apos;customer&apos;: icon = <Users className="w-5 h-5 text-green-500" />; break;
+            case &apos;vendor&apos;: icon = <Truck className="w-5 h-5 text-blue-500" />; break;
+            case &apos;purchase_order&apos;: icon = <ShoppingCart className="w-5 h-5 text-indigo-500" />; subtitle = &quot;Purchase Order&quot;; break;
+            case &apos;quotation&apos;: icon = <ClipboardList className="w-5 h-5 text-orange-500" />; break;
+            case &apos;sales_order&apos;: icon = <TrendingUp className="w-5 h-5 text-emerald-500" />; subtitle = &quot;Sales Order&quot;; break;
+            case &apos;challan&apos;: icon = <Layers className="w-5 h-5 text-gray-500" />; subtitle = &quot;Delivery Challan&quot;; break;
+            case &apos;bom&apos;: icon = <Factory className="w-5 h-5 text-wine-500" />; subtitle = &quot;Bill of Materials&quot;; break;
+            case &apos;production_order&apos;: icon = <Settings className="w-5 h-5 text-slate-500" />; subtitle = "Production Order"; break;
         }
 
         return (

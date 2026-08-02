@@ -83,7 +83,7 @@ export default function KarachiBoutiqueCaseStudy() {
                 <h3 className="text-lg font-semibold text-neutral-900">About the Business</h3>
               </div>
               <p className="text-sm font-medium leading-relaxed text-neutral-600">
-                <strong>Khan Fashion Boutique</strong> operates three retail locations in Karachi, specializing in Pakistani and Western women's clothing. Founded in 2018, they've grown from a single shop to a small chain serving 500+ customers monthly.
+                <strong>Khan Fashion Boutique</strong> operates three retail locations in Karachi, specializing in Pakistani and Western women&apos;s clothing. Founded in 2018, they&apos;ve grown from a single shop to a small chain serving 500+ customers monthly.
               </p>
             </div>
             <div className="space-y-3">
@@ -128,7 +128,7 @@ export default function KarachiBoutiqueCaseStudy() {
 
             <blockquote className="my-8 border-l-4 border-brand-primary bg-brand-50/30 p-6 italic">
               <p className="text-lg font-medium text-neutral-800">
-                "We were drowning in Excel sheets and losing track of inventory between our three outlets. Staff would tell customers an item was out of stock, only to find it sitting at another branch. The phone calls alone were eating up hours every day."
+                &quot;We were drowning in Excel sheets and losing track of inventory between our three outlets. Staff would tell customers an item was out of stock, only to find it sitting at another branch. The phone calls alone were eating up hours every day.&quot;
               </p>
               <footer className="mt-4 text-sm font-bold text-neutral-900">
                 — Ayesha Khan, Owner, Khan Fashion Boutique
@@ -148,7 +148,7 @@ export default function KarachiBoutiqueCaseStudy() {
                 <div>
                   <h4 className="mb-1 font-bold text-neutral-900">Day 1: Data Migration</h4>
                   <p className="text-sm font-medium text-neutral-600">
-                    TENVO's migration team imported all three Excel files (2,500 products). Duplicate SKUs were flagged and resolved. All three locations went live on the same database.
+                    TENVO&apos;s migration team imported all three Excel files (2,500 products). Duplicate SKUs were flagged and resolved. All three locations went live on the same database.
                   </p>
                 </div>
               </div>
@@ -209,7 +209,7 @@ export default function KarachiBoutiqueCaseStudy() {
 
             <blockquote className="my-8 border-l-4 border-emerald-500 bg-emerald-50/30 p-6 italic">
               <p className="text-lg font-medium text-neutral-800">
-                "TENVO unified everything in one dashboard. Now stock moves are instant and we catch discrepancies before month-end. My staff can focus on customers instead of hunting through spreadsheets. Best decision we made this year."
+                &quot;TENVO unified everything in one dashboard. Now stock moves are instant and we catch discrepancies before month-end. My staff can focus on customers instead of hunting through spreadsheets. Best decision we made this year.&quot;
               </p>
               <footer className="mt-4 text-sm font-bold text-neutral-900">
                 — Ayesha Khan, 3 months after going live
@@ -260,7 +260,7 @@ export default function KarachiBoutiqueCaseStudy() {
                 Lahore Pharmacy: FBR Compliance & Batch Tracking
               </h3>
               <p className="text-sm font-medium text-neutral-600">
-                How a pharmacy chain passed FBR audit with TENVO's batch tracking and automated GST calculations.
+                How a pharmacy chain passed FBR audit with TENVO&apos;s batch tracking and automated GST calculations.
               </p>
             </Link>
 

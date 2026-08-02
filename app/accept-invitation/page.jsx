@@ -248,7 +248,7 @@ function AcceptInvitationContent() {
           </CardHeader>
           <CardContent className="pt-6 pb-6">
             <p className="text-sm text-slate-700 mb-4">
-              You've been added to <span className="font-bold text-slate-900">{invitation?.business_name}</span> with the role of{' '}
+              You&apos;ve been added to <span className="font-bold text-slate-900">{invitation?.business_name}</span> with the role of{' '}
               <span className="font-bold text-wine capitalize">{invitation?.role}</span>.
             </p>
             <p className="text-sm text-slate-600">Redirecting to your dashboard...</p>
