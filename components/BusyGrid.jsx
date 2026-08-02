@@ -419,13 +419,18 @@ export function BusyGrid({
                 );
                 const targetCol = firstEditable >= 0 ? firstEditable : 0;
                 const newRowIndex = sortedData.length - 1;
-                // Move setState to queueMicrotask to avoid synchronous setState in effect
-                queueMicrotask(() => {
+                const targetAccessorKey = columns[targetCol]?.accessorKey;
+                const initialValue = getValue(lastRow, targetAccessorKey) ?? '';
+                
+                // Schedule state updates after effect completion
+                const timeoutId = setTimeout(() => {
                     setSelectedCell({ row: newRowIndex, col: targetCol });
                     setEditingCell({ row: newRowIndex, col: targetCol });
-                    setEditValue(getValue(lastRow, columns[targetCol]?.accessorKey) ?? '');
+                    setEditValue(initialValue);
                     gridRef.current?.focus({ preventScroll: true });
-                });
+                }, 0);
+                
+                return () => clearTimeout(timeoutId);
             }
         }
         prevDataLenRef.current = sortedData.length;

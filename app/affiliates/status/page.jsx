@@ -136,7 +136,7 @@ export default async function AffiliateStatusPage({ searchParams }) {
               <div className="bg-red-50 border border-red-100 text-red-700 p-4 rounded-xl text-sm mb-6 max-w-lg mx-auto">
                 <p className="font-semibold mb-1">No account found for <span className="font-mono">{email}</span></p>
                 <p>
-                  Haven't applied yet?{' '}
+                  Haven&apos;t applied yet?{' '}
                   <Link href="/affiliates" className="font-semibold underline hover:text-red-900">
                     Apply to the partner program here →
                   </Link>
@@ -163,7 +163,7 @@ export default async function AffiliateStatusPage({ searchParams }) {
                   </div>
                 </div>
                 <p className="text-zinc-600 text-sm ml-12">
-                  Your application is pending review by our team. We'll notify you by email once approved. Check back here anytime.
+                  Your application is pending review by our team. We&apos;ll notify you by email once approved. Check back here anytime.
                 </p>
                 <div className="mt-4 ml-12 flex items-center gap-2 text-xs text-amber-700 font-medium bg-amber-100 w-fit px-3 py-1.5 rounded-full">
                   <span className="font-mono">{affiliate.referral_code}</span>
