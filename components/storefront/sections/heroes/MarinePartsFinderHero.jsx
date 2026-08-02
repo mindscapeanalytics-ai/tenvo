@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useId, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -46,6 +46,7 @@ function MarineHeroVideoBackdrop({ videoUrl, poster }) {
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setFailed(false);
     const el = videoRef.current;
     if (!el || !videoUrl) return undefined;

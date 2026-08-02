@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import dynamic from 'next/dynamic';
 
@@ -66,29 +66,29 @@ export function LazyVerticalHomeSections({ variant, ...props }) {
   switch (variant) {
     case 'dealership':
       return <DealershipHomeSections {...props} />;
-    case &apos;marketplace&apos;:
+    case 'marketplace':
       return <MarketplaceHomeSections {...props} />;
-    case &apos;auto-parts&apos;:
+    case 'auto-parts':
       return <AutoPartsHomeSections {...props} />;
-    case &apos;marine-parts&apos;:
+    case 'marine-parts':
       return <MarineHomeSections {...props} />;
-    case &apos;pharmacy&apos;:
+    case 'pharmacy':
       return <PharmacyHomeSections {...props} />;
-    case &apos;furniture&apos;:
+    case 'furniture':
       return <FurnitureHomeSections {...props} />;
-    case &apos;tiles&apos;:
+    case 'tiles':
       return <TilesHomeSections {...props} />;
-    case &apos;tyre&apos;:
+    case 'tyre':
       return <TyreHomeSections {...props} />;
-    case &apos;footwear&apos;:
+    case 'footwear':
       return <FootwearHomeSections {...props} />;
-    case &apos;electronics&apos;:
+    case 'electronics':
       return <ElectronicsHomeSections {...props} />;
-    case &apos;restaurant&apos;:
+    case 'restaurant':
       return <RestaurantHomeSections {...props} />;
-    case &apos;fitness&apos;:
+    case 'fitness':
       return <FitnessHomeSections {...props} />;
-    case &apos;fashion&apos;:
+    case 'fashion':
       return <FashionHomeSections {...props} />;
     default:
       return null;

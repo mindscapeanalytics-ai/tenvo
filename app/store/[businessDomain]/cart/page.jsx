@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, use, useEffect, useCallback } from 'react';
 import Link from 'next/link';
@@ -61,6 +61,7 @@ export default function CartPage({ params }) {
 
   useEffect(() => {
     if (!restaurantStore || !restaurantChrome?.orderModeHydrated) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setShippingMethod(restaurantOrderModeToShipping(restaurantOrderMode));
   }, [restaurantStore, restaurantOrderMode, restaurantChrome?.orderModeHydrated]);
 

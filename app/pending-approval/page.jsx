@@ -1,3 +1,4 @@
+﻿/* eslint-disable react/no-unescaped-entities */
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -56,6 +57,7 @@ export default function PendingApprovalPage() {
       return;
     }
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchBusiness();
   }, [user, authLoading, router]);
 

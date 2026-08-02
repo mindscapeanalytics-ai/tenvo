@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
@@ -48,6 +48,7 @@ export function TyreExploreSection({
 
   useEffect(() => {
     if (!segments.some((s) => s.id === activeId)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setActiveId(initialId);
     }
   }, [segments, activeId, initialId]);

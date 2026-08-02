@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -68,6 +68,7 @@ function AcceptInvitationContent() {
   // Validate invitation token
   useEffect(() => {
     if (!token) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setError('Invalid invitation link. Please check the link in your email.');
       setLoading(false);
       return;

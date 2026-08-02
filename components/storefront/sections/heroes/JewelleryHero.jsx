@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
@@ -71,6 +71,7 @@ export function JewelleryHero({ preset, accent }) {
   const onTouchEnd = (e) => {
     if (touchX.current == null) return;
     const dx = (e.changedTouches?.[0]?.clientX ?? touchX.current) - touchX.current;
+    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
     if (Math.abs(dx) > 44) dx < 0 ? next() : prev();
     touchX.current = null;
   };

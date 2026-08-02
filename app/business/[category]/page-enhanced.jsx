@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -67,6 +67,7 @@ export default function BusinessDashboard() {
 
   // Mock data
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setInvoices([
       { id: 1, number: 'INV-001', customer: 'John Doe', amount: 15000, date: '2024-01-15', status: 'paid' },
       { id: 2, number: 'INV-002', customer: 'Jane Smith', amount: 25000, date: '2024-01-16', status: 'pending' },

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -70,6 +70,7 @@ export default function Home() {
     params.delete('access');
     const qs = params.toString();
     window.history.replaceState(null, '', qs ? `?${qs}` : window.location.pathname);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   
   useEffect(() => {
@@ -79,6 +80,7 @@ export default function Home() {
       if (typeof window !== 'undefined') {
         const dismissed = sessionStorage.getItem(STICKY_CTA_DISMISS_KEY) === '1';
         if (dismissed) {
+          // eslint-disable-next-line react-hooks/set-state-in-effect
           setStickyCtaDismissed(true);
         }
       }

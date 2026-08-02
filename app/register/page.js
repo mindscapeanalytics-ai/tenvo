@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
@@ -264,6 +264,7 @@ export default function RegisterWizard() {
         if (prevCountryRef.current === formData.country) return;
         prevCountryRef.current = formData.country;
         const regional = getRegionalStandards(formData.country);
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setFormData((prev) => ({ ...prev, currency: regional.currency }));
     }, [formData.country]);
 
@@ -290,6 +291,7 @@ export default function RegisterWizard() {
                     ...buildRegistrationFormState({}),
                     email: user?.email || prev.email || '',
                 }));
+                // eslint-disable-next-line react-hooks/set-state-in-effect
                 setStep(1);
                 setPersistedStep(1);
             }

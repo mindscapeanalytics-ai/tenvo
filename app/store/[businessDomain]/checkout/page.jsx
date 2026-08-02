@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useRef, use } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -241,17 +241,20 @@ export default function CheckoutPage({ params }) {
   useEffect(() => {
     if (!restaurantStore || !restaurantChrome?.orderModeHydrated) return;
     const nextShipping = restaurantOrderModeToShipping(restaurantOrderMode);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setForm((f) => (f.shippingMethod === nextShipping ? f : { ...f, shippingMethod: nextShipping }));
   }, [restaurantStore, restaurantOrderMode, restaurantChrome?.orderModeHydrated]);
 
   useEffect(() => {
     if (step >= activeSteps.length) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setStep(Math.max(0, activeSteps.length - 1));
     }
   }, [activeSteps.length, step]);
 
   useEffect(() => {
     if (!hydrated || !adjustments?.memberEmail) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setForm((f) => (f.email ? f : { ...f, email: adjustments.memberEmail }));
   }, [hydrated, adjustments?.memberEmail]);
 

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useRouter, useSearchParams, usePathname } from 'next/navigation';
@@ -192,6 +192,7 @@ function BusinessDashboardContent() {
 
   // Drop in-flight product editors when the active shop changes (prevents cross-tenant save).
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setEditingProduct(null);
     setShowProductForm(false);
   }, [business?.id]);

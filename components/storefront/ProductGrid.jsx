@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
@@ -197,7 +197,7 @@ export function ProductGrid({
             <ProductListItem key={product.id} product={product} businessDomain={businessDomain} />
           ))}
         </div>
-      ) : layout === &apos;rail&apos; ? (
+      ) : layout === 'rail' ? (
         <div className={STORE_PRODUCT_RAIL_TRACK_CLASS}>
           {displayProducts.map((product) => (
             <div key={resolveRailProductId(product)} className={STORE_PRODUCT_RAIL_ITEM_CLASS}>

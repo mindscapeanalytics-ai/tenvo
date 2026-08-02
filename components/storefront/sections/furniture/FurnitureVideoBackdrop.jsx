@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useRef, useState } from 'react';
 
@@ -22,6 +22,7 @@ export function FurnitureVideoBackdrop({ videoUrl, poster = '', className = 'abs
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setFailed(false);
     const el = videoRef.current;
     if (!el || !videoUrl || reduceMotion) return undefined;

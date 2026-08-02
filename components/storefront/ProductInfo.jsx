@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { Star } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -39,7 +39,7 @@ export function ProductInfo({ product, businessDomain }) {
   const sourcingBadge =
     showFashionMeta || showTyreMeta || showFootwearMeta ? resolveSourcingBadge(product.domain_data) : null;
   const electronicsWarranty = showElectronicsMeta
-    ? buildElectronicsAttributeRows(product).find((row) => row.key === &apos;warranty&apos;)?.value
+    ? buildElectronicsAttributeRows(product).find((row) => row.key === 'warranty')?.value
     : null;
 
   return (

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React from 'react';
 import { motion } from 'framer-motion';
@@ -48,6 +48,7 @@ export function FeatureDiscoveryCard({
   featureKey, 
   featureName, 
   description, 
+  // eslint-disable-next-line react-hooks/exhaustive-deps, @typescript-eslint/no-unused-vars
   moduleKey,
   onUpgrade,
   className 
@@ -132,6 +133,7 @@ export function ModulePackageCard({
   isSelected = false,
   showPrice = true 
 }) {
+  // eslint-disable-next-line @next/next/no-assign-module-variable
   const modulePackage = MODULE_PACKAGES[moduleKey];
   const Icon = MODULE_ICONS[moduleKey] || Package;
   

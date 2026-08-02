@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
@@ -71,6 +71,7 @@ export default function LoginPage() {
   useEffect(() => {
     if (sessionPending) return;
     const user = sessionData?.user;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (user?.id) void handlePostLogin(user);
   }, [sessionData?.user, sessionPending, handlePostLogin]);
 

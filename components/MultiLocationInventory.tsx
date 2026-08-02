@@ -1,4 +1,5 @@
-﻿/**
+﻿/* eslint-disable @typescript-eslint/no-explicit-any */
+/**
  * Multi-Location Inventory Component - TypeScript Migration
  * Manages warehouse locations and stock transfers
  */

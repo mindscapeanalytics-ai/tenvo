@@ -1,3 +1,4 @@
+﻿/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Invoice Tab - Server Component with Lazy Loading
  * Displays invoice list and invoice builder

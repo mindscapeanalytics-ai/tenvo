@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect } from 'react';
 import { Bike, ShoppingBag, UtensilsCrossed } from 'lucide-react';
@@ -75,7 +75,7 @@ export function RestaurantCartOrderMode({ className, onShippingChange, variant =
         <p className={cn('mt-3 text-xs', light ? 'text-zinc-500' : 'text-neutral-500')}>
           Add your table number or seating notes at checkout.
         </p>
-      ) : orderMode === &apos;collection&apos; ? (
+      ) : orderMode === 'collection' ? (
         <p className={cn('mt-3 text-xs', light ? 'text-zinc-500' : 'text-neutral-500')}>
           We will prepare your order for pickup at the counter.
         </p>

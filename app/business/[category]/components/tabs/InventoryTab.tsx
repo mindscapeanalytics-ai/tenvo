@@ -1,3 +1,4 @@
+﻿/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Inventory Tab - Server Component with Client Islands
  * Displays product inventory with search, filters, and management

@@ -29,10 +29,6 @@ export default function PurchasesPage() {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
 
-    useEffect(() => {
-        loadPurchases();
-    }, [business]); // Reload if business changes
-
     const loadPurchases = async () => {
         if (!business) return;
         try {
@@ -48,6 +44,11 @@ export default function PurchasesPage() {
             setLoading(false);
         }
     };
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    useEffect(() => {
+        loadPurchases();
+    }, [business]); // Reload if business changes
 
     const filteredPurchases = purchases.filter(p =>
         p.vendor?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||

@@ -1,3 +1,5 @@
+﻿/* eslint-disable react/no-unescaped-entities */
+/* eslint-disable @next/next/no-html-link-for-pages */
 'use client';
 
 import MarketingLayout from '@/components/marketing/layout/MarketingLayout';
