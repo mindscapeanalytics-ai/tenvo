@@ -1,13 +1,15 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { Percent, DollarSign, Tag, Users, Package } from 'lucide-react';
+import { Percent, DollarSign, Tag, Users, Package, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { hubDialogContentClass } from '@/lib/utils/formMobileStyles';
+import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/lib/currency';
 
 /**
@@ -27,6 +29,7 @@ export function DiscountSchemeManager({
   customers = [],
   onSave,
   currency = 'PKR',
+  embedInCard = false,
 }) {
   const [schemeList, setSchemeList] = useState(schemes);
   const [showForm, setShowForm] = useState(false);
@@ -126,20 +129,22 @@ export function DiscountSchemeManager({
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h3 className="text-base font-extrabold text-slate-900">Discount Schemes</h3>
-          <p className="text-xs text-slate-500">Manage discount rules and promotions</p>
-        </div>
+    <div className={embedInCard ? 'space-y-3' : 'space-y-4'}>
+      <div className={`flex flex-nowrap items-center gap-2 ${embedInCard ? 'justify-end' : 'flex-wrap items-start justify-between gap-3'}`}>
+        {!embedInCard && (
+          <div className="min-w-0">
+            <h3 className="text-base font-semibold text-slate-900">Discount Schemes</h3>
+            <p className="text-xs text-slate-500">Manage discount rules and promotions</p>
+          </div>
+        )}
         <Dialog open={showForm} onOpenChange={setShowForm}>
           <DialogTrigger asChild>
-            <Button className="h-9" onClick={() => { resetForm(); setEditingScheme(null); }}>
-              <Tag className="w-4 h-4 mr-2" />
+            <Button className="h-9 shrink-0 whitespace-nowrap" onClick={() => { resetForm(); setEditingScheme(null); }}>
+              <Plus className="mr-2 h-4 w-4 shrink-0" />
               New Discount Scheme
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[88vh] overflow-y-auto">
+          <DialogContent className={cn(hubDialogContentClass({ wide: true, maxWidth: 'lg:max-w-2xl' }), 'max-h-[88vh]')}>
             <DialogHeader>
               <DialogTitle>
                 {editingScheme ? 'Edit Discount Scheme' : 'Create New Discount Scheme'}
@@ -244,7 +249,7 @@ export function DiscountSchemeManager({
                 <Button variant="outline" onClick={() => { setShowForm(false); resetForm(); }}>
                   Cancel
                 </Button>
-                <Button onClick={handleSave} disabled={!formData.name || formData.value <= 0}>
+                <Button className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-md transition-all" onClick={handleSave} disabled={!formData.name || formData.value <= 0}>
                   {editingScheme ? 'Update' : 'Create'} Scheme
                 </Button>
               </div>
@@ -307,10 +312,12 @@ export function DiscountSchemeManager({
       </div>
 
       {schemeList.length === 0 && (
-        <div className="text-center py-10 text-slate-500 border border-dashed border-slate-300 rounded-xl bg-slate-50/40">
-          <Tag className="w-10 h-10 mx-auto mb-2 text-slate-400" />
-          <p className="font-medium">No discount schemes created yet.</p>
-          <p className="text-xs">Create your first discount scheme to get started.</p>
+        <div
+          className={`rounded-xl border border-dashed border-slate-300 bg-slate-50/40 text-center text-slate-500 ${embedInCard ? 'py-6' : 'py-10'}`}
+        >
+          <Tag className={`mx-auto mb-2 text-slate-400 ${embedInCard ? 'h-8 w-8' : 'h-10 w-10'}`} />
+          <p className="text-sm font-medium">No discount schemes yet.</p>
+          <p className="mt-0.5 text-xs">Use New Discount Scheme to create one.</p>
         </div>
       )}
     </div>

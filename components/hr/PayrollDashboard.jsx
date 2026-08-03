@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { EmployeeFormDialog } from '@/components/hr/EmployeeFormDialog';
 import { cn } from '@/lib/utils';
 
 export function PayrollDashboard({
@@ -23,12 +24,13 @@ export function PayrollDashboard({
     currency = 'Rs.'
 }) {
     const [showRunDialog, setShowRunDialog] = useState(false);
+    const [showEmployeeDialog, setShowEmployeeDialog] = useState(false);
     const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
     const [isProcessing, setIsProcessing] = useState(false);
 
     const activeEmployees = employees.filter(e => e.status === 'active');
-    const totalBaseSalary = activeEmployees.reduce((sum, e) => sum + parseFloat(e.base_salary || 0), 0);
+    const totalBaseSalary = activeEmployees.reduce((sum, e) => sum + (parseFloat(e.base_salary) || 0), 0);
     const lastRun = payrollRuns[0];
 
     const handleRunPayroll = async () => {
@@ -54,7 +56,7 @@ export function PayrollDashboard({
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-xs text-gray-500 font-medium">Active Employees</p>
-                                <p className="text-2xl font-black text-gray-900 mt-1">{activeEmployees.length}</p>
+                                <p className="text-2xl font-semibold text-gray-900 mt-1">{activeEmployees.length}</p>
                             </div>
                             <div className="p-2.5 bg-brand-50 rounded-lg">
                                 <Users className="w-5 h-5 text-brand-primary" />
@@ -67,7 +69,7 @@ export function PayrollDashboard({
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-xs text-gray-500 font-medium">Monthly Gross</p>
-                                <p className="text-2xl font-black text-gray-900 mt-1">{currency}{totalBaseSalary.toLocaleString()}</p>
+                                <p className="text-2xl font-semibold text-gray-900 mt-1">{currency}{totalBaseSalary.toLocaleString()}</p>
                             </div>
                             <div className="p-2.5 bg-emerald-50 rounded-lg">
                                 <DollarSign className="w-5 h-5 text-emerald-600" />
@@ -80,8 +82,8 @@ export function PayrollDashboard({
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-xs text-gray-500 font-medium">Last Run Net</p>
-                                <p className="text-2xl font-black text-brand-primary mt-1">
-                                    {lastRun ? `${currency}${parseFloat(lastRun.total_net || 0).toLocaleString()}` : '--'}
+                                <p className="text-2xl font-semibold text-brand-primary mt-1">
+                                    {lastRun ? `${currency}${(parseFloat(lastRun.total_net) || 0).toLocaleString()}` : '--'}
                                 </p>
                             </div>
                             <div className="p-2.5 bg-brand-50 rounded-lg">
@@ -95,7 +97,7 @@ export function PayrollDashboard({
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-xs text-gray-500 font-medium">Total Runs</p>
-                                <p className="text-2xl font-black text-gray-900 mt-1">{payrollRuns.length}</p>
+                                <p className="text-2xl font-semibold text-gray-900 mt-1">{payrollRuns.length}</p>
                             </div>
                             <div className="p-2.5 bg-wine-50 rounded-lg">
                                 <Calendar className="w-5 h-5 text-wine-600" />
@@ -113,7 +115,7 @@ export function PayrollDashboard({
                 >
                     <Play className="w-4 h-4 mr-1" /> Run Payroll
                 </Button>
-                <Button variant="outline" onClick={onAddEmployee} className="rounded-xl text-xs font-bold">
+                <Button variant="outline" onClick={() => setShowEmployeeDialog(true)} className="rounded-xl text-xs font-bold">
                     <UserCog className="w-4 h-4 mr-1" /> Add Employee
                 </Button>
             </div>
@@ -136,10 +138,10 @@ export function PayrollDashboard({
                                         <p className="text-[10px] text-gray-400">{emp.department || '--'} * {emp.designation || '--'}</p>
                                     </div>
                                     <div className="text-right">
-                                        <p className="text-sm font-bold text-gray-900">{currency}{parseFloat(emp.base_salary).toLocaleString()}</p>
+                                        <p className="text-sm font-bold text-gray-900">{currency}{(parseFloat(emp.base_salary) || 0).toLocaleString()}</p>
                                         <p className="text-[10px] text-gray-400">{emp.employee_code}</p>
                                     </div>
-                                    <Badge variant={emp.tax_filer ? 'default' : 'secondary'} className="text-[9px]">
+                                    <Badge variant={emp.tax_filer ? 'default' : 'secondary'} className="text-[10px]">
                                         {emp.tax_filer ? 'Filer' : 'Non-Filer'}
                                     </Badge>
                                 </div>
@@ -175,7 +177,7 @@ export function PayrollDashboard({
                                         <p className="text-[10px] text-gray-400">{run.period_month}/{run.period_year} * {run.employee_count} staff</p>
                                     </div>
                                     <div className="text-right">
-                                        <p className="text-xs font-black text-gray-900">{currency}{parseFloat(run.total_net || 0).toLocaleString()}</p>
+                                        <p className="text-xs font-semibold text-gray-900">{currency}{(parseFloat(run.total_net) || 0).toLocaleString()}</p>
                                     </div>
                                     <ChevronRight className="w-3.5 h-3.5 text-gray-400" />
                                 </button>
@@ -237,6 +239,14 @@ export function PayrollDashboard({
                     </div>
                 </DialogContent>
             </Dialog>
+            
+            {/* Employee Form Dialog */}
+            <EmployeeFormDialog
+                open={showEmployeeDialog}
+                onOpenChange={setShowEmployeeDialog}
+                onSubmit={onAddEmployee}
+                businessId={businessId}
+            />
         </div>
     );
 }

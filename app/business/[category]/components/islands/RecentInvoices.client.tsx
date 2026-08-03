@@ -1,3 +1,4 @@
+﻿/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -12,14 +13,24 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
+import { printInvoiceThermalFromRow, downloadStandardInvoicePdfFromRow } from '@/lib/print/clientInvoicePrint';
 
 interface RecentInvoicesProps {
     invoices: any[];
     currency: CurrencyCode;
+    business?: Record<string, unknown>;
+    category?: string;
     onViewInvoice?: (invoice: any) => void;
 }
 
-export function RecentInvoices({ invoices, currency, onViewInvoice }: RecentInvoicesProps) {
+export function RecentInvoices({ invoices, currency, business, category = 'retail-shop', onViewInvoice }: RecentInvoicesProps) {
+    const handleStandardPdf = (invoice: any) => {
+        if (!business) return;
+        void downloadStandardInvoicePdfFromRow(invoice, business, category, {
+            businessId: (business as { id?: string }).id,
+        });
+    };
+
     const getStatusColor = (status: string) => {
         switch (status?.toLowerCase()) {
             case 'paid':
@@ -65,7 +76,7 @@ export function RecentInvoices({ invoices, currency, onViewInvoice }: RecentInvo
                                 onClick={() => onViewInvoice?.(invoice)}
                             >
                                 <div className="flex items-center gap-4 flex-1 min-w-0">
-                                    <div className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center text-[10px] font-black text-gray-400 group-hover:scale-110 group-hover:bg-primary group-hover:text-white transition-all ring-1 ring-gray-100">
+                                    <div className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center text-[10px] font-semibold text-gray-400 group-hover:scale-110 group-hover:bg-primary group-hover:text-white transition-all ring-1 ring-gray-100">
                                         {invoice.invoice_number?.split('-')?.[1]?.substring(0, 4) || 'REF'}
                                     </div>
                                     <div className="min-w-0">
@@ -82,32 +93,50 @@ export function RecentInvoices({ invoices, currency, onViewInvoice }: RecentInvo
 
                                 <div className="flex items-center gap-6">
                                     <div className="text-right hidden sm:block">
-                                        <p className="text-sm font-black text-gray-900">
+                                        <p className="text-sm font-semibold text-gray-900">
                                             {formatCurrency(invoice.grand_total || invoice.amount || 0, currency)}
                                         </p>
-                                        <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest">{invoice.payment_method || 'CASH'}</p>
+                                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{invoice.payment_method || 'CASH'}</p>
                                     </div>
 
                                     <div className="flex items-center gap-2">
-                                        <UiBadge variant="outline" className={`text-[9px] font-black uppercase tracking-tighter px-2 h-5 border rounded-md shadow-none ${getStatusColor(invoice.status)}`}>
+                                        <UiBadge variant="outline" className={`text-[10px] font-semibold uppercase tracking-tighter px-2 h-5 border rounded-md shadow-none ${getStatusColor(invoice.status)}`}>
                                             {invoice.status || 'PENDING'}
                                         </UiBadge>
 
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-8 w-8 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    onClick={(e) => e.stopPropagation()}
+                                                >
                                                     <MoreHorizontal className="h-4 w-4" />
                                                 </Button>
                                             </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end" className="w-32 rounded-xl p-1 shadow-xl">
-                                                <DropdownMenuItem className="rounded-lg gap-2 text-xs font-bold cursor-pointer">
+                                            <DropdownMenuContent align="end" className="w-36 rounded-xl p-1 shadow-xl">
+                                                <DropdownMenuItem
+                                                    className="rounded-lg gap-2 text-xs font-bold cursor-pointer"
+                                                    onSelect={() => onViewInvoice?.(invoice)}
+                                                >
                                                     <Eye className="w-3.5 h-3.5" /> View
                                                 </DropdownMenuItem>
-                                                <DropdownMenuItem className="rounded-lg gap-2 text-xs font-bold cursor-pointer">
-                                                    <Printer className="w-3.5 h-3.5" /> Print
+                                                <DropdownMenuItem
+                                                    className="rounded-lg gap-2 text-xs font-bold cursor-pointer"
+                                                    onSelect={() => handleStandardPdf(invoice)}
+                                                >
+                                                    <Download className="w-3.5 h-3.5" /> A4 Invoice
                                                 </DropdownMenuItem>
-                                                <DropdownMenuItem className="rounded-lg gap-2 text-xs font-bold cursor-pointer">
-                                                    <Download className="w-3.5 h-3.5" /> PDF
+                                                <DropdownMenuItem
+                                                    className="rounded-lg gap-2 text-xs font-bold cursor-pointer"
+                                                    onSelect={() =>
+                                                        printInvoiceThermalFromRow(invoice, business, category, {
+                                                            businessId: (business as { id?: string })?.id,
+                                                        })
+                                                    }
+                                                >
+                                                    <Printer className="w-3.5 h-3.5" /> Thermal receipt
                                                 </DropdownMenuItem>
                                             </DropdownMenuContent>
                                         </DropdownMenu>

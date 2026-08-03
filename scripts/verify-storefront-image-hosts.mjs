@@ -1,0 +1,104 @@
+#!/usr/bin/env node
+/**
+ * Guard: shared image allowlist + SmartProductImage safety + no crash hosts in live seeds.
+ * Run: bun run verify:storefront-image-hosts
+ */
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { isAllowedNextImageSrc } from '../lib/storefront/allowedImageHosts.js';
+import { isDeadImageUrl } from '../lib/storefront/deadImageHosts.js';
+import { ELECTRONICS_SEED_PRODUCTS } from '../lib/dataLab/electronicsDemoCatalog.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const root = path.join(__dirname, '..');
+
+const nextConfig = fs.readFileSync(path.join(root, 'next.config.js'), 'utf8');
+assert.match(
+  nextConfig,
+  /allowedImageHosts\.json/,
+  'next.config.js must load shared allowedImageHosts.json'
+);
+
+const allowJson = JSON.parse(
+  fs.readFileSync(path.join(root, 'lib/storefront/allowedImageHosts.json'), 'utf8')
+);
+const patternCount = Array.isArray(allowJson.remotePatterns) ? allowJson.remotePatterns.length : 0;
+assert.ok(
+  patternCount > 0 && patternCount <= 50,
+  `allowedImageHosts.json remotePatterns must be 1–50 (got ${patternCount}; Next.js hard cap)`
+);
+
+const smartSrc = fs.readFileSync(
+  path.join(root, 'components/storefront/SmartProductImage.jsx'),
+  'utf8'
+);
+assert.match(smartSrc, /isAllowedNextImageSrc/, 'SmartProductImage must gate next/image by allowlist');
+assert.match(smartSrc, /isDeadImageUrl/, 'SmartProductImage must skip dead hosts');
+assert.match(smartSrc, /safeSrc \|\| safeFallback/, 'SmartProductImage must use fallbackSrc when primary src is empty');
+assert.match(smartSrc, /resolveStorefrontImageSrc/, 'SmartProductImage must use sized CDN delivery');
+assert.match(smartSrc, /inferImageVariantFromSizes/, 'SmartProductImage must infer variant from sizes');
+
+const {
+  resolveStorefrontImageSrc,
+  buildPrebuiltProductVariantUrl,
+  stripProductVariantSuffix,
+  inferImageVariantFromSizes,
+} = await import('../lib/storefront/supabaseImageUrl.js');
+
+const sample =
+  'https://abc.supabase.co/storage/v1/object/public/products/images/biz/123-shoe.webp';
+const cardSrc = resolveStorefrontImageSrc(sample, { variant: 'card' });
+assert.match(cardSrc, /\/render\/image\/public\//, 'card variant should use CDN transform by default');
+assert.match(cardSrc, /width=512/, 'card transform width 512');
+
+const thumbPrebuilt = buildPrebuiltProductVariantUrl(sample, 'thumb');
+assert.ok(thumbPrebuilt?.includes('-thumb.webp'), 'prebuilt thumb sibling URL');
+assert.equal(
+  stripProductVariantSuffix('images/biz/123-shoe-card.webp'),
+  'images/biz/123-shoe.webp'
+);
+assert.equal(inferImageVariantFromSizes('80px'), 'thumb');
+assert.equal(inferImageVariantFromSizes('(max-width: 768px) 100vw, 50vw'), 'detail');
+
+const productCard = fs.readFileSync(path.join(root, 'components/storefront/ProductCard.jsx'), 'utf8');
+assert.match(productCard, /imageVariant=\{isDense \? 'thumb' : 'card'\}/, 'ProductCard must request card/thumb CDN size');
+
+const gallery = fs.readFileSync(path.join(root, 'components/storefront/ProductGallery.jsx'), 'utf8');
+assert.match(gallery, /imageVariant="detail"/, 'PDP main image must use detail variant');
+assert.match(gallery, /imageVariant="thumb"/, 'PDP thumbs must use thumb variant');
+
+assert.equal(isAllowedNextImageSrc('https://images.unsplash.com/photo-1'), true);
+assert.equal(isAllowedNextImageSrc('https://www.gulahmedshop.com/cdn/shop/x.webp'), true);
+assert.equal(isAllowedNextImageSrc('https://imraneshop.com/pub/media/x.jpg'), true);
+assert.equal(isAllowedNextImageSrc('/storefront/local.png'), true);
+
+assert.equal(isDeadImageUrl('https://cloud.superme.al/x.jpg'), true);
+assert.equal(isDeadImageUrl('https://images.unsplash.com/photo-1592899677977-99c296376d88'), true);
+
+for (const p of ELECTRONICS_SEED_PRODUCTS) {
+  assert.ok(
+    !/imraneshop\.com/i.test(String(p.image_url || '')),
+    `electronics seed must not use imraneshop: ${p.sku}`
+  );
+  assert.ok(
+    isAllowedNextImageSrc(p.image_url) || isDeadImageUrl(p.image_url),
+    `electronics seed image must be allowlisted or treated dead: ${p.sku}`
+  );
+  assert.ok(!isDeadImageUrl(p.image_url), `electronics seed image must be live: ${p.sku} ${p.image_url}`);
+}
+
+// Wishlist must not use raw next/image for arbitrary product URLs
+const wishlistSrc = fs.readFileSync(
+  path.join(root, 'app/store/[businessDomain]/account/wishlist/page.jsx'),
+  'utf8'
+);
+assert.match(wishlistSrc, /SmartProductImage/, 'wishlist must use SmartProductImage');
+assert.doesNotMatch(
+  wishlistSrc,
+  /from ['\"]next\/image['\"]/,
+  'wishlist must not import next/image directly'
+);
+
+console.log('verify:storefront-image-hosts OK');

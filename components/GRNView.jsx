@@ -7,10 +7,19 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Printer, CheckCircle2, Package, Loader2, FileText, Building2, MapPin } from 'lucide-react';
 import { formatCurrency } from '@/lib/currency';
+import { useBusiness } from '@/lib/context/BusinessContext';
 import { purchaseAPI } from '@/lib/api/purchases';
 import toast from 'react-hot-toast';
+import {
+  getPurchaseStatusLabel,
+  isReceivablePurchaseStatus,
+  normalizePurchaseStatus,
+  PURCHASE_STATUSES,
+} from '@/lib/constants/purchaseStatus';
 
 export default function GRNView({ poId, businessId, business, onUpdateStatus, colors }) {
+    const { currency: ctxCurrency } = useBusiness();
+    const currency = business?.currency || ctxCurrency || 'PKR';
     const [purchase, setPurchase] = useState(null);
     const [loading, setLoading] = useState(true);
 
@@ -34,7 +43,9 @@ export default function GRNView({ poId, businessId, business, onUpdateStatus, co
     if (loading) return <div className="flex h-64 items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-gray-400" /></div>;
     if (!purchase) return <div className="p-8 text-center text-gray-400 font-medium">Document not found</div>;
 
-    const isReceived = purchase.status === 'received';
+    const isReceived = normalizePurchaseStatus(purchase.status) === PURCHASE_STATUSES.RECEIVED;
+    const canReceive = isReceivablePurchaseStatus(purchase.status);
+    const vendorAddress = [purchase.vendor_address, purchase.vendor_city].filter(Boolean).join(', ');
 
     return (
         <div id="printable-grn" className="space-y-8 animate-in fade-in duration-500 bg-white p-1">
@@ -46,7 +57,7 @@ export default function GRNView({ poId, businessId, business, onUpdateStatus, co
                             <Package className="w-6 h-6" />
                         </div>
                         <div>
-                            <h2 className="text-2xl font-black text-gray-900 tracking-tight">
+                            <h2 className="text-2xl font-semibold text-gray-900 tracking-tight">
                                 {isReceived ? 'Good Receipt Note' : 'Purchase Order'}
                             </h2>
                             <p className="text-gray-600 font-bold uppercase text-[10px] tracking-widest mt-0.5">
@@ -59,21 +70,24 @@ export default function GRNView({ poId, businessId, business, onUpdateStatus, co
                         <div className="space-y-4">
                             <div className="flex items-center gap-2">
                                 <Building2 className="w-4 h-4 text-gray-400" />
-                                <Label className="text-[10px] font-black uppercase text-gray-400 tracking-wider">Supplier Details</Label>
+                                <Label className="text-[10px] font-semibold uppercase text-gray-400 tracking-wider">Supplier Details</Label>
                             </div>
                             <div className="pl-6">
-                                <p className="font-black text-gray-800 text-lg">{purchase.vendor_name}</p>
+                                <p className="font-semibold text-gray-800 text-lg">{purchase.vendor_name}</p>
                                 <p className="text-sm text-gray-500">{purchase.vendor_email}</p>
                                 <p className="text-sm text-gray-500">{purchase.vendor_phone}</p>
+                                {vendorAddress && (
+                                    <p className="text-sm text-gray-500">{vendorAddress}</p>
+                                )}
                             </div>
                         </div>
                         <div className="space-y-4">
                             <div className="flex items-center gap-2">
                                 <MapPin className="w-4 h-4 text-gray-400" />
-                                <Label className="text-[10px] font-black uppercase text-gray-400 tracking-wider">Receiving Entity</Label>
+                                <Label className="text-[10px] font-semibold uppercase text-gray-400 tracking-wider">Receiving Entity</Label>
                             </div>
                             <div className="pl-6">
-                                <p className="font-black text-gray-800 text-lg">{business?.name}</p>
+                                <p className="font-semibold text-gray-800 text-lg">{business?.name}</p>
                                 <p className="text-sm text-gray-500">{business?.address || 'Primary Business Location'}</p>
                             </div>
                         </div>
@@ -82,21 +96,21 @@ export default function GRNView({ poId, businessId, business, onUpdateStatus, co
 
                 <div className="text-right space-y-6">
                     <div className="space-y-1">
-                        <Label className="text-[10px] font-black uppercase text-gray-400">Date Issued</Label>
+                        <Label className="text-[10px] font-semibold uppercase text-gray-400">Date Issued</Label>
                         <p className="font-bold text-gray-800">{new Date(purchase.date).toLocaleDateString('en-PK', { dateStyle: 'long' })}</p>
                     </div>
                     <div className="space-y-1">
-                        <Label className="text-[10px] font-black uppercase text-gray-500">Status</Label>
+                        <Label className="text-[10px] font-semibold uppercase text-gray-500">Status</Label>
                         <div>
                             <span className="inline-block px-3 py-1 border-2 border-gray-900 text-gray-900 font-bold uppercase text-[10px] rounded-md">
-                                {purchase.status}
+                                {getPurchaseStatusLabel(purchase.status)}
                             </span>
                         </div>
                     </div>
                     {isReceived && (
                         <div className="pt-4 flex justify-end">
                             <div className="p-2 border-2 border-gray-900 rounded-lg flex flex-col items-center justify-center w-32">
-                                <span className="text-xs font-black text-gray-900 uppercase">Received</span>
+                                <span className="text-xs font-semibold text-gray-900 uppercase">Received</span>
                                 <span className="text-[10px] font-bold text-gray-600">{new Date().toLocaleDateString()}</span>
                             </div>
                         </div>
@@ -107,7 +121,7 @@ export default function GRNView({ poId, businessId, business, onUpdateStatus, co
             {/* Item Table */}
             <div className="border border-gray-200 rounded-lg overflow-hidden">
                 <table className="w-full text-sm">
-                    <thead className="bg-gray-100 border-b border-gray-200 font-black text-[10px] uppercase text-gray-600 tracking-widest">
+                    <thead className="bg-gray-100 border-b border-gray-200 font-semibold text-[10px] uppercase text-gray-600 tracking-widest">
                         <tr>
                             <th className="px-6 py-3 text-left">Item Description</th>
                             <th className="px-4 py-3 text-center">SKU</th>
@@ -135,8 +149,8 @@ export default function GRNView({ poId, businessId, business, onUpdateStatus, co
                                     ) : '-'}
                                 </td>
                                 <td className="px-4 py-3 text-center font-bold">{item.quantity}</td>
-                                <td className="px-4 py-3 text-right font-mono">{formatCurrency(item.unit_cost, 'PKR')}</td>
-                                <td className="px-6 py-3 text-right font-black">{formatCurrency(item.total_amount, 'PKR')}</td>
+                                <td className="px-4 py-3 text-right font-mono">{formatCurrency(item.unit_cost, currency)}</td>
+                                <td className="px-6 py-3 text-right font-semibold">{formatCurrency(item.total_amount, currency)}</td>
                             </tr>
                         ))}
                     </tbody>
@@ -146,7 +160,7 @@ export default function GRNView({ poId, businessId, business, onUpdateStatus, co
             {/* Footer / Notes */}
             <div className="flex justify-between items-start gap-12">
                 <div className="flex-1 space-y-2">
-                    <Label className="text-[10px] font-black uppercase text-gray-500 tracking-widest">Notes & Instructions</Label>
+                    <Label className="text-[10px] font-semibold uppercase text-gray-500 tracking-widest">Notes & Instructions</Label>
                     <div className="bg-gray-50 p-4 rounded-lg text-sm text-gray-800 border border-gray-200">
                         {purchase.notes || 'No additional notes provided for this transaction.'}
                     </div>
@@ -154,16 +168,16 @@ export default function GRNView({ poId, businessId, business, onUpdateStatus, co
                 <div className="w-80 space-y-4 pt-2">
                     <div className="flex justify-between text-sm font-bold text-gray-500">
                         <span>Subtotal</span>
-                        <span className="font-mono">{formatCurrency(purchase.subtotal, 'PKR')}</span>
+                        <span className="font-mono">{formatCurrency(purchase.subtotal, currency)}</span>
                     </div>
                     <div className="flex justify-between text-sm font-bold text-gray-500">
                         <span>GST/Tax Total</span>
-                        <span className="font-mono">{formatCurrency(purchase.tax_total, 'PKR')}</span>
+                        <span className="font-mono">{formatCurrency(purchase.tax_total, currency)}</span>
                     </div>
                     <div className="border-t border-gray-100 pt-3">
-                        <div className="flex justify-between text-xl font-black text-gray-900">
+                        <div className="flex justify-between text-xl font-semibold text-gray-900">
                             <span>Net Payable</span>
-                            <span style={{ color: colors?.primary }}>{formatCurrency(purchase.total_amount, 'PKR')}</span>
+                            <span style={{ color: colors?.primary }}>{formatCurrency(purchase.total_amount, currency)}</span>
                         </div>
                     </div>
                 </div>
@@ -174,11 +188,11 @@ export default function GRNView({ poId, businessId, business, onUpdateStatus, co
                 <Button variant="outline" className="rounded-xl h-11 px-6 font-bold" onClick={() => window.print()}>
                     <Printer className="w-4 h-4 mr-2" /> Print Document
                 </Button>
-                {!isReceived && (
+                {canReceive && (
                     <Button
-                        className="rounded-xl h-11 px-8 font-black shadow-lg shadow-emerald-200 transition-all hover:scale-105 active:scale-95 text-white"
+                        className="rounded-xl h-11 px-8 font-semibold shadow-lg shadow-emerald-200 transition-all hover:scale-105 active:scale-95 bg-emerald-600 hover:bg-emerald-700 text-white"
                         style={{ backgroundColor: '#059669' }}
-                        onClick={() => onUpdateStatus?.(purchase.id, 'received')}
+                        onClick={() => onUpdateStatus?.(purchase.id, PURCHASE_STATUSES.RECEIVED)}
                     >
                         <CheckCircle2 className="w-4 h-4 mr-2" /> Mark as Received
                     </Button>

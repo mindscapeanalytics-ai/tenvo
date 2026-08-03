@@ -1,12 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { AlertTriangle, TrendingDown, RotateCcw, ChevronRight, Loader2 } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { AlertTriangle, TrendingDown, RotateCcw, ChevronRight, Loader2, RefreshCw } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import toast from 'react-hot-toast';
 import { formatCurrency } from '@/lib/currency';
+import { InventoryErrorCard } from './InventoryErrorBoundary';
+import { InventoryCardLoading } from './InventoryLoadingState';
 
 /**
  * Low Stock Alerts Dashboard Widget
@@ -22,6 +24,7 @@ export function LowStockAlerts({
 }) {
     const [alerts, setAlerts] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
     const [dismissing, setDismissing] = useState(new Set());
 
     useEffect(() => {
@@ -30,20 +33,25 @@ export function LowStockAlerts({
         return () => clearInterval(interval);
     }, [businessId]);
 
-    const loadAlerts = async () => {
+    const loadAlerts = useCallback(async () => {
         try {
             setLoading(true);
+            setError(null);
             const res = await fetch(`/api/v1/inventory/low-stock-alerts?business_id=${businessId}&limit=${maxAlerts}`);
-            if (!res.ok) throw new Error('Failed to load alerts');
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => ({}));
+                throw new Error(errorData.error || `Failed to load alerts (${res.status})`);
+            }
             
             const data = await res.json();
             setAlerts(data.alerts || []);
-        } catch (error) {
-            console.error('Error loading low stock alerts:', error);
+        } catch (err) {
+            console.error('[LowStockAlerts] Load error:', err);
+            setError(err.message || 'Failed to load alerts');
         } finally {
             setLoading(false);
         }
-    };
+    }, [businessId, maxAlerts]);
 
     const handleDismiss = async (alertId) => {
         try {
@@ -78,10 +86,31 @@ export function LowStockAlerts({
                             <AlertTriangle className="w-5 h-5 text-orange-600" />
                             <CardTitle className="text-base font-bold">Low Stock Alert</CardTitle>
                         </div>
-                        <Badge variant="secondary">{alerts.length}</Badge>
+                        <div className="flex items-center gap-2">
+                            <Badge variant="secondary">{alerts.length}</Badge>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6"
+                                onClick={loadAlerts}
+                                disabled={loading}
+                            >
+                                <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
+                            </Button>
+                        </div>
                     </div>
                 </CardHeader>
-                {alerts.length > 0 && (
+                
+                {/* Error in compact mode */}
+                {error && (
+                    <CardContent className="pb-2">
+                        <div className="text-xs text-red-600 bg-red-50 p-2 rounded">
+                            Failed to load alerts
+                        </div>
+                    </CardContent>
+                )}
+                
+                {alerts.length > 0 ? (
                     <CardContent className="space-y-2">
                         {alerts.slice(0, 3).map(alert => (
                             <div key={alert.id} className="flex items-center justify-between p-2 bg-white rounded border border-orange-100 text-sm">
@@ -102,13 +131,12 @@ export function LowStockAlerts({
                         {alerts.length > 3 && (
                             <p className="text-xs text-gray-500 text-center py-2">+{alerts.length - 3} more</p>
                         )}
-                        <Button
-                            variant="outline"
-                            className="w-full"
-                            onClick={loadAlerts}
-                        >
-                            Refresh
-                        </Button>
+                    </CardContent>
+                ) : !loading && !error && (
+                    <CardContent>
+                        <div className="text-center py-4">
+                            <p className="text-xs text-gray-500">All stock levels healthy</p>
+                        </div>
                     </CardContent>
                 )}
             </Card>
@@ -129,20 +157,32 @@ export function LowStockAlerts({
                         </div>
                     </div>
                     <Button
-                        variant="ghost"
-                        size="icon"
+                        variant="outline"
+                        size="sm"
                         onClick={loadAlerts}
                         disabled={loading}
+                        className="gap-2"
                     >
-                        <RotateCcw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                        <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                        Refresh
                     </Button>
                 </div>
             </CardHeader>
 
             <CardContent>
+                {/* Error Display */}
+                {error && (
+                    <InventoryErrorCard 
+                        error={error} 
+                        onRetry={loadAlerts}
+                        onDismiss={() => setError(null)}
+                    />
+                )}
+                
                 {loading && alerts.length === 0 ? (
-                    <div className="flex justify-center py-8">
-                        <Loader2 className="w-6 h-6 animate-spin text-orange-600" />
+                    <div className="flex flex-col items-center justify-center py-8">
+                        <Loader2 className="w-8 h-8 animate-spin text-orange-600 mb-3" />
+                        <p className="text-sm text-gray-500">Loading alerts...</p>
                     </div>
                 ) : alerts.length > 0 ? (
                     <div className="space-y-3">
@@ -204,9 +244,21 @@ export function LowStockAlerts({
                     </div>
                 ) : (
                     <div className="text-center py-8">
-                        <div className="text-gray-300 text-4xl mb-2">✓</div>
-                        <p className="text-gray-500 text-sm">All inventory levels healthy</p>
-                        <p className="text-xs text-gray-400 mt-1">No items below minimum stock</p>
+                        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <TrendingDown className="w-8 h-8 text-green-600" />
+                        </div>
+                        <h4 className="text-gray-900 font-semibold mb-2">All inventory levels healthy</h4>
+                        <p className="text-gray-500 text-sm mb-4">No items below minimum stock levels</p>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={loadAlerts}
+                            disabled={loading}
+                            className="gap-2"
+                        >
+                            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                            Check Again
+                        </Button>
                     </div>
                 )}
 

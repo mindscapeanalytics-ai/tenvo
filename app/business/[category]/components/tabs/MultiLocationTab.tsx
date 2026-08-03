@@ -1,3 +1,4 @@
+﻿/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Multi-Location Tab - Server Component Wrapper
  * Wraps the MultiLocationInventory component

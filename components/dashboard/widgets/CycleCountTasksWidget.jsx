@@ -11,6 +11,8 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '@/lib/context/LanguageContext';
 import { translations } from '@/lib/translations';
+import { getCycleCountTasks } from '@/lib/actions/dashboard/widgets';
+import toast from 'react-hot-toast';
 
 /**
  * CycleCountTasksWidget
@@ -64,52 +66,17 @@ export function CycleCountTasksWidget({
     try {
       setLoading(true);
       
-      // In a real implementation, this would fetch from API
-      // For now, we'll simulate cycle count tasks data
-      const mockData = {
-        pendingCount: 3,
-        inProgressCount: 1,
-        completedToday: 2,
-        tasks: [
-          {
-            id: 1,
-            name: 'Monthly Count - Zone A',
-            scheduleId: 'cc-001',
-            dueDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
-            priority: 'high',
-            productCount: 45,
-            completedCount: 0,
-            assignedTo: userId,
-            status: 'pending'
-          },
-          {
-            id: 2,
-            name: 'Quarterly Count - Electronics',
-            scheduleId: 'cc-002',
-            dueDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
-            priority: 'medium',
-            productCount: 120,
-            completedCount: 35,
-            assignedTo: userId,
-            status: 'in_progress'
-          },
-          {
-            id: 3,
-            name: 'Weekly Count - Fast Movers',
-            scheduleId: 'cc-003',
-            dueDate: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000),
-            priority: 'high',
-            productCount: 30,
-            completedCount: 0,
-            assignedTo: userId,
-            status: 'pending'
-          }
-        ]
-      };
+      const result = await getCycleCountTasks(businessId, userId);
       
-      setCycleCountData(mockData);
+      if (result.success) {
+        setCycleCountData(result.data);
+      } else {
+        console.error('Failed to load cycle count tasks:', result.error);
+        toast.error(result.error || 'Failed to load cycle count tasks');
+      }
     } catch (err) {
       console.error('Failed to load cycle count tasks:', err);
+      toast.error('Failed to load cycle count tasks');
     } finally {
       setLoading(false);
     }
@@ -192,7 +159,7 @@ export function CycleCountTasksWidget({
         {/* Task Summary */}
         <div className="grid grid-cols-3 gap-2">
           <div className="p-3 rounded-lg bg-gradient-to-br from-yellow-50 to-yellow-100/50 border border-yellow-200">
-            <div className="text-2xl font-black text-yellow-700">
+            <div className="text-2xl font-semibold text-yellow-700">
               {cycleCountData.pendingCount}
             </div>
             <div className="text-xs font-bold text-yellow-600 uppercase tracking-wider">
@@ -201,7 +168,7 @@ export function CycleCountTasksWidget({
           </div>
           
           <div className="p-3 rounded-lg bg-gradient-to-br from-blue-50 to-blue-100/50 border border-blue-200">
-            <div className="text-2xl font-black text-blue-700">
+            <div className="text-2xl font-semibold text-blue-700">
               {cycleCountData.inProgressCount}
             </div>
             <div className="text-xs font-bold text-blue-600 uppercase tracking-wider">
@@ -210,7 +177,7 @@ export function CycleCountTasksWidget({
           </div>
           
           <div className="p-3 rounded-lg bg-gradient-to-br from-green-50 to-green-100/50 border border-green-200">
-            <div className="text-2xl font-black text-green-700">
+            <div className="text-2xl font-semibold text-green-700">
               {cycleCountData.completedToday}
             </div>
             <div className="text-xs font-bold text-green-600 uppercase tracking-wider">

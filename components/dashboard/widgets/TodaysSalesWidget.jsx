@@ -13,6 +13,8 @@ import {
 import { useLanguage } from '@/lib/context/LanguageContext';
 import { translations } from '@/lib/translations';
 import { formatCurrency } from '@/lib/currency';
+import { getTodaysSales } from '@/lib/actions/dashboard/widgets';
+import toast from 'react-hot-toast';
 
 /**
  * TodaysSalesWidget
@@ -66,28 +68,17 @@ export function TodaysSalesWidget({
     try {
       setLoading(true);
       
-      // In a real implementation, this would fetch from API
-      // For now, we'll simulate today's sales data
-      const mockData = {
-        totalSales: 45000,
-        totalOrders: 12,
-        avgOrderValue: 3750,
-        target: 50000,
-        achievement: 90,
-        trend: 'up',
-        hourlyBreakdown: [
-          { hour: '9-10', sales: 5000, orders: 2 },
-          { hour: '10-11', sales: 8000, orders: 3 },
-          { hour: '11-12', sales: 12000, orders: 3 },
-          { hour: '12-1', sales: 6000, orders: 1 },
-          { hour: '1-2', sales: 9000, orders: 2 },
-          { hour: '2-3', sales: 5000, orders: 1 }
-        ]
-      };
+      const result = await getTodaysSales(businessId, currency);
       
-      setSalesData(mockData);
+      if (result.success) {
+        setSalesData(result.data);
+      } else {
+        console.error('Failed to load today\'s sales:', result.error);
+        toast.error(result.error || 'Failed to load sales data');
+      }
     } catch (err) {
       console.error('Failed to load today\'s sales:', err);
+      toast.error('Failed to load sales data');
     } finally {
       setLoading(false);
     }
@@ -163,7 +154,7 @@ export function TodaysSalesWidget({
               <div className="text-xs font-bold text-green-700 uppercase tracking-wider mb-1">
                 {t.total_sales || 'Total Sales'}
               </div>
-              <div className="text-3xl font-black text-green-900">
+              <div className="text-3xl font-semibold text-green-900">
                 {formatCurrency(salesData.totalSales, currency)}
               </div>
             </div>
@@ -203,7 +194,7 @@ export function TodaysSalesWidget({
                 {t.orders || 'Orders'}
               </span>
             </div>
-            <div className="text-2xl font-black text-gray-900">
+            <div className="text-2xl font-semibold text-gray-900">
               {salesData.totalOrders}
             </div>
           </div>
@@ -215,7 +206,7 @@ export function TodaysSalesWidget({
                 {t.avg_order || 'Avg Order'}
               </span>
             </div>
-            <div className="text-2xl font-black text-gray-900">
+            <div className="text-2xl font-semibold text-gray-900">
               {formatCurrency(salesData.avgOrderValue, currency)}
             </div>
           </div>
@@ -249,7 +240,7 @@ export function TodaysSalesWidget({
           {onCreateInvoice && (
             <Button
               onClick={onCreateInvoice}
-              className="w-full bg-wine hover:bg-wine/90 text-white font-bold"
+              className="w-full font-bold bg-emerald-600 hover:bg-emerald-700 text-white"
               size="sm"
             >
               <Plus className="w-4 h-4 mr-2" />

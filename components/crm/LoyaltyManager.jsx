@@ -10,6 +10,8 @@ import { cn } from '@/lib/utils';
 import { useBusiness } from '@/lib/context/BusinessContext';
 import { getLoyaltyProgramsAction, createLoyaltyProgramAction } from '@/lib/actions/standard/loyalty';
 import toast from 'react-hot-toast';
+import { MobileTabHeader, MobileStatStrip } from '@/components/mobile/MobileTabHeader';
+import { useStorefrontEmbedded } from '@/lib/context/StorefrontMobileContext';
 
 // LOYALTY KPI CARDS
 
@@ -23,7 +25,7 @@ function LoyaltyKPI({ label, value, icon: Icon, color }) {
     return (
         <div className={cn('rounded-xl border p-4', colors[color])}>
             <Icon className="w-5 h-5 opacity-60 mb-2" />
-            <p className="text-2xl font-black tracking-tight">{value}</p>
+            <p className="text-2xl font-semibold tracking-tight">{value}</p>
             <p className="text-[11px] font-semibold opacity-60 mt-1">{label}</p>
         </div>
     );
@@ -53,24 +55,24 @@ function ProgramCard({ program, currency, onSelect }) {
                     <Icon className="w-5 h-5 text-white" />
                 </div>
                 <span className={cn(
-                    'text-[9px] px-1.5 py-0.5 rounded-full font-black uppercase',
+                    'text-[10px] px-1.5 py-0.5 rounded-full font-semibold uppercase',
                     program.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'
                 )}>
                     {program.is_active ? 'Active' : 'Inactive'}
                 </span>
             </div>
 
-            <h3 className="text-sm font-black text-gray-900">{program.name}</h3>
+            <h3 className="text-sm font-semibold text-gray-900">{program.name}</h3>
             <p className="text-[10px] text-gray-400 mt-0.5">{program.description || 'No description'}</p>
 
             <div className="grid grid-cols-2 gap-2 mt-3">
                 <div className="bg-gray-50 rounded-lg px-2 py-1.5">
-                    <p className="text-[9px] font-bold text-gray-400">Earn Rate</p>
-                    <p className="text-xs font-black text-gray-800">{program.earn_rate || 1} pts / {currency} 100</p>
+                    <p className="text-[10px] font-bold text-gray-400">Earn Rate</p>
+                    <p className="text-xs font-semibold text-gray-800">{program.earn_rate || 1} pts / {currency} 100</p>
                 </div>
                 <div className="bg-gray-50 rounded-lg px-2 py-1.5">
-                    <p className="text-[9px] font-bold text-gray-400">Redeem Rate</p>
-                    <p className="text-xs font-black text-gray-800">{program.redeem_rate || 10} pts = {currency} 1</p>
+                    <p className="text-[10px] font-bold text-gray-400">Redeem Rate</p>
+                    <p className="text-xs font-semibold text-gray-800">{program.redeem_rate || 10} pts = {currency} 1</p>
                 </div>
             </div>
 
@@ -129,7 +131,7 @@ function CreateProgramForm({ businessId, onCreated, onCancel }) {
         >
             <div className="flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-amber-500" />
-                <h3 className="text-sm font-black text-gray-900">Create Loyalty Program</h3>
+                <h3 className="text-sm font-semibold text-gray-900">Create Loyalty Program</h3>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -201,7 +203,7 @@ function CreateProgramForm({ businessId, onCreated, onCancel }) {
                 <button
                     onClick={handleSave}
                     disabled={saving}
-                    className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-xs font-black rounded-xl transition-all disabled:opacity-50 flex items-center gap-1.5"
+                    className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold rounded-xl transition-all disabled:opacity-50 flex items-center gap-1.5"
                 >
                     <Plus className="w-3.5 h-3.5" />
                     {saving ? 'Creating...' : 'Create Program'}
@@ -244,23 +246,65 @@ export function LoyaltyManager({ businessId }) {
     const totalMembers = programs.reduce((sum, p) => sum + (p.member_count || 0), 0);
     const activePrograms = programs.filter(p => p.is_active).length;
 
+    const embeddedInStorefront = useStorefrontEmbedded();
+
     return (
-        <div className="space-y-4">
-            {/* Header */}
-            <div className="flex items-center justify-between">
+        <div className="space-y-2 lg:space-y-4">
+            {!embeddedInStorefront && (
+                <MobileTabHeader
+                    icon={Crown}
+                    iconClassName="bg-amber-100 text-amber-600"
+                    title="Loyalty & Rewards"
+                    subtitle={`${programs.length} programs · ${totalMembers} members`}
+                    primaryAction={
+                        !showCreate
+                            ? {
+                                label: 'New',
+                                icon: Plus,
+                                className: 'bg-amber-500 hover:bg-amber-600 text-white',
+                                onClick: () => setShowCreate(true),
+                            }
+                            : undefined
+                    }
+                />
+            )}
+
+            <div className="lg:hidden">
+                <MobileStatStrip
+                    items={[
+                        { label: 'Active', value: activePrograms, valueTone: 'text-emerald-600' },
+                        { label: 'Members', value: totalMembers },
+                        { label: 'Programs', value: programs.length },
+                    ]}
+                />
+                {embeddedInStorefront && !showCreate && (
+                    <div className="mt-1.5 flex justify-end">
+                        <button
+                            type="button"
+                            onClick={() => setShowCreate(true)}
+                            className="inline-flex items-center gap-1 rounded-lg bg-amber-500 px-2.5 py-1 text-[10px] font-bold text-white"
+                        >
+                            <Plus className="h-3 w-3" /> New program
+                        </button>
+                    </div>
+                )}
+            </div>
+
+            {/* Desktop header */}
+            <div className="hidden items-center justify-between lg:flex">
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
                         <Crown className="w-5 h-5 text-white" />
                     </div>
                     <div>
-                        <h2 className="text-lg font-black text-gray-900 tracking-tight">Loyalty & Rewards</h2>
+                        <h2 className="text-lg font-semibold text-gray-900 tracking-tight">Loyalty & Rewards</h2>
                         <p className="text-xs text-gray-400 font-medium">Programs &middot; Points &middot; Customer Retention</p>
                     </div>
                 </div>
                 {!showCreate && (
                     <button
                         onClick={() => setShowCreate(true)}
-                        className="flex items-center gap-1.5 px-3 py-2 bg-amber-500 hover:bg-amber-600 text-white text-xs font-black rounded-xl transition-all shadow-lg shadow-amber-200"
+                        className="flex items-center gap-1.5 px-3 py-2 bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold rounded-xl transition-all shadow-lg shadow-amber-200"
                     >
                         <Plus className="w-3.5 h-3.5" />
                         New Program
@@ -268,8 +312,8 @@ export function LoyaltyManager({ businessId }) {
                 )}
             </div>
 
-            {/* KPIs */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {/* Desktop KPIs */}
+            <div className="hidden grid-cols-2 gap-3 md:grid-cols-4 lg:grid">
                 <LoyaltyKPI label="Active Programs" value={activePrograms} icon={Star} color="gold" />
                 <LoyaltyKPI label="Total Members" value={totalMembers} icon={Users} color="purple" />
                 <LoyaltyKPI label="Programs" value={programs.length} icon={Gift} color="emerald" />

@@ -53,9 +53,12 @@ export function formatNumber(value: number | string | null | undefined, decimals
 
     if (isNaN(num)) return '0';
 
+    const dRaw = Number(decimals);
+    const d = Number.isFinite(dRaw) ? Math.max(0, Math.min(20, Math.floor(dRaw))) : 0;
+
     return num.toLocaleString(undefined, {
-        minimumFractionDigits: decimals,
-        maximumFractionDigits: decimals
+        minimumFractionDigits: d,
+        maximumFractionDigits: d
     });
 }
 

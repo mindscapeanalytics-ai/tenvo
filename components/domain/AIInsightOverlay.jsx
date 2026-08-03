@@ -21,10 +21,16 @@ export function AIInsightOverlay({ domain, items, businessId }) {
     const fetchInsights = async () => {
       setLoading(true);
       try {
-        const res = await getDomainIndustryInsightsAction(businessId, domain);
-        if (res.success) {
-          // Filter or adapt insights based on current items
-          setInsights(res.insights || []);
+        const res = await getDomainIndustryInsightsAction(businessId);
+        if (res.success && res.data) {
+          const d = res.data;
+          setInsights([
+            {
+              type: d.priority === 'high' ? 'opportunity' : d.priority === 'medium' ? 'strategy' : 'strategy',
+              title: d.current_status || 'Industry insight',
+              description: d.insight || d.suggested_action || '',
+            },
+          ]);
         }
       } catch (e) {
         console.error("Failed to fetch AI insights:", e);
@@ -46,14 +52,14 @@ export function AIInsightOverlay({ domain, items, businessId }) {
     )}>
       <Card className="w-80 rounded-[2rem] border-none shadow-[0_20px_50px_rgba(0,0,0,0.1)] overflow-hidden bg-white/90 backdrop-blur-xl">
         <div 
-          className="p-4 bg-gradient-to-r from-wine-600 to-indigo-600 flex items-center justify-between cursor-pointer"
+          className="p-4 bg-brand-primary flex items-center justify-between cursor-pointer"
           onClick={() => setMinimized(!minimized)}
         >
           <div className="flex items-center gap-2 text-white">
             <Sparkles className="w-4 h-4 animate-pulse" />
-            <span className="text-xs font-black uppercase tracking-widest italic">Domain Co-Pilot</span>
+            <span className="text-xs font-semibold uppercase tracking-widest italic">Domain Co-Pilot</span>
           </div>
-          <Badge className="bg-white/20 text-white border-0 text-[9px] font-bold">
+          <Badge className="bg-white/20 text-white border-0 text-[10px] font-bold">
             {loading ? 'Thinking...' : `${insights.length} Strategies`}
           </Badge>
         </div>
@@ -67,7 +73,7 @@ export function AIInsightOverlay({ domain, items, businessId }) {
               </div>
             ) : (
               insights.map((insight, idx) => (
-                <div key={idx} className="group relative p-3 rounded-2xl bg-gray-50/50 hover:bg-white border border-transparent hover:border-wine-100 transition-all cursor-default">
+                <div key={idx} className="group relative p-3 rounded-2xl bg-gray-50/50 hover:bg-white border border-transparent hover:border-brand-100 transition-all cursor-default">
                   <div className="flex items-start gap-3">
                     <div className={cn(
                       "p-1.5 rounded-lg mt-0.5",
@@ -78,7 +84,7 @@ export function AIInsightOverlay({ domain, items, businessId }) {
                        insight.type === 'risk' ? <ShieldAlert className="w-3 h-3" /> : <Lightbulb className="w-3 h-3" />}
                     </div>
                     <div className="space-y-1">
-                      <p className="text-[11px] font-black text-gray-900 leading-tight">{insight.title}</p>
+                      <p className="text-[11px] font-semibold text-gray-900 leading-tight">{insight.title}</p>
                       <p className="text-[10px] text-gray-500 leading-relaxed">{insight.description}</p>
                     </div>
                   </div>
@@ -88,7 +94,7 @@ export function AIInsightOverlay({ domain, items, businessId }) {
             )}
 
             <div className="pt-2">
-              <button className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-gray-900 text-white text-[10px] font-black uppercase tracking-widest hover:bg-black transition-all">
+              <button className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-gray-900 text-white text-[10px] font-semibold uppercase tracking-widest hover:bg-black transition-all">
                 <MessageSquare className="w-3 h-3" />
                 Ask Co-Pilot
               </button>
@@ -99,7 +105,7 @@ export function AIInsightOverlay({ domain, items, businessId }) {
       
       {minimized && (
         <div 
-          className="absolute -top-4 -right-4 w-12 h-12 bg-wine-600 rounded-full flex items-center justify-center text-white shadow-xl cursor-pointer hover:scale-110 transition-all"
+          className="absolute -top-4 -right-4 w-12 h-12 bg-brand-primary rounded-full flex items-center justify-center text-white shadow-xl cursor-pointer hover:scale-110 transition-all"
           onClick={() => setMinimized(false)}
         >
           <Sparkles className="w-6 h-6" />

@@ -7,7 +7,15 @@
  * - Global test utilities
  */
 
-import { vi } from 'vitest';
+import { vi, afterEach } from 'vitest';
+import '@testing-library/jest-dom/vitest';
+import { configure, cleanup } from '@testing-library/react';
+
+configure({ reactStrictMode: false });
+
+afterEach(() => {
+  cleanup();
+});
 
 // ─── Mock Database Pool ─────────────────────────────────────────────────────
 // Prevents tests from hitting the real database

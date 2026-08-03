@@ -1,25 +1,26 @@
 import { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Plus, Search, Mail, Phone, MapPin, TrendingUp, Edit, Trash2, User, Building2, CreditCard, Eye, AlertTriangle } from 'lucide-react';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Plus, Search, Phone, Edit, Trash2, User, Eye, AlertTriangle } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { DataTable } from './DataTable';
 import { ExportButton } from './ExportButton';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { FormError, FormWarning } from '@/components/ui/form-error';
-import { getDomainKnowledge } from '@/lib/domainKnowledge';
+import { getDomainKnowledgeForBusiness, resolveDisplayCurrency } from '@/lib/utils/businessRegionalContext';
 import { formatCurrency } from '@/lib/currency';
-import { customerSchema, validateForm, formatPakistaniPhone } from '@/lib/validation';
 import { getDomainColors } from '@/lib/domainColors';
 import { getDomainCustomerColumns } from '@/lib/utils/domainHelpers';
 import { cn } from '@/lib/utils';
-import toast from 'react-hot-toast';
+import { hubDialogContentClass } from '@/lib/utils/formMobileStyles';
 import StakeholderLedger from './StakeholderLedger';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { MobileTabHeader, MobileStatStrip } from '@/components/mobile/MobileTabHeader';
+import { HubEntityMobileList } from '@/components/mobile/HubEntityMobileList';
+import { MOBILE_BOTTOM_NAV_CLASS, MOBILE_FLOATING_Z, MOBILE_MODULE_FAB_RIGHT } from '@/lib/utils/mobileLayout';
+import { useBusiness } from '@/lib/context/BusinessContext';
 
 export function CustomerManager({ customers = [], onAdd, onUpdate, onDelete, category = 'retail-shop', businessId }) {
   const colors = getDomainColors(category);
@@ -27,8 +28,12 @@ export function CustomerManager({ customers = [], onAdd, onUpdate, onDelete, cat
   const [customerToView, setCustomerToView] = useState(null);
   const [customerToDelete, setCustomerToDelete] = useState(null);
 
-  const knowledge = getDomainKnowledge(category);
-  const currency = 'PKR';
+  const { currency: businessCurrency, business, regionalPack } = useBusiness();
+  const knowledge = getDomainKnowledgeForBusiness(category, business);
+  const currency = resolveDisplayCurrency(
+    { currency: businessCurrency || business?.currency },
+    regionalPack
+  );
 
   const filteredCustomers = customers.filter(customer =>
     customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -77,7 +82,7 @@ export function CustomerManager({ customers = [], onAdd, onUpdate, onDelete, cat
       accessorKey: 'totalSpent',
       header: 'Total Value',
       cell: ({ row }) => (
-        <span className="font-black" style={{ color: colors.primary }}>
+        <span className="font-semibold" style={{ color: colors.primary }}>
           {formatCurrency(row.original.totalSpent || 0, currency)}
         </span>
       ),
@@ -120,11 +125,27 @@ export function CustomerManager({ customers = [], onAdd, onUpdate, onDelete, cat
 
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="min-w-0 space-y-4 overflow-x-hidden touch-manipulation lg:space-y-6">
+      <MobileTabHeader
+        icon={User}
+        iconClassName="bg-emerald-100 text-emerald-600"
+        title="Customer Database"
+        subtitle={`${customers.length} clients · ${knowledge?.name || 'Business'}`}
+      />
+
+      <MobileStatStrip
+        layout="grid"
+        items={[
+          { label: 'Total', value: customers.length },
+          { label: 'Reachable', value: customers.filter((c) => c.phone || c.email).length, valueTone: 'text-emerald-600' },
+          { label: 'With Email', value: customers.filter((c) => c.email).length },
+        ]}
+      />
+
+      <div className="hidden flex-col gap-4 md:flex-row md:items-center md:justify-between lg:flex">
         <div>
           <h2 className="text-xl font-bold text-gray-900">Customer Database</h2>
-          <p className="text-gray-500 font-medium">Manage and nurture your {knowledge?.name || 'Business'} clientele</p>
+          <p className="font-medium text-gray-500">Manage and nurture your {knowledge?.name || 'Business'} clientele</p>
         </div>
         <div className="flex gap-2">
           <ExportButton
@@ -132,16 +153,17 @@ export function CustomerManager({ customers = [], onAdd, onUpdate, onDelete, cat
             filename="customers"
             columns={columns}
             title="Customers Report"
+            business={business}
           />
-          <Button onClick={onAdd} className="text-white font-bold shadow-lg rounded-xl h-10 px-6" style={{ backgroundColor: colors.primary, boxShadow: `0 8px 16px -4px ${colors.primary}40` }}>
-            <Plus className="w-4 h-4 mr-2" />
+          <Button onClick={onAdd} className="h-10 rounded-xl px-6 font-bold text-white shadow-lg" style={{ backgroundColor: colors.primary, boxShadow: `0 8px 16px -4px ${colors.primary}40` }}>
+            <Plus className="mr-2 h-4 w-4" />
             Add New Client
           </Button>
         </div>
       </div>
 
-      <Card className="border-wine/10 shadow-xl bg-white/50 backdrop-blur-md">
-        <CardHeader className="pb-4">
+      <Card className="border-wine/10 bg-white/50 shadow-xl backdrop-blur-md lg:block">
+        <CardHeader className="hidden pb-4 lg:block">
           <div className="flex items-center gap-4">
             <div className="relative flex-1 group">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 group-focus-within:text-wine w-4 h-4 transition-colors" />
@@ -154,15 +176,79 @@ export function CustomerManager({ customers = [], onAdd, onUpdate, onDelete, cat
             </div>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="hidden lg:block">
           <DataTable category={category} data={filteredCustomers} columns={allColumns} emptyComponent={<EmptyState module="customers" compact onAction={onAdd} />} />
         </CardContent>
       </Card>
 
+      <div className="pb-[calc(5.5rem+env(safe-area-inset-bottom))] lg:hidden">
+        <HubEntityMobileList
+          items={customers}
+          search={searchTerm}
+          onSearchChange={setSearchTerm}
+          searchPlaceholder="Search customers..."
+          emptyIcon={User}
+          emptyTitle="No customers yet"
+          emptySubtitle="Add your first client to get started"
+          emptyActionLabel="Add customer"
+          onEmptyAction={() => onAdd?.()}
+          getKey={(c) => c.id}
+          onRowPress={(c) => setCustomerToView(c)}
+          renderIcon={(c) => (
+            <Avatar className="h-10 w-10">
+              <AvatarFallback className="text-sm font-bold" style={{ backgroundColor: `${colors.primary}15`, color: colors.primary }}>
+                {c.name?.charAt(0) || '?'}
+              </AvatarFallback>
+            </Avatar>
+          )}
+          getTitle={(c) => c.name}
+          getSubtitle={(c) => c.phone || c.email || 'No contact info'}
+          getAmount={(c) => formatCurrency(c.totalSpent || 0, currency)}
+          getAmountClassName={() => 'text-emerald-700'}
+          renderBadge={(c) => (
+            <span className={cn('rounded-md px-1.5 py-0.5 text-[10px] font-semibold', c.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600')}>
+              {c.status || 'active'}
+            </span>
+          )}
+          filterItems={(list, q) => {
+            const query = q.trim().toLowerCase();
+            if (!query) return list;
+            return list.filter(
+              (c) =>
+                c.name?.toLowerCase().includes(query) ||
+                c.email?.toLowerCase().includes(query) ||
+                c.phone?.includes(query)
+            );
+          }}
+          getActions={(c) => [
+            { id: 'view', icon: Eye, label: 'View profile', onClick: () => setCustomerToView(c) },
+            { id: 'edit', icon: Edit, label: 'Edit customer', onClick: () => onUpdate?.(c) },
+            { id: 'delete', icon: Trash2, label: 'Remove customer', destructive: true, onClick: () => setCustomerToDelete(c) },
+          ]}
+        />
+      </div>
+
+      {onAdd && (
+        <button
+          type="button"
+          onClick={() => onAdd()}
+          className={cn(
+            'fixed flex h-14 w-14 items-center justify-center rounded-full text-white shadow-lg transition active:scale-95 lg:hidden',
+            MOBILE_MODULE_FAB_RIGHT,
+            MOBILE_BOTTOM_NAV_CLASS,
+            MOBILE_FLOATING_Z
+          )}
+          style={{ backgroundColor: colors.primary, boxShadow: `0 8px 24px -4px ${colors.primary}50` }}
+          aria-label="Add customer"
+        >
+          <Plus className="h-6 w-6" />
+        </button>
+      )}
+
 
       {/* View Customer Dialog */}
       <Dialog open={!!customerToView} onOpenChange={(open) => !open && setCustomerToView(null)}>
-        <DialogContent className="max-w-md">
+        <DialogContent className={cn(hubDialogContentClass({ maxWidth: 'lg:max-w-md' }), 'overflow-y-auto overscroll-contain')}>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <User className="w-5 h-5 text-gray-400" />
@@ -170,14 +256,14 @@ export function CustomerManager({ customers = [], onAdd, onUpdate, onDelete, cat
             </DialogTitle>
             <DialogDescription>Customer Profile</DialogDescription>
           </DialogHeader>
-          <Tabs defaultValue="profile" className="mt-4">
+            <Tabs defaultValue="profile" className="mt-4 min-h-0">
             <TabsList className="grid w-full grid-cols-2 mb-4 bg-gray-100/50 p-1 rounded-xl">
               <TabsTrigger value="profile" className="rounded-lg">Profile Info</TabsTrigger>
               <TabsTrigger value="ledger" className="rounded-lg">Ledger / History</TabsTrigger>
             </TabsList>
 
             <TabsContent value="profile" className="space-y-4 py-2 mt-0">
-              <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                 <div>
                   <label className="text-xs font-bold text-gray-400 block">Email</label>
                   <p className="font-medium">{customerToView?.email || 'N/A'}</p>
@@ -188,7 +274,7 @@ export function CustomerManager({ customers = [], onAdd, onUpdate, onDelete, cat
                 </div>
                 <div>
                   <label className="text-xs font-bold text-gray-400 block">Total Spent</label>
-                  <p className="font-black" style={{ color: colors.primary }}>
+                  <p className="font-semibold" style={{ color: colors.primary }}>
                     {formatCurrency(customerToView?.totalSpent || 0, currency)}
                   </p>
                 </div>

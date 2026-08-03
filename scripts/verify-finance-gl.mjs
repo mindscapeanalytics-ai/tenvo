@@ -1,0 +1,157 @@
+/**
+ * Static wiring checks for Finance / Money hub GL + reports.
+ * Run: bun run verify:finance-gl
+ */
+import fs from 'fs';
+import path from 'path';
+
+const root = process.cwd();
+let failed = 0;
+
+function assert(cond, msg) {
+  if (!cond) {
+    console.error(`FAIL: ${msg}`);
+    failed += 1;
+  } else {
+    console.log(`OK: ${msg}`);
+  }
+}
+
+function read(rel) {
+  return fs.readFileSync(path.join(root, rel), 'utf8');
+}
+
+function includes(rel, needle, msg) {
+  assert(read(rel).includes(needle), msg || `${rel} includes ${needle}`);
+}
+
+// Phase 1
+includes('lib/services/AccountingService.js', "'input_tax'", 'purchase input_tax functional type');
+includes('lib/services/AccountingService.js', 'accounts.input_tax', 'purchase DR input tax line');
+includes('lib/services/paymentReconciliation.js', 'txClient', 'storefront reconcile accepts txClient');
+includes('lib/actions/storefront/payments.js', 'reconcileOrderPayment', 'storefront payments wire reconcile');
+includes('lib/actions/storefront/orders.js', 'reconcileOrderPayment', 'COD delivery wires reconcile');
+includes('lib/actions/standard/restaurant.js', 'pos_sale', 'restaurant settle posts pos_sale');
+includes('lib/rbac/permissions.js', 'featuresAny', 'finance nav featuresAny');
+includes('lib/config/tabs.js', "journal: 'journal'", 'journal deep-link maps to journal');
+
+// Phase 2
+includes('lib/actions/standard/report.js', 'getCashFlowAction', 'cash flow server action');
+includes('lib/actions/standard/report.js', 'getDayBookAction', 'day book server action');
+includes('lib/actions/standard/report.js', 'getGlCoverageSnapshotAction', 'GL coverage snapshot');
+includes('lib/actions/standard/report.js', 'e.journal_id', 'day book joins journal_id');
+includes('lib/pdf/financeStatementPdf.js', 'drawFinancePdfHeader', 'finance PDF chrome');
+includes('lib/api/accounting.js', 'getCashFlow', 'accounting API cash flow');
+includes('components/finance/DayBookReport.jsx', 'Day Book', 'Day Book UI');
+includes('components/FinancialReports.jsx', 'handleDownloadPdf', 'statements PDF download');
+
+// Phase 3
+includes('components/finance/FinanceHub.jsx', 'resolveFinanceHubNavigation', 'FinanceHub navigation aliases');
+includes('components/finance/FinanceHub.jsx', 'getGlCoverage', 'overview coverage load');
+includes('components/finance/FinanceHub.jsx', 'Payments &amp; vouchers', 'overview CTA to payments');
+includes('components/finance/FinanceHub.jsx', 'goToPaymentsHub', 'payments hub helper');
+includes('components/FinancialReports.jsx', "value=\"tb\"", 'Statements nests Trial Balance');
+includes('components/FinancialReports.jsx', "value=\"day-book\"", 'Statements nests Day Book');
+includes('lib/config/tabs.js', "accounts: 'accounts'", 'accounts deep-link maps to CoA');
+includes('components/TaxComplianceManager.jsx', 'periodPos', 'GST includes POS tax when provided');
+
+// A/R & A/P aging (Statements)
+includes('lib/utils/agingBuckets.js', 'bucketAgingRows', 'shared aging bucket helper');
+includes('lib/services/InvoicePaymentService.js', 'LEFT JOIN (\n                        SELECT invoice_id, SUM(amount) AS amount_paid', 'AR aging uses aggregated payment join (not N+1 balance fn)');
+includes('lib/services/InvoicePaymentService.js', 'bucketAgingRows', 'AR aging buckets outstanding balance');
+{
+  const agingSrc = read('lib/services/InvoicePaymentService.js');
+  const agingStart = agingSrc.indexOf('getAgingReport');
+  const agingSlice = agingStart >= 0 ? agingSrc.slice(agingStart, agingStart + 2500) : '';
+  assert(
+    agingSlice.length > 0 && !agingSlice.includes('calculate_invoice_balance(i.id)'),
+    'AR aging query must not call calculate_invoice_balance per invoice'
+  );
+}
+assert(
+  !read('lib/services/InvoicePaymentService.js').includes('FROM invoice_aging'),
+  'AR aging does not depend on invoice_aging view at runtime'
+);
+includes('lib/actions/standard/agingReports.js', 'getAccountsPayableAgingAction', 'AP aging server action');
+includes('lib/actions/standard/agingReports.js', 'pay.is_deleted', 'AP aging ignores voided vendor payments');
+includes('components/reports/AgingReportsPanel.jsx', 'AgingReportsPanel', 'Aging panel UI');
+includes('components/FinancialReports.jsx', 'AgingReportsPanel', 'Statements hosts aging panel');
+includes('prisma/migrations/20260718_invoice_aging_view/migration.sql', 'CREATE OR REPLACE VIEW invoice_aging', 'Prisma invoice_aging view migration');
+
+// Statements accuracy: exclude draft journals; keep reversed + posted
+includes('lib/utils/glReportSql.js', 'GL_EXCLUDE_DRAFT_JOURNAL_SQL', 'shared draft-exclusion SQL fragment');
+includes('lib/utils/glReportSql.js', 'GL_EXCLUDE_DRAFT_JOURNAL_SQL_GE', 'ledger alias draft-exclusion fragment');
+includes('lib/actions/standard/report.js', 'GL_EXCLUDE_DRAFT_JOURNAL_SQL', 'report actions use draft exclusion');
+includes('lib/actions/basic/accounting.js', 'GL_EXCLUDE_DRAFT_JOURNAL_SQL_GE', 'GL ledger/balance exclude drafts');
+assert(
+  !read('lib/actions/basic/accounting.js').includes('export async function getTrialBalanceAction'),
+  'duplicate Trial Balance action removed from basic/accounting (canonical is standard/report)'
+);
+includes('lib/services/PaymentService.js', 'FROM invoice_payments ip', 'customer AR reconcile uses invoice_payments');
+includes('lib/storefront/storefrontDisplayStock.js', 'Variant SKUs sell from variant stock', 'storefront stock stays variant-first for checkout');
+includes('lib/actions/standard/report.js', 'grossMargin', 'P&L returns grossMargin for PDF/UI');
+includes('lib/actions/standard/report.js', 'a.business_id = je.business_id', 'Day Book scopes accounts by business');
+includes('components/finance/DayBookReport.jsx', 'statusLabel', 'Day Book shows journal status');
+assert(
+  read('lib/actions/standard/report.js').includes("<> 'draft'") ||
+    read('lib/utils/glReportSql.js').includes("<> 'draft'"),
+  'draft journals excluded from statement balances'
+);
+
+// Invoice tax wiring + tax enable toggle
+includes('lib/validation/schemas.js', 'tax_total', 'invoiceSchema accepts tax_total alias');
+includes('lib/actions/basic/invoice.js', 'validated.tax_total = validated.total_tax', 'createInvoiceAction bridges total_tax → tax_total');
+includes('lib/services/InvoiceService.js', 'total_tax, discount_total, grand_total', 'createInvoice persists both tax columns');
+includes('lib/services/InvoiceService.js', 'transaction.tax_amount', 'POS convert maps tax_amount');
+includes('lib/utils/businessRegionalContext.js', 'taxEnabled', 'regional pack exposes taxEnabled');
+includes('components/SettingsManager.jsx', 'taxEnabled: checked', 'Settings Financials tax toggle persists');
+includes('lib/hooks/usePosTaxConfig.js', 'taxEnabled', 'POS tax config respects taxEnabled');
+
+includes('lib/services/InvoiceService.js', 'hydrateInvoiceForList', 'create/update returns list-ready invoice');
+includes('lib/services/InvoiceService.js', 'product_id = ANY($2::uuid[])', 'batched stock prevalidation');
+includes('lib/services/InventoryService.js', 'skip_low_stock_notify', 'invoice create skips per-line low-stock notify');
+includes('app/business/[category]/components/ActionModals.jsx', 'upsertInvoiceInState', 'payment success patches invoice state');
+includes('lib/actions/basic/invoice.js', 'amount_paid', 'list balance enrichment uses payment sum join');
+
+includes('lib/pdf/financeStatementPdf.js', 'resolveInvoiceBrandColor', 'finance PDF uses tenant brand color');
+includes('lib/pdf/financeStatementPdf.js', 'buildFinancePdfMeta', 'finance PDF meta builder');
+includes('lib/pdf/financeStatementPdf.js', 'tableWidth: 182', 'finance PDF full content width');
+includes('components/FinancialReports.jsx', 'Other / reconciling items (plug)', 'cash flow residual labeled honestly');
+includes('components/FinancialReports.jsx', 'buildFinancePdfMeta', 'Statements PDF brand-aware meta');
+includes('components/finance/DayBookReport.jsx', "{ key: 'status', label: 'Status' }", 'Day Book PDF includes status');
+includes('lib/actions/standard/report.js', 'BS_DYNAMIC_RE_CODES', 'BS excludes system RE codes from equity sum');
+includes('lib/actions/standard/report.js', 'ZERO_BALANCE_EPS', 'statements omit zero-balance lines');
+includes('lib/actions/standard/agingReports.js', 'default_payment_terms', 'AP aging uses payment terms due date');
+assert(
+  !read('lib/actions/standard/agingReports.js').includes('expected_delivery'),
+  'AP aging no longer ages on expected_delivery'
+);
+includes('lib/utils/agingBuckets.js', 'parsePaymentTermsDays', 'payment terms day parser');
+includes('components/finance/FinanceMobileNav.jsx', 'GROUP_ORDER', 'Finance nav renders group separators');
+includes('components/finance/FinanceMobileNav.jsx', 'FinanceHubTile', 'Finance mobile uses colored hub tiles');
+includes('lib/finance/financeHubTiles.js', 'FINANCE_TAB_TILE_META', 'Finance tile color map');
+includes('lib/config/tabs.js', "key === 'payments'", 'financeView=payments routes to Payments hub');
+includes('components/reports/GeneralLedgerReport.jsx', 'financeView=vouchers', 'GL payment link uses vouchers alias');
+includes('components/finance/FinanceHub.jsx', 'hubLinks={mobileHubLinks}', 'mobile Finance hub exposes Payments/Tax');
+includes('lib/utils/businessRegionalContext.js', 'resolveDisplayCurrency', 'shared display currency helper');
+includes('components/ExportButton.jsx', 'business,', 'ExportButton accepts business for brand PDF');
+includes('components/reports/GeneralLedgerReport.jsx', 'routeCategory', 'GL links use business category not UUID');
+includes('components/TrialBalanceView.jsx', 'buildFinancePdfMeta', 'Trial Balance PDF brand-aware');
+includes('components/reports/AgingReportsPanel.jsx', 'business,', 'Aging PDF passes business for brand');
+includes('lib/utils/expenseCategories.js', 'getExpenseCategoriesForDomain', 'domain expense category helper');
+includes('components/layout/Header.jsx', "modalId: 'expense'", 'Header Log Expense opens expense modal');
+includes('app/business/[category]/DashboardClient.jsx', "id === 'reconcile-now'", 'reconcile-now routes to Bank Reconciliation');
+assert(
+  !read('components/finance/FinanceHub.jsx').includes("case 'vouchers':"),
+  'dead vouchers switch arm removed from FinanceHub'
+);
+assert(
+  !read('components/finance/FinanceHub.jsx').includes("case 'trial-balance':"),
+  'dead trial-balance switch arm removed from FinanceHub'
+);
+
+if (failed > 0) {
+  console.error(`\n${failed} check(s) failed`);
+  process.exit(1);
+}
+console.log('\nverify:finance-gl passed');

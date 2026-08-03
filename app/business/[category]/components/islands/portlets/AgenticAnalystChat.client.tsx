@@ -4,6 +4,8 @@ import { useState, useRef, useEffect, memo } from 'react';
 import { Portlet } from '@/components/ui/portlet';
 import { Send, Sparkles, User, Bot, Loader2, Maximize2, Minimize2, Trash2 } from 'lucide-react';
 import { askBusinessAnalystAction } from '@/lib/actions/premium/ai/agentic';
+import { useResolvedBusinessId } from '@/lib/hooks/useResolvedBusinessId';
+import { formatBusinessAnalystReply } from '@/lib/utils/formatBusinessAnalystReply';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 
@@ -13,7 +15,9 @@ interface Message {
     timestamp: Date;
 }
 
-export const AgenticAnalystChat = memo(function AgenticAnalystChat({ businessId }: { businessId: string }) {
+export const AgenticAnalystChat = memo(function AgenticAnalystChat({ businessId: businessIdProp }: { businessId?: string }) {
+    // Prop + context — do not unmount when prop/context briefly disagree during hydrate.
+    const businessId = useResolvedBusinessId(businessIdProp);
     const [messages, setMessages] = useState<Message[]>([
         { role: 'assistant', content: "Hello! I'm your Agentic AI Analyst. Ask me anything about your inventory, sales trends, or financial health.", timestamp: new Date() }
     ]);
@@ -28,6 +32,8 @@ export const AgenticAnalystChat = memo(function AgenticAnalystChat({ businessId 
         }
     }, [messages, loading]);
 
+    if (!businessId) return null;
+
     const handleSend = async () => {
         if (!input.trim() || loading) return;
 
@@ -38,12 +44,9 @@ export const AgenticAnalystChat = memo(function AgenticAnalystChat({ businessId 
 
         try {
             const res = await askBusinessAnalystAction(businessId, userMsg);
-            if (res.success) {
-                setMessages(prev => [...prev, { role: 'assistant', content: (res as any).data as string, timestamp: new Date() }]);
-            } else {
-                setMessages(prev => [...prev, { role: 'assistant', content: "I encountered an error while processing your request. Please try again.", timestamp: new Date() }]);
-            }
-        } catch (err) {
+            const reply = formatBusinessAnalystReply(res);
+            setMessages(prev => [...prev, { role: 'assistant', content: reply, timestamp: new Date() }]);
+        } catch {
             setMessages(prev => [...prev, { role: 'assistant', content: "Network error. Please check your connection.", timestamp: new Date() }]);
         } finally {
             setLoading(false);
@@ -93,7 +96,7 @@ export const AgenticAnalystChat = memo(function AgenticAnalystChat({ businessId 
                             )}>
                                 <div className={cn(
                                     "w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-1",
-                                    m.role === 'user' ? "bg-brand-primary text-white" : "bg-white border text-wine"
+                                    m.role === 'user' ? "bg-brand-primary text-white" : "bg-white border text-brand-primary"
                                 )}>
                                     {m.role === 'user' ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
                                 </div>
@@ -105,7 +108,7 @@ export const AgenticAnalystChat = memo(function AgenticAnalystChat({ businessId 
                                 )}>
                                     {m.content}
                                     <div className={cn(
-                                        "text-[8px] mt-1 opacity-50 font-bold uppercase",
+                                        "text-[10px] mt-1 opacity-50 font-bold uppercase",
                                         m.role === 'user' ? "text-white" : "text-gray-400"
                                     )}>
                                         {m.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -116,15 +119,15 @@ export const AgenticAnalystChat = memo(function AgenticAnalystChat({ businessId 
                         {loading && (
                             <div className="flex items-start gap-3 max-w-[85%]">
                                 <div className="w-7 h-7 rounded-full bg-white border flex items-center justify-center shrink-0">
-                                    <Loader2 className="w-4 h-4 text-wine animate-spin" />
+                                    <Loader2 className="w-4 h-4 text-brand-primary animate-spin" />
                                 </div>
                                 <div className="p-3 rounded-2xl bg-white border border-slate-100 rounded-tl-none shadow-sm flex items-center gap-2">
-                                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest animate-pulse">Thinking</span>
+                                    <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest animate-pulse">Thinking</span>
                                 </div>
                             </div>
                         )}
                     </div>
-
+ 
                     {/* Input Area */}
                     <div className="p-4 bg-white border-t border-slate-100">
                         <div className="relative group">
@@ -148,8 +151,8 @@ export const AgenticAnalystChat = memo(function AgenticAnalystChat({ businessId 
                             </button>
                         </div>
                         <div className="mt-2 flex items-center gap-2 px-1">
-                            <Sparkles className="w-3 h-3 text-wine" />
-                            <span className="text-[9px] font-bold text-gray-400 uppercase">Powered by Neural Enterprise AI</span>
+                            <Sparkles className="w-3 h-3 text-brand-primary" />
+                            <span className="text-[10px] font-bold text-gray-400 uppercase">Powered by Neural Enterprise AI</span>
                         </div>
                     </div>
                 </div>

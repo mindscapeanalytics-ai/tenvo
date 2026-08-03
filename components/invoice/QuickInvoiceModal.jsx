@@ -8,7 +8,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import toast from 'react-hot-toast';
 import { formatCurrency } from '@/lib/currency';
-import { getDomainKnowledge } from '@/lib/domainKnowledge';
+import { useFormRegionalContext } from '@/lib/hooks/useFormRegionalContext';
+import { cn } from '@/lib/utils';
+import { MOBILE_OVERLAY, MOBILE_OVERLAY_CARD, MOBILE_FORM_FOOTER } from '@/lib/utils/formMobileStyles';
 
 /**
  * QuickInvoiceModal Component
@@ -41,10 +43,12 @@ export function QuickInvoiceModal({
     products = [],
     customers = [],
     recentTransactions = [],
-    currency = 'PKR',
+    currency: currencyProp,
 }) {
-    const domainKnowledge = getDomainKnowledge(category);
-    const defaultTax = domainKnowledge?.defaultTax || 17;
+    const { currency: ctxCurrency, defaultTaxRate, taxEnabled, taxLabel, domainKnowledge } = useFormRegionalContext(category);
+    const currency = currencyProp || ctxCurrency;
+    const showTaxUi = taxEnabled !== false;
+    const defaultTax = showTaxUi ? defaultTaxRate : 0;
     
     // Focus refs for keyboard navigation
     const customerInputRef = useRef(null);
@@ -322,6 +326,7 @@ export function QuickInvoiceModal({
             subtotal: totals.subtotal,
             discount_total: totals.discount,
             tax_total: totals.tax,
+            total_tax: totals.tax,
             grand_total: totals.total,
             payment_method: paymentMethod,
             payment_status: paymentStatus,
@@ -427,17 +432,17 @@ export function QuickInvoiceModal({
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4">
-            <Card className="w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col rounded-2xl shadow-2xl border-none">
+        <div className={cn(MOBILE_OVERLAY, 'z-[60]')}>
+            <Card className={cn(MOBILE_OVERLAY_CARD, 'max-w-2xl')}>
                 {/* Header */}
-                <CardHeader className="flex flex-row items-center justify-between pb-4 bg-gradient-to-r from-wine/10 to-wine/5 border-b">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-wine text-white rounded-lg">
-                            <Zap className="w-5 h-5" />
+                <CardHeader className="flex shrink-0 flex-row items-center justify-between border-b bg-gradient-to-r from-wine/10 to-wine/5 px-3 py-3 sm:px-6 sm:pb-4">
+                    <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
+                        <div className="shrink-0 rounded-lg bg-wine p-1.5 text-white sm:p-2">
+                            <Zap className="h-4 w-4 sm:h-5 sm:w-5" />
                         </div>
-                        <div>
-                            <CardTitle className="text-xl font-black">Quick Checkout</CardTitle>
-                            <p className="text-xs text-gray-500 mt-1">Hotkey: Ctrl+I | Load Last: Ctrl+L | Close: Esc | Sale: Shift+Enter</p>
+                        <div className="min-w-0">
+                            <CardTitle className="text-base font-semibold sm:text-xl">Quick Checkout</CardTitle>
+                            <p className="mt-0.5 hidden text-xs text-gray-500 sm:block">Hotkey: Ctrl+I | Load Last: Ctrl+L | Close: Esc | Sale: Shift+Enter</p>
                         </div>
                     </div>
                     <button
@@ -448,10 +453,10 @@ export function QuickInvoiceModal({
                     </button>
                 </CardHeader>
 
-                <CardContent className="flex-1 overflow-y-auto space-y-4 p-4 sm:p-6">
+                <CardContent className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-3 sm:p-6">
                     {/* Customer Section */}
                     <div className="space-y-2">
-                        <Label className="text-xs font-black uppercase text-gray-400 tracking-widest">Customer</Label>
+                        <Label className="text-xs font-semibold uppercase text-gray-400 tracking-widest">Customer</Label>
                         <Input
                             ref={customerInputRef}
                             type="text"
@@ -528,7 +533,7 @@ export function QuickInvoiceModal({
 
                     {/* Product Add Section */}
                     <div className="space-y-2 p-3 bg-blue-50 border border-blue-100 rounded-xl">
-                        <Label className="text-xs font-black uppercase text-gray-400 tracking-widest">Add Items</Label>
+                        <Label className="text-xs font-semibold uppercase text-gray-400 tracking-widest">Add Items</Label>
                         <div className="flex gap-2">
                             <div className="flex-1">
                                 <Input
@@ -647,11 +652,13 @@ export function QuickInvoiceModal({
                                     <span>-{formatCurrency(totals.discount, currency)}</span>
                                 </div>
                             )}
+                            {showTaxUi && Number(totals.tax) > 0 && (
                             <div className="flex justify-between text-gray-600">
-                                <span>Tax ({defaultTax}%):</span>
+                                <span>{taxLabel || 'Tax'} ({defaultTax}%):</span>
                                 <span className="font-semibold">{formatCurrency(totals.tax, currency)}</span>
                             </div>
-                            <div className="flex justify-between border-t pt-2 text-lg font-black text-wine">
+                            )}
+                            <div className="flex justify-between border-t pt-2 text-lg font-semibold text-wine">
                                 <span>TOTAL:</span>
                                 <span>{formatCurrency(totals.total, currency)}</span>
                             </div>
@@ -660,8 +667,8 @@ export function QuickInvoiceModal({
 
                     {/* Payment Method */}
                     <div className="space-y-2">
-                        <Label className="text-xs font-black uppercase text-gray-400 tracking-widest">Payment Method</Label>
-                        <div className="grid grid-cols-4 gap-2">
+                        <Label className="text-xs font-semibold uppercase text-gray-400 tracking-widest">Payment Method</Label>
+                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                             {['cash', 'card', 'check', 'transfer'].map(method => (
                                 <button
                                     key={method}
@@ -683,52 +690,40 @@ export function QuickInvoiceModal({
                     </div>
                 </CardContent>
 
-                {/* Mobile Sticky Quick Actions */}
-                {cartItems.length > 0 && (
-                    <div className="sm:hidden sticky bottom-0 z-10 border-t bg-white/95 backdrop-blur px-3 py-2">
-                        <div className="flex items-center gap-2">
+                {/* Footer, pinned on mobile */}
+                <div className={cn(MOBILE_FORM_FOOTER, 'border-t bg-gray-50')}>
+                    <div className="flex flex-col-reverse gap-2 sm:flex-row">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => {
+                                resetForm();
+                                onClose?.();
+                            }}
+                            className="h-9 flex-1 sm:h-10"
+                        >
+                            Close
+                        </Button>
+                        {cartItems.length > 0 && (
                             <Button
                                 type="button"
                                 variant="outline"
                                 onClick={handleClearCart}
-                                className="h-9 px-3"
+                                className="h-9 flex-1 sm:hidden"
                             >
                                 Clear
                             </Button>
-                            <Button
-                                type="button"
-                                onClick={handleCompleteSale}
-                                disabled={isSubmitting}
-                                className="ml-auto h-9 bg-wine hover:bg-wine/90 text-white"
-                            >
-                                {isSubmitting ? 'Processing...' : `Pay ${formatCurrency(totals.total, currency)}`}
-                            </Button>
-                        </div>
+                        )}
+                        <Button
+                            type="button"
+                            onClick={handleCompleteSale}
+                            disabled={cartItems.length === 0 || isSubmitting}
+                            className="h-9 flex-1 bg-emerald-600 font-bold text-white hover:bg-emerald-700 sm:h-11"
+                        >
+                            <Check className="mr-2 hidden h-4 w-4 sm:inline" />
+                            {isSubmitting ? 'Processing...' : cartItems.length > 0 ? `Pay ${formatCurrency(totals.total, currency)}` : 'Complete Sale'}
+                        </Button>
                     </div>
-                )}
-
-                {/* Footer Actions */}
-                <div className="border-t bg-gray-50 p-4 flex gap-2 sm:flex-row flex-col-reverse">
-                    <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => {
-                            resetForm();
-                            onClose?.();
-                        }}
-                        className="flex-1"
-                    >
-                        Close
-                    </Button>
-                    <Button
-                        type="button"
-                        onClick={handleCompleteSale}
-                        disabled={cartItems.length === 0 || isSubmitting}
-                        className="flex-1 bg-wine hover:bg-wine/90 text-white font-bold h-11 text-lg"
-                    >
-                        <Check className="w-4 h-4 mr-2" />
-                        {isSubmitting ? 'Processing...' : 'Complete Sale (Shift+Enter)'}
-                    </Button>
                 </div>
             </Card>
         </div>

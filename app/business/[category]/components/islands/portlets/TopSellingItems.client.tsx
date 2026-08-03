@@ -1,10 +1,12 @@
 'use client';
 
 import { memo, useMemo } from 'react';
+import { CHART_PALETTE } from '@/lib/theme/brandTokens';
 import { Portlet } from '@/components/ui/portlet';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { TrendingUp } from 'lucide-react';
+import { useChartDimensions } from '@/lib/hooks/useChartDimensions';
 
 interface ProductSalesItem {
     name: string;
@@ -17,12 +19,14 @@ interface TopSellingItemsProps {
     isLoading?: boolean;
 }
 
-const COLORS = ['#2F5BFF', '#1738A5', '#334155', '#64748b', '#10b981', '#c69214'];
+const COLORS = CHART_PALETTE;
 
 export const TopSellingItems = memo(function TopSellingItems({
     data = [],
     isLoading = false
 }: TopSellingItemsProps) {
+
+    const { containerRef, isReady } = useChartDimensions(200, 280, 50);
 
     // Sort and take top 5 for the chart to keep it clean, others grouped?
     // For now just taking top 5
@@ -52,21 +56,22 @@ export const TopSellingItems = memo(function TopSellingItems({
             isLoading={isLoading}
             className="h-full"
         >
-            <div className="h-[280px] w-full mt-6 relative">
+            <div ref={containerRef} className="h-[280px] w-full mt-6 relative">
                 {/* Center KPI */}
                 <div className="absolute left-1/2 top-[45%] -translate-x-1/2 -translate-y-1/2 flex flex-col items-center justify-center pointer-events-none pb-6">
-                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em]">Total Units</span>
-                    <span className="text-2xl font-black text-slate-900 leading-none mt-1">
+                    <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-[0.15em]">Total Units</span>
+                    <span className="text-2xl font-semibold text-slate-900 leading-none mt-1">
                         {totalUnits.toLocaleString()}
                     </span>
-                    <div className="flex items-center gap-1 mt-1 text-[9px] font-bold text-emerald-500 uppercase">
+                    <div className="flex items-center gap-1 mt-1 text-[10px] font-bold text-emerald-500 uppercase">
                         <TrendingUp className="w-2.5 h-2.5" />
                         <span>Top 5 Items</span>
                     </div>
                 </div>
 
-                <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
+                {isReady ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
                         <Pie
                             data={chartData}
                             cx="50%"
@@ -106,7 +111,7 @@ export const TopSellingItems = memo(function TopSellingItems({
                             iconType="circle"
                             iconSize={6}
                             formatter={(value: string) => (
-                                <span className="text-[9px] font-black text-slate-600 uppercase tracking-tight">
+                                <span className="text-[10px] font-semibold text-slate-600 uppercase tracking-tight">
                                     {value.length > 12 ? `${value.substring(0, 12)}...` : value}
                                 </span>
                             )}
@@ -117,6 +122,11 @@ export const TopSellingItems = memo(function TopSellingItems({
                         />
                     </PieChart>
                 </ResponsiveContainer>
+                ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                        <div className="w-full h-full animate-pulse bg-slate-100 rounded-lg" />
+                    </div>
+                )}
             </div>
             {data.length === 0 && !isLoading && (
                 <div className="absolute inset-0 flex items-center justify-center bg-white/50 z-10">

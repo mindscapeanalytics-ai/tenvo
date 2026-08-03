@@ -3,14 +3,22 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    RotateCcw, Search, Receipt, AlertTriangle, CheckCircle,
-    Package, CreditCard, Banknote, Hash, Clock, ChevronRight,
-    Minus, Plus, ArrowLeft, ShieldCheck, XCircle
+    RotateCcw, Search, Receipt, CheckCircle,
+    Package, CreditCard, Banknote, Hash,
+    Minus, Plus, ArrowLeft, ShieldCheck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useBusiness } from '@/lib/context/BusinessContext';
-import { refundPosTransactionAction, getPosRefundsAction, getPosTransactionLookupAction } from '@/lib/actions/standard/posRefund';
+import {
+    refundPosTransactionAction,
+    getPosRefundsAction,
+    getPosTransactionLookupAction,
+    getRecentPosTransactionsForRefundAction,
+} from '@/lib/actions/standard/posRefund';
 import toast from 'react-hot-toast';
+import { MobileTabHeader, MobileStatStrip } from '@/components/mobile/MobileTabHeader';
+import { useStorefrontEmbedded } from '@/lib/context/StorefrontMobileContext';
+import { formatCurrency } from '@/lib/currency';
 
 // ===============================================================
 // REASON CODES
@@ -21,15 +29,20 @@ const REFUND_REASONS = [
     { key: 'wrong_item', label: 'Wrong Item', icon: '🔄' },
     { key: 'customer_dissatisfied', label: 'Customer Dissatisfied', icon: '😞' },
     { key: 'price_error', label: 'Price Error', icon: '💲' },
-    { key: 'duplicate_charge', label: 'Duplicate Charge', icon: '[CLIPBOARD]' },
+    { key: 'duplicate_charge', label: 'Duplicate Charge', icon: '📋' },
     { key: 'other', label: 'Other', icon: '📝' },
 ];
+
+function money(n) {
+    const x = Number(n);
+    return Number.isFinite(x) ? x : 0;
+}
 
 // ===============================================================
 // REFUND HISTORY CARD
 // ===============================================================
 
-function RefundHistoryCard({ refund, currency }) {
+function RefundHistoryCard({ refund, formatMoney }) {
     return (
         <div className="bg-white rounded-xl border border-gray-100 p-3 hover:shadow-sm transition-all">
             <div className="flex items-center justify-between mb-2">
@@ -38,15 +51,19 @@ function RefundHistoryCard({ refund, currency }) {
                         <RotateCcw className="w-4 h-4 text-red-500" />
                     </div>
                     <div>
-                        <p className="text-xs font-black text-gray-900">{refund.refund_number}</p>
-                        <p className="text-[9px] text-gray-400">from {refund.transaction_number}</p>
+                        <p className="text-xs font-semibold text-gray-900">{refund.refund_number}</p>
+                        <p className="text-[10px] text-gray-400">from {refund.transaction_number}</p>
                     </div>
                 </div>
                 <div className="text-right">
-                    <p className="text-sm font-black text-red-600">-{currency} {Number(refund.total_amount).toLocaleString()}</p>
+                    <p className="text-sm font-semibold text-red-600 tabular-nums">
+                        -{formatMoney(refund.total_amount)}
+                    </p>
                     <span className={cn(
-                        'text-[8px] px-1.5 py-0.5 rounded-full font-bold uppercase',
-                        refund.refund_type === 'full' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'
+                        'text-[10px] px-1.5 py-0.5 rounded-full font-bold uppercase',
+                        String(refund.refund_type || '').toLowerCase() === 'full'
+                            ? 'bg-red-100 text-red-700'
+                            : 'bg-amber-100 text-amber-700'
                     )}>
                         {refund.refund_type}
                     </span>
@@ -54,8 +71,8 @@ function RefundHistoryCard({ refund, currency }) {
             </div>
             <div className="flex items-center gap-3 text-[10px] text-gray-400">
                 {refund.reason && <span>💬 {refund.reason}</span>}
-                <span>* {refund.refund_method}</span>
-                <span>* {new Date(refund.created_at).toLocaleDateString()}</span>
+                <span>· {refund.refund_method}</span>
+                <span>· {refund.created_at ? new Date(refund.created_at).toLocaleDateString() : '—'}</span>
             </div>
         </div>
     );
@@ -66,29 +83,62 @@ function RefundHistoryCard({ refund, currency }) {
 // ===============================================================
 
 export function PosRefundPanel({ businessId }) {
-    const { business, currencySymbol } = useBusiness();
+    const { business, currency: businessCurrency, currencySymbol } = useBusiness();
     const effectiveBusinessId = businessId || business?.id;
+    const currencyCode = businessCurrency || 'PKR';
     const currency = currencySymbol || 'Rs.';
+
+    const formatMoney = useCallback(
+        (amount) => {
+            try {
+                return formatCurrency(money(amount), currencyCode);
+            } catch {
+                return `${currency} ${money(amount).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+            }
+        },
+        [currency, currencyCode]
+    );
 
     // State
     const [view, setView] = useState('history'); // history | lookup | process
     const [refunds, setRefunds] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState(null);
+    const [recentSales, setRecentSales] = useState([]);
     const [transactionId, setTransactionId] = useState('');
+    const [lookupAttempted, setLookupAttempted] = useState(false);
     const [selectedTx, setSelectedTx] = useState(null);
     const [refundItems, setRefundItems] = useState([]);
     const [reason, setReason] = useState('');
     const [refundMethod, setRefundMethod] = useState('cash');
     const [isProcessing, setIsProcessing] = useState(false);
 
+    const kpi = useMemo(() => {
+        const totalRefunded = refunds.reduce((s, r) => s + money(r.total_amount), 0);
+        const partialCount = refunds.filter(
+            (r) => String(r.refund_type || '').toLowerCase() === 'partial'
+        ).length;
+        return { count: refunds.length, totalRefunded, partialCount };
+    }, [refunds]);
+
     // Load refund history
     const loadRefunds = useCallback(async () => {
         if (!effectiveBusinessId) return;
+        setLoading(true);
+        setLoadError(null);
         try {
             const result = await getPosRefundsAction(effectiveBusinessId);
-            if (result.success) setRefunds(result.refunds || []);
+            if (result.success) {
+                setRefunds(result.refunds || []);
+            } else {
+                setRefunds([]);
+                setLoadError(result.error || 'Could not load refund history');
+                toast.error(result.error || 'Could not load refund history');
+            }
         } catch (err) {
             console.error('[Refund] Load failed:', err);
+            setLoadError(err.message || 'Load failed');
+            toast.error('Could not load refunds');
         } finally {
             setLoading(false);
         }
@@ -96,8 +146,24 @@ export function PosRefundPanel({ businessId }) {
 
     useEffect(() => { loadRefunds(); }, [loadRefunds]);
 
-    const handleLookup = async () => {
-        if (!transactionId.trim()) {
+    const loadRecentSales = useCallback(async () => {
+        if (!effectiveBusinessId) return;
+        try {
+            const res = await getRecentPosTransactionsForRefundAction(effectiveBusinessId, 15);
+            if (res.success) setRecentSales(res.transactions || []);
+            else setRecentSales([]);
+        } catch {
+            setRecentSales([]);
+        }
+    }, [effectiveBusinessId]);
+
+    useEffect(() => {
+        if (view === 'lookup') loadRecentSales();
+    }, [view, loadRecentSales]);
+
+    const handleLookup = async (overrideRef) => {
+        const ref = String(overrideRef ?? transactionId).trim();
+        if (!ref) {
             toast.error('Enter transaction ID or receipt number');
             return;
         }
@@ -107,16 +173,23 @@ export function PosRefundPanel({ businessId }) {
         }
 
         setIsProcessing(true);
+        setLookupAttempted(true);
         try {
-            const result = await getPosTransactionLookupAction(effectiveBusinessId, transactionId.trim());
+            const result = await getPosTransactionLookupAction(effectiveBusinessId, ref);
             if (!result.success || !result.transaction) {
                 toast.error(result.error || 'Transaction not found');
+                return;
+            }
+
+            if (!result.transaction.items?.length) {
+                toast.error('This sale has no line items to refund');
                 return;
             }
 
             setSelectedTx(result.transaction);
             setRefundItems([]);
             setView('process');
+            setLookupAttempted(false);
         } catch (error) {
             toast.error('Failed to lookup transaction');
         } finally {
@@ -129,8 +202,23 @@ export function PosRefundPanel({ businessId }) {
         setRefundItems(prev => {
             const existing = prev.find(ri => ri.productId === item.productId);
             if (existing) return prev.filter(ri => ri.productId !== item.productId);
-            return [...prev, { ...item, refundQty: item.quantity, restock: true }];
+            const qty = Math.max(1, money(item.quantity));
+            const unitPrice = money(item.unitPrice);
+            return [...prev, { ...item, quantity: qty, unitPrice, refundQty: qty, restock: true }];
         });
+    };
+
+    const selectAllLineItems = () => {
+        if (!selectedTx?.items?.length) return;
+        setRefundItems(
+            selectedTx.items.map((item) => ({
+                ...item,
+                quantity: Math.max(1, money(item.quantity)),
+                unitPrice: money(item.unitPrice),
+                refundQty: Math.max(1, money(item.quantity)),
+                restock: true,
+            }))
+        );
     };
 
     // Update refund quantity
@@ -138,8 +226,10 @@ export function PosRefundPanel({ businessId }) {
         setRefundItems(prev => prev.map(ri => {
             if (ri.productId !== productId) return ri;
             const origItem = selectedTx.items.find(i => i.productId === productId);
-            const newQty = Math.max(1, Math.min(origItem.quantity, ri.refundQty + delta));
-            return { ...ri, refundQty: newQty };
+            if (!origItem) return ri;
+            const maxQ = Math.max(1, money(origItem.quantity));
+            const next = Math.max(1, Math.min(maxQ, money(ri.refundQty) + delta));
+            return { ...ri, refundQty: next };
         }));
     };
 
@@ -151,9 +241,14 @@ export function PosRefundPanel({ businessId }) {
     };
 
     // Calculate refund amount
-    const refundTotal = useMemo(() =>
-        refundItems.reduce((sum, ri) => sum + (ri.refundQty * ri.unitPrice), 0),
-        [refundItems]);
+    const refundTotal = useMemo(
+        () =>
+            refundItems.reduce(
+                (sum, ri) => sum + money(ri.refundQty) * money(ri.unitPrice),
+                0
+            ),
+        [refundItems]
+    );
 
     // Process refund
     const handleProcessRefund = async () => {
@@ -169,15 +264,15 @@ export function PosRefundPanel({ businessId }) {
                 items: refundItems.map(ri => ({
                     productId: ri.productId,
                     productName: ri.productName,
-                    quantity: ri.refundQty,
-                    unitPrice: ri.unitPrice,
-                    refundAmount: ri.refundQty * ri.unitPrice,
+                    quantity: money(ri.refundQty),
+                    unitPrice: money(ri.unitPrice),
+                    refundAmount: money(ri.refundQty) * money(ri.unitPrice),
                     restock: ri.restock,
                 })),
             });
 
             if (result.success) {
-                toast.success(`Refund ${result.refund.refund_number} processed!`, { icon: '[OK]' });
+                toast.success(`Refund ${result.refund.refund_number} processed`);
                 setView('history');
                 setSelectedTx(null);
                 setRefundItems([]);
@@ -193,23 +288,93 @@ export function PosRefundPanel({ businessId }) {
         }
     };
 
+    const embeddedInStorefront = useStorefrontEmbedded();
+
     return (
-        <div className="space-y-4">
-            {/* Header */}
-            <div className="flex items-center justify-between">
+        <div className="space-y-2 lg:space-y-4">
+            {!embeddedInStorefront && (
+                <MobileTabHeader
+                    icon={RotateCcw}
+                    iconClassName="bg-red-100 text-red-600"
+                    title="Refunds & Returns"
+                    subtitle={`${kpi.count} processed`}
+                    primaryAction={
+                        view === 'history'
+                            ? {
+                                label: 'New',
+                                icon: RotateCcw,
+                                className: 'bg-red-500 hover:bg-red-600 text-white',
+                                onClick: () => {
+                                    setTransactionId('');
+                                    setLookupAttempted(false);
+                                    setView('lookup');
+                                },
+                            }
+                            : undefined
+                    }
+                    actions={
+                        view !== 'history'
+                            ? [{ id: 'history', label: 'History', onClick: () => setView('history') }]
+                            : []
+                    }
+                />
+            )}
+
+            <div className="lg:hidden">
+                <MobileStatStrip
+                    items={[
+                        { label: 'Refunds', value: loading ? '…' : kpi.count },
+                        { label: 'Total', value: loading ? '…' : formatMoney(kpi.totalRefunded), valueTone: 'text-red-600' },
+                        { label: 'Partial', value: loading ? '…' : kpi.partialCount, valueTone: 'text-amber-600' },
+                    ]}
+                />
+                {embeddedInStorefront && (
+                    <div className="mt-1.5 flex justify-end gap-1">
+                        {view === 'history' ? (
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setTransactionId('');
+                                    setLookupAttempted(false);
+                                    setView('lookup');
+                                }}
+                                className="rounded-lg bg-red-500 px-2.5 py-1 text-[10px] font-bold text-white"
+                            >
+                                New refund
+                            </button>
+                        ) : (
+                            <button
+                                type="button"
+                                onClick={() => setView('history')}
+                                className="rounded-lg border border-gray-200 px-2.5 py-1 text-[10px] font-bold text-gray-600"
+                            >
+                                History
+                            </button>
+                        )}
+                    </div>
+                )}
+            </div>
+
+            {/* Desktop header */}
+            <div className="hidden items-center justify-between lg:flex">
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-red-500 to-rose-600 flex items-center justify-center">
                         <RotateCcw className="w-5 h-5 text-white" />
                     </div>
                     <div>
-                        <h2 className="text-lg font-black text-gray-900">POS Refunds</h2>
+                        <h2 className="text-lg font-semibold text-gray-900">POS Refunds</h2>
                         <p className="text-xs text-gray-400">Process returns · Restock · GL reversal</p>
                     </div>
                 </div>
                 {view === 'history' && (
                     <button
-                        onClick={() => setView('lookup')}
-                        className="flex items-center gap-1.5 px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-xs font-black rounded-xl transition-all shadow-lg shadow-red-200"
+                        type="button"
+                        onClick={() => {
+                            setTransactionId('');
+                            setLookupAttempted(false);
+                            setView('lookup');
+                        }}
+                        className="flex items-center gap-1.5 px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-xs font-semibold rounded-xl transition-all shadow-lg shadow-red-200"
                     >
                         <RotateCcw className="w-3.5 h-3.5" />
                         New Refund
@@ -217,7 +382,13 @@ export function PosRefundPanel({ businessId }) {
                 )}
                 {view !== 'history' && (
                     <button
-                        onClick={() => { setView('history'); setSelectedTx(null); }}
+                        type="button"
+                        onClick={() => {
+                            setView('history');
+                            setSelectedTx(null);
+                            setLookupAttempted(false);
+                            setTransactionId('');
+                        }}
                         className="flex items-center gap-1 px-3 py-2 text-xs font-bold text-gray-500 hover:text-gray-700"
                     >
                         <ArrowLeft className="w-3.5 h-3.5" />
@@ -226,28 +397,44 @@ export function PosRefundPanel({ businessId }) {
                 )}
             </div>
 
-            {/* KPIs */}
-            <div className="grid grid-cols-3 gap-3">
+            {/* Desktop KPIs */}
+            <div className="hidden grid-cols-3 gap-3 lg:grid">
                 <div className="bg-red-50 border border-red-100 rounded-xl p-3">
                     <RotateCcw className="w-4 h-4 text-red-400 mb-1" />
-                    <p className="text-xl font-black text-red-600">{refunds.length}</p>
+                    <p className="text-xl font-semibold text-red-600">{loading ? '…' : kpi.count}</p>
                     <p className="text-[10px] font-bold text-red-400">Total Refunds</p>
+                    {!loading && kpi.count === 0 && (
+                        <p className="text-[10px] text-red-300 mt-1 leading-tight">No refunds in this workspace yet</p>
+                    )}
                 </div>
                 <div className="bg-amber-50 border border-amber-100 rounded-xl p-3">
                     <Receipt className="w-4 h-4 text-amber-400 mb-1" />
-                    <p className="text-xl font-black text-amber-600">
-                        {currency} {refunds.reduce((s, r) => s + Number(r.total_amount || 0), 0).toLocaleString()}
+                    <p className="text-xl font-semibold text-amber-600 tabular-nums">
+                        {loading ? '…' : formatMoney(kpi.totalRefunded)}
                     </p>
                     <p className="text-[10px] font-bold text-amber-400">Total Refunded</p>
                 </div>
                 <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3">
                     <Package className="w-4 h-4 text-emerald-400 mb-1" />
-                    <p className="text-xl font-black text-emerald-600">
-                        {refunds.filter(r => r.refund_type === 'partial').length}
+                    <p className="text-xl font-semibold text-emerald-600">
+                        {loading ? '…' : kpi.partialCount}
                     </p>
                     <p className="text-[10px] font-bold text-emerald-400">Partial Refunds</p>
                 </div>
             </div>
+
+            {loadError && view === 'history' && (
+                <div className="flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900">
+                    <span className="font-medium">{loadError}</span>
+                    <button
+                        type="button"
+                        onClick={() => loadRefunds()}
+                        className="shrink-0 font-bold text-amber-800 underline-offset-2 hover:underline"
+                    >
+                        Retry
+                    </button>
+                </div>
+            )}
 
             <AnimatePresence mode="wait">
                 {/* --- LOOKUP VIEW ----------------------------- */}
@@ -255,25 +442,71 @@ export function PosRefundPanel({ businessId }) {
                     <motion.div key="lookup" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
                         className="bg-white rounded-xl border border-gray-200 p-6 space-y-4"
                     >
-                        <h3 className="text-sm font-black text-gray-900">Find Transaction</h3>
-                        <p className="text-xs text-gray-400">Enter the transaction ID or scan the receipt barcode</p>
+                        <div>
+                            <h3 className="text-sm font-semibold text-gray-900">Find transaction</h3>
+                            <p className="text-xs text-gray-500 mt-1">
+                                Search by receipt number (e.g. <span className="font-mono text-gray-700">POS-000123</span>) or paste the transaction UUID from POS history.
+                            </p>
+                        </div>
+
+                        {recentSales.length > 0 && (
+                            <div className="space-y-2">
+                                <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Recent sales</p>
+                                <div className="flex flex-wrap gap-2">
+                                    {recentSales.map((tx) => (
+                                        <button
+                                            key={tx.id}
+                                            type="button"
+                                            disabled={isProcessing}
+                                            onClick={() => {
+                                                setTransactionId(tx.transactionNumber || tx.transaction_number || tx.id);
+                                                handleLookup(tx.transactionNumber || tx.transaction_number || tx.id);
+                                            }}
+                                            className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-left text-xs font-bold text-gray-800 transition hover:border-red-200 hover:bg-red-50 disabled:opacity-50"
+                                        >
+                                            <Receipt className="w-3.5 h-3.5 shrink-0 text-gray-400" />
+                                            <span className="font-mono">{tx.transactionNumber || tx.transaction_number}</span>
+                                            <span className="text-[10px] font-semibold text-gray-500 tabular-nums">
+                                                {formatMoney(tx.totalAmount ?? tx.total_amount)}
+                                            </span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
                         <div className="flex gap-2">
                             <div className="relative flex-1">
                                 <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" />
                                 <input
-                                    type="text"
-                                    placeholder="Transaction ID or Receipt #..."
+                                    type="search"
+                                    enterKeyHint="search"
+                                    placeholder="Receipt # or transaction ID…"
                                     value={transactionId}
-                                    onChange={e => setTransactionId(e.target.value)}
-                                    onKeyDown={e => e.key === 'Enter' && handleLookup()}
-                                    className="w-full pl-9 pr-3 py-3 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-red-200 focus:border-red-400 outline-none"
+                                    onChange={(e) => {
+                                        setTransactionId(e.target.value);
+                                        setLookupAttempted(false);
+                                    }}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                            e.preventDefault();
+                                            handleLookup();
+                                        }
+                                    }}
+                                    className={cn(
+                                        'w-full pl-9 pr-3 py-3 text-sm rounded-xl border outline-none transition-shadow',
+                                        'border-gray-200 focus:border-slate-400 focus:ring-2 focus:ring-slate-200',
+                                        lookupAttempted && !transactionId.trim() && 'border-amber-300 bg-amber-50/30'
+                                    )}
+                                    autoComplete="off"
                                     autoFocus
                                 />
                             </div>
                             <button
-                                onClick={handleLookup}
+                                type="button"
+                                onClick={() => handleLookup()}
                                 disabled={isProcessing}
-                                className="px-5 py-3 bg-red-500 hover:bg-red-600 text-white text-xs font-black rounded-xl transition-all"
+                                className="shrink-0 px-5 py-3 bg-red-500 hover:bg-red-600 text-white text-xs font-semibold rounded-xl transition-all disabled:opacity-60"
                             >
                                 {isProcessing ? (
                                     <span className="inline-block w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
@@ -294,14 +527,25 @@ export function PosRefundPanel({ businessId }) {
                         <div className="bg-white rounded-xl border border-gray-200 p-4">
                             <div className="flex items-center justify-between mb-3">
                                 <div>
-                                    <p className="text-sm font-black text-gray-900">Transaction {selectedTx.transaction_number}</p>
-                                    <p className="text-[10px] text-gray-400">Original total: {currency} {Number(selectedTx.total_amount).toLocaleString()}</p>
+                                    <p className="text-sm font-semibold text-gray-900">Transaction {selectedTx.transaction_number}</p>
+                                    <p className="text-[10px] text-gray-400">
+                                        Original total: {formatMoney(selectedTx.total_amount)}
+                                    </p>
                                 </div>
-                                <span className="text-[9px] px-2 py-0.5 bg-brand-50 text-brand-primary rounded-full font-bold">ORIGINAL</span>
+                                <span className="text-[10px] px-2 py-0.5 bg-brand-50 text-brand-primary rounded-full font-bold">ORIGINAL</span>
                             </div>
 
                             {/* Item Selection */}
-                            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">Select Items to Refund</p>
+                            <div className="flex items-center justify-between gap-2 mb-2">
+                                <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Select items to refund</p>
+                                <button
+                                    type="button"
+                                    onClick={selectAllLineItems}
+                                    className="text-[10px] font-bold text-red-600 hover:text-red-700 underline-offset-2 hover:underline"
+                                >
+                                    Select all lines
+                                </button>
+                            </div>
                             <div className="space-y-2">
                                 {selectedTx.items.map(item => {
                                     const isSelected = refundItems.some(ri => ri.productId === item.productId);
@@ -323,26 +567,35 @@ export function PosRefundPanel({ businessId }) {
                                             </div>
                                             <div className="flex-1">
                                                 <p className="text-sm font-bold text-gray-800">{item.productName}</p>
-                                                <p className="text-[10px] text-gray-400">{item.quantity}x @ {currency} {item.unitPrice.toLocaleString()}</p>
+                                                <p className="text-[10px] text-gray-400">
+                                                    {money(item.quantity)}× @ {formatMoney(item.unitPrice)}
+                                                </p>
                                             </div>
 
                                             {isSelected && ri && (
                                                 <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
                                                     <div className="flex items-center gap-1">
-                                                        <button onClick={() => updateRefundQty(item.productId, -1)}
-                                                            className="w-6 h-6 rounded-md bg-white border flex items-center justify-center">
-                                                            <Minus className="w-3 h-3 text-gray-500" />
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => updateRefundQty(item.productId, -1)}
+                                                            className="w-6 h-6 rounded-md border border-emerald-700 flex items-center justify-center bg-emerald-600 hover:bg-emerald-700 text-white"
+                                                        >
+                                                            <Minus className="w-3 h-3 text-white" />
                                                         </button>
-                                                        <span className="w-6 text-center text-xs font-black">{ri.refundQty}</span>
-                                                        <button onClick={() => updateRefundQty(item.productId, 1)}
-                                                            className="w-6 h-6 rounded-md bg-white border flex items-center justify-center">
-                                                            <Plus className="w-3 h-3 text-gray-500" />
+                                                        <span className="w-6 text-center text-xs font-semibold">{ri.refundQty}</span>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => updateRefundQty(item.productId, 1)}
+                                                            className="w-6 h-6 rounded-md border border-emerald-700 flex items-center justify-center bg-emerald-600 hover:bg-emerald-700 text-white"
+                                                        >
+                                                            <Plus className="w-3 h-3 text-white" />
                                                         </button>
                                                     </div>
                                                     <button
+                                                        type="button"
                                                         onClick={() => toggleRestock(item.productId)}
                                                         className={cn(
-                                                            'text-[9px] px-2 py-1 rounded-lg font-bold transition-colors',
+                                                            'text-[10px] px-2 py-1 rounded-lg font-bold transition-colors',
                                                             ri.restock ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-200 text-gray-500'
                                                         )}
                                                     >
@@ -351,8 +604,12 @@ export function PosRefundPanel({ businessId }) {
                                                 </div>
                                             )}
 
-                                            <span className="text-sm font-bold text-gray-600 w-20 text-right">
-                                                {currency} {(isSelected ? ri.refundQty * ri.unitPrice : item.quantity * item.unitPrice).toLocaleString()}
+                                            <span className="text-sm font-bold text-gray-600 w-28 text-right tabular-nums">
+                                                {formatMoney(
+                                                    isSelected
+                                                        ? money(ri.refundQty) * money(ri.unitPrice)
+                                                        : money(item.quantity) * money(item.unitPrice)
+                                                )}
                                             </span>
                                         </div>
                                     );
@@ -367,6 +624,7 @@ export function PosRefundPanel({ businessId }) {
                                 <div className="grid grid-cols-2 gap-1.5">
                                     {REFUND_REASONS.map(r => (
                                         <button
+                                            type="button"
                                             key={r.key}
                                             onClick={() => setReason(r.key)}
                                             className={cn(
@@ -392,6 +650,7 @@ export function PosRefundPanel({ businessId }) {
                                         { key: 'store_credit', label: 'Store Credit', icon: Receipt },
                                     ].map(m => (
                                         <button
+                                            type="button"
                                             key={m.key}
                                             onClick={() => setRefundMethod(m.key)}
                                             className={cn(
@@ -414,21 +673,24 @@ export function PosRefundPanel({ businessId }) {
                             <div className="flex items-center justify-between mb-3">
                                 <div>
                                     <p className="text-xs font-bold text-red-600 uppercase">Refund Summary</p>
-                                    <p className="text-[10px] text-red-400">{refundItems.length} item(s) selected * {refundItems.filter(ri => ri.restock).length} to restock</p>
+                                    <p className="text-[10px] text-red-400">{refundItems.length} item(s) selected · {refundItems.filter(ri => ri.restock).length} to restock</p>
                                 </div>
-                                <p className="text-xl font-black text-red-700">{currency} {refundTotal.toLocaleString()}</p>
+                                <p className="text-xl font-semibold text-red-700 tabular-nums">
+                                    {formatMoney(refundTotal)}
+                                </p>
                             </div>
                             <button
+                                type="button"
                                 onClick={handleProcessRefund}
                                 disabled={refundItems.length === 0 || !reason || isProcessing}
-                                className="w-full py-3 bg-red-600 hover:bg-red-700 text-white text-sm font-black rounded-xl transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                                className="w-full py-3 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-xl transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                             >
                                 {isProcessing ? (
                                     <span className="animate-spin">⏳</span>
                                 ) : (
                                     <>
                                         <ShieldCheck className="w-4 h-4" />
-                                        Process Refund -- {currency} {refundTotal.toLocaleString()}
+                                        Process refund · {formatMoney(refundTotal)}
                                     </>
                                 )}
                             </button>
@@ -439,15 +701,22 @@ export function PosRefundPanel({ businessId }) {
                 {/* --- HISTORY VIEW ---------------------------- */}
                 {view === 'history' && (
                     <motion.div key="history" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-2">
-                        {refunds.length === 0 ? (
+                        {loading ? (
+                            <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+                                <span className="mb-3 inline-block h-8 w-8 animate-spin rounded-full border-2 border-gray-200 border-t-red-500" />
+                                <p className="text-sm font-bold">Loading refund history…</p>
+                            </div>
+                        ) : refunds.length === 0 ? (
                             <div className="text-center py-16 text-gray-400">
                                 <RotateCcw className="w-12 h-12 mx-auto mb-3 opacity-20" />
                                 <p className="text-sm font-bold">No refunds processed yet</p>
-                                <p className="text-xs mt-1">Use "New Refund" to process a return</p>
+                                <p className="text-xs mt-1 max-w-sm mx-auto leading-relaxed">
+                                    KPIs show totals for this business. Start a return with <span className="font-semibold text-gray-600">New refund</span>, then pick a recent sale or enter the receipt number from the printed ticket.
+                                </p>
                             </div>
                         ) : (
-                            refunds.map(refund => (
-                                <RefundHistoryCard key={refund.id} refund={refund} currency={currency} />
+                            refunds.map((refund) => (
+                                <RefundHistoryCard key={refund.id} refund={refund} formatMoney={formatMoney} />
                             ))
                         )}
                     </motion.div>

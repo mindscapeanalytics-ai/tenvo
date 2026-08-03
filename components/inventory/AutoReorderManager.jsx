@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { RefreshCw, Package, AlertTriangle, CheckCircle2, Clock } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { RefreshCw, Package, AlertTriangle, CheckCircle2, ShoppingCart, TrendingDown, Boxes, DollarSign } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { formatCurrency } from '@/lib/currency';
+import { InventoryErrorCard } from './InventoryErrorBoundary';
 
 /**
  * AutoReorderManager Component
@@ -25,13 +25,19 @@ export function AutoReorderManager({
 }) {
   const [reorderSuggestions, setReorderSuggestions] = useState([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   // Calculate reorder suggestions
-  useEffect(() => {
-    const toNumber = (value) => {
-      const parsed = Number(value);
-      return Number.isFinite(parsed) ? parsed : 0;
-    };
+  const calculateSuggestions = useCallback(() => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const toNumber = (value) => {
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : 0;
+      };
 
     const suggestions = products
       .map((product) => {
@@ -89,52 +95,17 @@ export function AutoReorderManager({
       });
 
     setReorderSuggestions(suggestions);
+    } catch (err) {
+      console.error('[AutoReorderManager] Calculation error:', err);
+      setError(err.message || 'Failed to calculate reorder suggestions');
+    } finally {
+      setLoading(false);
+    }
   }, [products]);
 
-  const handleGeneratePO = async (suggestion) => {
-    setIsProcessing(true);
-    try {
-      if (onGeneratePO) {
-        await onGeneratePO({
-          productId: suggestion.productId,
-          quantity: suggestion.suggestedQuantity,
-          vendorId: suggestion.vendorId,
-          estimatedCost: suggestion.estimatedCost,
-        });
-      }
-      // Remove from suggestions after PO is generated
-      setReorderSuggestions(prev => prev.filter(s => s.productId !== suggestion.productId));
-    } catch (error) {
-      console.error('Error generating PO:', error);
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const handleGenerateAllPOs = async () => {
-    if (!confirm(`Generate purchase orders for ${reorderSuggestions.length} products?`)) {
-      return;
-    }
-
-    setIsProcessing(true);
-    try {
-      for (const suggestion of reorderSuggestions) {
-        if (onGeneratePO) {
-          await onGeneratePO({
-            productId: suggestion.productId,
-            quantity: suggestion.suggestedQuantity,
-            vendorId: suggestion.vendorId,
-            estimatedCost: suggestion.estimatedCost,
-          });
-        }
-      }
-      setReorderSuggestions([]);
-    } catch (error) {
-      console.error('Error generating POs:', error);
-    } finally {
-      setIsProcessing(false);
-    }
-  };
+  useEffect(() => {
+    calculateSuggestions();
+  }, [calculateSuggestions]);
 
   const getUrgencyColor = (urgency) => {
     switch (urgency) {
@@ -152,137 +123,228 @@ export function AutoReorderManager({
   const criticalCount = reorderSuggestions.filter(s => s.urgency === 'critical').length;
   const totalEstimatedCost = reorderSuggestions.reduce((sum, s) => sum + s.estimatedCost, 0);
 
+  // Handle generate PO error
+  const handleGeneratePO = async (suggestion) => {
+    setIsProcessing(true);
+    try {
+      if (onGeneratePO) {
+        await onGeneratePO({
+          productId: suggestion.productId,
+          quantity: suggestion.suggestedQuantity,
+          vendorId: suggestion.vendorId,
+          estimatedCost: suggestion.estimatedCost,
+        });
+      }
+      // Remove from suggestions after PO is generated
+      setReorderSuggestions(prev => prev.filter(s => s.productId !== suggestion.productId));
+    } catch (err) {
+      console.error('Error generating PO:', err);
+      setError(err.message || 'Failed to generate purchase order');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleGenerateAllPOs = async () => {
+    const { default: toast } = await import('react-hot-toast');
+    const confirmed = await new Promise((resolve) => {
+      toast(
+        (t) => (
+          <div className="flex flex-col gap-2">
+            <p className="font-semibold text-sm">Generate {reorderSuggestions.length} purchase order{reorderSuggestions.length !== 1 ? 's' : ''}?</p>
+            <div className="flex gap-2">
+              <button
+                className="px-3 py-1 text-xs bg-green-600 text-white rounded-lg font-bold hover:bg-green-700"
+                onClick={() => { toast.dismiss(t.id); resolve(true); }}
+              >Confirm</button>
+              <button
+                className="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded-lg font-bold hover:bg-gray-200"
+                onClick={() => { toast.dismiss(t.id); resolve(false); }}
+              >Cancel</button>
+            </div>
+          </div>
+        ),
+        { duration: Infinity }
+      );
+    });
+    if (!confirmed) return;
+
+    setIsProcessing(true);
+    setError(null);
+    try {
+      for (const suggestion of reorderSuggestions) {
+        if (onGeneratePO) {
+          await onGeneratePO({
+            productId: suggestion.productId,
+            quantity: suggestion.suggestedQuantity,
+            vendorId: suggestion.vendorId,
+            estimatedCost: suggestion.estimatedCost,
+          });
+        }
+      }
+      setReorderSuggestions([]);
+    } catch (err) {
+      console.error('Error generating POs:', err);
+      setError(err.message || 'Failed to generate some purchase orders');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-xl font-bold">Auto Reorder Manager</h3>
-          <p className="text-sm text-gray-500">Automatically generate purchase orders for low stock items</p>
-        </div>
-        {reorderSuggestions.length > 0 && (
+    <div className="p-6 space-y-6">
+      {/* Error Display */}
+      {error && (
+        <InventoryErrorCard 
+          error={error} 
+          onRetry={() => {
+            setError(null);
+            calculateSuggestions();
+          }}
+          onDismiss={() => setError(null)}
+        />
+      )}
+
+      {/* Toolbar */}
+      <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
+        <p className="min-w-0 text-sm text-gray-500">
+          {reorderSuggestions.length > 0
+            ? `${reorderSuggestions.length} product${reorderSuggestions.length !== 1 ? 's' : ''} need restocking`
+            : 'Monitoring all stock thresholds'}
+        </p>
+        <div className="flex flex-wrap gap-2 shrink-0">
           <Button
-            onClick={handleGenerateAllPOs}
-            disabled={isProcessing}
-            className="bg-green-600 hover:bg-green-700"
+            variant="outline"
+            size="sm"
+            onClick={() => { setError(null); calculateSuggestions(); }}
+            disabled={loading}
+            className="gap-2"
           >
-            <RefreshCw className={`w-4 h-4 mr-2 ${isProcessing ? 'animate-spin' : ''}`} />
-            Generate All POs
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
           </Button>
-        )}
+          {reorderSuggestions.length > 0 && (
+            <Button
+              onClick={handleGenerateAllPOs}
+              disabled={isProcessing}
+              size="sm"
+              className="gap-2 bg-green-600 hover:bg-green-700"
+            >
+              <ShoppingCart className={`w-4 h-4 ${isProcessing ? 'animate-pulse' : ''}`} />
+              Generate All POs
+            </Button>
+          )}
+        </div>
       </div>
 
-      {/* Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Items to Reorder</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{reorderSuggestions.length}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Critical Items</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">{criticalCount}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Total Quantity</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
+      {/* Summary, lightweight stat tiles, no nested cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="bg-gray-50 rounded-2xl p-4 flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-white shadow-sm flex items-center justify-center shrink-0">
+            <Boxes className="w-4 h-4 text-gray-500" />
+          </div>
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">To Reorder</p>
+            <p className="text-2xl font-semibold text-gray-900 leading-none mt-0.5">{reorderSuggestions.length}</p>
+          </div>
+        </div>
+        <div className="bg-red-50 rounded-2xl p-4 flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-white shadow-sm flex items-center justify-center shrink-0">
+            <AlertTriangle className="w-4 h-4 text-red-500" />
+          </div>
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-red-400">Critical</p>
+            <p className="text-2xl font-semibold text-red-600 leading-none mt-0.5">{criticalCount}</p>
+          </div>
+        </div>
+        <div className="bg-blue-50 rounded-2xl p-4 flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-white shadow-sm flex items-center justify-center shrink-0">
+            <TrendingDown className="w-4 h-4 text-blue-500" />
+          </div>
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-blue-400">Qty Needed</p>
+            <p className="text-2xl font-semibold text-blue-700 leading-none mt-0.5">
               {reorderSuggestions.reduce((sum, s) => sum + s.suggestedQuantity, 0)}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Estimated Cost</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(totalEstimatedCost, currency)}</div>
-          </CardContent>
-        </Card>
+            </p>
+          </div>
+        </div>
+        <div className="bg-emerald-50 rounded-2xl p-4 flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-white shadow-sm flex items-center justify-center shrink-0">
+            <DollarSign className="w-4 h-4 text-emerald-500" />
+          </div>
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Est. Cost</p>
+            <p className="text-lg font-semibold text-emerald-700 leading-none mt-0.5">{formatCurrency(totalEstimatedCost, currency)}</p>
+          </div>
+        </div>
       </div>
 
       {/* Reorder Suggestions */}
       {reorderSuggestions.length > 0 ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>Reorder Suggestions</CardTitle>
-            <CardDescription>
-              Products at or below configured restock thresholds
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {reorderSuggestions.map((suggestion) => {
-                const vendor = vendors.find(v => v.id === suggestion.vendorId);
-                return (
-                  <div
-                    key={suggestion.productId}
-                    className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50"
-                  >
-                    <div className="flex items-center gap-4 flex-1">
-                      <div className={`p-2 rounded ${getUrgencyColor(suggestion.urgency)}`}>
-                        {suggestion.urgency === 'critical' ? (
-                          <AlertTriangle className="w-5 h-5" />
-                        ) : (
-                          <Package className="w-5 h-5" />
-                        )}
-                      </div>
-                      <div className="flex-1">
-                        <div className="font-medium">{suggestion.productName}</div>
-                        <div className="text-sm text-gray-500">
-                          SKU: {suggestion.sku}
-                          {' * '}
-                          Current: {suggestion.currentStock}
-                          {' * '}
-                          Reorder Point: {suggestion.reorderPoint}
-                          {' * '}
-                          Suggested: {suggestion.suggestedQuantity}
-                        </div>
-                        {vendor && (
-                          <div className="text-xs text-gray-400 mt-1">
-                            Vendor: {vendor.name} * Lead Time: {suggestion.leadTime} days
-                          </div>
-                        )}
-                      </div>
-                      <div className="text-right">
-                        <div className="font-medium">{formatCurrency(suggestion.estimatedCost, currency)}</div>
-                        <Badge className={getUrgencyColor(suggestion.urgency)}>
-                          {suggestion.urgency}
-                        </Badge>
-                      </div>
-                    </div>
-                    <div className="ml-4">
-                      <Button
-                        onClick={() => handleGeneratePO(suggestion)}
-                        disabled={isProcessing}
-                        size="sm"
-                      >
-                        <RefreshCw className={`w-4 h-4 mr-2 ${isProcessing ? 'animate-spin' : ''}`} />
-                        Generate PO
-                      </Button>
-                    </div>
+        <div className="border border-gray-100 rounded-2xl overflow-hidden">
+          <div className="px-4 py-3 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
+            <p className="text-xs font-bold uppercase tracking-wider text-gray-500">Reorder Suggestions</p>
+            <p className="text-xs text-gray-400">Products at or below restock thresholds</p>
+          </div>
+          <div className="divide-y divide-gray-50">
+            {reorderSuggestions.map((suggestion) => {
+              const vendor = vendors.find(v => v.id === suggestion.vendorId);
+              return (
+                <div
+                  key={suggestion.productId}
+                  className="flex items-center gap-4 p-4 hover:bg-gray-50/60 transition-colors"
+                >
+                  <div className={`p-2 rounded-xl shrink-0 ${getUrgencyColor(suggestion.urgency)}`}>
+                    {suggestion.urgency === 'critical' ? (
+                      <AlertTriangle className="w-4 h-4" />
+                    ) : (
+                      <Package className="w-4 h-4" />
+                    )}
                   </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-sm text-gray-900 truncate">{suggestion.productName}</p>
+                    <p className="text-xs text-gray-500 mt-0.5 flex flex-wrap items-center gap-x-2">
+                      <span>SKU: {suggestion.sku}</span>
+                      <span className="text-gray-300">·</span>
+                      <span>Stock: <strong className="text-gray-700">{suggestion.currentStock}</strong></span>
+                      <span className="text-gray-300">·</span>
+                      <span>Reorder at: {suggestion.reorderPoint}</span>
+                      <span className="text-gray-300">·</span>
+                      <span>Order: <strong className="text-gray-700">{suggestion.suggestedQuantity}</strong></span>
+                    </p>
+                    {vendor && (
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        {vendor.name} &middot; {suggestion.leadTime}d lead time
+                      </p>
+                    )}
+                  </div>
+                  <div className="text-right shrink-0 flex flex-col items-end gap-1.5">
+                    <p className="font-semibold text-sm">{formatCurrency(suggestion.estimatedCost, currency)}</p>
+                    <Badge className={`text-[10px] capitalize ${getUrgencyColor(suggestion.urgency)}`}>
+                      {suggestion.urgency}
+                    </Badge>
+                  </div>
+                  <Button
+                    onClick={() => handleGeneratePO(suggestion)}
+                    disabled={isProcessing}
+                    size="sm"
+                    variant="outline"
+                    className="shrink-0 gap-1.5"
+                  >
+                    <ShoppingCart className="w-3.5 h-3.5" />
+                    PO
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       ) : (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <CheckCircle2 className="w-12 h-12 mx-auto mb-2 text-green-600" />
-            <p className="text-gray-600 font-medium">All products are well stocked!</p>
-            <p className="text-sm text-gray-500 mt-1">No reorder suggestions at this time.</p>
-          </CardContent>
-        </Card>
+        <div className="rounded-2xl bg-green-50/60 border border-green-100 py-10 text-center">
+          <CheckCircle2 className="w-10 h-10 mx-auto mb-3 text-green-500" />
+          <p className="font-semibold text-gray-700">All products are well stocked!</p>
+          <p className="text-sm text-gray-400 mt-1">No reorder suggestions at this time.</p>
+        </div>
       )}
     </div>
   );

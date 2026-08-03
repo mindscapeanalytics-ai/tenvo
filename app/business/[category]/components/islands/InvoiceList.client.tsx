@@ -1,0 +1,687 @@
+﻿'use client';
+
+import { useMemo, useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Pencil, Trash2, Plus, FileText, CreditCard, AlertCircle, CheckCircle2, Clock, Eye, Upload, Download, Printer } from 'lucide-react';
+import { formatCurrency, type CurrencyCode } from '@/lib/currency';
+import { DataTable } from '@/components/DataTable';
+import { cn } from '@/lib/utils';
+import type { Invoice } from '@/types';
+import { BulkImportModal } from '@/components/invoice/BulkImportModal';
+import { BulkDeleteConfirmModal } from '@/components/invoice/BulkDeleteConfirmModal';
+import { MobileTabHeader, MobileStatStrip } from '@/components/mobile/MobileTabHeader';
+import { InvoiceMobileList } from '@/components/invoice/mobile/InvoiceMobileList';
+import { MOBILE_BOTTOM_NAV_CLASS, MOBILE_FLOATING_Z, MOBILE_MODULE_FAB_RIGHT } from '@/lib/utils/mobileLayout';
+import { useBusiness } from '@/lib/context/BusinessContext';
+import { printInvoiceThermalFromRow, downloadStandardInvoicePdfFromRow } from '@/lib/print/clientInvoicePrint';
+import toast from 'react-hot-toast';
+
+interface InvoiceListProps {
+    invoices: Invoice[];
+    currency?: CurrencyCode;
+    onInvoiceDelete?: (id: string) => Promise<void>;
+    onEdit?: (invoice: Invoice) => void;
+    onAdd?: () => void;
+    onView?: (invoice: Invoice) => void;
+    onRecordPayment?: (invoice: Invoice) => void;
+    onBulkDelete?: (ids: string[]) => Promise<void>;
+    onBulkImport?: (invoices: any[]) => Promise<void>;
+    onExport?: (data: any[]) => void;
+    category?: string;
+    colors?: any;
+}
+
+export function InvoiceList({
+    invoices,
+    currency = 'PKR',
+    onInvoiceDelete,
+    onEdit,
+    onAdd,
+    onView,
+    onRecordPayment,
+    onBulkDelete,
+    onBulkImport,
+    onExport,
+    category = 'retail-shop',
+    colors = { primary: '#10B981' }
+}: InvoiceListProps) {
+    const { business } = useBusiness() as { business?: { id?: string; [key: string]: any } | null };
+    // Modals state
+    const [showImportModal, setShowImportModal] = useState(false);
+    const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
+    const [selectedForBulkDelete, setSelectedForBulkDelete] = useState<Invoice[]>([]);
+    const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+
+    // Enhanced stats with payment tracking
+    const stats = useMemo(() => {
+        const now = new Date();
+        const totals = invoices.reduce((acc, inv) => {
+            const total = Number(inv.grand_total) || 0;
+            const rawBalance = (inv as any).balance;
+            const balance = Number.isFinite(Number(rawBalance)) ? Number(rawBalance) : total;
+            const paid = Math.max(0, total - balance);
+            const paymentStatus = String((inv as any).payment_status || '').toLowerCase();
+            const status = String(inv.status || '').toLowerCase();
+            const isPaid = paymentStatus === 'paid' || status === 'paid' || (total > 0 && balance <= 0.009);
+
+            acc.total += 1;
+            acc.totalAmount += total;
+            acc.totalPaid += paid;
+            acc.totalBalance += Math.max(0, balance);
+
+            // Payment status — prefer live balance + payment_status over status alone
+            if (isPaid) {
+                acc.paid += 1;
+            } else if (paymentStatus === 'partial' || status === 'partially_paid' || (paid > 0.009 && paid < total - 0.009)) {
+                acc.partial += 1;
+            } else {
+                acc.unpaid += 1;
+            }
+
+            // Overdue calculation
+            if (inv.due_date && !isPaid && status !== 'voided' && status !== 'cancelled') {
+                const dueDate = new Date(inv.due_date);
+                const daysOverdue = Math.floor((now.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
+                
+                if (daysOverdue > 0) {
+                    acc.overdue += 1;
+                    if (daysOverdue <= 30) acc.aging1_30 += balance;
+                    else if (daysOverdue <= 60) acc.aging31_60 += balance;
+                    else if (daysOverdue <= 90) acc.aging61_90 += balance;
+                    else acc.agingOver90 += balance;
+                }
+            }
+
+            // Status counts
+            if (inv.status === 'draft') acc.draft += 1;
+            if (inv.status === 'sent') acc.sent += 1;
+
+            return acc;
+        }, {
+            total: 0,
+            paid: 0,
+            partial: 0,
+            unpaid: 0,
+            overdue: 0,
+            draft: 0,
+            sent: 0,
+            totalAmount: 0,
+            totalPaid: 0,
+            totalBalance: 0,
+            aging1_30: 0,
+            aging31_60: 0,
+            aging61_90: 0,
+            agingOver90: 0
+        });
+
+        return totals;
+    }, [invoices]);
+
+    // Handle bulk delete from DataTable
+    const handleBulkDelete = (items: any[]) => {
+        const invoicesToDelete = items.filter(item => item.id);
+        if (invoicesToDelete.length === 0) return;
+        
+        setSelectedForBulkDelete(invoicesToDelete);
+        setShowBulkDeleteModal(true);
+    };
+
+    // Confirm bulk delete
+    const confirmBulkDelete = async () => {
+        if (!onBulkDelete || selectedForBulkDelete.length === 0) return;
+        
+        setIsBulkDeleting(true);
+        try {
+            const ids = selectedForBulkDelete.map(inv => inv.id);
+            await onBulkDelete(ids);
+            setShowBulkDeleteModal(false);
+            setSelectedForBulkDelete([]);
+        } catch (error) {
+            console.error('Bulk delete failed:', error);
+        } finally {
+            setIsBulkDeleting(false);
+        }
+    };
+
+    // Handle export
+    const handleExport = (data?: any[]) => {
+        if (!onExport) return;
+        
+        // If data provided, export selected rows, otherwise export all
+        const exportData = data || invoices;
+        onExport(exportData);
+    };
+
+    const handleStandardInvoicePdf = (invoice: Invoice) => {
+        if (!business) {
+            toast.error('No business selected');
+            return;
+        }
+        void downloadStandardInvoicePdfFromRow(invoice, business, category, {
+            businessId: business.id,
+        }).then(() => {
+            toast.success('Standard invoice PDF downloaded');
+        }).catch(() => {
+            toast.error('Could not download invoice PDF');
+        });
+    };
+
+    const handleThermalPrint = (invoice: Invoice) => {
+        if (!business) {
+            toast.error('No business selected');
+            return;
+        }
+        void printInvoiceThermalFromRow(invoice, business, category, {
+            businessId: business.id,
+        }).then((ok) => {
+            if (ok === false) toast.error('Could not open thermal print');
+        });
+    };
+
+    const getPaymentStatusBadge = (invoice: Invoice, compact = false) => {
+        const total = Number(invoice.grand_total) || 0;
+        const balance = Number((invoice as any).balance) || total;
+        const paid = total - balance;
+        const percentage = total > 0 ? Math.round((paid / total) * 100) : 0;
+        const badgeClass = compact
+            ? 'text-[10px] px-1.5 py-0 h-5 font-semibold'
+            : '';
+
+        if (invoice.payment_status === 'paid' || invoice.status === 'paid' || percentage >= 100) {
+            return (
+                <Badge className={cn('bg-green-100 text-green-800 hover:bg-green-200', badgeClass)}>
+                    {!compact && <CheckCircle2 className="w-3 h-3 mr-1" />}
+                    Paid
+                </Badge>
+            );
+        }
+
+        if (invoice.payment_status === 'partial' || (paid > 0 && paid < total)) {
+            return (
+                <Badge className={cn('bg-blue-100 text-blue-800 hover:bg-blue-200', badgeClass)}>
+                    {!compact && <CreditCard className="w-3 h-3 mr-1" />}
+                    {compact ? `${percentage}%` : `${percentage}% Paid`}
+                </Badge>
+            );
+        }
+
+        if (invoice.due_date && new Date(invoice.due_date) < new Date()) {
+            return (
+                <Badge className={cn('bg-red-100 text-red-800 hover:bg-red-200', badgeClass)}>
+                    {!compact && <AlertCircle className="w-3 h-3 mr-1" />}
+                    Overdue
+                </Badge>
+            );
+        }
+
+        return (
+            <Badge className={cn('bg-amber-100 text-amber-800 hover:bg-amber-200', badgeClass)}>
+                {!compact && <Clock className="w-3 h-3 mr-1" />}
+                Unpaid
+            </Badge>
+        );
+    };
+
+    const getStatusBadge = (status: string) => {
+        switch (status) {
+            case 'paid':
+                return <Badge className="bg-green-100 text-green-800">Paid</Badge>;
+            case 'draft':
+                return <Badge className="bg-gray-100 text-gray-800">Draft</Badge>;
+            case 'sent':
+                return <Badge className="bg-blue-100 text-blue-800">Sent</Badge>;
+            case 'partial':
+                return <Badge className="bg-purple-100 text-purple-800">Partial</Badge>;
+            case 'awaiting_approval':
+                return <Badge className="bg-amber-100 text-amber-800">Awaiting Approval</Badge>;
+            case 'overdue':
+                return <Badge className="bg-orange-100 text-orange-800">Overdue</Badge>;
+            case 'voided':
+                return <Badge className="bg-red-100 text-red-800">Voided</Badge>;
+            case 'cancelled':
+                return <Badge className="bg-red-100 text-red-800">Cancelled</Badge>;
+            default:
+                return <Badge className="bg-yellow-100 text-yellow-800">{status?.replace(/_/g, ' ')}</Badge>;
+        }
+    };
+
+    const calculateAging = (invoice: Invoice) => {
+        if (!invoice.due_date || invoice.status === 'paid' || invoice.status === 'voided') {
+            return null;
+        }
+
+        const dueDate = new Date(invoice.due_date);
+        const now = new Date();
+        const daysOverdue = Math.floor((now.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
+
+        if (daysOverdue <= 0) return null;
+
+        let color = 'text-gray-600';
+        let label = `${daysOverdue}d overdue`;
+
+        if (daysOverdue > 90) {
+            color = 'text-red-600 font-bold';
+            label = '90+ days overdue';
+        } else if (daysOverdue > 60) {
+            color = 'text-red-500';
+            label = '60-90 days overdue';
+        } else if (daysOverdue > 30) {
+            color = 'text-orange-500';
+            label = '30-60 days overdue';
+        } else {
+            color = 'text-amber-500';
+            label = '1-30 days overdue';
+        }
+
+        return <span className={cn("text-xs", color)}>{label}</span>;
+    };
+
+    return (
+        <div className="min-w-0 space-y-4 overflow-x-hidden touch-manipulation lg:space-y-6">
+            {/* Mobile, compact header + stat strip */}
+            <MobileTabHeader
+                icon={FileText}
+                iconClassName="bg-emerald-100 text-emerald-600"
+                title="Sales & Invoicing"
+                subtitle={`${stats.total} invoices · ${formatCurrency(stats.totalBalance, currency)} outstanding`}
+                actions={[
+                    ...(onBulkImport
+                        ? [{ id: 'import', label: 'Import', icon: Upload, onClick: () => setShowImportModal(true) }]
+                        : []),
+                    ...(onExport
+                        ? [{ id: 'export', label: 'Export', icon: Download, onClick: () => handleExport() }]
+                        : []),
+                ]}
+            />
+
+            <MobileStatStrip
+                layout="grid"
+                items={[
+                    { label: 'Total', value: stats.total, hint: formatCurrency(stats.totalAmount, currency) },
+                    { label: 'Paid', value: stats.paid, valueTone: 'text-green-600', hint: formatCurrency(stats.totalPaid, currency), hintTone: 'text-green-600' },
+                    { label: 'Unpaid', value: stats.unpaid, valueTone: 'text-amber-600', hint: formatCurrency(stats.totalBalance, currency), hintTone: 'text-amber-600' },
+                    { label: 'Overdue', value: stats.overdue, valueTone: 'text-red-600', alert: stats.overdue > 0, hint: formatCurrency(stats.aging1_30 + stats.aging31_60 + stats.aging61_90 + stats.agingOver90, currency), hintTone: 'text-red-600' },
+                    { label: 'Partial', value: stats.partial, valueTone: 'text-blue-600' },
+                    { label: 'Draft', value: stats.draft, valueTone: 'text-gray-600' },
+                ]}
+            />
+
+            {/* Desktop header */}
+            <div className="hidden items-center justify-between lg:flex">
+                <div className="flex items-center gap-3">
+                    <div className="p-2 bg-emerald-100 rounded-lg">
+                        <FileText className="w-6 h-6 text-emerald-600" />
+                    </div>
+                    <div>
+                        <h2 className="text-2xl font-bold">Sales & Invoicing</h2>
+                        <p className="text-muted-foreground">
+                            {stats.total} invoices • {formatCurrency(stats.totalBalance, currency as any)} outstanding
+                        </p>
+                    </div>
+                </div>
+                <div className="flex items-center gap-2">
+                    {onBulkImport && (
+                        <Button
+                            variant="outline"
+                            onClick={() => setShowImportModal(true)}
+                            className="h-10 px-4"
+                        >
+                            <Upload className="w-4 h-4 mr-2" />
+                            Import
+                        </Button>
+                    )}
+                    {onExport && (
+                        <Button
+                            variant="outline"
+                            onClick={() => handleExport()}
+                            className="h-10 px-4"
+                        >
+                            <Download className="w-4 h-4 mr-2" />
+                            Export
+                        </Button>
+                    )}
+                    <Button
+                        onClick={() => onAdd?.()}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl h-10 px-5 shadow-sm"
+                    >
+                        <Plus className="w-4 h-4 mr-2" />
+                        New Invoice
+                    </Button>
+                </div>
+            </div>
+
+            {/* Desktop stats */}
+            <div className="hidden grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-7 lg:grid">
+                <Card>
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-xs font-medium text-muted-foreground">Total</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{stats.total}</div>
+                        <div className="text-xs text-muted-foreground">
+                            {formatCurrency(stats.totalAmount, currency as any)}
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-xs font-medium text-green-600">Paid</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold text-green-600">{stats.paid}</div>
+                        <div className="text-xs text-green-600">
+                            {formatCurrency(stats.totalPaid, currency as any)}
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-xs font-medium text-blue-600">Partial</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold text-blue-600">{stats.partial}</div>
+                        <div className="text-xs text-blue-600">
+                            {stats.total > 0 ? Math.round((stats.partial / stats.total) * 100) : 0}%
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-xs font-medium text-amber-600">Unpaid</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold text-amber-600">{stats.unpaid}</div>
+                        <div className="text-xs text-amber-600">
+                            {formatCurrency(stats.totalBalance, currency as any)}
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card className={stats.overdue > 0 ? 'border-red-200' : ''}>
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-xs font-medium text-red-600">Overdue</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold text-red-600">{stats.overdue}</div>
+                        <div className="text-xs text-red-600">
+                            {formatCurrency(stats.aging1_30 + stats.aging31_60 + stats.aging61_90 + stats.agingOver90, currency as any)}
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-xs font-medium text-gray-600">Draft</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold text-gray-600">{stats.draft}</div>
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-xs font-medium text-purple-600">Sent</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold text-purple-600">{stats.sent}</div>
+                    </CardContent>
+                </Card>
+            </div>
+
+            {/* Aging Summary (desktop; mobile uses stat strip) */}
+            {stats.overdue > 0 && (
+                <Card className="hidden border-red-200 bg-red-50/50 lg:block">
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-bold text-red-700 flex items-center gap-2">
+                            <AlertCircle className="w-4 h-4" />
+                            Aging Summary - Outstanding Balance
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="grid grid-cols-4 gap-4 text-sm">
+                            <div>
+                                <span className="text-muted-foreground">1-30 days:</span>
+                                <div className="font-semibold text-amber-600">{formatCurrency(stats.aging1_30, currency as any)}</div>
+                            </div>
+                            <div>
+                                <span className="text-muted-foreground">31-60 days:</span>
+                                <div className="font-semibold text-orange-600">{formatCurrency(stats.aging31_60, currency as any)}</div>
+                            </div>
+                            <div>
+                                <span className="text-muted-foreground">61-90 days:</span>
+                                <div className="font-semibold text-red-500">{formatCurrency(stats.aging61_90, currency as any)}</div>
+                            </div>
+                            <div>
+                                <span className="text-muted-foreground">90+ days:</span>
+                                <div className="font-semibold text-red-600">{formatCurrency(stats.agingOver90, currency as any)}</div>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
+
+            {(() => {
+                const tableRows = invoices.map((inv) => ({
+                    ...inv,
+                    customer_name: (inv as any).customer_name || inv.customer?.name || 'Walk-in Customer',
+                    grand_total_formatted: formatCurrency(Number(inv.grand_total || inv.amount || 0), currency as any),
+                    balance_formatted: formatCurrency(Number((inv as any).balance || inv.grand_total || 0), currency as any),
+                }));
+
+                const invoiceColumns = [
+                    {
+                        accessorKey: 'invoice_number',
+                        header: 'Invoice #',
+                        cell: ({ row }: any) => (
+                            <div className="font-medium">{row.original.invoice_number}</div>
+                        ),
+                    },
+                    {
+                        accessorKey: 'customer_name',
+                        header: 'Customer',
+                        cell: ({ row }: any) => (
+                            <div>
+                                <div>{row.original.customer_name}</div>
+                                {calculateAging(row.original)}
+                            </div>
+                        ),
+                    },
+                    {
+                        accessorKey: 'date',
+                        header: 'Date',
+                        cell: ({ row }: any) => new Date(row.original.date).toLocaleDateString(),
+                    },
+                    {
+                        accessorKey: 'due_date',
+                        header: 'Due Date',
+                        cell: ({ row }: any) =>
+                            row.original.due_date
+                                ? new Date(row.original.due_date).toLocaleDateString()
+                                : '-',
+                    },
+                    {
+                        accessorKey: 'grand_total',
+                        header: 'Total',
+                        cell: ({ row }: any) => (
+                            <div className="text-right">
+                                <div className="font-bold" style={{ color: colors.primary }}>
+                                    {row.original.grand_total_formatted}
+                                </div>
+                                {row.original.balance !== undefined &&
+                                    row.original.balance < row.original.grand_total && (
+                                        <div className="text-xs text-green-600">
+                                            Paid:{' '}
+                                            {formatCurrency(
+                                                Number(row.original.grand_total) - Number(row.original.balance),
+                                                currency as any
+                                            )}
+                                        </div>
+                                    )}
+                            </div>
+                        ),
+                    },
+                    {
+                        accessorKey: 'payment_status',
+                        header: 'Payment',
+                        cell: ({ row }: any) => getPaymentStatusBadge(row.original),
+                    },
+                    {
+                        accessorKey: 'status',
+                        header: 'Status',
+                        cell: ({ row }: any) => getStatusBadge(row.original.status),
+                    },
+                    {
+                        id: 'actions',
+                        header: 'Actions',
+                        cell: ({ row }: any) => (
+                            <div className="flex items-center gap-1">
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => onView?.(row.original)}
+                                    className="h-8 w-8 text-gray-600 hover:text-gray-800"
+                                    title="View"
+                                >
+                                    <Eye className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleStandardInvoicePdf(row.original)}
+                                    className="h-8 w-8 text-sky-700 hover:text-sky-900"
+                                    title="Download standard A4 invoice"
+                                >
+                                    <FileText className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleThermalPrint(row.original)}
+                                    className="h-8 w-8 text-slate-600 hover:text-slate-900"
+                                    title="Print thermal receipt (optional till copy)"
+                                >
+                                    <Printer className="w-4 h-4" />
+                                </Button>
+                                {row.original.payment_status !== 'paid' &&
+                                    row.original.status !== 'voided' && (
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => onRecordPayment?.(row.original)}
+                                            className="h-8 w-8 text-emerald-600 hover:text-emerald-700"
+                                            title="Record Payment"
+                                        >
+                                            <CreditCard className="w-4 h-4" />
+                                        </Button>
+                                    )}
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => onEdit?.(row.original)}
+                                    className="h-8 w-8 text-brand-primary hover:text-brand-primary-dark"
+                                    title="Edit"
+                                >
+                                    <Pencil className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => onInvoiceDelete?.(row.original.id)}
+                                    className="h-8 w-8 text-red-600 hover:text-red-700"
+                                    title="Delete"
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                </Button>
+                            </div>
+                        ),
+                    },
+                ];
+
+                return (
+                    <>
+                        {/* Mobile list */}
+                        <div className="pb-[calc(5.5rem+env(safe-area-inset-bottom))] lg:hidden">
+                            <InvoiceMobileList
+                                invoices={tableRows}
+                                currency={currency}
+                                onView={onView}
+                                onEdit={onEdit}
+                                onRecordPayment={onRecordPayment}
+                                onDelete={onInvoiceDelete}
+                                onAdd={onAdd}
+                                onPrintPdf={handleStandardInvoicePdf}
+                                onPrintThermal={handleThermalPrint}
+                                renderPaymentBadge={(inv) => getPaymentStatusBadge(inv, true)}
+                                renderAging={calculateAging}
+                            />
+                        </div>
+
+                        {/* Desktop table */}
+                        <Card className="hidden lg:block">
+                            <CardHeader>
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <CardTitle>Invoices</CardTitle>
+                                        <p className="text-sm text-muted-foreground">
+                                            Manage and track your invoices
+                                        </p>
+                                    </div>
+                                </div>
+                            </CardHeader>
+                            <CardContent>
+                                <DataTable
+                                    category={category}
+                                    data={tableRows}
+                                    onExport={handleExport}
+                                    onBulkDelete={onBulkDelete ? handleBulkDelete : undefined}
+                                    columns={invoiceColumns}
+                                />
+                            </CardContent>
+                        </Card>
+                    </>
+                );
+            })()}
+
+            {onAdd && (
+                <button
+                    type="button"
+                    onClick={() => onAdd()}
+                    className={cn(
+                        'fixed flex h-14 w-14 items-center justify-center rounded-full bg-emerald-600 text-white shadow-lg shadow-emerald-600/30 transition active:scale-95 lg:hidden',
+                        MOBILE_MODULE_FAB_RIGHT,
+                        MOBILE_BOTTOM_NAV_CLASS,
+                        MOBILE_FLOATING_Z
+                    )}
+                    aria-label="New invoice"
+                >
+                    <Plus className="h-6 w-6" />
+                </button>
+            )}
+
+            {/* Bulk Import Modal */}
+            {onBulkImport && (
+                <BulkImportModal
+                    isOpen={showImportModal}
+                    onClose={() => setShowImportModal(false)}
+                    onImport={onBulkImport}
+                    currency={currency}
+                />
+            )}
+
+            {/* Bulk Delete Confirmation Modal */}
+            <BulkDeleteConfirmModal
+                isOpen={showBulkDeleteModal}
+                onClose={() => setShowBulkDeleteModal(false)}
+                onConfirm={confirmBulkDelete}
+                selectedCount={selectedForBulkDelete.length}
+                selectedInvoices={selectedForBulkDelete}
+                isLoading={isBulkDeleting}
+            />
+        </div>
+    );
+}

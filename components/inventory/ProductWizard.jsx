@@ -14,8 +14,24 @@ import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { getDomainDefaults } from '@/lib/domainKnowledge';
 import { DomainFieldRenderer } from '@/components/domain/DomainFieldRenderer';
-import { getDomainProductFields, getDomainFormLabels, isHighPrecisionDomain, sanitizeDomainData } from '@/lib/utils/domainHelpers';
+import { 
+    isHighPrecisionDomain, 
+    getDomainFormLabels, 
+    getDomainProductFields,
+    resolveDomainFieldKey,
+    sanitizeDomainData,
+    getDomainUnits,
+    getDomainDefaultTax,
+    getDomainKnowledge,
+} from '@/lib/utils/domainHelpers';
+import { resolveDomainKey } from '@/lib/config/domainKeyAliases';
+import { BarcodeFieldInput } from '@/components/inventory/BarcodeFieldInput';
+import { BrandAutocomplete } from '@/components/BrandAutocomplete';
+import { useBusiness } from '@/lib/context/BusinessContext';
 import { validateDomainData } from '@/lib/validation/domainSchemas';
+import { checkBarcodeExistsAction } from '@/lib/actions/standard/inventory/validation';
+import toast from 'react-hot-toast';
+import { formatInventoryActionError } from '@/lib/utils/productMutationPayload';
 
 // --- Step Definitions --------------------------------------------------------
 
@@ -42,13 +58,24 @@ const DOMAIN_CATEGORY_SUGGESTIONS = {
     'grocery': ['Beverages', 'Snacks', 'Dairy', 'Frozen', 'Fresh Produce', 'Bakery', 'Household', 'Personal Care', 'Meat', 'Grocery'],
     'supermarket': ['Beverages', 'Snacks', 'Dairy', 'Frozen', 'Fresh Produce', 'Bakery', 'Household', 'Personal Care', 'Meat', 'Grocery'],
     'pharmacy': ['Medicines', 'OTC Drugs', 'Personal Care', 'Medical Devices', 'Supplements', 'Baby Care'],
-    'electronics': ['Smartphones', 'Accessories', 'Laptops', 'Audio', 'Cables', 'Batteries', 'Peripherals'],
-    'textile': ['Fabric', 'Ready-Made', 'Accessories', 'Tailoring Materials', 'Seasonal'],
-    'auto_parts': ['Engine Parts', 'Electrical', 'Body Parts', 'Fluids', 'Tires', 'Accessories'],
+    'electronics-goods': ['Smartphones', 'Accessories', 'Laptops', 'Audio', 'Cables', 'Batteries', 'Peripherals'],
+    'textile-wholesale': ['Lawn', 'Cotton', 'Wash & Wear', 'Chiffon', 'Silk', 'Khaddar', 'Linen', 'Imported Fabric', 'Mens Unstitched'],
+    'auto-parts': ['Engine Parts', 'Electrical', 'Body Parts', 'Fluids', 'Tires', 'Accessories'],
+    'retail-shop': ['General', 'Electronics', 'Clothing', 'Home', 'Kitchen', 'Toys', 'Stationery'],
     'retail': ['General', 'Electronics', 'Clothing', 'Home', 'Kitchen', 'Toys', 'Stationery'],
     'wholesale': ['Bulk Items', 'Fast Moving', 'Seasonal', 'Imported', 'Local Manufacturing'],
     'construction': ['Cement', 'Steel', 'Timber', 'Plumbing', 'Electrical', 'Paint', 'Tools'],
 };
+
+function resolveCategorySuggestions(category) {
+    const key = resolveDomainKey(category);
+    const knowledge = getDomainKnowledge(key);
+    const fromTemplate = knowledge?.setupTemplate?.categories;
+    if (Array.isArray(fromTemplate) && fromTemplate.length > 0) return fromTemplate;
+    return DOMAIN_CATEGORY_SUGGESTIONS[key]
+        || DOMAIN_CATEGORY_SUGGESTIONS[category]
+        || DOMAIN_CATEGORY_SUGGESTIONS['retail-shop'];
+}
 
 const TAX_PRESETS = [
     { label: 'Standard GST (17%)', value: 17 },
@@ -57,66 +84,77 @@ const TAX_PRESETS = [
     { label: 'Exempt', value: 0 },
 ];
 
+const FIELD_LABEL =
+    'text-[11px] font-semibold uppercase tracking-wider text-slate-600';
+
 // --- Step 1: Basic Info ------------------------------------------------------
 
-function StepBasics({ formData, onChange, category, errors }) {
-    const categorySuggestions = DOMAIN_CATEGORY_SUGGESTIONS[category] || DOMAIN_CATEGORY_SUGGESTIONS['retail'];
+function StepBasics({ formData, onChange, category, errors, business }) {
+    const categorySuggestions = useMemo(() => resolveCategorySuggestions(category), [category]);
     const labels = getDomainFormLabels(category);
+    const units = useMemo(() => {
+        const domainUnits = getDomainUnits(category);
+        return domainUnits?.length ? domainUnits : ['pcs', 'kg', 'm', 'suit', 'thaan', 'pack', 'box'];
+    }, [category]);
+    const countryIso = business?.countryIso || business?.regionalPack?.countryIso || 'PK';
 
     return (
-        <div className="space-y-5">
+        <div className="min-w-0 space-y-5">
             <div className="space-y-1.5">
-                <label className="text-xs font-black text-gray-700 uppercase tracking-wider">{labels.name} *</label>
+                <label className={FIELD_LABEL}>{labels.name} *</label>
                 <Input
                     value={formData.name || ''}
                     onChange={(e) => onChange('name', e.target.value)}
                     placeholder={`Enter ${labels.name.toLowerCase()}`}
                     className={cn(
-                        "h-12 rounded-xl text-sm font-medium",
-                        errors.name && "border-red-300 focus:ring-red-200"
+                        'h-11 min-w-0 rounded-xl text-sm font-medium',
+                        errors.name && 'border-red-300 focus-visible:ring-red-200'
                     )}
                     autoFocus
                 />
-                {errors.name && <p className="text-[10px] text-red-500 font-bold">{errors.name}</p>}
+                {errors.name && <p className="text-xs font-medium text-red-600">{errors.name}</p>}
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                    <label className="text-xs font-black text-gray-700 uppercase tracking-wider">SKU</label>
+            <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="min-w-0 space-y-1.5">
+                    <label className={FIELD_LABEL}>SKU</label>
                     <Input
                         value={formData.sku || ''}
                         onChange={(e) => onChange('sku', e.target.value)}
                         placeholder="Auto-generated if empty"
-                        className="h-11 rounded-xl text-sm"
+                        className="h-11 min-w-0 rounded-xl text-sm"
                     />
-                    <p className="text-[10px] text-gray-400">Leave empty to auto-generate</p>
+                    <p className="text-[11px] text-slate-400">Leave empty to auto-generate</p>
                 </div>
-                <div className="space-y-1.5">
-                    <label className="text-xs font-black text-gray-700 uppercase tracking-wider">Barcode</label>
-                    <div className="relative">
-                        <Barcode className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                        <Input
-                            value={formData.barcode || ''}
-                            onChange={(e) => onChange('barcode', e.target.value)}
-                            placeholder="Scan or type barcode"
-                            className="h-11 rounded-xl text-sm pl-10"
-                        />
-                    </div>
+                <div className="min-w-0 space-y-1.5">
+                    <label className={FIELD_LABEL}>Barcode</label>
+                    <BarcodeFieldInput
+                        value={formData.barcode || ''}
+                        onChange={(val) => onChange('barcode', val)}
+                        businessId={business?.id}
+                        excludeProductId={formData.id}
+                        business={business}
+                        className="min-w-0"
+                        inputClassName="h-11 min-w-0 rounded-xl text-sm pr-10"
+                        showCamera
+                    />
+                    {errors.barcode && <p className="text-xs font-medium text-red-600">{errors.barcode}</p>}
                 </div>
             </div>
 
-            <div className="space-y-1.5">
-                <label className="text-xs font-black text-gray-700 uppercase tracking-wider">{labels.category} *</label>
-                <div className="flex flex-wrap gap-1.5 mb-2">
-                    {categorySuggestions.map(cat => (
+            <div className="min-w-0 space-y-1.5">
+                <label className={FIELD_LABEL}>{labels.category} *</label>
+                <div className="mb-2 flex max-w-full flex-wrap gap-1.5">
+                    {categorySuggestions.map((cat) => (
                         <button
                             key={cat}
+                            type="button"
                             onClick={() => onChange('category', cat)}
                             className={cn(
-                                "px-3 py-1.5 rounded-full text-[11px] font-bold transition-all",
+                                'rounded-full px-3 py-1.5 text-[11px] font-semibold transition-colors',
                                 formData.category === cat
-                                    ? "bg-indigo-600 text-white shadow-md shadow-indigo-200"
-                                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                                    ? 'bg-indigo-600 text-white shadow-sm'
+                                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                             )}
                         >
                             {cat}
@@ -127,49 +165,44 @@ function StepBasics({ formData, onChange, category, errors }) {
                     value={formData.category || ''}
                     onChange={(e) => onChange('category', e.target.value)}
                     placeholder={`Or type a custom ${labels.category.toLowerCase()}`}
-                    className="h-10 rounded-xl text-sm"
+                    className={cn(
+                        'h-10 min-w-0 rounded-xl text-sm',
+                        errors.category && 'border-red-300 focus-visible:ring-red-200'
+                    )}
                 />
-                {errors.category && <p className="text-[10px] text-red-500 font-bold">{errors.category}</p>}
+                {errors.category && <p className="text-xs font-medium text-red-600">{errors.category}</p>}
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                    <label className="text-xs font-black text-gray-700 uppercase tracking-wider">Brand</label>
-                    <Input
-                        value={formData.brand || ''}
-                        onChange={(e) => onChange('brand', e.target.value)}
-                        placeholder="Brand name"
-                        className="h-11 rounded-xl text-sm"
-                    />
-                </div>
-                <div className="space-y-1.5">
-                    <label className="text-xs font-black text-gray-700 uppercase tracking-wider">Unit</label>
+            <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">
+                <BrandAutocomplete
+                    value={formData.brand || ''}
+                    onChange={(val) => onChange('brand', val)}
+                    domain={resolveDomainKey(category)}
+                    countryIso={countryIso}
+                    className="min-w-0"
+                    placeholder="Brand or mill name"
+                />
+                <div className="min-w-0 space-y-1.5">
+                    <label className={FIELD_LABEL}>Unit</label>
                     <select
-                        value={formData.unit || 'pcs'}
+                        value={formData.unit || units[0] || 'pcs'}
                         onChange={(e) => onChange('unit', e.target.value)}
-                        className="w-full h-11 rounded-xl text-sm border border-gray-200 px-3 bg-white"
+                        className="h-11 w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3 text-sm"
                     >
-                        <option value="pcs">Pieces</option>
-                        <option value="kg">Kilograms</option>
-                        <option value="g">Grams</option>
-                        <option value="l">Litres</option>
-                        <option value="ml">Millilitres</option>
-                        <option value="m">Metres</option>
-                        <option value="box">Box</option>
-                        <option value="pack">Pack</option>
-                        <option value="dozen">Dozen</option>
-                        <option value="pair">Pair</option>
+                        {units.map((u) => (
+                            <option key={u} value={u}>{u}</option>
+                        ))}
                     </select>
                 </div>
             </div>
 
-            <div className="space-y-1.5">
-                <label className="text-xs font-black text-gray-700 uppercase tracking-wider">Description</label>
+            <div className="min-w-0 space-y-1.5">
+                <label className={FIELD_LABEL}>Description</label>
                 <textarea
                     value={formData.description || ''}
                     onChange={(e) => onChange('description', e.target.value)}
                     placeholder="Optional product description"
-                    className="w-full min-h-[80px] rounded-xl text-sm border border-gray-200 px-3 py-2 resize-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400"
+                    className="min-h-[80px] w-full min-w-0 resize-none rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200"
                     rows={3}
                 />
             </div>
@@ -188,7 +221,7 @@ function StepPricing({ formData, onChange, currency, errors }) {
         <div className="space-y-5">
             <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                    <label className="text-xs font-black text-gray-700 uppercase tracking-wider">Cost Price *</label>
+                    <label className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Cost Price *</label>
                     <div className="relative">
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">{currency}</span>
                         <Input
@@ -207,7 +240,7 @@ function StepPricing({ formData, onChange, currency, errors }) {
                     {errors.cost_price && <p className="text-[10px] text-red-500 font-bold">{errors.cost_price}</p>}
                 </div>
                 <div className="space-y-1.5">
-                    <label className="text-xs font-black text-gray-700 uppercase tracking-wider">Selling Price *</label>
+                    <label className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Selling Price *</label>
                     <div className="relative">
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">{currency}</span>
                         <Input
@@ -243,7 +276,7 @@ function StepPricing({ formData, onChange, currency, errors }) {
 
             {/* Tax Configuration */}
             <div className="space-y-1.5">
-                <label className="text-xs font-black text-gray-700 uppercase tracking-wider">Tax Rate</label>
+                <label className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Tax Rate</label>
                 <div className="flex gap-2">
                     {TAX_PRESETS.map(preset => (
                         <button
@@ -274,7 +307,7 @@ function StepPricing({ formData, onChange, currency, errors }) {
             {/* Wholesale / Bulk Pricing */}
             <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                    <label className="text-xs font-black text-gray-700 uppercase tracking-wider">Min Order Qty</label>
+                    <label className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Min Order Qty</label>
                     <Input
                         type="number"
                         value={formData.min_order_qty || ''}
@@ -285,7 +318,7 @@ function StepPricing({ formData, onChange, currency, errors }) {
                     />
                 </div>
                 <div className="space-y-1.5">
-                    <label className="text-xs font-black text-gray-700 uppercase tracking-wider">Wholesale Price</label>
+                    <label className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Wholesale Price</label>
                     <div className="relative">
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">{currency}</span>
                         <Input
@@ -312,7 +345,7 @@ function StepInventory({ formData, onChange, errors, category }) {
         <div className="space-y-5">
             <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-1.5">
-                    <label className="text-xs font-black text-gray-700 uppercase tracking-wider">{labels.stock} *</label>
+                    <label className="text-xs font-semibold text-gray-700 uppercase tracking-wider">{labels.stock} *</label>
                     <Input
                         type="number"
                         value={formData.stock ?? ''}
@@ -327,7 +360,7 @@ function StepInventory({ formData, onChange, errors, category }) {
                     {errors.stock && <p className="text-[10px] text-red-500 font-bold">{errors.stock}</p>}
                 </div>
                 <div className="space-y-1.5">
-                    <label className="text-xs font-black text-gray-700 uppercase tracking-wider">Reorder Level</label>
+                    <label className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Reorder Level</label>
                     <Input
                         type="number"
                         value={formData.reorder_point || ''}
@@ -338,7 +371,7 @@ function StepInventory({ formData, onChange, errors, category }) {
                     />
                 </div>
                 <div className="space-y-1.5">
-                    <label className="text-xs font-black text-gray-700 uppercase tracking-wider">Max Stock</label>
+                    <label className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Max Stock</label>
                     <Input
                         type="number"
                         value={formData.max_stock || ''}
@@ -352,7 +385,7 @@ function StepInventory({ formData, onChange, errors, category }) {
 
             {/* Tracking Toggles */}
             <div className="space-y-2">
-                <label className="text-xs font-black text-gray-700 uppercase tracking-wider">Tracking Options</label>
+                <label className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Tracking Options</label>
                 <div className="grid grid-cols-2 gap-2">
                     {[
                         { key: 'track_inventory', label: 'Track Inventory', desc: 'Monitor stock levels' },
@@ -362,6 +395,7 @@ function StepInventory({ formData, onChange, errors, category }) {
                     ].map(option => (
                         <button
                             key={option.key}
+                            type="button"
                             onClick={() => onChange(option.key, !formData[option.key])}
                             className={cn(
                                 "flex items-start gap-2 p-3 rounded-xl border-2 text-left transition-all",
@@ -387,7 +421,7 @@ function StepInventory({ formData, onChange, errors, category }) {
 
             {/* Warehouse Selection */}
             <div className="space-y-1.5">
-                <label className="text-xs font-black text-gray-700 uppercase tracking-wider">Warehouse / Location</label>
+                <label className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Warehouse / Location</label>
                 <select
                     value={formData.warehouse_id || ''}
                     onChange={(e) => onChange('warehouse_id', e.target.value)}
@@ -413,8 +447,8 @@ function StepAttributes({ formData, onChange, category, errors }) {
                 <>
                     <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-indigo-50 border border-indigo-200">
                         <Sparkles className="w-4 h-4 text-indigo-500" />
-                        <span className="text-xs font-bold text-indigo-700">
-                            Domain-specific fields for {category.replace('-', ' ')}
+                        <span className="text-xs font-semibold text-indigo-700">
+                            Domain fields for {String(category || '').replace(/-/g, ' ')}
                         </span>
                     </div>
                     {errors.domain_data && (
@@ -425,7 +459,7 @@ function StepAttributes({ formData, onChange, category, errors }) {
                     )}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {domainFields.map(field => {
-                            const key = field.toLowerCase().replace(/[^a-z0-9]/g, '');
+                            const key = resolveDomainFieldKey(field, category);
                             return (
                                 <DomainFieldRenderer
                                     key={field}
@@ -494,7 +528,7 @@ function StepReview({ formData, currency }) {
             {sections.map(section => (
                 <div key={section.title} className="rounded-xl border border-gray-200 overflow-hidden">
                     <div className="px-4 py-2 bg-gray-50 border-b border-gray-200">
-                        <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">{section.title}</span>
+                        <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest">{section.title}</span>
                     </div>
                     <div className="divide-y divide-gray-100">
                         {section.items.map(item => (
@@ -519,9 +553,18 @@ export function ProductWizard({
     onCancel,
     currency = 'Rs.',
 }) {
+    const { business } = useBusiness();
     const isEditing = !!product;
-    const isPrecision = useMemo(() => isHighPrecisionDomain(category), [category]);
+    const resolvedCategory = resolveDomainKey(category);
+    const isPrecision = useMemo(() => isHighPrecisionDomain(resolvedCategory), [resolvedCategory]);
     const wizardSteps = isPrecision ? PRECISION_STEPS : STANDARD_STEPS;
+    const domainUnits = useMemo(() => getDomainUnits(resolvedCategory), [resolvedCategory]);
+    const defaultTax = useMemo(
+        () => getDomainDefaultTax(resolvedCategory, {
+            countryIso: business?.countryIso || business?.regionalPack?.countryIso,
+        }),
+        [resolvedCategory, business]
+    );
 
     const [currentStep, setCurrentStep] = useState(0);
     const [isSaving, setIsSaving] = useState(false);
@@ -532,19 +575,37 @@ export function ProductWizard({
         if (product) return { ...product };
         const defaults = {};
         try {
-            const domainDefaults = getDomainDefaults(category);
+            const domainDefaults = getDomainDefaults(resolvedCategory);
             if (domainDefaults) Object.assign(defaults, domainDefaults);
         } catch { /* no defaults available */ }
+        const suggestions = resolveCategorySuggestions(resolvedCategory);
+        const units = getDomainUnits(resolvedCategory);
+        const tax = getDomainDefaultTax(resolvedCategory, {
+            countryIso: business?.countryIso || business?.regionalPack?.countryIso,
+        });
         return {
-            name: '', sku: '', barcode: '', category: '', brand: '',
-            unit: 'pcs', description: '',
-            cost_price: '', price: '', tax_percent: 17,
-            min_order_qty: 1, wholesale_price: '',
-            stock: 0, reorder_point: 10, max_stock: '', warehouse_id: '',
-            track_inventory: true, is_weight_item: false,
-            allow_negative_stock: false, is_perishable: false,
+            name: '',
+            sku: '',
+            barcode: '',
+            brand: '',
+            description: '',
+            cost_price: '',
+            price: '',
+            min_order_qty: 1,
+            wholesale_price: '',
+            stock: 0,
+            reorder_point: 10,
+            max_stock: '',
+            warehouse_id: '',
+            track_inventory: true,
+            is_weight_item: false,
+            allow_negative_stock: false,
+            is_perishable: false,
             domain_data: {},
             ...defaults,
+            unit: defaults.unit || units[0] || 'pcs',
+            category: defaults.category || suggestions[0] || '',
+            tax_percent: defaults.tax_percent ?? tax ?? 17,
         };
     });
 
@@ -562,11 +623,11 @@ export function ProductWizard({
         switch (stepKey) {
             case 'basics':
                 if (!formData.name?.trim()) newErrors.name = 'Product name is required';
-                if (!formData.category?.trim()) newErrors.category = 'Category is required';
+                if (!formData.category?.trim()) newErrors.category = 'Category is required — tap a chip or type one';
                 break;
             case 'attributes':
                 // [HARDENED] Sync with domain-specific Zod schema
-                const validation = validateDomainData(category, formData.domain_data || {});
+                const validation = validateDomainData(resolvedCategory, formData.domain_data || {});
                 if (!validation.success) {
                     newErrors.domain_data = 'Please complete mandatory domain fields';
                     validation.error.errors.forEach(err => {
@@ -584,7 +645,7 @@ export function ProductWizard({
         }
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
-    }, [formData, category, wizardSteps]);
+    }, [formData, resolvedCategory, wizardSteps]);
 
     const handleNext = useCallback(() => {
         if (validateStep(currentStep)) {
@@ -598,8 +659,27 @@ export function ProductWizard({
 
     const handleSave = useCallback(async () => {
         if (isSaving) return;
+        if (!validateStep(currentStep)) return;
         setIsSaving(true);
         try {
+            const barcode = String(formData.barcode || '').trim();
+            if (barcode && business?.id) {
+                const dup = await checkBarcodeExistsAction(
+                    barcode,
+                    business.id,
+                    product?.id || null
+                );
+                if (dup.success && dup.exists) {
+                    setErrors((prev) => ({
+                        ...prev,
+                        barcode: 'This barcode is already used by another product',
+                    }));
+                    setCurrentStep(0);
+                    toast.error('Barcode already in use — enter a unique code');
+                    return;
+                }
+            }
+
             const toNumber = (value, fallback = 0) => {
                 if (value === '' || value === null || value === undefined) return fallback;
                 const parsed = Number(value);
@@ -608,96 +688,112 @@ export function ProductWizard({
 
             const payload = {
                 ...formData,
+                barcode: barcode || null,
                 cost_price: toNumber(formData.cost_price, 0),
                 price: toNumber(formData.price, 0),
-                tax_percent: toNumber(formData.tax_percent, 17),
+                tax_percent: toNumber(formData.tax_percent, defaultTax || 17),
                 stock: toNumber(formData.stock, 0),
                 reorder_point: toNumber(formData.reorder_point, 10),
                 max_stock: toNumber(formData.max_stock, 0),
                 min_order_qty: toNumber(formData.min_order_qty, 1),
                 wholesale_price: toNumber(formData.wholesale_price, 0),
-                domain_data: sanitizeDomainData(formData.domain_data || {}, category)
+                domain_data: sanitizeDomainData(formData.domain_data || {})
             };
+            delete payload.id;
+            delete payload._tempId;
+            if (product?.id) payload.id = product.id;
             await onSave?.(payload);
         } catch (err) {
             console.error('ProductWizard save error:', err);
+            toast.error(formatInventoryActionError(err));
+            throw err;
         } finally {
             setIsSaving(false);
         }
-    }, [formData, onSave, isSaving]);
+    }, [formData, onSave, isSaving, product, defaultTax, business?.id, currentStep, validateStep]);
 
     // --- Keyboard Navigation -------------------------------------------------
 
     useEffect(() => {
         const handleKeyDown = (e) => {
-            if (e.key === 'Enter' && !e.shiftKey && currentStep < WIZARD_STEPS.length - 1) {
-                e.preventDefault();
-                handleNext();
+            if (e.key !== 'Enter' || e.shiftKey || currentStep >= wizardSteps.length - 1) return;
+            const tag = e.target?.tagName;
+            if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || e.target?.isContentEditable) {
+                return;
             }
+            e.preventDefault();
+            handleNext();
         };
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [currentStep, handleNext]);
+    }, [currentStep, handleNext, wizardSteps.length]);
 
     // --- Render --------------------------------------------------------------
 
-    const StepComponent = [StepBasics, StepPricing, StepInventory, StepAttributes, StepReview][currentStep];
+    const STEP_COMPONENTS = {
+        basics: StepBasics,
+        pricing: StepPricing,
+        inventory: StepInventory,
+        attributes: StepAttributes,
+        review: StepReview,
+    };
+    const StepComponent = STEP_COMPONENTS[wizardSteps[currentStep].key];
 
     return (
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden max-w-3xl mx-auto">
+        <div className="mx-auto flex max-h-[min(85vh,820px)] w-full min-w-0 max-w-3xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-lg">
             {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white">
-                <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-200">
-                        <Package className="w-5 h-5 text-white" />
+            <div className="flex shrink-0 items-center justify-between gap-3 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white px-4 py-3.5 sm:px-5">
+                <div className="flex min-w-0 items-center gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 shadow-md shadow-indigo-200">
+                        <Package className="h-5 w-5 text-white" />
                     </div>
-                    <div>
-                        <h2 className="text-sm font-black text-gray-900">
+                    <div className="min-w-0">
+                        <h2 className="truncate text-sm font-semibold text-slate-900">
                             {isEditing ? 'Edit Product' : 'Add New Product'}
                         </h2>
-                        <p className="text-[10px] text-gray-400 font-bold">
-                            Step {currentStep + 1} of {wizardSteps.length} -- {wizardSteps[currentStep].description}
+                        <p className="truncate text-[11px] font-medium text-slate-500">
+                            Step {currentStep + 1} of {wizardSteps.length} — {wizardSteps[currentStep].description}
                         </p>
                     </div>
                 </div>
-                <Button variant="ghost" size="icon" onClick={onCancel} className="rounded-xl">
-                    <X className="w-4 h-4" />
+                <Button type="button" variant="ghost" size="icon" onClick={onCancel} className="shrink-0 rounded-xl">
+                    <X className="h-4 w-4" />
                 </Button>
             </div>
- 
-            {/* Step Progress */}
-            <div className="flex items-center px-6 py-3 bg-gray-50/50 border-b border-gray-100">
+
+            {/* Step Progress — compact so all 5 steps stay visible */}
+            <div className="flex shrink-0 items-center gap-0.5 overflow-x-auto border-b border-slate-100 bg-slate-50/80 px-3 py-2.5 scrollbar-none sm:gap-1 sm:px-5">
                 {wizardSteps.map((step, idx) => {
-                    const Icon = step.icon;
                     const isActive = idx === currentStep;
                     const isCompleted = idx < currentStep;
- 
+
                     return (
                         <React.Fragment key={step.key}>
                             <button
+                                type="button"
                                 onClick={() => idx < currentStep && setCurrentStep(idx)}
                                 disabled={idx > currentStep}
                                 className={cn(
-                                    "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg transition-all text-[10px] font-bold whitespace-nowrap",
-                                    isActive && "bg-indigo-100 text-indigo-700",
-                                    isCompleted && "text-emerald-600 hover:bg-emerald-50 cursor-pointer",
-                                    !isActive && !isCompleted && "text-gray-400 cursor-not-allowed"
+                                    'flex shrink-0 items-center gap-1 rounded-lg px-1.5 py-1 text-[10px] font-semibold transition-colors sm:gap-1.5 sm:px-2',
+                                    isActive && 'bg-indigo-100 text-indigo-700',
+                                    isCompleted && 'cursor-pointer text-emerald-600 hover:bg-emerald-50',
+                                    !isActive && !isCompleted && 'cursor-not-allowed text-slate-400'
                                 )}
                             >
                                 <div className={cn(
-                                    "w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black",
-                                    isActive && "bg-indigo-600 text-white",
-                                    isCompleted && "bg-emerald-500 text-white",
-                                    !isActive && !isCompleted && "bg-gray-200 text-gray-400"
+                                    'flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-semibold',
+                                    isActive && 'bg-indigo-600 text-white',
+                                    isCompleted && 'bg-emerald-500 text-white',
+                                    !isActive && !isCompleted && 'bg-slate-200 text-slate-400'
                                 )}>
                                     {isCompleted ? '✓' : idx + 1}
                                 </div>
-                                <span className="hidden sm:inline">{step.label}</span>
+                                <span className="hidden whitespace-nowrap sm:inline">{step.label}</span>
                             </button>
                             {idx < wizardSteps.length - 1 && (
                                 <ChevronRight className={cn(
-                                    "w-3 h-3 mx-1 shrink-0",
-                                    isCompleted ? "text-emerald-400" : "text-gray-300"
+                                    'mx-0.5 h-3 w-3 shrink-0',
+                                    isCompleted ? 'text-emerald-400' : 'text-slate-300'
                                 )} />
                             )}
                         </React.Fragment>
@@ -706,59 +802,63 @@ export function ProductWizard({
             </div>
 
             {/* Step Content */}
-            <div className="px-6 py-6 min-h-[400px]">
+            <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-4 py-4 sm:px-5 sm:py-5">
                 <AnimatePresence mode="wait">
                     <motion.div
                         key={currentStep}
-                        initial={{ opacity: 0, x: 20 }}
+                        initial={{ opacity: 0, x: 12 }}
                         animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -20 }}
-                        transition={{ duration: 0.2 }}
+                        exit={{ opacity: 0, x: -12 }}
+                        transition={{ duration: 0.15 }}
+                        className="min-w-0"
                     >
                         <StepComponent
                             formData={formData}
                             onChange={handleFieldChange}
-                            category={category}
+                            category={resolvedCategory}
                             currency={currency}
                             errors={errors}
+                            business={business}
                         />
                     </motion.div>
                 </AnimatePresence>
             </div>
 
             {/* Footer Navigation */}
-            <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100 bg-gray-50/50">
+            <div className="flex shrink-0 items-center justify-between gap-3 border-t border-slate-100 bg-slate-50/80 px-4 py-3 sm:px-5">
                 <Button
+                    type="button"
                     variant="outline"
                     onClick={currentStep === 0 ? onCancel : handleBack}
-                    className="h-10 rounded-xl text-xs font-bold"
+                    className="h-10 rounded-xl text-xs font-semibold"
                 >
                     {currentStep === 0 ? (
                         <>Cancel</>
                     ) : (
-                        <><ArrowLeft className="w-4 h-4 mr-1.5" /> Back</>
+                        <><ArrowLeft className="mr-1.5 h-4 w-4" /> Back</>
                     )}
                 </Button>
 
                 <div className="flex items-center gap-2">
                     {currentStep < wizardSteps.length - 1 ? (
                         <Button
+                            type="button"
                             onClick={handleNext}
-                            className="h-10 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 shadow-md shadow-indigo-200"
+                            className="h-10 rounded-xl bg-indigo-600 text-xs font-semibold shadow-md shadow-indigo-200 hover:bg-indigo-700"
                         >
-                            Next <ArrowRight className="w-4 h-4 ml-1.5" />
+                            Next <ArrowRight className="ml-1.5 h-4 w-4" />
                         </Button>
                     ) : (
                         <Button
+                            type="button"
                             onClick={handleSave}
                             disabled={isSaving}
-                            className="h-10 rounded-xl text-xs font-bold bg-gradient-to-r from-emerald-500 to-emerald-600
-                                       hover:from-emerald-600 hover:to-emerald-700 shadow-md shadow-emerald-200 px-6"
+                            className="h-10 rounded-xl bg-emerald-600 px-6 font-semibold text-white shadow-md shadow-emerald-200 hover:bg-emerald-700"
                         >
                             {isSaving ? (
-                                <><Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> Saving...</>
+                                <><Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> Saving...</>
                             ) : (
-                                <><Save className="w-4 h-4 mr-1.5" /> Save Product</>
+                                <><Save className="mr-1.5 h-4 w-4" /> Save Product</>
                             )}
                         </Button>
                     )}

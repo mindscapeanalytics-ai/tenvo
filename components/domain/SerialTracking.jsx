@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
+import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -8,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { DatePicker } from '@/components/DatePicker';
 import { Plus, Trash2, Hash, Scan, ShieldCheck, ShieldAlert, History, Laptop } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { BarcodeScanner } from '@/components/BarcodeScanner';
+import { PosCameraScanner } from '@/components/pos/shared/PosCameraScanner';
 import { toast } from 'react-hot-toast';
 
 const getSerialLabel = (category) => {
@@ -103,7 +104,7 @@ export function SerialNumberInput({
               <div className="p-2 bg-slate-900 text-white rounded-lg"><Laptop className="w-4 h-4" /></div>
               <div>
                 <p className="text-xs font-bold text-slate-500 uppercase">Tracked Units</p>
-                <p className="text-xl font-black text-slate-900">{stats.total}</p>
+                <p className="text-xl font-semibold text-slate-900">{stats.total}</p>
               </div>
             </div>
           </CardContent>
@@ -115,7 +116,7 @@ export function SerialNumberInput({
               <div className="p-2 bg-emerald-600 text-white rounded-lg"><ShieldCheck className="w-4 h-4" /></div>
               <div>
                 <p className="text-xs font-bold text-emerald-600 uppercase">In Warranty</p>
-                <p className="text-xl font-black text-emerald-900">{stats.inWarranty}</p>
+                <p className="text-xl font-semibold text-emerald-900">{stats.inWarranty}</p>
               </div>
             </div>
           </CardContent>
@@ -127,7 +128,7 @@ export function SerialNumberInput({
               <div className="p-2 bg-indigo-600 text-white rounded-lg"><History className="w-4 h-4" /></div>
               <div>
                 <p className="text-xs font-bold text-indigo-600 uppercase">Available</p>
-                <p className="text-xl font-black text-indigo-900">{stats.available}</p>
+                <p className="text-xl font-semibold text-indigo-900">{stats.available}</p>
               </div>
             </div>
           </CardContent>
@@ -198,7 +199,7 @@ export function SerialNumberInput({
                         <Hash className="w-5 h-5" />
                       </div>
                       <div>
-                        <p className="font-mono font-black text-gray-900 tracking-wider uppercase">{s.serialNumber}</p>
+                        <p className="font-mono font-semibold text-gray-900 tracking-wider uppercase">{s.serialNumber}</p>
                         <div className="flex items-center gap-3 mt-1">
                           <Badge className={`${status.color} text-white border-0 text-[10px] flex items-center gap-1`}>
                             <Icon className="w-3 h-3" /> {status.label}
@@ -231,12 +232,15 @@ export function SerialNumberInput({
       </div>
 
       {showScanner && (
-        <BarcodeScanner
+        <PosCameraScanner
+          open={showScanner}
+          onClose={() => setShowScanner(false)}
           onScan={(code) => {
-            setNewSerial(prev => ({ ...prev, serialNumber: code }));
+            setNewSerial((prev) => ({ ...prev, serialNumber: code }));
             setShowScanner(false);
           }}
-          onClose={() => setShowScanner(false)}
+          title={`Scan ${getSerialLabel(category)}`}
+          hint="Align serial / IMEI barcode in frame or type manually"
         />
       )}
     </div>

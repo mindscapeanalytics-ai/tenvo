@@ -7,6 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { formatCurrency } from '@/lib/currency';
 import { useLanguage } from '@/lib/context/LanguageContext';
+import { useBusiness } from '@/lib/context/BusinessContext';
+import { getFbrComplianceSummaryAction } from '@/lib/actions/standard/tax';
 import { translations } from '@/lib/translations';
 import { format, differenceInDays, addMonths } from 'date-fns';
 
@@ -28,51 +30,38 @@ import { format, differenceInDays, addMonths } from 'date-fns';
  * @param {string} [props.currency] - Currency code
  * @param {Function} [props.onViewDetails] - Callback when user clicks to view details
  */
-export function FBRComplianceWidget({ businessId, currency = 'PKR', onViewDetails }) {
+export function FBRComplianceWidget({ businessId, currency: currencyProp, onViewDetails }) {
     const [complianceData, setComplianceData] = useState(null);
     const [loading, setLoading] = useState(true);
     const { language } = useLanguage();
+    const { currency: businessCurrency, regionalPack } = useBusiness();
+    const currency = currencyProp || businessCurrency || 'PKR';
+    const isPakistanMarket = regionalPack?.countryIso === 'PK';
     const t = translations[language] || translations['en'] || {};
 
     // Fetch FBR compliance data
     useEffect(() => {
+        if (!isPakistanMarket) return;
+
         async function loadComplianceData() {
             if (!businessId) return;
             
             setLoading(true);
             try {
-                const { createClient } = await import('@/lib/supabase/client');
-                const supabase = createClient();
-                
-                // Get current month's sales data for tax calculation
-                const currentMonth = new Date();
-                const firstDay = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
-                const lastDay = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
+                const summary = await getFbrComplianceSummaryAction(businessId);
+                if (!summary.success) throw new Error(summary.error || 'Failed to load tax summary');
 
-                const { data: invoices, error } = await supabase
-                    .from('invoices')
-                    .select('total_amount, tax_amount, created_at, status')
-                    .eq('business_id', businessId)
-                    .gte('created_at', firstDay.toISOString())
-                    .lte('created_at', lastDay.toISOString());
-
-                if (error) throw error;
-
-                // Calculate tax totals
-                const paidInvoices = (invoices || []).filter(inv => inv.status === 'paid');
-                const totalSales = paidInvoices.reduce((sum, inv) => sum + parseFloat(inv.total_amount || 0), 0);
-                const totalTax = paidInvoices.reduce((sum, inv) => sum + parseFloat(inv.tax_amount || 0), 0);
+                const totalSales = summary.totalSales || 0;
+                const totalTax = summary.totalTax || 0;
 
                 // Calculate PST (Provincial Sales Tax) and FST (Federal Sales Tax)
-                // Assuming 17% PST and 1% FST for simplification
-                const pst = totalTax * 0.94; // 94% of tax is PST (17/18)
-                const fst = totalTax * 0.06; // 6% of tax is FST (1/18)
+                const pst = totalTax * 0.94;
+                const fst = totalTax * 0.06;
 
-                // Next filing deadline (15th of next month)
+                const currentMonth = new Date();
                 const nextDeadline = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 15);
                 const daysUntilDeadline = differenceInDays(nextDeadline, new Date());
 
-                // Mock recent filings (in production, fetch from database)
                 const recentFilings = [
                     {
                         month: format(addMonths(currentMonth, -1), 'MMMM yyyy'),
@@ -106,7 +95,7 @@ export function FBRComplianceWidget({ businessId, currency = 'PKR', onViewDetail
         }
 
         loadComplianceData();
-    }, [businessId]);
+    }, [businessId, isPakistanMarket]);
 
     // Calculate compliance score
     const complianceScore = useMemo(() => {
@@ -118,6 +107,10 @@ export function FBRComplianceWidget({ businessId, currency = 'PKR', onViewDetail
         
         return Math.max(score, 0);
     }, [complianceData]);
+
+    if (!isPakistanMarket) {
+        return null;
+    }
 
     if (loading) {
         return (
@@ -232,7 +225,7 @@ export function FBRComplianceWidget({ businessId, currency = 'PKR', onViewDetail
 
                 {/* Tax Summary */}
                 <div className="space-y-2">
-                    <div className="text-[10px] font-black uppercase tracking-widest text-gray-400">
+                    <div className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">
                         {t.current_month_tax || 'Current Month Tax'}
                     </div>
                     <div className="grid grid-cols-2 gap-2">
@@ -240,7 +233,7 @@ export function FBRComplianceWidget({ businessId, currency = 'PKR', onViewDetail
                             <div className="text-xs text-blue-700 font-medium mb-1">
                                 {t.pst || 'PST'} (17%)
                             </div>
-                            <div className="text-lg font-black text-blue-900">
+                            <div className="text-lg font-semibold text-blue-900">
                                 {formatCurrency(complianceData.pst, currency)}
                             </div>
                         </div>
@@ -248,7 +241,7 @@ export function FBRComplianceWidget({ businessId, currency = 'PKR', onViewDetail
                             <div className="text-xs text-wine-700 font-medium mb-1">
                                 {t.fst || 'FST'} (1%)
                             </div>
-                            <div className="text-lg font-black text-wine-900">
+                            <div className="text-lg font-semibold text-wine-900">
                                 {formatCurrency(complianceData.fst, currency)}
                             </div>
                         </div>
@@ -258,7 +251,7 @@ export function FBRComplianceWidget({ businessId, currency = 'PKR', onViewDetail
                             <span className="text-xs font-bold text-green-900">
                                 {t.total_tax_liability || 'Total Tax Liability'}
                             </span>
-                            <span className="text-xl font-black text-green-900">
+                            <span className="text-xl font-semibold text-green-900">
                                 {formatCurrency(complianceData.totalTax, currency)}
                             </span>
                         </div>
@@ -267,7 +260,7 @@ export function FBRComplianceWidget({ businessId, currency = 'PKR', onViewDetail
 
                 {/* Compliance Score */}
                 <div className="space-y-1.5">
-                    <div className="flex items-center justify-between text-[10px] uppercase font-black tracking-widest text-gray-400">
+                    <div className="flex items-center justify-between text-[10px] uppercase font-semibold tracking-widest text-gray-400">
                         <span>{t.compliance_score || 'Compliance Score'}</span>
                         <span>{complianceScore}%</span>
                     </div>
@@ -284,7 +277,7 @@ export function FBRComplianceWidget({ businessId, currency = 'PKR', onViewDetail
                 {/* Recent Filings */}
                 {complianceData.recentFilings.length > 0 && (
                     <div className="space-y-2">
-                        <div className="text-[10px] font-black uppercase tracking-widest text-gray-400">
+                        <div className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">
                             {t.recent_filings || 'Recent Filings'}
                         </div>
                         {complianceData.recentFilings.slice(0, 2).map((filing, idx) => (

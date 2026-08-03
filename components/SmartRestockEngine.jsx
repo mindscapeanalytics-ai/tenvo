@@ -6,7 +6,8 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { getDomainKnowledge } from '@/lib/domainKnowledge';
+import { getDomainKnowledgeForBusiness } from '@/lib/utils/businessRegionalContext';
+import { useBusiness } from '@/lib/context/BusinessContext';
 import toast from 'react-hot-toast';
 import { createBulkPurchaseOrdersAction } from '@/lib/actions/standard/purchase';
 import { getAiRestockSuggestionsAction } from '@/lib/actions/premium/ai/ai';
@@ -14,11 +15,16 @@ import { getAiRestockSuggestionsAction } from '@/lib/actions/premium/ai/ai';
 export const SmartRestockEngine = memo(function SmartRestockEngine({
     products = [],
     invoices = [],
+    vendors = [],
+    locations = [],
     category = 'retail-shop',
     businessId,
-    domainKnowledge = getDomainKnowledge(category),
+    domainKnowledge: domainKnowledgeProp,
     refreshData
 }) {
+    const { business } = useBusiness();
+    const domainKnowledge =
+        domainKnowledgeProp ?? getDomainKnowledgeForBusiness(category, business);
     const [selectedItems, setSelectedItems] = useState([]);
     const [isGenerating, setIsGenerating] = useState(false);
     const [aiSuggestions, setAiSuggestions] = useState([]);
@@ -123,18 +129,33 @@ export const SmartRestockEngine = memo(function SmartRestockEngine({
 
         setIsGenerating(true);
         try {
+            const defaultVendorId =
+                vendors.find((v) => v?.id && v?.is_active !== false)?.id || vendors[0]?.id || null;
+            const defaultWarehouseId = locations.find((l) => l?.id)?.id || null;
+
+            if (!defaultVendorId) {
+                toast.error('Add at least one active vendor before generating purchase orders.');
+                setIsGenerating(false);
+                return;
+            }
+
             const ordersToCreate = selectedItems.map(id => {
                 const item = restockSuggestions.find(s => s.id === id);
                 if (!item) return null;
                 const quantity = Number(item.restockAmount || item.forecast?.forecastedQuantity || 0);
                 if (quantity <= 0) return null;
+                const unitCost = Number(item.cost_price ?? item.costPrice ?? 0) || Number(item.price ?? 0) || 0;
+                const lineTotal = quantity * unitCost;
                 return {
                     product_id: item.id,
                     quantity,
-                    unit_cost: item.cost_price || item.price || 0,
-                    total_amount: quantity * (item.cost_price || item.price || 0),
-                    description: `Auto-restock: ${item.reason || item.forecast?.reasoning}`,
-                    notes: `Generated Priority: ${item.priority}`
+                    unit_cost: unitCost,
+                    subtotal: lineTotal,
+                    total_amount: lineTotal,
+                    vendor_id: defaultVendorId,
+                    warehouse_id: defaultWarehouseId,
+                    description: `Auto-restock: ${item.reason || item.forecast?.reasoning || 'Restock'}`,
+                    notes: `Generated Priority: ${item.priority || 'Medium'}`
                 };
             }).filter(Boolean);
 
@@ -159,7 +180,7 @@ export const SmartRestockEngine = memo(function SmartRestockEngine({
         } finally {
             setIsGenerating(false);
         }
-    }, [selectedItems, restockSuggestions, effectiveBusinessId, refreshData]);
+    }, [selectedItems, restockSuggestions, effectiveBusinessId, refreshData, vendors, locations]);
 
     return (
         <Card className="border-wine/20 shadow-md backdrop-blur-sm bg-white/90">
@@ -230,7 +251,7 @@ export const SmartRestockEngine = memo(function SmartRestockEngine({
                                         </div>
                                     </div>
                                     <div className="text-right">
-                                        <div className="flex items-center justify-end gap-1 text-wine font-black text-lg">
+                                        <div className="flex items-center justify-end gap-1 text-wine font-semibold text-lg">
                                             <PackagePlus className="w-4 h-4" />
                                             +{item.restockAmount || item.forecast?.forecastedQuantity}
                                         </div>
@@ -245,7 +266,7 @@ export const SmartRestockEngine = memo(function SmartRestockEngine({
             {restockSuggestions.length > 0 && (
                 <CardFooter className="bg-wine/[0.02] border-t border-wine/5 p-4">
                     <Button
-                        className="w-full bg-wine hover:bg-wine/90 text-white font-black text-sm h-10 shadow-md shadow-wine/20 rounded-xl group"
+                        className="w-full font-semibold h-10 shadow-md shadow-wine/20 rounded-xl group bg-emerald-600 hover:bg-emerald-700 text-white"
                         disabled={selectedItems.length === 0 || isGenerating || !effectiveBusinessId}
                         onClick={handleBulkRestock}
                     >

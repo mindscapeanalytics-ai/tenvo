@@ -13,8 +13,14 @@ import {
     Shield,
     BadgeCheck,
     Mail,
-    Smartphone
+    Smartphone,
+    Sparkles,
+    Globe,
+    LayoutGrid,
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { useLanguage } from '@/lib/context/LanguageContext';
+import { useAppMode } from '@/lib/context/BusyModeContext';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -46,6 +52,8 @@ export function UserManager({ trigger }) {
     const { user, signOut, updateProfile } = useAuth();
     const router = useRouter();
     const { business, role, isPlatformOwner } = useBusiness();
+    const { language, toggleLanguage } = useLanguage();
+    const { setAppMode, isEasyMode, isRetailSimpleDashboard, setDashboardStyle } = useAppMode();
     const [showProfileDialog, setShowProfileDialog] = useState(false);
     const [isUpdating, setIsUpdating] = useState(false);
     const canManageBilling = isPlatformOwner || role === 'owner';
@@ -111,7 +119,7 @@ export function UserManager({ trigger }) {
                             <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between">
                                 <div className="flex items-center gap-2">
                                     <Building2 className="w-3.5 h-3.5 text-wine" />
-                                    <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Current Shop</span>
+                                    <span className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">Current Shop</span>
                                 </div>
                                 <Badge variant="outline" className="text-[10px] font-bold border-wine/20 text-wine h-5">
                                     {business.business_name}
@@ -168,6 +176,110 @@ export function UserManager({ trigger }) {
 
                     <DropdownMenuSeparator className="-mx-2 bg-gray-50" />
 
+                    {/* Preferences Area (Interface Mode and Language) */}
+                    <div className="p-2.5 bg-gray-50/50 rounded-xl m-1 space-y-2.5 border border-gray-100/60">
+                        {/* Interface Toggle */}
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <Sparkles className="w-3.5 h-3.5 text-brand-primary" />
+                                <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Interface</span>
+                            </div>
+                            <div className="flex bg-white border border-gray-100 rounded-lg p-0.5 shadow-sm">
+                                <button
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        setAppMode('easy');
+                                    }}
+                                    className={cn(
+                                        "px-2.5 py-0.5 text-[10px] font-bold rounded-md transition-all",
+                                        isEasyMode
+                                            ? "bg-brand-primary text-white shadow-sm font-semibold"
+                                            : "text-gray-500 hover:text-gray-700"
+                                    )}
+                                >
+                                    Simple
+                                </button>
+                                <button
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        setAppMode('advanced');
+                                    }}
+                                    className={cn(
+                                        "px-2.5 py-0.5 text-[10px] font-bold rounded-md transition-all",
+                                        !isEasyMode
+                                            ? "bg-brand-primary text-white shadow-sm font-semibold"
+                                            : "text-gray-500 hover:text-gray-700"
+                                    )}
+                                >
+                                    Pro
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Retail Simple home (only meaningful in Simple mode) */}
+                        {isEasyMode ? (
+                            <div className="flex items-center justify-between gap-2">
+                                <div className="flex min-w-0 items-center gap-2">
+                                    <LayoutGrid className="w-3.5 h-3.5 shrink-0 text-sky-600" />
+                                    <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 truncate">
+                                        Retail home
+                                    </span>
+                                </div>
+                                <div className="flex bg-white border border-gray-100 rounded-lg p-0.5 shadow-sm">
+                                    <button
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            setDashboardStyle('retail_simple');
+                                        }}
+                                        className={cn(
+                                            "px-2.5 py-0.5 text-[10px] font-bold rounded-md transition-all",
+                                            isRetailSimpleDashboard
+                                                ? "bg-sky-600 text-white shadow-sm"
+                                                : "text-gray-500 hover:text-gray-700"
+                                        )}
+                                    >
+                                        Retail
+                                    </button>
+                                    <button
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            setDashboardStyle('guided');
+                                        }}
+                                        className={cn(
+                                            "px-2.5 py-0.5 text-[10px] font-bold rounded-md transition-all",
+                                            !isRetailSimpleDashboard
+                                                ? "bg-sky-600 text-white shadow-sm"
+                                                : "text-gray-500 hover:text-gray-700"
+                                        )}
+                                    >
+                                        Guided
+                                    </button>
+                                </div>
+                            </div>
+                        ) : null}
+
+                        {/* Language Toggle */}
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <Globe className="w-3.5 h-3.5 text-gray-400" />
+                                <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Language</span>
+                            </div>
+                            <button
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    toggleLanguage();
+                                }}
+                                className="flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold rounded-lg border border-gray-100 bg-white hover:bg-gray-50 text-gray-600 transition-colors shadow-sm"
+                            >
+                                <span className={cn(language === 'ur' ? 'font-urdu' : '')}>
+                                    {language === 'en' ? 'Urdu (اردو)' : 'English'}
+                                </span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <DropdownMenuSeparator className="-mx-2 bg-gray-50" />
+
                     <div className="p-1">
                         <DropdownMenuItem
                             onClick={() => signOut()}
@@ -185,14 +297,14 @@ export function UserManager({ trigger }) {
             <Dialog open={showProfileDialog} onOpenChange={setShowProfileDialog}>
                 <DialogContent className="sm:max-w-md rounded-3xl p-0 overflow-hidden border-none shadow-2xl">
                     <div className="h-24 bg-gradient-to-r from-wine to-wine-light p-6">
-                        <DialogTitle className="text-white text-xl font-black">Account Settings</DialogTitle>
+                        <DialogTitle className="text-white text-xl font-semibold">Account Settings</DialogTitle>
                         <DialogDescription className="text-white/70 text-sm font-medium">Manage your personal ERP access profile</DialogDescription>
                     </div>
 
                     <form onSubmit={handleUpdateProfile} className="p-6 space-y-6 bg-white">
                         <div className="space-y-4">
                             <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Full Name</Label>
+                                <Label className="text-[10px] font-semibold uppercase text-gray-400 tracking-widest">Full Name</Label>
                                 <div className="relative group">
                                     <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-wine transition-colors" />
                                     <Input
@@ -205,7 +317,7 @@ export function UserManager({ trigger }) {
                             </div>
 
                             <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Phone Number</Label>
+                                <Label className="text-[10px] font-semibold uppercase text-gray-400 tracking-widest">Phone Number</Label>
                                 <div className="relative group">
                                     <Smartphone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-wine transition-colors" />
                                     <Input
@@ -218,7 +330,7 @@ export function UserManager({ trigger }) {
                             </div>
 
                             <div className="space-y-2 opacity-60">
-                                <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Registered Email</Label>
+                                <Label className="text-[10px] font-semibold uppercase text-gray-400 tracking-widest">Registered Email</Label>
                                 <div className="relative">
                                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                                     <Input
@@ -236,7 +348,7 @@ export function UserManager({ trigger }) {
                                 <Shield className="w-5 h-5 text-wine" />
                             </div>
                             <div>
-                                <h4 className="text-sm font-black text-gray-900">Enterprise Security</h4>
+                                <h4 className="text-sm font-semibold text-gray-900">Enterprise Security</h4>
                                 <p className="text-xs text-gray-500 font-medium">Your account is secured with end-to-end encryption and Row Level Security.</p>
                             </div>
                         </div>
@@ -245,7 +357,7 @@ export function UserManager({ trigger }) {
                             <Button type="button" variant="ghost" onClick={() => setShowProfileDialog(false)} className="flex-1 font-bold rounded-xl h-11">
                                 Cancel
                             </Button>
-                            <Button type="submit" disabled={isUpdating} className="flex-1 bg-wine hover:bg-wine/90 text-white font-bold rounded-xl h-11 shadow-lg shadow-wine/20">
+                            <Button type="submit" disabled={isUpdating} className="flex-1 font-bold rounded-xl h-11 shadow-lg shadow-wine/20 bg-emerald-600 hover:bg-emerald-700 text-white">
                                 {isUpdating ? 'Saving...' : 'Save Changes'}
                             </Button>
                         </DialogFooter>

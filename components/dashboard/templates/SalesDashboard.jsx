@@ -150,7 +150,7 @@ export function SalesDashboard({
       {/* Sales Dashboard Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-black text-gray-900">
+          <h2 className="text-2xl font-semibold text-gray-900">
             {t.sales_dashboard || 'Sales Dashboard'}
           </h2>
           <p className="text-sm text-gray-500">
@@ -182,7 +182,7 @@ export function SalesDashboard({
             <Button
               onClick={() => onQuickAction?.('create-invoice')}
               size="lg"
-              className="bg-wine hover:bg-wine/90 text-white font-bold px-8"
+              className="font-bold px-8 bg-emerald-600 hover:bg-emerald-700 text-white"
             >
               <Plus className="w-5 h-5 mr-2" />
               {t.new_invoice || 'New Invoice'}
@@ -229,7 +229,7 @@ export function SalesDashboard({
                   {t.today_earned || 'Today Earned'}
                 </span>
               </div>
-              <div className="text-3xl font-black text-amber-900">
+              <div className="text-3xl font-semibold text-amber-900">
                 {formatCurrency(commission.todayEarned, currency)}
               </div>
               <div className="text-xs text-amber-700 mt-1">
@@ -249,7 +249,7 @@ export function SalesDashboard({
               </div>
               
               <div className="mb-2">
-                <div className="text-2xl font-black text-gray-900">
+                <div className="text-2xl font-semibold text-gray-900">
                   {formatCurrency(commission.monthlyEarned, currency)}
                 </div>
                 <div className="text-xs text-gray-600">
@@ -276,7 +276,7 @@ export function SalesDashboard({
                     {t.awaiting_payout || 'Awaiting payout'}
                   </div>
                 </div>
-                <div className="text-lg font-black text-gray-900">
+                <div className="text-lg font-semibold text-gray-900">
                   {formatCurrency(commission.pendingAmount, currency)}
                 </div>
               </div>

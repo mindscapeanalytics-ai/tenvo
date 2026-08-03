@@ -10,7 +10,10 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { batchAPI } from '@/lib/api/batch';
 import { formatCurrency } from '@/lib/currency';
+import { useBusiness } from '@/lib/context/BusinessContext';
+import { resolveDisplayCurrency } from '@/lib/utils/businessRegionalContext';
 import toast from 'react-hot-toast';
+import { ResponsiveManagerHeader } from '@/components/mobile/HubSectionHeader';
 
 /**
  * Batch Entry and Management Component
@@ -31,6 +34,11 @@ export function BatchManager({
     onBatchCreated,
     onClose
 }) {
+    const { business, currency: businessCurrency, regionalPack } = useBusiness();
+    const currency = resolveDisplayCurrency(
+        { currency: businessCurrency || business?.currency },
+        regionalPack
+    );
     const [batches, setBatches] = useState([]);
     const [loading, setLoading] = useState(false);
     const [showAddForm, setShowAddForm] = useState(false);
@@ -178,21 +186,20 @@ export function BatchManager({
 
     return (
         <div className="space-y-6">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h3 className="text-lg font-semibold text-gray-900">Batch Management</h3>
-                    <p className="text-sm text-gray-600">{product?.name || 'No product selected'}</p>
-                </div>
-                <Button
-                    onClick={() => setShowAddForm(true)}
-                    className="bg-wine hover:bg-wine/90"
-                    disabled={!product?.id}
-                >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add Batch
-                </Button>
-            </div>
+            <ResponsiveManagerHeader
+                title="Batch Management"
+                subtitle={product?.name || 'No product selected'}
+                actions={[
+                    {
+                        id: 'add-batch',
+                        label: 'Add Batch',
+                        icon: Plus,
+                        className: 'bg-wine hover:bg-wine/90 text-white',
+                        disabled: !product?.id,
+                        onClick: () => setShowAddForm(true),
+                    },
+                ]}
+            />
 
             {/* Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -210,7 +217,7 @@ export function BatchManager({
                 </Card>
                 <Card>
                     <CardContent className="pt-6">
-                        <div className="text-2xl font-bold text-gray-900">{formatCurrency(totalValue, 'PKR')}</div>
+                        <div className="text-2xl font-bold text-gray-900">{formatCurrency(totalValue, currency)}</div>
                         <p className="text-sm text-gray-600">Total Value</p>
                     </CardContent>
                 </Card>
@@ -303,7 +310,7 @@ export function BatchManager({
                                                 <div>
                                                     <p className="text-gray-600">Cost Price</p>
                                                     <p className="font-medium text-gray-900">
-                                                        {formatCurrency(batch.cost_price || 0, 'PKR')}
+                                                        {formatCurrency(batch.cost_price || 0, currency)}
                                                     </p>
                                                 </div>
 
@@ -340,15 +347,15 @@ export function BatchManager({
 
             {/* Add Batch Dialog */}
             <Dialog open={showAddForm} onOpenChange={setShowAddForm}>
-                <DialogContent className="max-w-2xl">
-                    <DialogHeader>
+                <DialogContent className="max-w-2xl w-[calc(100vw-1.5rem)] sm:w-full max-h-[min(92vh,900px)] flex flex-col gap-0 overflow-hidden p-0">
+                    <DialogHeader className="shrink-0 px-6 pt-6 pb-2">
                         <DialogTitle>Add New Batch</DialogTitle>
                         <DialogDescription>
                             Register a new production or purchase batch with its own expiry date and cost.
                         </DialogDescription>
                     </DialogHeader>
 
-                    <form onSubmit={handleSubmit} className="space-y-4">
+                    <form onSubmit={handleSubmit} className="space-y-4 px-6 pb-6 overflow-y-auto min-h-0 flex-1">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <Label htmlFor="batchNumber">Batch Number *</Label>
@@ -438,7 +445,7 @@ export function BatchManager({
                             >
                                 Cancel
                             </Button>
-                            <Button type="submit" disabled={loading} className="bg-wine hover:bg-wine/90">
+                            <Button type="submit" disabled={loading} className=" bg-emerald-600 hover:bg-emerald-700 text-white">
                                 <Save className="w-4 h-4 mr-2" />
                                 {loading ? 'Creating...' : 'Create Batch'}
                             </Button>

@@ -6,7 +6,15 @@ import { exportToCSV, exportToExcel, generateReportPDF } from '@/lib/pdf';
 import toast from 'react-hot-toast';
 import { cn } from '@/lib/utils';
 
-export function ExportButton({ data, filename = 'export', columns, title, minimal = false }) {
+export function ExportButton({
+  data,
+  filename = 'export',
+  columns,
+  title,
+  minimal = false,
+  business = null,
+  pdfMeta = null,
+}) {
   const [isOpen, setIsOpen] = useState(false);
 
   const handleExport = async (type) => {
@@ -26,7 +34,11 @@ export function ExportButton({ data, filename = 'export', columns, title, minima
           break;
         case 'pdf':
           if (columns && title) {
-            const doc = generateReportPDF(title, data, columns);
+            const doc = generateReportPDF(title, data, columns, {
+              businessName: business?.business_name || business?.name,
+              business,
+              ...(pdfMeta || {}),
+            });
             doc.save(`${filename}.pdf`);
             toast.success('PDF exported successfully');
           } else {
@@ -60,20 +72,20 @@ export function ExportButton({ data, filename = 'export', columns, title, minima
           <div className="mt-1 space-y-1 pl-7 animate-in slide-in-from-top-1 duration-200">
             <button
               onClick={() => handleExport('csv')}
-              className="w-full text-left py-1.5 text-[10px] font-black uppercase text-gray-500 hover:text-gray-900 transition-colors"
+              className="w-full text-left py-1.5 text-[10px] font-semibold uppercase text-gray-500 hover:text-gray-900 transition-colors"
             >
               * Download CSV
             </button>
             <button
               onClick={() => handleExport('excel')}
-              className="w-full text-left py-1.5 text-[10px] font-black uppercase text-gray-500 hover:text-gray-900 transition-colors"
+              className="w-full text-left py-1.5 text-[10px] font-semibold uppercase text-gray-500 hover:text-gray-900 transition-colors"
             >
               * Download Excel
             </button>
             {columns && title && (
               <button
                 onClick={() => handleExport('pdf')}
-                className="w-full text-left py-1.5 text-[10px] font-black uppercase text-gray-500 hover:text-gray-900 transition-colors"
+                className="w-full text-left py-1.5 text-[10px] font-semibold uppercase text-gray-500 hover:text-gray-900 transition-colors"
               >
                 * Download PDF
               </button>
@@ -101,7 +113,7 @@ export function ExportButton({ data, filename = 'export', columns, title, minima
           />
           <div className="absolute z-20 mt-2 right-0 bg-white border border-gray-200 rounded-lg shadow-xl py-2 min-w-[200px] animate-in zoom-in-95 duration-100">
             <div className="px-3 py-1.5 mb-1">
-              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Select Format</span>
+              <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest">Select Format</span>
             </div>
             <button
               onClick={() => handleExport('csv')}

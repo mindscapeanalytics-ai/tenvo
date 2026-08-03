@@ -11,6 +11,13 @@ import { Badge } from '@/components/ui/badge';
 import { formatCurrency } from '@/lib/currency';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
+import { ACCOUNT_CODES } from '@/lib/config/accounting';
+
+const BANK_ACCOUNT_CODES = new Set([
+    ACCOUNT_CODES.CASH_ON_HAND,
+    ACCOUNT_CODES.PETTY_CASH,
+    ACCOUNT_CODES.BANK_ACCOUNTS,
+]);
 
 /**
  * BankReconciliation
@@ -25,6 +32,8 @@ export function BankReconciliation({ businessId, currency, accounts = [] }) {
     // Sessions list
     const [sessions, setSessions] = useState([]);
     const [loadingSessions, setLoadingSessions] = useState(false);
+    const [tablesMissing, setTablesMissing] = useState(false);
+    const [tablesWarning, setTablesWarning] = useState('');
     const [activeSession, setActiveSession] = useState(null);
     const [sessionDetail, setSessionDetail] = useState(null); // { session, lines, gl_entries }
     const [loadingDetail, setLoadingDetail] = useState(false);
@@ -48,9 +57,14 @@ export function BankReconciliation({ businessId, currency, accounts = [] }) {
     const [saving, setSaving] = useState(false);
 
     // Only show bank/cash type accounts
-    const bankAccounts = accounts.filter(a =>
-        ['asset', 'bank', 'cash'].includes((a.type || '').toLowerCase())
-    );
+    const bankAccounts = accounts.filter((a) => {
+        if (a.is_active === false) return false;
+        const code = String(a.code || '');
+        if (BANK_ACCOUNT_CODES.has(code)) return true;
+        const name = String(a.name || '').toLowerCase();
+        const subType = String(a.sub_type || '').toLowerCase();
+        return subType === 'current_asset' && (name.includes('bank') || name.includes('cash'));
+    });
 
     // -- Load sessions ----------------------------------------------------------
 
@@ -60,10 +74,17 @@ export function BankReconciliation({ businessId, currency, accounts = [] }) {
         try {
             const res = await fetch(`/api/v1/finance/bank-reconciliation?business_id=${businessId}`);
             const data = await res.json();
-            if (data.warning) {
+            if (data.warning || data.code === 'TABLES_MISSING') {
                 setSessions([]);
+                setTablesMissing(true);
+                setTablesWarning(
+                    data.warning ||
+                        'Bank reconciliation is not available on this database yet.'
+                );
                 return;
             }
+            setTablesMissing(false);
+            setTablesWarning('');
             if (!res.ok) throw new Error(data.error || 'Failed to load sessions');
             setSessions(data.sessions || []);
         } catch (err) {
@@ -241,9 +262,9 @@ export function BankReconciliation({ businessId, currency, accounts = [] }) {
         return (
             <div className="space-y-4">
                 {/* Session Header */}
-                <div className="flex items-center justify-between bg-white rounded-xl border border-gray-100 px-4 py-3">
-                    <div>
-                        <h4 className="text-sm font-black text-gray-900">
+                <div className="flex flex-col gap-3 rounded-xl border border-gray-100 bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0">
+                        <h4 className="text-sm font-semibold text-gray-900">
                             {session.account_name} · {format(new Date(session.statement_date), 'dd MMM yyyy')}
                         </h4>
                         <p className="text-xs text-gray-400 mt-0.5">
@@ -251,7 +272,7 @@ export function BankReconciliation({ businessId, currency, accounts = [] }) {
                             Closing balance: {formatCurrency(Number(session.statement_closing_balance), currency)}
                         </p>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                         <Button
                             variant="outline" size="sm"
                             onClick={() => { setActiveSession(null); setSessionDetail(null); }}
@@ -275,7 +296,7 @@ export function BankReconciliation({ businessId, currency, accounts = [] }) {
 
                 {/* Stats */}
                 {stats && (
-                    <div className="grid grid-cols-4 gap-3">
+                    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
                         {[
                             { label: 'Total Lines', value: stats.total, color: 'text-gray-800' },
                             { label: 'Matched', value: stats.matched, color: 'text-emerald-600' },
@@ -287,7 +308,7 @@ export function BankReconciliation({ businessId, currency, accounts = [] }) {
                             },
                         ].map(s => (
                             <div key={s.label} className="bg-white rounded-xl border border-gray-100 px-4 py-3 text-center">
-                                <p className={`text-lg font-black ${s.color}`}>{s.value}</p>
+                                <p className={`text-lg font-semibold ${s.color}`}>{s.value}</p>
                                 <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide mt-0.5">{s.label}</p>
                             </div>
                         ))}
@@ -299,7 +320,7 @@ export function BankReconciliation({ businessId, currency, accounts = [] }) {
                     {/* Statement Lines (Left) */}
                     <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
                         <div className="px-4 py-3 bg-gray-50 border-b border-gray-100">
-                            <h5 className="text-xs font-black text-gray-700 uppercase tracking-wide">Bank Statement Lines</h5>
+                            <h5 className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Bank Statement Lines</h5>
                         </div>
                         <div className="divide-y divide-gray-50 max-h-96 overflow-y-auto">
                             {lines.length === 0 && (
@@ -382,7 +403,7 @@ export function BankReconciliation({ businessId, currency, accounts = [] }) {
                     {/* GL Entries (Right) */}
                     <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
                         <div className="px-4 py-3 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
-                            <h5 className="text-xs font-black text-gray-700 uppercase tracking-wide">GL Book Entries</h5>
+                            <h5 className="text-xs font-semibold text-gray-700 uppercase tracking-wide">GL Book Entries</h5>
                             <span className="text-[10px] text-gray-400">{gl_entries.length} entries</span>
                         </div>
                         <div className="divide-y divide-gray-50 max-h-96 overflow-y-auto">
@@ -406,7 +427,7 @@ export function BankReconciliation({ businessId, currency, accounts = [] }) {
                                                     ? <p className="text-xs font-bold text-red-600">DR {formatCurrency(Number(ge.debit), currency)}</p>
                                                     : <p className="text-xs font-bold text-emerald-600">CR {formatCurrency(Number(ge.credit), currency)}</p>}
                                                 {isMatched && (
-                                                    <Badge className="text-[8px] bg-emerald-100 text-emerald-700 border-0 px-1.5 mt-0.5">MATCHED</Badge>
+                                                    <Badge className="text-[10px] bg-emerald-100 text-emerald-700 border-0 px-1.5 mt-0.5">MATCHED</Badge>
                                                 )}
                                             </div>
                                         </div>
@@ -429,14 +450,15 @@ export function BankReconciliation({ businessId, currency, accounts = [] }) {
                 <>
                     <div className="flex items-center justify-between">
                         <div>
-                            <h3 className="text-lg font-black text-gray-900">Bank Reconciliation</h3>
+                            <h3 className="text-lg font-semibold text-gray-900">Bank Reconciliation</h3>
                             <p className="text-xs text-gray-400">
                                 Match bank statement lines against GL book entries
                             </p>
                         </div>
                         <Button
                             onClick={() => setShowNewSession(prev => !prev)}
-                            className="bg-brand-primary hover:bg-brand-primary-dark text-white rounded-xl font-bold text-xs px-5 shadow-lg shadow-brand-primary/20"
+                            disabled={tablesMissing}
+                            className="bg-brand-primary hover:bg-brand-primary-dark text-white rounded-xl font-bold text-xs px-5 shadow-lg shadow-brand-primary/20 disabled:opacity-50"
                         >
                             <Plus className="w-4 h-4 mr-1.5" /> New Reconciliation
                         </Button>
@@ -445,7 +467,7 @@ export function BankReconciliation({ businessId, currency, accounts = [] }) {
                     {/* New Session Form */}
                     {showNewSession && (
                         <div className="bg-white rounded-2xl border border-brand-100 p-5 space-y-4 shadow-sm">
-                            <h4 className="text-sm font-black text-gray-900">Start Bank Reconciliation</h4>
+                            <h4 className="text-sm font-semibold text-gray-900">Start Bank Reconciliation</h4>
 
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                                 <div>
@@ -492,7 +514,7 @@ export function BankReconciliation({ businessId, currency, accounts = [] }) {
                                             ...prev,
                                             { id: Date.now(), statement_date: newSession.statement_date, description: '', debit: '', credit: '' }
                                         ])}
-                                        className="text-xs h-7 px-3 text-brand-primary"
+                                        className="text-xs h-7 px-3 text-emerald-600"
                                     >
                                         <Plus className="w-3 h-3 mr-1" /> Add Line
                                     </Button>
@@ -546,7 +568,7 @@ export function BankReconciliation({ businessId, currency, accounts = [] }) {
                                     size="sm"
                                     onClick={handleCreateSession}
                                     disabled={creating}
-                                    className="bg-brand-primary hover:bg-brand-primary-dark text-white rounded-xl text-xs h-9 px-6"
+                                    className="emerald-600 hover:emerald-700 rounded-xl h-9 px-6 bg-emerald-600 hover:bg-emerald-700 text-white"
                                 >
                                     {creating ? <Loader2 className="w-4 h-4 animate-spin mr-1.5" /> : <GitMerge className="w-4 h-4 mr-1.5" />}
                                     Start Reconciliation
@@ -559,6 +581,15 @@ export function BankReconciliation({ businessId, currency, accounts = [] }) {
                     {loadingSessions ? (
                         <div className="flex items-center justify-center py-12 text-gray-400">
                             <Loader2 className="w-5 h-5 animate-spin mr-2" /> Loading...
+                        </div>
+                    ) : tablesMissing ? (
+                        <div className="rounded-2xl border border-amber-100 bg-amber-50/60 py-16 text-center text-amber-800">
+                            <AlertTriangle className="mx-auto mb-3 h-12 w-12 opacity-40" />
+                            <p className="text-sm font-bold">Bank reconciliation unavailable</p>
+                            <p className="mx-auto mt-1 max-w-md text-xs text-amber-700/90">
+                                {tablesWarning ||
+                                    'Bank reconciliation is not available on this database yet.'}
+                            </p>
                         </div>
                     ) : sessions.length === 0 ? (
                         <div className="text-center py-16 text-gray-400 bg-white rounded-2xl border border-gray-100">
@@ -573,7 +604,7 @@ export function BankReconciliation({ businessId, currency, accounts = [] }) {
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-center gap-2">
                                             <span className="text-sm font-bold text-gray-900">{s.account_name}</span>
-                                            <Badge className={`text-[8px] px-1.5 py-0.5 border-0 font-black ${s.status === 'completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                                            <Badge className={`text-[10px] px-1.5 py-0.5 border-0 font-semibold ${s.status === 'completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
                                                 {s.status?.toUpperCase()}
                                             </Badge>
                                         </div>

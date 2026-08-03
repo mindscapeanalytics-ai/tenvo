@@ -1,17 +1,21 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { cn } from '@/lib/utils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { UsersIcon, Loader2, Sparkles, Building2, Smartphone, Wallet, FileText, Globe } from 'lucide-react';
+import { UsersIcon, Loader2, Sparkles, Building2, Smartphone, Wallet, Globe, X, Droplets } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { getDomainCustomerFields, normalizeKey } from '@/lib/utils/domainHelpers';
+import { isWaterHisabRelevant } from '@/lib/storefront/waterShopHisab';
 import { DomainFieldRenderer } from './domain/DomainFieldRenderer';
-import { useBusiness } from '@/lib/context/BusinessContext';
+import { useFormRegionalContext } from '@/lib/hooks/useFormRegionalContext';
+import { getRegionalStandards, getPhoneCountryCodeOptions } from '@/lib/utils/regionalHelpers';
 import { CityAutocomplete } from '@/components/CityAutocomplete';
 import { MarketLocationSelector } from '@/components/MarketLocationSelector';
+import { useAppMode } from '@/lib/context/BusyModeContext';
 import { validateNTN, formatNTN } from '@/lib/tax/pakistaniTax';
 import { formatPakistaniPhone, isValidCNIC, isValidPakistaniPhone, customerSchema, validateForm } from '@/lib/validation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -19,153 +23,173 @@ import { FormError } from '@/components/ui/form-error';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { isEntitlementError, getEntitlementErrorMessage, isEntitlementErrorHandled } from '@/lib/utils/subscriptionErrors';
 import { showActionError, formatValidationErrors, isValidationError } from '@/lib/utils/formErrorHandler';
+import { MOBILE_FORM_BODY, MOBILE_FORM_FOOTER, MOBILE_INPUT_CLASS, MOBILE_LABEL_CLASS, MOBILE_TAB_LIST } from '@/lib/utils/formMobileStyles';
 
-const COUNTRY_CODES = [
-    { code: '+92', label: 'PK (+92)' },
-    { code: '+1', label: 'US (+1)' },
-    { code: '+44', label: 'UK (+44)' },
-    { code: '+971', label: 'UAE (+971)' },
-    { code: '+966', label: 'SA (+966)' },
-    { code: '+91', label: 'IN (+91)' },
-    { code: '+86', label: 'CN (+86)' },
-];
+const PHONE_COUNTRY_CODES = getPhoneCountryCodeOptions();
 
 export function CustomerForm({
     onSave,
     onClose,
     onEntitlementError,
     initialData = null,
-    category = 'retail-shop'
+    category = 'retail-shop',
+    embedded = false,
 }) {
-    const { business } = useBusiness();
+    const {
+        business,
+        currency,
+        taxIdLabel,
+        isPakistanMarket,
+        registry,
+    } = useFormRegionalContext(category);
+    const standards = registry || getRegionalStandards('PK');
+    const { isEasyMode } = useAppMode();
+    const isWaterRoute = isWaterHisabRelevant(category);
     const [isLoading, setIsLoading] = useState(false);
     const [activeTab, setActiveTab] = useState('basic');
     const [errors, setErrors] = useState({});
-    const [formData, setFormData] = useState({
-        name: '',
-        email: '',
-        phone: '',
-        ntn: '',
-        cnic: '',
-        srn: '',
-        address: '',
-        city: business?.city || '',
-        market_location: '',
-        credit_limit: 0,
-        opening_balance: 0,
-        filer_status: 'none', // none, active, inactive
-        domain_data: initialData?.domain_data || {},
-        ...initialData
+    const [formData, setFormData] = useState(() => {
+        const domain = initialData?.domain_data && typeof initialData.domain_data === 'object'
+            ? initialData.domain_data
+            : {};
+        return {
+            name: '',
+            email: '',
+            phone: '',
+            ntn: '',
+            cnic: '',
+            srn: '',
+            address: '',
+            city: business?.city || '',
+            market_location: domain.market_location || domain.marketlocation || '',
+            credit_limit: 0,
+            opening_balance: 0,
+            filer_status: 'none',
+            domain_data: domain,
+            ...initialData,
+            market_location:
+                initialData?.market_location
+                || domain.market_location
+                || domain.marketlocation
+                || '',
+            domain_data: {
+                ...domain,
+                ...(initialData?.domain_data && typeof initialData.domain_data === 'object'
+                    ? initialData.domain_data
+                    : {}),
+            },
+        };
     });
 
-    const [countryCode, setCountryCode] = useState('+92');
+    const [countryCode, setCountryCode] = useState(standards.phoneCode || '+92');
     const [localPhone, setLocalPhone] = useState('');
 
-    // Initialize phone state from initialData or formData
     useEffect(() => {
         const phone = formData.phone || '';
         if (!phone) {
-            setLocalPhone('');
+            // Use queueMicrotask to avoid setState in effect
+            queueMicrotask(() => setLocalPhone(''));
             return;
         }
-
-        // Try to match existing prefix
-        const matcheCode = COUNTRY_CODES.find(c => phone.startsWith(c.code));
+        const matcheCode = PHONE_COUNTRY_CODES.find(c => phone.startsWith(c.code));
         if (matcheCode) {
-            setCountryCode(matcheCode.code);
-            setLocalPhone(phone.slice(matcheCode.code.length).trim());
+            queueMicrotask(() => {
+                setCountryCode(matcheCode.code);
+                setLocalPhone(phone.slice(matcheCode.code.length).trim());
+            });
         } else {
-            // Default fallback if no match or manually entered differently
-            setLocalPhone(phone);
+            queueMicrotask(() => setLocalPhone(phone));
         }
-    }, [initialData]);
+    }, [formData.phone]);
 
-    // Sync to formData when parts change
+    const handleInputChange = useCallback((field, value) => {
+        setFormData(prev => ({ ...prev, [field]: value }));
+        if (errors[field]) {
+            setErrors(prev => {
+                const next = { ...prev };
+                delete next[field];
+                return next;
+            });
+        }
+    }, [errors]);
+
     useEffect(() => {
-        // Clean local phone of double spaces
         const cleanLocal = localPhone.replace(/\s+/g, ' ').trim();
         if (cleanLocal) {
             handleInputChange('phone', `${countryCode} ${cleanLocal}`);
         } else {
             handleInputChange('phone', '');
         }
-    }, [countryCode, localPhone]);
+    }, [countryCode, localPhone, handleInputChange]);
 
-    const handleLocalPhoneChange = (e) => {
-        // Allow digits, spaces, dashes
-        const val = e.target.value.replace(/[^\d\s-]/g, '');
-        setLocalPhone(val);
-    };
-
-    const domainFields = getDomainCustomerFields(category);
+    const domainFields = getDomainCustomerFields(category).filter((field) => {
+        const key = normalizeKey(field);
+        // Column already exists on customers — avoid duplicate domain_data credit fields
+        return key !== 'creditlimit' && key !== 'credit_limit';
+    });
 
     useEffect(() => {
         if (initialData) {
-            setFormData(prev => ({ ...prev, ...initialData }));
-        } else if (business?.city && !formData.city) {
-            setFormData(prev => ({ ...prev, city: business.city }));
+            const domain = initialData.domain_data && typeof initialData.domain_data === 'object'
+                ? initialData.domain_data
+                : {};
+            // Move to queueMicrotask to avoid setState in effect
+            queueMicrotask(() => {
+                setFormData((prev) => ({
+                    ...prev,
+                    ...initialData,
+                    market_location:
+                        initialData.market_location
+                        || domain.market_location
+                        || domain.marketlocation
+                        || prev.market_location
+                        || '',
+                    domain_data: { ...domain },
+                }));
+            });
+        } else if (business?.city) {
+            queueMicrotask(() => {
+                setFormData((prev) => (prev.city ? prev : { ...prev, city: business.city }));
+            });
         }
     }, [initialData, business?.city]);
 
-    const handleInputChange = (field, value) => {
-        setFormData(prev => ({ ...prev, [field]: value }));
-        if (errors[field]) {
-            setErrors(prev => {
-                const newErrors = { ...prev };
-                delete newErrors[field];
-                return newErrors;
-            });
-        }
-    };
-
-    // Auto-formatters (removed handlePhoneChange as we use split input now)
-
     const handleCNICChange = (e) => {
-        let val = e.target.value.replace(/\D/g, ''); // Remove non-digits
-        // Format: 42201-1234567-1
+        let val = e.target.value.replace(/\D/g, '');
         if (val.length > 5) val = val.slice(0, 5) + '-' + val.slice(5);
         if (val.length > 13) val = val.slice(0, 13) + '-' + val.slice(13);
         if (val.length > 15) val = val.slice(0, 15);
-
         handleInputChange('cnic', val);
     };
 
     const handleNTNChange = (e) => {
-        const val = e.target.value;
-        handleInputChange('ntn', formatNTN(val));
+        handleInputChange('ntn', formatNTN(e.target.value));
     };
 
     const validateLocalInputs = () => {
-        if (!formData.name) {
+        if (!String(formData.name || '').trim()) {
             toast.error('Customer name is required');
             return false;
         }
-
-        // Lenient phone validation (just check minimum length)
-        if (formData.phone && formData.phone.length < 8) {
+        if (formData.phone && String(formData.phone).replace(/\D/g, '').length > 0
+            && String(formData.phone).replace(/\D/g, '').length < 7) {
             toast.error('Phone number seems too short');
             return false;
         }
-
-        // CNIC Validation
-        if (formData.cnic && !isValidCNIC(formData.cnic)) {
+        if (formData.cnic && String(formData.cnic).replace(/\D/g, '').length >= 13 && !isValidCNIC(formData.cnic)) {
             toast.error('Invalid CNIC format (e.g. 42201-1234567-1)');
             return false;
         }
-
         return true;
     };
 
     const handleSubmit = async () => {
-        // 1. Local basic checks
         if (!validateLocalInputs()) return;
 
-        // 2. Schema validation (Zod)
         const validation = validateForm(customerSchema, formData);
         if (!validation.isValid) {
             setErrors(validation.errors);
             toast.error('Please fix highlighted errors');
-            // If error is in tax fields but we are on basic tab, switch to tax tab
             if (activeTab === 'basic' && ['ntn', 'cnic', 'srn'].some(k => validation.errors[k])) {
                 setActiveTab('tax');
             }
@@ -174,33 +198,47 @@ export function CustomerForm({
 
         setIsLoading(true);
         try {
-            // Transform formData to match schema expectations
+            const marketLoc = String(formData.market_location || '').trim();
+            const domain_data = {
+                ...(formData.domain_data && typeof formData.domain_data === 'object' ? formData.domain_data : {}),
+            };
+            if (marketLoc) {
+                domain_data.market_location = marketLoc;
+                domain_data.marketlocation = marketLoc;
+            }
+
             const payload = {
-                ...formData,
+                id: formData.id,
+                name: String(formData.name || '').trim(),
+                email: formData.email || '',
+                phone: formData.phone || '',
+                address: formData.address || '',
+                city: formData.city || '',
+                market_location: marketLoc,
+                ntn: formData.ntn || '',
+                cnic: formData.cnic || '',
+                srn: formData.srn || '',
                 credit_limit: Number(formData.credit_limit) || 0,
                 opening_balance: Number(formData.opening_balance) || 0,
-                srn: formData.srn || null,
-                domain_data: formData.domain_data || {}
+                filer_status: formData.filer_status || 'none',
+                type: formData.type || 'individual',
+                notes: formData.notes || '',
+                domain_data,
             };
-            
+
             const result = await onSave(payload);
-            
-            // Check if result indicates failure
+
             if (result && !result.success) {
-                // Handle validation errors separately
                 if (isValidationError(result)) {
-                    const fieldErrors = formatValidationErrors(result);
-                    setErrors(fieldErrors);
+                    setErrors(formatValidationErrors(result));
                     toast.error('Please fix highlighted errors');
                     return;
                 }
-                
-                // Show user-friendly error message
                 showActionError(result);
                 return;
             }
-            
-            toast.success(`Customer ${initialData ? 'updated' : 'created'} successfully`);
+
+            onClose?.();
         } catch (error) {
             console.error('Customer save error:', error);
             if (isEntitlementError(error)) {
@@ -209,7 +247,11 @@ export function CustomerForm({
                 }
                 onEntitlementError?.(error);
             } else {
-                toast.error(error.message || 'Failed to save customer');
+                showActionError({
+                    success: false,
+                    error: error.message || 'Failed to save customer',
+                    code: error.code || null,
+                });
             }
         } finally {
             setIsLoading(false);
@@ -219,14 +261,14 @@ export function CustomerForm({
     const handleFillDemo = () => {
         const isTextile = category.includes('textile');
         const isPharmacy = category === 'pharmacy';
-
         const randomLocal = '3' + Math.floor(Math.random() * 90 + 10) + ' ' + Math.floor(Math.random() * 9000000 + 1000000);
 
-        const demoData = {
+        setCountryCode('+92');
+        setLocalPhone(randomLocal);
+        setFormData(prev => ({
+            ...prev,
             name: isTextile ? 'Zubair Fabrics & Sons' : (isPharmacy ? 'Al-Shifa Medicos' : 'Global Traders'),
-            // phone is now handled via state sync, but we set it here for completeness if needed, 
-            // though the effect will overwrite it based on countryCode/localPhone
-            email: 'contact@' + (isTextile ? 'zubairfabrics' : 'demo-client') + '.com',
+            email: 'contact@demo-client.com',
             ntn: Math.floor(Math.random() * 9000000 + 1000000) + '-' + Math.floor(Math.random() * 9),
             cnic: '42201-' + Math.floor(Math.random() * 9000000 + 1000000) + '-' + Math.floor(Math.random() * 9),
             address: isTextile ? 'Shop # 45, Jama Cloth Market' : 'Plot 123, Sector 5',
@@ -238,288 +280,466 @@ export function CustomerForm({
                 shopname: isTextile ? 'Zubair Fabrics' : '',
                 marketsegment: 'Wholesale',
             }
-        };
-
-        setCountryCode('+92');
-        setLocalPhone(randomLocal);
-        setFormData(prev => ({ ...prev, ...demoData }));
+        }));
         toast.success('Generated realistic demo data');
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in">
-            <Card className="w-full max-w-2xl border-wine/20 shadow-2xl animate-in slide-in-from-bottom-5 max-h-[90vh] overflow-y-auto">
-                <CardHeader className="bg-wine/5 border-b border-wine/10 sticky top-0 bg-white z-10 backdrop-blur-md bg-opacity-90">
-                    <div className="flex justify-between items-center">
-                        <CardTitle className="text-wine flex items-center gap-2">
-                            <UsersIcon className="w-5 h-5" />
+        <Card className={cn(
+            'flex w-full flex-col overflow-hidden border-wine/15 shadow-xl',
+            embedded ? 'border-none shadow-none rounded-none' : 'max-w-6xl rounded-2xl max-h-[min(92vh,900px)]'
+        )}>
+            <CardHeader className="shrink-0 space-y-1 border-b border-wine/10 bg-wine/[0.03] px-4 py-3 sm:px-6 sm:py-3.5">
+                <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 space-y-0.5">
+                        <CardTitle className="flex flex-wrap items-center gap-2 text-base font-bold text-wine">
+                            <UsersIcon className="h-4 w-4 shrink-0" />
                             {initialData ? 'Edit Customer' : 'Add New Customer'}
                             {!initialData && (
                                 <Button
+                                    type="button"
                                     variant="outline"
                                     size="sm"
                                     onClick={handleFillDemo}
-                                    className="ml-2 h-7 px-2 text-[10px] font-black uppercase tracking-tighter border-wine/20 text-wine hover:bg-wine/5 rounded-lg"
+                                    className="h-7 px-2 text-[10px] font-semibold uppercase tracking-tight border-wine/20 text-wine hover:bg-wine/5"
                                 >
-                                    <Sparkles className="w-3 h-3 mr-1" /> Magic Fill
+                                    <Sparkles className="mr-1 h-3 w-3" /> Magic Fill
                                 </Button>
                             )}
                         </CardTitle>
-                        <Button variant="ghost" size="icon" onClick={onClose} className="hover:bg-red-50 hover:text-red-500 rounded-full h-8 w-8">
-                            <span className="sr-only">Close</span>
-                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                        </Button>
+                        <CardDescription className="text-xs text-wine/60">
+                            Press Tab to move between fields • Only name is required
+                        </CardDescription>
                     </div>
-                    <CardDescription className="text-wine/60 font-medium">
-                        Manage client details and tax information
-                    </CardDescription>
-                </CardHeader>
-                <CardContent className="pt-6">
-                    <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                        <TabsList className="grid w-full grid-cols-3 mb-8 bg-gray-100/50 p-1 rounded-xl">
-                            <TabsTrigger value="basic" className="relative rounded-lg data-[state=active]:bg-white data-[state=active]:text-wine data-[state=active]:shadow-sm">
+                    {onClose && (
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={onClose}
+                            className="h-8 w-8 shrink-0 rounded-lg hover:bg-red-50 hover:text-red-500"
+                            aria-label="Close"
+                        >
+                            <X className="h-4 w-4" />
+                        </Button>
+                    )}
+                </div>
+            </CardHeader>
+
+            <CardContent className={MOBILE_FORM_BODY}>
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                    {!isWaterRoute && (
+                        <TabsList className={cn(
+                            MOBILE_TAB_LIST,
+                            isEasyMode ? (domainFields.length > 0 ? 'sm:grid-cols-2' : 'sm:grid-cols-1') : (domainFields.length > 0 ? 'sm:grid-cols-3' : 'sm:grid-cols-2')
+                        )}>
+                            <TabsTrigger value="basic" className="relative rounded-md text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm">
                                 Basic Details
                                 {['name', 'phone', 'city'].some(k => errors[k]) && (
-                                    <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                                    <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-red-500" />
                                 )}
                             </TabsTrigger>
-                            <TabsTrigger value="tax" className="relative rounded-lg data-[state=active]:bg-white data-[state=active]:text-wine data-[state=active]:shadow-sm">
-                                Financial & Tax
-                                {['ntn', 'cnic', 'srn', 'credit_limit'].some(k => errors[k]) && (
-                                    <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                                )}
-                            </TabsTrigger>
-                            <TabsTrigger value="domain" className="relative rounded-lg data-[state=active]:bg-white data-[state=active]:text-wine data-[state=active]:shadow-sm text-xs">
-                                Domain Expert Info
-                            </TabsTrigger>
+                            {!isEasyMode && (
+                                <TabsTrigger value="tax" className="relative rounded-md text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                                    Financial & Tax
+                                    {['ntn', 'cnic', 'srn', 'credit_limit'].some(k => errors[k]) && (
+                                        <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-red-500" />
+                                    )}
+                                </TabsTrigger>
+                            )}
+                            {domainFields.length > 0 && (
+                                <TabsTrigger value="domain" className="relative rounded-md text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                                    {category.includes('water') ? 'Route & Water Details' : 'Domain Info'}
+                                </TabsTrigger>
+                            )}
                         </TabsList>
+                    )}
 
-                        <TabsContent value="basic" className="space-y-6 animate-in fade-in duration-300">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest after:content-['*'] after:ml-0.5 after:text-red-500">Customer Name</Label>
-                                    <Input
-                                        value={formData.name || ''}
-                                        onChange={(e) => handleInputChange('name', e.target.value)}
-                                        placeholder="Full Name / Company"
-                                        className="h-11 rounded-xl"
-                                    />
-                                    {errors?.name && <FormError message={errors.name} />}
-                                </div>
-                                <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest after:content-['*'] after:ml-0.5 after:text-red-500">Phone</Label>
-                                    <div className="flex gap-2">
-                                        <Select value={countryCode} onValueChange={setCountryCode}>
-                                            <SelectTrigger className="w-[110px] h-11 rounded-xl bg-gray-50 border-gray-200">
-                                                <SelectValue placeholder="Code" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {COUNTRY_CODES.map((c) => (
-                                                    <SelectItem key={c.code} value={c.code}>
-                                                        {c.label}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                        <div className="relative flex-1">
-                                            <Smartphone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                                            <Input
-                                                value={localPhone}
-                                                onChange={handleLocalPhoneChange}
-                                                placeholder="300 1234567"
-                                                className="h-11 rounded-xl pl-10"
-                                            />
-                                        </div>
+                    <TabsContent value="basic" className="mt-0 space-y-5">
+                        <div className="grid grid-cols-1 gap-x-6 gap-y-4 md:grid-cols-3">
+                            <div className="space-y-1.5 md:col-span-2">
+                                <Label className={cn(MOBILE_LABEL_CLASS, 'font-semibold text-gray-700')}>Customer Name *</Label>
+                                <Input 
+                                    value={formData.name || ''} 
+                                    onChange={(e) => handleInputChange('name', e.target.value)} 
+                                    placeholder="Enter full name or company name" 
+                                    className={cn(MOBILE_INPUT_CLASS, 'h-10 text-[15px]')}
+                                    autoFocus
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                            e.preventDefault();
+                                            document.querySelector('input[name="phone-local"]')?.focus();
+                                        }
+                                    }}
+                                />
+                                {errors?.name && <FormError message={errors.name} />}
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label className={cn(MOBILE_LABEL_CLASS, 'font-semibold text-gray-700')}>Phone</Label>
+                                <div className="flex gap-2">
+                                    <Select value={countryCode} onValueChange={setCountryCode}>
+                                        <SelectTrigger className="h-10 w-[100px] rounded-lg text-sm">
+                                            <SelectValue placeholder="Code" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {PHONE_COUNTRY_CODES.map((c) => (
+                                                <SelectItem key={c.code} value={c.code}>{c.label}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <div className="relative flex-1">
+                                        <Smartphone className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                                        <Input 
+                                            name="phone-local"
+                                            value={localPhone} 
+                                            onChange={(e) => setLocalPhone(e.target.value.replace(/[^\d\s-]/g, ''))} 
+                                            placeholder="300 1234567" 
+                                            className={cn(MOBILE_INPUT_CLASS, 'pl-9 h-10 text-[15px]')}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') {
+                                                    e.preventDefault();
+                                                    document.querySelector('input[type="email"]')?.focus();
+                                                }
+                                            }}
+                                        />
                                     </div>
-                                    {errors?.phone && <FormError message={errors.phone} />}
                                 </div>
-                                <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Email</Label>
-                                    <Input
-                                        value={formData.email || ''}
-                                        onChange={(e) => handleInputChange('email', e.target.value)}
-                                        placeholder="customer@example.com"
-                                        className="h-11 rounded-xl"
+                                {errors?.phone && <FormError message={errors.phone} />}
+                            </div>
+                            <div className="space-y-1.5 md:col-span-2">
+                                <Label className={cn(MOBILE_LABEL_CLASS, 'font-semibold text-gray-700')}>Email</Label>
+                                <Input 
+                                    type="email"
+                                    value={formData.email || ''} 
+                                    onChange={(e) => handleInputChange('email', e.target.value)} 
+                                    placeholder="customer@example.com" 
+                                    className={cn(MOBILE_INPUT_CLASS, 'h-10 text-[15px]')}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                            e.preventDefault();
+                                            const cityInput = document.querySelector('[data-city-input]');
+                                            cityInput?.focus();
+                                        }
+                                    }}
+                                />
+                                {errors?.email && <FormError message={errors.email} />}
+                            </div>
+                            <div className="space-y-1.5">
+                                <CityAutocomplete 
+                                    value={formData.city} 
+                                    onChange={(val) => handleInputChange('city', val)} 
+                                    required={false}
+                                />
+                                {errors?.city && <FormError message={errors.city} />}
+                            </div>
+                            <div className="space-y-1.5 md:col-span-3">
+                                <MarketLocationSelector 
+                                    value={formData.market_location} 
+                                    onChange={(val) => handleInputChange('market_location', val)} 
+                                    city={formData.city} 
+                                    required={false} 
+                                    language="en" 
+                                />
+                            </div>
+                            <div className="space-y-1.5 md:col-span-3">
+                                <Label className={cn(MOBILE_LABEL_CLASS, 'font-semibold text-gray-700')}>Billing Address</Label>
+                                <Input 
+                                    value={formData.address || ''} 
+                                    onChange={(e) => handleInputChange('address', e.target.value)} 
+                                    placeholder="Shop #, Market, Area, Street" 
+                                    className={cn(MOBILE_INPUT_CLASS, 'h-10 text-[15px]')}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' && !isEasyMode && !isWaterRoute) {
+                                            e.preventDefault();
+                                            setActiveTab('tax');
+                                        }
+                                    }}
+                                />
+                            </div>
+                        </div>
+
+                        {isWaterRoute && domainFields.length > 0 && (
+                            <div className="grid grid-cols-1 gap-4 rounded-xl border border-sky-200 bg-sky-50/50 p-4 md:grid-cols-2 mt-2">
+                                <div className="md:col-span-2 flex items-center gap-2 text-sm font-bold text-sky-800">
+                                    <Droplets className="h-4 w-4" /> Water Route Details
+                                </div>
+                                {domainFields.map(field => {
+                                    const key = normalizeKey(field);
+                                    return (
+                                        <DomainFieldRenderer
+                                            key={field}
+                                            field={key}
+                                            value={formData.domain_data?.[key] || ''}
+                                            onChange={(val) => {
+                                                const nextDomain = { ...formData.domain_data, [key]: val };
+                                                if (key === 'city') {
+                                                    nextDomain.deliveryarea = '';
+                                                    nextDomain.postalcode = '';
+                                                    nextDomain.areacode = '';
+                                                }
+                                                setFormData({ ...formData, domain_data: nextDomain });
+                                            }}
+                                            onDomainPatch={(patch) => {
+                                                setFormData((prev) => ({ ...prev, domain_data: { ...prev.domain_data, ...patch } }));
+                                            }}
+                                            category={category}
+                                            product={formData.domain_data || {}}
+                                        />
+                                    );
+                                })}
+                            </div>
+                        )}
+
+                        {isEasyMode && !isWaterRoute && (
+                            <div className="grid grid-cols-1 gap-x-6 gap-y-4 border-t border-gray-200 pt-5 md:grid-cols-3">
+                                <div className="space-y-1.5">
+                                    <Label className={cn(MOBILE_LABEL_CLASS, 'font-semibold text-gray-700 flex items-center gap-1.5')}>
+                                        <Wallet className="h-3.5 w-3.5" />
+                                        Credit Limit ({currency})
+                                    </Label>
+                                    <Input 
+                                        type="number" 
+                                        value={formData.credit_limit || ''} 
+                                        onChange={(e) => handleInputChange('credit_limit', e.target.value)} 
+                                        placeholder="0" 
+                                        className={cn(MOBILE_INPUT_CLASS, 'h-10 text-[15px] tabular-nums')}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                                e.preventDefault();
+                                                document.querySelector('input[name="opening-balance"]')?.focus();
+                                            }
+                                        }}
                                     />
-                                    {errors?.email && <FormError message={errors.email} />}
                                 </div>
-                                <div className="space-y-2">
-                                    <CityAutocomplete
-                                        value={formData.city}
-                                        onChange={(val) => handleInputChange('city', val)}
-                                        required={true}
-                                    />
-                                    {errors?.city && <FormError message={errors.city} />}
-                                </div>
-                                <div className="space-y-2">
-                                    <MarketLocationSelector
-                                        value={formData.market_location}
-                                        onChange={(val) => handleInputChange('market_location', val)}
-                                        city={formData.city}
-                                        required={false}
-                                        language="en"
-                                    />
-                                </div>
-                                <div className="col-span-1 md:col-span-2 space-y-2">
-                                    <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Billing Address</Label>
-                                    <Input
-                                        value={formData.address || ''}
-                                        onChange={(e) => handleInputChange('address', e.target.value)}
-                                        placeholder="Complete Address (Shop #, Market, Area)"
-                                        className="h-11 rounded-xl"
+                                <div className="space-y-1.5">
+                                    <Label className={cn(MOBILE_LABEL_CLASS, 'font-semibold text-gray-700')}>Opening Balance ({currency})</Label>
+                                    <Input 
+                                        type="number" 
+                                        name="opening-balance"
+                                        value={formData.opening_balance || ''} 
+                                        onChange={(e) => handleInputChange('opening_balance', e.target.value)} 
+                                        placeholder="0" 
+                                        className={cn(MOBILE_INPUT_CLASS, 'h-10 text-[15px] tabular-nums')}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                                e.preventDefault();
+                                                handleSubmit();
+                                            }
+                                        }}
                                     />
                                 </div>
                             </div>
-                        </TabsContent>
+                        )}
+                    </TabsContent>
 
-                        <TabsContent value="tax" className="space-y-6 animate-in fade-in duration-300">
-                            <div className="space-y-6">
-                                <div className="bg-gray-50/50 p-6 rounded-2xl border border-dashed border-gray-200">
-                                    <h4 className="text-sm font-bold text-gray-900 mb-4 flex items-center gap-2">
-                                        <Building2 className="w-4 h-4 text-wine" />
-                                        Tax Compliance
-                                    </h4>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                            <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">CNIC (Individuals)</Label>
-                                            <Input
-                                                value={formData.cnic || ''}
-                                                onChange={handleCNICChange}
-                                                placeholder="42201-1234567-1"
-                                                className="h-11 rounded-xl font-mono text-sm"
+                    {!isWaterRoute && (
+                        <TabsContent value="tax" className="mt-0 space-y-5">
+                            <div className="grid grid-cols-1 gap-x-6 gap-y-4 rounded-xl border border-gray-200 bg-gray-50/50 p-5 md:grid-cols-3">
+                                {isPakistanMarket ? (
+                                    <>
+                                        <div className="space-y-1.5">
+                                            <Label className={cn(MOBILE_LABEL_CLASS, 'font-semibold text-gray-700')}>CNIC</Label>
+                                            <Input 
+                                                value={formData.cnic || ''} 
+                                                onChange={handleCNICChange} 
+                                                placeholder="42201-1234567-1" 
+                                                className={cn(MOBILE_INPUT_CLASS, 'font-mono h-10 text-[15px]')} 
                                                 maxLength={15}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter') {
+                                                        e.preventDefault();
+                                                        document.querySelector('input[name="ntn-input"]')?.focus();
+                                                    }
+                                                }}
                                             />
                                             {errors?.cnic && <FormError message={errors.cnic} />}
                                         </div>
-                                        <div className="space-y-2">
-                                            <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">NTN (Business)</Label>
-                                            <Input
-                                                value={formData.ntn || ''}
-                                                onChange={handleNTNChange}
-                                                placeholder="1234567-8"
-                                                className="h-11 rounded-xl font-mono text-sm"
+                                        <div className="space-y-1.5">
+                                            <Label className={cn(MOBILE_LABEL_CLASS, 'font-semibold text-gray-700')}>{taxIdLabel || 'NTN'}</Label>
+                                            <Input 
+                                                name="ntn-input"
+                                                value={formData.ntn || ''} 
+                                                onChange={handleNTNChange} 
+                                                placeholder="1234567-8" 
+                                                className={cn(MOBILE_INPUT_CLASS, 'font-mono h-10 text-[15px]')} 
                                                 maxLength={9}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter') {
+                                                        e.preventDefault();
+                                                        document.querySelector('input[name="srn-input"]')?.focus();
+                                                    }
+                                                }}
                                             />
                                             {errors?.ntn && <FormError message={errors.ntn} />}
                                         </div>
-                                        <div className="space-y-2">
-                                            <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">SRN (Services)</Label>
-                                            <Input
-                                                value={formData.srn || ''}
-                                                onChange={(e) => handleInputChange('srn', e.target.value)}
-                                                placeholder="12-34-5678-910-1"
-                                                className="h-11 rounded-xl font-mono text-sm"
+                                        <div className="space-y-1.5">
+                                            <Label className={cn(MOBILE_LABEL_CLASS, 'font-semibold text-gray-700')}>SRN</Label>
+                                            <Input 
+                                                name="srn-input"
+                                                value={formData.srn || ''} 
+                                                onChange={(e) => handleInputChange('srn', e.target.value)} 
+                                                placeholder="12-34-5678-910-1" 
+                                                className={cn(MOBILE_INPUT_CLASS, 'font-mono h-10 text-[15px]')}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter') {
+                                                        e.preventDefault();
+                                                        document.querySelector('select[name="filer-status"]')?.focus();
+                                                    }
+                                                }}
                                             />
-                                            {errors?.srn && <FormError message={errors.srn} />}
                                         </div>
-                                        <div className="space-y-2">
-                                            <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">FBR Filer Status</Label>
-                                            <select
-                                                className="flex h-11 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm focus:ring-2 focus:ring-wine/20 font-bold"
-                                                value={formData.filer_status || 'none'}
+                                        <div className="space-y-1.5">
+                                            <Label className={cn(MOBILE_LABEL_CLASS, 'font-semibold text-gray-700')}>FBR Filer Status</Label>
+                                            <select 
+                                                name="filer-status"
+                                                className={cn(MOBILE_INPUT_CLASS, 'w-full border border-input bg-background px-3 h-10 text-[15px]')} 
+                                                value={formData.filer_status || 'none'} 
                                                 onChange={(e) => handleInputChange('filer_status', e.target.value)}
-                                                style={{ color: formData.filer_status === 'active' ? '#16a34a' : (formData.filer_status === 'inactive' ? '#dc2626' : 'inherit') }}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter') {
+                                                        e.preventDefault();
+                                                        document.querySelector('input[name="credit-limit"]')?.focus();
+                                                    }
+                                                }}
                                             >
                                                 <option value="none">Not Verified</option>
                                                 <option value="active">Active (Filer)</option>
                                                 <option value="inactive">Inactive (Non-Filer)</option>
                                             </select>
                                         </div>
+                                    </>
+                                ) : (
+                                    <div className="space-y-1.5 md:col-span-3">
+                                        <Label className={cn(MOBILE_LABEL_CLASS, 'font-semibold text-gray-700')}>{taxIdLabel}</Label>
+                                        <Input 
+                                            value={formData.ntn || ''} 
+                                            onChange={(e) => handleInputChange('ntn', e.target.value)} 
+                                            placeholder={`${taxIdLabel} / registration number`} 
+                                            className={cn(MOBILE_INPUT_CLASS, 'h-10 text-[15px]')}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') {
+                                                    e.preventDefault();
+                                                    document.querySelector('input[name="credit-limit"]')?.focus();
+                                                }
+                                            }}
+                                        />
+                                        {errors?.ntn && <FormError message={errors.ntn} />}
                                     </div>
+                                )}
+                                <div className="space-y-1.5">
+                                    <Label className={cn(MOBILE_LABEL_CLASS, 'font-semibold text-gray-700 flex items-center gap-1.5')}>
+                                        <Wallet className="h-3.5 w-3.5" />
+                                        Credit Limit ({currency})
+                                    </Label>
+                                    <Input 
+                                        type="number" 
+                                        name="credit-limit"
+                                        value={formData.credit_limit || ''} 
+                                        onChange={(e) => handleInputChange('credit_limit', e.target.value)} 
+                                        placeholder="0" 
+                                        className={cn(MOBILE_INPUT_CLASS, 'h-10 text-[15px] tabular-nums')}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                                e.preventDefault();
+                                                document.querySelector('input[name="opening-balance-tax"]')?.focus();
+                                            }
+                                        }}
+                                    />
                                 </div>
-
-                                <div className="bg-wine/5 p-6 rounded-2xl border border-wine/10">
-                                    <h4 className="text-sm font-bold text-wine mb-4 flex items-center gap-2">
-                                        <Wallet className="w-4 h-4" />
-                                        Financial Settings
-                                    </h4>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                            <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Credit Limit (PKR)</Label>
-                                            <div className="relative">
-                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-semibold text-xs">₨</span>
-                                                <Input
-                                                    type="number"
-                                                    value={formData.credit_limit || ''}
-                                                    onChange={(e) => handleInputChange('credit_limit', e.target.value)}
-                                                    placeholder="0"
-                                                    className="h-11 rounded-xl pl-8"
-                                                />
-                                            </div>
-                                            {errors.credit_limit && <FormError message={errors.credit_limit} />}
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Opening Balance (PKR)</Label>
-                                            <div className="relative">
-                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-semibold text-xs">₨</span>
-                                                <Input
-                                                    type="number"
-                                                    value={formData.opening_balance || ''}
-                                                    onChange={(e) => handleInputChange('opening_balance', e.target.value)}
-                                                    placeholder="0"
-                                                    className="h-11 rounded-xl pl-8"
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
+                                <div className="space-y-1.5">
+                                    <Label className={cn(MOBILE_LABEL_CLASS, 'font-semibold text-gray-700')}>Opening Balance ({currency})</Label>
+                                    <Input 
+                                        type="number" 
+                                        name="opening-balance-tax"
+                                        value={formData.opening_balance || ''} 
+                                        onChange={(e) => handleInputChange('opening_balance', e.target.value)} 
+                                        placeholder="0" 
+                                        className={cn(MOBILE_INPUT_CLASS, 'h-10 text-[15px] tabular-nums')}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                                e.preventDefault();
+                                                handleSubmit();
+                                            }
+                                        }}
+                                    />
                                 </div>
                             </div>
                         </TabsContent>
+                    )}
 
-                        <TabsContent value="domain" className="space-y-6 animate-in fade-in duration-300">
-                            {domainFields.length > 0 ? (
-                                <div className="space-y-6">
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-2.5 rounded-xl bg-wine/5 text-wine">
-                                            <Sparkles className="w-5 h-5" />
-                                        </div>
-                                        <div>
-                                            <h4 className="text-lg font-semibold text-gray-900 capitalize">
-                                                {category.replace(/-/g, ' ')} Specialist Data
-                                            </h4>
-                                            <p className="text-sm text-gray-500 font-medium">Domain-specific attributes for accurate profiling</p>
-                                        </div>
-                                    </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 rounded-2xl bg-gray-50/50 border border-gray-100">
-                                        {domainFields.map(field => {
-                                            const key = normalizeKey(field);
-                                            return (
-                                                <DomainFieldRenderer
-                                                    key={field}
-                                                    field={key}
-                                                    value={formData.domain_data?.[key] || ''}
-                                                    onChange={(val) => setFormData({
-                                                        ...formData,
-                                                        domain_data: {
-                                                            ...formData.domain_data,
-                                                            [key]: val
-                                                        }
-                                                    })}
-                                                    category={category}
-                                                />
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-                            ) : (
-                                <div className="text-center py-12 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-100">
-                                    <Globe className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                                    <p className="text-gray-500 font-medium">No domain-specific fields for {category.replace(/-/g, ' ')}</p>
-                                </div>
-                            )}
-                        </TabsContent>
-                    </Tabs>
+                    {!isWaterRoute && (
+                        <TabsContent value="domain" className="mt-0 space-y-4">
+                        {domainFields.length > 0 ? (
+                            <div className="grid grid-cols-1 gap-4 rounded-xl border border-gray-100 bg-gray-50/50 p-4 md:grid-cols-2">
+                                {domainFields.map(field => {
+                                    const key = normalizeKey(field);
+                                    return (
+                                        <DomainFieldRenderer
+                                            key={field}
+                                            field={key}
+                                            value={formData.domain_data?.[key] || ''}
+                                            onChange={(val) => {
+                                                const nextDomain = { ...formData.domain_data, [key]: val };
+                                                if (key === 'city') {
+                                                    // Refresh area options for the new city; clear stale area/postal.
+                                                    nextDomain.deliveryarea = '';
+                                                    nextDomain.postalcode = '';
+                                                    nextDomain.areacode = '';
+                                                }
+                                                setFormData({
+                                                    ...formData,
+                                                    domain_data: nextDomain,
+                                                });
+                                            }}
+                                            onDomainPatch={(patch) => {
+                                                setFormData((prev) => ({
+                                                    ...prev,
+                                                    domain_data: { ...prev.domain_data, ...patch },
+                                                }));
+                                            }}
+                                            category={category}
+                                            product={formData.domain_data || {}}
+                                        />
+                                    );
+                                })}
+                            </div>
+                        ) : (
+                            <div className="rounded-xl border border-dashed border-gray-200 py-10 text-center text-sm text-gray-500">
+                                No domain-specific fields for this category
+                            </div>
+                        )}
+                    </TabsContent>
+                    )}
+                </Tabs>
+            </CardContent>
 
-                    <div className="flex justify-end gap-3 pt-6 border-t font-bold sticky bottom-0 bg-white pb-2 z-10">
-                        <Button variant="ghost" className="text-gray-400 hover:text-wine hover:bg-wine/5 rounded-xl px-6" onClick={onClose}>Cancel</Button>
-                        <Button onClick={handleSubmit} disabled={isLoading} className="bg-wine hover:bg-wine/90 text-white px-10 rounded-xl shadow-lg shadow-wine/20 transition-all active:scale-95">
-                            {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : (initialData ? 'Update Customer' : 'Confirm & Add Customer')}
-                        </Button>
-                    </div>
-                </CardContent>
-            </Card>
-        </div >
+            <div className={cn(MOBILE_FORM_FOOTER, 'flex items-center justify-between gap-3 border-t bg-gray-50/50')}>
+                <div className="text-xs text-gray-500 hidden sm:block">
+                    Press <kbd className="px-1.5 py-0.5 bg-white border border-gray-300 rounded text-[10px] font-mono shadow-sm">Enter</kbd> to move between fields
+                </div>
+                <div className="flex items-center gap-2 ml-auto">
+                    <Button 
+                        type="button" 
+                        variant="ghost" 
+                        onClick={onClose} 
+                        className="h-10 px-5 text-gray-600 hover:text-gray-900"
+                    >
+                        Cancel
+                    </Button>
+                    <Button 
+                        type="button" 
+                        onClick={handleSubmit} 
+                        disabled={isLoading} 
+                        className="h-10 bg-emerald-600 px-8 text-[15px] font-semibold hover:bg-emerald-700 shadow-sm"
+                    >
+                        {isLoading ? (
+                            <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...</>
+                        ) : (
+                            initialData ? 'Update Customer' : 'Add Customer'
+                        )}
+                    </Button>
+                </div>
+            </div>
+        </Card>
     );
 }

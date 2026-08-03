@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ShoppingCart, Plus, CheckCircle2, Clock, Package, Search, ExternalLink, Printer, FileText } from 'lucide-react';
+import { ShoppingCart, Plus, CheckCircle2, Clock, Package, Search, ExternalLink, Printer, FileText, Send } from 'lucide-react';
 import { DataTable } from './DataTable';
 import { ExportButton } from './ExportButton';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -12,12 +12,23 @@ import { formatCurrency } from '@/lib/currency';
 import { getDomainColors } from '@/lib/domainColors';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { hubDialogContentClass } from '@/lib/utils/formMobileStyles';
+import { cn } from '@/lib/utils';
+import { MobileTabHeader, MobileStatStrip } from '@/components/mobile/MobileTabHeader';
+import { formatDisplayDate } from '@/lib/utils/formatDisplayDate';
+import { HubEntityMobileList } from '@/components/mobile/HubEntityMobileList';
+import { MOBILE_BOTTOM_NAV_CLASS, MOBILE_FLOATING_Z, MOBILE_MODULE_FAB_RIGHT } from '@/lib/utils/mobileLayout';
 import GRNView from './GRNView';
 import { useBusiness } from '@/lib/context/BusinessContext';
-import { PurchaseDocumentForm } from './PurchaseDocumentForm';
-import { getVendorsAction } from '@/lib/actions/basic/vendor';
-import { getWarehouseLocationsAction } from '@/lib/actions/standard/inventory/warehouse';
-import { getProductsAction } from '@/lib/actions/standard/inventory/product';
+import { resolveDisplayCurrency } from '@/lib/utils/businessRegionalContext';
+import {
+  getPurchaseStatusBadgeClass,
+  getPurchaseStatusLabel,
+  isOpenPurchaseStatus,
+  isReceivablePurchaseStatus,
+  normalizePurchaseStatus,
+  PURCHASE_STATUSES,
+} from '@/lib/constants/purchaseStatus';
 
 /**
  * Purchase Order Manager
@@ -31,43 +42,16 @@ import { getProductsAction } from '@/lib/actions/standard/inventory/product';
  * @param {() => void} [props.refreshData]
  */
 export function PurchaseOrderManager({ purchaseOrders = [], onCreate, onUpdateStatus, category = 'retail-shop', refreshData }) {
-  const { business } = useBusiness();
+  const { business, currency: businessCurrency, regionalPack } = useBusiness();
+  const currency = resolveDisplayCurrency(
+    { currency: businessCurrency || business?.currency },
+    regionalPack
+  );
   const colors = getDomainColors(category);
   const [searchTerm, setSearchTerm] = useState('');
   const [poToView, setPoToView] = useState(null);
-  const [showPOForm, setShowPOForm] = useState(false);
-  const [vendors, setVendors] = useState([]);
-  const [warehouses, setWarehouses] = useState([]);
-  const [products, setProducts] = useState([]);
 
-  useEffect(() => {
-    async function fetchData() {
-      if (!business?.id) return;
-      try {
-        const [vResult, wResult, pResult] = await Promise.all([
-          getVendorsAction(business.id),
-          getWarehouseLocationsAction(business.id),
-          getProductsAction(business.id)
-        ]);
-        if (vResult.success) setVendors(vResult.vendors);
-        if (wResult.success) setWarehouses(wResult.locations || wResult.warehouses || []);
-        if (pResult.success) setProducts(pResult.products);
-      } catch (error) {
-        console.error('Error fetching procurement data:', error);
-      }
-    }
-    fetchData();
-  }, [business?.id]);
-
-  const getStatusBadge = (status) => {
-    const styles = {
-      draft: 'bg-gray-100 text-gray-700 border-gray-200',
-      sent: 'bg-blue-100 text-blue-700 border-blue-200',
-      received: 'bg-green-100 text-green-700 border-green-200',
-      cancelled: 'bg-red-100 text-red-700 border-red-200',
-    };
-    return styles[status] || styles.draft;
-  };
+  const getStatusBadge = (status) => getPurchaseStatusBadgeClass(status);
 
   const columns = [
     {
@@ -79,9 +63,9 @@ export function PurchaseOrderManager({ purchaseOrders = [], onCreate, onUpdateSt
             <ShoppingCart className="w-4 h-4" />
           </div>
           <div>
-            <p className="font-black text-gray-900 leading-none">{row.original.purchase_number}</p>
+            <p className="font-semibold text-gray-900 leading-none">{row.original.purchase_number}</p>
             <p className="text-[10px] text-gray-400 font-bold mt-1 uppercase tracking-tighter">
-              {new Date(row.original.date).toLocaleDateString()}
+              {formatDisplayDate(row.original.date)}
             </p>
           </div>
         </div>
@@ -98,28 +82,44 @@ export function PurchaseOrderManager({ purchaseOrders = [], onCreate, onUpdateSt
       accessorKey: 'total_amount',
       header: 'Amount',
       cell: ({ row }) => (
-        <span className="font-black text-gray-900">{formatCurrency(row.original.total_amount, 'PKR')}</span>
+        <span className="font-semibold text-gray-900">{formatCurrency(row.original.total_amount, currency)}</span>
       ),
     },
     {
       accessorKey: 'status',
       header: 'Status',
       cell: ({ row }) => (
-        <Badge variant="outline" className={`font-black uppercase text-[10px] px-2 py-0.5 rounded-full ${getStatusBadge(row.original.status)}`}>
-          {row.original.status}
+        <Badge variant="outline" className={`font-semibold uppercase text-[10px] px-2 py-0.5 rounded-full ${getStatusBadge(row.original.status)}`}>
+          {getPurchaseStatusLabel(row.original.status)}
         </Badge>
       ),
     },
     {
       id: 'actions',
-      cell: ({ row }) => (
+      cell: ({ row }) => {
+        const status = normalizePurchaseStatus(row.original.status);
+        const canMarkSent = status === PURCHASE_STATUSES.DRAFT;
+        const canReceive = isReceivablePurchaseStatus(row.original.status);
+
+        return (
         <div className="flex justify-end gap-2">
-          {row.original.status !== 'received' && (
+          {canMarkSent && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 border-blue-200 text-blue-700 hover:bg-blue-50 font-bold px-3 rounded-lg"
+              onClick={() => onUpdateStatus?.(row.original.id, PURCHASE_STATUSES.ORDERED)}
+            >
+              <Send className="w-3 h-3 mr-1" />
+              Mark Sent
+            </Button>
+          )}
+          {canReceive && (
             <Button
               variant="outline"
               size="sm"
               className="h-8 border-green-200 text-green-700 hover:bg-green-50 font-bold px-3 rounded-lg"
-              onClick={() => onUpdateStatus?.(row.original.id, 'received')}
+              onClick={() => onUpdateStatus?.(row.original.id, PURCHASE_STATUSES.RECEIVED)}
             >
               <CheckCircle2 className="w-3 h-3 mr-1" />
               Received
@@ -135,7 +135,8 @@ export function PurchaseOrderManager({ purchaseOrders = [], onCreate, onUpdateSt
             <ExternalLink className="w-4 h-4" />
           </Button>
         </div>
-      )
+        );
+      }
     }
   ];
 
@@ -145,24 +146,39 @@ export function PurchaseOrderManager({ purchaseOrders = [], onCreate, onUpdateSt
     (o.vendor_name && o.vendor_name.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
-  const openOrdersCount = purchaseOrders.filter(p => ['draft', 'sent'].includes(p.status)).length;
+  const openOrdersCount = purchaseOrders.filter(p => isOpenPurchaseStatus(p.status)).length;
   const procurementValue = purchaseOrders.reduce((sum, order) => sum + (Number(order.total_amount) || 0), 0);
-  const pendingReceiptCount = purchaseOrders.filter(p => p.status === 'sent').length;
-  const receivedCount = purchaseOrders.filter(p => p.status === 'received').length;
+  const pendingReceiptCount = purchaseOrders.filter(p => normalizePurchaseStatus(p.status) === PURCHASE_STATUSES.ORDERED).length;
+  const receivedCount = purchaseOrders.filter(p => normalizePurchaseStatus(p.status) === PURCHASE_STATUSES.RECEIVED).length;
 
   return (
-    <div className="space-y-6 animate-in slide-in-from-right-5 duration-500">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="min-w-0 space-y-4 overflow-x-hidden touch-manipulation animate-in slide-in-from-right-5 duration-500 lg:space-y-6">
+      <MobileTabHeader
+        icon={ShoppingCart}
+        iconClassName="bg-blue-100 text-blue-600"
+        title="Purchase Orders"
+        subtitle={`${purchaseOrders.length} orders · procurement`}
+      />
+
+      <MobileStatStrip
+        layout="grid"
+        items={[
+          { label: 'Open', value: openOrdersCount, valueTone: 'text-amber-600' },
+          { label: 'Pending', value: pendingReceiptCount, valueTone: 'text-orange-600' },
+          { label: 'Received', value: receivedCount, valueTone: 'text-green-600' },
+          { label: 'Value', value: formatCurrency(procurementValue, currency), hint: 'Total listed' },
+        ]}
+      />
+
+      <div className="hidden flex-col gap-4 md:flex-row md:items-center md:justify-between lg:flex">
         <div>
           <h2 className="text-xl font-bold text-foreground">Purchase Orders</h2>
           <p className="text-muted-foreground font-medium">Coordinate inventory procurement and tracking</p>
         </div>
         <div className="flex gap-2">
           <Button
-            onClick={() => {
-              setShowPOForm(true);
-            }}
-            className="bg-primary text-white rounded-xl shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all font-bold h-11 px-6"
+            onClick={() => onCreate?.()}
+            className="rounded-xl shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all font-bold h-11 px-6 bg-emerald-600 hover:bg-emerald-700 text-white"
           >
             <Plus className="w-4 h-4 mr-2" />
             Create Purchase
@@ -172,14 +188,15 @@ export function PurchaseOrderManager({ purchaseOrders = [], onCreate, onUpdateSt
             filename="purchase_orders"
             columns={columns}
             title="Purchase Orders Report"
+            business={business}
           />
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="hidden grid-cols-2 gap-3 lg:grid lg:grid-cols-4 lg:gap-4">
         <Card className="border-border shadow-sm bg-card">
           <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-black uppercase tracking-widest text-muted-foreground">Open Orders</CardTitle>
+            <CardTitle className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Open Orders</CardTitle>
             <CardDescription>Draft and sent purchase orders</CardDescription>
           </CardHeader>
           <CardContent className="pt-6">
@@ -190,18 +207,18 @@ export function PurchaseOrderManager({ purchaseOrders = [], onCreate, onUpdateSt
         </Card>
         <Card className="border-border shadow-sm bg-card">
           <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-black uppercase tracking-widest text-muted-foreground">Procurement Value</CardTitle>
+            <CardTitle className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Procurement Value</CardTitle>
             <CardDescription>Total of listed orders</CardDescription>
           </CardHeader>
           <CardContent className="pt-6">
             <p className="text-2xl font-bold text-blue-600">
-              {formatCurrency(procurementValue, 'PKR')}
+              {formatCurrency(procurementValue, currency)}
             </p>
           </CardContent>
         </Card>
         <Card className="border-border shadow-sm bg-card">
           <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-black uppercase tracking-widest text-muted-foreground">Pending Receipt</CardTitle>
+            <CardTitle className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Pending Receipt</CardTitle>
             <CardDescription>Orders waiting inbound receipt</CardDescription>
           </CardHeader>
           <CardContent className="pt-6 flex items-center justify-between gap-3">
@@ -211,7 +228,7 @@ export function PurchaseOrderManager({ purchaseOrders = [], onCreate, onUpdateSt
         </Card>
         <Card className="border-border shadow-sm bg-card">
           <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-black uppercase tracking-widest text-muted-foreground">Received</CardTitle>
+            <CardTitle className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Received</CardTitle>
             <CardDescription>Orders completed into stock</CardDescription>
           </CardHeader>
           <CardContent className="pt-6 flex items-center justify-between gap-3">
@@ -221,7 +238,7 @@ export function PurchaseOrderManager({ purchaseOrders = [], onCreate, onUpdateSt
         </Card>
       </div>
 
-      <Card className="border-border shadow-sm bg-card">
+      <Card className="hidden border-border bg-card shadow-sm lg:block">
         <CardHeader className="pb-4">
           <div className="relative group">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground group-focus-within:text-primary w-4 h-4 transition-colors" />
@@ -237,13 +254,74 @@ export function PurchaseOrderManager({ purchaseOrders = [], onCreate, onUpdateSt
           <DataTable category={category} data={filteredOrders} columns={columns} searchable={false} emptyComponent={<EmptyState module="purchases" compact onAction={onCreate} />} />
         </CardContent>
       </Card>
+
+      <div className="pb-[calc(5.5rem+env(safe-area-inset-bottom))] lg:hidden">
+        <HubEntityMobileList
+          items={purchaseOrders}
+          search={searchTerm}
+          onSearchChange={setSearchTerm}
+          searchPlaceholder="Search PO or vendor..."
+          emptyIcon={ShoppingCart}
+          emptyTitle="No purchase orders"
+          emptySubtitle="Create a PO to track procurement"
+          emptyActionLabel="Create purchase"
+          onEmptyAction={() => onCreate?.()}
+          getKey={(o) => o.id}
+          onRowPress={(o) => setPoToView(o)}
+          renderIcon={() => <ShoppingCart className="h-5 w-5 text-blue-600" />}
+          getTitle={(o) => o.purchase_number || 'PO'}
+          getSubtitle={(o) => o.vendor_name || 'Unknown supplier'}
+          getAmount={(o) => formatCurrency(o.total_amount, currency)}
+          renderBadge={(o) => (
+            <Badge variant="outline" className={cn('text-[10px] font-semibold uppercase', getStatusBadge(o.status))}>
+              {getPurchaseStatusLabel(o.status)}
+            </Badge>
+          )}
+          filterItems={(list, q) => {
+            const query = q.trim().toLowerCase();
+            if (!query) return list;
+            return list.filter(
+              (o) =>
+                o.purchase_number?.toLowerCase().includes(query) ||
+                o.vendor_name?.toLowerCase().includes(query)
+            );
+          }}
+          getActions={(o) => {
+            const status = normalizePurchaseStatus(o.status);
+            const actions = [
+              { id: 'view', icon: ExternalLink, label: 'View PO / GRN', onClick: () => setPoToView(o) },
+            ];
+            if (status === PURCHASE_STATUSES.DRAFT) {
+              actions.push({ id: 'sent', icon: Send, label: 'Mark sent', onClick: () => onUpdateStatus?.(o.id, PURCHASE_STATUSES.ORDERED) });
+            }
+            if (isReceivablePurchaseStatus(o.status)) {
+              actions.push({ id: 'recv', icon: CheckCircle2, label: 'Mark received', onClick: () => onUpdateStatus?.(o.id, PURCHASE_STATUSES.RECEIVED) });
+            }
+            return actions;
+          }}
+        />
+      </div>
+
+      <button
+        type="button"
+        onClick={() => onCreate?.()}
+        className={cn(
+          'fixed flex h-14 w-14 items-center justify-center rounded-full bg-emerald-600 text-white shadow-lg shadow-emerald-600/30 transition active:scale-95 lg:hidden',
+          MOBILE_MODULE_FAB_RIGHT,
+          MOBILE_BOTTOM_NAV_CLASS,
+          MOBILE_FLOATING_Z
+        )}
+        aria-label="Create purchase order"
+      >
+        <Plus className="h-6 w-6" />
+      </button>
       <Dialog open={!!poToView} onOpenChange={(open) => !open && setPoToView(null)}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className={hubDialogContentClass({ wide: true, maxWidth: 'lg:max-w-4xl' })}>
           <DialogHeader>
             <DialogTitle className="flex items-center justify-between gap-2">
               <span className="flex items-center gap-2">
                 <FileText className="w-5 h-5 text-blue-500" />
-                {poToView?.status === 'received' ? 'Good Receipt Note (GRN)' : 'Purchase Order Detail'}
+                {normalizePurchaseStatus(poToView?.status) === PURCHASE_STATUSES.RECEIVED ? 'Good Receipt Note (GRN)' : 'Purchase Order Detail'}
               </span>
               <Button
                 type="button"
@@ -275,18 +353,6 @@ export function PurchaseOrderManager({ purchaseOrders = [], onCreate, onUpdateSt
         </DialogContent>
       </Dialog>
 
-      {showPOForm && (
-        <PurchaseDocumentForm
-          onClose={() => setShowPOForm(false)}
-          onSave={() => {
-            onCreate?.();
-            refreshData?.();
-          }}
-          vendors={vendors}
-          warehouses={warehouses}
-          products={products}
-        />
-      )}
     </div>
   );
 }

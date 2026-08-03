@@ -7,7 +7,7 @@ export default defineConfig({
         environment: 'node',
 
         // Test file patterns
-        include: ['**/__tests__/**/*.test.{js,ts}', '**/*.test.{js,ts}'],
+        include: ['**/__tests__/**/*.test.{js,ts,jsx,tsx}', '**/*.test.{js,ts,jsx,tsx}'],
         exclude: ['node_modules', '.next', 'dist'],
 
         // Global test timeout

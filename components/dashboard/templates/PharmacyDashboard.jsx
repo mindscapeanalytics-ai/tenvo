@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useMemo, useEffect } from 'react';
 import {
@@ -12,6 +12,7 @@ import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { getDomainColors } from '@/lib/domainColors';
+import { BRAND_PRIMARY } from '@/lib/theme/brandTokens';
 import { getDomainKnowledge } from '@/lib/domainKnowledge';
 import { formatCurrency } from '@/lib/currency';
 import { format } from 'date-fns';
@@ -276,8 +277,8 @@ export function PharmacyDashboard({ businessId, category, onQuickAction }) {
                       className="h-full rounded-full transition-all duration-1000 ease-out"
                       style={{
                         width: `${progress}%`,
-                        backgroundColor: colors.primary || '#2F5BFF',
-                        boxShadow: `0 0 8px ${colors.primary || '#2F5BFF'}40`
+                        backgroundColor: colors.primary || BRAND_PRIMARY,
+                        boxShadow: `0 0 8px ${colors.primary || BRAND_PRIMARY}40`,
                       }}
                     />
                   </div>
@@ -319,14 +320,14 @@ export function PharmacyDashboard({ businessId, category, onQuickAction }) {
           currency={currency}
           onViewDetails={(type) => onQuickAction?.(`view-${type}`)}
         />
-        
+
         {/* FBR Compliance Widget - Critical for Pakistani pharmacies */}
         <FBRComplianceWidget
           businessId={businessId}
           currency={currency}
           onViewDetails={(type) => onQuickAction?.(`view-${type}`)}
         />
-        
+
         {/* Inventory Valuation Widget */}
         <InventoryValuationWidget
           businessId={businessId}
@@ -334,7 +335,7 @@ export function PharmacyDashboard({ businessId, category, onQuickAction }) {
           currency={currency}
           onViewDetails={(type) => onQuickAction?.(`view-${type}`)}
         />
-        
+
         {/* Controlled Substances Widget - Placeholder for future implementation */}
         <Card className="glass-card border-none">
           <CardHeader className="pb-3">

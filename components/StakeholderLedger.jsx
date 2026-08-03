@@ -51,11 +51,11 @@ export default function StakeholderLedger({ entityId, entityType, businessId, cu
     }, [entityId, businessId]);
 
     return (
-        <div className="space-y-6">
-            <div className="flex justify-between items-center">
+        <div className="min-w-0 space-y-4 overflow-x-hidden touch-manipulation sm:space-y-6">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                    <h3 className="text-lg font-bold text-gray-900 leading-none">Account Statement</h3>
-                    <p className="text-xs text-gray-500 mt-1">Detailed transaction history and running balance</p>
+                    <h3 className="text-lg font-bold leading-none text-gray-900">Account Statement</h3>
+                    <p className="mt-1 text-xs text-gray-500">Detailed transaction history and running balance</p>
                 </div>
                 <div className="flex gap-2">
                     <Button variant="outline" size="sm" onClick={fetchLedger}>
@@ -74,42 +74,43 @@ export default function StakeholderLedger({ entityId, entityType, businessId, cu
                     <CardContent className="p-4">
                         <div className="flex items-center gap-1.5 text-blue-600 mb-1">
                             <TrendingUp className="w-3 h-3" />
-                            <span className="text-[10px] font-black uppercase tracking-wider">Purchased</span>
+                            <span className="text-[10px] font-semibold uppercase tracking-wider">Purchased</span>
                         </div>
-                        <p className="text-lg font-black text-blue-700">{formatCurrency(summary.totalDebit, currency)}</p>
+                        <p className="text-lg font-semibold text-blue-700">{formatCurrency(summary.totalDebit, currency)}</p>
                     </CardContent>
                 </Card>
                 <Card className="bg-emerald-50/50 border-emerald-100 shadow-none">
                     <CardContent className="p-4">
                         <div className="flex items-center gap-1.5 text-emerald-600 mb-1">
                             <TrendingDown className="w-3 h-3" />
-                            <span className="text-[10px] font-black uppercase tracking-wider">Paid</span>
+                            <span className="text-[10px] font-semibold uppercase tracking-wider">Paid</span>
                         </div>
-                        <p className="text-lg font-black text-emerald-700">{formatCurrency(summary.totalCredit, currency)}</p>
+                        <p className="text-lg font-semibold text-emerald-700">{formatCurrency(summary.totalCredit, currency)}</p>
                     </CardContent>
                 </Card>
                 <Card className="bg-wine/5 border-wine/10 shadow-none" style={{ backgroundColor: `${colors?.primary}08`, borderColor: `${colors?.primary}20` }}>
                     <CardContent className="p-4">
                         <div className="flex items-center gap-1.5 mb-1" style={{ color: colors?.primary }}>
                             <Wallet className="w-3 h-3" />
-                            <span className="text-[10px] font-black uppercase tracking-wider">Balance</span>
+                            <span className="text-[10px] font-semibold uppercase tracking-wider">Balance</span>
                         </div>
-                        <p className="text-lg font-black" style={{ color: colors?.primary }}>{formatCurrency(summary.balance, currency)}</p>
+                        <p className="text-lg font-semibold" style={{ color: colors?.primary }}>{formatCurrency(summary.balance, currency)}</p>
                     </CardContent>
                 </Card>
             </div>
 
-            <Card className="border-gray-100 shadow-sm overflow-hidden">
-                <div className="overflow-x-auto min-w-full">
+            <Card className="overflow-hidden border-gray-100 shadow-sm">
+                {/* Desktop table */}
+                <div className="hidden min-w-full lg:block">
                     <Table>
                         <TableHeader>
                             <TableRow className="bg-gray-50/80 hover:bg-gray-50/80">
-                                <TableHead className="w-[110px] text-[10px] font-black uppercase tracking-wider py-4 px-4 text-gray-400">Date</TableHead>
-                                <TableHead className="text-[10px] font-black uppercase tracking-wider py-4 px-4 text-gray-400">Transaction</TableHead>
-                                <TableHead className="text-[10px] font-black uppercase tracking-wider py-4 px-4 text-gray-400">Ref</TableHead>
-                                <TableHead className="text-right text-[10px] font-black uppercase tracking-wider py-4 px-4 text-gray-400">Debit (+)</TableHead>
-                                <TableHead className="text-right text-[10px] font-black uppercase tracking-wider py-4 px-4 text-gray-400">Credit (-)</TableHead>
-                                <TableHead className="text-right text-[10px] font-black uppercase tracking-wider py-4 px-4 text-gray-400">Balance</TableHead>
+                                <TableHead className="w-[110px] text-[10px] font-semibold uppercase tracking-wider py-4 px-4 text-gray-400">Date</TableHead>
+                                <TableHead className="text-[10px] font-semibold uppercase tracking-wider py-4 px-4 text-gray-400">Transaction</TableHead>
+                                <TableHead className="text-[10px] font-semibold uppercase tracking-wider py-4 px-4 text-gray-400">Ref</TableHead>
+                                <TableHead className="text-right text-[10px] font-semibold uppercase tracking-wider py-4 px-4 text-gray-400">Debit (+)</TableHead>
+                                <TableHead className="text-right text-[10px] font-semibold uppercase tracking-wider py-4 px-4 text-gray-400">Credit (-)</TableHead>
+                                <TableHead className="text-right text-[10px] font-semibold uppercase tracking-wider py-4 px-4 text-gray-400">Balance</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -136,19 +137,19 @@ export default function StakeholderLedger({ entityId, entityType, businessId, cu
                                         </TableCell>
                                         <TableCell className="px-4">
                                             <div className="flex flex-col">
-                                                <span className="text-xs font-black text-gray-700 capitalize tracking-tight">
+                                                <span className="text-xs font-semibold text-gray-700 capitalize tracking-tight">
                                                     {txn.transaction_type === 'invoice' ? 'Sales Invoice' :
                                                         txn.transaction_type === 'purchase' ? 'Purchase Bill' :
                                                             txn.transaction_type === 'payment' ? (entityType === 'customer' ? 'Receipt' : 'Payment') :
                                                                 txn.transaction_type}
                                                 </span>
                                                 {txn.payment_mode && (
-                                                    <span className="text-[9px] text-gray-400 font-black uppercase tracking-tighter">{txn.payment_mode}</span>
+                                                    <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-tighter">{txn.payment_mode}</span>
                                                 )}
                                             </div>
                                         </TableCell>
                                         <TableCell className="px-4">
-                                            <Badge variant="outline" className="font-mono text-[9px] bg-white border-gray-100 text-gray-500 font-bold px-1.5 py-0">
+                                            <Badge variant="outline" className="font-mono text-[10px] bg-white border-gray-100 text-gray-500 font-bold px-1.5 py-0">
                                                 {txn.invoice_number || txn.purchase_number || txn.reference_id?.slice(0, 8) || 'N/A'}
                                             </Badge>
                                         </TableCell>
@@ -158,7 +159,7 @@ export default function StakeholderLedger({ entityId, entityType, businessId, cu
                                         <TableCell className="text-right font-mono text-xs font-bold text-gray-800 px-4">
                                             {txn.credit > 0 ? formatCurrency(txn.credit, currency) : '-'}
                                         </TableCell>
-                                        <TableCell className="text-right font-mono text-xs font-black px-4" style={{ color: txn.balance >= 0 ? colors?.primary : '#059669' }}>
+                                        <TableCell className="text-right font-mono text-xs font-semibold px-4" style={{ color: txn.balance >= 0 ? colors?.primary : '#059669' }}>
                                             {formatCurrency(txn.balance, currency)}
                                         </TableCell>
                                     </TableRow>
@@ -166,6 +167,54 @@ export default function StakeholderLedger({ entityId, entityType, businessId, cu
                             )}
                         </TableBody>
                     </Table>
+                </div>
+
+                {/* Mobile cards */}
+                <div className="divide-y divide-gray-100 lg:hidden">
+                    {loading ? (
+                        <div className="flex flex-col items-center gap-3 py-16">
+                            <Loader2 className="h-8 w-8 animate-spin text-wine/30" />
+                            <span className="text-xs font-bold uppercase tracking-widest text-gray-400">Generating Ledger...</span>
+                        </div>
+                    ) : ledger.length === 0 ? (
+                        <div className="py-16 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                            Empty Ledger
+                        </div>
+                    ) : (
+                        ledger.map((txn, idx) => (
+                            <div key={txn.id || idx} className="px-3 py-3">
+                                <div className="flex items-start justify-between gap-2">
+                                    <div className="min-w-0">
+                                        <p className="text-xs font-semibold capitalize text-gray-700">
+                                            {txn.transaction_type === 'invoice' ? 'Sales Invoice' :
+                                                txn.transaction_type === 'purchase' ? 'Purchase Bill' :
+                                                    txn.transaction_type === 'payment' ? (entityType === 'customer' ? 'Receipt' : 'Payment') :
+                                                        txn.transaction_type}
+                                        </p>
+                                        <p className="mt-0.5 font-mono text-[10px] text-gray-500">
+                                            {format(new Date(txn.date), 'dd-MM-yyyy')}
+                                        </p>
+                                        {txn.payment_mode && (
+                                            <p className="text-[10px] font-semibold uppercase tracking-tighter text-gray-400">{txn.payment_mode}</p>
+                                        )}
+                                    </div>
+                                    <p className="shrink-0 text-xs font-semibold tabular-nums" style={{ color: txn.balance >= 0 ? colors?.primary : '#059669' }}>
+                                        {formatCurrency(txn.balance, currency)}
+                                    </p>
+                                </div>
+                                <div className="mt-2 flex flex-wrap items-center gap-2">
+                                    <Badge variant="outline" className="border-gray-100 bg-white px-1.5 py-0 font-mono text-[10px] font-bold text-gray-500">
+                                        {txn.invoice_number || txn.purchase_number || txn.reference_id?.slice(0, 8) || 'N/A'}
+                                    </Badge>
+                                    <span className="text-[11px] tabular-nums text-gray-600">
+                                        Dr {txn.debit > 0 ? formatCurrency(txn.debit, currency) : '—'}
+                                        {' · '}
+                                        Cr {txn.credit > 0 ? formatCurrency(txn.credit, currency) : '—'}
+                                    </span>
+                                </div>
+                            </div>
+                        ))
+                    )}
                 </div>
             </Card>
         </div>

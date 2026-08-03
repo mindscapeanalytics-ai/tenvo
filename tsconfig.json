@@ -50,9 +50,8 @@
     "incremental": true,
     "skipLibCheck": true,
     // ============================================================================
-    // Path Mapping (Next.js)
+    // Path Mapping (Next.js) — no baseUrl (deprecated in TS 6; removed in TS 7)
     // ============================================================================
-    "baseUrl": ".",
     "paths": {
       "@/*": [
         "./*"

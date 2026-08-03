@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Sparkles, Package, ShoppingCart } from 'lucide-react';
-import { getTemplatesForDomain } from '@/lib/data/productTemplates';
+import { getTemplatesForDomain, normalizeProductTemplate } from '@/lib/data/productTemplates';
 import { Badge } from '@/components/ui/badge';
 import { formatCurrency } from '@/lib/currency';
 import toast from 'react-hot-toast';
@@ -14,8 +14,21 @@ import toast from 'react-hot-toast';
  * Quick Add Templates Component
  * Allows users to quickly add pre-configured products
  */
-export function QuickAddTemplates({ domain, onAddProduct, currency = 'PKR' }) {
-    const [open, setOpen] = useState(false);
+export function QuickAddTemplates({
+    domain,
+    onAddProduct,
+    currency = 'PKR',
+    open: controlledOpen,
+    onOpenChange: controlledOnOpenChange,
+    hideTrigger = false,
+}) {
+    const [internalOpen, setInternalOpen] = useState(false);
+    const isControlled = controlledOpen !== undefined;
+    const open = isControlled ? controlledOpen : internalOpen;
+    const setOpen = (next) => {
+        if (!isControlled) setInternalOpen(next);
+        controlledOnOpenChange?.(next);
+    };
     const templates = getTemplatesForDomain(domain);
 
     if (templates.length === 0) {
@@ -23,14 +36,14 @@ export function QuickAddTemplates({ domain, onAddProduct, currency = 'PKR' }) {
     }
 
     const handleAddTemplate = (template) => {
-        onAddProduct(template);
+        onAddProduct(normalizeProductTemplate(template, domain));
         toast.success(`Added ${template.name} to inventory`);
         setOpen(false);
     };
 
     const handleAddAll = () => {
-        templates.forEach(template => {
-            onAddProduct(template);
+        templates.forEach((template) => {
+            onAddProduct(normalizeProductTemplate(template, domain));
         });
         toast.success(`Added ${templates.length} products to inventory`);
         setOpen(false);
@@ -38,12 +51,14 @@ export function QuickAddTemplates({ domain, onAddProduct, currency = 'PKR' }) {
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-                <Button variant="outline" className="gap-2">
-                    <Sparkles className="h-4 w-4" />
-                    Quick Add Products
-                </Button>
-            </DialogTrigger>
+            {!hideTrigger && (
+                <DialogTrigger asChild>
+                    <Button variant="outline" className="gap-2">
+                        <Sparkles className="h-4 w-4" />
+                        Quick Add Products
+                    </Button>
+                </DialogTrigger>
+            )}
 
             <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
                 <DialogHeader>

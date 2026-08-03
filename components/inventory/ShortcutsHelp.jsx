@@ -18,21 +18,46 @@ export function ShortcutsHelp({ isOpen, onClose }) {
             icon: <LayoutGrid className="w-4 h-4" />,
             shortcuts: [
                 { keys: ["Alt", "1-5"], action: "Switch Main Tabs" },
-                { keys: ["Alt", "V"], action: "Switch to Visual View" },
-                { keys: ["Alt", "B"], action: "Switch to Busy Mode" },
+                { keys: ["Alt", "V"], action: "Visual table view" },
+                { keys: ["Alt", "B"], action: "Busy grid view (inventory tab)" },
+                { keys: ["Alt", "C"], action: "Cards view (mobile-friendly)" },
             ]
         },
         {
-            title: "Data Entry (Busy Mode)",
+            title: "Excel Mode (full-screen)",
             icon: <Table className="w-4 h-4" />,
             shortcuts: [
-                { keys: ["Arrows"], action: "Navigate Cells" },
-                { keys: ["Enter"], action: "Edit / Save Cell" },
-                { keys: ["Esc"], action: "Cancel Editing" },
-                { keys: ["Tab"], action: "Next Cell (Wraps)" },
-                { keys: ["F2"], action: "Quick Add Row" },
-                { keys: ["Ctrl", "C"], action: "Copy Cell Value" },
-                { keys: ["Ctrl", "V"], action: "Paste Cell Value" },
+                { keys: ["Ctrl", "S"], action: "Save all changes" },
+                { keys: ["Ctrl", "Z"], action: "Undo" },
+                { keys: ["Ctrl", "Y"], action: "Redo" },
+                { keys: ["Ctrl", "D"], action: "Duplicate last row (Excel modal)" },
+                { keys: ["Typeahead"], action: "Name, SKU, brand, category, domain fields suggest as you type" },
+            ]
+        },
+        {
+            title: "Data Entry (Busy / Excel grid)",
+            icon: <Table className="w-4 h-4" />,
+            shortcuts: [
+                { keys: ["Click"], action: "Edit cell" },
+                { keys: ["Arrows"], action: "Navigate cells" },
+                { keys: ["Enter"], action: "Edit cell / move down" },
+                { keys: ["Esc"], action: "Cancel editing" },
+                { keys: ["Tab"], action: "Save and next cell" },
+                { keys: ["F2"], action: "Edit selected cell" },
+                { keys: ["Ctrl", "Shift", "N"], action: "Add new inline row" },
+                { keys: ["Shift", "Enter"], action: "Add new row" },
+                { keys: ["Ctrl", "D"], action: "Fill value into cell below" },
+                { keys: ["Backspace"], action: "Clear cell" },
+                { keys: ["Ctrl", "Delete"], action: "Delete row" },
+                { keys: ["Ctrl", "C"], action: "Copy cell value" },
+                { keys: ["Ctrl", "V"], action: "Paste cell value" },
+            ]
+        },
+        {
+            title: "Command Center toggle",
+            icon: <Zap className="w-4 h-4" />,
+            shortcuts: [
+                { keys: ["Global Busy"], action: "Formula bar density (not the same as Busy grid view)" },
             ]
         },
         {
@@ -52,7 +77,7 @@ export function ShortcutsHelp({ isOpen, onClose }) {
                     <div className="absolute top-0 right-0 p-8 opacity-10">
                         <Keyboard className="w-24 h-24" />
                     </div>
-                    <DialogTitle className="text-3xl font-black tracking-tight flex items-center gap-3">
+                    <DialogTitle className="text-3xl font-semibold tracking-tight flex items-center gap-3">
                         <div className="p-2 bg-white/20 rounded-xl">
                             <Command className="w-6 h-6" />
                         </div>
@@ -66,7 +91,7 @@ export function ShortcutsHelp({ isOpen, onClose }) {
                 <div className="p-8 space-y-8 max-h-[60vh] overflow-auto custom-scrollbar">
                     {shortcutGroups.map((group, idx) => (
                         <div key={idx} className="space-y-4">
-                            <div className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-gray-400">
+                            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-gray-400">
                                 {group.icon}
                                 {group.title}
                             </div>
@@ -79,7 +104,7 @@ export function ShortcutsHelp({ isOpen, onClose }) {
                                         <div className="flex items-center gap-1.5">
                                             {s.keys.map((key, kIdx) => (
                                                 <React.Fragment key={kIdx}>
-                                                    <kbd className="min-w-[24px] h-7 px-2 flex items-center justify-center bg-gray-100 border-b-2 border-gray-300 rounded-md font-mono text-[10px] font-black text-gray-600 shadow-sm leading-none">
+                                                    <kbd className="min-w-[24px] h-7 px-2 flex items-center justify-center bg-gray-100 border-b-2 border-gray-300 rounded-md font-mono text-[10px] font-semibold text-gray-600 shadow-sm leading-none">
                                                         {key}
                                                     </kbd>
                                                     {kIdx < s.keys.length - 1 && <span className="text-xs text-gray-300 font-bold">+</span>}
@@ -98,7 +123,7 @@ export function ShortcutsHelp({ isOpen, onClose }) {
                         <MousePointer2 className="w-3 h-3" />
                         Most shortcuts work in all views
                     </div>
-                    <Badge className="bg-wine/10 text-wine border-wine/20 font-black text-[10px] uppercase">
+                    <Badge className="bg-wine/10 text-wine border-wine/20 font-semibold text-[10px] uppercase">
                         Alpha v1.2
                     </Badge>
                 </div>

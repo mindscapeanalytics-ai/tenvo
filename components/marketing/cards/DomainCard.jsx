@@ -54,23 +54,23 @@ export default function DomainCard({
       <Link
         href={linkHref}
         onClick={handleClick}
-        className={`group flex flex-col items-center justify-center p-6 bg-white border border-neutral-200 rounded-xl hover:border-wine-600 hover:shadow-lg transition-all duration-300 ${
+        className={`group flex flex-col items-center justify-center p-6 bg-white border border-neutral-200 rounded-xl hover:border-brand-primary hover:shadow-lg transition-all duration-300 ${
           mounted ? 'animate-fade-in-up' : 'opacity-0'
         }`}
         aria-label={`Learn more about ${name}`}
       >
         {/* Icon */}
-        <div className="w-12 h-12 bg-wine-50 rounded-lg flex items-center justify-center mb-3 group-hover:bg-wine-600 transition-colors duration-300">
-          <IconComponent className="w-6 h-6 text-wine-600 group-hover:text-white transition-colors duration-300" />
+        <div className="w-12 h-12 bg-brand-50 rounded-lg flex items-center justify-center mb-3 group-hover:bg-brand-primary transition-colors duration-300">
+          <IconComponent className="w-6 h-6 text-brand-primary group-hover:text-white transition-colors duration-300" />
         </div>
 
         {/* Name */}
-        <h3 className="text-sm font-semibold text-neutral-900 text-center group-hover:text-wine-600 transition-colors duration-300">
+        <h3 className="text-sm font-semibold text-neutral-900 text-center group-hover:text-brand-primary transition-colors duration-300">
           {name}
         </h3>
 
         {/* Underline animation */}
-        <div className="w-0 h-0.5 bg-wine-600 group-hover:w-full transition-all duration-300 mt-2" />
+        <div className="w-0 h-0.5 bg-brand-primary group-hover:w-full transition-all duration-300 mt-2" />
       </Link>
     );
   }
@@ -80,20 +80,20 @@ export default function DomainCard({
     <Link
       href={linkHref}
       onClick={handleClick}
-      className={`group flex items-start gap-4 p-6 bg-white border border-neutral-200 rounded-xl hover:border-wine-600 hover:shadow-lg transition-all duration-300 ${
+      className={`group flex items-start gap-4 p-6 bg-white border border-neutral-200 rounded-xl hover:border-brand-primary hover:shadow-lg transition-all duration-300 ${
         mounted ? 'animate-fade-in-up' : 'opacity-0'
       }`}
       aria-label={`Learn more about ${name}`}
     >
       {/* Icon */}
-      <div className="flex-shrink-0 w-14 h-14 bg-wine-50 rounded-xl flex items-center justify-center group-hover:bg-wine-600 transition-colors duration-300">
-        <IconComponent className="w-7 h-7 text-wine-600 group-hover:text-white transition-colors duration-300" />
+      <div className="flex-shrink-0 w-14 h-14 bg-brand-50 rounded-xl flex items-center justify-center group-hover:bg-brand-primary transition-colors duration-300">
+        <IconComponent className="w-7 h-7 text-brand-primary group-hover:text-white transition-colors duration-300" />
       </div>
 
       {/* Content */}
       <div className="flex-1 min-w-0">
         {/* Name */}
-        <h3 className="text-lg font-bold text-neutral-900 mb-1 group-hover:text-wine-600 transition-colors duration-300">
+        <h3 className="text-lg font-bold text-neutral-900 mb-1 group-hover:text-brand-primary transition-colors duration-300">
           {name}
         </h3>
 
@@ -105,12 +105,12 @@ export default function DomainCard({
         )}
 
         {/* Underline animation */}
-        <div className="w-0 h-0.5 bg-wine-600 group-hover:w-full transition-all duration-300 mt-3" />
+        <div className="w-0 h-0.5 bg-brand-primary group-hover:w-full transition-all duration-300 mt-3" />
       </div>
 
       {/* Arrow icon */}
       <div className="flex-shrink-0">
-        <LucideIcons.ArrowRight className="w-5 h-5 text-neutral-400 group-hover:text-wine-600 group-hover:translate-x-1 transition-all duration-300" />
+        <LucideIcons.ArrowRight className="w-5 h-5 text-neutral-400 group-hover:text-brand-primary group-hover:translate-x-1 transition-all duration-300" />
       </div>
     </Link>
   );

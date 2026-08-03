@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { useCostingMethod } from '@/lib/hooks/useCostingMethod';
 import { formatCurrency } from '@/lib/currency';
 import toast from 'react-hot-toast';
+import { ResponsiveManagerHeader } from '@/components/mobile/HubSectionHeader';
 import * as XLSX from 'xlsx';
 
 /**
@@ -132,35 +133,30 @@ export function InventoryValuation({ businessId, costingMethod = 'FIFO', currenc
         : ['all'];
 
     return (
-        <div className="space-y-6">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h2 className="text-2xl font-bold text-gray-900">Inventory Valuation Report</h2>
-                    <p className="text-sm text-gray-600">
-                        Using {costingMethod} costing method
-                        {valuation && ` * Generated ${new Date(valuation.calculated_at).toLocaleString()}`}
-                    </p>
-                </div>
-                <div className="flex gap-2">
-                    <Button
-                        onClick={loadValuation}
-                        disabled={loading}
-                        variant="outline"
-                    >
-                        <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-                        Refresh
-                    </Button>
-                    <Button
-                        onClick={handleExportToExcel}
-                        disabled={loading || !valuation}
-                        className="bg-green-600 hover:bg-green-700"
-                    >
-                        <Download className="w-4 h-4 mr-2" />
-                        Export to Excel
-                    </Button>
-                </div>
-            </div>
+        <div className="min-w-0 space-y-6 overflow-x-hidden">
+            <ResponsiveManagerHeader
+                title="Inventory Valuation Report"
+                subtitle={`Using ${costingMethod} costing method${valuation ? ` · Generated ${new Date(valuation.calculated_at).toLocaleString()}` : ''}`}
+                titleClassName="lg:text-2xl"
+                actions={[
+                    {
+                        id: 'refresh',
+                        label: 'Refresh',
+                        icon: RefreshCw,
+                        variant: 'outline',
+                        disabled: loading,
+                        onClick: loadValuation,
+                    },
+                    {
+                        id: 'export',
+                        label: 'Export to Excel',
+                        icon: Download,
+                        className: 'bg-green-600 hover:bg-green-700 text-white',
+                        disabled: loading || !valuation,
+                        onClick: handleExportToExcel,
+                    },
+                ]}
+            />
 
             {/* Summary Cards */}
             {valuation && (
@@ -275,7 +271,8 @@ export function InventoryValuation({ businessId, costingMethod = 'FIFO', currenc
                             <p>No products found</p>
                         </div>
                     ) : (
-                        <div className="overflow-x-auto">
+                        <>
+                        <div className="hidden overflow-x-auto lg:block">
                             <table className="w-full">
                                 <thead className="bg-gray-50 border-b">
                                     <tr>
@@ -373,6 +370,47 @@ export function InventoryValuation({ businessId, costingMethod = 'FIFO', currenc
                                 </tfoot>
                             </table>
                         </div>
+                        <div className="divide-y divide-gray-100 lg:hidden">
+                            {filteredProducts.map((product) => (
+                                <div key={product.product_id} className="px-3 py-3">
+                                    <div className="flex items-start justify-between gap-2">
+                                        <div className="min-w-0">
+                                            <p className="truncate text-[13px] font-bold text-gray-900">{product.product_name}</p>
+                                            <p className="mt-0.5 font-mono text-[11px] text-gray-500">{product.product_sku || '—'}</p>
+                                            {product.category && (
+                                                <Badge variant="secondary" className="mt-1 text-[10px]">{product.category}</Badge>
+                                            )}
+                                        </div>
+                                        <p className="shrink-0 text-[13px] font-bold tabular-nums text-wine">
+                                            {formatCurrency(product.total_value, currency)}
+                                        </p>
+                                    </div>
+                                    <div className="mt-2 grid grid-cols-3 gap-2 text-[11px] tabular-nums">
+                                        <div className="rounded-lg bg-gray-50 px-2 py-1.5">
+                                            <p className="text-[10px] uppercase text-gray-400">Qty</p>
+                                            <p className="font-semibold">{product.total_quantity.toLocaleString()}</p>
+                                        </div>
+                                        <div className="rounded-lg bg-gray-50 px-2 py-1.5">
+                                            <p className="text-[10px] uppercase text-gray-400">Unit</p>
+                                            <p className="font-semibold">{formatCurrency(product.unit_cost, currency)}</p>
+                                        </div>
+                                        <div className="rounded-lg bg-gray-50 px-2 py-1.5">
+                                            <p className="text-[10px] uppercase text-gray-400">Batches</p>
+                                            <p className="font-semibold">{product.batches.length}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                            <div className="bg-gray-50 px-3 py-3 text-sm font-bold">
+                                <div className="flex justify-between">
+                                    <span className="text-gray-600">Total value</span>
+                                    <span className="text-wine tabular-nums">
+                                        {formatCurrency(filteredProducts.reduce((sum, p) => sum + p.total_value, 0), currency)}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        </>
                     )}
                 </CardContent>
             </Card>

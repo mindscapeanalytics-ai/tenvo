@@ -1,14 +1,29 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { X, Maximize2, Minimize2, Download, Upload, Save, Grid3x3, Table2, FileSpreadsheet, AlertCircle, CheckCircle2, Loader2, Copy, Trash2, Eraser, Undo, Redo, Search, Sparkles } from 'lucide-react';
+import { X, Download, Save, Table2, AlertCircle, CheckCircle2, Loader2, Copy, Eraser, Undo, Redo, Search, Columns, ChevronDown, Plus, LayoutGrid } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { BusyGrid } from './BusyGrid';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { getDomainColors } from '@/lib/domainColors';
-import { isBatchTrackingEnabled, isSerialTrackingEnabled } from '@/lib/utils/domainHelpers';
+import { resolveDomainFieldKey, normalizeKey } from '@/lib/utils/domainHelpers';
+import { resolveInventoryDomainFeatures } from '@/lib/utils/inventoryDomainFeatures';
+import { buildInventoryGridColumns, readGridCellValue } from '@/lib/utils/inventoryGridColumns';
+import { buildNewInventoryRow, getLastRowForDefaults } from '@/lib/utils/inventoryRowDefaults';
+import { mapProductField } from '@/lib/utils/productFieldMapper';
+import { detectColumnMapping, applyColumnMapping, nestMappedDomainData } from '@/lib/utils/inventoryColumnMapping';
+import { inventoryGridRowKey } from '@/lib/utils/inventoryRowKey';
+import { buildSparseHiddenColumnKeys } from '@/lib/utils/inventoryVisualColumnVisibility';
+import { productSchema } from '@/lib/validation/schemas';
 import toast from 'react-hot-toast';
+import { useCompactViewport } from '@/lib/hooks/useCompactViewport';
+import { buildExcelMobileHiddenColumnKeys } from '@/lib/utils/inventoryExcelMobile';
+import { MOBILE_FORM_FOOTER } from '@/lib/utils/formMobileStyles';
+import { ExcelModeMobileCardView } from '@/components/inventory/mobile/ExcelModeMobileCardView';
+
+/** Max rows loaded into Excel modal working set (Busy/Zoho-style performance). */
+const EXCEL_WORKSET_SIZE = 500;
 
 /**
  * Enhanced ExcelModeModal - Full-screen Excel-like data entry interface
@@ -19,21 +34,34 @@ export function ExcelModeModal({
     onClose,
     data = [],
     columns = [],
-    onCellEdit,
     onAddRow,
     onDeleteRow,
     onSave,
+    getFieldSuggestions,
     category = 'retail-shop',
-    entityType = 'products', // Added missing prop
+    entityType = 'products',
     title = 'Excel Data Entry',
-    businessId
+    businessId,
+    business = null,
+    currencySymbol,
+    domainKnowledge = null,
+    countryIso = '',
 }) {
-    const [isFullscreen, setIsFullscreen] = useState(true);
+    const [isFullscreen] = useState(true);
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
     const [localData, setLocalData] = useState([]);
     const [isSaving, setIsSaving] = useState(false);
     const [validationErrors, setValidationErrors] = useState({});
     const [searchQuery, setSearchQuery] = useState('');
+    const [hiddenCols, setHiddenCols] = useState(new Set());
+    const [showColPicker, setShowColPicker] = useState(false);
+    const colPickerRef = useRef(null);
+
+    const wasOpenRef = useRef(false);
+    const mobileColsAppliedRef = useRef(false);
+    const [sourceTotal, setSourceTotal] = useState(0);
+    const isMobileExcel = useCompactViewport();
+    const [mobileViewMode, setMobileViewMode] = useState('cards');
 
     // History Tracking (Undo/Redo)
     const [history, setHistory] = useState([]);
@@ -41,25 +69,54 @@ export function ExcelModeModal({
 
     const colors = getDomainColors(category);
 
-    // Sync local data when modal opens
+    const gridColumnOptions = useMemo(
+        () => ({
+            currencySymbol,
+            business,
+            domainKnowledge,
+            countryIso,
+        }),
+        [currencySymbol, business, domainKnowledge, countryIso]
+    );
+
+    const inventoryFeatures = useMemo(
+        () => resolveInventoryDomainFeatures(category, gridColumnOptions),
+        [category, gridColumnOptions]
+    );
+
+    // Sync local data when modal opens (run only on initial open transition)
     useEffect(() => {
-        if (isOpen) {
-            const sanitizedData = data.map(item => {
+        if (isOpen && !wasOpenRef.current) {
+            const sanitizedAll = data.map(item => {
                 const newItem = { ...item };
-                // Flatten nested domain_data if needed or sanitize Dates
                 Object.keys(newItem).forEach(key => {
                     if (newItem[key] instanceof Date) newItem[key] = newItem[key].toISOString().split('T')[0];
                     if (newItem[key] && typeof newItem[key] === 'object' && newItem[key].toDate) newItem[key] = newItem[key].toDate().toISOString().split('T')[0];
                 });
                 return newItem;
             });
-            setLocalData(sanitizedData);
-            setHistory([JSON.stringify(sanitizedData)]); // Start history
+            setSourceTotal(sanitizedAll.length);
+            const initialChunk = sanitizedAll.length > EXCEL_WORKSET_SIZE
+                ? sanitizedAll.slice(0, EXCEL_WORKSET_SIZE)
+                : sanitizedAll;
+            setLocalData(initialChunk);
+            setHistory([JSON.stringify(initialChunk)]);
             setFuture([]);
             setHasUnsavedChanges(false);
             setValidationErrors({});
+            const sparseKeys = buildSparseHiddenColumnKeys(
+                buildInventoryGridColumns(category, { mode: 'excel', ...gridColumnOptions }),
+                initialChunk,
+                category
+            );
+            setHiddenCols(sparseKeys);
+            mobileColsAppliedRef.current = false;
         }
-    }, [isOpen, data]);
+        if (!isOpen) {
+            mobileColsAppliedRef.current = false;
+        }
+        wasOpenRef.current = isOpen;
+    }, [isOpen, data, category, gridColumnOptions]);
 
     // History Logic
     const pushState = useCallback((newData) => {
@@ -70,6 +127,24 @@ export function ExcelModeModal({
         });
         setFuture([]);
     }, []);
+
+    const handleLoadMoreRows = useCallback(() => {
+        const sanitizedAll = data.map(item => {
+            const newItem = { ...item };
+            Object.keys(newItem).forEach(key => {
+                if (newItem[key] instanceof Date) newItem[key] = newItem[key].toISOString().split('T')[0];
+                if (newItem[key] && typeof newItem[key] === 'object' && newItem[key].toDate) newItem[key] = newItem[key].toDate().toISOString().split('T')[0];
+            });
+            return newItem;
+        });
+        setLocalData((prev) => {
+            const nextChunk = sanitizedAll.slice(prev.length, prev.length + EXCEL_WORKSET_SIZE);
+            if (nextChunk.length === 0) return prev;
+            const merged = [...prev, ...nextChunk];
+            pushState(merged);
+            return merged;
+        });
+    }, [data, pushState]);
 
     const handleUndo = useCallback(() => {
         if (history.length <= 1) return;
@@ -103,29 +178,35 @@ export function ExcelModeModal({
         );
     }, [localData, searchQuery]);
 
+    const excelFieldSuggestions = useCallback(
+        (accessorKey, row) => {
+            const base = getFieldSuggestions ? getFieldSuggestions(accessorKey, row) : [];
+            const merged = new Set(base);
+            localData.forEach((r) => {
+                const val = readGridCellValue(r, accessorKey, category);
+                if (val != null && String(val).trim()) merged.add(String(val).trim());
+            });
+            return [...merged];
+        },
+        [getFieldSuggestions, localData, category]
+    );
+
     // Enhanced Columns
     const enhancedColumns = useMemo(() => {
-        const base = [...columns];
+        const isProducts = entityType === 'products' || !entityType;
+        let base = isProducts
+            ? [...buildInventoryGridColumns(category, { mode: 'excel', ...gridColumnOptions })]
+            : [...columns];
         const keys = new Set(base.map(c => c.accessorKey || c.id));
         const addIfMissing = (key, header, width) => {
-            if (!keys.has(key)) base.push({ accessorKey: key, header, width });
+            if (!keys.has(key)) {
+                base.push({ accessorKey: key, header, width });
+                keys.add(key);
+            }
         };
 
-        // Domain-specific tracking columns
-        if (isBatchTrackingEnabled(category)) {
-            addIfMissing('batch_number', 'Batch #', 120);
-            addIfMissing('batch_quantity', 'Batch Qty', 100);
-            addIfMissing('expiry_date', 'Expiry', 120);
-            addIfMissing('manufacturing_date', 'Mfg Date', 120);
-        }
-        if (isSerialTrackingEnabled(category)) {
-            addIfMissing('serial_number', 'Serial #', 150);
-        }
-
-        // Common product fields (if not already present)
-        if (entityType === 'products' || !entityType) {
+        if (isProducts) {
             addIfMissing('brand', 'Brand', 120);
-            addIfMissing('category', 'Category', 120);
             addIfMissing('hsn_code', 'HSN Code', 100);
             addIfMissing('sac_code', 'SAC Code', 100);
             addIfMissing('image_url', 'Image', 80);
@@ -135,6 +216,16 @@ export function ExcelModeModal({
             addIfMissing('min_stock', 'Min Stock', 90);
             addIfMissing('max_stock', 'Max Stock', 90);
             addIfMissing('reorder_point', 'Reorder Point', 110);
+        } else {
+            if (inventoryFeatures.batchTrackingEnabled) {
+                addIfMissing('batch_number', 'Batch #', 120);
+                addIfMissing('batch_quantity', 'Batch Qty', 100);
+                addIfMissing('expiry_date', 'Expiry', 120);
+                addIfMissing('manufacturing_date', 'Mfg Date', 120);
+            }
+            if (inventoryFeatures.serialTrackingEnabled) {
+                addIfMissing('serial_number', 'Serial #', 150);
+            }
         }
 
         // Common customer/vendor fields
@@ -158,68 +249,163 @@ export function ExcelModeModal({
             addIfMissing('terms', 'Terms', 150);
         }
 
-        return base;
-    }, [columns, category, entityType]);
+        let out = [...base];
+        if (isProducts && !out.some((c) => c.id === 'status_dot')) {
+            out.unshift({
+                id: 'status_dot',
+                header: '',
+                accessorKey: 'is_active',
+                width: 28,
+                size: 28,
+                readOnly: true,
+                cell: ({ row }) => (
+                    <div className="flex items-center justify-center h-full">
+                        <span
+                            className={cn(
+                                'h-2 w-2 rounded-full',
+                                row.original.is_active === false ? 'bg-amber-400' : 'bg-green-500'
+                            )}
+                            title={row.original.is_active === false ? 'Inactive' : 'Active'}
+                        />
+                    </div>
+                ),
+            });
+        }
 
-    // Validation
-    const validateRow = useCallback((row, index) => {
-        const errors = {};
-        if (!row.name || row.name.trim() === '') errors[`${index}-name`] = 'Required';
-        if (row.price < 0) errors[`${index}-price`] = 'Positive Only';
-        if (row.stock < 0) errors[`${index}-stock`] = 'Non-negative';
-        return errors;
-    }, []);
+        return out;
+    }, [columns, category, entityType, gridColumnOptions, inventoryFeatures.batchTrackingEnabled, inventoryFeatures.serialTrackingEnabled]);
 
-    // Intelligent Empty Row Detection
-    const isEmptyRow = useCallback((row) => {
-        const fieldsToCheck = ['name', 'sku', 'price', 'stock'];
-        return fieldsToCheck.every(key => {
-            const val = row[key];
-            if (val === undefined || val === null || val === '') return true;
-            if (typeof val === 'number' && val === 0) {
-                // For price/stock, 0 is often the default, so we check if other fields are empty
-                return true;
-            }
-            return false;
+    useEffect(() => {
+        if (!isOpen || !isMobileExcel || mobileColsAppliedRef.current) return;
+        setHiddenCols((prev) => {
+            const mobileHidden = buildExcelMobileHiddenColumnKeys(
+                enhancedColumns,
+                category,
+                gridColumnOptions
+            );
+            const next = new Set(prev);
+            mobileHidden.forEach((key) => next.add(key));
+            return next;
         });
+        mobileColsAppliedRef.current = true;
+    }, [isOpen, isMobileExcel, enhancedColumns, category, gridColumnOptions]);
+
+    const displayColumns = useMemo(() => {
+        return enhancedColumns.filter((c) => {
+            if (c.id === 'status_dot') return true;
+            const key = c.accessorKey || c.id;
+            return !hiddenCols.has(key);
+        });
+    }, [enhancedColumns, hiddenCols]);
+
+    useEffect(() => {
+        if (!isOpen || !hasUnsavedChanges) return undefined;
+        const onBeforeUnload = (e) => {
+            e.preventDefault();
+            e.returnValue = '';
+        };
+        window.addEventListener('beforeunload', onBeforeUnload);
+        return () => window.removeEventListener('beforeunload', onBeforeUnload);
+    }, [isOpen, hasUnsavedChanges]);
+
+    // Validation (aligned with productSchema)
+    const validateRow = useCallback((row, rowKey) => {
+        const errors = {};
+        const payload = {
+            name: row.name ?? '',
+            sku: row.sku ?? null,
+            barcode: row.barcode ?? null,
+            brand: row.brand ?? null,
+            description: row.description ?? null,
+            category: row.category ?? null,
+            unit: row.unit || 'pcs',
+            price: Number(row.price) || 0,
+            cost_price: row.cost_price != null ? Number(row.cost_price) : null,
+            mrp: row.mrp != null ? Number(row.mrp) : null,
+            stock: Number(row.stock) || 0,
+            min_stock: row.min_stock != null ? Number(row.min_stock) : null,
+            max_stock: row.max_stock != null ? Number(row.max_stock) : null,
+            reorder_point: row.reorder_point != null ? Number(row.reorder_point) : null,
+            reorder_quantity: row.reorder_quantity != null ? Number(row.reorder_quantity) : null,
+            tax_percent: row.tax_percent != null ? Number(row.tax_percent) : 17,
+            hsn_code: row.hsn_code ?? null,
+            sac_code: row.sac_code ?? null,
+            business_id: row.business_id || businessId,
+            image_url: row.image_url ?? null,
+            is_active: row.is_active !== false,
+            domain_data: row.domain_data ?? {},
+            unit_conversions: row.unit_conversions ?? {},
+            expiry_date: row.expiry_date ?? null,
+            manufacturing_date: row.manufacturing_date ?? null,
+            batches: row.batches ?? [],
+            serial_numbers: row.serial_numbers ?? row.serialNumbers ?? [],
+            serialNumbers: row.serialNumbers ?? row.serial_numbers ?? [],
+            variants: row.variants ?? [],
+        };
+
+        const result = productSchema.safeParse(payload);
+        if (!result.success) {
+            for (const issue of result.error.issues) {
+                const field = issue.path[0];
+                if (field) errors[`${rowKey}-${field}`] = issue.message;
+            }
+        }
+        return errors;
+    }, [businessId]);
+
+    // Empty row = no name, sku, or meaningful domain_data (zero price/stock alone is not empty)
+    const isEmptyRow = useCallback((row) => {
+        if (row.name != null && String(row.name).trim() !== '') return false;
+        if (row.sku != null && String(row.sku).trim() !== '') return false;
+        const dd = row.domain_data;
+        if (dd && typeof dd === 'object') {
+            if (Object.values(dd).some((v) => v != null && String(v).trim() !== '')) return false;
+        }
+        return true;
     }, []);
+
+    const exportCsv = useCallback(() => {
+        const cols = displayColumns.filter(
+            (c) => c.accessorKey && c.id !== 'status_dot' && c.accessorKey !== '__actions'
+        );
+        const header = cols.map((c) => (typeof c.header === 'string' ? c.header : c.accessorKey)).join(',');
+        const body = localData
+            .map((row) =>
+                cols
+                    .map((c) => {
+                        const val = readGridCellValue(row, c.accessorKey, category);
+                        return `"${String(val ?? '').replace(/"/g, '""')}"`;
+                    })
+                    .join(',')
+            )
+            .join('\n');
+        const blob = new Blob([[header, body].filter(Boolean).join('\n')], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'inventory-export.csv';
+        a.click();
+        URL.revokeObjectURL(url);
+    }, [displayColumns, localData, category]);
 
     const validateAllData = useCallback(() => {
         const allErrors = {};
         localData.forEach((row, index) => {
-            // Skip empty rows during validation
             if (isEmptyRow(row)) return;
-
-            Object.assign(allErrors, validateRow(row, index));
+            const rowKey = inventoryGridRowKey(row, index);
+            Object.assign(allErrors, validateRow(row, rowKey));
         });
         setValidationErrors(allErrors);
         return Object.keys(allErrors).length === 0;
     }, [localData, validateRow, isEmptyRow]);
 
-    // Global Key Events
-    useEffect(() => {
-        const handleKeyDown = (e) => {
-            if (e.ctrlKey && e.key === 's') { e.preventDefault(); handleSave(); }
-            if (e.ctrlKey && e.key === 'z') { e.preventDefault(); handleUndo(); }
-            if (e.ctrlKey && e.key === 'y') { e.preventDefault(); handleRedo(); }
-            // Duplicate Last Row Shortcut (Ctrl+D like Excel)
-            if (e.ctrlKey && e.key === 'd') {
-                e.preventDefault();
-                if (localData.length > 0) handleLocalAddRow({ ...localData[localData.length - 1], _tempId: undefined, id: undefined });
-            }
-        };
-        if (isOpen) window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [isOpen, localData, handleUndo, handleRedo, hasUnsavedChanges]);
-
-    const handleSave = async (isAutoSave = false) => {
+    const handleSave = useCallback(async (isAutoSave = false) => {
         if (!hasUnsavedChanges && !isAutoSave) return;
 
-        // Intelligent Filtering: Don't save empty rows
         const dataToSave = localData.filter(row => !isEmptyRow(row));
 
         if (dataToSave.length === 0 && localData.length > 0) {
-            toast.info("Nothing to save (empty rows ignored)");
+            toast('Nothing to save (empty rows ignored)', { id: 'excel-empty-save', duration: 2200 });
             if (!isAutoSave) onClose();
             return;
         }
@@ -229,83 +415,51 @@ export function ExcelModeModal({
         setIsSaving(true);
         try {
             await onSave?.(dataToSave);
-            if (!isAutoSave) {
-                toast.success('Inventory saved successfully!');
-                setHasUnsavedChanges(false);
-                setTimeout(() => onClose(), 300);
-            } else {
-                toast.success('Auto-saved', { icon: '💾' });
-                setHasUnsavedChanges(false);
+            setHasUnsavedChanges(false);
+            if (isAutoSave) {
+                toast.success('Auto-saved', { icon: '💾', duration: 1500 });
             }
         } catch (err) {
             console.error("Save Error:", err);
             toast.error('Save failed');
         }
         finally { setIsSaving(false); }
-    };
+    }, [hasUnsavedChanges, localData, isEmptyRow, validateAllData, onSave, onClose]);
 
-    const handleLocalCellEdit = (row, key, value) => {
+    const handleLocalCellEdit = useCallback((row, key, value) => {
+        const knowledge = inventoryFeatures.knowledge || { productFields: [] };
         setLocalData(prev => {
             const newData = [...prev];
             const idx = newData.findIndex(r => r.id === row.id || (r._tempId && r._tempId === row._tempId));
             if (idx !== -1) {
-                const updated = { ...newData[idx] };
-                // Intelligent Data Cleansing
-                let cleanValue = value;
-
-                // Auto-convert numeric fields
-                const numericFields = ['price', 'stock', 'cost_price', 'mrp', 'min_stock', 'max_stock', 'reorder_point', 'reorder_quantity', 'tax_percent', 'value'];
-                // Handle nested numeric fields if needed, but for now flat fields
-
-                if (numericFields.includes(key)) {
-                    if (value === '' || value === null || value === undefined) {
-                        cleanValue = 0;
-                    } else if (typeof value === 'string') {
-                        // Remove currency symbols and commas if present
-                        const numStr = value.replace(/[^\d.-]/g, '');
-                        const parsed = parseFloat(numStr);
-                        cleanValue = isNaN(parsed) ? 0 : parsed;
-                    } else if (typeof value === 'number') {
-                        cleanValue = value;
-                    }
-                } else if (typeof value === 'string') {
-                    // Auto-trim and sanitize strings
-                    cleanValue = value.trim();
-                    // Auto-capitalize Names and SKUs if not already
-                    if (key === 'name' || key.includes('sku') || key.includes('code')) {
-                        if (cleanValue.length > 0 && cleanValue[0] === cleanValue[0].toLowerCase()) {
-                            cleanValue = cleanValue.charAt(0).toUpperCase() + cleanValue.slice(1);
-                        }
-                    }
-                }
-
-                if (key.includes('.')) {
-                    const keys = key.split('.');
-                    let curr = updated;
-                    for (let i = 0; i < keys.length - 1; i++) {
-                        if (!curr[keys[i]]) curr[keys[i]] = {};
-                        curr[keys[i]] = { ...curr[keys[i]] }; curr = curr[keys[i]];
-                    }
-                    curr[keys[keys.length - 1]] = cleanValue;
-                } else updated[key] = cleanValue;
+                const updated = mapProductField(
+                    { ...newData[idx], domain_data: newData[idx].domain_data || {} },
+                    key,
+                    value,
+                    knowledge,
+                    category
+                );
                 newData[idx] = updated;
                 setHasUnsavedChanges(true);
                 pushState(newData);
 
-                // Real-time validation update
-                const rowErrors = validateRow(updated, idx);
+                const rowKey = inventoryGridRowKey(updated, idx);
+                const rowErrors = validateRow(updated, rowKey);
                 setValidationErrors(prevE => {
                     const next = { ...prevE };
-                    Object.keys(next).forEach(k => { if (k.startsWith(`${idx}-`)) delete next[k]; });
+                    Object.keys(next).forEach(k => {
+                        if (k.startsWith(`${rowKey}-`)) delete next[k];
+                    });
                     return { ...next, ...rowErrors };
                 });
             }
             return newData;
         });
-    };
+    }, [category, pushState, validateRow, inventoryFeatures.knowledge]);
 
-    const handleLocalAddRow = (initialData = null) => {
+    const handleLocalAddRow = useCallback((initialData = null) => {
         // Ensure we strip ID if coming from a duplicate action
+        // eslint-disable-next-line no-unused-vars
         const { id, _tempId, ...cleanInitialData } = initialData || {};
 
         // Intelligent Naming: If duplicating, append (Copy) or increment
@@ -322,16 +476,16 @@ export function ExcelModeModal({
             }
         }
 
+        const previousRow = cleanInitialData.name
+            ? cleanInitialData
+            : getLastRowForDefaults(localData);
         const newRow = {
-            _tempId: `${Date.now()}-${Math.floor(Math.random() * 10000)}`,
-            name: '',
-            sku: '',
-            price: 0,
-            stock: 0,
-            business_id: businessId,
-            category: 'General',
+            ...(typeof onAddRow === 'function'
+                ? onAddRow(previousRow)
+                : buildNewInventoryRow(category, businessId, previousRow)),
             ...cleanInitialData,
-            ...onAddRow?.()
+            _tempId: crypto.randomUUID(),
+            business_id: businessId,
         };
 
         setLocalData(prev => {
@@ -346,48 +500,193 @@ export function ExcelModeModal({
             const grid = document.querySelector('.custom-scrollbar');
             if (grid) grid.scrollTop = grid.scrollHeight;
         }, 100);
+    }, [localData, onAddRow, category, businessId, pushState]);
+
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            const key = e.key?.toLowerCase();
+            if (e.ctrlKey && key === 's') { e.preventDefault(); void handleSave(); return; }
+            if (e.ctrlKey && key === 'z') { e.preventDefault(); handleUndo(); return; }
+            if (e.ctrlKey && key === 'y') { e.preventDefault(); handleRedo(); return; }
+            if ((e.ctrlKey && key === 'n' && !e.shiftKey) || (e.altKey && key === 'n') || e.key === 'Insert') {
+                e.preventDefault();
+                handleLocalAddRow();
+                return;
+            }
+            if (e.ctrlKey && key === 'd') {
+                e.preventDefault();
+                if (localData.length > 0) {
+                    handleLocalAddRow({ ...localData[localData.length - 1], _tempId: undefined, id: undefined });
+                }
+            }
+        };
+        if (isOpen) window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [isOpen, localData, handleUndo, handleRedo, handleSave, handleLocalAddRow]);
+
+    const NUMERIC_PASTE_FIELDS = new Set([
+        'price', 'cost_price', 'mrp', 'stock', 'min_stock', 'reorder_point', 'tax_percent',
+    ]);
+    const coercePasteNumber = (val) => {
+        const n = parseFloat(String(val).replace(/,/g, '').replace(/[^0-9.\-]/g, ''));
+        return Number.isFinite(n) ? n : 0;
     };
 
     const handlePasteFromExcel = async () => {
         try {
             const text = await navigator.clipboard.readText();
-            const lines = text.trim().split('\n').map(l => l.split('\t'));
-            if (lines.length === 0) return;
+            if (!text || !text.trim()) {
+                toast.error('Clipboard is empty. Copy cells from Excel/Sheets first.');
+                return;
+            }
+            const rows = text
+                .replace(/\r/g, '')
+                .split('\n')
+                .filter((l) => l.trim() !== '')
+                .map((l) => l.split('\t'));
+            if (rows.length === 0) return;
 
-            // Intelligence: Try to detect headers
-            const headerLine = lines[0].map(h => h.toLowerCase().trim());
-            const hasHeaders = headerLine.some(h => ['name', 'sku', 'price', 'qty', 'stock'].some(key => h.includes(key)));
-            const dataRows = hasHeaders ? lines.slice(1) : lines;
-            const mapping = hasHeaders ? {
-                name: headerLine.findIndex(h => h.includes('name')),
-                sku: headerLine.findIndex(h => h.includes('sku')),
-                price: headerLine.findIndex(h => h.includes('price')),
-                stock: headerLine.findIndex(h => h.includes('qty') || h.includes('stock')),
-                batch_number: headerLine.findIndex(h => h.includes('batch')),
-                expiry_date: headerLine.findIndex(h => h.includes('expiry'))
-            } : { name: 0, sku: 1, price: 2, stock: 3 };
+            const rowDefaults = buildNewInventoryRow(
+                category,
+                businessId,
+                getLastRowForDefaults(localData),
+                { countryIso }
+            );
 
-            const mapped = dataRows.map(row => {
-                const item = { _tempId: Date.now() + Math.random(), business_id: businessId, category: 'General' };
-                Object.keys(mapping).forEach(key => {
-                    if (mapping[key] !== -1 && row[mapping[key]]) {
-                        const val = row[mapping[key]];
-                        if (['price', 'stock'].includes(key)) item[key] = parseFloat(val) || 0;
-                        else item[key] = val;
-                    }
+            // Domain (vertical-specific) header aliases → domain_data keys
+            const domainFields = inventoryFeatures.knowledge?.productFields || [];
+            const domainHeaderMap = new Map();
+            domainFields.forEach((field) => {
+                const key = resolveDomainFieldKey(field, category);
+                domainHeaderMap.set(normalizeKey(field).toLowerCase(), key);
+                domainHeaderMap.set(field.toLowerCase().replace(/\s+/g, '_'), key);
+                domainHeaderMap.set(key.toLowerCase(), key);
+            });
+
+            const firstLine = rows[0].map((h) => String(h ?? '').trim());
+            // Intelligent header detection: reuse the same engine as file import
+            const canonicalMapping = detectColumnMapping(firstLine, { category });
+            const firstLineHasDomain = firstLine.some((h) =>
+                domainHeaderMap.has(h.toLowerCase().replace(/\s+/g, '_'))
+            );
+            const hasHeaders =
+                Object.keys(canonicalMapping).length > 0 || firstLineHasDomain;
+
+            const buildBaseItem = () => ({
+                ...rowDefaults,
+                _tempId: crypto.randomUUID(),
+                business_id: businessId,
+                domain_data: { ...rowDefaults.domain_data },
+            });
+
+            let mapped;
+            if (hasHeaders) {
+                const headers = firstLine;
+                const usedByCanonical = new Set(Object.values(canonicalMapping));
+                const domainColIdx = {};
+                headers.forEach((h, idx) => {
+                    if (usedByCanonical.has(h)) return;
+                    const norm = h.toLowerCase().replace(/\s+/g, '_');
+                    const domainKey = domainHeaderMap.get(norm) || domainHeaderMap.get(h.toLowerCase());
+                    if (domainKey && domainColIdx[domainKey] === undefined) domainColIdx[domainKey] = idx;
                 });
-                return item;
-            });
 
-            setLocalData(prev => {
+                mapped = rows.slice(1).map((cells) => {
+                    const rowObj = {};
+                    headers.forEach((h, idx) => { rowObj[h] = cells[idx]; });
+                    const canon = applyColumnMapping(rowObj, canonicalMapping);
+                    const item = buildBaseItem();
+                    Object.entries(canon).forEach(([field, val]) => {
+                        if (val == null || String(val).trim() === '') return;
+                        item[field] = NUMERIC_PASTE_FIELDS.has(field)
+                            ? coercePasteNumber(val)
+                            : String(val).trim();
+                    });
+                    Object.entries(domainColIdx).forEach(([domainKey, idx]) => {
+                        const v = cells[idx];
+                        if (v != null && String(v).trim() !== '') item.domain_data[domainKey] = String(v).trim();
+                    });
+                    return nestMappedDomainData(item);
+                });
+            } else {
+                // No recognizable header row → positional name / sku / price / stock
+                mapped = rows.map((cells) => {
+                    const item = buildBaseItem();
+                    if (cells[0] != null && String(cells[0]).trim() !== '') item.name = String(cells[0]).trim();
+                    if (cells[1] != null && String(cells[1]).trim() !== '') item.sku = String(cells[1]).trim();
+                    if (cells[2] != null && String(cells[2]).trim() !== '') item.price = coercePasteNumber(cells[2]);
+                    if (cells[3] != null && String(cells[3]).trim() !== '') item.stock = coercePasteNumber(cells[3]);
+                    return item;
+                });
+            }
+
+            mapped = mapped.filter(
+                (r) => (r.name && String(r.name).trim() !== '') || (r.sku && String(r.sku).trim() !== '')
+            );
+            if (mapped.length === 0) {
+                toast.error('No product rows detected in the pasted content.');
+                return;
+            }
+
+            setLocalData((prev) => {
                 const next = [...prev, ...mapped];
-                setHasUnsavedChanges(true); pushState(next); return next;
+                setHasUnsavedChanges(true);
+                pushState(next);
+                return next;
             });
-            toast.success(`Smart Paster: Imported ${mapped.length} rows`);
-        } catch (err) { toast.error('Paste failed'); }
+            const detectedCount = Object.keys(canonicalMapping).length;
+            toast.success(
+                `Smart Paste: imported ${mapped.length} row${mapped.length === 1 ? '' : 's'}` +
+                (hasHeaders && detectedCount ? ` · auto-mapped ${detectedCount} columns` : '')
+            );
+        } catch (err) {
+            console.error('Smart paste failed:', err);
+            toast.error('Paste failed. Copy cells from Excel/Sheets and try again.');
+        }
     };
 
     const handleClear = () => { if (window.confirm('Delete all products in this session?')) { setLocalData([]); setHasUnsavedChanges(true); pushState([]); } };
+
+    const handleLocalDeleteRow = useCallback(async (row) => {
+        if (!row) return;
+        const isNew = !row.id;
+        const confirmMsg = isNew
+            ? 'Are you sure you want to remove this new row?'
+            : `Archive "${row.name || 'this product'}"? It will be hidden from inventory; history is kept.`;
+
+        if (!window.confirm(confirmMsg)) return;
+
+        if (!isNew && onDeleteRow) {
+            try {
+                await onDeleteRow(row);
+            } catch (err) {
+                console.error("Failed to delete row:", err);
+                toast.error("Failed to archive product");
+                return;
+            }
+        }
+
+        setLocalData(prev => {
+            const next = prev.filter(r => {
+                if (row.id) return r.id !== row.id;
+                return r._tempId !== row._tempId;
+            });
+            setHasUnsavedChanges(true);
+            pushState(next);
+            return next;
+        });
+        toast.success(isNew ? 'Row removed' : 'Product archived');
+    }, [onDeleteRow, pushState]);
+
+    // Close col picker on outside click
+    useEffect(() => {
+        if (!showColPicker) return;
+        const handler = (e) => {
+            if (colPickerRef.current && !colPickerRef.current.contains(e.target)) setShowColPicker(false);
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, [showColPicker]);
 
     const handleClose = () => {
         if (hasUnsavedChanges) {
@@ -410,29 +709,179 @@ export function ExcelModeModal({
             aria-labelledby="excel-modal-title"
         >
             <div className={cn(
-                "bg-white flex flex-col shadow-[0_0_50px_rgba(0,0,0,0.3)] transition-all duration-500 overflow-hidden",
+                "bg-white flex flex-col min-h-0 shadow-[0_0_50px_rgba(0,0,0,0.3)] transition-all duration-500 overflow-hidden",
                 isFullscreen ? "w-full h-full rounded-none" : "w-[96vw] h-[92vh] rounded-3xl border border-gray-200"
             )}>
-                {/* Premium Header */}
-                <div className="h-16 border-b-2 flex items-center justify-between px-6 shrink-0" style={{ backgroundColor: colors?.bg || '#f8fafc', borderColor: colors?.border || '#e2e8f0' }}>
-                    <div className="flex items-center gap-4">
-                        <div className="w-11 h-11 rounded-xl flex items-center justify-center shadow-lg transform hover:scale-105 transition-transform" style={{ backgroundColor: colors?.primary || '#3b82f6' }}>
-                            <Table2 className="w-6 h-6 text-white" aria-hidden="true" />
+                {/* Header — compact single row on mobile; full toolbar on desktop */}
+                {isMobileExcel ? (
+                    <div
+                        className="shrink-0 border-b border-slate-200 bg-white px-2 py-1.5"
+                        style={{ borderColor: colors?.border || '#e2e8f0' }}
+                    >
+                        <div className="flex items-center gap-1.5">
+                            <div className="relative min-w-0 flex-1">
+                                <Search
+                                    className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+                                    aria-hidden="true"
+                                />
+                                <input
+                                    type="search"
+                                    aria-label="Search rows"
+                                    placeholder={`Search ${localData.length} rows…`}
+                                    className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50 pl-9 pr-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                />
+                            </div>
+
+                            <div
+                                className="flex shrink-0 rounded-lg border border-slate-200 bg-slate-100 p-0.5"
+                                role="group"
+                                aria-label="View mode"
+                            >
+                                <button
+                                    type="button"
+                                    aria-label="Card view"
+                                    aria-pressed={mobileViewMode === 'cards'}
+                                    className={cn(
+                                        'flex h-8 w-8 items-center justify-center rounded-md transition-colors',
+                                        mobileViewMode === 'cards'
+                                            ? 'bg-white text-blue-700 shadow-sm'
+                                            : 'text-slate-500'
+                                    )}
+                                    onClick={() => setMobileViewMode('cards')}
+                                >
+                                    <LayoutGrid className="h-4 w-4" />
+                                </button>
+                                <button
+                                    type="button"
+                                    aria-label="Grid view"
+                                    aria-pressed={mobileViewMode === 'grid'}
+                                    className={cn(
+                                        'flex h-8 w-8 items-center justify-center rounded-md transition-colors',
+                                        mobileViewMode === 'grid'
+                                            ? 'bg-white text-blue-700 shadow-sm'
+                                            : 'text-slate-500'
+                                    )}
+                                    onClick={() => setMobileViewMode('grid')}
+                                >
+                                    <Table2 className="h-4 w-4" />
+                                </button>
+                            </div>
+
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="icon"
+                                aria-label="Add row"
+                                className="h-9 w-9 shrink-0 border-blue-200 text-blue-700"
+                                onClick={() => handleLocalAddRow()}
+                            >
+                                <Plus className="h-4 w-4" />
+                            </Button>
+
+                            <div className="relative shrink-0" ref={colPickerRef}>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="icon"
+                                    aria-label="Choose columns"
+                                    aria-expanded={showColPicker}
+                                    className="h-9 w-9"
+                                    onClick={() => setShowColPicker((v) => !v)}
+                                >
+                                    <Columns className="h-4 w-4" />
+                                </Button>
+                                {showColPicker && (
+                                    <div className="absolute right-0 top-full z-[10000] mt-1 max-h-[min(50vh,18rem)] w-56 overflow-auto rounded-xl border border-slate-200 bg-white p-2 text-left shadow-2xl">
+                                        <p className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                                            Visible columns
+                                        </p>
+                                        {enhancedColumns
+                                            .filter((c) => c.id !== 'status_dot')
+                                            .map((col) => {
+                                                const key = col.accessorKey || col.id;
+                                                const label =
+                                                    typeof col.header === 'function'
+                                                        ? col.header()
+                                                        : col.header || key;
+                                                const visible = !hiddenCols.has(key);
+                                                return (
+                                                    <label
+                                                        key={String(key)}
+                                                        className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-xs hover:bg-slate-50"
+                                                    >
+                                                        <input
+                                                            type="checkbox"
+                                                            className="rounded border-slate-300"
+                                                            checked={visible}
+                                                            onChange={() => {
+                                                                setHiddenCols((prev) => {
+                                                                    const next = new Set(prev);
+                                                                    if (next.has(key)) next.delete(key);
+                                                                    else next.add(key);
+                                                                    return next;
+                                                                });
+                                                            }}
+                                                        />
+                                                        <span className="truncate font-medium text-slate-700">
+                                                            {label}
+                                                        </span>
+                                                    </label>
+                                                );
+                                            })}
+                                    </div>
+                                )}
+                            </div>
+
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                aria-label="Close bulk entry"
+                                className="h-9 w-9 shrink-0 text-slate-600 hover:bg-red-50 hover:text-red-500"
+                                onClick={handleClose}
+                            >
+                                <X className="h-5 w-5" />
+                            </Button>
                         </div>
-                        <div className="flex flex-col">
-                            <h2 id="excel-modal-title" className="text-base font-black uppercase tracking-wider text-slate-800 flex items-center gap-2">
-                                {title} <Sparkles className="w-4 h-4 text-amber-400 fill-amber-400" aria-hidden="true" />
+
+                        {localData.length < sourceTotal && (
+                            <button
+                                type="button"
+                                className="mt-1.5 w-full rounded-md py-1 text-center text-[11px] font-semibold text-blue-700 hover:bg-blue-50"
+                                onClick={handleLoadMoreRows}
+                            >
+                                Load {Math.min(EXCEL_WORKSET_SIZE, sourceTotal - localData.length)} more
+                                {' '}
+                                ({localData.length}/{sourceTotal})
+                            </button>
+                        )}
+
+                        <h2 id="excel-modal-title" className="sr-only">
+                            {title}
+                        </h2>
+                    </div>
+                ) : (
+                <div className="h-auto min-h-14 shrink-0 border-b-2 flex flex-wrap items-center justify-between gap-2 px-3 py-2 sm:gap-3 sm:px-6 sm:py-0 sm:h-14" style={{ backgroundColor: colors?.bg || '#f8fafc', borderColor: colors?.border || '#e2e8f0' }}>
+                    <div className="flex min-w-0 items-center gap-3">
+                        <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center shadow-lg" style={{ backgroundColor: colors?.primary || '#3b82f6' }}>
+                            <Table2 className="w-5 h-5 sm:w-6 sm:h-6 text-white" aria-hidden="true" />
+                        </div>
+                        <div className="flex min-w-0 flex-col">
+                            <h2 id="excel-modal-title" className="truncate text-sm font-semibold uppercase tracking-wider text-slate-800 sm:text-base">
+                                {title}
                             </h2>
-                            <div className="flex items-center gap-3 mt-0.5">
+                            <div className="flex flex-wrap items-center gap-2 mt-0.5">
                                 <Badge variant="secondary" className="bg-white/50 border-slate-200 text-slate-500 text-[10px] uppercase font-bold px-1.5 py-0">
-                                    {localData.length} Records
+                                    {localData.length}{sourceTotal > localData.length ? ` / ${sourceTotal}` : ''} rows
                                 </Badge>
-                                {hasUnsavedChanges && <span className="flex items-center gap-1 text-[10px] font-bold text-orange-500 uppercase"><span className="w-1.5 h-1.5 bg-orange-500 rounded-full animate-pulse" /> Unsaved</span>}
+                                {hasUnsavedChanges && <span className="text-[10px] font-bold text-orange-500 uppercase">Unsaved</span>}
                             </div>
                         </div>
                     </div>
 
-                    {/* Middle Integrated Search */}
+                    {/* Desktop search */}
                     <div className="hidden md:flex flex-1 max-w-md mx-8">
                         <div className="relative w-full group">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
@@ -447,40 +896,153 @@ export function ExcelModeModal({
                     </div>
 
                     {/* Active Actions */}
-                    <div className="flex items-center gap-2">
-                        <div className="flex border-2 border-slate-200 rounded-xl overflow-hidden bg-white mr-2">
+                    <div className="flex w-full flex-wrap items-center justify-end gap-1.5 sm:w-auto sm:gap-2">
+                        <div className="hidden border-2 border-slate-200 rounded-xl overflow-hidden bg-white sm:flex">
                             <Button variant="ghost" size="icon" disabled={history.length <= 1} onClick={handleUndo} className="h-9 w-9 rounded-none border-r"><Undo className="w-4 h-4" /></Button>
                             <Button variant="ghost" size="icon" disabled={future.length === 0} onClick={handleRedo} className="h-9 w-9 rounded-none"><Redo className="w-4 h-4" /></Button>
                         </div>
 
-                        <Button variant="outline" size="sm" onClick={handlePasteFromExcel} className="h-10 px-4 font-bold border-2 text-slate-700 hover:bg-slate-50"><Copy className="w-4 h-4 mr-2" /> Smart Paste</Button>
-                        <Button variant="outline" size="sm" onClick={() => handleSave(false)} disabled={!hasUnsavedChanges || isSaving} className={cn("h-10 px-6 font-black border-2 transition-all shadow-sm", hasUnsavedChanges ? "bg-green-600 text-white border-green-700 hover:bg-green-700 hover:shadow-green-200" : "bg-white text-slate-400 border-slate-100")}>
+                        <Button variant="outline" size="sm" onClick={() => handleLocalAddRow()} className="h-10 px-3 font-bold border-2 border-blue-200 text-blue-700 hover:bg-blue-50 sm:px-4"><Plus className="w-4 h-4 sm:mr-2" /><span className="hidden sm:inline">Add Row</span></Button>
+                        <Button variant="outline" size="sm" onClick={handlePasteFromExcel} className="hidden h-10 px-4 font-bold border-2 text-slate-700 hover:bg-slate-50 sm:inline-flex"><Copy className="w-4 h-4 mr-2" /> Smart Paste</Button>
+                        <Button variant="outline" size="sm" onClick={() => handleSave(false)} disabled={!hasUnsavedChanges || isSaving} className={cn("hidden h-10 px-6 font-semibold border-2 transition-all shadow-sm sm:inline-flex", hasUnsavedChanges ? "bg-green-600 text-white border-green-700 hover:bg-green-700 hover:shadow-green-200" : "bg-white text-slate-400 border-slate-100")}>
                             {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4 mr-2" />} SAVE
                         </Button>
 
+                        <div className="relative" ref={colPickerRef}>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setShowColPicker((v) => !v)}
+                                className="h-10 px-3 font-bold border-2 text-slate-700"
+                            >
+                                <Columns className="w-4 h-4 mr-1.5" />
+                                Columns
+                                <ChevronDown className={cn('ml-1 h-3.5 w-3.5 transition-transform', showColPicker && 'rotate-180')} />
+                            </Button>
+                            {showColPicker && (
+                                <div className="absolute right-0 top-full z-[10000] mt-1 max-h-72 w-60 overflow-auto rounded-xl border border-slate-200 bg-white p-2 text-left shadow-2xl">
+                                    <p className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400">Visible columns</p>
+                                    {enhancedColumns
+                                        .filter((c) => c.id !== 'status_dot')
+                                        .map((col) => {
+                                            const key = col.accessorKey || col.id;
+                                            const label =
+                                                typeof col.header === 'function' ? col.header() : col.header || key;
+                                            const visible = !hiddenCols.has(key);
+                                            return (
+                                                <label
+                                                    key={String(key)}
+                                                    className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-xs hover:bg-slate-50"
+                                                >
+                                                    <input
+                                                        type="checkbox"
+                                                        className="rounded border-slate-300"
+                                                        checked={visible}
+                                                        onChange={() => {
+                                                            setHiddenCols((prev) => {
+                                                                const next = new Set(prev);
+                                                                if (next.has(key)) next.delete(key);
+                                                                else next.add(key);
+                                                                return next;
+                                                            });
+                                                        }}
+                                                    />
+                                                    <span className="truncate font-medium text-slate-700">{label}</span>
+                                                </label>
+                                            );
+                                        })}
+                                </div>
+                            )}
+                        </div>
+
                         <div className="h-8 w-0.5 bg-slate-200 mx-1" />
-                        <Button variant="ghost" size="icon" onClick={() => setIsFullscreen(!isFullscreen)} className="h-10 w-10 text-slate-500 hover:bg-slate-100">{isFullscreen ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}</Button>
                         <Button variant="ghost" size="icon" onClick={handleClose} className="h-10 w-10 hover:bg-red-50 hover:text-red-500 transition-colors"><X className="w-6 h-6" /></Button>
                     </div>
                 </div>
+                )}
 
-                {/* Grid Container */}
-                <div className="flex-1 overflow-hidden relative bg-slate-50">
-                    <BusyGrid
-                        data={filteredData}
-                        columns={enhancedColumns}
-                        onCellEdit={handleLocalCellEdit}
-                        onAddRow={handleLocalAddRow}
-                        onDeleteRow={onDeleteRow}
-                        validationErrors={validationErrors}
-                        category={category}
-                        className="h-full border-0"
-                    />
+                {/* Grid / card entry */}
+                <div className="flex min-h-0 flex-1 flex-col overflow-hidden relative bg-slate-50">
+                    {isMobileExcel && mobileViewMode === 'cards' ? (
+                        <ExcelModeMobileCardView
+                            rows={filteredData}
+                            columns={displayColumns}
+                            hiddenCols={hiddenCols}
+                            category={category}
+                            validationErrors={validationErrors}
+                            onCellEdit={handleLocalCellEdit}
+                            onAddRow={handleLocalAddRow}
+                            onDeleteRow={handleLocalDeleteRow}
+                            getFieldSuggestions={excelFieldSuggestions}
+                            className="h-full min-h-0"
+                        />
+                    ) : (
+                        <BusyGrid
+                            data={filteredData}
+                            columns={displayColumns}
+                            onCellEdit={handleLocalCellEdit}
+                            onAddRow={handleLocalAddRow}
+                            onDeleteRow={handleLocalDeleteRow}
+                            getFieldSuggestions={excelFieldSuggestions}
+                            validationErrors={validationErrors}
+                            category={category}
+                            variant="excel"
+                            touchOptimized={isMobileExcel}
+                            className="h-full min-h-0 border-0 shadow-none"
+                        />
+                    )}
                 </div>
 
+                {isMobileExcel && (
+                    <div className={cn('shrink-0 border-t border-slate-200 bg-white lg:hidden', MOBILE_FORM_FOOTER)}>
+                        <div className="mb-1.5 flex items-center justify-between gap-2 text-[10px] font-semibold uppercase tracking-wide">
+                            {errorCount > 0 ? (
+                                <span className="flex items-center gap-1 text-red-600">
+                                    <AlertCircle className="h-3.5 w-3.5" />
+                                    {errorCount} errors
+                                </span>
+                            ) : (
+                                <span className="flex items-center gap-1 text-emerald-600">
+                                    <CheckCircle2 className="h-3.5 w-3.5" />
+                                    Ready
+                                </span>
+                            )}
+                            <span className="text-slate-400">
+                                {localData.length}
+                                {sourceTotal > localData.length ? `/${sourceTotal}` : ''} rows
+                                {hasUnsavedChanges ? ' · Unsaved' : ''}
+                            </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                className="h-11 flex-1 rounded-xl font-semibold"
+                                onClick={handlePasteFromExcel}
+                            >
+                                <Copy className="mr-2 h-4 w-4" />
+                                Paste
+                            </Button>
+                            <Button
+                                type="button"
+                                className={cn(
+                                    'h-11 flex-[1.4] rounded-xl font-semibold',
+                                    hasUnsavedChanges ? 'bg-green-600 text-white hover:bg-green-700' : ''
+                                )}
+                                onClick={() => handleSave(false)}
+                                disabled={!hasUnsavedChanges || isSaving}
+                            >
+                                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                                Save changes
+                            </Button>
+                        </div>
+                    </div>
+                )}
+
                 {/* Intelligent Footer */}
-                <div className="h-10 border-t-2 bg-slate-900 text-slate-400 flex items-center px-6 text-[11px] font-bold uppercase tracking-wider justify-between shadow-2xl">
-                    <div className="flex items-center gap-6">
+                <div className="hidden shrink-0 border-t-2 bg-slate-900 px-4 text-[10px] font-bold uppercase tracking-wide text-slate-400 shadow-2xl sm:px-6 lg:flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between py-1.5 sm:py-0 sm:h-10">
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
                         <div className="flex items-center gap-2">
                             {errorCount > 0 ? (
                                 <span className="flex items-center gap-2 text-red-400 animate-pulse"><AlertCircle className="w-4 h-4" /> {errorCount} Critical Errors</span>
@@ -490,15 +1052,22 @@ export function ExcelModeModal({
                         </div>
                         <div className="h-4 w-px bg-slate-700" />
                         <div className="flex items-center gap-2">
-                            <kbd className="px-1.5 py-0.5 bg-slate-800 border border-slate-700 rounded text-[9px] text-slate-300">CTRL+S</kbd> Save
-                            <kbd className="px-1.5 py-0.5 bg-slate-800 border border-slate-700 rounded text-[9px] text-slate-300 ml-2">CTRL+Z</kbd> Undo
+                            <kbd className="px-1.5 py-0.5 bg-slate-800 border border-slate-700 rounded text-[10px] text-slate-300">CTRL+S</kbd> Save
+                            <kbd className="px-1.5 py-0.5 bg-slate-800 border border-slate-700 rounded text-[10px] text-slate-300 ml-2">Insert</kbd> New row
+                            <kbd className="px-1.5 py-0.5 bg-slate-800 border border-slate-700 rounded text-[10px] text-slate-300 ml-2">Tab</kbd> Save + next
+                            <kbd className="px-1.5 py-0.5 bg-slate-800 border border-slate-700 rounded text-[10px] text-slate-300 ml-2">F2</kbd> Edit
+                            <kbd className="px-1.5 py-0.5 bg-slate-800 border border-slate-700 rounded text-[10px] text-slate-300 ml-2">CTRL+Z</kbd> Undo
+                            <kbd className="rounded border border-slate-700 bg-slate-800 px-1.5 py-0.5 font-mono text-[10px] text-slate-300 ml-2">
+                                Ctrl+D
+                            </kbd>
+                            <span className="text-slate-500">Dup last</span>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-6">
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
                         <div className="flex items-center gap-4 text-slate-500">
                             <button onClick={handleClear} className="hover:text-red-400 transition-colors flex items-center gap-1.5"><Eraser className="w-3.5 h-3.5" /> Clear Workspace</button>
-                            <button onClick={() => { const csv = localData.map(r => enhancedColumns.map(c => `"${r[c.accessorKey] || ''}"`).join(',')).join('\n'); const b = new Blob([csv], { type: 'text/csv' }); const u = URL.createObjectURL(b); const a = document.createElement('a'); a.href = u; a.download = 'export.csv'; a.click(); }} className="hover:text-blue-400 transition-colors flex items-center gap-1.5"><Download className="w-3.5 h-3.5" /> Export CSV</button>
+                            <button type="button" onClick={exportCsv} className="hover:text-blue-400 transition-colors flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"><Download className="w-3.5 h-3.5" /> Export CSV</button>
                         </div>
                         <div className="h-4 w-px bg-slate-700" />
                         <span className="text-slate-300">INTELLIGENT MODE ACTIVE</span>

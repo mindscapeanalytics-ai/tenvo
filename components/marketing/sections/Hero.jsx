@@ -1,11 +1,19 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Image from 'next/image';
+import Image from '@/components/marketing/ui/MarketingImage';
 import Link from 'next/link';
+import MarketingCtaLink from '@/components/marketing/ui/MarketingCtaLink';
 import * as LucideIcons from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { trackEvent, EVENTS } from '@/lib/analytics/tracking';
+import { cn } from '@/lib/utils';
+import {
+  MARKETING_CONTAINER,
+  MARKETING_EYEBROW,
+  MARKETING_H1,
+  MARKETING_LEAD,
+} from '@/lib/utils/marketingLayout';
 
 /**
  * Hero Component
@@ -39,7 +47,9 @@ export default function Hero({
   image,
   imageAlt,
   variant = 'default',
-  badge = null
+  badge = null,
+  className,
+  sectionClassName,
 }) {
   // Normalize props - support both naming conventions
   const headlineText = headline || title;
@@ -68,9 +78,9 @@ export default function Hero({
     const BadgeIcon = (typeof badge === 'object' && badge.icon) ? LucideIcons[badge.icon] : null;
     
     return (
-      <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-sm font-semibold mb-6 shadow-sm shadow-blue-100">
-        {BadgeIcon && <BadgeIcon className="w-4 h-4" />}
-        <span>{badgeText}</span>
+      <div className={cn('mb-6 inline-flex max-w-full flex-wrap items-center gap-2 rounded-full border border-brand-100 bg-brand-50 px-3 py-2 shadow-sm min-[400px]:px-4', MARKETING_EYEBROW)}>
+        {BadgeIcon && <BadgeIcon className="h-4 w-4 shrink-0" aria-hidden />}
+        <span className="min-w-0 text-balance leading-snug">{badgeText}</span>
       </div>
     );
   };
@@ -80,20 +90,20 @@ export default function Hero({
     if (!stats || stats.length === 0) return null;
 
     return (
-      <div className="flex flex-wrap gap-8 pt-8 mt-8 border-t border-neutral-200">
+      <div className="grid grid-cols-2 gap-4 border-t border-neutral-200 pt-6 mt-6 sm:flex sm:flex-wrap sm:gap-8 sm:pt-8 sm:mt-8">
         {stats.map((stat, index) => {
           const StatIcon = stat.icon ? LucideIcons[stat.icon] : null;
           
           return (
-            <div key={index} className="flex items-center gap-3">
+            <div key={index} className="flex min-w-0 items-start gap-2.5 sm:items-center sm:gap-3">
               {StatIcon && (
-                <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-blue-50 shadow-sm shadow-blue-100">
-                  <StatIcon className="w-5 h-5 text-blue-600" />
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 shadow-sm sm:h-10 sm:w-10">
+                  <StatIcon className="h-4 w-4 text-slate-600 sm:h-5 sm:w-5" />
                 </div>
               )}
-              <div>
-                <div className="text-2xl font-bold text-neutral-900">{stat.value}</div>
-                <div className="text-sm text-neutral-600">{stat.label}</div>
+              <div className="min-w-0">
+                <div className="text-lg font-bold text-neutral-900 sm:text-2xl">{stat.value}</div>
+                <div className="text-xs text-neutral-600 sm:text-sm">{stat.label}</div>
               </div>
             </div>
           );
@@ -102,33 +112,45 @@ export default function Hero({
     );
   };
 
-  // Render CTA buttons
-  const renderCTAs = () => (
-    <div className="flex flex-col sm:flex-row gap-4">
+  // Render CTA buttons - tracking on Link ensures clicks are captured with asChild/Slot
+  const renderCTAs = ({ centered = false } = {}) => (
+    <div
+      className={cn(
+        'flex min-w-0 flex-col gap-3 sm:flex-row sm:items-stretch sm:gap-4',
+        centered ? 'w-full sm:w-auto' : 'w-full'
+      )}
+    >
       {primaryCTA && (
         <Button
           asChild
           size="lg"
-          className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-6 text-lg font-semibold rounded-2xl shadow-[0_18px_44px_-20px_rgba(47,91,255,0.65)] hover:shadow-[0_24px_54px_-20px_rgba(47,91,255,0.55)] transition-all duration-300"
-          onClick={() => handleCTAClick('primary', primaryCTA.href)}
+          className="group relative h-12 min-h-[48px] w-full min-w-0 overflow-hidden rounded-xl border border-black/[0.06] bg-brand-primary px-5 text-[0.9375rem] font-semibold tracking-tight text-white shadow-[0_1px_0_rgba(255,255,255,0.12)_inset,0_12px_32px_-8px_rgba(210,43,43,0.45)] transition-[transform,box-shadow,background-color] duration-200 hover:bg-brand-primary-dark hover:shadow-[0_1px_0_rgba(255,255,255,0.1)_inset,0_16px_40px_-8px_rgba(210,43,43,0.4)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2 active:scale-[0.99] motion-safe:sm:hover:-translate-y-px sm:h-[3.25rem] sm:w-auto sm:min-w-[10rem] sm:px-8 sm:text-sm sm:font-bold"
         >
-          <Link href={primaryCTA.href}>
+          <MarketingCtaLink
+            href={primaryCTA.href}
+            className="relative z-[1] inline-flex w-full items-center justify-center gap-2 text-center"
+            onClick={() => handleCTAClick('primary', primaryCTA.href)}
+          >
             {primaryCTA.text}
-          </Link>
+            <LucideIcons.ArrowRight className="h-4 w-4 shrink-0 opacity-90 transition-transform duration-200 motion-safe:group-hover:translate-x-0.5" aria-hidden />
+          </MarketingCtaLink>
         </Button>
       )}
-      
+
       {secondaryCTA && (
         <Button
           asChild
           variant="outline"
           size="lg"
-          className="border-2 border-neutral-300 hover:border-blue-600 hover:text-blue-700 px-8 py-6 text-lg font-semibold rounded-2xl bg-white/70 backdrop-blur-sm transition-all duration-300"
-          onClick={() => handleCTAClick('secondary', secondaryCTA.href)}
+          className="group relative h-12 min-h-[48px] w-full min-w-0 rounded-xl border border-neutral-200 bg-white px-5 text-[0.9375rem] font-semibold tracking-tight text-neutral-900 shadow-[0_1px_0_rgba(255,255,255,1)_inset,0_6px_20px_-8px_rgba(15,23,42,0.08)] backdrop-blur-sm transition-[transform,box-shadow,border-color,color] duration-200 hover:border-neutral-300 hover:bg-neutral-50/90 hover:text-neutral-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400/80 focus-visible:ring-offset-2 active:scale-[0.99] motion-safe:sm:hover:-translate-y-px sm:h-[3.25rem] sm:w-auto sm:min-w-[10rem] sm:border-neutral-200 sm:px-8 sm:text-sm sm:font-bold"
         >
-          <Link href={secondaryCTA.href}>
+          <MarketingCtaLink
+            href={secondaryCTA.href}
+            className="inline-flex w-full items-center justify-center text-center"
+            onClick={() => handleCTAClick('secondary', secondaryCTA.href)}
+          >
             {secondaryCTA.text}
-          </Link>
+          </MarketingCtaLink>
         </Button>
       )}
     </div>
@@ -137,23 +159,24 @@ export default function Hero({
   // Default variant: Split layout with text left, image right
   if (variant === 'default') {
     return (
-      <section className="relative overflow-hidden bg-[linear-gradient(135deg,#f6f8fc_0%,#ffffff_55%,#eef4ff_100%)]">
-        {/* Decorative blur elements */}
-        <div className="absolute top-0 right-0 w-[32rem] h-[32rem] bg-blue-200/35 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 left-0 w-[28rem] h-[28rem] bg-amber-200/25 rounded-full blur-3xl" />
+      <section className="relative overflow-x-clip bg-slate-50 border-b border-slate-200/50">
+        {/* Decorative blurs - toned down on small viewports to avoid bleed */}
+        <div className="pointer-events-none absolute top-0 right-0 hidden h-[28rem] w-[28rem] rounded-full bg-brand-primary/10 blur-3xl sm:block md:h-[32rem] md:w-[32rem] md:animate-pulse" />
+        <div className="pointer-events-none absolute bottom-0 left-0 h-[22rem] w-[22rem] rounded-full bg-brand-secondary/10 blur-3xl sm:h-[28rem] sm:w-[28rem]" />
+        <div className="pointer-events-none absolute left-1/2 top-1/2 hidden h-[36rem] w-[36rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-br from-brand-primary/5 to-brand-secondary/5 blur-3xl md:block md:h-[50rem] md:w-[50rem]" />
         
-        <div className="relative container mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-24">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
+        <div className={cn('relative mx-auto min-w-0 py-10 sm:py-14 lg:py-24', MARKETING_CONTAINER)}>
+          <div className="grid min-w-0 grid-cols-1 items-center gap-10 lg:grid-cols-2 lg:gap-12">
             {/* Text content */}
-            <div className={`space-y-6 ${mounted ? 'animate-fade-in-up' : 'opacity-0'}`}>
+            <div className={`min-w-0 max-w-full space-y-6 ${mounted ? 'animate-fade-in-up' : 'opacity-0'}`}>
               {renderBadge()}
               
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-neutral-900 leading-tight">
+              <h1 className={MARKETING_H1}>
                 {typeof headlineText === 'string' 
                   ? headlineText.split(' ').map((word, index) => {
                       const highlightWords = ['Pakistan', 'Intelligent', 'Operating'];
                       if (highlightWords.some(hw => word.includes(hw))) {
-                        return <span key={index} className="text-blue-600">{word}{' '}</span>;
+                        return <span key={index} className="text-brand-primary">{word}{' '}</span>;
                       }
                       return <span key={index}>{word} </span>;
                     })
@@ -161,7 +184,7 @@ export default function Hero({
                 }
               </h1>
               
-              <p className="text-lg sm:text-xl text-neutral-600 max-w-2xl leading-relaxed">
+              <p className={cn('max-w-2xl', MARKETING_LEAD)}>
                 {subheadlineText}
               </p>
               
@@ -169,17 +192,17 @@ export default function Hero({
               
               {renderStats()}
             </div>
-
-            {/* Hero image */}
+ 
+            {/* Hero image with enhanced styling */}
             {heroImageSrc && (
-              <div className={`relative ${mounted ? 'animate-fade-in' : 'opacity-0'}`}>
-                <div className="relative aspect-[4/3] rounded-[2rem] overflow-hidden border border-white/70 shadow-[0_30px_90px_-30px_rgba(15,23,42,0.35)]">
+              <div className={`relative min-w-0 max-w-full ${mounted ? 'animate-fade-in' : 'opacity-0'}`}>
+                <div className="relative mx-auto aspect-[4/3] w-full max-w-[min(36rem,100%)] overflow-hidden rounded-[2rem] border border-white/70 shadow-[0_30px_90px_-30px_rgba(15,23,42,0.35)] group lg:mx-0">
                   <Image
                     src={heroImageSrc}
                     alt={heroImageAltText}
                     fill
                     priority
-                    className="object-cover"
+                    className="object-cover transition-transform duration-700 group-hover:scale-105"
                     sizes="(max-width: 768px) 100vw, 50vw"
                   />
                   
@@ -187,9 +210,9 @@ export default function Hero({
                   <div className="absolute inset-0 bg-gradient-to-t from-neutral-900/20 to-transparent" />
                 </div>
                 
-                {/* Decorative elements */}
-                <div className="absolute -top-4 -right-4 w-24 h-24 bg-blue-500 rounded-[1.75rem] opacity-20 blur-xl" />
-                <div className="absolute -bottom-4 -left-4 w-32 h-32 bg-amber-300 rounded-[1.75rem] opacity-20 blur-xl" />
+                {/* Enhanced decorative elements */}
+                <div className="pointer-events-none absolute -right-2 -top-2 hidden h-20 w-20 rounded-[1.75rem] bg-gradient-to-br from-brand-primary to-brand-primary-dark opacity-30 blur-xl sm:block md:-right-4 md:-top-4 md:h-24 md:w-24 md:animate-pulse" />
+                <div className="pointer-events-none absolute -bottom-2 -left-2 hidden h-24 w-24 rounded-[1.75rem] bg-gradient-to-tr from-brand-secondary to-brand-primary opacity-20 blur-xl sm:block md:-bottom-4 md:-left-4 md:h-32 md:w-32" />
               </div>
             )}
           </div>
@@ -198,60 +221,52 @@ export default function Hero({
     );
   }
 
-  // Centered variant: Centered text with background image
+  // Centered variant: centered text matching pricing / features / solutions CRM pages
   if (variant === 'centered') {
     return (
-      <section className="relative overflow-hidden bg-[linear-gradient(135deg,#091225_0%,#10224a_45%,#2f5bff_100%)] text-white">
-        {/* Background image */}
-        {heroImageSrc && (
-          <div className="absolute inset-0">
-            <Image
-              src={heroImageSrc}
-              alt={heroImageAltText}
-              fill
-              priority
-              className="object-cover opacity-30"
-              sizes="100vw"
-            />
-            <div className="absolute inset-0 bg-gradient-to-b from-neutral-900/80 via-neutral-900/60 to-neutral-900/80" />
-          </div>
+      <section
+        className={cn(
+          'relative overflow-x-clip bg-white py-10 sm:py-12 lg:py-14',
+          sectionClassName,
+          className
         )}
-        
-        <div className="relative container mx-auto px-4 sm:px-6 lg:px-8 py-24 lg:py-32">
-          <div className={`max-w-4xl mx-auto text-center space-y-8 ${mounted ? 'animate-fade-in-up' : 'opacity-0'}`}>
-            {renderBadge()}
-            
-            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold leading-tight">
-              {headlineText}
-            </h1>
-            
-            <p className="text-xl sm:text-2xl text-neutral-300 max-w-3xl mx-auto leading-relaxed">
-              {subheadlineText}
-            </p>
-            
-            <div className="flex justify-center">
-              {renderCTAs()}
-            </div>
-            
-            {stats && stats.length > 0 && (
-              <div className="flex flex-wrap justify-center gap-12 pt-12 mt-12 border-t border-white/20">
+      >
+        <div className={cn('relative mx-auto min-w-0', MARKETING_CONTAINER)}>
+          <div
+            className={cn(
+              'mx-auto flex max-w-3xl flex-col items-center text-center',
+              mounted && 'motion-safe:animate-fade-in-up'
+            )}
+          >
+            {badge ? <div className="flex w-full justify-center">{renderBadge()}</div> : null}
+
+            <h1 className={cn('mt-5 w-full', MARKETING_H1)}>{headlineText}</h1>
+
+            <p className={cn('mt-4 w-full max-w-2xl', MARKETING_LEAD)}>{subheadlineText}</p>
+
+            {(primaryCTA || secondaryCTA) && (
+              <div className="mt-6 flex w-full justify-center">{renderCTAs({ centered: true })}</div>
+            )}
+
+            {stats && stats.length > 0 ? (
+              <div className="mt-10 grid w-full grid-cols-2 gap-4 border-t border-neutral-200 pt-8 sm:flex sm:flex-wrap sm:justify-center sm:gap-8 sm:pt-10">
                 {stats.map((stat, index) => {
                   const StatIcon = stat.icon ? LucideIcons[stat.icon] : null;
-                  
+
                   return (
                     <div key={index} className="text-center">
-                      {StatIcon && (
-                        <div className="flex items-center justify-center w-12 h-12 mx-auto mb-3 rounded-lg bg-white/10">
-                          <StatIcon className="w-6 h-6 text-amber-300" />
+                      {StatIcon ? (
+                        <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100 shadow-sm">
+                          <StatIcon className="h-6 w-6 text-slate-600" />
                         </div>
-                      )}
-                      <div className="text-3xl font-bold">{stat.value}</div>
-                      <div className="text-sm text-neutral-400 mt-1">{stat.label}</div>
+                      ) : null}
+                      <div className="text-2xl font-semibold text-neutral-900 sm:text-3xl">{stat.value}</div>
+                      <div className="mt-1 text-sm font-medium text-neutral-500">{stat.label}</div>
                     </div>
                   );
                 })}
               </div>
-            )}
+            ) : null}
           </div>
         </div>
       </section>
@@ -264,11 +279,11 @@ export default function Hero({
       <section className="relative overflow-hidden bg-white">
         <div className="grid lg:grid-cols-2 min-h-[600px]">
           {/* Text content */}
-          <div className="flex items-center bg-[linear-gradient(135deg,#eef4ff_0%,#ffffff_70%)]">
+          <div className="flex items-center bg-slate-50">
             <div className={`container mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-24 space-y-6 ${mounted ? 'animate-fade-in-up' : 'opacity-0'}`}>
               {renderBadge()}
               
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-neutral-900 leading-tight">
+              <h1 className={MARKETING_H1}>
                 {headlineText}
               </h1>
               

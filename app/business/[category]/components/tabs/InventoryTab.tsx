@@ -1,3 +1,4 @@
+﻿/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Inventory Tab - Server Component with Client Islands
  * Displays product inventory with search, filters, and management
@@ -15,7 +16,10 @@ interface InventoryTabProps {
     category: string;
     onProductSave?: (data: any) => Promise<void>;
     onProductDelete?: (id: string) => Promise<void>;
+    /** Soft grid refresh (user Refresh, batch/variant after single-product mutations). */
     refreshData?: () => Promise<void>;
+    /** Full catalog resync after import / lean→grid upgrade / bulk stock changes. */
+    resyncCatalog?: () => Promise<void>;
     domainKnowledge?: any;
     invoices?: Invoice[];
     customers?: Customer[];
@@ -28,7 +32,6 @@ interface InventoryTabProps {
     challans?: any[];
     onIssueInvoice?: (header: any) => void;
     onAdd?: () => void;
-    onQuickAdd?: (data: any) => void;
     onEdit?: (product: Product) => void;
     onUpdate?: (data: any) => void;
     onLocationAdd?: (data: any) => void;
@@ -36,6 +39,7 @@ interface InventoryTabProps {
     onLocationDelete?: (id: string) => void;
     onStockTransfer?: (data: any) => void;
     onGeneratePO?: (data: any) => void;
+    isLoading?: boolean;
 }
 
 export function InventoryTab({
@@ -45,6 +49,7 @@ export function InventoryTab({
     onProductSave,
     onProductDelete,
     refreshData,
+    resyncCatalog,
     domainKnowledge,
     invoices,
     customers,
@@ -57,29 +62,40 @@ export function InventoryTab({
     challans,
     onIssueInvoice,
     onAdd,
-    onQuickAdd,
     onEdit,
     onUpdate,
     onLocationAdd,
     onLocationUpdate,
     onLocationDelete,
     onStockTransfer,
-    onGeneratePO
+    onGeneratePO,
+    isLoading = false,
 }: InventoryTabProps) {
+    if (isLoading && products.length === 0) {
+        return (
+            <div className="space-y-5">
+                <ErrorBoundary>
+                    <InventorySkeleton />
+                </ErrorBoundary>
+            </div>
+        );
+    }
+
     return (
         <div className="space-y-5">
 
             {/* Inventory Manager - Client Component */}
             <ErrorBoundary>
                 <Suspense fallback={<InventorySkeleton />}>
-                    {/* @ts-ignore - InventoryManager is JS component, TS inference for props is incomplete */}
                     <InventoryManager
+                        key={businessId || 'inventory'}
                         products={products}
                         businessId={businessId}
                         category={category}
                         onUpdate={onUpdate || onProductSave}
                         onDelete={onProductDelete}
                         refreshData={refreshData}
+                        resyncCatalog={resyncCatalog}
                         domainKnowledge={domainKnowledge}
                         invoices={invoices}
                         customers={customers}
@@ -92,15 +108,12 @@ export function InventoryTab({
                         challans={challans}
                         onIssueInvoice={onIssueInvoice}
                         onAdd={onAdd}
-                        onQuickAdd={onQuickAdd}
                         onEdit={onEdit}
                         onLocationAdd={onLocationAdd}
                         onLocationUpdate={onLocationUpdate}
                         onLocationDelete={onLocationDelete}
                         onStockTransfer={onStockTransfer}
                         onGeneratePO={onGeneratePO}
-                        // @ts-ignore
-                        isLoading={false} // Will be passed from parent if available, for now assume false or update types
                     />
                 </Suspense>
             </ErrorBoundary>

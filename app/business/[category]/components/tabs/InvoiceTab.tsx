@@ -1,3 +1,4 @@
+﻿/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Invoice Tab - Server Component with Lazy Loading
  * Displays invoice list and invoice builder
@@ -7,7 +8,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Pencil, Trash2, Plus, FileText } from 'lucide-react';
 import { formatCurrency, type CurrencyCode } from '@/lib/currency';
 import { DataTable } from '@/components/DataTable';
 import { ExportButton } from '@/components/ExportButton';
@@ -19,6 +20,7 @@ interface InvoiceTabProps {
     currency?: CurrencyCode;
     onInvoiceDelete?: (id: string) => Promise<void>;
     onEdit?: (invoice: Invoice) => void;
+    onAdd?: () => void;
     onBulkDelete?: (ids: string[]) => Promise<void>;
     onExport?: (data: any[]) => void;
     category?: string;
@@ -30,24 +32,57 @@ export function InvoiceTab({
     currency = 'PKR',
     onInvoiceDelete,
     onEdit,
+    onAdd,
     onBulkDelete,
     onExport,
     category = 'retail-shop',
     colors = { primary: '#000' }
 }: InvoiceTabProps) {
-    // Server-side calculations
+    const isPaid = (inv: Invoice) => {
+        const status = String(inv.status || '').toLowerCase();
+        const paymentStatus = String((inv as any).payment_status || '').toLowerCase();
+        const balance = Number((inv as any).balance);
+        if (Number.isFinite(balance) && balance <= 0.009 && Number(inv.grand_total) > 0) return true;
+        return status === 'paid' || paymentStatus === 'paid';
+    };
+
+    // Prefer payment_status / live balance over status-only (cash sales often keep status draft/sent).
     const stats = {
         total: invoices.length,
-        paid: invoices.filter(inv => inv.status === 'paid').length,
-        pending: invoices.filter(inv => inv.status === 'pending').length,
-        overdue: invoices.filter(inv => inv.status === 'overdue').length,
-        totalAmount: invoices.reduce((sum, inv) => sum + (Number(inv.grand_total) || 0), 0)
+        paid: invoices.filter(isPaid).length,
+        pending: invoices.filter(inv => {
+            if (isPaid(inv)) return false;
+            const status = String(inv.status || '').toLowerCase();
+            return ['pending', 'draft', 'sent', 'viewed', 'payment_pending', 'partially_paid'].includes(status);
+        }).length,
+        overdue: invoices.filter(inv => String(inv.status || '').toLowerCase() === 'overdue').length,
+        totalAmount: invoices.reduce((sum, inv) => sum + (Number(inv.grand_total) || 0), 0),
+        paidAmount: invoices.filter(isPaid).reduce((sum, inv) => sum + (Number(inv.grand_total) || 0), 0),
     };
 
     return (
         <div className="space-y-6">
-            {/* Invoice Stats - Server Component */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {/* Header with New Invoice button */}
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                    <div className="p-2 bg-emerald-100 rounded-lg">
+                        <FileText className="w-6 h-6 text-emerald-600" />
+                    </div>
+                    <div>
+                        <h2 className="text-2xl font-bold">Sales & Invoicing</h2>
+                        <p className="text-muted-foreground">Create, track and manage all invoices</p>
+                    </div>
+                </div>
+                <Button
+                    onClick={() => onAdd?.()}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl h-10 px-5 shadow-sm"
+                >
+                    <Plus className="w-4 h-4 mr-2" />
+                    New Invoice
+                </Button>
+            </div>
+            {/* Invoice Stats */}
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                 <Card>
                     <CardHeader className="pb-2">
                         <CardDescription>Total Invoices</CardDescription>
@@ -56,7 +91,6 @@ export function InvoiceTab({
                         <div className="text-2xl font-bold">{stats.total}</div>
                     </CardContent>
                 </Card>
-
                 <Card>
                     <CardHeader className="pb-2">
                         <CardDescription>Paid</CardDescription>
@@ -65,22 +99,29 @@ export function InvoiceTab({
                         <div className="text-2xl font-bold text-green-600">{stats.paid}</div>
                     </CardContent>
                 </Card>
-
                 <Card>
                     <CardHeader className="pb-2">
-                        <CardDescription>Pending</CardDescription>
+                        <CardDescription>Pending / Draft</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold text-yellow-600">{stats.pending}</div>
                     </CardContent>
                 </Card>
-
                 <Card>
                     <CardHeader className="pb-2">
                         <CardDescription>Overdue</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold text-red-600">{stats.overdue}</div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader className="pb-2">
+                        <CardDescription>Revenue Collected</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-lg font-bold text-emerald-600">{formatCurrency(stats.paidAmount, currency)}</div>
+                        <div className="text-xs text-muted-foreground mt-0.5">of {formatCurrency(stats.totalAmount, currency)} total</div>
                     </CardContent>
                 </Card>
             </div>

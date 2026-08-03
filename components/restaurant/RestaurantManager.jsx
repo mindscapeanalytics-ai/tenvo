@@ -46,7 +46,7 @@ function TableCard({ table, onAction }) {
             onClick={() => onAction?.(table)}
         >
             <div className="flex items-center justify-between mb-2">
-                <span className="text-lg font-black text-gray-900">{table.table_number}</span>
+                <span className="text-lg font-semibold text-gray-900">{table.table_number}</span>
                 <span className={cn('w-3 h-3 rounded-full', status.color)} />
             </div>
             <div className="flex items-center gap-1.5 text-xs text-gray-500">
@@ -60,7 +60,7 @@ function TableCard({ table, onAction }) {
                 <div className="mt-2 pt-2 border-t border-gray-200/60">
                     <p className="text-[10px] font-semibold text-gray-600">{table.current_order_number}</p>
                     {table.current_order_total && (
-                        <p className="text-xs font-black text-indigo-600">Rs.{parseFloat(table.current_order_total).toLocaleString()}</p>
+                        <p className="text-xs font-semibold text-indigo-600">Rs.{parseFloat(table.current_order_total).toLocaleString()}</p>
                     )}
                 </div>
             )}
@@ -84,9 +84,9 @@ function KitchenTicket({ order, onStatusUpdate }) {
             <CardContent className="p-3 space-y-2">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                        <span className="text-xs font-black text-gray-900">{order.order_number}</span>
+                        <span className="text-xs font-semibold text-gray-900">{order.order_number}</span>
                         {isRush && (
-                            <Badge className="bg-orange-500 text-white text-[9px] px-1.5">
+                            <Badge className="bg-orange-500 text-white text-[10px] px-1.5">
                                 <Flame className="w-2.5 h-2.5 mr-0.5" /> Rush
                             </Badge>
                         )}
@@ -119,10 +119,10 @@ function KitchenTicket({ order, onStatusUpdate }) {
                         }
                         return items.map((item, i) => (
                             <div key={i} className="flex items-center gap-2 text-xs">
-                                <span className="font-bold text-gray-700">{item.qty}×</span>
-                                <span className="text-gray-800">{item.item_name}</span>
+                                <span className="font-bold text-gray-700">{item.quantity || item.qty || 1}×</span>
+                                <span className="text-gray-800">{item.name || item.item_name || item.product_name || 'Item'}</span>
                                 {item.mods?.length > 0 && (
-                                    <span className="text-[9px] text-gray-400">+{item.mods.map(m => m.name).join(', ')}</span>
+                                    <span className="text-[10px] text-gray-400">+{item.mods.map(m => m.name).join(', ')}</span>
                                 )}
                             </div>
                         ));
@@ -137,7 +137,7 @@ function KitchenTicket({ order, onStatusUpdate }) {
                     {order.status === 'pending' && (
                         <Button
                             size="sm"
-                            className="flex-1 h-7 text-[10px] font-bold bg-blue-600 hover:bg-blue-700"
+                            className="flex-1 h-7 font-bold bg-emerald-600 hover:bg-emerald-700 text-white"
                             onClick={() => onStatusUpdate(order.id, 'preparing')}
                         >
                             <ChefHat className="w-3 h-3 mr-1" /> Start

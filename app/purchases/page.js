@@ -23,14 +23,11 @@ import toast from 'react-hot-toast';
 
 export default function PurchasesPage() {
     const router = useRouter();
-    const { business } = useBusiness();
+    const { business, currency: businessCurrency } = useBusiness();
+    const currency = businessCurrency || 'PKR';
     const [purchases, setPurchases] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
-
-    useEffect(() => {
-        loadPurchases();
-    }, [business]); // Reload if business changes
 
     const loadPurchases = async () => {
         if (!business) return;
@@ -47,6 +44,11 @@ export default function PurchasesPage() {
             setLoading(false);
         }
     };
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    useEffect(() => {
+        loadPurchases();
+    }, [business]); // Reload if business changes
 
     const filteredPurchases = purchases.filter(p =>
         p.vendor?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -133,7 +135,7 @@ export default function PurchasesPage() {
                                     </Badge>
                                 </div>
                                 <div className="text-right font-bold font-mono">
-                                    {formatCurrency(purchase.total_amount, 'PKR')}
+                                    {formatCurrency(purchase.total_amount, currency)}
                                 </div>
                                 <div className="text-right">
                                     <DropdownMenu>

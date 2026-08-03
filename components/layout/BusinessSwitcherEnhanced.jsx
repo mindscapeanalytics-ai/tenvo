@@ -3,10 +3,10 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import toast from 'react-hot-toast';
+import notify, { TOAST_IDS } from '@/lib/utils/appToast';
 import {
     Building2, ChevronDown, Check, Plus, Loader2, Search, Star, Clock,
-    Store, UtensilsCrossed, Factory, Truck, ShoppingCart, X
+    Store, UtensilsCrossed, Factory, Truck, ShoppingCart, X, Shield, ArrowUpRight
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useBusiness } from '@/lib/context/BusinessContext';
@@ -35,7 +35,7 @@ const DOMAIN_COLORS = {
 
 export function BusinessSwitcherEnhanced({ isCollapsed = false }) {
     const router = useRouter();
-    const { business, switchBusinessByDomain } = useBusiness();
+    const { business, switchBusinessByDomain, isPlatformAdmin } = useBusiness();
     const [isOpen, setIsOpen] = useState(false);
     const [businesses, setBusinesses] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -82,7 +82,7 @@ export function BusinessSwitcherEnhanced({ isCollapsed = false }) {
             }
         } catch (err) {
             console.error('Failed to fetch businesses:', err);
-            toast.error('Could not refresh business list');
+                notify.error('Could not refresh business list');
         } finally {
             setLoading(false);
         }
@@ -103,10 +103,12 @@ export function BusinessSwitcherEnhanced({ isCollapsed = false }) {
         try {
             const result = await switchBusinessByDomain(biz.domain);
             if (result.success) {
-                toast.success(`Switched to ${biz.name}`);
+                notify.success(`Switched to ${biz.name}`, {
+                    id: `${TOAST_IDS.BUSINESS_SWITCH}:${biz.domain}`,
+                });
                 router.push(`/business/${biz.domain}?tab=dashboard`);
             } else {
-                toast.error(result.error || 'Unable to switch business');
+                notify.error(result.error || 'Unable to switch business');
             }
         } finally {
             setSwitching(null);
@@ -161,7 +163,7 @@ export function BusinessSwitcherEnhanced({ isCollapsed = false }) {
                 >
                     <ActiveIcon className="w-4.5 h-4.5 text-white" />
                     {businesses.length > 1 && (
-                        <span className="absolute -top-1 -right-1 w-4 h-4 bg-wine-500 text-[9px] font-bold rounded-full flex items-center justify-center text-white shadow-sm">
+                        <span className="absolute -top-1 -right-1 w-4 h-4 bg-wine-500 text-[10px] font-bold rounded-full flex items-center justify-center text-white shadow-sm">
                             {businesses.length}
                         </span>
                     )}
@@ -235,7 +237,7 @@ export function BusinessSwitcherEnhanced({ isCollapsed = false }) {
                 {/* Header with search */}
                 <div className="p-3 border-b border-neutral-100 bg-neutral-50/50">
                     <div className="flex items-center justify-between mb-2">
-                        <p className="text-[10px] font-black text-neutral-400 uppercase tracking-wider">
+                        <p className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider">
                             Your Businesses
                         </p>
                         <button
@@ -246,11 +248,34 @@ export function BusinessSwitcherEnhanced({ isCollapsed = false }) {
                         </button>
                     </div>
                     
+                    {/* Platform Admin Quick Link */}
+                    {isPlatformAdmin && (
+                        <button
+                            onClick={() => {
+                                setIsOpen(false);
+                                router.push('/admin');
+                            }}
+                            className="w-full p-2.5 bg-gradient-to-r from-purple-50 to-indigo-50 hover:from-purple-100 hover:to-indigo-100 border border-purple-200 rounded-lg flex items-center gap-2.5 mb-2 transition-colors group"
+                        >
+                            <div className="w-7 h-7 bg-gradient-to-br from-purple-600 to-indigo-600 rounded-md flex items-center justify-center">
+                                <Shield className="w-4 h-4 text-white" />
+                            </div>
+                            <div className="flex-1 text-left">
+                                <p className="text-xs font-bold text-purple-900">Platform Control Center</p>
+                                <p className="text-[10px] text-purple-700">System-wide administration</p>
+                            </div>
+                            <ArrowUpRight className="w-3.5 h-3.5 text-purple-600 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                        </button>
+                    )}
+                    
                     {businesses.length > 3 && (
                         <div className="relative">
                             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-400" />
                             <Input
-                                type="text"
+                                id="hub-business-switcher-search"
+                                name="business-search"
+                                type="search"
+                                autoComplete="off"
                                 placeholder="Search businesses..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -349,7 +374,7 @@ export function BusinessSwitcherEnhanced({ isCollapsed = false }) {
                     <button
                         onClick={() => {
                             setIsOpen(false);
-                            router.push('/register');
+                            router.push('/register?new=1');
                         }}
                         className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg hover:bg-white transition-colors text-left group"
                     >

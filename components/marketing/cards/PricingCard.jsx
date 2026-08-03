@@ -54,14 +54,14 @@ export default function PricingCard({
     <div
       className={`group relative bg-white rounded-2xl p-8 border transition-all duration-300 ${
         highlighted 
-          ? 'border-wine-600 shadow-2xl scale-105 lg:scale-110' 
-          : 'border-neutral-200 hover:border-wine-300 hover:shadow-xl'
+          ? 'border-brand-primary shadow-2xl scale-105 lg:scale-110' 
+          : 'border-neutral-200 hover:border-brand-300 hover:shadow-xl'
       } ${mounted ? 'animate-fade-in-up' : 'opacity-0'}`}
     >
       {/* Popular badge */}
       {(popular || badge) && (
         <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-          <span className="inline-flex items-center gap-1 px-4 py-1.5 bg-wine-600 text-white text-sm font-semibold rounded-full shadow-lg">
+          <span className="inline-flex items-center gap-1 px-4 py-1.5 bg-brand-primary text-white text-sm font-semibold rounded-full shadow-lg">
             <LucideIcons.Star className="w-4 h-4 fill-current" />
             {badge || "Most Popular"}
           </span>
@@ -104,7 +104,7 @@ export default function PricingCard({
         onClick={handleCtaClick}
         className={`block w-full text-center px-6 py-3 rounded-xl font-semibold transition-all duration-300 mb-8 ${
           highlighted
-            ? 'bg-wine-600 text-white hover:bg-wine-700 shadow-lg hover:shadow-xl'
+            ? 'bg-brand-primary text-white hover:bg-brand-primary-dark shadow-lg hover:shadow-xl'
             : 'bg-neutral-900 text-white hover:bg-neutral-800'
         }`}
         aria-label={`${ctaText} for ${name} plan`}
@@ -120,7 +120,7 @@ export default function PricingCard({
         <ul className="space-y-3" role="list">
           {features.map((feature, index) => (
             <li key={index} className="flex items-start gap-3">
-              <LucideIcons.Check className="w-5 h-5 text-wine-600 flex-shrink-0 mt-0.5" />
+              <LucideIcons.Check className="w-5 h-5 text-brand-primary flex-shrink-0 mt-0.5" />
               <span className="text-neutral-700 leading-relaxed">
                 {feature}
               </span>

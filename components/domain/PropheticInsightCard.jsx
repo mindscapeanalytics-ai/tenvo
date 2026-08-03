@@ -35,7 +35,7 @@ export function PropheticInsightCard({ businessId, category }) {
 
     if (loading) {
         return (
-            <Card className="border-wine-100/50 bg-wine-50/10 overflow-hidden">
+            <Card className="border-brand-100/50 bg-brand-50/10 overflow-hidden">
                 <CardContent className="p-6 space-y-4">
                     <div className="flex gap-4">
                         <Skeleton className="h-12 w-12 rounded-xl" />
@@ -57,14 +57,14 @@ export function PropheticInsightCard({ businessId, category }) {
         <div className="relative group">
             <div className={cn(
                 "absolute -inset-0.5 rounded-3xl blur opacity-20 transition duration-1000 group-hover:duration-200",
-                isHighPriority ? "bg-gradient-to-r from-orange-400 to-red-600" : "bg-gradient-to-r from-wine-400 to-indigo-600"
+                isHighPriority ? "bg-gradient-to-r from-orange-400 to-red-600" : "bg-brand-primary"
             )}></div>
             <Card className="relative border-none bg-white rounded-3xl overflow-hidden shadow-sm">
                 <CardContent className="p-6">
                     <div className="flex flex-col md:flex-row gap-6">
                         <div className={cn(
                             "flex-shrink-0 w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg",
-                            isHighPriority ? "bg-orange-500 text-white" : "bg-wine-600 text-white"
+                            isHighPriority ? "bg-orange-500 text-white" : "bg-brand-primary text-white"
                         )}>
                             {isHighPriority ? <Sparkles className="w-8 h-8" /> : <BrainCircuit className="w-8 h-8" />}
                         </div>
@@ -72,11 +72,11 @@ export function PropheticInsightCard({ businessId, category }) {
                         <div className="flex-1 space-y-4">
                             <div className="flex items-center justify-between gap-4">
                                 <div className="space-y-0.5">
-                                    <h4 className="text-lg font-black text-gray-900 tracking-tight flex items-center gap-2">
+                                    <h4 className="text-lg font-semibold text-gray-900 tracking-tight flex items-center gap-2">
                                         Prophetic AI Insight
-                                        {isHighPriority && <Badge className="bg-orange-100 text-orange-600 border-orange-200 text-[10px] uppercase font-black">Urgent</Badge>}
+                                        {isHighPriority && <Badge className="bg-orange-100 text-orange-600 border-orange-200 text-[10px] uppercase font-semibold">Urgent</Badge>}
                                     </h4>
-                                    <p className="text-[10px] font-black uppercase text-gray-400 tracking-widest">{insight.current_status}</p>
+                                    <p className="text-[10px] font-semibold uppercase text-gray-400 tracking-widest">{insight.current_status}</p>
                                 </div>
                                 <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-50 border border-gray-100">
                                     <TrendingUp className="w-3.5 h-3.5 text-gray-400" />
@@ -95,10 +95,10 @@ export function PropheticInsightCard({ businessId, category }) {
                                         <ShieldCheck className="w-4 h-4" />
                                     </div>
                                     <div className="text-[11px] font-bold text-gray-600">
-                                        Suggested Action: <span className="text-wine-600">{insight.suggested_action}</span>
+                                        Suggested Action: <span className="text-brand-primary">{insight.suggested_action}</span>
                                     </div>
                                 </div>
-                                <Button size="sm" className="bg-gray-900 text-white hover:bg-black rounded-xl text-[10px] font-black uppercase px-6 h-9 group">
+                                <Button size="sm" className="bg-gray-900 text-white hover:bg-black rounded-xl text-[10px] font-semibold uppercase px-6 h-9 group">
                                     Apply Strategy
                                     <ArrowUpRight className="ml-1 w-3 h-3 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
                                 </Button>

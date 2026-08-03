@@ -1,10 +1,14 @@
+export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+import { PURCHASE_STATUS_VALUES, normalizePurchaseStatus, PURCHASE_STATUSES } from '@/lib/constants/purchaseStatus';
 import pool from '@/lib/db';
 import { withApiAuth } from '@/lib/api/_shared/middleware';
 import { apiSuccess, apiError } from '@/lib/api/_shared/response';
 import { getPurchaseByIdAction, updatePurchaseStatusAction } from '@/lib/actions/standard/purchase';
 import { assertEntityBelongsToBusiness } from '@/lib/actions/_shared/tenant';
+import { InventoryService } from '@/lib/services/InventoryService';
+import { AccountingService } from '@/lib/services/AccountingService';
 
 /**
  * Purchase Detail API Routes
@@ -112,12 +116,12 @@ export const GET = withApiAuth(async (request, { businessId, routeParams }) => {
 // Zod schema for purchase status update
 const updatePurchaseStatusSchema = z.object({
     business_id: z.string().uuid('Business ID is required'),
-    status: z.enum(['draft', 'received', 'cancelled'], {
-        errorMap: () => ({ message: 'Status must be one of: draft, received, cancelled' })
+    status: z.enum(PURCHASE_STATUS_VALUES, {
+        errorMap: () => ({ message: `Status must be one of: ${PURCHASE_STATUS_VALUES.join(', ')}` })
     })
 });
 
-export const PUT = withApiAuth(async (request, { businessId, session, role, routeParams }) => {
+export const PUT = withApiAuth(async (request, { businessId, session, role, parsedBody, routeParams }) => {
     try {
         // Check role permissions - viewers cannot update purchases
         if (role === 'viewer') {
@@ -132,15 +136,11 @@ export const PUT = withApiAuth(async (request, { businessId, session, role, rout
         const purchaseId = routeParams?.params?.id;
         
         if (!purchaseId) {
-            return apiError(
-                'MISSING_PURCHASE_ID',
-                'Purchase ID is required',
-                400
-            );
+            return apiError('MISSING_PURCHASE_ID', 'Purchase ID is required', 400);
         }
 
-        // Parse and validate request body
-        const body = await request.json();
+        // Use pre-parsed body from middleware (stream already consumed)
+        const body = parsedBody || {};
 
         // Ensure business_id matches authenticated business
         if (body.business_id && body.business_id !== businessId) {
@@ -283,9 +283,10 @@ export const DELETE = withApiAuth(async (request, { businessId, session, role, r
         }
 
         const purchase = purchaseRes.rows[0];
+        const currentStatus = normalizePurchaseStatus(purchase.status);
 
         // 2. Check if already voided
-        if (purchase.status === 'cancelled' || purchase.is_deleted) {
+        if (currentStatus === PURCHASE_STATUSES.CANCELLED || purchase.is_deleted) {
             await client.query('ROLLBACK');
             return apiError(
                 'PURCHASE_ALREADY_VOIDED',
@@ -294,70 +295,79 @@ export const DELETE = withApiAuth(async (request, { businessId, session, role, r
             );
         }
 
-        // 3. If purchase was received, reverse stock and GL entries
-        if (purchase.status === 'received') {
-            // Get purchase items
+        const userId = session?.user?.id || null;
+
+        // 3. If purchase was received, reverse stock via InventoryService and reverse journals
+        if (currentStatus === PURCHASE_STATUSES.RECEIVED) {
             const itemsRes = await client.query(`
                 SELECT * FROM purchase_items
                 WHERE purchase_id = $1
             `, [purchaseId]);
 
-            // Reverse stock for each item
             for (const item of itemsRes.rows) {
-                // Remove stock that was added
-                await client.query(`
-                    INSERT INTO stock_movements (
-                        business_id, product_id, warehouse_id, quantity,
-                        movement_type, reference_type, reference_id, notes
-                    ) VALUES ($1, $2, $3, $4, 'remove', 'purchase_void', $5, $6)
-                `, [
-                    businessId,
-                    item.product_id,
-                    purchase.warehouse_id,
-                    -item.quantity, // Negative to reverse
-                    purchaseId,
-                    `Void purchase: ${purchase.purchase_number}`
-                ]);
+                const qty = Number(item.quantity) || 0;
+                if (!item.product_id || qty <= 0) continue;
 
-                // Update product stock
-                await client.query(`
-                    UPDATE products
-                    SET stock = stock - $1, updated_at = NOW()
-                    WHERE id = $2 AND business_id = $3
-                `, [item.quantity, item.product_id, businessId]);
-
-                // Update product_stock_locations
-                await client.query(`
-                    UPDATE product_stock_locations
-                    SET quantity = quantity - $1, updated_at = NOW()
-                    WHERE product_id = $2 AND warehouse_id = $3 AND business_id = $4
-                `, [item.quantity, item.product_id, purchase.warehouse_id, businessId]);
+                await InventoryService.removeStock(
+                    {
+                        business_id: businessId,
+                        product_id: item.product_id,
+                        warehouse_id: purchase.warehouse_id || null,
+                        quantity: qty,
+                        reference_type: 'purchase_void',
+                        reference_id: purchaseId,
+                        notes: `Void purchase: ${purchase.purchase_number}`,
+                        skip_accounting: true,
+                    },
+                    userId,
+                    client
+                );
             }
 
-            // Reverse GL entries (delete them - proper reversal would use AccountingService.reverseJournalEntry)
-            await client.query(`
-                DELETE FROM gl_entries
-                WHERE business_id = $1 AND reference_type = 'purchase' AND reference_id = $2
-            `, [businessId, purchaseId]);
+            // Proper GL reversal (do not hard-delete gl_entries)
+            const journalsRes = await client.query(
+                `
+                SELECT id FROM journal_entries
+                WHERE business_id = $1
+                  AND reference_type = 'purchase'
+                  AND reference_id = $2::uuid
+                  AND COALESCE(is_reversed, false) = false
+                  AND reversed_by IS NULL
+                `,
+                [businessId, purchaseId]
+            );
 
-            // Reverse vendor balance
-            await client.query(`
-                UPDATE vendors
-                SET outstanding_balance = outstanding_balance - $1, updated_at = NOW()
-                WHERE id = $2 AND business_id = $3
-            `, [purchase.total_amount, purchase.vendor_id, businessId]);
+            for (const journal of journalsRes.rows) {
+                await AccountingService.reverseJournalEntry(
+                    journal.id,
+                    {
+                        businessId,
+                        userId,
+                        reason: `Void purchase ${purchase.purchase_number}`,
+                    },
+                    client
+                );
+            }
+
+            if (purchase.vendor_id) {
+                await client.query(`
+                    UPDATE vendors
+                    SET outstanding_balance = outstanding_balance - $1, updated_at = NOW()
+                    WHERE id = $2 AND business_id = $3
+                `, [purchase.total_amount, purchase.vendor_id, businessId]);
+            }
         }
 
         // 4. Mark purchase as voided (soft delete)
         await client.query(`
             UPDATE purchases
             SET 
-                status = 'cancelled',
+                status = $3,
                 is_deleted = true,
                 deleted_at = NOW(),
                 updated_at = NOW()
             WHERE id = $1 AND business_id = $2
-        `, [purchaseId, businessId]);
+        `, [purchaseId, businessId, PURCHASE_STATUSES.CANCELLED]);
 
         await client.query('COMMIT');
 
@@ -389,3 +399,4 @@ export const DELETE = withApiAuth(async (request, { businessId, session, role, r
         client.release();
     }
 });
+

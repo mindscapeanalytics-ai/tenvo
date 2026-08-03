@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import pool from '@/lib/db';
@@ -196,11 +197,13 @@ export const GET = withApiAuth(async (request, { businessId, session }) => {
  */
 
 // Zod schema for POS transaction creation
-const posTransactionItemSchema = z.object({
-    product_id: z.string().uuid('Product ID is required'),
+const posTransactionItemSchema = z
+  .object({
+    product_id: z.string().uuid().optional(),
     productId: z.string().uuid().optional(), // Accept camelCase variant
-    product_name: z.string().min(1, 'Product name is required'),
-    productName: z.string().optional(), // Accept camelCase variant
+    // Display-only for clients; not persisted on pos_transaction_items (schema uses product_id + totals).
+    product_name: z.string().optional().nullable(),
+    productName: z.string().optional().nullable(),
     quantity: z.number().positive('Quantity must be positive').default(1),
     unit_price: z.number().min(0, 'Unit price must be non-negative'),
     unitPrice: z.number().min(0).optional(), // Accept camelCase variant
@@ -209,8 +212,12 @@ const posTransactionItemSchema = z.object({
     discount_amount: z.number().min(0).optional().default(0),
     discountAmount: z.number().min(0).optional(), // Accept camelCase variant
     warehouse_id: z.string().uuid().optional().nullable(),
-    warehouseId: z.string().uuid().optional().nullable() // Accept camelCase variant
-});
+    warehouseId: z.string().uuid().optional().nullable(), // Accept camelCase variant
+  })
+  .refine((d) => Boolean(d.product_id || d.productId), {
+    message: 'Product ID is required',
+    path: ['product_id'],
+  });
 
 const posPaymentSchema = z.object({
     method: z.string().min(1, 'Payment method is required'),
@@ -229,32 +236,24 @@ const createPOSTransactionSchema = z.object({
     payments: z.array(posPaymentSchema).min(1, 'At least one payment is required')
 });
 
-export const POST = withApiAuth(async (request, { businessId, session, role }) => {
+export const POST = withApiAuth(async (request, { businessId, session, role, parsedBody }) => {
     try {
         // Check role permissions - viewers cannot create POS transactions
         if (role === 'viewer') {
-            return apiError(
-                'FORBIDDEN',
-                'Insufficient permissions. Viewers cannot create POS transactions.',
-                403
-            );
+            return apiError('FORBIDDEN', 'Insufficient permissions. Viewers cannot create POS transactions.', 403);
         }
 
-        // Parse and validate request body
-        const body = await request.json();
+        // Use pre-parsed body from middleware (stream already consumed)
+        const body = parsedBody || {};
 
         // Ensure business_id matches authenticated business
         if (body.business_id && body.business_id !== businessId) {
-            return apiError(
-                'BUSINESS_MISMATCH',
-                'Business ID in request body does not match authenticated business',
-                400
-            );
+            return apiError('BUSINESS_MISMATCH', 'Business ID in request body does not match authenticated business', 400);
         }
 
         // Set business_id from authenticated context
         body.business_id = businessId;
-        body.businessId = businessId; // Also set camelCase for validation
+        body.businessId = businessId;
 
         // Validate with Zod schema
         const validation = createPOSTransactionSchema.safeParse(body);
@@ -345,3 +344,4 @@ export const POST = withApiAuth(async (request, { businessId, session, role }) =
         );
     }
 });
+

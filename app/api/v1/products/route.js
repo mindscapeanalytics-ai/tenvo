@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { withApiAuth } from '@/lib/api/_shared/middleware';
@@ -60,7 +61,9 @@ export const GET = withApiAuth(async (request, { businessId, session }) => {
         const options = {
             limit,
             offset,
-            search
+            search,
+            category,
+            isActive: isActive !== null && isActive !== undefined ? isActive : undefined
         };
 
         // Fetch products using getProductsAction
@@ -75,17 +78,6 @@ export const GET = withApiAuth(async (request, { businessId, session }) => {
         }
 
         let products = result.products || [];
-
-        // Apply additional filters (category, is_active, min_stock_alert)
-        // These filters are applied in-memory since getProductsAction doesn't support them yet
-        if (category) {
-            products = products.filter(p => p.category === category);
-        }
-
-        if (isActive !== null && isActive !== undefined) {
-            const activeFilter = isActive === 'true';
-            products = products.filter(p => p.is_active === activeFilter);
-        }
 
         if (minStockAlert === 'true') {
             products = products.filter(p => {
@@ -222,30 +214,30 @@ const createProductSchema = z.object({
     variants: z.array(z.any()).optional().default([])
 });
 
-export const POST = withApiAuth(async (request, { businessId, session, role }) => {
+export const POST = withApiAuth(async (request, { businessId, session, role, parsedBody }) => {
     try {
-        // Check role permissions - viewers cannot create products
         if (role === 'viewer') {
-            return apiError(
-                'FORBIDDEN',
-                'Insufficient permissions. Viewers cannot create products.',
-                403
-            );
+            return apiError('FORBIDDEN', 'Insufficient permissions. Viewers cannot create products.', 403);
         }
 
-        // Parse and validate request body
-        const body = await request.json();
+        // Enforce plan product limit before creating
+        const { canAddProduct } = await import('@/lib/services/planLimits');
+        const limitCheck = await canAddProduct(businessId);
+        if (!limitCheck.allowed) {
+            return apiError('PLAN_LIMIT_REACHED', limitCheck.reason, 403, {
+                current: limitCheck.current,
+                limit: limitCheck.limit,
+                upgradePlan: limitCheck.upgradePlan,
+            });
+        }
 
-        // Ensure business_id matches authenticated business
+        // Use pre-parsed body from middleware (stream already consumed)
+        const body = parsedBody || {};
+
         if (body.business_id && body.business_id !== businessId) {
-            return apiError(
-                'BUSINESS_MISMATCH',
-                'Business ID in request body does not match authenticated business',
-                400
-            );
+            return apiError('BUSINESS_MISMATCH', 'Business ID in request body does not match authenticated business', 400);
         }
 
-        // Set business_id from authenticated context
         body.business_id = businessId;
 
         // Validate with Zod schema (basic validation)
@@ -333,3 +325,4 @@ export const POST = withApiAuth(async (request, { businessId, session, role }) =
         );
     }
 });
+

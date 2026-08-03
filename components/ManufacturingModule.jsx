@@ -14,8 +14,62 @@ import { Combobox } from './ui/combobox';
 import { Badge } from './ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
 import { Progress } from './ui/progress';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 import { manufacturingAPI } from '@/lib/api/manufacturing';
 import { getManufacturingConfig } from '@/lib/utils/domainHelpers';
+import { HubSectionHeader } from '@/components/mobile';
+
+/** Weighted average purchase cost from active batches when master cost is unset. */
+function getBatchWeightedUnitCost(product) {
+  const batches = product?.batches;
+  if (!Array.isArray(batches) || batches.length === 0) return 0;
+  let qtySum = 0;
+  let valueSum = 0;
+  for (const b of batches) {
+    const q = Math.max(0, Number(b.quantity) || 0);
+    const c = Number(b.cost_price ?? b.costPrice ?? 0);
+    if (q > 0 && Number.isFinite(c) && c > 0) {
+      qtySum += q;
+      valueSum += q * c;
+    }
+  }
+  if (qtySum <= 0) return 0;
+  return valueSum / qtySum;
+}
+
+/** When master SKU cost is unset, use default variant (or first variant) cost if any. */
+function getDefaultVariantUnitCost(product) {
+  const variants = product?.variants;
+  if (!Array.isArray(variants) || variants.length === 0) return 0;
+  const list = [...variants].sort((a, b) => Number(b?.is_default === true) - Number(a?.is_default === true));
+  for (const v of list) {
+    const c = Number(v?.cost_price ?? v?.costPrice ?? 0);
+    if (Number.isFinite(c) && c > 0) return c;
+  }
+  return 0;
+}
+
+/**
+ * Unit cost for BOM estimates: master cost_price, then default variant cost, then batch weighted average.
+ * Supports legacy keys (cost, unit_cost, camelCase).
+ */
+function getProductUnitCost(product) {
+  if (!product) return 0;
+  const raw =
+    product.cost_price ??
+    product.costPrice ??
+    product.unit_cost ??
+    product.unitCost ??
+    product.cost ??
+    0;
+  const n = Number(raw);
+  const direct = Number.isFinite(n) && n > 0 ? n : 0;
+  if (direct > 0) return direct;
+  const fromVariant = getDefaultVariantUnitCost(product);
+  if (fromVariant > 0) return fromVariant;
+  const fromBatches = getBatchWeightedUnitCost(product);
+  return Number.isFinite(fromBatches) && fromBatches > 0 ? fromBatches : 0;
+}
 
 /**
  * @typedef {Object} ManufacturingModuleProps
@@ -224,11 +278,31 @@ export function ManufacturingModule({
     }
   };
 
-  const calculateBOMFormCost = () => {
-    return bomData.components.reduce((acc, curr) => {
+  /**
+   * Estimated material cost for one batch of the BOM (finished-product unit = 1 "recipe").
+   * Applies process wastage as consumption factor: line cost × (1 + wastage%).
+   * @param {{ includeDraftLine?: boolean }} opts - If true, includes the row not yet added via + Add (preview).
+   */
+  const calculateBOMFormCost = (opts = { includeDraftLine: true }) => {
+    const { includeDraftLine = true } = opts;
+    const wastagePct = Number(bomData.wastagePercent) || 0;
+    const consumptionFactor = 1 + wastagePct / 100;
+
+    let materials = bomData.components.reduce((acc, curr) => {
       const product = products.find(p => p.id === curr.product);
-      return acc + (Number(curr.quantity) * Number(product?.cost_price || 0));
+      const qty = Number(curr.quantity) || 0;
+      return acc + qty * getProductUnitCost(product);
     }, 0);
+
+    if (includeDraftLine) {
+      const { product: draftId, quantity: draftQty } = bomData.newComponent;
+      if (draftId && draftQty && draftId !== bomData.finishedProduct) {
+        const p = products.find(pr => pr.id === draftId);
+        materials += (Number(draftQty) || 0) * getProductUnitCost(p);
+      }
+    }
+
+    return materials * consumptionFactor;
   };
 
   const processStatusUpdate = async (orderId, status) => {
@@ -265,25 +339,65 @@ export function ManufacturingModule({
   // Helper to get product name
   const getProductName = (id) => products.find(p => p.id === id)?.name || 'Unknown Product';
 
+  const bomCostWithDraftPreview = calculateBOMFormCost({ includeDraftLine: true });
+  const bomCostListedOnly = calculateBOMFormCost({ includeDraftLine: false });
+  const bomCostShowsDraftPreview = bomCostWithDraftPreview - bomCostListedOnly > 0.0001;
+  const bomHasListedLines = bomData.components.length > 0;
+  const bomListedMaterialValue = bomData.components.reduce((acc, curr) => {
+    const p = products.find(pr => pr.id === curr.product);
+    return acc + (Number(curr.quantity) || 0) * getProductUnitCost(p);
+  }, 0);
+  const bomHasQtyButZeroCost =
+    bomHasListedLines &&
+    bomListedMaterialValue === 0 &&
+    bomData.components.some((c) => (Number(c.quantity) || 0) > 0);
+
+  const bomUsesBatchCostEstimate =
+    bomHasListedLines &&
+    bomData.components.some((c) => {
+      const p = products.find((pr) => pr.id === c.product);
+      if (!p || !(Number(c.quantity) > 0)) return false;
+      const raw = p.cost_price ?? p.costPrice ?? p.unit_cost ?? p.unitCost ?? p.cost ?? 0;
+      const directOk = Number.isFinite(Number(raw)) && Number(raw) > 0;
+      if (directOk) return false;
+      if (getDefaultVariantUnitCost(p) > 0) return false;
+      return getBatchWeightedUnitCost(p) > 0;
+    });
+
+  const bomUsesVariantCostEstimate =
+    bomHasListedLines &&
+    bomData.components.some((c) => {
+      const p = products.find((pr) => pr.id === c.product);
+      if (!p || !(Number(c.quantity) > 0)) return false;
+      const raw = p.cost_price ?? p.costPrice ?? p.unit_cost ?? p.unitCost ?? p.cost ?? 0;
+      const directOk = Number.isFinite(Number(raw)) && Number(raw) > 0;
+      return !directOk && getDefaultVariantUnitCost(p) > 0;
+    });
+
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-black">Manufacturing & Production</h2>
-          <p className="text-gray-600">Manage Bill of Materials, Production Orders, and WIP</p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => { setActiveTab('bom'); setShowBOMForm(true); }}>
-            <Plus className="w-4 h-4 mr-2" />
-            New BOM
-          </Button>
-          <Button onClick={() => { setActiveTab('production'); setShowProductionForm(true); }} className="bg-wine hover:bg-wine/90 text-white">
-            <Factory className="w-4 h-4 mr-2" />
-            Production Order
-          </Button>
-        </div>
-      </div>
+    <div className="min-w-0 space-y-6 overflow-x-hidden">
+      <HubSectionHeader
+        icon={Factory}
+        iconClassName="bg-wine/10 text-wine"
+        title="Manufacturing & Production"
+        subtitle="Manage Bill of Materials, Production Orders, and WIP"
+        actions={[
+          {
+            id: 'bom',
+            label: 'New BOM',
+            icon: Plus,
+            variant: 'outline',
+            onClick: () => { setActiveTab('bom'); setShowBOMForm(true); },
+          },
+          {
+            id: 'production',
+            label: 'Production Order',
+            icon: Factory,
+            className: 'bg-wine hover:bg-wine/90 text-white',
+            onClick: () => { setActiveTab('production'); setShowProductionForm(true); },
+          },
+        ]}
+      />
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -428,12 +542,12 @@ export function ManufacturingModule({
                   </div>
                   <div className="flex gap-2">
                     {order.status === 'planned' && (
-                      <Button size="sm" onClick={() => handleUpdateStatus(order.id, 'in-progress')} className="bg-blue-600 hover:bg-blue-700 text-white">
+                      <Button size="sm" onClick={() => handleUpdateStatus(order.id, 'in-progress')} className=" bg-emerald-600 hover:bg-emerald-700 text-white">
                         <Play className="w-4 h-4 mr-2" /> Start
                       </Button>
                     )}
                     {order.status === 'in-progress' && (
-                      <Button size="sm" onClick={() => handleUpdateStatus(order.id, 'completed')} className="bg-green-600 hover:bg-green-700 text-white">
+                      <Button size="sm" onClick={() => handleUpdateStatus(order.id, 'completed')} className=" bg-emerald-600 hover:bg-emerald-700 text-white">
                         <CheckSquare className="w-4 h-4 mr-2" /> Complete
                       </Button>
                     )}
@@ -507,7 +621,7 @@ export function ManufacturingModule({
                     <Button
                       size="sm"
                       onClick={() => handleUpdateStatus(order.id, 'completed')}
-                      className="w-full bg-green-600 hover:bg-green-700 text-white font-bold h-10 shadow-md transition-all active:scale-[0.98]"
+                      className="w-full font-bold h-10 shadow-md transition-all active:scale-[0.98] bg-emerald-600 hover:bg-emerald-700 text-white"
                     >
                       <CheckCircle2 className="w-4 h-4 mr-2" />
                       Mark Batch as Finished
@@ -549,14 +663,14 @@ export function ManufacturingModule({
                       setBomData({
                         ...bomData,
                         finishedProduct: val,
-                        wastagePercent: config.defaultLoss,
+                        wastagePercent: config.defaultLoss ?? 0,
                         components: bomData.components.filter(c => c.product !== val)
                       });
                     } else {
                       setBomData({ 
                         ...bomData, 
                         finishedProduct: val,
-                        wastagePercent: config.defaultLoss 
+                        wastagePercent: config.defaultLoss ?? 0
                       });
                     }
                   }}
@@ -603,13 +717,14 @@ export function ManufacturingModule({
                   </div>
                 </div>
                 <div className="bg-wine-50/50 p-3 rounded-xl border border-wine-100/50 flex flex-col justify-center">
-                  <span className="text-[10px] font-black text-wine/60 uppercase tracking-widest mb-1">Domain Logic</span>
+                  <span className="text-[10px] font-semibold text-wine/60 uppercase tracking-widest mb-1">Domain Logic</span>
                   <p className="text-xs text-wine/80 font-medium leading-tight">
                     {(() => {
                         const product = products.find(p => p.id === bomData.finishedProduct);
                         if (!product) return "Select a product to see domain recommendations.";
-                        const config = getManufacturingConfig(product.category);
-                        return `Recommended loss for ${product.category}: ${config.defaultLoss}%. Wastage tracking is ${config.trackWastage ? "REQUIRED" : "OPTIONAL"}.`;
+                        const config = getManufacturingConfig(product.category || '');
+                        const catLabel = product.category || 'this domain';
+                        return `Recommended loss for ${catLabel}: ${config.defaultLoss}%. Wastage tracking is ${config.trackWastage ? 'REQUIRED' : 'OPTIONAL'}.`;
                     })()}
                   </p>
                 </div>
@@ -675,18 +790,52 @@ export function ManufacturingModule({
                 </div>
               </div>
 
-              <div className="flex justify-between items-center py-2 px-4 bg-wine/5 rounded-lg border border-wine/10 mb-4">
-                <span className="text-sm font-medium text-wine">Estimated Production Cost:</span>
-                <span className="text-lg font-bold text-wine">
-                  ₨ {calculateBOMFormCost().toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                </span>
+              <div className="space-y-1 py-2 px-4 bg-wine/5 rounded-lg border border-wine/10 mb-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium text-wine">Estimated material cost (per BOM batch)</span>
+                  <span className="text-lg font-bold text-wine">
+                    ₨ {bomCostWithDraftPreview.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                </div>
+                <p className="text-[11px] text-gray-600 leading-snug">
+                  {Number(bomData.wastagePercent) > 0 && (
+                    <span className="block text-wine/80">
+                      Includes {Number(bomData.wastagePercent) || 0}% process wastage (consumption × (1 + wastage%)).
+                    </span>
+                  )}
+                  {!bomHasListedLines && bomCostWithDraftPreview === 0 && (
+                    <span className="block">
+                      Cost stays at zero until you add lines with <strong>+ Add</strong>. The row above is only a preview until then.
+                    </span>
+                  )}
+                  {bomCostShowsDraftPreview && (
+                    <span className="block text-amber-800">
+                      Figure includes your current raw-material row before you press + Add. Save still requires added lines only.
+                    </span>
+                  )}
+                  {bomHasQtyButZeroCost && (
+                    <span className="block text-amber-800">
+                      Listed materials have quantity but <strong>cost price is 0</strong> on those products, set cost price in inventory for a realistic estimate.
+                    </span>
+                  )}
+                  {bomUsesVariantCostEstimate && (
+                    <span className="block text-emerald-800">
+                      At least one line uses <strong>variant cost price</strong> because the SKU master cost is unset, set cost on the product for consistency.
+                    </span>
+                  )}
+                  {bomUsesBatchCostEstimate && (
+                    <span className="block text-emerald-800">
+                      At least one line uses <strong>average batch purchase cost</strong> because SKU and variant costs are unset, set cost on the product for a single source of truth.
+                    </span>
+                  )}
+                </p>
               </div>
 
               <div className="flex justify-end gap-3 pt-4 border-t">
                 <Button variant="outline" onClick={() => setShowBOMForm(false)}>
                   Cancel
                 </Button>
-                <Button onClick={handleSaveBOM} disabled={isLoading} className="bg-wine hover:bg-wine/90 text-white">
+                <Button onClick={handleSaveBOM} disabled={isLoading} className=" bg-emerald-600 hover:bg-emerald-700 text-white">
                   {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save BOM'}
                 </Button>
               </div>
@@ -783,7 +932,7 @@ export function ManufacturingModule({
                 <Button variant="outline" onClick={() => setShowProductionForm(false)}>
                   Cancel
                 </Button>
-                <Button onClick={handleCreateProductionOrder} disabled={isLoading} className="bg-wine hover:bg-wine/90 text-white">
+                <Button onClick={handleCreateProductionOrder} disabled={isLoading} className=" bg-emerald-600 hover:bg-emerald-700 text-white">
                   {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Create Order'}
                 </Button>
               </div>
@@ -804,7 +953,7 @@ export function ManufacturingModule({
             <Button variant="outline" onClick={() => setShowCompleteDialog(false)}>
               Cancel
             </Button>
-            <Button onClick={confirmCompletion} disabled={isLoading} className="bg-green-600 hover:bg-green-700 text-white">
+            <Button onClick={confirmCompletion} disabled={isLoading} className=" bg-emerald-600 hover:bg-emerald-700 text-white">
               {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Confirm Completion'}
             </Button>
           </div>
@@ -823,7 +972,7 @@ export function ManufacturingModule({
             <Button variant="outline" onClick={() => setShowDeleteBOMDialog(false)}>
               Cancel
             </Button>
-            <Button onClick={confirmDeleteBOM} disabled={isLoading} className="bg-red-600 hover:bg-red-700 text-white">
+            <Button onClick={confirmDeleteBOM} disabled={isLoading} className=" bg-emerald-600 hover:bg-emerald-700 text-white">
               {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Delete BOM'}
             </Button>
           </div>

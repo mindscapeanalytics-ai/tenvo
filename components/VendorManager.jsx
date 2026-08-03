@@ -1,48 +1,61 @@
 'use client';
 
 import { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Building2, Phone, Mail, MapPin, TrendingUp, Edit, Trash2, Plus, Search, Loader2, Sparkles, Eye, AlertTriangle, FileText, CheckCircle, ImagePlus, ShieldCheck, Wallet } from 'lucide-react';
+import { Building2, Phone, MapPin, Edit, Trash2, Plus, Search, Eye, AlertTriangle } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { DataTable } from './DataTable';
 import { ExportButton } from './ExportButton';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { formatCurrency } from '@/lib/currency';
 import { getDomainColors } from '@/lib/domainColors';
-import { FormError } from '@/components/ui/form-error';
-import { getDomainVendorFields, getDomainVendorColumns, normalizeKey } from '@/lib/utils/domainHelpers';
-import { DomainFieldRenderer } from './domain/DomainFieldRenderer';
-import toast from 'react-hot-toast';
+import { cn } from '@/lib/utils';
+import { hubDialogContentClass } from '@/lib/utils/formMobileStyles';
+import { getDomainVendorColumns } from '@/lib/utils/domainHelpers';
 import StakeholderLedger from './StakeholderLedger';
-import { CityAutocomplete } from '@/components/CityAutocomplete';
-import { validateNTN, formatNTN } from '@/lib/tax/pakistaniTax';
-import { formatPakistaniPhone, isValidPakistaniPhone, vendorSchema, validateForm } from '@/lib/validation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { FileUpload } from './FileUpload';
+import { MobileTabHeader, MobileStatStrip } from '@/components/mobile/MobileTabHeader';
+import { HubEntityMobileList } from '@/components/mobile/HubEntityMobileList';
+import { MOBILE_BOTTOM_NAV_CLASS, MOBILE_FLOATING_Z, MOBILE_MODULE_FAB_RIGHT } from '@/lib/utils/mobileLayout';
 import { useBusiness } from '@/lib/context/BusinessContext';
-import { Badge } from '@/components/ui/badge';
+import { resolveDisplayCurrency } from '@/lib/utils/businessRegionalContext';
+
+function matchesVendorSearch(vendor, query) {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  const haystack = [
+    vendor.name,
+    vendor.email,
+    vendor.phone,
+    vendor.ntn,
+    vendor.srn,
+    vendor.contact_person,
+    vendor.city,
+    vendor.payment_terms,
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+  return haystack.includes(q);
+}
 
 /**
- * Vendor Manager Component
- * Handles supplier database with Supabase integration
+ * Vendor Manager — supplier list, search, view/ledger, soft-delete.
  */
 export function VendorManager({ vendors = [], onAdd, onUpdate, onDelete, category = 'retail-shop', businessId }) {
-  const { business } = useBusiness();
+  const { business, currency: businessCurrency, regionalPack } = useBusiness();
+  const currency = resolveDisplayCurrency(
+    { currency: businessCurrency || business?.currency },
+    regionalPack
+  );
   const colors = getDomainColors(category);
   const [searchTerm, setSearchTerm] = useState('');
   const [vendorToView, setVendorToView] = useState(null);
   const [vendorToDelete, setVendorToDelete] = useState(null);
 
-  const domainFields = getDomainVendorFields(category);
-
-  const filteredVendors = vendors.filter(v =>
-    v.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    v.email?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
+  const filteredVendors = vendors.filter((v) => matchesVendorSearch(v, searchTerm));
   const domainColumns = getDomainVendorColumns(category);
 
   const columns = [
@@ -51,12 +64,14 @@ export function VendorManager({ vendors = [], onAdd, onUpdate, onDelete, categor
       header: 'Supplier',
       cell: ({ row }) => (
         <div className="flex items-center gap-3">
-          <div className="p-2 rounded-xl" style={{ backgroundColor: `${colors.primary}10`, color: colors.primary }}>
-            <Building2 className="w-4 h-4" />
+          <div className="rounded-xl p-2" style={{ backgroundColor: `${colors.primary}10`, color: colors.primary }}>
+            <Building2 className="h-4 w-4" />
           </div>
           <div>
-            <p className="font-bold text-gray-900 leading-none">{row.original.name}</p>
-            <p className="text-xs text-gray-500 mt-1">{row.original.email || 'No email'}</p>
+            <p className="font-semibold leading-none text-gray-900">{row.original.name}</p>
+            <p className="mt-1 text-xs text-gray-500">
+              {row.original.contact_person || row.original.email || 'No contact'}
+            </p>
           </div>
         </div>
       ),
@@ -65,20 +80,29 @@ export function VendorManager({ vendors = [], onAdd, onUpdate, onDelete, categor
       accessorKey: 'phone',
       header: 'Contact',
       cell: ({ row }) => (
-        <div className="flex flex-col text-sm text-gray-600 font-medium">
+        <div className="flex flex-col text-sm font-medium text-gray-600">
           <span className="flex items-center gap-1.5">
-            <Phone className="w-3 h-3" style={{ color: colors.primary }} />
-            {row.original.phone}
+            <Phone className="h-3 w-3" style={{ color: colors.primary }} />
+            {row.original.phone || '—'}
           </span>
         </div>
-      )
+      ),
+    },
+    {
+      accessorKey: 'payment_terms',
+      header: 'Payment Terms',
+      cell: ({ row }) => (
+        <span className="text-sm font-medium text-gray-600">
+          {row.original.payment_terms || 'Standard'}
+        </span>
+      ),
     },
     {
       accessorKey: 'outstanding_balance',
       header: 'Payables',
       cell: ({ row }) => (
-        <span className={`font-black ${Number(row.original.outstanding_balance) > 0 ? 'text-red-600' : 'text-green-600'}`}>
-          {formatCurrency(row.original.outstanding_balance || 0, 'PKR')}
+        <span className={`font-semibold ${Number(row.original.outstanding_balance) > 0 ? 'text-red-600' : 'text-green-600'}`}>
+          {formatCurrency(row.original.outstanding_balance || 0, currency)}
         </span>
       ),
     },
@@ -86,11 +110,11 @@ export function VendorManager({ vendors = [], onAdd, onUpdate, onDelete, categor
       accessorKey: 'city',
       header: 'Location',
       cell: ({ row }) => (
-        <div className="flex items-center gap-1.5 text-sm font-bold text-gray-500">
-          <MapPin className="w-3 h-3" style={{ color: colors.primary }} />
-          {row.original.city || 'Pakistan'}
+        <div className="flex items-center gap-1.5 text-sm font-semibold text-gray-500">
+          <MapPin className="h-3 w-3" style={{ color: colors.primary }} />
+          {row.original.city || business?.country || '—'}
         </div>
-      )
+      ),
     },
     {
       id: 'actions',
@@ -99,208 +123,278 @@ export function VendorManager({ vendors = [], onAdd, onUpdate, onDelete, categor
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 text-gray-400 rounded-full hover:bg-gray-100"
+            className="h-8 w-8 rounded-full text-gray-400 hover:bg-gray-100"
             onClick={() => setVendorToView(row.original)}
             title="View Details"
           >
-            <Eye className="w-4 h-4 text-blue-500" />
+            <Eye className="h-4 w-4 text-blue-500" />
           </Button>
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 text-gray-400 rounded-full hover:bg-gray-100"
+            className="h-8 w-8 rounded-full text-gray-400 hover:bg-gray-100"
             style={{ color: colors.primary }}
             title="Edit Supplier"
             onClick={() => onUpdate?.(row.original)}
           >
-            <Edit className="w-4 h-4" />
+            <Edit className="h-4 w-4" />
           </Button>
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-full"
+            className="h-8 w-8 rounded-full text-gray-400 hover:bg-red-50 hover:text-red-600"
             onClick={() => setVendorToDelete(row.original)}
           >
-            <Trash2 className="w-4 h-4" />
+            <Trash2 className="h-4 w-4" />
           </Button>
         </div>
-      )
-    }
+      ),
+    },
   ];
 
-  // Merge dynamic columns: Supplier, Contact, Payables, [Domain], Location, Actions
   const allColumns = [
-    columns[0], // Supplier
-    columns[1], // Contact
-    columns[2], // Payables
+    columns[0],
+    columns[1],
+    columns[2],
+    columns[3],
     ...domainColumns,
-    columns[3], // Location
-    columns[4], // Actions
+    columns[4],
+    columns[5],
   ];
 
   const handleOpenAdd = () => {
     onAdd?.();
   };
 
-  const handleFillDemo = () => {
-    const isTextile = category.includes('textile');
-    const isPharmacy = category === 'pharmacy';
-    const isFMCG = category === 'fmcg';
-
-    const companies = [
-      'Al-Noor Trading Co.', 'Indus Logistics PK', 'Habib & Sons',
-      'Zubair Chemicals', 'Standard Industrial Corp', 'Premier Supplies Ltd'
-    ];
-
-    const textileMills = [
-      'Gul Ahmed Textile Mills', 'Sapphire Textile', 'Lucky Textile Mills',
-      'Nishat Mills Ltd', 'Al-Karam Textile', 'Yunus Textile'
-    ];
-
-    const pharmaDist = [
-      'Sami Pharmaceuticals', 'Getz Pharma Distribution', 'Abbott Logistics',
-      'GSK Supply Chain', 'RG Pharma'
-    ];
-
-    const cities = ['Karachi', 'Lahore', 'Faisalabad', 'Gujranwala', 'Sialkot', 'Multan'];
-    const addresses = [
-      'Plot # 45, Sector 15, Korangi Industrial Area',
-      'Suit 402, Business Avenue, Main Shahrah-e-Faisal',
-      'Gully # 3, Montgomery Road, near Railway Station',
-      'Phase 2, Sundar Industrial Estate',
-      'Plot 12-C, Small Industrial Estate',
-      'Floor 2, Textile Plaza, I.I Chundrigar Road'
-    ];
-
-    const selectedName = isTextile
-      ? textileMills[Math.floor(Math.random() * textileMills.length)]
-      : (isPharmacy ? pharmaDist[Math.floor(Math.random() * pharmaDist.length)] : companies[Math.floor(Math.random() * companies.length)]);
-
-    const firstNames = ['Haris', 'Ahmed', 'Zeeshan', 'Kamran', 'Mustafa', 'Imran'];
-    const lastNames = ['Khan', 'Sheikh', 'Mughal', 'Ali', 'Ahmed'];
-
-    const demoData = {
-      name: selectedName,
-      contactPerson: `${firstNames[Math.floor(Math.random() * firstNames.length)]} ${lastNames[Math.floor(Math.random() * lastNames.length)]}`,
-      phone: '+92 21 ' + (Math.floor(Math.random() * 899999) + 100000), // Regional format
-      email: `sales@${selectedName.toLowerCase().replace(/[^a-z0-9]/g, '')}.pk`,
-      ntn: (Math.floor(Math.random() * 8999999) + 1000000) + '-' + Math.floor(Math.random() * 9),
-      srn: '12-00-' + (Math.floor(Math.random() * 8999999) + 1000000) + '-0',
-      address: addresses[Math.floor(Math.random() * addresses.length)],
-      city: cities[Math.floor(Math.random() * cities.length)],
-      payment_terms: ['Net 15', 'COD', 'Net 30', 'Net 7'][Math.floor(Math.random() * 4)],
-      filer_status: Math.random() > 0.3 ? 'active' : 'inactive',
-      credit_limit: (Math.floor(Math.random() * 10) + 1) * 100000,
-      domain_data: {
-        millname: isTextile ? selectedName : '',
-        quality_grade: 'A+',
-      }
-    };
-
-    setFormData(prev => ({ ...prev, ...demoData }));
-    toast.success(`Generated: ${selectedName}`);
-  };
+  const totalPayables = vendors.reduce((s, v) => s + (Number(v.outstanding_balance) || 0), 0);
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-bold text-gray-900">Vendor Network</h2>
-          <p className="text-gray-500 font-medium">Manage your supply chain and trade credit</p>
+    <div className="min-w-0 space-y-4 overflow-x-hidden touch-manipulation lg:space-y-6">
+      <MobileTabHeader
+        icon={Building2}
+        iconClassName="bg-blue-100 text-blue-600"
+        title="Vendor Network"
+        subtitle={`${vendors.length} suppliers · supply chain`}
+      />
+
+      <MobileStatStrip
+        layout="grid"
+        items={[
+          { label: 'Vendors', value: vendors.length },
+          {
+            label: 'Payables',
+            value: formatCurrency(totalPayables, currency),
+            valueTone: 'text-red-600',
+          },
+        ]}
+      />
+
+      <div className="hidden flex-col gap-3 sm:gap-4 md:flex-row md:items-center md:justify-between lg:flex">
+        <div className="min-w-0">
+          <h2 className="text-lg sm:text-xl font-semibold text-gray-900 truncate">Vendor Network</h2>
+          <p className="text-sm font-medium text-gray-500 truncate">Manage your supply chain and trade credit</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2 shrink-0">
+          <Button
+            onClick={handleOpenAdd}
+            className="h-9 sm:h-10 rounded-xl bg-emerald-600 px-4 sm:px-5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700"
+          >
+            <Plus className="mr-1.5 sm:mr-2 h-4 w-4" />
+            <span className="hidden sm:inline">Add Vendor</span>
+            <span className="sm:hidden">Add</span>
+          </Button>
           <ExportButton
             data={filteredVendors}
             filename="vendors"
             columns={columns}
             title="Suppliers Report"
+            business={business}
           />
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="border-none shadow-md bg-white">
-          <CardContent className="pt-6">
-            <p className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Active Vendors</p>
-            <p className="text-2xl font-black text-gray-900">{vendors.length}</p>
+      <div className="hidden grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 md:grid lg:grid-cols-4">
+        <Card className="border-none bg-white shadow-md">
+          <CardContent className="pt-4 sm:pt-6">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">Active Vendors</p>
+            <p className="text-xl sm:text-2xl font-semibold text-gray-900">{vendors.length}</p>
           </CardContent>
         </Card>
-        <Card className="border-none shadow-md bg-white">
-          <CardContent className="pt-6">
-            <p className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Total Payables</p>
-            <p className="text-2xl font-black text-red-600">
-              {formatCurrency(vendors.reduce((s, v) => s + (Number(v.outstanding_balance) || 0), 0), 'PKR')}
+        <Card className="border-none bg-white shadow-md">
+          <CardContent className="pt-4 sm:pt-6">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">Total Payables</p>
+            <p className="text-xl sm:text-2xl font-semibold text-red-600">
+              {formatCurrency(totalPayables, currency)}
             </p>
           </CardContent>
         </Card>
       </div>
 
-      <Card className="border-wine/5 shadow-xl bg-white/50 backdrop-blur-md">
-        <CardHeader className="pb-4">
-          <div className="relative group">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 group-focus-within:text-wine w-4 h-4 transition-colors" />
+      <Card className="border-wine/5 bg-white/50 shadow-xl backdrop-blur-md lg:block">
+        <CardHeader className="hidden pb-4 lg:block">
+          <div className="group relative">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 transition-colors group-focus-within:text-wine" />
             <Input
-              placeholder="Search by company name or NTN..."
+              placeholder="Search by name, phone, NTN, or contact..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 h-11 bg-white border-gray-100 focus:border-wine/30 rounded-xl"
+              className="h-11 rounded-xl border-gray-100 bg-white pl-10 focus:border-wine/30"
             />
           </div>
         </CardHeader>
-        <CardContent>
-          <DataTable category={category} data={filteredVendors} columns={allColumns} emptyComponent={<EmptyState module="vendors" compact onAction={onAdd} />} />
+        <CardContent className="hidden lg:block">
+          <DataTable
+            category={category}
+            data={filteredVendors}
+            columns={allColumns}
+            emptyComponent={<EmptyState module="vendors" compact onAction={onAdd} />}
+          />
         </CardContent>
       </Card>
 
-      {/* View Vendor Dialog */}
+      <div className="pb-[calc(5.5rem+env(safe-area-inset-bottom))] lg:hidden">
+        <HubEntityMobileList
+          items={vendors}
+          search={searchTerm}
+          onSearchChange={setSearchTerm}
+          searchPlaceholder="Search vendors..."
+          emptyIcon={Building2}
+          emptyTitle="No vendors yet"
+          emptySubtitle="Add suppliers to track payables"
+          emptyActionLabel="Add vendor"
+          onEmptyAction={handleOpenAdd}
+          getKey={(v) => v.id}
+          onRowPress={(v) => setVendorToView(v)}
+          renderIcon={() => <Building2 className="h-5 w-5" style={{ color: colors.primary }} />}
+          getTitle={(v) => v.name}
+          getSubtitle={(v) => v.phone || v.city || v.email || 'No contact'}
+          getAmount={(v) => formatCurrency(v.outstanding_balance || 0, currency)}
+          getAmountClassName={(v) => (Number(v.outstanding_balance) > 0 ? 'text-red-600' : 'text-green-600')}
+          filterItems={(list, q) => list.filter((v) => matchesVendorSearch(v, q))}
+          getActions={(v) => [
+            { id: 'view', icon: Eye, label: 'View supplier', onClick: () => setVendorToView(v) },
+            { id: 'edit', icon: Edit, label: 'Edit vendor', onClick: () => onUpdate?.(v) },
+            { id: 'delete', icon: Trash2, label: 'Remove vendor', destructive: true, onClick: () => setVendorToDelete(v) },
+          ]}
+        />
+      </div>
+
+      <button
+        type="button"
+        onClick={handleOpenAdd}
+        className={cn(
+          'fixed flex h-14 w-14 items-center justify-center rounded-full bg-emerald-600 text-white shadow-lg shadow-emerald-600/30 transition active:scale-95 lg:hidden',
+          MOBILE_MODULE_FAB_RIGHT,
+          MOBILE_BOTTOM_NAV_CLASS,
+          MOBILE_FLOATING_Z
+        )}
+        aria-label="Add vendor"
+      >
+        <Plus className="h-6 w-6" />
+      </button>
+
       <Dialog open={!!vendorToView} onOpenChange={(open) => !open && setVendorToView(null)}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col p-0">
-          <DialogHeader className="px-6 pt-6">
-            <DialogTitle className="flex items-center gap-2">
-              <Building2 className="w-5 h-5 text-gray-400" />
-              {vendorToView?.name}
+        <DialogContent className={cn(hubDialogContentClass({ wide: true, maxWidth: 'lg:max-w-3xl' }), 'flex flex-col overflow-hidden p-0 lg:gap-0 lg:p-0')}>
+          <DialogHeader className="shrink-0 px-4 pt-4 sm:px-6 sm:pt-6">
+            <DialogTitle className="flex items-center justify-between gap-2">
+              <span className="flex items-center gap-2 min-w-0">
+                <Building2 className="h-5 w-5 text-gray-400 shrink-0" />
+                <span className="truncate">{vendorToView?.name}</span>
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="shrink-0 h-8 text-xs"
+                onClick={() => {
+                  setVendorToView(null);
+                  onUpdate?.(vendorToView);
+                }}
+              >
+                <Edit className="h-3.5 w-3.5 mr-1.5" />
+                Edit
+              </Button>
             </DialogTitle>
-            <DialogDescription>Supplier Details & History</DialogDescription>
+            <DialogDescription className="text-xs sm:text-sm">Supplier Details & Transaction History</DialogDescription>
           </DialogHeader>
-          <div className="flex-grow overflow-y-auto px-6 pb-6">
+          <div className="flex-grow overflow-y-auto overscroll-contain px-4 pb-4 sm:px-6 sm:pb-6">
             <Tabs defaultValue="profile" className="w-full">
-              <TabsList className="grid w-full grid-cols-2 mb-4 bg-gray-100/50 p-1 rounded-xl">
-                <TabsTrigger value="profile" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">Profile Details</TabsTrigger>
-                <TabsTrigger value="ledger" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">Ledger / History</TabsTrigger>
+              <TabsList className="mb-3 sm:mb-4 grid w-full grid-cols-2 rounded-xl bg-gray-100/50 p-1">
+                <TabsTrigger value="profile" className="rounded-lg text-xs sm:text-sm data-[state=active]:bg-white data-[state=active]:shadow-sm">Profile</TabsTrigger>
+                <TabsTrigger value="ledger" className="rounded-lg text-xs sm:text-sm data-[state=active]:bg-white data-[state=active]:shadow-sm">Ledger</TabsTrigger>
               </TabsList>
 
-              <TabsContent value="profile" className="space-y-4 py-2 mt-0">
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <label className="text-xs font-bold text-gray-400 block">Contact Person</label>
-                    <p className="font-medium">{vendorToView?.domain_data?.contact_person || vendorToView?.contact_person || 'N/A'}</p>
-                  </div>
-                  <div>
-                    <label className="text-xs font-bold text-gray-400 block">City</label>
-                    <p className="font-medium">{vendorToView?.city || 'N/A'}</p>
-                  </div>
-                  <div>
-                    <label className="text-xs font-bold text-gray-400 block">Phone</label>
-                    <p className="font-medium">{vendorToView?.phone || 'N/A'}</p>
-                  </div>
-                  <div>
-                    <label className="text-xs font-bold text-gray-400 block">NTN</label>
-                    <p className="font-medium">{vendorToView?.ntn || 'N/A'}</p>
-                  </div>
-                  <div className="col-span-2">
-                    <label className="text-xs font-bold text-gray-400 block">Address</label>
-                    <p className="font-medium">{vendorToView?.address || 'N/A'}</p>
-                  </div>
+              <TabsContent value="profile" className="mt-0 space-y-4 py-2">
+                <div className="grid grid-cols-1 gap-x-4 gap-y-3 text-sm sm:grid-cols-2">
+                  {vendorToView?.contact_person || vendorToView?.domain_data?.contact_person ? (
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-400">Contact Person</label>
+                      <p className="font-medium truncate">{vendorToView?.contact_person || vendorToView?.domain_data?.contact_person}</p>
+                    </div>
+                  ) : null}
+                  {vendorToView?.city && (
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-400">City</label>
+                      <p className="font-medium truncate">{vendorToView.city}</p>
+                    </div>
+                  )}
+                  {vendorToView?.phone && (
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-400">Phone</label>
+                      <p className="font-medium truncate">{vendorToView.phone}</p>
+                    </div>
+                  )}
+                  {vendorToView?.email && (
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-400">Email</label>
+                      <p className="font-medium truncate break-all">{vendorToView.email}</p>
+                    </div>
+                  )}
+                  {vendorToView?.ntn && (
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-400">NTN</label>
+                      <p className="font-medium font-mono">{vendorToView.ntn}</p>
+                    </div>
+                  )}
+                  {vendorToView?.payment_terms && (
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-400">Payment Terms</label>
+                      <p className="font-medium">{vendorToView.payment_terms}</p>
+                    </div>
+                  )}
+                  {vendorToView?.credit_limit && Number(vendorToView.credit_limit) > 0 && (
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-400">Credit Limit</label>
+                      <p className="font-medium">{formatCurrency(vendorToView.credit_limit, currency)}</p>
+                    </div>
+                  )}
+                  {vendorToView?.outstanding_balance !== undefined && (
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-400">Outstanding Balance</label>
+                      <p className={cn("font-semibold", Number(vendorToView.outstanding_balance) > 0 ? "text-red-600" : "text-green-600")}>
+                        {formatCurrency(vendorToView.outstanding_balance, currency)}
+                      </p>
+                    </div>
+                  )}
+                  {vendorToView?.address && (
+                    <div className="sm:col-span-2">
+                      <label className="block text-xs font-semibold text-gray-400">Address</label>
+                      <p className="font-medium">{vendorToView.address}</p>
+                    </div>
+                  )}
                 </div>
 
                 {vendorToView?.domain_data && Object.keys(vendorToView.domain_data).length > 0 && (
-                  <div className="bg-gray-50 p-3 rounded-lg mt-2 font-bold">
-                    <h4 className="text-xs font-bold text-gray-500 mb-2">Domain Data</h4>
-                    <div className="text-xs space-y-1">
-                      {Object.entries(vendorToView.domain_data).map(([k, v]) => (
-                        <div key={k} className="flex justify-between">
-                          <span className="capitalize text-gray-500">{k.replace(/_/g, ' ')}:</span>
-                          <span className="font-medium">{typeof v === 'object' ? JSON.stringify(v) : v}</span>
+                  <div className="mt-3 rounded-lg bg-gray-50 p-3">
+                    <h4 className="mb-2 text-xs font-semibold text-gray-500">Additional Information</h4>
+                    <div className="space-y-1.5 text-xs">
+                      {Object.entries(vendorToView.domain_data)
+                        .filter(([k, v]) => v !== null && v !== '' && v !== undefined)
+                        .map(([k, v]) => (
+                        <div key={k} className="flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-2">
+                          <span className="capitalize text-gray-500 font-medium">{k.replace(/_/g, ' ')}:</span>
+                          <span className="text-right font-medium text-gray-700 break-words">
+                            {typeof v === 'object' ? JSON.stringify(v, null, 2) : String(v)}
+                          </span>
                         </div>
                       ))}
                     </div>
@@ -308,12 +402,12 @@ export function VendorManager({ vendors = [], onAdd, onUpdate, onDelete, categor
                 )}
               </TabsContent>
 
-              <TabsContent value="ledger" className="mt-0 pt-2 min-h-[400px]">
+              <TabsContent value="ledger" className="mt-0 min-h-[400px] pt-2">
                 <StakeholderLedger
                   entityId={vendorToView?.id}
                   entityType="vendor"
                   businessId={businessId}
-                  currency="PKR"
+                  currency={currency}
                   colors={colors}
                 />
               </TabsContent>
@@ -322,27 +416,29 @@ export function VendorManager({ vendors = [], onAdd, onUpdate, onDelete, categor
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation */}
       <Dialog open={!!vendorToDelete} onOpenChange={(open) => !open && setVendorToDelete(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="text-red-600 flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5" />
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <AlertTriangle className="h-5 w-5" />
               Confirm Deletion
             </DialogTitle>
             <DialogDescription>
-              Are you sure you want to remove <span className="font-bold text-gray-900">{vendorToDelete?.name}</span>?
+              Are you sure you want to remove <span className="font-semibold text-gray-900">{vendorToDelete?.name}</span>?
               This will remove them from your active suppliers.
             </DialogDescription>
           </DialogHeader>
-          <div className="flex justify-end gap-3 mt-4">
+          <div className="mt-4 flex justify-end gap-3">
             <Button variant="ghost" onClick={() => setVendorToDelete(null)}>Cancel</Button>
-            <Button variant="destructive" onClick={() => {
-              if (vendorToDelete) {
-                onDelete?.(vendorToDelete.id);
-                setVendorToDelete(null);
-              }
-            }}>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (vendorToDelete) {
+                  onDelete?.(vendorToDelete.id);
+                  setVendorToDelete(null);
+                }
+              }}
+            >
               Remove Supplier
             </Button>
           </div>

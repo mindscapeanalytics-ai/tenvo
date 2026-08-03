@@ -1,4 +1,5 @@
-﻿/**
+﻿/* eslint-disable @typescript-eslint/no-explicit-any */
+/**
  * Multi-Location Inventory Component - TypeScript Migration
  * Manages warehouse locations and stock transfers
  */
@@ -14,6 +15,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Warehouse, Plus, ArrowRightLeft, MapPin, Pencil, Trash2, Building2 } from 'lucide-react';
+import { HubSectionHeader } from '@/components/mobile';
+import { warehouseAPI } from '@/lib/api/warehouse';
 import toast from 'react-hot-toast';
 import type { WarehouseLocation, Product, DomainKnowledge } from '@/types';
 
@@ -166,6 +169,8 @@ export function MultiLocationInventory({
 
             if (onLocationAdd) {
                 await onLocationAdd(data);
+            } else {
+                await warehouseAPI.createLocation(data);
             }
 
             toast.success('Location added successfully');
@@ -205,6 +210,8 @@ export function MultiLocationInventory({
 
             if (onLocationUpdate) {
                 await onLocationUpdate(selectedLocation.id, updates);
+            } else {
+                await warehouseAPI.updateLocation(businessId, selectedLocation.id, updates);
             }
 
             toast.success('Location updated successfully');
@@ -231,6 +238,8 @@ export function MultiLocationInventory({
         try {
             if (onLocationDelete) {
                 await onLocationDelete(locationId);
+            } else {
+                await warehouseAPI.deleteLocation(businessId, locationId);
             }
 
             toast.success('Location deleted successfully');
@@ -280,6 +289,8 @@ export function MultiLocationInventory({
 
             if (onStockTransfer) {
                 await onStockTransfer(data);
+            } else {
+                await warehouseAPI.createTransfer(data);
             }
 
             toast.success('Stock transferred successfully');
@@ -360,36 +371,33 @@ export function MultiLocationInventory({
     };
 
     return (
-        <div className="space-y-6">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <div className="flex items-center gap-2 mb-1">
-                        {domainKnowledge?.icon && <span className="text-2xl">{domainKnowledge.icon}</span>}
-                        <h2 className="text-2xl font-bold">
-                            {domainKnowledge?.name ? `${domainKnowledge.name} Inventory` : 'Multi-Location Inventory'}
-                        </h2>
-                        {category && (
-                            <Badge variant="outline" className="ml-2 capitalize opacity-70">
-                                {category.replace(/-/g, ' ')}
-                            </Badge>
-                        )}
-                    </div>
-                    <p className="text-muted-foreground">
-                        Manage warehouse locations, godowns, and stock transfers
-                    </p>
-                </div>
-                <div className="flex gap-2">
-                    <Button onClick={() => setShowTransferDialog(true)} variant="outline">
-                        <ArrowRightLeft className="w-4 h-4 mr-2" />
-                        Transfer Stock
-                    </Button>
-                    <Button onClick={() => setShowAddDialog(true)}>
-                        <Plus className="w-4 h-4 mr-2" />
-                        Add Location
-                    </Button>
-                </div>
-            </div>
+        <div className="min-w-0 space-y-6 overflow-x-hidden">
+            <HubSectionHeader
+                icon={Warehouse}
+                iconClassName="bg-blue-50 text-blue-700"
+                title={
+                    domainKnowledge?.name
+                        ? `${domainKnowledge.name} Inventory`
+                        : 'Multi-Location Inventory'
+                }
+                subtitle="Manage warehouse locations, godowns, and stock transfers"
+                badge={category ? category.replace(/-/g, ' ') : undefined}
+                actions={[
+                    {
+                        id: 'transfer',
+                        label: 'Transfer Stock',
+                        icon: ArrowRightLeft,
+                        variant: 'outline',
+                        onClick: () => setShowTransferDialog(true),
+                    },
+                    {
+                        id: 'add',
+                        label: 'Add Location',
+                        icon: Plus,
+                        onClick: () => setShowAddDialog(true),
+                    },
+                ]}
+            />
 
             {/* Locations Grid */}
             {locations.length === 0 ? (
@@ -418,12 +426,12 @@ export function MultiLocationInventory({
                         return (
                             <Card key={location.id} className="hover:shadow-lg transition-shadow">
                                 <CardHeader>
-                                    <div className="flex items-start justify-between">
-                                        <div className="flex items-center gap-2">
+                                    <div className="flex items-start justify-between gap-2">
+                                        <div className="flex min-w-0 flex-1 items-center gap-2">
                                             {getLocationTypeIcon(location.type)}
-                                            <CardTitle className="text-lg">{location.name}</CardTitle>
+                                            <CardTitle className="truncate text-base lg:text-lg">{location.name}</CardTitle>
                                         </div>
-                                        <div className="flex gap-1">
+                                        <div className="flex shrink-0 gap-1">
                                             <Button
                                                 size="sm"
                                                 variant="ghost"
@@ -586,7 +594,7 @@ export function MultiLocationInventory({
                         <Button variant="outline" onClick={() => setShowAddDialog(false)}>
                             Cancel
                         </Button>
-                        <Button onClick={handleAddLocation} disabled={isSubmitting}>
+                        <Button className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-md transition-all" onClick={handleAddLocation} disabled={isSubmitting}>
                             {isSubmitting ? 'Adding...' : 'Add Location'}
                         </Button>
                     </div>
@@ -690,7 +698,7 @@ export function MultiLocationInventory({
                         <Button variant="outline" onClick={() => setShowEditDialog(false)}>
                             Cancel
                         </Button>
-                        <Button onClick={handleUpdateLocation} disabled={isSubmitting}>
+                        <Button className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-md transition-all" onClick={handleUpdateLocation} disabled={isSubmitting}>
                             {isSubmitting ? 'Updating...' : 'Update Location'}
                         </Button>
                     </div>
@@ -791,7 +799,7 @@ export function MultiLocationInventory({
                         <Button variant="outline" onClick={() => setShowTransferDialog(false)}>
                             Cancel
                         </Button>
-                        <Button onClick={handleStockTransfer} disabled={isSubmitting}>
+                        <Button className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-md transition-all" onClick={handleStockTransfer} disabled={isSubmitting}>
                             {isSubmitting ? 'Transferring...' : 'Transfer Stock'}
                         </Button>
                     </div>

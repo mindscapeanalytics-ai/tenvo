@@ -14,13 +14,16 @@ interface RemindersData {
 interface RemindersPortletProps {
     data?: RemindersData;
     isLoading?: boolean;
-    onItemClick?: (itemId: string) => void;
+    /** Receives reminder id: low-stock | overdue | pending-orders */
+    onItemClick?: (reminderId: string) => void;
+    className?: string;
 }
 
 export const RemindersPortlet = memo(function RemindersPortlet({
     data = {},
     isLoading = false,
-    onItemClick
+    onItemClick,
+    className,
 }: RemindersPortletProps) {
     const reminders = [
         {
@@ -47,7 +50,8 @@ export const RemindersPortlet = memo(function RemindersPortlet({
             id: 'pending-orders',
             label: 'Pending Orders',
             count: data.pendingOrders || 0,
-            actionTab: 'purchases',
+            /** Matches invoice `pending` / `processing` counts from the dashboard, not purchase orders. */
+            actionTab: 'invoices',
             icon: ShoppingCart,
             color: 'text-emerald-700',
             bgColor: 'bg-emerald-50',
@@ -60,23 +64,24 @@ export const RemindersPortlet = memo(function RemindersPortlet({
             title="Reminders"
             description="Operational alerts & tasks"
             isLoading={isLoading}
+            className={className}
         >
-            <div className="space-y-1.5">
+            <div className="space-y-1">
                 {reminders.map((item) => (
                     <div
                         key={item.id}
-                        onClick={() => onItemClick?.(item.actionTab)}
-                        className="flex items-center justify-between p-2 rounded-lg border border-transparent hover:border-gray-100 hover:bg-gray-50/50 transition-all cursor-pointer group"
+                        onClick={() => onItemClick?.(item.id)}
+                        className="flex items-center justify-between p-1.5 rounded-lg border border-transparent hover:border-gray-100 hover:bg-gray-50/50 transition-all cursor-pointer group"
                     >
-                        <div className="flex items-center gap-2.5">
-                            <div className={cn("p-1.5 rounded-md", item.bgColor)}>
+                        <div className="flex items-center gap-2">
+                            <div className={cn("p-1 rounded-md", item.bgColor)}>
                                 <item.icon className={cn("w-3.5 h-3.5", item.color)} />
                             </div>
                             <span className="text-[11px] font-bold text-gray-700 uppercase tracking-tight">{item.label}</span>
                         </div>
                         <div className="flex items-center gap-1.5">
                             <span className={cn(
-                                "text-sm font-black transition-transform group-hover:scale-110",
+                                "text-sm font-semibold transition-transform group-hover:scale-110",
                                 item.count > 0 ? item.color : "text-gray-300"
                             )}>
                                 {item.count}

@@ -56,9 +56,36 @@ export const CURRENCY_CONFIG = {
     locale: 'ar-SA',
     name: 'Saudi Riyal',
   },
+  CAD: {
+    code: 'CAD',
+    symbol: '$',
+    decimal: 2,
+    locale: 'en-CA',
+    name: 'Canadian Dollar',
+  },
+  AUD: {
+    code: 'AUD',
+    symbol: '$',
+    decimal: 2,
+    locale: 'en-AU',
+    name: 'Australian Dollar',
+  },
+  CNY: {
+    code: 'CNY',
+    symbol: '¥',
+    decimal: 2,
+    locale: 'zh-CN',
+    name: 'Chinese Yuan',
+  },
 } as const;
 
 export type CurrencyCode = keyof typeof CURRENCY_CONFIG;
+
+function clampFractionDigits(value: unknown, fallback: number): number {
+  const n = typeof value === 'number' ? value : Number(value);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.max(0, Math.min(20, Math.floor(n)));
+}
 
 /**
  * Format amount in specified currency
@@ -89,23 +116,30 @@ export function formatCurrency(
     return formatCurrency(amount, 'PKR', options);
   }
 
+  const { minimumFractionDigits: optMin, maximumFractionDigits: optMax, ...restOptions } = options || {};
+  let minD = clampFractionDigits(optMin, config.decimal);
+  let maxD = clampFractionDigits(optMax, config.decimal);
+  if (minD > maxD) {
+    maxD = minD;
+  }
+
   // Use Intl.NumberFormat with regional config
   // For specific currencies like PKR, we might need to force the symbol if the locale is inconsistent
   const formatter = new Intl.NumberFormat(config.locale, {
     style: 'currency',
     currency: currency,
     currencyDisplay: 'symbol',
-    minimumFractionDigits: config.decimal,
-    maximumFractionDigits: config.decimal,
-    ...options,
+    minimumFractionDigits: minD,
+    maximumFractionDigits: maxD,
+    ...restOptions,
   });
 
   // Fallback for PKR if symbol is not ₨
   if (currency === 'PKR') {
     const parts = new Intl.NumberFormat('en-PK', {
-      minimumFractionDigits: config.decimal,
-      maximumFractionDigits: config.decimal,
-      ...options
+      minimumFractionDigits: minD,
+      maximumFractionDigits: maxD,
+      ...restOptions,
     }).format(amount);
     return `₨${parts}`;
   }
@@ -133,9 +167,11 @@ export function formatAmount(
   }
 
   const config = CURRENCY_CONFIG[currency];
+  const minD = clampFractionDigits(config.decimal, config.decimal);
+  const maxD = clampFractionDigits(config.decimal, config.decimal);
   const formatter = new Intl.NumberFormat(config.locale, {
-    minimumFractionDigits: config.decimal,
-    maximumFractionDigits: config.decimal,
+    minimumFractionDigits: minD,
+    maximumFractionDigits: maxD,
   });
 
   return formatter.format(amount);

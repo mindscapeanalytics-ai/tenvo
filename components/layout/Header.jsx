@@ -11,7 +11,6 @@ import {
     Menu,
     Search,
     Plus,
-    Bell,
     X,
     ClipboardList,
     FileText,
@@ -21,15 +20,12 @@ import {
     Layers,
     Warehouse,
     ShoppingCart,
-    History,
     ListFilter,
     Download,
     LayoutGrid,
     Eye,
     RefreshCcw
-    , AlertTriangle,
-    Clock3,
-    Moon,
+    , Moon,
     Sun
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -40,8 +36,12 @@ import { useData } from '@/lib/context/DataContext';
 import { useLanguage } from '@/lib/context/LanguageContext';
 import { useAppMode } from '@/lib/context/BusyModeContext';
 import { useSearchParams } from 'next/navigation';
+import { normalizeDashboardTab } from '@/lib/config/tabs';
+import { navigateHubTabFromLocation } from '@/lib/utils/hubTabNavigation';
+import { useHubTabOptional } from '@/lib/context/HubTabContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { NotificationBell } from '@/components/notifications/NotificationBell';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -57,11 +57,12 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
+import { MOBILE_TAB_LABELS, MOBILE_MINIMAL_HEADER_TABS, MOBILE_HIDE_HEADER_QUICK_ADD_TABS } from '@/lib/utils/mobileLayout';
 
 export function Header({ onMenuClick }) {
     const { dateRange, setDateRange, searchQuery, setSearchQuery } = useFilters();
     const { business } = useBusiness();
-    const { isEasyMode } = useAppMode();
+    const { isEasyMode, isRetailSimpleDashboard, modeReady } = useAppMode();
     const {
         products,
         invoices,
@@ -70,14 +71,24 @@ export function Header({ onMenuClick }) {
         bomList,
         productionOrders,
         purchaseOrders,
-        pendingApprovals,
         quotations,
         salesOrders,
         challans
     } = useData();
     const { t, language } = useLanguage();
     const searchParams = useSearchParams();
-    const currentTab = searchParams.get('tab') || 'dashboard';
+    const hubTab = useHubTabOptional();
+    const currentTab =
+        hubTab?.activeTab ||
+        normalizeDashboardTab(searchParams.get('tab') || 'dashboard');
+
+    const switchTab = React.useCallback((tab) => {
+        if (hubTab?.goToTab) {
+            hubTab.goToTab(tab);
+            return;
+        }
+        navigateHubTabFromLocation(tab);
+    }, [hubTab]);
 
     const [isSearchFocused, setIsSearchFocused] = React.useState(false);
     const [activeIndex, setActiveIndex] = React.useState(-1);
@@ -89,7 +100,7 @@ export function Header({ onMenuClick }) {
         const parts = text.split(new RegExp(`(${term})`, 'gi'));
         return parts.map((part, i) =>
             part.toLowerCase() === term.toLowerCase()
-                ? <span key={i} className="text-brand-primary bg-brand-50 font-black">{part}</span>
+                ? <span key={i} className="text-brand-primary bg-brand-50 font-semibold">{part}</span>
                 : part
         );
     };
@@ -103,6 +114,20 @@ export function Header({ onMenuClick }) {
         };
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    // Global hotkey to focus search bar
+    React.useEffect(() => {
+        const handleGlobalKeyDown = (e) => {
+            // Focus search on '/' if not already focusing an input
+            if (e.key === '/' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
+                e.preventDefault();
+                const input = searchRef.current?.querySelector('input');
+                if (input) input.focus();
+            }
+        };
+        document.addEventListener('keydown', handleGlobalKeyDown);
+        return () => document.removeEventListener('keydown', handleGlobalKeyDown);
     }, []);
 
     // Search Results Logic
@@ -122,8 +147,14 @@ export function Header({ onMenuClick }) {
                 i.customer_name?.toLowerCase().includes(term)
             ).slice(0, 5),
             crm: [
-                ...customers.filter(c => c.name?.toLowerCase().includes(term) || c.phone?.toLowerCase().includes(term)),
-                ...vendors.filter(v => v.name?.toLowerCase().includes(term) || v.company_name?.toLowerCase().includes(term))
+                ...customers.filter(c => c.name?.toLowerCase().includes(term) || c.phone?.toLowerCase().includes(term))
+                    .map(c => ({ ...c, _entityKind: 'customer' })),
+                ...vendors.filter(v =>
+                    v.name?.toLowerCase().includes(term) ||
+                    v.phone?.toLowerCase().includes(term) ||
+                    v.ntn?.toLowerCase().includes(term) ||
+                    v.contact_person?.toLowerCase().includes(term)
+                ).map(v => ({ ...v, _entityKind: 'vendor' })),
             ].slice(0, 5),
             manufacturing: [
                 ...bomList.filter(b => b.name?.toLowerCase().includes(term) || b.product_name?.toLowerCase().includes(term)),
@@ -165,8 +196,8 @@ export function Header({ onMenuClick }) {
                 detailType = 'invoice';
                 break;
             case 'crm':
-                tab = item.company_name ? 'vendors' : 'customers';
-                detailType = item.company_name ? 'vendor' : 'customer';
+                tab = item._entityKind === 'vendor' ? 'vendors' : 'customers';
+                detailType = item._entityKind === 'vendor' ? 'vendor' : 'customer';
                 break;
             case 'manufacturing':
                 tab = 'manufacturing';
@@ -189,7 +220,7 @@ export function Header({ onMenuClick }) {
                 break;
         }
 
-        window.dispatchEvent(new CustomEvent('switch-tab', { detail: { tab } }));
+        switchTab(tab);
         window.dispatchEvent(new CustomEvent('view-details', {
             detail: { item, type: detailType }
         }));
@@ -215,12 +246,17 @@ export function Header({ onMenuClick }) {
     };
 
     React.useEffect(() => {
-        setActiveIndex(-1);
+        const id = requestAnimationFrame(() => {
+            setActiveIndex(-1);
+        });
+        return () => cancelAnimationFrame(id);
     }, [searchQuery]);
 
     // Extract category from URL
     const labels = {
-        dashboard: 'Command Overview',
+        dashboard: isEasyMode
+            ? (isRetailSimpleDashboard ? 'Retail Home' : 'Home')
+            : 'Command Overview',
         inventory: 'Inventory Engine',
         invoices: 'Billing & Invoicing',
         customers: 'CRM & Client Hub',
@@ -236,170 +272,225 @@ export function Header({ onMenuClick }) {
         gst: 'Tax & Compliance',
         settings: 'System Configs',
         reports: 'Analytics Hub',
-        analytics: 'Intelligence Center'
+        analytics: 'Intelligence Center',
+        finance: 'Finance Hub',
+        orders: 'Storefront Orders',
+        inquiries: 'Customer Inquiries',
+        pos: 'Point of Sale',
+        refunds: 'Refunds & Returns',
+        restaurant: 'Restaurant Desk',
+        loyalty: 'Loyalty & CRM',
+        memberships: 'Memberships',
+        sales: 'Sales Manager',
+        'store-settings': 'Store Settings',
     };
 
     const activeTitle = labels[currentTab] || currentTab;
+    const mobileTitle = MOBILE_TAB_LABELS[currentTab] || activeTitle;
+    const minimalMobileHeader = MOBILE_MINIMAL_HEADER_TABS.has(currentTab);
+    const hideHeaderQuickAdd = MOBILE_HIDE_HEADER_QUICK_ADD_TABS.has(currentTab);
+    const slimDashboardHeader = currentTab === 'dashboard' && isEasyMode;
+    const businessShortName =
+        business?.business_name || business?.name || business?.domain?.replace(/-/g, ' ') || 'Workspace';
     const dispatchHeaderEvent = (eventName, detail) => {
         window.dispatchEvent(new CustomEvent(eventName, detail ? { detail } : undefined));
     };
 
-    const lowStockProducts = useMemo(
-        () => (products || []).filter((p) => (Number(p?.stock || 0) <= Number(p?.min_stock || p?.minStock || p?.min_stock_level || 5))),
-        [products]
-    );
-
-    const outOfStockProducts = useMemo(
-        () => (products || []).filter((p) => Number(p?.stock || 0) <= 0),
-        [products]
-    );
-
-    const expiringProducts = useMemo(() => {
-        const twoWeeks = new Date();
-        twoWeeks.setDate(twoWeeks.getDate() + 14);
-        return (products || []).filter((p) => {
-            if (!p?.expiry_date) return false;
-            const exp = new Date(p.expiry_date);
-            return !Number.isNaN(exp.getTime()) && exp >= new Date() && exp <= twoWeeks;
-        });
-    }, [products]);
-
-    const overdueInvoices = useMemo(() => {
-        const now = new Date();
-        return (invoices || []).filter((inv) => {
-            const status = String(inv?.status || '').toLowerCase();
-            const isOpen = status === 'unpaid' || status === 'pending' || status === 'overdue';
-            const hasDueDate = inv?.due_date && !Number.isNaN(new Date(inv.due_date).getTime());
-            return isOpen && hasDueDate && new Date(inv.due_date) < now;
-        });
-    }, [invoices]);
-
-    const openPurchaseOrders = useMemo(() => {
-        return (purchaseOrders || []).filter((po) => {
-            const status = String(po?.status || '').toLowerCase();
-            return status === 'pending' || status === 'open' || status === 'draft';
-        });
-    }, [purchaseOrders]);
-
-    const notifications = useMemo(() => {
-        const items = [];
-        if (lowStockProducts.length > 0) {
-            items.push({
-                id: 'low-stock',
-                severity: 'high',
-                icon: AlertTriangle,
-                title: 'Low Stock Alert',
-                description: `${lowStockProducts.length} products below minimum stock`,
-                count: lowStockProducts.length,
-            });
-        }
-        if (outOfStockProducts.length > 0) {
-            items.push({
-                id: 'out-of-stock',
-                severity: 'high',
-                icon: PackageIcon,
-                title: 'Out of Stock',
-                description: `${outOfStockProducts.length} products require immediate replenishment`,
-                count: outOfStockProducts.length,
-            });
-        }
-        if (overdueInvoices.length > 0) {
-            items.push({
-                id: 'overdue-invoices',
-                severity: 'medium',
-                icon: FileText,
-                title: 'Overdue Invoices',
-                description: `${overdueInvoices.length} invoices are overdue`,
-                count: overdueInvoices.length,
-            });
-        }
-        if (openPurchaseOrders.length > 0) {
-            items.push({
-                id: 'purchase-orders',
-                severity: 'low',
-                icon: ShoppingCart,
-                title: 'Open Purchase Orders',
-                description: `${openPurchaseOrders.length} purchase orders pending closure`,
-                count: openPurchaseOrders.length,
-            });
-        }
-        if (expiringProducts.length > 0) {
-            items.push({
-                id: 'expiring-stock',
-                severity: 'medium',
-                icon: Clock3,
-                title: 'Expiry Risk',
-                description: `${expiringProducts.length} products expiring within 14 days`,
-                count: expiringProducts.length,
-            });
-        }
-        if ((pendingApprovals || []).length > 0) {
-            items.push({
-                id: 'pending-approvals',
-                severity: 'medium',
-                icon: ClipboardList,
-                title: 'Pending Approvals',
-                description: `${pendingApprovals.length} workflow approvals are waiting`,
-                count: pendingApprovals.length,
-            });
-        }
-        return items;
-    }, [lowStockProducts.length, outOfStockProducts.length, overdueInvoices.length, openPurchaseOrders.length, expiringProducts.length, pendingApprovals]);
-
-    const notificationCount = useMemo(
-        () => notifications.reduce((sum, item) => sum + Number(item.count || 0), 0),
-        [notifications]
-    );
-
-    const handleNotificationClick = (notificationId) => {
-        if (notificationId === 'low-stock' || notificationId === 'out-of-stock' || notificationId === 'expiring-stock') {
-            dispatchHeaderEvent('switch-tab', { tab: 'inventory' });
-            dispatchHeaderEvent('inventory-focus-low-stock', { mode: notificationId });
-            return;
-        }
-        if (notificationId === 'overdue-invoices') {
-            dispatchHeaderEvent('switch-tab', { tab: 'invoices' });
-            return;
-        }
-        if (notificationId === 'purchase-orders') {
-            dispatchHeaderEvent('switch-tab', { tab: 'purchases' });
-            return;
-        }
-        if (notificationId === 'pending-approvals') {
-            dispatchHeaderEvent('switch-tab', { tab: 'dashboard' });
-        }
+    const handleHeaderDateChange = (newRange, meta) => {
+        if (!newRange?.from) return;
+        setDateRange(newRange, meta?.presetKey ? { presetKey: meta.presetKey } : undefined);
     };
 
     return (
-        <header className="h-14 bg-white/90 backdrop-blur-xl border-b border-gray-200/50 flex items-center px-4 lg:px-6 sticky top-0 z-40 shadow-sm">
-            <div className="flex items-center justify-between w-full max-w-[1600px] mx-auto gap-3">
-                {/* Left: Mobile Menu & Module Breadcrumb */}
-                <div className="flex items-center gap-3 shrink-0">
+        <header className="sticky top-0 z-40 border-b border-neutral-200/80 bg-super-white/95 shadow-sm backdrop-blur-md">
+            {/* ── Mobile header, single compact row ── */}
+            <div className="lg:hidden">
+                <div className="flex h-10 items-center gap-1 px-2.5">
                     <Button
                         variant="ghost"
                         size="icon"
-                        className="lg:hidden shrink-0 h-8 w-8 text-gray-400"
+                        className="h-7 w-7 shrink-0 text-gray-500"
                         onClick={onMenuClick}
+                        aria-label="Open menu"
                     >
-                        <Menu className="w-4 h-4" />
+                        <Menu className="h-4 w-4" />
                     </Button>
 
-                    <div className="flex flex-col -space-y-0.5">
-                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] leading-none">
-                            {business?.domain?.replace(/-/g, ' ') || 'Dashboard'}
+                    <div className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden leading-none">
+                        <span className="truncate text-[13px] font-bold tracking-tight text-gray-900">
+                            {mobileTitle}
                         </span>
-                        <h1 className="text-sm font-black text-gray-900 tracking-tight">
-                            {activeTitle}
-                        </h1>
+                        <span className="hidden shrink-0 text-[10px] text-gray-300 min-[340px]:inline">·</span>
+                        <span className="hidden truncate text-[10px] font-semibold uppercase tracking-wide text-gray-400 min-[340px]:inline">
+                            {businessShortName}
+                        </span>
                     </div>
+
+                    {!minimalMobileHeader && !modeReady ? (
+                        <div className="h-7 w-[4.5rem] shrink-0" aria-hidden />
+                    ) : null}
+
+                    {!minimalMobileHeader && modeReady && !isEasyMode && (
+                        <div className="flex shrink-0 items-center gap-0.5">
+                            <DateRangePicker
+                                minimal
+                                date={dateRange}
+                                onDateChange={handleHeaderDateChange}
+                            />
+                            <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-7 w-7 shrink-0 text-gray-500"
+                                onClick={() => dispatchHeaderEvent('refresh-dashboard-data')}
+                                title="Refresh data"
+                                aria-label="Refresh data"
+                            >
+                                <RefreshCcw className="h-3.5 w-3.5" />
+                            </Button>
+                        </div>
+                    )}
+
+                    {!minimalMobileHeader && modeReady && isEasyMode && (
+                        <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7 shrink-0 text-gray-500"
+                            onClick={() => dispatchHeaderEvent('refresh-dashboard-data')}
+                            title="Refresh data"
+                            aria-label="Refresh data"
+                        >
+                            <RefreshCcw className="h-3.5 w-3.5" />
+                        </Button>
+                    )}
+
+                    {!minimalMobileHeader && !slimDashboardHeader && (
+                    <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-7 w-7 shrink-0 text-gray-500"
+                        onClick={() => {
+                            const input = searchRef.current?.querySelector('input');
+                            if (input) input.focus();
+                            else setIsSearchFocused(true);
+                        }}
+                        aria-label="Search"
+                    >
+                        <Search className="h-4 w-4" />
+                    </Button>
+                    )}
+
+                    {!minimalMobileHeader && !hideHeaderQuickAdd && (
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button
+                                size="icon"
+                                variant="outline"
+                                className="h-7 w-7 shrink-0 rounded-lg border-gray-200"
+                                aria-label="Quick add"
+                            >
+                                <Plus className="h-3.5 w-3.5" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-52 rounded-2xl p-2 shadow-xl">
+                            <DropdownMenuLabel className="px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-gray-400">
+                                Quick Actions
+                            </DropdownMenuLabel>
+                            <DropdownMenuItem onClick={() => window.dispatchEvent(new CustomEvent('open-modal', { detail: { modalId: 'invoice' } }))} className="cursor-pointer rounded-xl py-2.5">
+                                <Plus className="mr-3 h-4 w-4" />
+                                <span className="text-xs font-bold">New Invoice</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => window.dispatchEvent(new CustomEvent('open-modal', { detail: { modalId: 'product' } }))} className="cursor-pointer rounded-xl py-2.5">
+                                <PackageIcon className="mr-3 h-4 w-4 text-brand-primary" />
+                                <span className="text-xs font-bold">New Product</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => window.dispatchEvent(new CustomEvent('open-modal', { detail: { modalId: 'customer' } }))} className="cursor-pointer rounded-xl py-2.5">
+                                <UsersIcon className="mr-3 h-4 w-4 text-green-500" />
+                                <span className="text-xs font-bold">New Customer</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => window.dispatchEvent(new CustomEvent('open-modal', { detail: { modalId: 'purchase' } }))} className="cursor-pointer rounded-xl py-2.5">
+                                <ShoppingCart className="mr-3 h-4 w-4 text-brand-primary" />
+                                <span className="text-xs font-bold">New Purchase</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => window.dispatchEvent(new CustomEvent('open-modal', { detail: { modalId: 'expense' } }))} className="cursor-pointer rounded-xl py-2.5">
+                                <ListFilter className="mr-3 h-4 w-4 text-rose-500" />
+                                <span className="text-xs font-bold">Record Expense</span>
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                    )}
+
+                    <NotificationBell className="shrink-0" />
                 </div>
 
-                {/* Center: Global Search Bar */}
-                <div className="hidden md:flex flex-1 justify-center max-w-md lg:max-w-lg px-2 lg:px-4" ref={searchRef}>
+                {/* Mobile search overlay */}
+                <AnimatePresence>
+                    {isSearchFocused && (
+                        <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            className="overflow-hidden border-t border-gray-100 px-3 pb-2"
+                            ref={searchRef}
+                        >
+                            <div className="relative pt-2">
+                                <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
+                                <Input
+                                    id="hub-header-search-mobile"
+                                    name="hub-search-mobile"
+                                    type="search"
+                                    autoComplete="off"
+                                    placeholder={t.search_placeholder}
+                                    className="h-9 rounded-xl border-gray-200 bg-gray-50 pl-9 text-xs"
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    onKeyDown={handleKeyDown}
+                                    autoFocus
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setIsSearchFocused(false);
+                                        setSearchQuery('');
+                                    }}
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1 hover:bg-gray-100"
+                                >
+                                    <X className="h-3.5 w-3.5 text-gray-400" />
+                                </button>
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+            </div>
+
+            {/* ── Desktop header ── */}
+            <div className="hidden h-14 items-center gap-3 px-4 lg:flex lg:px-5">
+            <div className="mx-auto flex w-full max-w-[1600px] items-center gap-3">
+                {/* Left: module title (Easy home keeps body as primary title) */}
+                <div className="flex min-w-0 shrink-0 flex-col justify-center">
+                    <span className="truncate text-[10px] font-bold uppercase leading-none tracking-[0.16em] text-neutral-400 max-w-[10rem] xl:max-w-[12rem]">
+                        {businessShortName}
+                    </span>
+                    {!slimDashboardHeader ? (
+                        <h1 className="truncate text-sm font-bold tracking-tight text-neutral-900 max-w-[10rem] xl:max-w-[12rem]">
+                            {activeTitle}
+                        </h1>
+                    ) : (
+                        <span className="truncate text-sm font-semibold tracking-tight text-neutral-500 max-w-[10rem] xl:max-w-[12rem]">
+                            Home
+                        </span>
+                    )}
+                </div>
+
+                {/* Center: search */}
+                <div className="flex min-w-0 flex-1 justify-center px-1 lg:px-3" ref={searchRef}>
                     <div className="relative w-full group">
                         <Search className={`absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 group-focus-within:text-brand-primary transition-colors ${language === 'ur' ? 'right-3' : 'left-3'}`} />
                         <Input
-                            placeholder={t.search_placeholder + '...'}
+                            id="hub-header-search"
+                            name="hub-search-desktop"
+                            type="search"
+                            autoComplete="off"
+                            placeholder={t.search_placeholder + '...  (/)'}
                             className={`h-9 text-xs bg-gray-50 border-gray-200/50 focus:bg-white focus:border-brand-100 focus:ring-4 focus:ring-brand-50 transition-all rounded-xl ${language === 'ur' ? 'pr-9' : 'pl-9'}`}
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
@@ -429,7 +520,7 @@ export function Header({ onMenuClick }) {
                                             <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-3">
                                                 <Search className="w-6 h-6 text-gray-300" />
                                             </div>
-                                            <p className="text-xs font-black text-gray-900 uppercase tracking-tight mb-1">No matches found</p>
+                                            <p className="text-xs font-semibold text-gray-900 uppercase tracking-tight mb-1">No matches found</p>
                                             <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Try a different search term</p>
                                         </div>
                                     ) : (
@@ -440,9 +531,9 @@ export function Header({ onMenuClick }) {
                                                     if (category === 'flatItems' || category === 'empty' || items.length === 0) return null;
                                                     return (
                                                         <div key={category} className="p-2 border-b border-gray-50 last:border-0">
-                                                            <div className="flex items-center gap-2 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-gray-400 bg-gray-50/50 rounded-lg mb-1">
+                                                            <div className="flex items-center gap-2 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-gray-400 bg-gray-50/50 rounded-lg mb-1">
                                                                 {category === 'inventory' && <PackageIcon className="w-3 h-3 text-brand-primary" />}
-                                                                {category === 'sales' && <FileText className="w-3 h-3 text-wine" />}
+                                                                {category === 'sales' && <FileText className="w-3 h-3 text-brand-primary" />}
                                                                 {category === 'crm' && <UsersIcon className="w-3 h-3 text-green-500" />}
                                                                 {category === 'manufacturing' && <Factory className="w-3 h-3 text-orange-500" />}
                                                                 {category === 'management' && <ClipboardList className="w-3 h-3 text-brand-primary" />}
@@ -464,7 +555,7 @@ export function Header({ onMenuClick }) {
                                                                                     {highlightMatch(item.name || item.number || item.product_name || 'Unnamed Item', searchQuery)}
                                                                                 </span>
                                                                                 <span className="text-[10px] text-gray-500 line-clamp-1">
-                                                                                    {highlightMatch(item.sku || item.customer_name || item.company_name || item.category || item.status || '', searchQuery)}
+                                                                                    {highlightMatch(item.sku || item.customer_name || item.phone || item.ntn || item.contact_person || item.category || item.status || '', searchQuery)}
                                                                                 </span>
                                                                             </div>
                                                                             <ChevronIcon className={`w-3 h-3 transition-all ${isSelected ? 'text-brand-primary translate-x-0.5' : 'text-gray-300'}`} />
@@ -477,7 +568,7 @@ export function Header({ onMenuClick }) {
                                                 });
                                             })()}
                                             <div className="p-2 bg-gray-50/30 text-center">
-                                                <span className="text-[9px] font-black text-gray-300 uppercase tracking-widest">
+                                                <span className="text-[10px] font-semibold text-gray-300 uppercase tracking-widest">
                                                     Use Arrow Keys to Navigate * Enter to Open
                                                 </span>
                                             </div>
@@ -489,19 +580,18 @@ export function Header({ onMenuClick }) {
                     </div>
                 </div>
 
-                {/* Right: Consolidated Actions */}
-                <div className="flex items-center gap-2 shrink-0">
-                    {/* Date Range -- hidden in Easy mode for cleanliness */}
-                    {!isEasyMode && (
-                        <div className="hidden md:flex items-center gap-1.5 border-r border-gray-100 pr-2">
+                {/* Right: actions */}
+                <div className="flex shrink-0 items-center gap-1">
+                    {/* Date range: all breakpoints in advanced mode (popover stays usable on small screens). */}
+                    {!modeReady ? (
+                        <div className="hidden h-8 w-[12rem] shrink-0 sm:block" aria-hidden />
+                    ) : null}
+                    {modeReady && !isEasyMode && (
+                        <div className="flex items-center gap-1 sm:gap-1.5 border-r border-gray-100 pr-1.5 sm:pr-2 min-w-0">
                             <DateRangePicker
                                 date={dateRange}
-                                onDateChange={(newRange) => {
-                                    if (newRange?.from && newRange?.to) {
-                                        setDateRange(newRange);
-                                    }
-                                }}
-                                className="w-[205px] lg:w-[214px]"
+                                onDateChange={handleHeaderDateChange}
+                                className="min-w-0 w-[min(12.5rem,calc(100vw-10rem))] sm:w-[205px] lg:w-[214px]"
                             />
                             <Button
                                 size="icon"
@@ -516,7 +606,7 @@ export function Header({ onMenuClick }) {
                     )}
 
                     {/* Easy mode: simple refresh */}
-                    {isEasyMode && (
+                    {modeReady && isEasyMode && (
                         <Button
                             size="icon"
                             variant="ghost"
@@ -539,7 +629,7 @@ export function Header({ onMenuClick }) {
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-52 rounded-2xl shadow-xl p-2 border-gray-100/80 backdrop-blur-xl">
-                                <DropdownMenuLabel className="text-[9px] uppercase font-black tracking-[0.2em] text-gray-400 px-3 py-2">Quick Actions</DropdownMenuLabel>
+                                <DropdownMenuLabel className="text-[10px] uppercase font-semibold tracking-[0.2em] text-gray-400 px-3 py-2">Quick Actions</DropdownMenuLabel>
                                 <DropdownMenuItem onClick={() => window.dispatchEvent(new CustomEvent('open-modal', { detail: { modalId: 'invoice' } }))} className="rounded-xl py-2.5 cursor-pointer text-brand-primary bg-brand-50/70">
                                     <Plus className="w-4 h-4 mr-3" />
                                     <span className="font-bold text-xs">New Invoice</span>
@@ -560,83 +650,41 @@ export function Header({ onMenuClick }) {
                                     <ShoppingCart className="w-4 h-4 mr-3 text-brand-primary" />
                                     <span className="font-bold text-xs">New Purchase Order</span>
                                 </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                    onClick={() =>
+                                        window.dispatchEvent(
+                                            new CustomEvent('open-modal', {
+                                                detail: { modalId: 'expense' },
+                                            })
+                                        )
+                                    }
+                                    className="rounded-xl py-2.5 cursor-pointer"
+                                >
+                                    <ListFilter className="w-4 h-4 mr-3 text-rose-500" />
+                                    <span className="font-bold text-xs">Record Expense</span>
+                                </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
                     </div>
 
-                    <div className="h-5 w-px bg-gray-100 mx-0.5"></div>
+                    <div className="mx-0.5 h-5 w-px bg-neutral-200" />
 
-                    {/* Dark Mode Toggle */}
                     <Button
                         variant="ghost"
                         size="icon"
-                        className="text-gray-400 hover:text-brand-primary hover:bg-brand-50 rounded-lg transition-colors h-8 w-8"
+                        className="h-8 w-8 rounded-lg text-neutral-400 hover:bg-brand-50 hover:text-brand-primary"
                         onClick={() => document.documentElement.classList.toggle('dark')}
                         title="Toggle dark mode"
+                        aria-label="Toggle dark mode"
                     >
-                        <Sun className="w-4 h-4 block dark:hidden" />
-                        <Moon className="w-4 h-4 hidden dark:block" />
+                        <Sun className="block h-4 w-4 dark:hidden" />
+                        <Moon className="hidden h-4 w-4 dark:block" />
                     </Button>
 
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="relative text-gray-400 hover:text-brand-primary hover:bg-brand-50 rounded-lg transition-colors h-8 w-8">
-                                <Bell className="w-4 h-4" />
-                                {notificationCount > 0 && (
-                                    <span className="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 rounded-full bg-red-500 text-white text-[9px] font-black leading-4 text-center border border-white">
-                                        {notificationCount > 99 ? '99+' : notificationCount}
-                                    </span>
-                                )}
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-80 rounded-2xl shadow-xl border-gray-100/80 p-2">
-                            <DropdownMenuLabel className="px-3 py-2">
-                                <div className="flex items-center justify-between">
-                                    <span className="text-[10px] font-black uppercase tracking-[0.14em] text-gray-500">Notifications</span>
-                                    <span className="text-[10px] font-bold text-brand-primary">{notificationCount} total</span>
-                                </div>
-                            </DropdownMenuLabel>
-                            <DropdownMenuSeparator className="my-1" />
-                            {notifications.length === 0 ? (
-                                <div className="px-3 py-6 text-center">
-                                    <Bell className="w-5 h-5 text-gray-300 mx-auto mb-2" />
-                                    <p className="text-xs font-semibold text-gray-600">All clear</p>
-                                    <p className="text-[10px] text-gray-400">No active notifications right now</p>
-                                </div>
-                            ) : (
-                                <div className="space-y-1.5 p-1">
-                                    {notifications.map((item) => {
-                                        const ItemIcon = item.icon;
-                                        const severityClasses = item.severity === 'high'
-                                            ? 'bg-red-50 border-red-100 text-red-700'
-                                            : item.severity === 'medium'
-                                                ? 'bg-amber-50 border-amber-100 text-amber-700'
-                                                : 'bg-brand-50 border-brand-100 text-brand-primary-dark';
-                                        return (
-                                            <button
-                                                key={item.id}
-                                                type="button"
-                                                onClick={() => handleNotificationClick(item.id)}
-                                                className={`w-full text-left px-3 py-2.5 rounded-xl border transition-colors hover:bg-gray-50 ${severityClasses}`}
-                                            >
-                                                <div className="flex items-start justify-between gap-2">
-                                                    <div className="flex items-start gap-2">
-                                                        <ItemIcon className="w-4 h-4 mt-0.5" />
-                                                        <div>
-                                                            <p className="text-xs font-black tracking-tight">{item.title}</p>
-                                                            <p className="text-[10px] font-semibold opacity-80">{item.description}</p>
-                                                        </div>
-                                                    </div>
-                                                    <span className="text-[10px] font-black px-1.5 py-0.5 rounded-full bg-white/70 border border-white/80">{item.count}</span>
-                                                </div>
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            )}
-                        </DropdownMenuContent>
-                    </DropdownMenu>
+                    <NotificationBell />
                 </div>
+            </div>
             </div>
         </header >
     );

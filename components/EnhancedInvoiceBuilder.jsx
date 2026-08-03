@@ -1,23 +1,26 @@
 // This file usually uses formatCurrency, but checking for hardcoded symbols
 
-import { useState, useEffect, useMemo, useRef } from 'react';
-import { X, Plus, Trash2, Download, Printer, Save, Calculator, FileText, Loader2, Scan, Keyboard, AlertCircle, ShoppingCart, WandSparkles, Send, Clock3, CheckCircle2, XCircle, ShieldCheck } from 'lucide-react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { X, Plus, Trash2, Download, Printer, Save, Calculator, FileText, Loader2, Scan, Keyboard, AlertCircle, ShoppingCart, WandSparkles, Send, Clock3, CheckCircle2, XCircle, ShieldCheck, MoreHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { generateInvoicePDF } from '@/lib/pdf';
+import { printInvoiceThermalFromRow } from '@/lib/print/clientInvoicePrint';
 import { PakistaniPaymentSelector } from '@/components/payment/PakistaniPaymentSelector';
 import { PakistaniTaxCalculator } from '@/components/tax/PakistaniTaxCalculator';
 import { calculatePakistaniTax, generateFBRInvoice, formatNTN, getTaxCategoryForDomain } from '@/lib/tax/pakistaniTax';
 import { getDomainKnowledge } from '@/lib/domainKnowledge';
 import { getDomainDefaults, getDomainUnits, getDomainUnits as getUnits, getDomainProductFields, getDomainInvoiceColumns } from '@/lib/utils/domainHelpers';
+import { getDomainConfig } from '@/lib/config/domains';
 import { getDomainColors } from '@/lib/domainColors';
 import { formatCurrency } from '@/lib/utils/formatting';
 import { getTaxStrategy } from '@/lib/utils/taxStrategies';
 import { cn } from '@/lib/utils';
 import { Combobox } from '@/components/ui/combobox';
-import { useBusiness } from '@/lib/context/BusinessContext';
+import { useFormRegionalContext } from '@/lib/hooks/useFormRegionalContext';
+import { getRegionalStandards } from '@/lib/utils/regionalHelpers';
 import { Badge } from '@/components/ui/badge';
 import toast from 'react-hot-toast';
 import { useStockAvailability, useCreditLimitCheck, useDueDateCalculator } from '@/lib/hooks/useInvoiceHelpers';
@@ -25,8 +28,18 @@ import { invoiceSchema, validateWithSchema } from '@/lib/validation/schemas';
 import { getCurrentSeason, getSeasonalDiscount } from '@/lib/domainData/pakistaniSeasons';
 import { hasSeasonalPricing } from '@/lib/utils/pakistaniFeatures';
 import { ExpertActionPanel } from '@/components/domain/ExpertActionPanel';
-import { AIInsightOverlay } from '@/components/domain/AIInsightOverlay';
 import { submitInvoiceForApprovalAction, getApprovalHistoryAction, schedulePaymentRemindersAction } from '@/lib/actions/standard/invoice-approval';
+import { MOBILE_OVERLAY, MOBILE_OVERLAY_CARD, MOBILE_FORM_FOOTER, MOBILE_GRID_FIELDS } from '@/lib/utils/formMobileStyles';
+import { InvoiceMobileLineItems } from '@/components/invoice/mobile/InvoiceMobileLineItems';
+import { findProductByScanCode } from '@/lib/utils/productScanLookup';
+import { lookupProductByScanCodeAction } from '@/lib/actions/standard/inventory/lookup';
+import { BarcodeScanTrigger } from '@/components/inventory/BarcodeScanTrigger';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 /**
  * Enhanced Invoice Builder Component
@@ -50,13 +63,31 @@ export function EnhancedInvoiceBuilder({
   initialData = null,
   ...props
 }) {
-  const { business, currency, regionalStandards } = useBusiness();
-  const standards = regionalStandards || { taxLabel: 'Tax', taxIdLabel: 'Tax ID', currency: 'PKR', countryCode: 'PK' };
+  const {
+    business,
+    currency: ctxCurrency,
+    currencySymbol: ctxCurrencySymbol,
+    registry: regionalStandards,
+    defaultTaxRate,
+    taxEnabled,
+    isPakistanMarket,
+    domainKnowledge,
+    taxLabel: regionalTaxLabel,
+  } = useFormRegionalContext(category);
+  const standards = regionalStandards || getRegionalStandards('PK');
+  const currency = ctxCurrency || standards.currency;
   const strategy = getTaxStrategy(standards);
   const colors = getDomainColors(category);
-  const domainKnowledge = getDomainKnowledge(category);
-  const isPakistaniDomain = standards.countryCode === 'PK';
-  const currencySymbol = business?.settings?.financials?.currencySymbol || standards.currencySymbol;
+  const brandAccent =
+    business?.settings?.brand?.primaryColor ||
+    business?.settings?.storefront?.brand?.primaryColor ||
+    colors.primary;
+  const domainInvoiceLabel =
+    getDomainConfig(category)?.label_overrides?.invoice || 'Sales Invoice';
+  const isPakistaniDomain = isPakistanMarket;
+  const showTaxUi = taxEnabled !== false;
+  const lineDefaultTaxRate = showTaxUi ? defaultTaxRate : 0;
+  const currencySymbol = business?.settings?.financials?.currencySymbol || ctxCurrencySymbol || standards.currencySymbol;
 
   const normalizeProvince = (value = 'punjab') => {
     const raw = String(value || '').trim().toLowerCase();
@@ -106,11 +137,11 @@ export function EnhancedInvoiceBuilder({
   // Initialize invoice state with conditional fields
   const [invoice, setInvoice] = useState(() => {
     const baseInvoice = {
-      invoiceNumber: `INV-${Date.now()}`,
-      documentType: standards.taxLabel,
+      invoiceNumber: '', // Will be generated by server using DocumentSequenceService
+      documentType: regionalTaxLabel || standards.taxLabel,
       date: new Date().toISOString().split('T')[0],
       dueDate: '',
-      invoiceType: standards.taxStrategy === 'VAT' ? 'vat' : 'tax',
+      invoiceType: 'retail',
       customer: {
         name: '',
         email: '',
@@ -126,6 +157,7 @@ export function EnhancedInvoiceBuilder({
         totalTax: 0,
       },
       paymentMethod: isPakistaniDomain ? 'cod' : 'cash',
+      category,
       discount: 0,
       discountType: 'percent', // percent or amount
       roundOff: 0,
@@ -140,7 +172,9 @@ export function EnhancedInvoiceBuilder({
       const mappedItems = (initialData.items || []).map(item => {
         const rate = item.unit_price || item.rate || 0;
         const discount = item.discount_amount || item.discount || 0;
-        const taxPercent = item.tax_percent || item.taxPercent || (isPakistaniDomain ? 18 : 0);
+        const taxPercent = showTaxUi
+          ? (item.tax_percent || item.taxPercent || (isPakistaniDomain ? lineDefaultTaxRate : 0))
+          : 0;
         const quantity = item.quantity || 1;
 
         // Calculate line amount
@@ -155,7 +189,7 @@ export function EnhancedInvoiceBuilder({
           name: item.product_name || item.name || '',
           hsn: item.hsn_code || item.hsn || '',
           quantity,
-          unit: item.unit || 'pcs',
+          unit: item.unit || item.metadata?.unit || 'pcs',
           rate,
           discount,
           taxPercent,
@@ -170,9 +204,40 @@ export function EnhancedInvoiceBuilder({
       // Find customer details if ID exists
       const customerDetail = customers.find(c => c.id === (initialData.customer_id || initialData.customer?.id)) || {};
 
+      // Normalize DB dates (ISO timestamps) to YYYY-MM-DD for HTML date inputs
+      const normalizeDate = (val) => {
+        if (!val) return '';
+        // Already YYYY-MM-DD (10 chars)
+        if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(val)) return val;
+        // ISO timestamp: take first 10 chars
+        if (typeof val === 'string') return val.slice(0, 10);
+        if (val instanceof Date) {
+          const y = val.getFullYear();
+          const m = String(val.getMonth() + 1).padStart(2, '0');
+          const d = String(val.getDate()).padStart(2, '0');
+          return `${y}-${m}-${d}`;
+        }
+        return '';
+      };
+
       return {
         ...baseInvoice,
         ...initialData, // Spread original for ID and other metadata
+        // Override date fields with normalized YYYY-MM-DD strings for <input type="date">
+        date: normalizeDate(initialData.date) || baseInvoice.date,
+        dueDate: normalizeDate(initialData.due_date || initialData.dueDate) || '',
+        invoiceNumber: initialData.invoice_number || initialData.invoiceNumber || '',
+        invoiceType:
+          initialData.invoiceType ||
+          initialData.invoice_type ||
+          initialData.tax_details?.invoice_type ||
+          initialData.taxDetails?.invoice_type ||
+          'retail',
+        paymentMethod:
+          initialData.payment_method ||
+          initialData.paymentMethod ||
+          baseInvoice.paymentMethod,
+        category: category || initialData.category || baseInvoice.category,
         customer: {
           ...baseInvoice.customer,
           id: initialData.customer_id || customerDetail.id || '',
@@ -186,7 +251,7 @@ export function EnhancedInvoiceBuilder({
         },
         items: mappedItems,
         discount: initialData.discount_total || initialData.discount || 0,
-        notes: initialData.notes || `Derived from document: ${initialData.invoice_number || initialData.challan_number || initialData.order_number || 'Source'}`,
+        notes: initialData.notes || '',
       };
     }
 
@@ -296,7 +361,9 @@ export function EnhancedInvoiceBuilder({
               updated.name = product.name;
               updated.hsn = product.hsn || product.hsnCode || '';
               updated.rate = Number(product.price) || 0;
-              updated.taxPercent = Number(product.taxPercent) || (isPakistaniDomain ? 18 : 0);
+              updated.taxPercent = showTaxUi
+                ? (Number(product.taxPercent) || (isPakistaniDomain ? lineDefaultTaxRate : 0))
+                : 0;
               updated.unit = product.unit || 'pcs';
 
               // Auto-fill domain metadata if available
@@ -394,14 +461,17 @@ export function EnhancedInvoiceBuilder({
 
       return {
         amount: itemTaxable * globalDiscountFactor,
-        taxPercent: item.taxPercent,
+        taxPercent: showTaxUi ? item.taxPercent : 0,
         category: item.taxCategory,
         domain: category
       };
     });
 
-    const taxResult = strategy.calculateBulk(itemsForTax, standards);
-    const totalTax = taxResult.totalTax;
+    const taxResult = showTaxUi
+      ? strategy.calculateBulk(itemsForTax, standards)
+      : { totalTax: 0, taxAmount: 0, details: {} };
+    // taxResult.totalTax is the canonical field; fall back to taxAmount for safety
+    const totalTax = showTaxUi ? Number(taxResult.totalTax ?? taxResult.taxAmount ?? 0) : 0;
 
     const total = Number((finalSubtotal + totalTax).toFixed(2));
     const manualRoundOff = Number(invoice.roundOff || 0) || 0;
@@ -409,6 +479,7 @@ export function EnhancedInvoiceBuilder({
 
     return {
       subtotal: finalSubtotal,
+      rawSubtotal: subtotal,
       totalTax,
       tax_total: totalTax,
       taxDetails: taxResult.details,
@@ -420,42 +491,67 @@ export function EnhancedInvoiceBuilder({
       seasonalDiscount: seasonalDiscountAmount,
       seasonalDiscountDetails,
     };
-  }, [invoice.items, invoice.discount, invoice.discountType, invoice.roundOff, standards, category, seasonalPricingEnabled, currentSeason, products]);
+  }, [invoice.items, invoice.discount, invoice.discountType, invoice.roundOff, standards, category, seasonalPricingEnabled, currentSeason, products, showTaxUi, strategy]);
 
   // Credit limit warning
   const creditWarning = useCreditLimitCheck(selectedCustomerData, calculateTotals.total);
 
   // Keyboard Shortcuts moved below totals declaration
 
-  // Barcode Sniffer Logic
-  const handleBarcodeScan = (code) => {
-    if (!code) return;
-    const product = products.find(p => p.barcode === code || p.sku === code);
-    if (product) {
-      const existingItem = invoice.items.find(item => item.productId === product.id);
-      if (existingItem) {
-        updateItem(existingItem.id, 'quantity', existingItem.quantity + 1);
-      } else {
-        const newItem = {
-          id: Date.now(),
-          productId: product.id,
-          name: product.name,
-          hsn: product.hsn || product.hsnCode || '',
-          quantity: 1,
-          unit: product.unit || 'pcs',
-          rate: product.price,
-          discount: 0,
-          taxPercent: product.taxPercent || (isPakistaniDomain ? 18 : 0),
-          amount: product.price,
-          taxCategory: isPakistaniDomain ? getTaxCategoryForDomain(category) : 'retail-standard',
-        };
-        setInvoice(prev => ({ ...prev, items: [...prev.items, newItem] }));
+  // Barcode scan — client catalog + live DB fallback
+  const addProductFromScan = useCallback(async (code) => {
+    if (!code) return false;
+    let product = findProductByScanCode(products, code);
+    if (!product && business?.id) {
+      try {
+        const result = await lookupProductByScanCodeAction(business.id, code);
+        if (result.success && result.product) product = result.product;
+      } catch {
+        /* client-only */
       }
-      toast.success(`Added: ${product.name}`);
-      setBarcodeInput('');
-    } else {
-      toast.error('Product not found for barcode: ' + code);
     }
+    if (!product) {
+      toast.error(`Product not found for barcode: ${code}`);
+      return false;
+    }
+
+    const existingItem = invoice.items.find((item) => item.productId === product.id);
+    if (existingItem) {
+      updateItem(existingItem.id, 'quantity', existingItem.quantity + 1);
+    } else {
+      const newItem = {
+        id: Date.now(),
+        productId: product.id,
+        name: product.name,
+        hsn: product.hsn || product.hsnCode || product.hsn_code || '',
+        quantity: 1,
+        unit: product.unit || 'pcs',
+        rate: product.price,
+        discount: 0,
+        taxPercent: showTaxUi
+          ? (product.taxPercent || product.tax_percent || (isPakistaniDomain ? lineDefaultTaxRate : 0))
+          : 0,
+        amount: product.price,
+        taxCategory: isPakistaniDomain ? getTaxCategoryForDomain(category) : 'retail-standard',
+      };
+      setInvoice((prev) => ({ ...prev, items: [...prev.items, newItem] }));
+    }
+    toast.success(`Added: ${product.name}`);
+    setBarcodeInput('');
+    return true;
+  }, [
+    products,
+    business?.id,
+    invoice.items,
+    updateItem,
+    isPakistaniDomain,
+    lineDefaultTaxRate,
+    showTaxUi,
+    category,
+  ]);
+
+  const handleBarcodeScan = (code) => {
+    void addProductFromScan(code);
   };
 
   // Update customer details when selected
@@ -550,7 +646,9 @@ export function EnhancedInvoiceBuilder({
       unit: lastItem?.unit || 'pcs',
       rate: 0,
       discount: 0,
-      taxPercent: lastItem?.taxPercent ?? (isPakistaniDomain ? 18 : 0),
+      taxPercent: showTaxUi
+        ? (lastItem?.taxPercent ?? (isPakistaniDomain ? lineDefaultTaxRate : 0))
+        : 0,
       amount: 0,
       taxCategory: isPakistaniDomain ? getTaxCategoryForDomain(category) : 'retail-standard',
     };
@@ -607,7 +705,9 @@ export function EnhancedInvoiceBuilder({
     const suggestedItems = candidateProducts.map((product, index) => {
       const quantity = 1;
       const rate = Number(product?.price || product?.selling_price || 0) || 0;
-      const taxPercent = Number(product?.taxPercent || product?.tax_percent || (isPakistaniDomain ? 18 : 0)) || 0;
+      const taxPercent = showTaxUi
+        ? (Number(product?.taxPercent || product?.tax_percent || (isPakistaniDomain ? lineDefaultTaxRate : 0)) || 0)
+        : 0;
       const amount = rate + ((rate * taxPercent) / 100);
 
       return {
@@ -674,15 +774,19 @@ export function EnhancedInvoiceBuilder({
   const totals = calculateTotals;
 
   const postingHealth = useMemo(() => {
-    const debit = Number(totals.total) || 0;
+    const grandTotal = Number(totals.total) || 0;
+    const rawSubtotal = Number(totals.rawSubtotal ?? totals.subtotal) || 0;
     const tax = Number(totals.totalTax || totals.tax_total || 0) || 0;
-    const revenue = Math.max(0, debit - tax);
-    const credit = revenue + tax;
-    const difference = Math.abs(debit - credit);
+    const discount = Number(totals.discount || 0) || 0;
+    const seasonal = Number(totals.seasonalDiscount || 0) || 0;
+    const roundOff = Number(totals.roundOff || 0) || 0;
+    // Expected: rawSubtotal - discount - seasonal + tax + roundOff = grandTotal
+    const expected = Number((rawSubtotal - discount - seasonal + tax + roundOff).toFixed(2));
+    const difference = Math.abs(grandTotal - expected);
     return {
-      debit,
-      credit,
-      balanced: difference < 0.01,
+      debit: grandTotal,
+      credit: expected,
+      balanced: difference < 0.02,
       difference,
     };
   }, [totals]);
@@ -775,7 +879,7 @@ export function EnhancedInvoiceBuilder({
         name: item.name || item.description || 'Item',
         quantity: Number(item.quantity || 0),
         unit_price: Number(item.rate || item.unit_price || 0),
-        tax_percent: Number(item.taxPercent || 17),
+        tax_percent: Number(item.taxPercent || (showTaxUi ? lineDefaultTaxRate : 0) || 0),
         discount_amount: ((Number(item.quantity || 0) * Number(item.rate || 0)) * Number(item.discount || 0)) / 100,
       })),
       subtotal: totals.subtotal || 0,
@@ -824,20 +928,36 @@ export function EnhancedInvoiceBuilder({
           ? [item.serialNumber]
           : [];
 
+        const quantity = Number(item.quantity || 0);
+        const unitPrice = Number(item.rate || item.unit_price || 0);
+        const discountPct = Number(item.discount || 0);
+        const taxPercent = Number(item.taxPercent || item.tax_percent || 0);
+        const lineBase = quantity * unitPrice;
+        const discountAmount = (lineBase * discountPct) / 100;
+        const taxable = Math.max(0, lineBase - discountAmount);
+        const taxAmount = Number.isFinite(Number(item.tax_amount ?? item.taxAmount))
+          ? Number(item.tax_amount ?? item.taxAmount)
+          : Math.round((taxable * taxPercent) / 100 * 100) / 100;
+
         return {
           ...item,
-          quantity: Number(item.quantity || 0),
-          rate: Number(item.rate || item.unit_price || 0),
-          unit_price: Number(item.rate || item.unit_price || 0),
-          discount: Number(item.discount || 0),
-          taxPercent: Number(item.taxPercent || 0),
-          tax_percent: Number(item.taxPercent || 0),
-          amount: Number(item.amount || 0),
+          quantity,
+          rate: unitPrice,
+          unit_price: unitPrice,
+          discount: discountPct,
+          discount_amount: discountAmount,
+          taxPercent,
+          tax_percent: taxPercent,
+          tax_amount: taxAmount,
+          taxAmount,
+          amount: Number(item.amount || taxable + taxAmount),
+          total_amount: Number(item.amount || taxable + taxAmount),
           batch_number: item.batch_number || item.batchNumber || '',
           batch_id: item.batch_id || item.batchId || null,
           serial_numbers: serialNumbers,
           metadata: {
             ...(item.metadata || {}),
+            unit: item.unit || item.metadata?.unit || 'pcs',
             article_no: item.article_no || item.metadata?.article_no || '',
             design_no: item.design_no || item.metadata?.design_no || '',
             fabric_type: item.fabric_type || item.metadata?.fabric_type || '',
@@ -848,11 +968,29 @@ export function EnhancedInvoiceBuilder({
         };
       });
 
+      const taxTotal = Number(totals.totalTax || totals.tax_total || 0);
+
       // Generate FBR-compliant invoice for Pakistani domains
       let finalInvoice = {
         ...invoice,
+        category,
+        payment_method: invoice.paymentMethod || invoice.payment_method || (isPakistaniDomain ? 'cod' : 'cash'),
+        paymentMethod: invoice.paymentMethod || invoice.payment_method || (isPakistaniDomain ? 'cod' : 'cash'),
+        invoiceType: invoice.invoiceType || 'retail',
+        tax_details: {
+          ...(invoice.taxDetails || {}),
+          ...(invoice.tax_details || {}),
+          invoice_type: invoice.invoiceType || 'retail',
+        },
         items: normalizedItems,
-        totals,
+        totals: {
+          ...totals,
+          totalTax: taxTotal,
+          tax_total: taxTotal,
+          total_tax: taxTotal,
+        },
+        tax_total: taxTotal,
+        total_tax: taxTotal,
         business_id: business?.id // Ensure business_id is present
       };
 
@@ -883,7 +1021,10 @@ export function EnhancedInvoiceBuilder({
 
   // Handle save with validation
   const handleSave = async () => {
-    await persistInvoice();
+    const saved = await persistInvoice();
+    if (saved) {
+      onClose();
+    }
   };
 
   const handleSaveAndSubmitForApproval = async () => {
@@ -898,7 +1039,12 @@ export function EnhancedInvoiceBuilder({
     setIsSubmittingApproval(true);
     try {
       const savedInvoice = await persistInvoice();
-      const invoiceId = savedInvoice?.id || invoice?.id || initialData?.id;
+      if (!savedInvoice) {
+        // Save failed, error toast already shown by persistInvoice
+        return;
+      }
+      
+      const invoiceId = savedInvoice.id || invoice?.id || initialData?.id;
 
       if (!invoiceId || !business?.id) {
         toast.error('Invoice saved but approval submission needs a valid invoice reference');
@@ -924,6 +1070,9 @@ export function EnhancedInvoiceBuilder({
       setApprovalHistory(historyRes?.success ? (historyRes.history || []) : []);
 
       toast.success('Invoice submitted for approval successfully');
+      
+      // Close the modal after successful submission
+      onClose();
     } catch (error) {
       console.error('Error submitting invoice for approval:', error);
       toast.error(error?.message || 'Failed to submit invoice for approval');
@@ -937,11 +1086,52 @@ export function EnhancedInvoiceBuilder({
   const handleExportPDF = async () => {
     setIsExporting(true);
     try {
-      await generateInvoicePDF(invoice, totals, business, isPakistaniDomain);
+      await generateInvoicePDF(
+        { ...invoice, category, invoiceType: invoice.invoiceType || 'retail' },
+        totals,
+        business,
+        isPakistaniDomain
+      );
       toast.success('PDF generated successfully');
     } catch (error) {
       console.error('Error generating PDF:', error);
       toast.error('Failed to generate PDF');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  /** Exact-size 58mm/80mm thermal receipt (same path as POS). */
+  const handlePrintThermal = async () => {
+    if (!business) {
+      toast.error('No business selected');
+      return;
+    }
+    setIsExporting(true);
+    try {
+      const draftInvoice = {
+        invoice_number: invoice.invoiceNumber || 'DRAFT',
+        date: invoice.date || new Date().toISOString(),
+        customer_name: invoice.customer?.name || null,
+        payment_method: invoice.paymentMethod || 'cash',
+        subtotal: totals.subtotal,
+        tax_total: totals.tax || totals.taxAmount || 0,
+        discount_total: totals.discount || totals.discountAmount || 0,
+        grand_total: totals.total,
+        items: (invoice.items || []).map((item) => ({
+          name: item.name || item.product_name || 'Item',
+          sku: item.sku,
+          quantity: item.quantity,
+          unit_price: item.rate ?? item.unitPrice ?? item.unit_price ?? 0,
+          amount: item.amount ?? item.total ?? ((item.rate || 0) * (item.quantity || 1)),
+        })),
+      };
+      const ok = await printInvoiceThermalFromRow(draftInvoice, business, category);
+      if (ok === false) toast.error('Could not open thermal print');
+      else toast.success('Thermal receipt opened');
+    } catch (error) {
+      console.error('Error printing thermal receipt:', error);
+      toast.error('Failed to print thermal receipt');
     } finally {
       setIsExporting(false);
     }
@@ -964,114 +1154,90 @@ export function EnhancedInvoiceBuilder({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
-      <Card className="w-full max-w-6xl max-h-[95vh] overflow-y-auto rounded-3xl shadow-2xl border-none">
-        <CardHeader className="flex flex-row items-center justify-between border-b py-8 px-8" style={{ backgroundColor: `${colors.primary}08` }}>
-          <div className="space-y-1">
-            <CardTitle className="text-3xl font-black tracking-tighter uppercase italic" style={{ color: colors.primary }}>
-              {standards.taxLabel} Compliance Engine
-            </CardTitle>
-            <div className="flex items-center gap-3">
-              <span className="text-gray-500 font-bold text-xs uppercase tracking-widest">Compliance Mode:</span>
-              <Badge className="bg-emerald-500 text-white border-0 text-[10px] font-black uppercase">Active</Badge>
-              <Badge className={cn('text-[10px] font-black uppercase border', activeApprovalStatus.className)}>
+    <div className={cn(MOBILE_OVERLAY, 'animate-in fade-in duration-300')}>
+      <Card className={cn(MOBILE_OVERLAY_CARD, 'max-w-6xl shadow-2xl')}>
+        <CardHeader className="relative shrink-0 flex flex-col gap-2 border-b bg-slate-50/50 px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-8 sm:py-5">
+          <div className="min-w-0 space-y-1 pr-10 sm:pr-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <CardTitle className="text-base font-semibold tracking-tight text-slate-800 sm:text-2xl">
+                {initialData ? 'Edit Invoice' : 'New Invoice'}
+              </CardTitle>
+              <Badge variant="outline" className="text-[11px] font-medium bg-white text-slate-600 border-slate-200 shadow-sm">
+                {category.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+              </Badge>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge className={cn('text-[10px] font-semibold uppercase tracking-wider shadow-sm border', activeApprovalStatus.className)}>
                 <activeApprovalStatus.icon className="w-3.5 h-3.5 mr-1" />
                 {activeApprovalStatus.label}
               </Badge>
-              <Badge variant="outline" className="text-[10px] font-black uppercase tracking-widest" style={{ backgroundColor: `${colors.primary}10`, color: colors.primary, borderColor: `${colors.primary}20` }}>
-                {category.replace('-', ' ')}
-              </Badge>
               {currentSeason && (
-                <Badge className="bg-gradient-to-r from-orange-500 to-pink-500 text-white border-0 text-[10px] font-black uppercase animate-pulse">
-                  [CELEBRATION] {currentSeason.name.en} - {currentSeason.discountPercent}% OFF
+                <Badge variant="outline" className="text-[10px] font-semibold text-orange-600 border-orange-200 bg-orange-50 shadow-sm uppercase tracking-wider">
+                  {currentSeason.name.en} ({currentSeason.discountPercent}% OFF)
                 </Badge>
               )}
             </div>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 bg-white/20 px-3 py-1.5 rounded-xl border border-white/30 text-white cursor-help" onClick={() => setShowKeyboardHints(!showKeyboardHints)}>
-              <Keyboard className="w-4 h-4" />
-              <span className="text-[10px] font-bold uppercase tracking-tighter">Hotkeys</span>
+          <div className="flex shrink-0 items-center gap-2 sm:gap-4">
+            <div className="hidden items-center gap-2 rounded-md border border-slate-200 bg-slate-100/80 px-2.5 py-1.5 text-slate-500 transition-colors hover:bg-slate-200 sm:flex cursor-help" onClick={() => setShowKeyboardHints(!showKeyboardHints)}>
+              <Keyboard className="w-3.5 h-3.5" />
+              <span className="text-[10px] font-bold uppercase tracking-wider">Hotkeys</span>
             </div>
-            <div className="text-right hidden md:block">
-              <p className="text-[10px] font-black text-gray-400 uppercase">Document Ref</p>
-              <p className="font-mono text-sm font-bold text-gray-900">{invoice.invoiceNumber}</p>
+            <div className="text-right hidden md:block border-l pl-4 border-slate-200">
+              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-1">Invoice Number</p>
+              <p className="font-mono text-sm font-semibold text-slate-700 bg-white border border-slate-200 px-2.5 py-0.5 rounded shadow-sm">{invoice.invoiceNumber}</p>
             </div>
-            <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full hover:bg-red-50 hover:text-red-500 transition-colors">
-              <X className="w-6 h-6" />
+            <Button variant="ghost" size="icon" onClick={onClose} className="absolute right-2 top-2 rounded-full hover:bg-red-50 hover:text-red-600 transition-colors sm:static sm:ml-2">
+              <X className="w-5 h-5" />
             </Button>
           </div>
         </CardHeader>
         {showKeyboardHints && (
-          <div className="bg-wine px-8 py-2 flex gap-6 text-[10px] font-bold text-white/80 uppercase tracking-widest animate-in slide-in-from-top-1">
-            <span className="flex items-center gap-1"><kbd className="bg-white/10 px-1 rounded">CTRL+S</kbd> Save</span>
-            <span className="flex items-center gap-1"><kbd className="bg-white/10 px-1 rounded">CTRL+B</kbd> Barcode Focus</span>
-            <span className="flex items-center gap-1"><kbd className="bg-white/10 px-1 rounded">ENTER</kbd> (in items) New Row</span>
-            <span className="flex items-center gap-1"><kbd className="bg-white/10 px-1 rounded">ESC</kbd> Close</span>
+          <div className="border-b border-slate-700 bg-slate-800 px-3 py-2 text-[10px] font-medium text-slate-200 shadow-inner sm:px-8 sm:text-[11px]">
+            <div className="flex flex-wrap gap-3 sm:gap-6">
+            <span className="flex items-center gap-1.5"><kbd className="bg-slate-700 border border-slate-600 px-1.5 py-0.5 rounded font-mono text-[10px] shadow-sm">CTRL+S</kbd> Save</span>
+            <span className="flex items-center gap-1.5"><kbd className="bg-slate-700 border border-slate-600 px-1.5 py-0.5 rounded font-mono text-[10px] shadow-sm">CTRL+B</kbd> Barcode Focus</span>
+            <span className="flex items-center gap-1.5"><kbd className="bg-slate-700 border border-slate-600 px-1.5 py-0.5 rounded font-mono text-[10px] shadow-sm">ENTER</kbd> New Row</span>
+            <span className="flex items-center gap-1.5"><kbd className="rounded border border-slate-600 bg-slate-700 px-1.5 py-0.5 font-mono text-[10px] shadow-sm">ESC</kbd> Close</span>
+            </div>
           </div>
         )}
-        <CardContent className="space-y-8 p-8 bg-white/50">
+        <CardContent className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain bg-white p-3 pb-[calc(5.5rem+env(safe-area-inset-bottom))] sm:space-y-6 sm:p-8 sm:pb-8">
           {/* Business Header - Your Brand */}
           {business?.name && (
-            <div className="border-b-2 border-gray-200 pb-6 mb-6">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <h1 className="text-3xl font-black text-gray-900 mb-2">
-                    {business.name}
-                  </h1>
-                  <div className="space-y-1 text-sm text-gray-600">
-                    {business.address && <p>{business.address}</p>}
-                    <div className="flex gap-4">
-                      {business.ntn && (
-                        <p>
-                          <span className="font-semibold">NTN:</span> {business.ntn}
-                        </p>
-                      )}
-                      {business.srn && (
-                        <p>
-                          <span className="font-semibold">SRN:</span> {business.srn}
-                        </p>
-                      )}
-                    </div>
-                    <div className="flex gap-4">
-                      {business.phone && (
-                        <p>
-                          <span className="font-semibold">Phone:</span> {business.phone}
-                        </p>
-                      )}
-                      {business.email && (
-                        <p>
-                          <span className="font-semibold">Email:</span> {business.email}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-xs font-bold uppercase text-gray-400 tracking-widest">Invoice</p>
-                  <p className="text-2xl font-black" style={{ color: colors.primary }}>{invoice.invoiceNumber}</p>
+            <div className="pb-2 mb-2 flex items-start justify-between">
+              <div className="flex-1">
+                <h1 className="text-xl font-bold text-slate-800 mb-1">
+                  {business.name}
+                </h1>
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
+                  {business.address && <span>{business.address}</span>}
+                  {business.ntn && <span><span className="font-semibold text-slate-600">NTN:</span> {business.ntn}</span>}
+                  {business.srn && <span><span className="font-semibold text-slate-600">SRN:</span> {business.srn}</span>}
+                  {business.phone && <span><span className="font-semibold text-slate-600">Tel:</span> {business.phone}</span>}
+                  {business.email && <span><span className="font-semibold text-slate-600">Email:</span> {business.email}</span>}
                 </div>
               </div>
             </div>
           )}
 
-          {/* Invoice Header */}
-          <div className="grid grid-cols-4 gap-4">
-            <div>
-              <Label>Invoice Number</Label>
-              <Input value={invoice.invoiceNumber} readOnly className="bg-gray-50" />
+          <div className={cn('rounded-xl border border-slate-100 bg-slate-50 p-3 sm:p-5', MOBILE_GRID_FIELDS, 'lg:grid-cols-4')}>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-slate-500">Invoice Number</Label>
+              <Input value={invoice.invoiceNumber} readOnly className="bg-slate-100/50 border-slate-200 shadow-none h-9 text-sm text-slate-700" />
             </div>
-            <div>
-              <Label>Date *</Label>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-slate-500">Date *</Label>
               <Input
                 type="date"
                 value={invoice.date || ''}
                 onChange={(e) => setInvoice({ ...invoice, date: e.target.value })}
                 required
+                className="h-9 text-sm shadow-sm border-slate-200"
               />
             </div>
-            <div>
-              <Label>Due Date</Label>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-slate-500">Due Date</Label>
               <Input
                 type="date"
                 value={invoice.dueDate || ''}
@@ -1079,28 +1245,29 @@ export function EnhancedInvoiceBuilder({
                   setIsDueDateManuallyEdited(true);
                   setInvoice({ ...invoice, dueDate: e.target.value });
                 }}
+                className="h-9 text-sm shadow-sm border-slate-200"
               />
             </div>
-            <div>
-              <Label>Document Type</Label>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-slate-500">Document Type</Label>
               <Combobox
                 options={[
+                  { value: 'retail', label: domainInvoiceLabel },
                   { value: 'tax', label: `${standards.taxLabel} Invoice` },
-                  { value: 'retail', label: 'Retail Invoice' },
                   { value: 'export', label: 'Export Invoice' },
                 ]}
-                value={invoice.invoiceType}
+                value={invoice.invoiceType || 'retail'}
                 onChange={(val) => setInvoice({ ...invoice, invoiceType: val })}
                 placeholder="Select type..."
-                className="h-10"
+                className="h-9 text-sm shadow-sm border-slate-200"
               />
             </div>
           </div>
 
           {/* Customer Selection */}
-          <div className="border-t pt-4">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-lg">Customer Details</h3>
+          <div className="rounded-xl border border-slate-100 p-3 sm:p-5">
+            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <h3 className="text-base font-semibold sm:text-lg">Customer Details</h3>
               {customers.length > 0 && (
                 <Combobox
                   options={customers.map(c => ({
@@ -1118,13 +1285,13 @@ export function EnhancedInvoiceBuilder({
                   }}
                   placeholder="Search customers..."
                   emptyText="No customers found"
-                  className="w-[280px]"
+                  className="h-9 w-full shadow-sm sm:w-[300px]"
                 />
               )}
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Customer Name *</Label>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-4">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-slate-600">Customer Name *</Label>
                 <Input
                   value={invoice.customer.name || ''}
                   onChange={(e) => setInvoice({
@@ -1157,18 +1324,19 @@ export function EnhancedInvoiceBuilder({
                     }
                   }}
                   placeholder={`${standards.taxIdLabel} Number`}
+                  className="h-9 text-sm shadow-sm border-slate-200"
                 />
               </div>
               {standards.countryCode === 'PK' && (
-                <div className="mt-2 flex items-center gap-2">
-                  <Label className="text-[10px] font-bold text-gray-400">Province</Label>
+                <div className="space-y-1.5 flex flex-col justify-center mt-1">
+                  <Label className="text-xs font-semibold text-slate-600">Province</Label>
                   <select
                     value={invoice.customer.province}
                     onChange={(e) => setInvoice({
                       ...invoice,
                       customer: { ...invoice.customer, province: e.target.value }
                     })}
-                    className="bg-transparent border-0 font-bold text-wine text-xs focus:ring-0 cursor-pointer"
+                    className="bg-transparent border border-slate-200 rounded-lg px-2 py-2 text-xs font-semibold text-slate-700 focus:ring-1 focus:ring-slate-300 cursor-pointer"
                   >
                     <option value="punjab">Punjab</option>
                     <option value="sindh">Sindh</option>
@@ -1180,26 +1348,28 @@ export function EnhancedInvoiceBuilder({
               )}
               {invoice.customer.credit_limit > 0 && (
                 <div className={cn(
-                  "col-span-2 p-3 rounded-xl border flex items-center justify-between",
+                  "col-span-full mb-2 flex flex-col gap-2 rounded-lg border p-2.5 sm:flex-row sm:items-center sm:justify-between",
                   totals.total + (invoice.customer.outstanding_balance || 0) > invoice.customer.credit_limit
-                    ? "bg-red-50 border-red-100 text-red-600"
-                    : "bg-emerald-50 border-emerald-100 text-emerald-600"
+                    ? "bg-red-50 border-red-200 text-red-700"
+                    : "bg-slate-50 border-slate-200 text-slate-700"
                 )}>
-                  <div className="flex items-center gap-2">
-                    <ShoppingCart className="w-4 h-4" />
-                    <span className="text-xs font-bold uppercase tracking-wider">Credit Profile:</span>
-                    <span className="text-xs font-medium">Limit: {formatCurrency(invoice.customer.credit_limit, currency)} | Current Balance: {formatCurrency(invoice.customer.outstanding_balance || 0, currency)}</span>
+                  <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
+                    <div className="flex items-center gap-2">
+                      <ShoppingCart className="w-4 h-4 shrink-0 text-slate-400" />
+                      <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Credit Profile</span>
+                    </div>
+                    <span className="text-xs font-medium">Limit: {formatCurrency(invoice.customer.credit_limit, currency)} <span className="text-slate-300 mx-1">|</span> Balance: {formatCurrency(invoice.customer.outstanding_balance || 0, currency)}</span>
                   </div>
                   {totals.total + (invoice.customer.outstanding_balance || 0) > invoice.customer.credit_limit && (
-                    <div className="flex items-center gap-1 font-black text-[10px] uppercase">
+                    <div className="flex items-center gap-1.5 font-bold text-[10px] uppercase tracking-wider bg-red-100 px-2 py-0.5 rounded text-red-600">
                       <AlertCircle className="w-3 h-3" />
-                      Credit Limit Exceeded
+                      Limit Exceeded
                     </div>
                   )}
                 </div>
               )}
-              <div>
-                <Label>Email</Label>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-slate-600">Email</Label>
                 <Input
                   type="email"
                   value={invoice.customer.email || ''}
@@ -1207,10 +1377,11 @@ export function EnhancedInvoiceBuilder({
                     ...invoice,
                     customer: { ...invoice.customer, email: e.target.value }
                   })}
+                  className="h-9 text-sm shadow-sm border-slate-200"
                 />
               </div>
-              <div>
-                <Label>Phone</Label>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-slate-600">Phone</Label>
                 <Input
                   value={invoice.customer.phone || ''}
                   onChange={(e) => setInvoice({
@@ -1227,16 +1398,18 @@ export function EnhancedInvoiceBuilder({
                       toast.success('Customer auto-filled from phone');
                     }
                   }}
+                  className="h-9 text-sm shadow-sm border-slate-200"
                 />
               </div>
-              <div className="col-span-2">
-                <Label>Address</Label>
+              <div className="col-span-1 md:col-span-2 lg:col-span-3 space-y-1.5">
+                <Label className="text-xs font-semibold text-slate-600">Billing Address</Label>
                 <Input
                   value={invoice.customer.address || ''}
                   onChange={(e) => setInvoice({
                     ...invoice,
                     customer: { ...invoice.customer, address: e.target.value }
                   })}
+                  className="h-9 text-sm shadow-sm border-slate-200"
                 />
               </div>
             </div>
@@ -1257,43 +1430,54 @@ export function EnhancedInvoiceBuilder({
           )}
 
           {/* Items Section */}
-          <div className="border-t pt-4">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-lg">Items</h3>
-              <div className="flex gap-2">
-                <div className="relative group lg:w-48">
-                  <Scan className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-wine" />
+          <div className="pt-2">
+            <div className="mb-4 flex flex-col gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:px-4 sm:py-2">
+              <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-800">
+                <ShoppingCart className="w-4 h-4 text-slate-500" />
+                Line Items
+              </h3>
+                <div className="flex flex-col gap-2 sm:flex-row sm:gap-2">
+                <div className="relative group w-full sm:w-48 flex gap-1">
+                  <Scan className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 group-focus-within:text-indigo-500 z-10" />
                   <Input
                     id="barcode-sniffer"
-                    placeholder="Scan Barcode (Ctrl+B)"
+                    placeholder="Scan barcode"
                     value={barcodeInput}
                     onChange={(e) => setBarcodeInput(e.target.value)}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') handleBarcodeScan(barcodeInput);
                     }}
-                    className="pl-10 h-9 rounded-xl border-dashed border-wine/30 bg-wine/5 focus:bg-white transition-all font-mono"
+                    className="h-9 w-full rounded-md border-dashed border-slate-300 bg-white pl-8 font-mono text-xs shadow-sm transition-all focus:bg-white sm:h-8"
+                  />
+                  <BarcodeScanTrigger
+                    business={business}
+                    onScan={handleBarcodeScan}
+                    className="h-9 w-9 shrink-0 sm:h-8"
+                    title="Camera scan"
                   />
                 </div>
-                {isPakistaniDomain && (
+                <div className="flex gap-2">
+                {isPakistaniDomain && showTaxUi && (
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => setShowTaxCalculator(!showTaxCalculator)}
-                    className="rounded-xl border-gray-200"
+                    className="h-9 flex-1 rounded-md border-slate-200 text-xs shadow-sm sm:h-8 sm:flex-none"
                   >
-                    <Calculator className="w-4 h-4 mr-2" />
-                    Tax Helper
+                    <Calculator className="w-3.5 h-3.5 mr-1.5 text-slate-500" />
+                    Tax
                   </Button>
                 )}
-                <Button onClick={addItem} size="sm" className="text-white font-bold shadow-lg rounded-xl transition-all hover:scale-105 active:scale-95" style={{ backgroundColor: colors.primary }}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Row
+                <Button onClick={addItem} size="sm" className="h-9 flex-1 rounded-md text-xs font-medium text-white shadow-sm transition-all hover:opacity-90 sm:h-8 sm:flex-none" style={{ backgroundColor: brandAccent }}>
+                  <Plus className="w-3.5 h-3.5 mr-1.5" />
+                  Add line
                 </Button>
+                </div>
               </div>
             </div>
 
             {/* Tax Calculator - Pakistani domains */}
-            {isPakistaniDomain && showTaxCalculator && (
+            {isPakistaniDomain && showTaxUi && showTaxCalculator && (
               <div className="mb-4">
                 <PakistaniTaxCalculator
                   amount={totals.subtotal}
@@ -1306,31 +1490,53 @@ export function EnhancedInvoiceBuilder({
             )}
 
             <div className="space-y-3">
+              {/* Mobile: stacked line cards (no horizontal scroll) */}
+              <div className="lg:hidden">
+                <InvoiceMobileLineItems
+                  items={invoice.items}
+                  products={products}
+                  category={category}
+                  currency={currency}
+                  colors={{ ...colors, primary: brandAccent }}
+                  updateItem={updateItem}
+                  removeItem={removeItem}
+                  addItem={addItem}
+                  onEnterLastRow={addItem}
+                  business={business}
+                  onScanBarcode={handleBarcodeScan}
+                  showTax={showTaxUi}
+                />
+              </div>
+
+              {/* Desktop: wide line table */}
               {invoice.items.length === 0 ? (
-                <div className="text-center py-8 text-gray-500 border-2 border-dashed rounded-lg">
-                  <FileText className="w-12 h-12 mx-auto mb-2 text-gray-400" />
-                  <p>No items added yet.</p>
-                  <p className="text-sm">Click "Add Item" to get started.</p>
+                <div className="hidden text-center py-10 bg-slate-50 text-slate-500 border border-dashed border-slate-200 rounded-xl lg:block">
+                  <FileText className="w-10 h-10 mx-auto mb-3 text-slate-300" />
+                  <p className="font-medium text-sm text-slate-600">No items added yet.</p>
+                  <p className="text-xs mt-1">Click Add line or scan a barcode to get started.</p>
                 </div>
               ) : (
-                <div className="relative overflow-x-auto">
-                  <table className="w-full text-sm text-left">
-                    <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+                <div className="relative hidden overflow-x-auto rounded-lg border border-slate-200 shadow-sm lg:block">
+                  <table className="w-full text-sm text-left" style={{minWidth: '900px'}}>
+                    <thead className="bg-slate-100 border-b border-slate-200 text-slate-600">
                       <tr>
-                        <th className="px-3 py-2 text-left text-[10px] font-black uppercase text-gray-400 tracking-wider w-12">#</th>
-                        <th className="px-3 py-2 text-left text-[10px] font-black uppercase text-gray-400 tracking-wider">Item Details</th>
+                        <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider w-12">#</th>
+                        <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider">Item Details</th>
                         {getDomainInvoiceColumns(category).map(col => (
-                          <th key={col.field} className={`px-3 py-2 text-left text-[10px] font-black uppercase text-gray-400 tracking-wider ${col.width || 'w-24'}`}>
+                          <th key={col.field} className={`px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider ${col.width || 'w-24'}`}>
                             {col.header}
                           </th>
                         ))}
-                        <th className="px-3 py-2 text-right text-[10px] font-black uppercase text-gray-400 tracking-wider w-24">Qty</th>
-                        <th className="px-3 py-2 text-right text-[10px] font-black uppercase text-gray-400 tracking-wider w-24">Rate</th>
-                        <th className="px-3 py-2 text-right text-[10px] font-black uppercase text-gray-400 tracking-wider w-20">Disc%</th>
-                        <th className="px-3 py-2 text-right text-[10px] font-black uppercase text-gray-400 tracking-wider w-20">Tax%</th>
-                        <th className="px-3 py-2 text-right text-[10px] font-black uppercase text-gray-400 tracking-wider w-28">Amount</th>
-                        <th className="px-3 py-2 text-right text-[10px] font-black uppercase text-gray-400 tracking-wider w-16">Expert</th>
-                        <th className="px-3 py-2 w-10"></th>
+                        <th className="px-4 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wider" style={{minWidth:'96px'}}>Qty</th>
+                        <th className="px-4 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wider" style={{minWidth:'72px'}}>Unit</th>
+                        <th className="px-4 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wider" style={{minWidth:'110px'}}>Rate</th>
+                        <th className="px-4 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wider" style={{minWidth:'80px'}}>Disc%</th>
+                        {showTaxUi && (
+                          <th className="px-4 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wider" style={{minWidth:'80px'}}>Tax%</th>
+                        )}
+                        <th className="px-4 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wider" style={{minWidth:'130px'}}>Amount</th>
+                        <th className="px-4 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wider" style={{minWidth:'64px'}}>Expert</th>
+                        <th className="px-4 py-2.5" style={{minWidth:'40px'}}></th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1365,36 +1571,51 @@ export function EnhancedInvoiceBuilder({
                             </td>
                           ))}
 
-                          <td className="px-3 py-2">
+                          <td className="px-3 py-2" style={{minWidth:'96px'}}>
                             <Input
                               type="number"
                               value={item.quantity || 0}
                               onChange={(e) => updateItem(item.id, 'quantity', parseFloat(e.target.value) || 0)}
                               min={0}
-                              className="h-8 text-xs text-right"
+                              className="h-8 text-xs text-right w-full"
                             />
                           </td>
-                          <td className="px-3 py-2">
+                          <td className="px-3 py-2" style={{minWidth:'72px'}}>
+                            <select
+                              value={item.unit || 'pcs'}
+                              onChange={(e) => updateItem(item.id, 'unit', e.target.value)}
+                              className="h-8 w-full rounded-md border border-slate-200 bg-white px-1.5 text-xs text-slate-700"
+                            >
+                              {(getDomainUnits(category) || ['pcs', 'sqft', 'm', 'kg', 'box']).map((u) => (
+                                <option key={u} value={u}>{u}</option>
+                              ))}
+                              {item.unit && !(getDomainUnits(category) || []).includes(item.unit) && (
+                                <option value={item.unit}>{item.unit}</option>
+                              )}
+                            </select>
+                          </td>
+                          <td className="px-3 py-2" style={{minWidth:'110px'}}>
                             <Input
                               type="number"
                               value={item.rate || 0}
                               onChange={(e) => updateItem(item.id, 'rate', parseFloat(e.target.value) || 0)}
                               min={0}
                               step="0.01"
-                              className="h-8 text-xs text-right"
+                              className="h-8 text-xs text-right w-full"
                             />
                           </td>
-                          <td className="px-3 py-2">
+                          <td className="px-3 py-2" style={{minWidth:'80px'}}>
                             <Input
                               type="number"
                               value={item.discount || 0}
                               onChange={(e) => updateItem(item.id, 'discount', parseFloat(e.target.value) || 0)}
                               min={0}
                               max={100}
-                              className="h-8 text-xs"
+                              className="h-8 text-xs w-full"
                             />
                           </td>
-                          <td className="px-3 py-2">
+                          {showTaxUi && (
+                          <td className="px-3 py-2" style={{minWidth:'80px'}}>
                             <Input
                               type="number"
                               value={item.taxPercent || 0}
@@ -1406,31 +1627,34 @@ export function EnhancedInvoiceBuilder({
                               }}
                               min={0}
                               max={100}
-                              className="h-8 text-xs focus:ring-wine/20"
+                              className="h-8 text-xs focus:ring-wine/20 w-full"
                             />
                           </td>
-                          <td className="px-3 py-2">
+                          )}
+                          <td className="px-3 py-2" style={{minWidth:'130px'}}>
                             <Input
                               type="number"
                               value={item.amount || 0}
                               onChange={(e) => updateItem(item.id, 'amount', parseFloat(e.target.value) || 0)}
                               min={0}
                               step={0.01}
-                              className="h-8 text-xs font-semibold focus:ring-wine/20"
+                              className="h-8 text-xs font-semibold focus:ring-wine/20 w-full"
                             />
-                                            <div className="mt-1 text-[10px] text-gray-400 text-right whitespace-nowrap">
-                                              {(() => {
-                                                const qty = Number(item.quantity || 0);
-                                                const rate = Number(item.rate || 0);
-                                                const discountPct = Number(item.discount || 0);
-                                                const taxPct = Number(item.taxPercent || 0);
-                                                const base = qty * rate;
-                                                const discountValue = (base * discountPct) / 100;
-                                                const taxable = base - discountValue;
-                                                const taxValue = (taxable * taxPct) / 100;
-                                                return `${formatCurrency(taxable, currency)} + ${formatCurrency(taxValue, currency)} tax`;
-                                              })()}
-                                            </div>
+                            <div className="mt-1 text-[10px] text-gray-400 text-right whitespace-nowrap">
+                              {(() => {
+                                const qty = Number(item.quantity || 0);
+                                const rate = Number(item.rate || 0);
+                                const discountPct = Number(item.discount || 0);
+                                const taxPct = showTaxUi ? Number(item.taxPercent || 0) : 0;
+                                const base = qty * rate;
+                                const discountValue = (base * discountPct) / 100;
+                                const taxable = base - discountValue;
+                                const taxValue = (taxable * taxPct) / 100;
+                                return showTaxUi
+                                  ? `${formatCurrency(taxable, currency)} + ${formatCurrency(taxValue, currency)} tax`
+                                  : formatCurrency(taxable, currency);
+                              })()}
+                            </div>
                           </td>
                           <td className="px-3 py-2 text-center">
                             <ExpertActionPanel 
@@ -1460,17 +1684,17 @@ export function EnhancedInvoiceBuilder({
 
           {/* Totals */}
           <div className="border-t pt-4">
-            <div className="flex justify-end">
-              <div className="w-80 space-y-2">
+            <div className="flex justify-stretch lg:justify-end">
+              <div className="w-full space-y-2 lg:w-80">
                 <div className="flex justify-between">
                   <span>Subtotal:</span>
-                  <span className="font-semibold">{formatCurrency(totals.subtotal, currency)}</span>
+                  <span className="font-semibold">{formatCurrency(totals.rawSubtotal ?? totals.subtotal, currency)}</span>
                 </div>
-                <div className="flex justify-between items-center bg-gray-50 p-3 rounded-2xl border border-gray-100">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-black uppercase text-gray-400">Total Discount:</span>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span className="text-xs font-semibold uppercase text-gray-400">Total Discount:</span>
                     <select
-                      className="bg-transparent text-[10px] font-bold border-0 p-0 h-auto focus:ring-0 cursor-pointer text-wine"
+                      className="h-auto cursor-pointer border-0 bg-transparent p-0 text-[10px] font-bold text-wine focus:ring-0"
                       value={invoice.discountType}
                       onChange={(e) => setInvoice({ ...invoice, discountType: e.target.value })}
                     >
@@ -1478,7 +1702,7 @@ export function EnhancedInvoiceBuilder({
                       <option value="amount">Fixed {standards.currencySymbol}</option>
                     </select>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center justify-end gap-2">
                     <Input
                       type="number"
                       value={invoice.discount || 0}
@@ -1490,27 +1714,34 @@ export function EnhancedInvoiceBuilder({
                 </div>
                 {/* Seasonal Discount Display */}
                 {totals.seasonalDiscount > 0 && currentSeason && (
-                  <div className="flex justify-between items-center bg-gradient-to-r from-orange-50 to-pink-50 p-3 rounded-2xl border border-orange-200">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-black uppercase text-orange-600">[CELEBRATION] {currentSeason.name.en} Discount:</span>
-                      <Badge className="bg-orange-500 text-white text-[9px] font-black">
+                  <div className="flex flex-col gap-2 rounded-2xl border border-orange-200 bg-gradient-to-r from-orange-50 to-pink-50 p-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex min-w-0 flex-wrap items-center gap-2">
+                      <span className="text-xs font-semibold uppercase text-orange-600">{currentSeason.name.en} Discount</span>
+                      <Badge className="bg-orange-500 text-white text-[10px] font-semibold">
                         {currentSeason.discountPercent}% OFF
                       </Badge>
                     </div>
-                    <span className="font-semibold text-orange-600">-{formatCurrency(totals.seasonalDiscount, currency)}</span>
+                    <span className="shrink-0 font-semibold text-orange-600">-{formatCurrency(totals.seasonalDiscount, currency)}</span>
                   </div>
                 )}
                 {/* Render dynamic tax breakdown from strategy */}
-                {Object.entries(totals.taxDetails || {}).map(([label, detail]) => {
-                  const taxVal = (detail.amount * detail.rate) / 100;
+                {showTaxUi && Object.entries(totals.taxDetails || {}).map(([label, detail]) => {
+                  // detail.amount is already the computed tax amount (not a base)
+                  const taxVal = Number(detail?.amount ?? 0);
                   if (taxVal <= 0) return null;
                   return (
-                    <div key={label} className="flex justify-between">
-                      <span>{label}:</span>
-                      <span>{formatCurrency(taxVal, standards.currency)}</span>
+                    <div key={label} className="flex justify-between text-sm text-slate-600">
+                      <span>{label} ({((detail?.rate ?? 0) * 100).toFixed(0)}%):</span>
+                      <span>{formatCurrency(taxVal, currency || 'PKR')}</span>
                     </div>
                   );
                 })}
+                {showTaxUi && Number(totals.totalTax || 0) > 0 && !Object.keys(totals.taxDetails || {}).length && (
+                  <div className="flex justify-between text-sm text-slate-600">
+                    <span>{regionalTaxLabel || 'Tax'}:</span>
+                    <span>{formatCurrency(totals.totalTax, currency || 'PKR')}</span>
+                  </div>
+                )}
                 {totals.roundOff !== 0 && (
                   <div className="flex justify-between text-gray-600">
                     <span>Round Off:</span>
@@ -1533,7 +1764,7 @@ export function EnhancedInvoiceBuilder({
           </div>
 
           {/* Additional Fields */}
-          <div className="grid grid-cols-2 gap-4 border-t pt-4">
+          <div className="grid grid-cols-1 gap-4 border-t pt-4 lg:grid-cols-2">
             {!isPakistaniDomain && (
               <>
                 <div>
@@ -1573,13 +1804,13 @@ export function EnhancedInvoiceBuilder({
           </div>
 
           <div className="border-t pt-4">
-            <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-              <div className="flex items-center gap-2 text-sm text-slate-700">
-                <ShieldCheck className="w-4 h-4" />
-                <span className="font-semibold">Workflow Status:</span>
-                <span>{activeApprovalStatus.helper}</span>
+            <div className="flex flex-col gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-4">
+              <div className="flex min-w-0 items-start gap-2 text-sm text-slate-700 sm:items-center">
+                <ShieldCheck className="w-4 h-4 shrink-0" />
+                <span className="font-semibold shrink-0">Workflow:</span>
+                <span className="min-w-0">{activeApprovalStatus.helper}</span>
               </div>
-              <span className="text-xs text-slate-500 font-medium">Invoice Ref: {invoice.invoiceNumber}</span>
+              <span className="shrink-0 text-xs font-medium text-slate-500">Ref: {invoice.invoiceNumber}</span>
             </div>
 
             {approvalHistory.length > 0 && (
@@ -1605,95 +1836,84 @@ export function EnhancedInvoiceBuilder({
               </div>
             )}
           </div>
-
-          {/* Actions */}
-          <div className="sticky bottom-0 z-20 -mx-8 mt-6 border-t bg-white/95 px-8 py-4 backdrop-blur supports-[backdrop-filter]:bg-white/85">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="space-y-2 w-full md:w-auto">
-              <div className="flex gap-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => applySmartDraft('items')}
-                  className="rounded-xl border-indigo-100 text-indigo-600 hover:bg-indigo-50 font-bold h-12 px-6"
-                >
-                  <WandSparkles className="w-4 h-4 mr-2" />
-                  Smart Items
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => applySmartDraft('full')}
-                  className="rounded-xl border-violet-100 text-violet-600 hover:bg-violet-50 font-bold h-12 px-6"
-                >
-                  <WandSparkles className="w-4 h-4 mr-2" />
-                  Smart Full
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => toast.success('Link generated for WhatsApp message')}
-                  className="rounded-xl border-emerald-100 text-emerald-600 hover:bg-emerald-50 font-bold h-12 px-6"
-                >
-                  Share via WhatsApp
-                </Button>
-              </div>
-              {smartDraftMeta && (
-                <div className="text-[11px] text-gray-500 bg-indigo-50/60 border border-indigo-100 rounded-lg px-3 py-2">
-                  <span className="font-bold text-indigo-700">Smart Draft:</span>{' '}
-                  {smartDraftMeta.scope === 'full'
-                    ? `Customer ${smartDraftMeta.customerLabel}`
-                    : (smartDraftMeta.customerMode === 'preserved' ? 'Customer preserved' : 'Customer unchanged')}; items {smartDraftMeta.productLabels.join(', ')}
-                </div>
-              )}
-            </div>
-
-            <div className="flex gap-4 w-full md:w-auto">
-              <Button type="button" variant="ghost" onClick={onClose} className="flex-1 md:flex-none font-bold text-gray-500 rounded-xl px-8 h-12">
-                Dismiss
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleExportPDF}
-                disabled={isSaving || isExporting}
-                className="flex-1 md:flex-none font-bold border-gray-200 rounded-xl h-12 px-6"
-              >
-                {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Printer className="w-4 h-4 mr-2" />}
-                Print {standards.taxLabel} Invoice
-              </Button>
-              <Button
-                type="button"
-                disabled={isSaving}
-                onClick={handleSave}
-                className="flex-1 md:flex-none bg-wine-600 hover:opacity-90 text-white font-black px-8 h-12 rounded-xl shadow-xl shadow-wine-600/20 transition-all active:scale-95"
-              >
-                {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5 mr-2" />}
-                Save Draft
-              </Button>
-              <Button
-                type="button"
-                disabled={!canSubmitForApproval}
-                onClick={handleSaveAndSubmitForApproval}
-                className="flex-1 md:flex-none bg-emerald-600 hover:bg-emerald-700 text-white font-black px-8 h-12 rounded-xl shadow-xl shadow-emerald-600/20 transition-all active:scale-95 disabled:opacity-60"
-              >
-                {(isSaving || isSubmittingApproval)
-                  ? <Loader2 className="w-5 h-5 animate-spin" />
-                  : <Send className="w-5 h-5 mr-2" />}
-                Save & Submit
-              </Button>
-            </div>
-          </div>
-          </div>
         </CardContent>
+
+        <div className={cn(MOBILE_FORM_FOOTER, 'shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]')}>
+          <div className="flex flex-col gap-3">
+            <div className="hidden gap-2 overflow-x-auto pb-0.5 scrollbar-none sm:flex sm:flex-wrap">
+              <Button type="button" variant="outline" onClick={() => applySmartDraft('items')} className="h-9 shrink-0 rounded-md border-indigo-200 px-3 text-xs font-medium text-indigo-700 shadow-sm hover:bg-indigo-50">
+                <WandSparkles className="mr-1.5 h-3.5 w-3.5" /> Smart Items
+              </Button>
+              <Button type="button" variant="outline" onClick={() => applySmartDraft('full')} className="h-9 shrink-0 rounded-md border-violet-200 px-3 text-xs font-medium text-violet-700 shadow-sm hover:bg-violet-50">
+                <WandSparkles className="mr-1.5 h-3.5 w-3.5" /> Smart Full
+              </Button>
+              <Button type="button" variant="outline" onClick={() => toast.success('Link generated for WhatsApp message')} className="h-9 shrink-0 rounded-md border-emerald-200 px-3 text-xs font-medium text-emerald-700 shadow-sm hover:bg-emerald-50">
+                WhatsApp
+              </Button>
+            </div>
+            {smartDraftMeta && (
+              <div className="hidden rounded-md border border-indigo-100 bg-indigo-50 px-2.5 py-1.5 text-[11px] text-indigo-600 sm:block">
+                <span className="font-semibold text-indigo-800">Smart Draft:</span>{' '}
+                {smartDraftMeta.scope === 'full' ? `Customer ${smartDraftMeta.customerLabel}` : (smartDraftMeta.customerMode === 'preserved' ? 'Customer preserved' : 'Customer unchanged')}; items {smartDraftMeta.productLabels.join(', ')}
+              </div>
+            )}
+            <div className="flex flex-wrap gap-2">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-9 rounded-md border-slate-200 px-3 text-sm font-medium text-slate-700 shadow-sm sm:hidden"
+                  >
+                    <MoreHorizontal className="mr-1.5 h-4 w-4" />
+                    More
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-48">
+                  <DropdownMenuItem onClick={() => applySmartDraft('items')}>
+                    <WandSparkles className="mr-2 h-4 w-4" />
+                    Smart items
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => applySmartDraft('full')}>
+                    <WandSparkles className="mr-2 h-4 w-4" />
+                    Smart full draft
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => toast.success('Link generated for WhatsApp message')}>
+                    WhatsApp share
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handlePrintThermal} disabled={isSaving || isExporting}>
+                    <Printer className="mr-2 h-4 w-4" />
+                    Thermal receipt
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleExportPDF} disabled={isSaving || isExporting}>
+                    <Download className="mr-2 h-4 w-4" />
+                    A4 invoice PDF
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <Button type="button" variant="ghost" onClick={onClose} className="h-9 flex-1 rounded-md px-4 text-sm font-medium text-slate-500 hover:bg-slate-100 sm:flex-none">
+                Cancel
+              </Button>
+              <Button type="button" variant="outline" onClick={handlePrintThermal} disabled={isSaving || isExporting} className="hidden h-9 rounded-md border-slate-200 px-3 text-sm font-medium text-slate-700 shadow-sm sm:inline-flex">
+                {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Printer className="mr-2 h-4 w-4 text-slate-500" />}
+                Thermal
+              </Button>
+              <Button type="button" variant="outline" onClick={handleExportPDF} disabled={isSaving || isExporting} className="hidden h-9 rounded-md border-slate-200 px-3 text-sm font-medium text-slate-700 shadow-sm sm:inline-flex">
+                {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4 text-slate-500" />}
+                A4 PDF
+              </Button>
+              <Button type="button" disabled={isSaving} onClick={handleSave} className="h-9 flex-1 rounded-md bg-emerald-600 px-4 text-sm font-medium text-white shadow-sm hover:bg-emerald-700 sm:flex-none">
+                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                Save
+              </Button>
+              <Button type="button" disabled={!canSubmitForApproval} onClick={handleSaveAndSubmitForApproval} className="h-9 flex-1 rounded-md bg-blue-600 px-4 text-sm font-medium text-white shadow-sm hover:bg-blue-700 disabled:opacity-60 sm:flex-none">
+                {(isSaving || isSubmittingApproval) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                Submit
+              </Button>
+            </div>
+          </div>
+        </div>
       </Card>
-      
-      {/* AI Business Co-Pilot Overlay */}
-      <AIInsightOverlay 
-        domain={category} 
-        items={invoice.items} 
-        businessId={business?.id} 
-      />
-    </div >
+    </div>
   );
 }

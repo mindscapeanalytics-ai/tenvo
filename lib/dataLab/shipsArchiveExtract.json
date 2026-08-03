@@ -1,0 +1,90 @@
+{
+  "source": "archive/ships-parts.html",
+  "origin": "https://dwgtrading.com/",
+  "extractedAt": "2026-07-18",
+  "heroImage": "https://c11cbcde.delivery.rocketcdn.me/wp-content/uploads/2025/03/Home-topfoto-dwg-trading.jpg",
+  "expertise": [
+    {
+      "id": "new-systems",
+      "label": "New Systems",
+      "image": "https://c11cbcde.delivery.rocketcdn.me/wp-content/uploads/2025/08/New-systems-home.jpg"
+    },
+    {
+      "id": "used-systems",
+      "label": "Used Systems",
+      "image": "https://c11cbcde.delivery.rocketcdn.me/wp-content/uploads/2025/03/Used-systems_11zon.jpg"
+    },
+    {
+      "id": "spare-parts",
+      "label": "Spare Parts",
+      "image": "https://c11cbcde.delivery.rocketcdn.me/wp-content/uploads/2026/02/Spare-Parts.jpg"
+    },
+    {
+      "id": "repair-service",
+      "label": "Repair Service",
+      "image": "https://c11cbcde.delivery.rocketcdn.me/wp-content/uploads/2026/02/Repair-service.jpg"
+    }
+  ],
+  "equipmentFamilies": [
+    {
+      "id": "hydraulic-retractable",
+      "label": "Hydraulic retractable rudder propellers",
+      "equipmentType": "Hydraulic retractable rudder propeller",
+      "image": "https://c11cbcde.delivery.rocketcdn.me/wp-content/uploads/2025/10/Hydraulic-retractable-rudder-propellers-1.png"
+    },
+    {
+      "id": "well-mounted",
+      "label": "Hydraulic well-mounted rudder propellers",
+      "equipmentType": "Well-mounted rudder propeller",
+      "image": "https://c11cbcde.delivery.rocketcdn.me/wp-content/uploads/2025/10/Hydraulic-well-mounted-rudder-propellers-1.png"
+    },
+    {
+      "id": "hydraulic-crane",
+      "label": "Hydraulic cranes",
+      "equipmentType": "Hydraulic crane",
+      "image": "https://c11cbcde.delivery.rocketcdn.me/wp-content/uploads/2025/10/Hydraulic-Cranes.png"
+    },
+    {
+      "id": "tunnel-thruster",
+      "label": "Hydraulic tunnel thrusters",
+      "equipmentType": "Tunnel thruster",
+      "image": "https://c11cbcde.delivery.rocketcdn.me/wp-content/uploads/2025/10/Hydraulic-tunnel-thruster-electric-kleiner.png"
+    },
+    {
+      "id": "em-tunnel",
+      "label": "Electric / mechanical tunnel thrusters",
+      "equipmentType": "Tunnel thruster",
+      "image": "https://c11cbcde.delivery.rocketcdn.me/wp-content/uploads/2025/10/Electric-Mechanical-Tunnel-Thrusters.png"
+    },
+    {
+      "id": "azimuth",
+      "label": "L-drive / Z-drive azimuth",
+      "equipmentType": "Azimuth L/Z-drive",
+      "image": "https://c11cbcde.delivery.rocketcdn.me/wp-content/uploads/2025/10/L-Drive-and-Z-Drive-azimuth-deckmounted-navigators.png"
+    },
+    {
+      "id": "used-rudder",
+      "label": "Used rudder propellers",
+      "equipmentType": "Hydraulic retractable rudder propeller",
+      "image": "https://c11cbcde.delivery.rocketcdn.me/wp-content/uploads/2025/10/Used-Rudder-Proppelers.png"
+    },
+    {
+      "id": "pump-jet",
+      "label": "Used pump-jets & waterjets",
+      "equipmentType": "Pump-jet / waterjet",
+      "image": "https://c11cbcde.delivery.rocketcdn.me/wp-content/uploads/2025/10/Used-Pump-jets-waterjets.png"
+    },
+    {
+      "id": "spare-rudder",
+      "label": "Spare parts for rudder propellers",
+      "equipmentType": "Other",
+      "image": "https://c11cbcde.delivery.rocketcdn.me/wp-content/uploads/2025/10/Spare-partes-rudder-propppelers.png"
+    },
+    {
+      "id": "sterntube",
+      "label": "Sterntube, compact & shaft seals",
+      "equipmentType": "Sterntube / shaft seal",
+      "image": "https://c11cbcde.delivery.rocketcdn.me/wp-content/uploads/2025/10/Sterntube-Compact-and-Shaft-Seals.png"
+    }
+  ]
+}

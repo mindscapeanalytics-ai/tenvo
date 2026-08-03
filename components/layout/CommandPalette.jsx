@@ -16,16 +16,22 @@ import {
     LayoutDashboard, Zap, Truck, Building2, CreditCard, Receipt,
     BarChart3, Landmark, Brain, Factory, UserCog, CheckSquare, ScrollText,
     Heart, Megaphone, UtensilsCrossed, RefreshCcw, ClipboardList, TrendingUp,
-    Warehouse, Calendar, ArrowLeftRight, BadgeDollarSign, Hash
+    Warehouse, Calendar, ArrowLeftRight, BadgeDollarSign, Hash, BadgeCheck
 } from 'lucide-react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
+import { isMembershipRelevant } from '@/lib/config/domains';
+import { navigateHubTabFromLocation } from '@/lib/utils/hubTabNavigation';
+import { useHubTabOptional } from '@/lib/context/HubTabContext';
 
 export function CommandPalette() {
     const [open, setOpen] = useState(false);
+    const [membershipRelevant, setMembershipRelevant] = useState(false);
     const router = useRouter();
+    const hubTab = useHubTabOptional();
 
     // Command palette needs the current business domain, not category, to route correctly
     const getCurrentDomain = () => {
+        if (hubTab?.domain) return hubTab.domain;
         if (typeof window !== 'undefined') {
             const storedBiz = localStorage.getItem('businessData');
             if (storedBiz) {
@@ -52,15 +58,41 @@ export function CommandPalette() {
         return () => document.removeEventListener('keydown', down);
     }, []);
 
+    useEffect(() => {
+        if (!open || typeof window === 'undefined') return;
+        try {
+            const raw = localStorage.getItem('businessData');
+            if (raw) {
+                const biz = JSON.parse(raw);
+                setMembershipRelevant(isMembershipRelevant(biz.category));
+                return;
+            }
+        } catch {
+            // ignore
+        }
+        setMembershipRelevant(false);
+    }, [open]);
+
     const runCommand = useCallback((command) => {
         setOpen(false);
         command();
     }, []);
 
-    const goTab = useCallback((tab) => {
-        const currentDomain = getCurrentDomain();
-        runCommand(() => router.push(`/business/${currentDomain}?tab=${tab}`, { scroll: false }));
-    }, [router, runCommand]);
+    const goTab = useCallback((tab, financeView) => {
+        runCommand(() => {
+            if (hubTab?.goToTab) {
+                hubTab.goToTab(tab, { financeView: financeView || null });
+                return;
+            }
+            const result = navigateHubTabFromLocation(tab, {
+                domain: getCurrentDomain(),
+                financeView: financeView || null,
+            });
+            if (result.type === 'route') {
+                router.push(result.href, { scroll: false });
+            }
+        });
+    }, [hubTab, router, runCommand]);
 
     const fireAction = useCallback((actionId) => {
         runCommand(() => window.dispatchEvent(new CustomEvent('open-quick-action', { detail: { actionId } })));
@@ -72,7 +104,11 @@ export function CommandPalette() {
 
     return (
         <CommandDialog open={open} onOpenChange={setOpen}>
-            <CommandInput placeholder="Search modules, actions, features..." />
+            <CommandInput
+                id="hub-command-palette-search"
+                name="command-palette-search"
+                placeholder="Search modules, actions, features..."
+            />
             <CommandList>
                 <CommandEmpty>No results found.</CommandEmpty>
 
@@ -164,6 +200,12 @@ export function CommandPalette() {
                         <Heart className="mr-2 h-4 w-4" />
                         <span>Loyalty & CRM</span>
                     </CommandItem>
+                    {membershipRelevant ? (
+                    <CommandItem onSelect={() => goTab('memberships')}>
+                        <BadgeCheck className="mr-2 h-4 w-4" />
+                        <span>Memberships</span>
+                    </CommandItem>
+                    ) : null}
                     <CommandItem onSelect={() => goTab('refunds')}>
                         <RefreshCcw className="mr-2 h-4 w-4" />
                         <span>Refunds & Returns</span>
@@ -173,35 +215,35 @@ export function CommandPalette() {
                 <CommandSeparator />
 
                 <CommandGroup heading="Finance">
-                    <CommandItem onSelect={() => goTab('accounting')}>
+                    <CommandItem onSelect={() => goTab('finance')}>
+                        <BarChart3 className="mr-2 h-4 w-4" />
+                        <span>Finance Hub</span>
+                    </CommandItem>
+                    <CommandItem onSelect={() => goTab('finance', 'expenses')}>
+                        <Receipt className="mr-2 h-4 w-4" />
+                        <span>Expenses</span>
+                    </CommandItem>
+                    <CommandItem onSelect={() => goTab('finance', 'overview')}>
                         <Landmark className="mr-2 h-4 w-4" />
-                        <span>Accounting (GL)</span>
+                        <span>Accounting overview</span>
                     </CommandItem>
                     <CommandItem onSelect={() => goTab('payments')}>
                         <CreditCard className="mr-2 h-4 w-4" />
                         <span>Payments</span>
                     </CommandItem>
-                    <CommandItem onSelect={() => goTab('expenses')}>
-                        <Receipt className="mr-2 h-4 w-4" />
-                        <span>Expenses</span>
-                    </CommandItem>
-                    <CommandItem onSelect={() => goTab('credit-notes')}>
-                        <RefreshCcw className="mr-2 h-4 w-4" />
-                        <span>Credit Notes</span>
-                    </CommandItem>
-                    <CommandItem onSelect={() => goTab('finance')}>
-                        <BarChart3 className="mr-2 h-4 w-4" />
-                        <span>Finance Hub</span>
-                    </CommandItem>
                     <CommandItem onSelect={() => goTab('gst')}>
                         <BadgeDollarSign className="mr-2 h-4 w-4" />
                         <span>Tax / GST</span>
                     </CommandItem>
-                    <CommandItem onSelect={() => goTab('fiscal')}>
+                    <CommandItem onSelect={() => goTab('finance', 'credit-notes')}>
+                        <RefreshCcw className="mr-2 h-4 w-4" />
+                        <span>Credit Notes</span>
+                    </CommandItem>
+                    <CommandItem onSelect={() => goTab('finance', 'fiscal')}>
                         <Calendar className="mr-2 h-4 w-4" />
                         <span>Fiscal Periods</span>
                     </CommandItem>
-                    <CommandItem onSelect={() => goTab('exchange-rates')}>
+                    <CommandItem onSelect={() => goTab('finance', 'exchange')}>
                         <ArrowLeftRight className="mr-2 h-4 w-4" />
                         <span>Exchange Rates</span>
                     </CommandItem>

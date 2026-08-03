@@ -3,7 +3,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Receipt, Truck, FileText, BarChart3, TrendingUp, Layers } from 'lucide-react';
+import { Receipt, Truck, FileText, BarChart3, TrendingUp, Layers, Wallet } from 'lucide-react';
 import { RevenueAreaChart } from '@/components/AdvancedCharts';
 import { formatCurrency } from '@/lib/currency';
 import { useRouter } from 'next/navigation';
@@ -15,15 +15,18 @@ export function FinancialOverview({
     chartData,
     currency,
     role = 'owner',
-    onTabChange
+    onTabChange,
+    onFinanceSubTab,
+    onQuickAction,
 }) {
     const router = useRouter();
 
     const quickActions = [
+        { label: 'Record Expense', icon: Wallet, actionId: 'log-expense' },
         { label: 'View Invoices', icon: Receipt, tab: 'invoices' },
         { label: 'Purchase Orders', icon: Truck, tab: 'purchases' },
-        { label: 'General Ledger', icon: FileText, route: `/business/${category}/finance?view=ledger` }, // Fixed route to match tab structure
-        { label: 'Financial Reports', icon: BarChart3, tab: 'reports', role: ['owner', 'admin', 'accountant'] }
+        { label: 'General Ledger', icon: FileText, tab: 'finance', financeSubTab: 'general-ledger' },
+        { label: 'Financial Reports', icon: BarChart3, tab: 'finance', financeSubTab: 'statements', role: ['owner', 'admin', 'accountant'] }
     ];
 
     const filteredActions = quickActions.filter(item => !item.role || item.role.includes(role));
@@ -40,13 +43,34 @@ export function FinancialOverview({
                     <CardDescription>Direct shortcuts to common financial tasks</CardDescription>
                 </CardHeader>
                 <CardContent className="pt-6">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
                         {filteredActions.map((item, idx) => (
                             <Button
                                 key={idx}
                                 variant="outline"
                                 className="h-20 flex flex-col items-center justify-center gap-2 rounded-xl hover:bg-wine/5 hover:border-wine/20 border-gray-200 group transition-all"
-                                onClick={() => item.tab ? onTabChange(item.tab) : router.push(item.route)}
+                                onClick={() => {
+                                    if (item.actionId) {
+                                        if (onQuickAction) {
+                                            onQuickAction(item.actionId);
+                                        } else {
+                                            window.dispatchEvent(
+                                                new CustomEvent('open-modal', {
+                                                    detail: { modalId: 'expense' },
+                                                })
+                                            );
+                                        }
+                                        return;
+                                    }
+                                    if (item.tab) {
+                                        onTabChange(item.tab);
+                                        if (item.financeSubTab && onFinanceSubTab) {
+                                            onFinanceSubTab(item.financeSubTab);
+                                        }
+                                    } else if (item.route) {
+                                        router.push(item.route);
+                                    }
+                                }}
                             >
                                 <item.icon className="w-5 h-5 text-gray-500 group-hover:text-wine group-hover:scale-110 transition-all duration-300" />
                                 <span className="font-semibold text-xs text-gray-700 group-hover:text-wine">{item.label}</span>
@@ -124,13 +148,13 @@ export function FinancialOverview({
                             <div className="flex justify-between items-end">
                                 <div>
                                     <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">Gross Profit</p>
-                                    <p className="text-3xl font-black text-gray-900 tracking-tight">
+                                    <p className="text-3xl font-semibold text-gray-900 tracking-tight">
                                         {formatCurrency(accountingSummary?.grossProfit || 0, currency)}
                                     </p>
                                 </div>
                                 <div className="text-right">
                                     <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">Margin</p>
-                                    <div className={`text-xl font-black flex items-center justify-end gap-1 ${accountingSummary?.margin >= 20 ? 'text-green-600' : 'text-orange-600'}`}>
+                                    <div className={`text-xl font-semibold flex items-center justify-end gap-1 ${accountingSummary?.margin >= 20 ? 'text-green-600' : 'text-orange-600'}`}>
                                         {Math.round(accountingSummary?.margin || 0)}%
                                     </div>
                                 </div>

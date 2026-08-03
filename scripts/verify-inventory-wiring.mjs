@@ -1,0 +1,423 @@
+/**
+ * Validates inventory schema alignment + hub wiring (locations, transfers, dates, migrations).
+ * Run: bun run verify:inventory-wiring
+ */
+import { readFileSync, existsSync } from 'fs';
+import { join } from 'path';
+
+const root = process.cwd();
+let failed = false;
+
+function fail(msg) {
+  console.error(`FAIL: ${msg}`);
+  failed = true;
+}
+
+function pass(msg) {
+  console.log(`OK: ${msg}`);
+}
+
+function read(rel) {
+  return readFileSync(join(root, rel), 'utf8');
+}
+
+// --- Prisma schema columns ---
+const schema = read('prisma/schema.prisma');
+
+if (!schema.includes('variant_id') || !schema.match(/model stock_movements[\s\S]*?variant_id/)) {
+  fail('prisma/schema.prisma: stock_movements.variant_id missing');
+} else {
+  pass('stock_movements.variant_id in Prisma schema');
+}
+
+if (!schema.match(/model product_stock_locations[\s\S]*?created_at/)) {
+  fail('prisma/schema.prisma: product_stock_locations.created_at missing');
+} else {
+  pass('product_stock_locations.created_at in Prisma schema');
+}
+
+if (!schema.includes('stock_movements_variant_id_fkey') && !schema.includes('product_variants')) {
+  fail('prisma/schema.prisma: stock_movements → product_variants relation missing');
+} else if (schema.match(/model stock_movements[\s\S]*?product_variants/)) {
+  pass('stock_movements → product_variants relation in schema');
+}
+
+// --- Migration file ---
+const migrationPath = 'prisma/migrations/20260706_inventory_stock_integrity/migration.sql';
+if (!existsSync(join(root, migrationPath))) {
+  fail(`${migrationPath} missing`);
+} else {
+  const sql = read(migrationPath);
+  if (!sql.includes('variant_id') || !sql.includes('created_at')) {
+    fail('inventory stock integrity migration incomplete');
+  } else {
+    pass('20260706_inventory_stock_integrity migration present');
+  }
+}
+
+// --- Locations tab prop wiring (P0 fix) ---
+const inventoryManager = read('components/InventoryManager.jsx');
+if (/\bonAdd=\{onLocationAdd\}/.test(inventoryManager)) {
+  fail('InventoryManager still passes onAdd={onLocationAdd} to MultiLocationInventory');
+} else if (!inventoryManager.includes('onLocationAdd={onLocationAdd}')) {
+  fail('InventoryManager missing onLocationAdd={onLocationAdd} for MultiLocationInventory');
+} else {
+  pass('InventoryManager uses onLocationAdd for MultiLocationInventory');
+}
+
+// --- MultiLocationInventory fallbacks ---
+const multiLoc = read('components/MultiLocationInventory.tsx');
+for (const api of ['warehouseAPI.createLocation', 'warehouseAPI.updateLocation', 'warehouseAPI.deleteLocation', 'warehouseAPI.createTransfer']) {
+  if (!multiLoc.includes(api)) {
+    fail(`MultiLocationInventory missing fallback ${api}`);
+  }
+}
+if (!failed || multiLoc.includes('warehouseAPI.createTransfer')) {
+  pass('MultiLocationInventory warehouseAPI fallbacks wired');
+}
+
+// --- InventoryService tenancy ---
+const invSvc = read('lib/services/InventoryService.js');
+if (!invSvc.match(/product_stock_locations WHERE warehouse_id.*business_id/)) {
+  fail('InventoryService.removeStock location lock missing business_id');
+} else {
+  pass('InventoryService.removeStock scopes location lock by business_id');
+}
+
+if (!invSvc.match(/transferStock[\s\S]*?COALESCE\(state, 'sellable'\)/)) {
+  fail('InventoryService.transferStock missing sellable state filter');
+} else {
+  pass('InventoryService.transferStock filters sellable state');
+}
+
+// --- Cycle count warehouse ---
+const cycleRoute = read('app/api/v1/inventory/cycle-counts/[id]/route.js');
+if (!cycleRoute.includes('cycleWarehouseId')) {
+  fail('cycle-counts PATCH does not use cycle_counts.warehouse_id');
+} else {
+  pass('cycle-counts uses parent warehouse_id for adjustments');
+}
+
+// --- Date formatter (Finance crash fix) ---
+if (!existsSync(join(root, 'lib/utils/formatDisplayDate.ts'))) {
+  fail('lib/utils/formatDisplayDate.ts missing');
+} else {
+  pass('formatDisplayDate.ts present');
+}
+
+const expenseMgr = read('components/finance/ExpenseManager.jsx');
+if (!expenseMgr.includes('formatDisplayDate(expense.date)')) {
+  fail('ExpenseManager still renders raw expense.date');
+} else {
+  pass('ExpenseManager uses formatDisplayDate');
+}
+
+// --- Storefront FIFO ordering ---
+const sfStock = read('lib/storefront/storefrontOrderStock.js');
+if (!sfStock.includes('COALESCE(created_at, updated_at)')) {
+  fail('storefrontOrderStock FIFO missing resilient date ordering');
+} else {
+  pass('storefrontOrderStock resilient FIFO ordering');
+}
+
+// --- Storefront checkout uses InventoryService ---
+const sfInventory = read('lib/storefront/storefrontOrderInventory.js');
+if (!sfInventory.includes('InventoryService.removeStock') || !sfInventory.includes('removeVariantStock')) {
+  fail('storefrontOrderInventory must route through InventoryService');
+} else {
+  pass('storefront checkout stock uses InventoryService');
+}
+
+const ordersRoute = read('app/api/storefront/[businessDomain]/orders/route.js');
+if (!ordersRoute.includes('decrementStorefrontOrderLineStock')) {
+  fail('storefront orders route still uses raw SQL stock decrement');
+} else {
+  pass('storefront orders route uses decrementStorefrontOrderLineStock');
+}
+
+if (!invSvc.match(/transferStock[\s\S]*?transaction_type, quantity_change, notes[\s\S]*?'transfer'/)) {
+  fail('InventoryService.transferStock missing stock_movements audit rows');
+} else {
+  pass('InventoryService.transferStock records stock_movements');
+}
+
+if (!invSvc.includes('removeVariantStock')) {
+  fail('InventoryService.removeVariantStock missing');
+} else {
+  pass('InventoryService.removeVariantStock present');
+}
+
+// --- inventory_reservations FK relations ---
+if (!schema.match(/model inventory_reservations[\s\S]*?product_batches/)) {
+  fail('inventory_reservations → product_batches relation missing');
+} else {
+  pass('inventory_reservations batch FK in schema');
+}
+
+if (!schema.match(/model inventory_reservations[\s\S]*?warehouse_locations/)) {
+  fail('inventory_reservations → warehouse_locations relation missing');
+} else {
+  pass('inventory_reservations warehouse FK in schema');
+}
+
+const reservationFkMigration = 'prisma/migrations/20260707_inventory_reservation_fks/migration.sql';
+if (!existsSync(join(root, reservationFkMigration))) {
+  fail(`${reservationFkMigration} missing`);
+} else {
+  pass('20260707_inventory_reservation_fks migration present');
+}
+
+// --- ApprovalQueue no longer uses Supabase stock_adjustments ---
+const approvalQueue = read('components/inventory/ApprovalQueue.jsx');
+if (approvalQueue.includes("from('stock_adjustments')") || approvalQueue.includes('createClient')) {
+  fail('ApprovalQueue still queries Supabase stock_adjustments');
+} else if (!approvalQueue.includes('useStockAdjustment')) {
+  fail('ApprovalQueue not wired to useStockAdjustment');
+} else {
+  pass('ApprovalQueue uses Prisma-backed useStockAdjustment');
+}
+
+// --- Excel mobile bulk entry ---
+if (!existsSync(join(root, 'lib/utils/inventoryExcelMobile.js'))) {
+  fail('lib/utils/inventoryExcelMobile.js missing');
+} else {
+  pass('inventoryExcelMobile helpers present');
+}
+
+const excelModal = read('components/ExcelModeModal.jsx');
+if (!excelModal.includes('useCompactViewport') || !excelModal.includes('touchOptimized={isMobileExcel}')) {
+  fail('ExcelModeModal missing mobile touch-optimized grid wiring');
+} else {
+  pass('ExcelModeModal mobile touch layout wired');
+}
+
+const busyGrid = read('components/BusyGrid.jsx');
+if (!busyGrid.includes('touchOptimized') || !busyGrid.includes('handleTouchNextField')) {
+  fail('BusyGrid missing mobile excel touch toolbar');
+} else {
+  pass('BusyGrid mobile excel touch toolbar present');
+}
+
+if (!existsSync(join(root, 'components/inventory/mobile/ExcelModeMobileCardView.jsx'))) {
+  fail('ExcelModeMobileCardView missing');
+} else if (!excelModal.includes('ExcelModeMobileCardView')) {
+  fail('ExcelModeModal not wired to mobile card entry view');
+} else {
+  pass('ExcelModeMobileCardView wired in ExcelModeModal');
+}
+
+if (!existsSync(join(root, 'lib/utils/inventoryGridCellTypes.js'))) {
+  fail('inventoryGridCellTypes.js missing');
+} else {
+  pass('shared inventory grid cell types present');
+}
+
+// --- Visual / Busy mode domain-aware wiring ---
+if (!inventoryManager.includes('handleInventoryCellEdit')) {
+  fail('InventoryManager missing handleInventoryCellEdit');
+} else if (!inventoryManager.includes('mapProductField')) {
+  fail('InventoryManager cell edit missing mapProductField');
+} else if (!inventoryManager.includes('mapExcelRowForSave')) {
+  fail('InventoryManager cell edit missing mapExcelRowForSave save path');
+} else {
+  pass('InventoryManager cell edits use mapProductField + mapExcelRowForSave');
+}
+
+if (!inventoryManager.includes("mode: 'busy'")) {
+  fail('InventoryManager gridColumns missing busy mode buildInventoryGridColumns');
+} else if (!inventoryManager.includes("mode: 'visual'")) {
+  fail('InventoryManager columns missing visual mode buildInventoryGridColumns');
+} else {
+  pass('Visual and Busy modes use buildInventoryGridColumns');
+}
+
+if (!inventoryManager.includes('getFieldSuggestions={getFieldSuggestions}')) {
+  fail('InventoryManager BusyGrid missing getFieldSuggestions');
+} else if (!inventoryManager.includes('domain_data.')) {
+  fail('InventoryManager visual columns missing domain_data quick edit');
+} else {
+  pass('BusyGrid datalist + visual domain_data cells wired');
+}
+
+const mobileView = read('lib/utils/inventoryMobileView.js');
+if (!mobileView.includes('busy') || !mobileView.includes('normalizeInventoryMobileView')) {
+  fail('inventoryMobileView missing busy/visual mobile modes');
+} else {
+  pass('inventoryMobileView includes visual + busy mobile modes');
+}
+
+const mobileToggle = read('components/inventory/mobile/InventoryMobileViewToggle.jsx');
+if (!mobileToggle.includes('INVENTORY_MOBILE_VIEWS.busy')) {
+  fail('InventoryMobileViewToggle missing busy mode');
+} else {
+  pass('InventoryMobileViewToggle offers visual, busy, and cards');
+}
+
+if (!inventoryManager.includes('mobileViewMode === \'busy\'')) {
+  fail('InventoryManager mobile section missing busy grid');
+} else if (!inventoryManager.includes('resolveExcelMobileEssentialKeys')) {
+  fail('InventoryManager mobile busy missing domain-aware column filter');
+} else {
+  pass('InventoryManager mobile busy grid domain-filtered');
+}
+
+if (!existsSync(join(root, 'components/mobile/index.ts'))) {
+  fail('components/mobile/index.ts barrel missing');
+} else {
+  const barrel = read('components/mobile/index.ts');
+  if (!barrel.includes('HubSectionHeader')) {
+    fail('mobile/index.ts does not export HubSectionHeader');
+  } else {
+    pass('mobile/index.ts exports HubSectionHeader');
+  }
+}
+
+// --- Hub display stock sellable-only + DataContext inventory path ---
+const productService = read('lib/services/ProductService.js');
+if (
+  !productService.includes('resolveInventoryEffectiveStock') &&
+  !productService.includes("toLowerCase() === 'sellable'")
+) {
+  fail('ProductService.resolveDisplayStock must use shared effective stock (sellable locations)');
+} else {
+  pass('ProductService display stock uses shared sellable resolver');
+}
+if (!productService.includes('display_stock: displayStock')) {
+  fail('ProductService.sanitizeProduct must emit display_stock');
+} else {
+  pass('ProductService sanitize emits display_stock');
+}
+
+if (!productService.includes("status: { in: ['in_stock', 'available'] }") && !productService.includes('in_stock\', \'available')) {
+  fail('ProductService must read both in_stock and available serial statuses');
+} else {
+  pass('ProductService serial readers accept available + in_stock');
+}
+
+if (!productService.includes("status: 'archived'") && !invSvc.includes('product_stock_locations')) {
+  // soft-delete cleanup lives on ProductService
+}
+if (!productService.includes('inventory children archived') && !productService.includes('product_stock_locations.updateMany')) {
+  fail('ProductService.deleteProduct must archive children and zero locations');
+} else {
+  pass('ProductService soft-delete archives inventory children');
+}
+
+if (!invSvc.includes("COALESCE(state, 'sellable') = 'sellable'") || !invSvc.includes('has_variants')) {
+  fail('InventoryService.syncProductStock must use sellable qty and respect variant parents');
+} else {
+  pass('InventoryService.syncProductStock sellable + variant-aware');
+}
+
+const composite = read('lib/actions/premium/automation/inventory_composite.js');
+if (!composite.includes('ProductService.getProduct') || !composite.includes("hasOwnProperty.call(sanitizedData, 'is_active')")) {
+  fail('Composite upsert must return sanitized product and not force is_active=true');
+} else {
+  pass('Composite upsert returns sanitized product without silent reactivate');
+}
+
+const productActions = read('lib/actions/standard/inventory/product.js');
+if (!productActions.includes('hasLedgerPayload') || !productActions.includes('upsertIntegratedProductAction')) {
+  fail('createProductAction must route stock/batches/serials through composite');
+} else {
+  pass('createProductAction routes ledger payloads through composite');
+}
+
+const dataContext = read('lib/context/DataContext.js');
+if (!dataContext.includes('getProductsAction') || !dataContext.includes('fetchInventory')) {
+  fail('DataContext missing inventory getProductsAction path');
+} else {
+  pass('DataContext inventory loads via getProductsAction');
+}
+if (!dataContext.includes('isStale()')) {
+  fail('DataContext missing generation stale guards');
+} else {
+  pass('DataContext guards stale business fetches');
+}
+
+// --- Product image gallery (upload + persist) ---
+if (!composite.includes("'images'") && !composite.includes('"images"')) {
+  fail('Composite upsert safeFields must include images gallery JSON');
+} else if (!composite.includes('productImagesFromUrls') || !composite.includes('normalizeProductImageUrls')) {
+  fail('Composite upsert must normalize images via productImages helpers');
+} else {
+  pass('Composite upsert persists and normalizes products.images');
+}
+
+const productImagesUtil = read('lib/utils/productImages.js');
+if (!productImagesUtil.includes('export const MAX_PRODUCT_IMAGES = 3')) {
+  fail('productImages.js must export MAX_PRODUCT_IMAGES = 3');
+} else if (!productImagesUtil.includes('export function productImagesFromUrls')) {
+  fail('productImages.js missing productImagesFromUrls');
+} else if (!productImagesUtil.includes('return true') || !productImagesUtil.includes('isMultiProductImagesEnabled')) {
+  fail('isMultiProductImagesEnabled must always return true (all domains)');
+} else if (!productImagesUtil.includes('resolveStorefrontProductGallery') || !productImagesUtil.includes('enrichProductWithNormalizedImages')) {
+  fail('productImages.js must export storefront gallery resolvers');
+} else {
+  pass('productImages helpers: max 3, enabled for all domains, storefront gallery');
+}
+
+if (!composite.includes('intentionalGallery') || !composite.includes('delete sanitizedData.image_url')) {
+  fail('Composite upsert must not wipe images on empty Busy/Excel stock saves');
+} else {
+  pass('Composite upsert guards against accidental image wipe');
+}
+
+const productForm = read('components/ProductForm.jsx');
+if (!productForm.includes('ProductImageManager') || !productForm.includes('productImagesFromUrls')) {
+  fail('ProductForm must wire ProductImageManager + productImagesFromUrls');
+} else {
+  pass('ProductForm Media tab wires gallery helpers');
+}
+
+const pdpPage = read('app/store/[businessDomain]/products/[slug]/page.jsx');
+if (!pdpPage.includes('resolveStorefrontProductGallery')) {
+  fail('PDP must build gallery via resolveStorefrontProductGallery');
+} else {
+  pass('PDP product gallery uses resolveStorefrontProductGallery');
+}
+
+const productGallery = read('components/storefront/ProductGallery.jsx');
+if (!productGallery.includes('isSlider') || !productGallery.includes('onTouchEnd')) {
+  fail('ProductGallery must expose multi-image slider + touch swipe');
+} else {
+  pass('ProductGallery multi-image slider wired');
+}
+
+const electronicsHome = read('components/storefront/sections/electronics/ElectronicsHomeSections.jsx');
+if (!electronicsHome.includes('StoreMarqueeRow') || !electronicsHome.includes('ElectronicsCategoryTile')) {
+  fail('Electronics Shop by category must use StoreMarqueeRow auto-scroll');
+} else {
+  pass('Electronics category marquee wired');
+}
+
+const imageManager = read('components/ProductImageManager.jsx');
+if (!imageManager.includes('uploadOptimizedImage')) {
+  fail('ProductImageManager must call uploadOptimizedImage');
+} else if (imageManager.includes("id: 'auto'") || imageManager.includes('Auto-fetch from internet')) {
+  fail('ProductImageManager must not expose retired Unsplash Auto tab');
+} else {
+  pass('ProductImageManager uses optimized upload (Upload + URL only)');
+}
+
+const uploadRoute = read('app/api/upload/product-image/route.js');
+if (!uploadRoute.includes('status: 410') && !uploadRoute.includes('status:410')) {
+  fail('product-image GET must return 410 for retired auto-fetch');
+} else if (uploadRoute.includes('source.unsplash.com')) {
+  fail('product-image GET must not use deprecated source.unsplash.com');
+} else {
+  pass('product-image GET retires Unsplash auto-fetch with 410');
+}
+
+if (!productService.includes('productImagesFromUrls') || !productService.includes('normalizeProductImageUrls')) {
+  fail('ProductService create/update must normalize images gallery');
+} else {
+  pass('ProductService normalizes images on create/update');
+}
+
+if (failed) {
+  console.error('\nverify:inventory-wiring FAILED');
+  process.exit(1);
+}
+
+console.log('\nverify:inventory-wiring passed');

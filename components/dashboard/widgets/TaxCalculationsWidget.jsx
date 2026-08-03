@@ -7,6 +7,8 @@ import { Calculator } from 'lucide-react';
 import { formatCurrency } from '@/lib/currency';
 import { useLanguage } from '@/lib/context/LanguageContext';
 import { translations } from '@/lib/translations';
+import { getTaxCalculations } from '@/lib/actions/dashboard/widgets';
+import toast from 'react-hot-toast';
 
 /**
  * TaxCalculationsWidget Component
@@ -56,28 +58,17 @@ export function TaxCalculationsWidget({
     try {
       setLoading(true);
       
-      // In a real implementation, this would fetch from API
-      // For now, we'll simulate tax calculations data
-      const mockData = {
-        totalSales: 2450000,
-        taxableAmount: 2450000,
-        pst: {
-          rate: 17,
-          amount: 416500
-        },
-        fst: {
-          rate: 1,
-          amount: 24500
-        },
-        totalTax: 441000,
-        taxPaid: 400000,
-        taxPending: 41000,
-        nextFilingDate: new Date(Date.now() + 12 * 24 * 60 * 60 * 1000)
-      };
+      const result = await getTaxCalculations(businessId, currency);
       
-      setTaxData(mockData);
+      if (result.success) {
+        setTaxData(result.data);
+      } else {
+        console.error('Failed to load tax calculations:', result.error);
+        toast.error(result.error || 'Failed to load tax data');
+      }
     } catch (err) {
       console.error('Failed to load tax calculations:', err);
+      toast.error('Failed to load tax data');
     } finally {
       setLoading(false);
     }
@@ -146,7 +137,7 @@ export function TaxCalculationsWidget({
             <span className="text-xs font-bold text-gray-700">
               {t.taxable_sales || 'Taxable Sales'}
             </span>
-            <span className="text-lg font-black text-gray-900">
+            <span className="text-lg font-semibold text-gray-900">
               {formatCurrency(taxData.taxableAmount, currency)}
             </span>
           </div>
@@ -157,7 +148,7 @@ export function TaxCalculationsWidget({
             <div className="text-xs text-blue-700 font-medium mb-1">
               {t.pst || 'PST'} ({taxData.pst.rate}%)
             </div>
-            <div className="text-xl font-black text-blue-900">
+            <div className="text-xl font-semibold text-blue-900">
               {formatCurrency(taxData.pst.amount, currency)}
             </div>
           </div>
@@ -166,7 +157,7 @@ export function TaxCalculationsWidget({
             <div className="text-xs text-wine-700 font-medium mb-1">
               {t.fst || 'FST'} ({taxData.fst.rate}%)
             </div>
-            <div className="text-xl font-black text-wine-900">
+            <div className="text-xl font-semibold text-wine-900">
               {formatCurrency(taxData.fst.amount, currency)}
             </div>
           </div>
@@ -177,7 +168,7 @@ export function TaxCalculationsWidget({
             <span className="text-xs font-bold text-green-900">
               {t.total_tax_liability || 'Total Tax Liability'}
             </span>
-            <span className="text-2xl font-black text-green-900">
+            <span className="text-2xl font-semibold text-green-900">
               {formatCurrency(taxData.totalTax, currency)}
             </span>
           </div>

@@ -1,41 +1,75 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { Building2, Shield, CheckCircle2 } from 'lucide-react';
+import Link from 'next/link';
+import { CheckCircle2, Mail, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { trackEvent, EVENTS } from '@/lib/analytics/tracking';
+import { validateEmail } from '@/lib/marketing/validation';
+import { TenvoTextLogo } from '@/components/branding/TenvoTextLogo';
+import { SupportWhatsAppLink } from '@/components/marketing/SupportWhatsAppLink';
+import MarketingCtaLink from '@/components/marketing/ui/MarketingCtaLink';
+import { getBookMeetingHref } from '@/lib/marketing/salesLinks';
+import { INDUSTRY_PLANS_NAV, listIndustryPlanNavItems } from '@/lib/marketing/domainPackageNav';
+import { cn } from '@/lib/utils';
+import { MARKETING_CONTAINER } from '@/lib/utils/marketingLayout';
+
+const FOOTER_LINK =
+  'text-sm font-medium text-neutral-400 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-900 rounded-sm';
+
+const FOOTER_HEADING =
+  'mb-4 text-[10px] font-semibold uppercase tracking-[0.2em] text-neutral-500 sm:mb-5 sm:text-[11px]';
+
+function FooterColumn({ title, children }) {
+  return (
+    <div className="min-w-0">
+      <h4 className={FOOTER_HEADING}>{title}</h4>
+      <ul className="space-y-2.5 sm:space-y-3">{children}</ul>
+    </div>
+  );
+}
 
 /**
- * MarketingFooter Component
- * Comprehensive footer with links, contact info, and newsletter
- * Following 2026 best practices for footer design
+ * Marketing footer — brand-theme accents, shared container alignment with page sections.
  */
 export default function MarketingFooter({ variant = 'default' }) {
-  const router = useRouter();
   const [email, setEmail] = useState('');
   const [subscribed, setSubscribed] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [newsletterError, setNewsletterError] = useState('');
+  const industryPlans = listIndustryPlanNavItems();
 
   const handleNewsletterSubmit = async (e) => {
     e.preventDefault();
+    setNewsletterError('');
+    const check = validateEmail(email);
+    if (!check.isValid) {
+      setNewsletterError(check.error);
+      return;
+    }
+
     setLoading(true);
 
     try {
       const response = await fetch('/api/marketing/newsletter', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email })
+        body: JSON.stringify({ email }),
       });
+
+      const data = await response.json().catch(() => ({}));
 
       if (response.ok) {
         setSubscribed(true);
         setEmail('');
         trackEvent(EVENTS.NEWSLETTER_SUBSCRIBE, { email });
+      } else {
+        setNewsletterError(data.message || 'Could not subscribe. Try again or use /contact.');
       }
     } catch (error) {
       console.error('Newsletter subscription error:', error);
+      setNewsletterError('Network error. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -43,136 +77,307 @@ export default function MarketingFooter({ variant = 'default' }) {
 
   if (variant === 'minimal') {
     return (
-      <footer className="bg-white border-t border-slate-200 py-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-            <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-              (C) 2026 TENVO Enterprise. Built for Pakistan.
-            </div>
-            <div className="flex gap-8 text-[10px] font-black text-gray-400 uppercase tracking-widest">
-              <a href="/privacy" className="hover:text-blue-700 transition-colors">Privacy</a>
-              <a href="/terms" className="hover:text-blue-700 transition-colors">Terms</a>
-              <a href="/contact" className="hover:text-blue-700 transition-colors">Contact</a>
-            </div>
-          </div>
+      <footer className="border-t border-brand-primary/25 bg-neutral-900">
+        <div
+          className={cn(
+            MARKETING_CONTAINER,
+            'flex flex-col items-center justify-between gap-5 py-8 sm:flex-row sm:items-center'
+          )}
+        >
+          <p className="text-center text-[10px] font-semibold uppercase tracking-[0.2em] text-neutral-500 sm:text-left">
+            © {new Date().getFullYear()} TENVO · A Mindscape Analytics LLC product ·
+            www.mindscapeanalytics.com · Pakistan launch; global roadmap
+          </p>
+          <nav
+            className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-[10px] font-semibold uppercase tracking-[0.2em]"
+            aria-label="Legal"
+          >
+            <Link href="/privacy" className="text-neutral-500 transition-colors hover:text-white">
+              Privacy
+            </Link>
+            <Link href="/terms" className="text-neutral-500 transition-colors hover:text-white">
+              Terms
+            </Link>
+            <Link href="/contact" className="text-neutral-500 transition-colors hover:text-white">
+              Contact
+            </Link>
+            <SupportWhatsAppLink variant="footerMuted" className="text-[10px] font-semibold" />
+          </nav>
         </div>
       </footer>
     );
   }
 
   return (
-    <footer className="bg-[linear-gradient(180deg,rgba(255,255,255,0.72),rgba(255,255,255,0.98))] border-t border-slate-200 pt-24 pb-12 backdrop-blur-xl">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12">
-        {/* Main Footer Content */}
-        <div className="grid md:grid-cols-4 gap-16 mb-24">
-          {/* Company Info */}
-          <div className="space-y-6">
-            <div className="flex items-center gap-3 font-black text-xl uppercase tracking-tighter">
-              <div className="w-8 h-8 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-[0_14px_34px_-18px_rgba(47,91,255,0.8)]">
-                <Building2 className="w-5 h-5" />
-              </div>
-              TENVO
-            </div>
-            <p className="text-sm text-gray-500 font-medium leading-relaxed">
-              The backbone for modern Pakistani enterprises looking for scalability, precision, and compliance.
+    <footer className="relative overflow-x-clip border-t border-brand-primary/25 bg-neutral-900 text-neutral-300">
+      <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_12%_0%,rgba(210,43,43,0.16),transparent_55%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_45%_40%_at_88%_100%,rgba(210,43,43,0.1),transparent_50%)]" />
+      </div>
+
+      <div className={cn(MARKETING_CONTAINER, 'relative z-10 pb-8 pt-12 sm:pb-10 sm:pt-14 lg:pb-12 lg:pt-16')}>
+        {/* Top row: brand | link columns | newsletter — shared top edge */}
+        <div className="grid items-start gap-10 lg:grid-cols-12 lg:gap-x-8 xl:gap-x-10">
+          {/* Brand */}
+          <div className="min-w-0 lg:col-span-3">
+            <Link
+              href="/"
+              className="inline-block rounded-lg outline-none ring-brand-primary/30 focus-visible:ring-2"
+            >
+              <TenvoTextLogo
+                textClassName="text-white"
+                taglineClassName="text-neutral-500"
+                iconClassName="shadow-lg shadow-black/25"
+              />
+            </Link>
+            <p className="mt-5 max-w-sm text-sm font-medium leading-relaxed text-neutral-400">
+              One connected workspace for inventory, commerce, finance, and growth scaling globally.
+              A Mindscape Analytics LLC product (Sheridan, WY, USA).
             </p>
-
-            {/* Trust Badges */}
-            <div className="flex items-center gap-3 pt-4">
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 rounded-xl border border-emerald-200">
-                <Shield className="w-4 h-4 text-green-600" />
-                <span className="text-[10px] font-black text-green-700 uppercase tracking-wider">FBR Tier-1</span>
-              </div>
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 rounded-xl border border-blue-100">
-                <CheckCircle2 className="w-4 h-4 text-blue-700" />
-                <span className="text-[10px] font-black text-blue-700 uppercase tracking-wider">SECP</span>
-              </div>
+            <p className="mt-4 text-sm">
+              <SupportWhatsAppLink
+                variant="dark"
+                className="text-sm font-semibold"
+                iconClassName="h-4 w-4"
+              />
+            </p>
+            <div className="mt-6 flex flex-wrap gap-2">
+              <span className="inline-flex items-center gap-2 rounded-xl border border-brand-primary/35 bg-brand-primary/15 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-white">
+                <Shield className="h-3.5 w-3.5 text-brand-primary" aria-hidden />
+                PK tax configuration
+              </span>
+              <span className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-neutral-200">
+                <CheckCircle2 className="h-3.5 w-3.5 text-brand-primary" aria-hidden />
+                SECP-ready narrative
+              </span>
             </div>
           </div>
 
-          {/* Platform Links */}
-          <div>
-            <h4 className="text-[10px] font-black text-gray-900 uppercase tracking-widest mb-8">Platform</h4>
-            <ul className="space-y-4 text-sm text-gray-500 font-bold">
-              <li><a href="/features" className="hover:text-blue-700 transition-colors">Core Features</a></li>
-              <li><a href="/features#integrations" className="hover:text-blue-700 transition-colors">Integrations</a></li>
-              <li><a href="/features#compliance" className="hover:text-blue-700 transition-colors">Compliance</a></li>
-              <li><a href="/features#security" className="hover:text-blue-700 transition-colors">Security</a></li>
-              <li><a href="/pricing" className="hover:text-blue-700 transition-colors">Pricing</a></li>
-              <li><a href="/industries" className="hover:text-blue-700 transition-colors">Industries</a></li>
-            </ul>
-          </div>
+          {/* Link columns */}
+          <nav
+            className="grid min-w-0 grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-4 lg:col-span-6 lg:gap-x-5 xl:gap-x-6"
+            aria-label="Site footer"
+          >
+            <FooterColumn title="Platform">
+              <li>
+                <Link href="/why-tenvo" className={FOOTER_LINK}>
+                  Why TENVO
+                </Link>
+              </li>
+              <li>
+                <Link href="/features" className={FOOTER_LINK}>
+                  Features
+                </Link>
+              </li>
+              <li>
+                <Link href="/pricing" className={FOOTER_LINK}>
+                  Pricing
+                </Link>
+              </li>
+              <li>
+                <Link href={INDUSTRY_PLANS_NAV.hubPath} className={FOOTER_LINK}>
+                  {INDUSTRY_PLANS_NAV.label}
+                </Link>
+              </li>
+              <li>
+                <MarketingCtaLink href={getBookMeetingHref()} className={FOOTER_LINK}>
+                  Book a meeting
+                </MarketingCtaLink>
+              </li>
+              <li>
+                <Link href="/integrations" className={FOOTER_LINK}>
+                  Integrations
+                </Link>
+              </li>
+              <li>
+                <Link href="/solutions/marketing-crm" className={FOOTER_LINK}>
+                  Marketing &amp; CRM
+                </Link>
+              </li>
+              <li>
+                <Link href="/industries" className={FOOTER_LINK}>
+                  Industries
+                </Link>
+              </li>
+              <li>
+                <Link href="/login" className={FOOTER_LINK}>
+                  Log in
+                </Link>
+              </li>
+            </FooterColumn>
 
-          {/* Company Links */}
-          <div>
-            <h4 className="text-[10px] font-black text-gray-900 uppercase tracking-widest mb-8">Company</h4>
-            <ul className="space-y-4 text-sm text-gray-500 font-bold">
-              <li><a href="/about" className="hover:text-blue-700 transition-colors">About Us</a></li>
-              <li><a href="/case-studies" className="hover:text-blue-700 transition-colors">Case Studies</a></li>
-              <li><a href="/careers" className="hover:text-blue-700 transition-colors">Careers</a></li>
-              <li><a href="/press" className="hover:text-blue-700 transition-colors">Press</a></li>
-              <li><a href="/contact" className="hover:text-blue-700 transition-colors">Contact</a></li>
-            </ul>
-          </div>
+            <FooterColumn title={INDUSTRY_PLANS_NAV.label}>
+              <li>
+                <Link href={INDUSTRY_PLANS_NAV.hubPath} className={FOOTER_LINK}>
+                  Compare all plans
+                </Link>
+              </li>
+              {industryPlans.map((item) => (
+                <li key={item.key}>
+                  <Link href={item.href} className={FOOTER_LINK}>
+                    {item.label}
+                  </Link>
+                </li>
+              ))}
+            </FooterColumn>
 
-          {/* Support Links */}
-          <div>
-            <h4 className="text-[10px] font-black text-gray-900 uppercase tracking-widest mb-8">Support</h4>
-            <ul className="space-y-4 text-sm text-gray-500 font-bold">
-              <li><a href="/help" className="hover:text-blue-700 transition-colors">Help Center</a></li>
-              <li><a href="/docs" className="hover:text-blue-700 transition-colors">Documentation</a></li>
-              <li><a href="/api" className="hover:text-blue-700 transition-colors">API Reference</a></li>
-              <li><a href="/status" className="hover:text-blue-700 transition-colors">System Status</a></li>
-              <li><a href="/privacy" className="hover:text-blue-700 transition-colors">Privacy Policy</a></li>
-            </ul>
-          </div>
-        </div>
+            <FooterColumn title="Product">
+              <li>
+                <Link href="/features#storefront" className={FOOTER_LINK}>
+                  Storefront &amp; checkout
+                </Link>
+              </li>
+              <li>
+                <Link href="/features#compliance" className={FOOTER_LINK}>
+                  Compliance
+                </Link>
+              </li>
+              <li>
+                <Link href="/features#accounting" className={FOOTER_LINK}>
+                  Accounting
+                </Link>
+              </li>
+              <li>
+                <Link href="/features#security" className={FOOTER_LINK}>
+                  Security
+                </Link>
+              </li>
+              <li>
+                <Link href="/register" className={FOOTER_LINK}>
+                  Start free trial
+                </Link>
+              </li>
+            </FooterColumn>
 
-        {/* Newsletter Section */}
-        <div className="border-t border-slate-200 pt-12 mb-12">
-          <div className="max-w-md">
-            <h4 className="text-[10px] font-black text-gray-900 uppercase tracking-widest mb-4">Stay Updated</h4>
-            <p className="text-sm text-gray-500 font-medium mb-6">
-              Get the latest updates on features, compliance changes, and industry insights.
+            <FooterColumn title="Company & support">
+              <li>
+                <Link href="/about" className={FOOTER_LINK}>
+                  About
+                </Link>
+              </li>
+              <li>
+                <Link href="/case-studies" className={FOOTER_LINK}>
+                  Case studies
+                </Link>
+              </li>
+              <li>
+                <Link href="/careers" className={FOOTER_LINK}>
+                  Careers
+                </Link>
+              </li>
+              <li>
+                <Link href="/press" className={FOOTER_LINK}>
+                  Press
+                </Link>
+              </li>
+              <li>
+                <Link href="/contact" className={FOOTER_LINK}>
+                  Contact
+                </Link>
+              </li>
+              <li>
+                <Link href="/help" className={FOOTER_LINK}>
+                  Help center
+                </Link>
+              </li>
+              <li>
+                <Link href="/docs" className={FOOTER_LINK}>
+                  Docs &amp; API
+                </Link>
+              </li>
+              <li>
+                <Link href="/status" className={FOOTER_LINK}>
+                  System status
+                </Link>
+              </li>
+              <li>
+                <Link href="/privacy" className={FOOTER_LINK}>
+                  Privacy
+                </Link>
+              </li>
+              <li>
+                <Link href="/terms" className={FOOTER_LINK}>
+                  Terms
+                </Link>
+              </li>
+            </FooterColumn>
+          </nav>
+
+          {/* Newsletter — same heading rhythm as link columns */}
+          <div className="min-w-0 lg:col-span-3">
+            <h4 className={FOOTER_HEADING}>Stay updated</h4>
+            <p className="mb-5 text-sm font-medium leading-relaxed text-neutral-400">
+              Product updates, compliance notes, and launch news, no spam.
             </p>
 
             {subscribed ? (
-              <div className="flex items-center gap-2 text-green-600 font-bold text-sm">
-                <CheckCircle2 className="w-5 h-5" />
-                <span>Thanks for subscribing!</span>
+              <div className="flex items-center gap-2 text-sm font-semibold text-white">
+                <CheckCircle2 className="h-5 w-5 shrink-0 text-brand-primary" aria-hidden />
+                <span>Thanks for subscribing.</span>
               </div>
             ) : (
-              <form onSubmit={handleNewsletterSubmit} className="flex gap-3">
-                <Input
-                  type="email"
-                  placeholder="Enter your email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  className="flex-1"
-                  disabled={loading}
-                />
-                <Button
-                  type="submit"
-                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl"
-                  disabled={loading}
-                >
-                  {loading ? 'Subscribing...' : 'Subscribe'}
-                </Button>
+              <form onSubmit={handleNewsletterSubmit} className="space-y-3">
+                <div className="flex flex-col gap-2.5">
+                  <div className="relative min-w-0">
+                    <Mail
+                      className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-500"
+                      aria-hidden
+                    />
+                    <Input
+                      id="marketing-footer-newsletter-email"
+                      type="email"
+                      placeholder="Work email"
+                      value={email}
+                      onChange={(e) => {
+                        setEmail(e.target.value);
+                        if (newsletterError) setNewsletterError('');
+                      }}
+                      required
+                      disabled={loading}
+                      aria-invalid={!!newsletterError}
+                      className={cn(
+                        'h-11 w-full rounded-xl border-neutral-700 bg-neutral-950/90 pl-10 text-sm text-white placeholder:text-neutral-500',
+                        'focus-visible:border-brand-primary focus-visible:ring-brand-primary/30'
+                      )}
+                    />
+                  </div>
+                  <Button
+                    type="submit"
+                    className="h-11 w-full rounded-xl bg-brand-primary px-6 font-semibold text-white hover:bg-brand-primary-dark"
+                    disabled={loading}
+                  >
+                    {loading ? '…' : 'Subscribe'}
+                  </Button>
+                </div>
+                {newsletterError ? (
+                  <p className="text-sm font-medium text-brand-primary" role="alert">
+                    {newsletterError}
+                  </p>
+                ) : null}
               </form>
             )}
           </div>
         </div>
 
-        {/* Bottom Bar */}
-        <div className="border-t border-slate-200 pt-12 flex flex-col md:flex-row justify-between items-center gap-6">
-          <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-            (C) 2026 TENVO Enterprise. Built for Pakistan.
-          </div>
-          <div className="flex gap-8 text-[10px] font-black text-gray-400 uppercase tracking-widest">
-            <a href="#" className="hover:text-blue-700 transition-colors">Pakistan</a>
-            <a href="#" className="hover:text-blue-700 transition-colors">UAE</a>
-            <a href="#" className="hover:text-blue-700 transition-colors">Saudi Arabia</a>
+        {/* Bottom bar */}
+        <div className="mt-12 flex flex-col items-center justify-between gap-5 border-t border-brand-primary/20 pt-8 sm:mt-14 sm:flex-row sm:items-center">
+          <p className="text-center text-[10px] font-semibold uppercase tracking-[0.2em] text-neutral-500 sm:text-left">
+            © {new Date().getFullYear()} TENVO · A Mindscape Analytics LLC product ·
+            www.mindscapeanalytics.com · All rights reserved
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-neutral-500">
+            <Link href="/industries" className="transition-colors hover:text-white">
+              Markets we serve
+            </Link>
+            <a
+              href="https://www.mindscapeanalytics.com/contact"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="transition-colors hover:text-white"
+            >
+              Mindscape contact
+            </a>
+            <SupportWhatsAppLink variant="footerMuted" className="text-[10px] font-semibold" />
           </div>
         </div>
       </div>

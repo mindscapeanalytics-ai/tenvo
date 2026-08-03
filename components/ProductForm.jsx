@@ -1,8 +1,8 @@
 'use client';
 // v2: Forced recompile
 
-import { useState, useEffect, useCallback } from 'react';
-import { X, Save, Loader2, AlertCircle, CheckCircle2, BrainCircuit, Info, ImagePlus, Package, Layers, TrendingUp } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { X, Save, Loader2, AlertCircle, CheckCircle2, BrainCircuit, Info, ImagePlus, Package, Layers, TrendingUp, Zap, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -14,8 +14,8 @@ import { DomainFieldRenderer } from '@/components/domain/DomainFieldRenderer';
 import { BatchNumberInput } from '@/components/domain/BatchTracking';
 import { SerialNumberInput } from '@/components/domain/SerialTracking';
 import { BrandAutocomplete } from '@/components/BrandAutocomplete';
-import { QuickAddTemplates } from '@/components/QuickAddTemplates';
 import { FileUpload } from '@/components/FileUpload';
+import { ProductImageManager } from '@/components/ProductImageManager';
 import { PropheticInsightCard } from '@/components/domain/PropheticInsightCard';
 import {
     Tooltip,
@@ -34,7 +34,13 @@ import {
     getDomainUnits,
     getDomainDefaultTax,
     getDomainKnowledge,
+    resolveDomainFieldKey,
 } from '@/lib/utils/domainHelpers';
+import {
+    isVehicleListingVertical,
+    vehicleCategoryFromCondition,
+    getVehicleListingCategories,
+} from '@/lib/utils/vehicleListingHelpers';
 import { validateDomainProduct as validateDomainRegex } from '@/lib/utils/domainValidation';
 import { TaxCategorySelector } from '@/components/domain/TaxCategorySelector';
 import { formatCurrency } from '@/lib/utils/formatting';
@@ -42,16 +48,41 @@ import { productSchema, validateForm } from '@/lib/validation';
 import toast from 'react-hot-toast';
 import { showActionError, formatValidationErrors, isValidationError } from '@/lib/utils/formErrorHandler';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import { StockHistory } from '@/components/StockHistory';
 import { CustomParametersManager } from './inventory/CustomParametersManager';
 import { useSafeSmartDefaults, mergeFormDefaults, getCurrentDate } from '@/lib/hooks/useSafeSmartDefaults';
+import { useAppMode } from '@/lib/context/BusyModeContext';
 import { useAutosave, AutosaveIndicator } from '@/hooks/useAutosave';
-import { useKeyboardShortcuts, COMMON_SHORTCUTS } from '@/hooks/useKeyboardShortcuts';
-import { useBusiness } from '@/lib/context/BusinessContext';
+import { useFormRegionalContext } from '@/lib/hooks/useFormRegionalContext';
+import { getRegionalStandards } from '@/lib/utils/regionalHelpers';
 import { getCurrentSeason, getSeasonalDiscount, applySeasonalPricing } from '@/lib/domainData/pakistaniSeasons';
 import { hasSeasonalPricing } from '@/lib/utils/pakistaniFeatures';
 import { pakistaniSizes, pakistaniColors } from '@/lib/domainData/pakistaniRetailData';
+import { VariantManager } from '@/components/domain/VariantManager';
+import { BarcodeFieldInput } from '@/components/inventory/BarcodeFieldInput';
+import { suggestInternalBarcodeFromSku } from '@/lib/utils/barcodeUtils';
+import { checkBarcodeExistsAction } from '@/lib/actions/standard/inventory/validation';
+import { buildVariantsFromForm, dbVariantsToFormState, totalVariantStock } from '@/lib/utils/variantSync';
+import {
+  isMultiProductImagesEnabled,
+  normalizeProductImageUrls,
+  productImagesFromUrls,
+  MAX_PRODUCT_IMAGES,
+} from '@/lib/utils/productImages';
+import { resolveDomainKey } from '@/lib/config/domainKeyAliases';
+
+function slugifyProductName(name) {
+    return String(name || '')
+        .normalize('NFKD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+        .slice(0, 120);
+}
 
 /**
  * ProductForm Component
@@ -62,18 +93,32 @@ export function ProductForm({
     category = 'retail-shop',
     onSave,
     onCancel,
-    currency = 'PKR',
+    currency: currencyProp,
 }) {
-    const { regionalStandards } = useBusiness();
-    const standards = regionalStandards || {
-        currencySymbol: '₨',
-        currency: 'PKR',
-        taxLabel: 'Sales Tax',
-        taxIdLabel: 'NTN',
-        countryCode: 'PK'
-    };
-
+    const {
+        currency: ctxCurrency,
+        registry: regionalStandards,
+        countryIso,
+        defaultTaxRate,
+        domainKnowledge: ctxDomainKnowledge,
+        business,
+    } = useFormRegionalContext(category);
+    const currency = currencyProp || ctxCurrency;
+    const standards = regionalStandards || getRegionalStandards(countryIso);
+    const domainTaxOptions = { countryIso };
+    const resolvedCategory = resolveDomainKey(category);
+    const isTextileWholesale = resolvedCategory === 'textile-wholesale';
+    const { isEasyMode } = useAppMode();
     const [activeTab, setActiveTab] = useState('basic');
+
+    // Keep a stable ref to handleSubmit so the keyboard effect never stale-closes
+    const handleSubmitRef = useRef(null);
+    useEffect(() => { handleSubmitRef.current = handleSubmit; });
+    const slugTouchedRef = useRef(false);
+
+    useEffect(() => {
+        slugTouchedRef.current = false;
+    }, [product?.id]);
 
     // Keyboard shortcuts for tabs & Focus Flow
     useEffect(() => {
@@ -91,12 +136,12 @@ export function ProductForm({
             // Command + Enter to Save
             if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
                 e.preventDefault();
-                handleSubmit(e);
+                handleSubmitRef.current?.(e);
             }
         };
         window.addEventListener('keydown', handleKeys);
         return () => window.removeEventListener('keydown', handleKeys);
-    }, [formData, activeTab]);
+    }, []); // Empty deps: event listener registered once, ref always points to latest handleSubmit
 
     /**
      * Ultra-Speed Navigation: Enter key moves focus to next logical element
@@ -163,11 +208,15 @@ export function ProductForm({
             reorderQuantity: Number(product.reorder_quantity) || 0,
             hsnCode: product.hsn_code || '',
             sacCode: product.sac_code || '',
-            taxPercent: product.tax_percent || getDomainDefaultTax(category),
+            taxPercent: product.tax_percent || getDomainDefaultTax(category, domainTaxOptions),
             image_url: product.image_url || '',
+            productImageUrls: normalizeProductImageUrls(product),
+            isActive: product.is_active !== false,
+            slug: product.slug || '',
             batches: product.batches || [],
             serialNumbers: product.serial_numbers || [],
             customParameters: product.customParameters || product.domain_data?.custom_parameters || [],
+            ...dbVariantsToFormState(product),
         } : {};
 
         // Merge with priority: existingData > domainDefaults > smartDefaults
@@ -177,9 +226,29 @@ export function ProductForm({
     const [errors, setErrors] = useState({});
     const [isLoading, setIsLoading] = useState(false);
 
+    // Autosave: persist draft to localStorage while user types
+    const autosaveDraftKey = `product-draft-${product?.id || 'new'}-${category}`;
+    const { isSaving, lastSaved } = useAutosave(
+        formData,
+        async (data) => {
+            if (typeof window !== 'undefined') {
+                localStorage.setItem(autosaveDraftKey, JSON.stringify(data));
+            }
+        },
+        1500,
+        true
+    );
+
     const domainFields = getDomainProductFields(category);
+    const vehicleListing = isVehicleListingVertical(category);
+    const vehicleCategories = vehicleListing ? getVehicleListingCategories(category) : [];
     const hasBatchTracking = isBatchTrackingEnabled(category);
     const hasSerialTracking = isSerialTrackingEnabled(category);
+    const hasVariantMatrix = isSizeColorMatrixEnabled(category);
+    const variantStockTotal = totalVariantStock(buildVariantsFromForm(formData, product || {}));
+    const hasVariantStock = variantStockTotal > 0;
+    const multiProductImages = isMultiProductImagesEnabled(category);
+    const productImageLimit = multiProductImages ? MAX_PRODUCT_IMAGES : 1;
 
     // Pakistani Seasonal Pricing
     const seasonalPricingEnabled = hasSeasonalPricing(category);
@@ -189,7 +258,16 @@ export function ProductForm({
 
     // Update handlers
     const updateField = (field, value) => {
-        setFormData(prev => ({ ...prev, [field]: value }));
+        if (field === 'slug') {
+            slugTouchedRef.current = true;
+        }
+        setFormData((prev) => {
+            let next = { ...prev, [field]: value };
+            if (field === 'name' && !slugTouchedRef.current) {
+                next = { ...next, slug: slugifyProductName(value) };
+            }
+            return next;
+        });
         // Clear error if exists
         if (errors[field]) {
             setErrors(prev => {
@@ -239,20 +317,32 @@ export function ProductForm({
     };
 
     const fillDemoData = () => {
-        const knowledge = getDomainKnowledge(category);
+        const knowledge = getDomainKnowledge(category, { countryIso });
         const suggestions = knowledge?.setupTemplate?.suggestedProducts || [];
         const domainFieldsList = getDomainProductFields(category);
         const domainDataObj = {};
 
         // 1. Domain-Specific Intelligence Generation
         domainFieldsList.forEach(f => {
-            const key = f.toLowerCase().replace(/[^a-z0-9]/g, '');
+            const key = resolveDomainFieldKey(f, category);
             const lowerField = f.toLowerCase();
 
-            if (lowerField.includes('article')) domainDataObj[key] = `ART-${Math.floor(Math.random() * 900) + 100}`;
+            if (vehicleListing && key === 'vehiclemake') {
+                domainDataObj[key] = ['Toyota', 'Honda', 'BYD', 'BMW'][Math.floor(Math.random() * 4)];
+            } else if (vehicleListing && key === 'vehiclemodel') {
+                domainDataObj[key] = 'Demo Model';
+            } else if (vehicleListing && key === 'modelyear') {
+                domainDataObj[key] = '2025';
+            } else if (vehicleListing && key === 'mileage') {
+                domainDataObj[key] = String(Math.floor(Math.random() * 80000));
+            } else if (vehicleListing && key === 'condition') {
+                domainDataObj[key] = 'pre-owned';
+            } else if (vehicleListing && key === 'fueltype') {
+                domainDataObj[key] = 'Hybrid';
+            } else if (lowerField.includes('article')) domainDataObj[key] = `ART-${Math.floor(Math.random() * 900) + 100}`;
             else if (lowerField.includes('design')) domainDataObj[key] = `D-${Math.floor(Math.random() * 9000) + 1000}`;
-            else if (lowerField.includes('width')) domainDataObj[key] = category === 'textile-wholesale' ? '44' : 'Standard';
-            else if (lowerField.includes('length')) domainDataObj[key] = category === 'textile-wholesale' ? '40' : '100';
+            else if (lowerField.includes('width')) domainDataObj[key] = isTextileWholesale ? '44' : 'Standard';
+            else if (lowerField.includes('length')) domainDataObj[key] = isTextileWholesale ? '40' : '100';
             else if (lowerField.includes('cutting')) domainDataObj[key] = '4.5';
             else if (lowerField.includes('fabric')) domainDataObj[key] = 'Cotton Lawn';
             else if (lowerField.includes('kora') || lowerField.includes('finish')) domainDataObj[key] = 'Finished';
@@ -314,8 +404,11 @@ export function ProductForm({
             reorderQuantity: 0,
             hsnCode: '',
             sacCode: '',
-            taxPercent: getDomainDefaultTax(category),
+            taxPercent: getDomainDefaultTax(category, domainTaxOptions),
             image_url: '',
+            productImageUrls: [],
+            isActive: true,
+            slug: '',
             ...getDomainDefaults(category),
             batches: [],
             serialNumbers: [],
@@ -390,7 +483,7 @@ export function ProductForm({
             }));
 
             // Smart Tab Switching: If errors exist on 'domain' tab but not 'basic', switch to domain
-            const domainFields = getDomainProductFields(category).map(f => f.toLowerCase().replace(/[^a-z0-9]/g, ''));
+            const domainFields = getDomainProductFields(category).map(f => resolveDomainFieldKey(f, category));
             const hasDomainErrors = Object.keys(combinedErrors).some(k => domainFields.includes(k));
 
             if (hasDomainErrors && activeTab !== 'domain') {
@@ -404,6 +497,29 @@ export function ProductForm({
             return;
         }
 
+        // Barcode uniqueness (live products only; archived barcodes reusable)
+        if (String(formData.barcode || '').trim() && business?.id) {
+            try {
+                const dup = await checkBarcodeExistsAction(
+                    formData.barcode,
+                    business.id,
+                    product?.id || null
+                );
+                if (dup.success && dup.exists) {
+                    setErrors((prev) => ({
+                        ...prev,
+                        barcode: 'This barcode is already used by another product',
+                    }));
+                    setActiveTab('basic');
+                    toast.error('Barcode already in use — scan or enter a unique code');
+                    setIsLoading(false);
+                    return;
+                }
+            } catch {
+                /* non-blocking if uniqueness check fails open */
+            }
+        }
+
         // Warning handling (from logic check)
         if (logicCheck.warnings?.length > 0) {
             logicCheck.warnings.forEach(warn => toast(warn, { icon: '[WARNING]' }));
@@ -413,7 +529,7 @@ export function ProductForm({
             // 3. Construct Payload
             // Separate standard fields from domain-specific fields
             const domainFieldKeys = getDomainProductFields(category)
-                .map(f => f.toLowerCase().replace(/[^a-z0-9]/g, ''));
+                .map(f => resolveDomainFieldKey(f, category));
 
             const domainData = {};
             domainFieldKeys.forEach(key => {
@@ -423,6 +539,19 @@ export function ProductForm({
             });
 
             // Map camelCase form fields to snake_case schema fields
+            const resolvedBrand =
+                formData.brand ||
+                (vehicleListing && domainData.vehiclemake ? String(domainData.vehiclemake) : null);
+
+            const imagePack = productImagesFromUrls(
+                formData.productImageUrls?.length
+                    ? formData.productImageUrls
+                    : formData.image_url
+                      ? [formData.image_url]
+                      : [],
+                formData.name
+            );
+
             const payload = {
                 name: formData.name,
                 sku: formData.sku || (() => {
@@ -433,7 +562,7 @@ export function ProductForm({
                     return `${prefix}-${ts}-${rand}`;
                 })(),
                 barcode: formData.barcode || null,
-                brand: formData.brand || null,
+                brand: resolvedBrand || null,
                 description: formData.description || null,
                 category: formData.category || null,
                 unit: formData.unit,
@@ -441,12 +570,20 @@ export function ProductForm({
                 cost_price: Number(formData.costPrice) || 0,
                 mrp: Number(formData.mrp) || 0,
                 min_stock: Number(formData.minStock) || 0,
+                min_stock_level: Number(formData.minStock) || 0,
                 max_stock: Number(formData.maxStock) || 0,
                 reorder_point: Number(formData.reorderPoint) || 0,
                 reorder_quantity: Number(formData.reorderQuantity) || 0,
                 hsn_code: formData.hsnCode || null,
                 sac_code: formData.sacCode || null,
                 tax_percent: Number(formData.taxPercent) || 0,
+                image_url: imagePack.image_url,
+                images: imagePack.images,
+                is_active: formData.isActive !== false,
+                slug:
+                    formData.slug && String(formData.slug).trim()
+                        ? String(formData.slug).trim().slice(0, 200)
+                        : null,
                 expiry_date: formData.expiry_date || null,
                 manufacturing_date: formData.manufacturing_date || null,
                 domain_data: {
@@ -465,6 +602,15 @@ export function ProductForm({
             }
             if (formData.serialNumbers && formData.serialNumbers.length > 0) {
                 payload.serialNumbers = formData.serialNumbers;
+            } else if (product?._serialsDeferred) {
+                // Light list load omitted serials — do not send empty arrays (mis-routes stock ledger).
+                payload._serialsDeferred = true;
+            }
+
+            const variantRows = buildVariantsFromForm(formData, { sku: payload.sku, ...payload });
+            if (variantRows.length > 0) {
+                payload.variants = variantRows;
+                payload.stock = totalVariantStock(variantRows);
             }
 
             if (product?.id) {
@@ -513,70 +659,74 @@ export function ProductForm({
     };
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-6" noValidate>
-            <Card className="border-none shadow-2xl shadow-gray-200/50 rounded-3xl overflow-hidden bg-white/80 backdrop-blur-xl">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-6 pt-8 px-8 border-b border-gray-50">
-                    <div className="space-y-1">
-                        <CardTitle className="text-3xl font-black text-wine-600 tracking-tight">{product ? 'Update Inventory' : 'New Stock Entry'}</CardTitle>
-                        <CardDescription className="font-medium text-gray-500">
-                            {product ? `Editing: ${product.name}` : `Initializing ${category.replace('-', ' ')} inventory record`}
+        <form onSubmit={handleSubmit} className="flex max-h-full min-h-0 flex-col space-y-6" noValidate>
+            <Card className="flex min-h-0 flex-1 flex-col overflow-hidden border-none rounded-3xl bg-white/80 shadow-2xl shadow-gray-200/50 backdrop-blur-xl">
+                <CardHeader className="shrink-0 flex flex-row items-center justify-between space-y-0 border-b border-gray-50 px-3 py-3 sm:px-6 sm:py-4">
+                    <div className="min-w-0 space-y-0.5">
+                        <CardTitle className="truncate text-sm font-semibold text-slate-800 sm:text-lg">{product ? 'Update Product' : 'New Product'}</CardTitle>
+                        <CardDescription className="truncate text-[11px] text-slate-500 sm:text-sm">
+                            {product ? product.name : `Add to ${category.replace('-', ' ')} catalog`}
                         </CardDescription>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex shrink-0 items-center gap-2">
                         <div className="hidden md:flex flex-col items-end mr-4">
-                            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Compliance Status</span>
+                            <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-1">Compliance Status</span>
                             <div className="flex items-center gap-2">
                                 {Object.keys(errors).length === 0 ? (
-                                    <Badge className="bg-emerald-50 text-emerald-600 border-emerald-100 px-3 py-1 rounded-full text-[10px] font-black uppercase flex items-center gap-1">
+                                    <Badge className="bg-emerald-50 text-emerald-600 border-emerald-100 px-3 py-1 rounded-full text-[10px] font-semibold uppercase flex items-center gap-1">
                                         <CheckCircle2 className="w-3 h-3" /> System Ready
                                     </Badge>
                                 ) : (
-                                    <Badge className="bg-red-50 text-red-600 border-red-100 px-3 py-1 rounded-full text-[10px] font-black uppercase flex items-center gap-1">
+                                    <Badge className="bg-red-50 text-red-600 border-red-100 px-3 py-1 rounded-full text-[10px] font-semibold uppercase flex items-center gap-1">
                                         <AlertCircle className="w-3 h-3" /> {Object.keys(errors).length} Gaps
                                     </Badge>
                                 )}
                             </div>
                         </div>
-                        <Badge variant="outline" className="bg-wine-50 text-wine-600 border-wine-100 px-4 py-1.5 rounded-full font-black uppercase tracking-widest text-[10px] flex items-center gap-2 shadow-sm">
-                            <div className="w-2 h-2 rounded-full bg-wine-600 animate-pulse" />
-                            {category.replace('-', ' ')} Mode
+                        <Badge variant="outline" className="hidden rounded-full border-wine-100 bg-wine-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-widest text-wine-600 sm:flex sm:px-4 sm:py-1.5 sm:text-[10px]">
+                            <div className="mr-1.5 hidden h-2 w-2 animate-pulse rounded-full bg-wine-600 sm:block" />
+                            {category.replace('-', ' ')}
                         </Badge>
                     </div>
                 </CardHeader>
-                <CardContent className="pt-8 px-8 pb-10">
+                <CardContent className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pb-4 pt-3 sm:px-6 sm:pb-6 sm:pt-4">
                     {/* Domain Intelligence Banner */}
-                    <div className="mb-8 p-6 rounded-3xl bg-gradient-to-br from-white to-wine-50/20 border border-wine-100/50 shadow-sm relative overflow-hidden group hover:shadow-md transition-all duration-500 cursor-default">
-                        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-                            <div className="flex items-start gap-4">
-                                <div className="p-4 rounded-2xl bg-wine-600 text-white shadow-xl shadow-wine-600/20 group-hover:scale-105 transition-transform duration-500">
-                                    <BrainCircuit className="w-6 h-6" />
+                    {!isEasyMode && (
+                        <div className="mb-4 hidden rounded-2xl border border-wine-100/50 bg-gradient-to-br from-white to-wine-50/20 p-4 sm:mb-6 sm:block sm:p-6">
+                            <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                                <div className="flex items-start gap-4">
+                                    <div className="p-4 rounded-2xl bg-wine-600 text-white shadow-xl shadow-wine-600/20 group-hover:scale-105 transition-transform duration-500">
+                                        <BrainCircuit className="w-6 h-6" />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <h4 className="text-xl font-semibold text-gray-900 leading-tight">Domain Intelligence Active</h4>
+                                        <p className="text-sm text-gray-500 max-w-sm">
+                                            System is optimizing inventory for <span className="font-bold text-wine-600">{category.replace(/-/g, ' ')}</span> standards including reorder automation and specialized property tracking.
+                                        </p>
+                                    </div>
                                 </div>
-                                <div className="space-y-1">
-                                    <h4 className="text-xl font-black text-gray-900 leading-tight">Domain Intelligence Active</h4>
-                                    <p className="text-sm text-gray-500 max-w-sm">
-                                        System is optimizing inventory for <span className="font-bold text-wine-600">{category.replace(/-/g, ' ')}</span> standards including reorder automation and specialized property tracking.
-                                    </p>
+                                <div className="flex flex-wrap gap-2">
+                                    {isBatchTrackingEnabled(category) && <Badge className="bg-white/80 backdrop-blur-sm text-gray-600 border-gray-100">Batch Enabled</Badge>}
+                                    {isSerialTrackingEnabled(category) && <Badge className="bg-white/80 backdrop-blur-sm text-gray-600 border-gray-100">Serial Tracking</Badge>}
+                                    {isExpiryTrackingEnabled(category) && <Badge className="bg-white/80 backdrop-blur-sm text-gray-600 border-gray-100">Expiry Mgmt</Badge>}
                                 </div>
                             </div>
-                            <div className="flex flex-wrap gap-2">
-                                {isBatchTrackingEnabled(category) && <Badge className="bg-white/80 backdrop-blur-sm text-gray-600 border-gray-100">Batch Enabled</Badge>}
-                                {isSerialTrackingEnabled(category) && <Badge className="bg-white/80 backdrop-blur-sm text-gray-600 border-gray-100">Serial Tracking</Badge>}
-                                {isExpiryTrackingEnabled(category) && <Badge className="bg-white/80 backdrop-blur-sm text-gray-600 border-gray-100">Expiry Mgmt</Badge>}
-                            </div>
+                            {/* Decorative background element */}
+                            <div className="absolute -right-8 -bottom-8 w-32 h-32 rounded-full bg-wine-600/5 blur-3xl group-hover:bg-wine-600/10 transition-all duration-700" />
                         </div>
-                        {/* Decorative background element */}
-                        <div className="absolute -right-8 -bottom-8 w-32 h-32 rounded-full bg-wine-600/5 blur-3xl group-hover:bg-wine-600/10 transition-all duration-700" />
-                    </div>
+                    )}
                     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                        <div className="sticky top-0 z-20 bg-white/80 backdrop-blur-md py-4 mb-6 border-b border-gray-100 flex items-center justify-between">
-                            <TabsList className="bg-gray-100/50 p-1 rounded-2xl border border-gray-100">
-                                <TabsTrigger value="basic" className="rounded-xl px-6 font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-white data-[state=active]:shadow-sm">Identity</TabsTrigger>
-                                <TabsTrigger value="inventory" className="rounded-xl px-6 font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-white data-[state=active]:shadow-sm">Stock & Flow</TabsTrigger>
-                                <TabsTrigger value="domain" className="rounded-xl px-6 font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-white data-[state=active]:shadow-sm">Expert Detail</TabsTrigger>
-                                <TabsTrigger value="media" className="rounded-xl px-6 font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-white data-[state=active]:shadow-sm">Media</TabsTrigger>
-                                {product && <TabsTrigger value="history" className="rounded-xl px-6 font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-white data-[state=active]:shadow-sm">Audit trail</TabsTrigger>}
+                        <div className="sticky top-0 z-20 mb-4 flex items-center justify-between gap-2 border-b border-gray-100 bg-white/90 py-2 backdrop-blur-md sm:mb-6 sm:py-4">
+                            <TabsList className="h-9 max-w-full justify-start overflow-x-auto rounded-xl border border-gray-100 bg-gray-100/50 p-0.5 scrollbar-none sm:overflow-visible">
+                                <TabsTrigger value="basic" className="shrink-0 rounded-lg px-3 py-1.5 text-[11px] font-medium data-[state=active]:bg-white data-[state=active]:shadow-sm sm:px-4 sm:text-xs">Identity</TabsTrigger>
+                                <TabsTrigger value="inventory" className="shrink-0 rounded-lg px-3 py-1.5 text-[11px] font-medium data-[state=active]:bg-white data-[state=active]:shadow-sm sm:px-4 sm:text-xs">Stock</TabsTrigger>
+                                {!isEasyMode && (
+                                    <TabsTrigger value="domain" className="shrink-0 rounded-lg px-3 py-1.5 text-[11px] font-medium data-[state=active]:bg-white data-[state=active]:shadow-sm sm:px-4 sm:text-xs">Expert</TabsTrigger>
+                                )}
+                                <TabsTrigger value="media" className="shrink-0 rounded-lg px-3 py-1.5 text-[11px] font-medium data-[state=active]:bg-white data-[state=active]:shadow-sm sm:px-4 sm:text-xs">Media</TabsTrigger>
+                                {product && <TabsTrigger value="history" className="shrink-0 rounded-lg px-3 py-1.5 text-[11px] font-medium data-[state=active]:bg-white data-[state=active]:shadow-sm sm:px-4 sm:text-xs">History</TabsTrigger>}
                             </TabsList>
-                            <div className="flex items-center gap-2">
+                            <div className="hidden shrink-0 items-center gap-2 sm:flex">
                                 <AutosaveIndicator isSaving={isSaving} lastSaved={lastSaved} />
                                 <TooltipProvider>
                                     <Tooltip>
@@ -594,28 +744,45 @@ export function ProductForm({
                         <TabsContent value="basic" className="space-y-8 animate-in fade-in slide-in-from-left-4 duration-500" data-tab="basic">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="space-y-2">
-                                    <Label htmlFor="name" className="text-xs font-black uppercase text-gray-400 tracking-wider">Product Name *</Label>
-                                    <Input id="name" value={formData.name ?? ''} onChange={(e) => updateField('name', e.target.value)} onBlur={() => handleBlur('name')} placeholder="e.g. Premium Filter" className="h-11 rounded-xl focus:ring-wine/20 font-bold" selectOnFocus />
+                                    <Label htmlFor="name" className="text-[11px] font-semibold text-slate-600">Product Name *</Label>
+                                    <Input id="name" value={formData.name ?? ''} onChange={(e) => updateField('name', e.target.value)} onBlur={() => handleBlur('name')} placeholder="e.g. Premium Filter" className="h-9 rounded-md focus:ring-wine/20 font-bold" selectOnFocus />
                                     {renderError('name')}
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label htmlFor="sku" className="text-xs font-black uppercase text-gray-400 tracking-wider">SKU / Item Code</Label>
-                                    <Input id="sku" value={formData.sku ?? ''} onChange={(e) => updateField('sku', e.target.value.toUpperCase())} placeholder="ITEM-001" className="h-11 rounded-xl font-mono" selectOnFocus />
+                                    <Label htmlFor="sku" className="text-[11px] font-semibold text-slate-600">SKU / Item Code</Label>
+                                    <Input id="sku" value={formData.sku ?? ''} onChange={(e) => updateField('sku', e.target.value.toUpperCase())} placeholder="ITEM-001" className="h-9 rounded-md font-mono" selectOnFocus />
                                     {renderError('sku')}
                                 </div>
                             </div>
 
+                            <div className="flex flex-col gap-2 rounded-xl border border-slate-100 bg-slate-50/80 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                                <div>
+                                    <p className="text-[11px] font-semibold text-slate-700">Storefront listing</p>
+                                    <p className="text-[10px] text-slate-500">Inactive products stay in history but are hidden from default picks.</p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500">
+                                        {formData.isActive !== false ? 'Active' : 'Inactive'}
+                                    </span>
+                                    <Switch
+                                        id="product-active"
+                                        checked={formData.isActive !== false}
+                                        onCheckedChange={(v) => updateField('isActive', Boolean(v))}
+                                    />
+                                </div>
+                            </div>
+
                             {/* Section: Primary Domain Identifiers (Moved from Intelligence Tab) */}
-                            {['textile-wholesale', 'auto-parts', 'pharmacy', 'chemical'].includes(category) && (
+                            {['textile-wholesale', 'auto-parts', 'pharmacy', 'chemical'].includes(resolvedCategory) && (
                                 <div className="p-6 bg-wine/5 rounded-3xl border border-wine/10 space-y-4">
                                     <div className="flex items-center gap-2 mb-2">
                                         <BrainCircuit className="w-4 h-4 text-wine" />
-                                        <span className="text-[10px] font-black uppercase text-wine tracking-widest">Primary Identifiers</span>
+                                        <span className="text-[10px] font-semibold uppercase text-wine tracking-widest">Primary Identifiers</span>
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         {domainFields.slice(0, 2).map((field) => {
-                                            const key = field.toLowerCase().replace(/[^a-z0-9]/g, '');
+                                            const key = resolveDomainFieldKey(field, category);
                                             return (
                                                 <div key={field} className="space-y-2">
                                                     <DomainFieldRenderer
@@ -634,20 +801,33 @@ export function ProductForm({
                             )}
 
                             <div className="space-y-2">
-                                <Label htmlFor="barcode" className="text-xs font-black uppercase text-gray-400 tracking-wider">Barcode (EAN/UPC)</Label>
-                                <div className="relative">
-                                    <Input id="barcode" value={formData.barcode ?? ''} onChange={(e) => updateField('barcode', e.target.value)} placeholder="Scanning ready..." className="h-11 rounded-xl pr-10" selectOnFocus />
-                                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                                        <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                                    </div>
+                                <div className="flex items-center justify-between gap-2">
+                                    <Label htmlFor="barcode" className="text-[11px] font-semibold text-slate-600">Barcode (EAN/UPC)</Label>
+                                    {!formData.barcode && formData.sku && (
+                                        <button
+                                            type="button"
+                                            className="text-[10px] font-semibold text-emerald-700 hover:underline"
+                                            onClick={() => updateField('barcode', suggestInternalBarcodeFromSku(formData.sku, business?.id))}
+                                        >
+                                            Generate from SKU
+                                        </button>
+                                    )}
                                 </div>
+                                <BarcodeFieldInput
+                                    id="barcode"
+                                    value={formData.barcode ?? ''}
+                                    onChange={(val) => updateField('barcode', val)}
+                                    businessId={business?.id}
+                                    excludeProductId={product?.id}
+                                    business={business}
+                                />
                                 {renderError('barcode')}
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8 p-6 bg-gray-50/30 rounded-3xl border border-gray-100">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8 p-4 bg-slate-50 rounded-lg border border-slate-100">
                                 <div className="space-y-2">
                                     <div className="flex items-center gap-2">
-                                        <Label htmlFor="unit" className="text-xs font-black uppercase text-gray-400 tracking-wider">Unit</Label>
+                                        <Label htmlFor="unit" className="text-[11px] font-semibold text-slate-600">Unit</Label>
                                         <TooltipProvider>
                                             <Tooltip>
                                                 <TooltipTrigger asChild>
@@ -669,14 +849,14 @@ export function ProductForm({
                                             </Tooltip>
                                         </TooltipProvider>
                                     </div>
-                                    <select id="unit" value={formData.unit ?? ''} onChange={(e) => updateField('unit', e.target.value)} className="w-full h-11 rounded-xl border border-gray-200 bg-white px-3 text-sm focus:ring-2 focus:ring-wine/20">
+                                    <select id="unit" value={formData.unit ?? ''} onChange={(e) => updateField('unit', e.target.value)} className="w-full h-9 rounded-md border border-gray-200 bg-white px-3 text-sm focus:ring-2 focus:ring-wine/20">
                                         {getDomainUnits(category).map(u => <option key={u} value={u}>{u}</option>)}
                                     </select>
                                     {renderError('unit')}
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label htmlFor="price" className="text-xs font-black uppercase text-gray-400 tracking-wider">Selling Price *</Label>
+                                    <Label htmlFor="price" className="text-[11px] font-semibold text-slate-600">Selling Price *</Label>
                                     <div className="relative">
                                         <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">{standards.currencySymbol}</span>
                                         <Input id="price" type="number" value={formData.price ?? ''} onChange={(e) => updateField('price', parseFloat(e.target.value) || 0)} onBlur={() => handleBlur('price')} className="h-11 pl-12 rounded-xl" selectOnFocus />
@@ -686,7 +866,7 @@ export function ProductForm({
 
                                 <div className="space-y-2">
                                     <div className="flex items-center justify-between">
-                                        <Label htmlFor="mrp" className="text-xs font-black uppercase text-gray-400 tracking-wider">MRP (Max Retail Price) *</Label>
+                                        <Label htmlFor="mrp" className="text-[11px] font-semibold text-slate-600">MRP (Max Retail Price) *</Label>
                                         {Number(formData.price) > 0 && Number(formData.costPrice) > 0 && (
                                             <Badge className={cn(
                                                 "text-[10px] font-bold px-2 py-0.5 rounded-full border shadow-sm",
@@ -706,7 +886,7 @@ export function ProductForm({
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label htmlFor="costPrice" className="text-xs font-black uppercase text-gray-400 tracking-wider">Landing Cost</Label>
+                                    <Label htmlFor="costPrice" className="text-[11px] font-semibold text-slate-600">Landing Cost</Label>
                                     <div className="relative">
                                         <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">{standards.currencySymbol}</span>
                                         <Input id="costPrice" type="number" value={formData.costPrice ?? ''} onChange={(e) => updateField('costPrice', parseFloat(e.target.value) || 0)} className="h-11 pl-12 rounded-xl" selectOnFocus />
@@ -718,23 +898,38 @@ export function ProductForm({
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label className="text-xs font-black uppercase text-gray-400 tracking-wider">Brand</Label>
+                                    <Label className="text-[11px] font-semibold text-slate-600">Brand</Label>
                                     <BrandAutocomplete
                                         value={formData.brand}
                                         onChange={(val) => updateField('brand', val)}
                                         domain={category}
-                                        placeholder={`e.g. ${category === 'textile-wholesale' ? 'Gul Ahmed, Khaadi' : 'Samsung, Toyota'}`}
+                                        countryIso={countryIso}
                                     />
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label htmlFor="productCategory" className="text-xs font-black uppercase text-gray-400 tracking-wider">Category</Label>
-                                    <Input id="productCategory" value={formData.category ?? ''} onChange={(e) => updateField('category', e.target.value)} placeholder="e.g. Electronics, Spares" className="h-11 rounded-xl" selectOnFocus />
+                                    <Label htmlFor="productCategory" className="text-[11px] font-semibold text-slate-600">Category</Label>
+                                    <Input
+                                        id="productCategory"
+                                        list={vehicleListing ? 'vehicle-listing-categories' : undefined}
+                                        value={formData.category ?? ''}
+                                        onChange={(e) => updateField('category', e.target.value)}
+                                        placeholder={vehicleListing ? 'e.g. New Cars, Used Cars' : 'e.g. Electronics, Spares'}
+                                        className="h-9 rounded-md"
+                                        selectOnFocus
+                                    />
+                                    {vehicleListing && vehicleCategories.length > 0 ? (
+                                        <datalist id="vehicle-listing-categories">
+                                            {vehicleCategories.map((c) => (
+                                                <option key={c} value={c} />
+                                            ))}
+                                        </datalist>
+                                    ) : null}
                                     {renderError('category')}
                                 </div>
 
                                 <div className="space-y-2 md:col-span-2">
-                                    <Label htmlFor="description" className="text-xs font-black uppercase text-gray-400 tracking-wider">Product Description</Label>
+                                    <Label htmlFor="description" className="text-[11px] font-semibold text-slate-600">Product Description</Label>
                                     <textarea id="description" value={formData.description ?? ''} onChange={(e) => updateField('description', e.target.value)} rows={2} className="w-full rounded-xl border border-gray-200 bg-white p-3 text-sm focus:ring-2 focus:ring-wine/20 shadow-inner" placeholder="Technical specifications or notes..." />
                                 </div>
 
@@ -744,7 +939,7 @@ export function ProductForm({
                                         <div className="flex items-start justify-between gap-4">
                                             <div className="flex-1">
                                                 <div className="flex items-center gap-2 mb-2">
-                                                    <Badge className="bg-gradient-to-r from-orange-500 to-pink-500 text-white text-[10px] font-black uppercase">
+                                                    <Badge className="bg-gradient-to-r from-orange-500 to-pink-500 text-white text-[10px] font-semibold uppercase">
                                                         [CELEBRATION] {currentSeason.name.en}
                                                     </Badge>
                                                     <span className="text-xs font-bold text-orange-600">
@@ -756,19 +951,19 @@ export function ProductForm({
                                                 </p>
                                                 <div className="grid grid-cols-3 gap-4">
                                                     <div>
-                                                        <p className="text-[10px] font-black uppercase text-gray-400 tracking-wider mb-1">Original Price</p>
+                                                        <p className="text-[10px] font-semibold uppercase text-gray-400 tracking-wider mb-1">Original Price</p>
                                                         <p className="text-lg font-bold text-gray-500 line-through">
                                                             {formatCurrency(seasonalPricing.original, standards.currency)}
                                                         </p>
                                                     </div>
                                                     <div>
-                                                        <p className="text-[10px] font-black uppercase text-orange-600 tracking-wider mb-1">Seasonal Price</p>
-                                                        <p className="text-2xl font-black text-orange-600">
+                                                        <p className="text-[10px] font-semibold uppercase text-orange-600 tracking-wider mb-1">Seasonal Price</p>
+                                                        <p className="text-2xl font-semibold text-orange-600">
                                                             {formatCurrency(seasonalPricing.discounted, standards.currency)}
                                                         </p>
                                                     </div>
                                                     <div>
-                                                        <p className="text-[10px] font-black uppercase text-green-600 tracking-wider mb-1">Customer Saves</p>
+                                                        <p className="text-[10px] font-semibold uppercase text-green-600 tracking-wider mb-1">Customer Saves</p>
                                                         <p className="text-lg font-bold text-green-600">
                                                             {formatCurrency(seasonalPricing.savings, standards.currency)}
                                                         </p>
@@ -787,29 +982,29 @@ export function ProductForm({
                                 </div>
                                 <div className="relative z-10 grid grid-cols-2 md:grid-cols-4 gap-6">
                                     <div>
-                                        <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Gross Margin</p>
+                                        <p className="text-[10px] font-semibold uppercase text-slate-400 tracking-widest mb-1">Gross Margin</p>
                                         <p className={cn(
-                                            "text-2xl font-black",
+                                            "text-2xl font-semibold",
                                             (Number(formData.price) || 0) > 0 && ((Number(formData.price) || 0) - (Number(formData.costPrice) || 0)) / (Number(formData.price) || 0) > 0.15 ? "text-emerald-400" : "text-amber-400"
                                         )}>
                                             {(Number(formData.price) || 0) > 0 ? (((Number(formData.price) || 0) - (Number(formData.costPrice) || 0)) / (Number(formData.price) || 0) * 100).toFixed(1) : '0.0'}%
                                         </p>
                                     </div>
                                     <div>
-                                        <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Profit/Unit</p>
-                                        <p className="text-2xl font-black text-white">
+                                        <p className="text-[10px] font-semibold uppercase text-slate-400 tracking-widest mb-1">Profit/Unit</p>
+                                        <p className="text-2xl font-semibold text-white">
                                             {formatCurrency((Number(formData.price) || 0) - (Number(formData.costPrice) || 0), standards.currency)}
                                         </p>
                                     </div>
                                     <div>
-                                        <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Markup</p>
-                                        <p className="text-2xl font-black text-slate-300">
+                                        <p className="text-[10px] font-semibold uppercase text-slate-400 tracking-widest mb-1">Markup</p>
+                                        <p className="text-2xl font-semibold text-slate-300">
                                             {(Number(formData.costPrice) || 0) > 0 ? (((Number(formData.price) || 0) - (Number(formData.costPrice) || 0)) / (Number(formData.costPrice) || 0) * 100).toFixed(1) : '0.0'}%
                                         </p>
                                     </div>
                                     <div>
-                                        <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Valuation</p>
-                                        <p className="text-2xl font-black text-blue-400">
+                                        <p className="text-[10px] font-semibold uppercase text-slate-400 tracking-widest mb-1">Valuation</p>
+                                        <p className="text-2xl font-semibold text-blue-400">
                                             {formatCurrency((Number(formData.stock) || 0) * (Number(formData.price) || 0), standards.currency)}
                                         </p>
                                     </div>
@@ -825,30 +1020,44 @@ export function ProductForm({
                                             <ImagePlus className="w-5 h-5" />
                                         </div>
                                         <div>
-                                            <h3 className="text-lg font-semibold text-gray-900">Product Media</h3>
-                                            <p className="text-sm text-gray-500">Upload product images for catalogs and invoices</p>
+                                            <h3 className="text-lg font-semibold text-gray-900">
+                                                {multiProductImages ? 'Product Images' : 'Product Image'}
+                                            </h3>
+                                            <p className="text-sm text-gray-500">
+                                                {multiProductImages
+                                                    ? `Upload up to ${MAX_PRODUCT_IMAGES} photos. Images are optimized to WebP (~800×800) before upload.`
+                                                    : 'Upload your own or auto-fetch from the internet. Images are optimized to WebP (~800×800) before upload.'}
+                                            </p>
                                         </div>
                                     </div>
 
-                                    <div className="p-6 border-2 border-dashed border-gray-200 rounded-3xl bg-gray-50/30">
-                                        <FileUpload
-                                            accept="image/*"
-                                            maxSize={2}
-                                            onFileSelect={(file) => {
-                                                toast.success('Image selected: ' + (file?.name || 'File'));
-                                                if (file) updateField('image_url', file.name);
-                                            }}
-                                        />
-                                    </div>
+                                    <ProductImageManager
+                                        values={formData.productImageUrls || []}
+                                        value={formData.image_url || ''}
+                                        onChange={(url) => updateField('image_url', url)}
+                                        onChangeImages={(urls) => updateField('productImageUrls', urls)}
+                                        maxImages={productImageLimit}
+                                        productName={formData.name || ''}
+                                        category={category}
+                                        businessId={product?.business_id || smartDefaults?.businessId || business?.id || ''}
+                                    />
+                                </div>
 
-                                    {formData.image_url && (
-                                        <Badge variant="outline" className="mt-2 px-4 py-2 border-green-200 bg-green-50 text-green-700 rounded-xl flex items-center justify-between w-full">
-                                            <span className="truncate flex-1">Image: {formData.image_url}</span>
-                                            <Button variant="ghost" size="icon" className="h-6 w-6 text-red-500" onClick={() => updateField('image_url', '')}>
-                                                <X className="w-3 h-3" />
-                                            </Button>
-                                        </Badge>
-                                    )}
+                                <div className="space-y-2 rounded-xl border border-slate-100 bg-white p-4 shadow-sm">
+                                    <Label htmlFor="product-slug" className="text-[11px] font-semibold text-slate-600">
+                                        URL slug
+                                    </Label>
+                                    <p className="text-[10px] text-slate-500 -mt-1 mb-2">
+                                        Short handle for links and integrations. Fills from the product name until you edit it.
+                                    </p>
+                                    <Input
+                                        id="product-slug"
+                                        value={formData.slug ?? ''}
+                                        onChange={(e) => updateField('slug', e.target.value)}
+                                        placeholder={slugifyProductName(formData.name) || 'my-product'}
+                                        className="h-9 rounded-md font-mono text-sm"
+                                        selectOnFocus
+                                    />
                                 </div>
                             </div>
                         </TabsContent>
@@ -876,15 +1085,16 @@ export function ProductForm({
                                 </div>
 
                                 {/* Size-Color Matrix -- for garments, boutique-fashion, leather-footwear */}
-                                {isSizeColorMatrixEnabled(category) && (
-                                    <div className="mb-6 p-5 bg-white/70 rounded-2xl border border-dashed border-gray-300">
+                                {hasVariantMatrix && (
+                                    <div className="mb-6 space-y-6">
+                                        <div className="p-5 bg-white/70 rounded-2xl border border-dashed border-gray-300">
                                         <div className="flex items-center gap-2 mb-4">
                                             <Layers className="w-4 h-4 text-wine" />
-                                            <span className="text-xs font-black uppercase text-wine tracking-widest">Size / Color Matrix</span>
-                                            <Badge variant="outline" className="text-[10px] ml-auto">Variant Stock Entry</Badge>
+                                            <span className="text-xs font-semibold uppercase text-wine tracking-widest">Size / Color Matrix</span>
+                                            <Badge variant="outline" className="text-[10px] ml-auto">Quick Stock Entry</Badge>
                                         </div>
                                         <p className="text-xs text-gray-500 mb-4">
-                                            Enter quantity per size and color. Each cell represents stock for that variant.
+                                            Enter quantity per size and color. Variants are saved to inventory automatically when you save the product.
                                         </p>
                                         {(() => {
                                             // Determine size set based on domain
@@ -893,7 +1103,6 @@ export function ProductForm({
                                                 ? pakistaniSizes.footwear.men.slice(0, 10)
                                                 : pakistaniSizes.clothing.men;
                                             const colors = pakistaniColors.slice(0, 8).map(c => c.en);
-                                            // matrix stored as domain_data.size_color_matrix
                                             const matrix = formData.sizeColorMatrix || {};
                                             const updateMatrix = (size, color, qty) => {
                                                 const updated = {
@@ -902,7 +1111,15 @@ export function ProductForm({
                                                 };
                                                 updateField('sizeColorMatrix', updated);
                                             };
+                                            const filledCells = Object.values(matrix).filter(v => Number(v) > 0).length;
                                             return (
+                                                <>
+                                                <div className="flex items-center justify-between mb-3 text-xs text-gray-500">
+                                                    <span>{filledCells} variant{filledCells === 1 ? '' : 's'} with stock</span>
+                                                    {variantStockTotal > 0 && (
+                                                        <span className="font-semibold text-wine">Total: {variantStockTotal} units</span>
+                                                    )}
+                                                </div>
                                                 <div className="overflow-x-auto">
                                                     <table className="w-full text-xs border-collapse">
                                                         <thead>
@@ -937,21 +1154,50 @@ export function ProductForm({
                                                         </tbody>
                                                     </table>
                                                 </div>
+                                                </>
                                             );
                                         })()}
+                                        </div>
+
+                                        <VariantManager
+                                            value={formData.variants || []}
+                                            onChange={(next) => updateField('variants', next)}
+                                            product={{ sku: formData.sku, price: formData.price, name: formData.name }}
+                                            category={category}
+                                        />
+                                    </div>
+                                )}
+
+                                {vehicleListing && (
+                                    <div className="mb-6 rounded-xl border border-blue-100 bg-blue-50/60 px-4 py-3 text-sm text-blue-900">
+                                        <p className="font-semibold">Vehicle listing</p>
+                                        <p className="mt-1 text-blue-800/90">
+                                            Set stock to <strong>1</strong> per unit listed. Make, model, year, and condition power your storefront search filters.
+                                        </p>
                                     </div>
                                 )}
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5 bg-white/50 p-6 rounded-2xl border border-dashed border-gray-200">
                                     {domainFields.map((field) => {
-                                        const key = field.toLowerCase().replace(/[^a-z0-9]/g, '');
+                                        const key = resolveDomainFieldKey(field, category);
                                         return (
                                             <div key={field} className="space-y-2">
                                                 <DomainFieldRenderer
                                                     field={field}
                                                     category={category}
                                                     value={formData[key]}
-                                                    onChange={(val) => updateField(key, val)}
+                                                    onChange={(val) => {
+                                                        updateField(key, val);
+                                                        if (vehicleListing && key === 'vehiclemake' && val) {
+                                                            updateField('brand', val);
+                                                        }
+                                                        if (vehicleListing && key === 'condition' && val) {
+                                                            const cat = vehicleCategoryFromCondition(val, category);
+                                                            if (cat && (!formData.category || vehicleCategories.includes(formData.category))) {
+                                                                updateField('category', cat);
+                                                            }
+                                                        }
+                                                    }}
                                                     error={errors[key]}
                                                     selectOnFocus
                                                 />
@@ -971,62 +1217,62 @@ export function ProductForm({
                         <TabsContent value="inventory" className="space-y-6 animate-in fade-in duration-300" data-tab="inventory">
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">
+                                    <Label className="text-[11px] font-semibold text-slate-600">
                                         {product ? 'Current Stock' : 'Opening Stock'}
                                     </Label>
                                     <div className="relative">
                                         <Package className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                                         <Input
                                             type="number"
-                                            value={formData.stock ?? 0}
+                                            value={hasVariantStock ? variantStockTotal : (formData.stock ?? 0)}
                                             onChange={(e) => updateField('stock', parseInt(e.target.value) || 0)}
                                             className="h-11 pl-10 rounded-xl font-bold text-gray-900"
-                                            disabled={hasBatchTracking || hasSerialTracking}
-                                            placeholder={hasBatchTracking || hasSerialTracking ? "Calculated automatically" : "0"}
+                                            disabled={hasBatchTracking || hasSerialTracking || hasVariantStock}
+                                            placeholder={hasBatchTracking || hasSerialTracking || hasVariantStock ? "Calculated from variants" : "0"}
                                             selectOnFocus
                                         />
                                     </div>
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Min Stock Level</Label>
-                                    <Input type="number" value={formData.minStock ?? ''} onChange={(e) => updateField('minStock', parseInt(e.target.value) || 0)} className="h-11 rounded-xl" selectOnFocus />
+                                    <Label className="text-[11px] font-semibold text-slate-600">Min Stock Level</Label>
+                                    <Input type="number" value={formData.minStock ?? ''} onChange={(e) => updateField('minStock', parseInt(e.target.value) || 0)} className="h-9 rounded-md" selectOnFocus />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Max Stock Level</Label>
-                                    <Input type="number" value={formData.maxStock ?? ''} onChange={(e) => updateField('maxStock', parseInt(e.target.value) || 0)} className="h-11 rounded-xl" selectOnFocus />
+                                    <Label className="text-[11px] font-semibold text-slate-600">Max Stock Level</Label>
+                                    <Input type="number" value={formData.maxStock ?? ''} onChange={(e) => updateField('maxStock', parseInt(e.target.value) || 0)} className="h-9 rounded-md" selectOnFocus />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Reorder Point</Label>
-                                    <Input type="number" value={formData.reorderPoint ?? ''} onChange={(e) => updateField('reorderPoint', parseInt(e.target.value) || 0)} className="h-11 rounded-xl" selectOnFocus />
+                                    <Label className="text-[11px] font-semibold text-slate-600">Reorder Point</Label>
+                                    <Input type="number" value={formData.reorderPoint ?? ''} onChange={(e) => updateField('reorderPoint', parseInt(e.target.value) || 0)} className="h-9 rounded-md" selectOnFocus />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Reorder Qty</Label>
-                                    <Input type="number" value={formData.reorderQuantity ?? ''} onChange={(e) => updateField('reorderQuantity', parseInt(e.target.value) || 0)} className="h-11 rounded-xl" selectOnFocus />
+                                    <Label className="text-[11px] font-semibold text-slate-600">Reorder Qty</Label>
+                                    <Input type="number" value={formData.reorderQuantity ?? ''} onChange={(e) => updateField('reorderQuantity', parseInt(e.target.value) || 0)} className="h-9 rounded-md" selectOnFocus />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Mfg. Date</Label>
-                                    <Input type="date" value={formData.manufacturing_date || ''} onChange={(e) => updateField('manufacturing_date', e.target.value)} className="h-11 rounded-xl" />
+                                    <Label className="text-[11px] font-semibold text-slate-600">Mfg. Date</Label>
+                                    <Input type="date" value={formData.manufacturing_date || ''} onChange={(e) => updateField('manufacturing_date', e.target.value)} className="h-9 rounded-md" />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Expiry Date</Label>
-                                    <Input type="date" value={formData.expiry_date || ''} onChange={(e) => updateField('expiry_date', e.target.value)} className="h-11 rounded-xl" />
+                                    <Label className="text-[11px] font-semibold text-slate-600">Expiry Date</Label>
+                                    <Input type="date" value={formData.expiry_date || ''} onChange={(e) => updateField('expiry_date', e.target.value)} className="h-9 rounded-md" />
                                 </div>
                             </div>
 
-                            {/* Section: Specialist Inventory Parameters (e.g. Textile Thaan/Cutting) */}
-                            {['textile-wholesale', 'garments'].includes(category) && (
+                            {/* Section: Specialist Inventory Parameters (textile thaan / suit cutting) */}
+                            {isTextileWholesale && (
                                 <div className="p-6 rounded-3xl bg-blue-50/50 border border-blue-100/50 space-y-4">
                                     <div className="flex items-center gap-2 mb-2">
                                         <Layers className="w-4 h-4 text-blue-600" />
-                                        <span className="text-[10px] font-black uppercase text-blue-600 tracking-widest">Specialist Parameters</span>
+                                        <span className="text-[10px] font-semibold uppercase text-blue-600 tracking-widest">Specialist Parameters</span>
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         {['Thaan Length', 'Suit Cutting'].map((field) => {
-                                            const key = field.toLowerCase().replace(/[^a-z0-9]/g, '');
+                                            const key = resolveDomainFieldKey(field, category);
                                             return (
                                                 <div key={field} className="space-y-2">
-                                                    <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">{field}</Label>
+                                                    <Label className="text-[11px] font-semibold text-slate-600">{field}</Label>
                                                     <div className="relative">
                                                         <Input
                                                             type="number"
@@ -1050,8 +1296,8 @@ export function ProductForm({
                                 <div className="space-y-6 pt-8 mt-8 border-t border-gray-100">
                                     <div className="flex items-center gap-3">
                                         <Layers className="w-5 h-5 text-gray-400" />
-                                        <h3 className="text-lg font-black text-gray-900 tracking-tight">Traceability & Control</h3>
-                                        <Badge className="bg-emerald-500 text-white border-0 text-[10px] font-black uppercase">Active</Badge>
+                                        <h3 className="text-lg font-semibold text-gray-900 tracking-tight">Traceability & Control</h3>
+                                        <Badge className="bg-emerald-500 text-white border-0 text-[10px] font-semibold uppercase">Active</Badge>
                                     </div>
                                     {hasBatchTracking && (
                                         <div className="animate-in zoom-in-95 duration-300">
@@ -1099,17 +1345,18 @@ export function ProductForm({
 
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-6 border-t border-gray-100">
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">{standards.countryCode === 'PK' ? 'HSN Code' : 'Tax/HSN Code'}</Label>
-                                    <Input value={formData.hsnCode ?? ''} onChange={(e) => updateField('hsnCode', e.target.value)} placeholder="Code" className="h-11 rounded-xl" selectOnFocus />
+                                    <Label className="text-[11px] font-semibold text-slate-600">{standards.countryCode === 'PK' ? 'HSN Code' : 'Tax/HSN Code'}</Label>
+                                    <Input value={formData.hsnCode ?? ''} onChange={(e) => updateField('hsnCode', e.target.value)} placeholder="Code" className="h-9 rounded-md" selectOnFocus />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">SAC Code</Label>
-                                    <Input value={formData.sacCode ?? ''} onChange={(e) => updateField('sacCode', e.target.value)} className="h-11 rounded-xl" selectOnFocus />
+                                    <Label className="text-[11px] font-semibold text-slate-600">SAC Code</Label>
+                                    <Input value={formData.sacCode ?? ''} onChange={(e) => updateField('sacCode', e.target.value)} className="h-9 rounded-md" selectOnFocus />
                                 </div>
                                 <div className="space-y-2 col-span-2 md:col-span-1">
                                     <TaxCategorySelector
                                         category={category}
-                                        value={formData.taxCategory || (getDomainDefaultTax(category) ? `Sales Tax ${getDomainDefaultTax(category)}%` : '')}
+                                        countryIso={countryIso}
+                                        value={formData.taxCategory || (getDomainDefaultTax(category, domainTaxOptions) ? `${standards?.taxLabel || 'Tax'} ${getDomainDefaultTax(category, domainTaxOptions)}%` : '')}
                                         onChange={(cat, rate) => {
                                             updateField('taxCategory', cat);
                                             updateField('taxPercent', rate);
@@ -1145,42 +1392,36 @@ export function ProductForm({
                         </div>
                     )}
 
-                    {/* Sticky Action Footer */}
-                    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-full max-w-2xl px-6">
-                        <div className="bg-slate-900/95 backdrop-blur-xl p-4 rounded-3xl border border-white/10 shadow-2xl shadow-indigo-500/20 flex items-center justify-between">
-                            <Button type="button" variant="ghost" onClick={fillDemoData} className="text-[10px] text-slate-400 hover:text-white uppercase font-black tracking-widest px-4">
-                                <Sparkles className="w-3 h-3 mr-2 text-yellow-500" />
-                                Smart Fill
-                            </Button>
-                            
-                            <div className="flex gap-3">
-                                {onCancel && (
-                                    <Button type="button" variant="ghost" onClick={onCancel} className="font-bold text-slate-400 hover:text-white h-11 px-6 rounded-2xl">
-                                        Dismiss
-                                    </Button>
-                                )}
+                </CardContent>
 
-                                {!product && (
-                                    <Button
-                                        type="button"
-                                        onClick={(e) => handleSubmit(e, true)}
-                                        disabled={isLoading}
-                                        className="font-black px-6 h-11 rounded-2xl bg-white/5 border border-white/10 text-white hover:bg-white/10 transition-all"
-                                    >
-                                        {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Save & Next'}
-                                    </Button>
-                                )}
-
-                                <Button type="submit" disabled={isLoading} className="bg-indigo-600 hover:bg-indigo-500 text-white font-black px-10 h-11 rounded-2xl shadow-lg transition-all active:scale-95 flex items-center gap-2">
-                                    {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : (product ? <><Save className="w-4 h-4" /> Finalize Update</> : <><CheckCircle2 className="w-4 h-4" /> Deploy to Stock</>)}
+                <div className="shrink-0 border-t border-gray-100 bg-white px-3 py-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] sm:px-6 sm:py-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                        <Button type="button" variant="ghost" onClick={fillDemoData} className="hidden h-9 px-2 text-[10px] font-bold uppercase tracking-widest text-slate-500 sm:inline-flex">
+                            <Sparkles className="mr-1.5 h-3 w-3 text-yellow-500" />
+                            Smart Fill
+                        </Button>
+                        <div className="ml-auto flex w-full gap-2 sm:w-auto">
+                            {onCancel && (
+                                <Button type="button" variant="outline" onClick={onCancel} className="h-9 flex-1 rounded-xl text-xs font-semibold sm:flex-none sm:px-4">
+                                    Cancel
                                 </Button>
-                            </div>
-                        </div>
-                        <div className="mt-2 text-center">
-                           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Tip: Press <kbd className="bg-gray-100 px-1 rounded">Enter</kbd> to move fields or <kbd className="bg-gray-100 px-1 rounded">Cmd+Enter</kbd> to save</p>
+                            )}
+                            {!product && (
+                                <Button
+                                    type="button"
+                                    onClick={(e) => handleSubmit(e, true)}
+                                    disabled={isLoading}
+                                    className="hidden h-9 rounded-xl bg-emerald-600 px-4 text-xs font-bold text-white hover:bg-emerald-700 sm:inline-flex"
+                                >
+                                    Save & Next
+                                </Button>
+                            )}
+                            <Button type="submit" disabled={isLoading} className="h-9 flex-1 rounded-xl bg-emerald-600 px-4 text-xs font-bold text-white hover:bg-emerald-700 sm:flex-none sm:px-6">
+                                {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : (product ? 'Update' : 'Save Product')}
+                            </Button>
                         </div>
                     </div>
-                </CardContent>
+                </div>
             </Card>
         </form >
     );

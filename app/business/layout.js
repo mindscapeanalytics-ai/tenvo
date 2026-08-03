@@ -1,44 +1,44 @@
-'use client';
+/**
+ * Hub layout — server-side session guard before client shell renders.
+ * Hydrates AuthContext with the already-validated session so tenant sync
+ * does not wait on a second Better Auth client round-trip.
+ */
+import { redirect } from 'next/navigation';
+import { headers } from 'next/headers';
+import { getServerSession } from '@/lib/auth/rbac';
+import { BusinessShellLayout } from '@/components/layout/BusinessShellLayout';
+import { HubSessionHydrator } from '@/components/guards/HubSessionHydrator';
+import { toHubSessionHint } from '@/lib/utils/hubSessionHint';
 
-import { useState } from 'react';
-import { Sidebar } from '@/components/layout/Sidebar';
-import { Header } from '@/components/layout/Header';
-import { useLanguage } from '@/lib/context/LanguageContext';
-import { FilterProvider } from '@/lib/context/FilterContext';
-import { DataProvider } from '@/lib/context/DataContext';
+function buildHubLoginRedirect(pathname) {
+  const raw = typeof pathname === 'string' ? pathname.trim() : '';
+  const nextPath =
+    raw.startsWith('/business') && !raw.startsWith('//') ? raw : '/multi-business';
+  return `/login?next=${encodeURIComponent(nextPath)}`;
+}
 
-export default function BusinessLayout({ children }) {
-    const [sidebarOpen, setSidebarOpen] = useState(false);
-    const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-    const { language } = useLanguage();
+export default async function BusinessLayout({ children }) {
+  const headerList = await headers();
+  const loginRedirect = buildHubLoginRedirect(headerList.get('x-tenvo-pathname'));
 
-    const sidebarWidth = isSidebarCollapsed ? '20' : '64';
-    const marginClass = language === 'ur'
-        ? (isSidebarCollapsed ? 'lg:mr-20' : 'lg:mr-64')
-        : (isSidebarCollapsed ? 'lg:ml-20' : 'lg:ml-64');
+  let session = null;
+  try {
+    session = await getServerSession();
+  } catch (error) {
+    console.error('[BusinessLayout] getServerSession failed:', error);
+    redirect(loginRedirect);
+  }
 
-    return (
-        <FilterProvider>
-            <DataProvider>
-                <div className="min-h-screen bg-gray-50 flex">
-                    {/* Sidebar */}
-                    <Sidebar
-                        isOpen={sidebarOpen}
-                        onClose={() => setSidebarOpen(false)}
-                        isSidebarCollapsed={isSidebarCollapsed}
-                        setIsSidebarCollapsed={setIsSidebarCollapsed}
-                    />
+  if (!session?.user) {
+    redirect(loginRedirect);
+  }
 
-                    {/* Main Content Area */}
-                    <div className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ${marginClass}`}>
-                        <Header onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
+  // Always serialize on the server with a non-client util (never import helpers from 'use client').
+  const initialSession = toHubSessionHint(session);
 
-                        <main className="flex-1 p-4 lg:p-6 overflow-y-auto">
-                            {children}
-                        </main>
-                    </div>
-                </div>
-            </DataProvider>
-        </FilterProvider>
-    );
+  return (
+    <HubSessionHydrator initialSession={initialSession}>
+      <BusinessShellLayout>{children}</BusinessShellLayout>
+    </HubSessionHydrator>
+  );
 }

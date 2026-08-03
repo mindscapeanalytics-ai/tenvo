@@ -1,11 +1,16 @@
+﻿/* eslint-disable react/no-unescaped-entities */
+/* eslint-disable @next/next/no-html-link-for-pages */
 'use client';
 
 import MarketingLayout from '@/components/marketing/layout/MarketingLayout';
 import CTASection from '@/components/marketing/sections/CTASection';
+import { getBookMeetingHref } from '@/lib/marketing/salesLinks';
 import CaseStudyCard from '@/components/marketing/cards/CaseStudyCard';
 import { caseStudies } from '@/lib/marketing/case-studies';
 import { useParams } from 'next/navigation';
 import { CheckCircle, TrendingUp, Clock, DollarSign } from 'lucide-react';
+import Image from '@/components/marketing/ui/MarketingImage';
+import Link from 'next/link';
 
 export default function CaseStudyDetailPage() {
   const params = useParams();
@@ -20,9 +25,9 @@ export default function CaseStudyDetailPage() {
         <div className="py-24 text-center">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">Case Study Not Found</h1>
           <p className="text-gray-600 mb-8">The case study you're looking for doesn't exist.</p>
-          <a href="/case-studies" className="text-wine-600 hover:underline">
+          <Link href="/case-studies" className="text-brand-primary hover:underline">
             View all case studies
-          </a>
+          </Link>
         </div>
       </MarketingLayout>
     );
@@ -36,9 +41,9 @@ export default function CaseStudyDetailPage() {
   return (
     <MarketingLayout>
       {/* Hero Section */}
-      <section className="py-20 bg-gradient-to-br from-wine-50 via-white to-gray-50">
+      <section className="py-20 bg-brand-50">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="inline-block px-4 py-2 bg-wine-100 text-wine-700 rounded-full text-sm font-semibold mb-6">
+          <div className="inline-block px-4 py-2 bg-brand-100 text-brand-primary-dark rounded-full text-sm font-semibold mb-6">
             {caseStudy.industry}
           </div>
           <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
@@ -52,7 +57,7 @@ export default function CaseStudyDetailPage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {caseStudy.results.map((result, index) => (
               <div key={index} className="bg-white rounded-lg p-4 border border-gray-100">
-                <div className="text-2xl font-bold text-wine-600 mb-1">
+                <div className="text-2xl font-bold text-brand-primary mb-1">
                   {result.metric}
                 </div>
                 <div className="text-sm text-gray-600">{result.label}</div>
@@ -63,14 +68,19 @@ export default function CaseStudyDetailPage() {
       </section>
 
       {/* Hero Image */}
-      {caseStudy.image && (
+      {caseStudy.heroImage && (
         <section className="py-8 bg-white">
-          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-            <img
-              src={caseStudy.image}
-              alt={caseStudy.company}
-              className="w-full rounded-2xl shadow-lg"
-            />
+          <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+            <div className="relative aspect-[5/3] w-full overflow-hidden rounded-2xl shadow-lg">
+              <Image
+                src={caseStudy.heroImage}
+                alt={caseStudy.company}
+                fill
+                className="object-cover"
+                sizes="(max-width: 1280px) 100vw, 1024px"
+                priority
+              />
+            </div>
           </div>
         </section>
       )}
@@ -110,7 +120,7 @@ export default function CaseStudyDetailPage() {
                 'Mobile Access'
               ]).map((feature, index) => (
                 <div key={index} className="flex items-start gap-3">
-                  <CheckCircle className="w-5 h-5 text-wine-600 flex-shrink-0 mt-0.5" />
+                  <CheckCircle className="w-5 h-5 text-brand-primary flex-shrink-0 mt-0.5" />
                   <span className="text-gray-700">{feature}</span>
                 </div>
               ))}
@@ -131,11 +141,22 @@ export default function CaseStudyDetailPage() {
 
           {/* Testimonial */}
           {caseStudy.testimonial && (
-            <div className="bg-wine-50 rounded-2xl p-8 border-l-4 border-wine-600">
+            <div className="bg-brand-50 rounded-2xl p-8 border-l-4 border-brand-primary">
               <p className="text-lg text-gray-700 italic mb-4">
-                "{caseStudy.testimonial.quote}"
+                &ldquo;{caseStudy.testimonial.quote}&rdquo;
               </p>
               <div className="flex items-center gap-4">
+                {caseStudy.testimonial.avatar && (
+                  <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-full bg-white ring-2 ring-brand-primary/20">
+                    <Image
+                      src={caseStudy.testimonial.avatar}
+                      alt={caseStudy.testimonial.author}
+                      fill
+                      className="object-cover"
+                      sizes="48px"
+                    />
+                  </div>
+                )}
                 <div>
                   <div className="font-bold text-gray-900">{caseStudy.testimonial.author}</div>
                   <div className="text-sm text-gray-600">{caseStudy.testimonial.role}</div>
@@ -171,8 +192,8 @@ export default function CaseStudyDetailPage() {
         }
         subtitle="See how TENVO can transform your business operations"
         primaryCTA={{
-          text: 'Schedule Demo',
-          href: '/demo'
+          text: 'Book a meeting',
+          href: getBookMeetingHref(),
         }}
         secondaryCTA={{
           text: 'Start Free Trial',
@@ -196,7 +217,7 @@ function ResultCard({ result }) {
 
   return (
     <div className="bg-gray-50 rounded-2xl p-6">
-      <div className="text-wine-600 mb-3">
+      <div className="text-brand-primary mb-3">
         {getIcon(result.label)}
       </div>
       <div className="text-3xl font-bold text-gray-900 mb-2">

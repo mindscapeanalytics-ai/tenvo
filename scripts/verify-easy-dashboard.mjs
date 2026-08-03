@@ -1,0 +1,414 @@
+/**
+ * Static wiring checks for Easy mode dashboard (tabbed one-pager + domain intelligence).
+ * Run: node scripts/verify-easy-dashboard.mjs
+ */
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const root = path.join(__dirname, '..');
+
+function read(rel) {
+  return fs.readFileSync(path.join(root, rel), 'utf8');
+}
+
+let failed = false;
+const mark = (msg) => {
+  console.error(`FAIL: ${msg}`);
+  failed = true;
+};
+
+const domainDashboard = read('app/business/[category]/components/tabs/DomainDashboard.tsx');
+const easyDashboard = read('components/dashboard/easy/EasyBusinessDashboard.tsx');
+const easyIntel = read('lib/dashboard/easyDomainIntelligence.js');
+const opsIntel = read('lib/dashboard/domainOperationsIntelligence.js');
+const opsSnapshot = read('lib/actions/dashboard/domainOperationsSnapshot.js');
+const opsPanel = read('components/dashboard/easy/DomainOperationsPanel.tsx');
+const easyHelpers = read('lib/dashboard/easyDashboardHelpers.js');
+const industryInsights = read('app/business/[category]/components/islands/IndustryInsights.client.tsx');
+
+if (!domainDashboard.includes('isEasyMode')) {
+  mark('DomainDashboard must branch on isEasyMode');
+}
+if (!domainDashboard.includes('EasyBusinessDashboard')) {
+  mark('DomainDashboard must render EasyBusinessDashboard in easy mode');
+}
+if (!domainDashboard.includes('RetailSimpleDashboard')) {
+  mark('DomainDashboard must render RetailSimpleDashboard for retail simple home');
+}
+if (!domainDashboard.includes('isRetailSimpleDashboard')) {
+  mark('DomainDashboard must branch on isRetailSimpleDashboard');
+}
+if (domainDashboard.includes('embeddedInRetailHome={isRetailSimpleDashboard}')) {
+  mark('Retail Simple must be standalone (do not stack EasyBusinessDashboard underneath)');
+}
+if (!domainDashboard.includes('resolveProductStock')) {
+  mark('DomainDashboard must use resolveProductStock for inventory KPIs');
+}
+
+const retailSimple = read('components/dashboard/easy/RetailSimpleDashboard.tsx');
+const retailActions = read('lib/dashboard/retailSimpleActions.js');
+const busyMode = read('lib/context/BusyModeContext.js');
+const settingsManager = read('components/SettingsManager.jsx');
+const userManager = read('components/auth/UserManager.jsx');
+const hubBootstrapMetrics = read('lib/dashboard/hubBootstrapMetrics.js');
+const dashboardKpis = read('lib/actions/basic/dashboard.js');
+
+if (!retailSimple.includes('Quick entry')) {
+  mark('RetailSimpleDashboard must expose quick entry action tiles');
+}
+if (!retailSimple.includes('buildRetailSimpleActions')) {
+  mark('RetailSimpleDashboard must build tiles via buildRetailSimpleActions');
+}
+if (!retailSimple.includes('buildRetailSimpleSecondaryActions')) {
+  mark('RetailSimpleDashboard must expose secondary Easy tools (inventory/reports/excel)');
+}
+if (!retailSimple.includes('usePermissions')) {
+  mark('RetailSimpleDashboard must gate tiles with usePermissions');
+}
+if (!retailSimple.includes('Lock')) {
+  mark('RetailSimpleDashboard must show locked tile affordance for gated actions');
+}
+if (!retailSimple.includes('Shop health')) {
+  mark('RetailSimpleDashboard must include compact shop health KPIs');
+}
+if (!retailSimple.includes('RetailTopSellingCard')) {
+  mark('RetailSimpleDashboard must render Top Selling Items sidebar');
+}
+if (!retailSimple.includes('RetailRecentActivityCard')) {
+  mark('RetailSimpleDashboard must render Recent Activity sidebar');
+}
+if (!retailSimple.includes('lg:col-span-9') || !retailSimple.includes('lg:col-span-3')) {
+  mark('RetailSimpleDashboard must use main + sidebar grid (9/3 columns)');
+}
+if (!retailSimple.includes('getSalesPerformanceAction')) {
+  mark('RetailSimpleDashboard must load unified top sellers from sales performance');
+}
+if (!retailSimple.includes('hidden lg:grid') || !retailSimple.includes('lg:hidden')) {
+  mark('RetailSimpleDashboard must use dual-layout for graphs (desktop vs mobile)');
+}
+if (!retailSimple.includes('font-semibold') || retailSimple.includes('font-bold tracking-tight')) {
+  // Prefer font-semibold for headings per hub typography
+  if (/className="[^"]*font-bold[^"]*tracking-tight/.test(retailSimple)) {
+    mark('RetailSimpleDashboard headings should use font-semibold not font-bold');
+  }
+}
+if (!retailActions.includes('isPosRelevant') || !retailActions.includes('expense_tracking')) {
+  mark('retailSimpleActions must gate POS domain and expense_tracking');
+}
+if (!retailActions.includes("status: 'locked'") && !retailActions.includes("status: /** @type {'locked'} */ ('locked')")) {
+  mark('retailSimpleActions must keep locked tiles visible (fully featured grid)');
+}
+if (!retailActions.includes('buildRetailSimpleSecondaryActions')) {
+  mark('retailSimpleActions must expose secondary Easy tools');
+}
+if (!retailActions.includes('isMilkHisabRelevant') || !retailActions.includes('route-hisab')) {
+  mark('retailSimpleActions must support Milk Record → route-hisab');
+}
+if (!retailActions.includes('isWaterHisabRelevant') || !retailActions.includes('Water Route')) {
+  mark('retailSimpleActions must support Water Route → route-hisab');
+}
+if (!easyIntel.includes("'water-delivery'") || !easyIntel.includes('Bottles & cases sold')) {
+  mark('easyDomainIntelligence must define water-delivery playbook and KPI labels');
+}
+if (!retailActions.includes('resolveOnlineSalesAmount')) {
+  mark('retailSimpleActions must resolve Online Sales from hub metrics');
+}
+if (!busyMode.includes('tenvo_dashboard_style') || !busyMode.includes('isRetailSimpleDashboard')) {
+  mark('BusyModeContext must persist tenvo_dashboard_style and expose isRetailSimpleDashboard');
+}
+if (!settingsManager.includes('Retail Simple Dashboard') || !settingsManager.includes('setDashboardStyle')) {
+  mark('SettingsManager must expose Retail Simple Dashboard toggle');
+}
+if (!userManager.includes("setDashboardStyle('retail_simple')") || !userManager.includes("setDashboardStyle('guided')")) {
+  mark('UserManager must offer Retail / Guided home toggle');
+}
+if (!dashboardKpis.includes('storefront_revenue') || !dashboardKpis.includes('channels:')) {
+  mark('getDashboardKPIs must expose storefront channel revenue for Retail Simple Online Sales');
+}
+if (!hubBootstrapMetrics.includes('channels:') || !hubBootstrapMetrics.includes('storefront:')) {
+  mark('buildDashboardMetricsFromSnapshot must map channel storefront revenue');
+}
+if (domainDashboard.includes('isRetailSimpleDashboard') && /isRetailSimpleDashboard[\s\S]{0,200}ai_analytics|opsChannels\.storefront/.test(domainDashboard)) {
+  mark('Retail Simple must not source Online Sales from ai_analytics ops snapshot');
+}
+if (domainDashboard.includes('enabled:') && /isRetailSimpleDashboard/.test(domainDashboard.match(/useDomainOperationsSnapshot\([\s\S]*?\}\);/)?.[0] || '')) {
+  mark('DomainDashboard must not enable domain ops snapshot solely for Retail Simple Online Sales');
+}
+
+if (!easyDashboard.includes('TabsList')) {
+  mark('EasyBusinessDashboard must use shadcn Tabs for one-page layout');
+}
+if (!easyDashboard.includes('resolveEasyTabForAction')) {
+  mark('EasyBusinessDashboard must route insights via resolveEasyTabForAction');
+}
+if (!easyDashboard.includes('buildDomainStockSignals')) {
+  mark('EasyBusinessDashboard must show domain stock signals on Stock tab');
+}
+if (!easyDashboard.includes('buildProductSparkHeights')) {
+  mark('EasyBusinessDashboard must use real product sparklines from invoices');
+}
+if (easyDashboard.includes('sparkHeights={[40, 55, 35, 70]}')) {
+  mark('EasyBusinessDashboard must not use hardcoded product sparklines');
+}
+
+if (!easyIntel.includes('VERTICAL_PLAYBOOKS')) {
+  mark('easyDomainIntelligence must define vertical playbooks');
+}
+if (!easyDashboard.includes('DomainOperationsPanel')) {
+  mark('EasyBusinessDashboard must render DomainOperationsPanel on Operations tab');
+}
+if (!easyDashboard.includes('value="operations"')) {
+  mark('EasyBusinessDashboard must define Operations tab');
+}
+
+if (!opsIntel.includes('resolveOperationsProfile')) {
+  mark('domainOperationsIntelligence must expose resolveOperationsProfile');
+}
+if (!opsIntel.includes('parts_desk')) {
+  mark('domainOperationsIntelligence must define parts_desk mode');
+}
+if (!opsSnapshot.includes('getDomainOperationsSnapshotAction')) {
+  mark('domainOperationsSnapshot action must exist');
+}
+if (!opsSnapshot.includes('storefront_contact_messages')) {
+  mark('domainOperationsSnapshot must aggregate storefront contact queue');
+}
+if (!opsPanel.includes('buildOperationsKpiTiles')) {
+  mark('DomainOperationsPanel must use buildOperationsKpiTiles');
+}
+
+if (!easyIntel.includes('operations')) {
+  mark('easyDomainIntelligence must support operations tab badges/guidance');
+}
+
+if (!easyHelpers.includes('resolveProductStock')) {
+  mark('easyDashboardHelpers must resolve display stock');
+}
+if (!easyHelpers.includes('countLowStockProducts')) {
+  mark('easyDashboardHelpers must expose shared low-stock count');
+}
+if (!easyHelpers.includes('resolveSafetyStock')) {
+  mark('easyDashboardHelpers must expose shared safety-stock threshold');
+}
+if (!easyHelpers.includes('buildProductSparkHeights')) {
+  mark('easyDashboardHelpers must build product sparklines from invoice lines');
+}
+
+const dashboardTabs = read('app/business/[category]/components/DashboardTabs.jsx');
+if (!dashboardTabs.includes('domainKnowledge={domainKnowledge}')) {
+  mark('DashboardTabs must pass domainKnowledge into DomainDashboard');
+}
+
+if (!easyDashboard.includes('tilePeriodLoading')) {
+  mark('EasyBusinessDashboard must skeleton Period movement until sales/finance settle');
+}
+if (!easyDashboard.includes('tileAttentionLoading')) {
+  mark('EasyBusinessDashboard must skeleton Attention until sales/inventory settle');
+}
+if (easyDashboard.includes('const tileSalesLoading = isSalesLoading || isAnalyticsLoading')) {
+  mark('EasyBusinessDashboard must not gate sales tiles on analytics loading');
+}
+
+if (!domainDashboard.includes('countLowStockProducts')) {
+  mark('DomainDashboard must use shared countLowStockProducts');
+}
+if (domainDashboard.includes('Math.max(lowStockFallback, dashboardMetrics')) {
+  mark('DomainDashboard must not Math.max client low-stock with calendar-month server alerts');
+}
+
+if (!industryInsights.includes("variant?: 'default' | 'compact'")) {
+  mark('IndustryInsights must support compact variant for Easy mode');
+}
+
+const dataContext = read('lib/context/DataContext.js');
+if (!dataContext.includes('setIsShellReady(true)')) {
+  mark('DataContext must paint shell immediately (setIsShellReady)');
+}
+if (!dataContext.includes('useLayoutEffect')) {
+  mark('DataContext must apply hub shell paint in useLayoutEffect before browser paint');
+}
+if (!dataContext.includes('hydrateHubShellFromServer')) {
+  mark('DataContext must support RSC hub shell hydration on cold login');
+}
+if (!dataContext.includes('fetchInventory({ fullCatalog: false })') && !dataContext.includes('fetchInventory(')) {
+  mark('DataContext bootstrap must fetch inventory in parallel');
+}
+if (!dataContext.includes('fetchGenerationRef')) {
+  mark('DataContext must use generation tokens against stale business races');
+}
+if (!dataContext.includes('isStale()')) {
+  mark('DataContext fetchers must guard setState with isStale()');
+}
+if (
+  !dataContext.includes('getHubShellBootstrapAction') &&
+  !dataContext.includes('useHubShellQuery') &&
+  !dataContext.includes('fetchHubShell') &&
+  !dataContext.includes('fetchInventory({ fullCatalog: false })') &&
+  !dataContext.includes('fullCatalog: false')
+) {
+  mark('DataContext bootstrap must use hub shell bootstrap or lean-load inventory');
+}
+if (
+  !dataContext.includes('getHubShellBootstrapAction') &&
+  !dataContext.includes('useHubShellQuery') &&
+  !dataContext.includes('includeItems: false') &&
+  !dataContext.includes("fetchSales({ mode: 'bootstrap' })") &&
+  !dataContext.includes("mode: 'bootstrap'")
+) {
+  mark('DataContext bootstrap must lean-load sales without invoice line items');
+}
+if (
+  !dataContext.includes('getHubShellBootstrapAction') &&
+  !dataContext.includes('useHubShellQuery') &&
+  !dataContext.includes('fetchHubShell') &&
+  !/Promise\.allSettled\(\[\s*fetchFinance\(\),\s*fetchSales\(/.test(dataContext)
+) {
+  mark('DataContext must use hub shell bootstrap or stream finance/sales in parallel');
+}
+if (!dataContext.includes('buildDashboardMetricsFromSnapshot')) {
+  mark('DataContext must hydrate dashboardMetrics from finance snapshot (avoid duplicate KPI wait)');
+}
+if (dataContext.includes('void fetchAnalytics?.()') || /Promise\.allSettled\(\[[\s\S]*fetchAnalytics\(\)/.test(dataContext.split('setIsShellReady(true)')[1]?.slice(0, 1200) || '')) {
+  // Cold bootstrap must not fire getDashboardMetricsAction in parallel with finance snapshot.
+  if (/isDataLoaded\(true\);\s*[\s\S]{0,80}fetchAnalytics/.test(dataContext)) {
+    mark('DataContext must not cold-load fetchAnalytics after bootstrap (snapshot KPIs already hydrate tiles)');
+  }
+}
+
+const snapshotAction = read('lib/actions/dashboard/advancedDashboardSnapshot.js');
+if (!snapshotAction.includes('runWithTrustedAuthBypass')) {
+  mark('Advanced snapshot must wrap nested KPI/GL reads in runWithTrustedAuthBypass');
+}
+if (snapshotAction.includes('skipAuth: true')) {
+  mark('Advanced snapshot must not pass skipAuth: true (use runWithTrustedAuthBypass)');
+}
+
+const serverGuard = read('lib/rbac/serverGuard.js');
+if (!serverGuard.includes("from 'react'") || !serverGuard.includes('getCachedSession')) {
+  mark('withGuard must request-cache session via React.cache');
+}
+if (!serverGuard.includes('needsOverrides') && !serverGuard.includes('getCachedPlatformOverrides')) {
+  mark('withGuard must skip platform override SQL for permission-only checks');
+}
+
+const dashboardClient = read('app/business/[category]/DashboardClient.jsx');
+if (
+  !dataContext.includes('fetchInventory(') ||
+  (!dashboardClient.includes('fetchInventory(') &&
+    !dashboardClient.includes('Lean bootstrap already streams'))
+) {
+  mark('Hub must bootstrap inventory via DataContext (dashboard tab must not duplicate fetch)');
+}
+
+const productService = read('lib/services/ProductService.js');
+if (
+  !productService.includes('resolveInventoryEffectiveStock') &&
+  !productService.includes("toLowerCase() === 'sellable'") &&
+  !productService.includes("=== 'sellable'")
+) {
+  mark('ProductService.resolveDisplayStock must count sellable locations only');
+}
+if (!productService.includes('display_stock: displayStock')) {
+  mark('ProductService.sanitizeProduct must set display_stock for Easy/hub KPIs');
+}
+if (!productService.includes('includeSerials')) {
+  mark('ProductService.getProducts must support includeSerials for progressive inventory loads');
+}
+
+const effectiveStock = read('lib/utils/inventoryEffectiveStock.js');
+if (!effectiveStock.includes("toLowerCase() === 'sellable'")) {
+  mark('inventoryEffectiveStock must filter sellable location state');
+}
+
+if (!easyHelpers.includes('min_stock_level') || !/reorder_point[\s\S]*min_stock_level[\s\S]*min_stock/.test(easyHelpers)) {
+  mark('resolveSafetyStock must match analytics SQL threshold order');
+}
+
+if (
+  !dataContext.includes('includeSerials: false') &&
+  !dataContext.includes('includeSerials: loadSerials') &&
+  !read('lib/actions/dashboard/hubShellBootstrap.js').includes('includeSerials: false')
+) {
+  mark('DataContext must fast-path inventory without serials for dashboard KPIs');
+}
+if (!dataContext.includes('includeSerials === true') && !dataContext.includes('includeSerials: true')) {
+  mark('DataContext force refresh must load serials for Busy grid accuracy');
+}
+
+const analytics = read('lib/actions/premium/ai/analytics.js');
+if (!analytics.includes('sellable_qty') || !analytics.includes('LEFT JOIN')) {
+  mark('analytics low-stock must LEFT JOIN sellable location aggregates');
+}
+if (!analytics.includes('COALESCE(p.is_deleted, false) = false')) {
+  mark('analytics low-stock must exclude deleted products');
+}
+
+if (!dashboardTabs.includes('_serialsDeferred') || !dashboardTabs.includes('firstNonEmpty')) {
+  mark('DashboardTabs Busy save must honor deferred serials (not prefer empty [])');
+}
+
+if (!easyDashboard.includes("onQuickAction?.('low-stock')")) {
+  mark('Easy Attention must drill to low-stock like mobile hub');
+}
+if (!easyDashboard.includes('tilePnlLoading') || !easyDashboard.includes('tileReturnsLoading')) {
+  mark('Easy must split P&L vs sales vs returns loading gates');
+}
+
+if (!easyIntel.includes("'restaurant-cafe'") && !easyIntel.includes('"restaurant-cafe"')) {
+  mark('easyDomainIntelligence must key restaurant-cafe playbook after alias resolve');
+}
+
+if (!easyHelpers.includes('resolveInvoiceOpenBalance')) {
+  mark('easyDashboardHelpers must expose resolveInvoiceOpenBalance for AR tiles');
+}
+if (!/90d/.test(easyHelpers) || !easyHelpers.includes('last_month')) {
+  mark('EASY_PRESET_OPTIONS must include 90d and last_month for Zoho-style period chrome');
+}
+
+const filterCtx = read('lib/context/FilterContext.js');
+if (!filterCtx.includes('datePresetKey') || !filterCtx.includes('applyDatePreset')) {
+  mark('FilterContext must persist datePresetKey and applyDatePreset');
+}
+if (!filterCtx.includes('getDefaultDateRange')) {
+  mark('FilterContext default range must use getDefaultDateRange (30d preset)');
+}
+
+const dashKpis = read('lib/actions/basic/dashboard.js');
+if (!dashKpis.includes('options.dateFrom || options.dateTo')) {
+  mark('getDashboardKPIs must honor explicit dateFrom/dateTo over period defaults');
+}
+
+const domainDash = read('app/business/[category]/components/tabs/DomainDashboard.tsx');
+if (!domainDash.includes('datePresetKey') || domainDash.includes("activePreset === '90d'")) {
+  // Remap of 90d/last_month/ytd → 30d must be gone
+}
+if (domainDash.includes("activePreset === '90d' || activePreset === 'last_month'")) {
+  mark('DomainDashboard must not remap 90d/last_month/ytd mobile presets to 30d');
+}
+if (!domainDash.includes("'90d': 'Last 90 Days'")) {
+  mark('DomainDashboard periodLabel must say Last 90 Days (not Last Quarter)');
+}
+
+const productAction = read('lib/actions/standard/inventory/product.js');
+if (!productAction.includes('upsertIntegratedProductAction') || !productAction.includes('prepareCompositeUpsertFromRow')) {
+  mark('bulkImportProductsAction must route through composite upsert (ledger opening stock)');
+}
+
+const busyGrid = read('components/BusyGrid.jsx');
+if (!busyGrid.includes('contiguous empty') && !busyGrid.includes('selectedCell.row + 50')) {
+  mark('BusyGrid fill-down must fill contiguous empty rows (Excel-style)');
+}
+
+const pkg = read('package.json');
+if (!pkg.includes('verify:easy-dashboard')) {
+  mark('package.json must define verify:easy-dashboard script');
+}
+
+if (failed) {
+  console.error('\nEasy dashboard verification failed.');
+  process.exit(1);
+}
+
+console.log('Easy dashboard verification passed.');

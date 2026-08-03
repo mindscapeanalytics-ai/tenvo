@@ -1,38 +1,47 @@
 'use client';
 
+import * as LucideIcons from 'lucide-react';
 import MarketingLayout from '@/components/marketing/layout/MarketingLayout';
+import { VERTICAL_COUNT } from '@/lib/marketing/capabilities';
+import { INDUSTRY_PAGE_BENEFITS } from '@/lib/marketing/homeVisualThemes';
+import {
+  MARKETING_CONTAINER,
+  MARKETING_EYEBROW,
+  MARKETING_SECTION_HEADING,
+} from '@/lib/utils/marketingLayout';
 import Hero from '@/components/marketing/sections/Hero';
 import DomainShowcase from '@/components/marketing/sections/DomainShowcase';
+import IndustrySolutionsSection from '@/components/marketing/sections/IndustrySolutionsSection';
 import TestimonialsSection from '@/components/marketing/sections/TestimonialsSection';
 import CTASection from '@/components/marketing/sections/CTASection';
+import MarketingBenefitCard from '@/components/marketing/ui/MarketingBenefitCard';
+import { getBookMeetingHref } from '@/lib/marketing/salesLinks';
 
 export default function IndustriesPage() {
   return (
     <MarketingLayout>
-      {/* Hero Section */}
-      <Hero 
+      <Hero
         variant="centered"
-        badge="55+ Industry Verticals"
+        badge={`${VERTICAL_COUNT} Industry Verticals`}
         title={
           <>
-            Purpose-Built Workflows for <br />
-            <span className="text-amber-300">Every Industry</span>
+            Industry presets for <br />
+            <span className="text-brand-primary">real operations</span>
           </>
         }
-        subtitle="Pre-configured ERP solutions designed for real operations, real teams, and compliance-sensitive workflows across Pakistan's major sectors."
+        subtitle="Each vertical configures dashboards, units, seed templates, and intelligence defaults - not a separate product fork. Pick your category at registration and refine in the hub."
         primaryCTA={{
-          text: 'Find Your Industry',
-          href: '#domains'
+          text: 'Find your industry',
+          href: '#domains',
         }}
         secondaryCTA={{
-          text: 'Schedule Demo',
-          href: '/demo'
+          text: 'Book a meeting',
+          href: getBookMeetingHref(),
         }}
       />
 
-      {/* Domain Showcase - Full List */}
       <div id="domains">
-        <DomainShowcase 
+        <DomainShowcase
           title="All Industry Verticals"
           subtitle="Choose your industry to see pre-configured features, workflows, and compliance rules"
           showAll={true}
@@ -41,80 +50,51 @@ export default function IndustriesPage() {
         />
       </div>
 
-      {/* Industry Benefits */}
-      <section className="py-24 bg-transparent">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12">
-          <div className="text-center max-w-3xl mx-auto mb-16 space-y-4">
-            <h2 className="text-[11px] font-black text-wine-600 uppercase tracking-[0.3em]">Industry-Specific Benefits</h2>
-            <h3 className="text-4xl md:text-5xl font-black text-gray-900 tracking-tighter">Why Industry Specialization Matters</h3>
+      <IndustrySolutionsSection />
+
+      <section className="bg-transparent py-10 sm:py-16 lg:py-24">
+        <div className={MARKETING_CONTAINER}>
+          <div className="mx-auto mb-8 max-w-3xl space-y-3 text-center sm:mb-12 lg:mb-16 sm:space-y-4">
+            <p className={MARKETING_EYEBROW}>Industry-Specific Benefits</p>
+            <h2 className={MARKETING_SECTION_HEADING}>Why Industry Specialization Matters</h2>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8">
-            <BenefitCard
-              title="Pre-Configured Workflows"
-              description="Start with industry best practices already built-in. No need to configure from scratch."
-              icon="⚙️"
-            />
-            <BenefitCard
-              title="Compliance Built-In"
-              description="Industry-specific regulations and compliance requirements are automatically handled."
-              icon="✓"
-            />
-            <BenefitCard
-              title="Faster Implementation"
-              description="Go live in days, not months. Pre-built templates and sample data get you started quickly."
-              icon="⚡"
-            />
-            <BenefitCard
-              title="Industry Terminology"
-              description="Use the language of your industry. Labels, reports, and workflows use familiar terms."
-              icon="💬"
-            />
-            <BenefitCard
-              title="Best Practice Reports"
-              description="Industry-standard reports and KPIs are ready to use out of the box."
-              icon="[CHART]"
-            />
-            <BenefitCard
-              title="Continuous Updates"
-              description="Stay current with industry changes. We update compliance rules and best practices regularly."
-              icon="🔄"
-            />
+          <div className="grid gap-5 sm:grid-cols-2 md:grid-cols-3 sm:gap-6 md:gap-8">
+            {INDUSTRY_PAGE_BENEFITS.map((item) => {
+              const Icon = LucideIcons[item.icon];
+              return (
+                <MarketingBenefitCard
+                  key={item.id}
+                  title={item.title}
+                  description={item.description}
+                  icon={Icon}
+                  accent={item.accent}
+                />
+              );
+            })}
           </div>
         </div>
       </section>
 
-      {/* Testimonials */}
-      <TestimonialsSection 
+      <TestimonialsSection
         variant="grid"
         title="Success Stories Across Industries"
         subtitle="See how businesses in different sectors are thriving with TENVO"
       />
 
-      {/* CTA Section */}
-      <CTASection 
+      <CTASection
         variant="centered"
         title="Ready to Get Started?"
         subtitle="Choose your industry and start your free trial today. No credit card required."
         primaryCTA={{
-          text: 'Start Free Trial',
-          href: '/register'
+          text: 'Start free',
+          href: '/register',
         }}
         secondaryCTA={{
-          text: 'Talk to Sales',
-          href: '/contact'
+          text: 'Book a meeting',
+          href: getBookMeetingHref(),
         }}
       />
     </MarketingLayout>
-  );
-}
-
-function BenefitCard({ title, description, icon }) {
-  return (
-    <div className="bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(248,251,255,0.9))] border border-slate-200 rounded-[1.75rem] p-8 hover:-translate-y-1 hover:shadow-[0_24px_70px_-42px_rgba(15,23,42,0.38)] transition-all duration-300">
-      <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-wine/10 text-2xl">{icon}</div>
-      <h4 className="text-xl font-black text-gray-900 mb-3">{title}</h4>
-      <p className="text-gray-500 font-medium leading-relaxed">{description}</p>
-    </div>
   );
 }

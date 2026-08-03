@@ -4,8 +4,9 @@ import React from 'react';
 import { Card } from '@/components/ui/card';
 import { AlertTriangle, ShieldAlert } from 'lucide-react';
 import { UpgradePrompt } from '@/components/subscription/UpgradePrompt';
-import { planHasFeature, resolvePlanTier } from '@/lib/config/plans';
+import { FEATURE_MIN_PLAN } from '@/lib/config/plans';
 import { hasPermission, NAV_PERMISSION_MAP } from '@/lib/rbac/permissions';
+import { planHasFeatureWithPackaging } from '@/lib/subscription/effectivePlanAccess';
 import { useBusiness } from '@/lib/context/BusinessContext';
 
 /**
@@ -14,7 +15,7 @@ import { useBusiness } from '@/lib/context/BusinessContext';
  * Checks three gates IN ORDER:
  *   1. Domain relevance  (optional `domainCheck` prop -- a boolean)
  *   2. RBAC / role        (permission key from NAV_PERMISSION_MAP or explicit)
- *   3. Subscription tier  (feature key from NAV_PERMISSION_MAP or explicit)
+ *   3. Subscription tier  (feature key / featuresAny from NAV_PERMISSION_MAP or explicit)
  *
  * Platform owner bypasses ALL gates automatically.
  *
@@ -37,7 +38,8 @@ export function TabGuard({
     onUpgrade,
     children,
 }) {
-    const { isPlatformOwner } = useBusiness();
+    const { isPlatformOwner, business, moduleAccess } = useBusiness();
+    const businessSettings = business?.settings;
     const effectiveRole = role || 'viewer';
 
     // Platform owner bypasses ALL gates -- full access to everything
@@ -48,7 +50,12 @@ export function TabGuard({
     // Derive from NAV_PERMISSION_MAP if not overridden
     const mapping = tabKey ? NAV_PERMISSION_MAP[tabKey] : null;
     const permission = permissionOverride || mapping?.permission;
-    const featureKey = featureOverride ?? mapping?.feature; // null = no plan gate
+    const featureKeys = featureOverride
+        ? [featureOverride]
+        : (Array.isArray(mapping?.featuresAny) && mapping.featuresAny.length > 0
+            ? mapping.featuresAny
+            : (mapping?.feature ? [mapping.feature] : []));
+    const featureKey = featureKeys[0] || null;
 
     // -- Gate 1: Domain Relevance --------------------------------------------
     if (domainCheck === false) {
@@ -62,7 +69,7 @@ export function TabGuard({
     }
 
     // -- Gate 2: RBAC Permission ---------------------------------------------
-    if (permission && !hasPermission(effectiveRole, permission)) {
+    if (permission && !hasPermission(effectiveRole, permission, moduleAccess)) {
         return (
             <Card className="p-12 text-center border-none shadow-sm">
                 <ShieldAlert className="w-12 h-12 text-red-400 mx-auto mb-4" />
@@ -75,12 +82,17 @@ export function TabGuard({
         );
     }
 
-    // -- Gate 3: Subscription Plan -------------------------------------------
-    if (featureKey && !planHasFeature(planTier, featureKey)) {
+    // -- Gate 3: Subscription Plan (OR across featuresAny when present) ------
+    const planUnlocked = featureKeys.length === 0 || featureKeys.some((fk) =>
+        planHasFeatureWithPackaging(planTier, fk, businessSettings, business?.platformFeatureOverrides)
+    );
+    if (!planUnlocked) {
+        const resolvedRequired =
+            requiredPlanOverride || (featureKey ? FEATURE_MIN_PLAN[featureKey] : null) || 'starter';
         return (
             <UpgradePrompt
                 currentPlan={planTier}
-                requiredPlan={requiredPlanOverride || 'starter'}
+                requiredPlan={resolvedRequired}
                 featureName={featureName || tabKey || 'This feature'}
                 onUpgrade={onUpgrade}
             />

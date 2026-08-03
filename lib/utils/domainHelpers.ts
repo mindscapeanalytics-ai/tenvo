@@ -4,8 +4,20 @@
  */
 
 import { getDomainKnowledge } from '../domainKnowledge';
-export { getDomainKnowledge };
+import { getRegionalStandards } from './regionalHelpers';
+import { resolveDomainKey } from '../config/domainKeyAliases';
 import { Product } from '../types/domainTypes';
+
+export { getDomainKnowledge };
+
+export type DomainKnowledgeOptions = { countryIso?: string };
+
+/** Resolve domain knowledge; omit countryIso only for registration/demo (defaults PK). */
+function resolveKnowledge(category: string, options?: DomainKnowledgeOptions) {
+  return options?.countryIso
+    ? getDomainKnowledge(category, { countryIso: options.countryIso })
+    : getDomainKnowledge(category);
+}
 
 /**
  * Get domain-specific product fields for a category
@@ -16,24 +28,24 @@ import { Product } from '../types/domainTypes';
 export const CORE_PRODUCT_KEYS = ['name', 'sku', 'barcode', 'price', 'cost_price', 'stock', 'category', 'brand', 'unit', 'description'];
 export const KEY_BLOCKLIST = ['id', 'created_at', 'updated_at', 'tenant_id'];
 
-export function getDomainProductFields(category: string): string[] {
-  const knowledge: any = getDomainKnowledge(category);
+export function getDomainProductFields(category: string, options?: DomainKnowledgeOptions): string[] {
+  const knowledge: any = resolveKnowledge(category, options);
   return knowledge?.productFields || [];
 }
 
 /**
  * Get domain-specific customer fields for a category
  */
-export function getDomainCustomerFields(category: string): string[] {
-  const knowledge: any = getDomainKnowledge(category);
+export function getDomainCustomerFields(category: string, options?: DomainKnowledgeOptions): string[] {
+  const knowledge: any = resolveKnowledge(category, options);
   return (knowledge as any)?.customerFields || [];
 }
 
 /**
  * Get domain-specific vendor fields for a category
  */
-export function getDomainVendorFields(category: string): string[] {
-  const knowledge: any = getDomainKnowledge(category);
+export function getDomainVendorFields(category: string, options?: DomainKnowledgeOptions): string[] {
+  const knowledge: any = resolveKnowledge(category, options);
   return knowledge?.vendorFields || [];
 }
 
@@ -43,8 +55,8 @@ export function getDomainVendorFields(category: string): string[] {
  * @param category - Business category
  * @returns Array of tax category strings
  */
-export function getDomainTaxCategories(category: string): string[] {
-  const knowledge: any = getDomainKnowledge(category);
+export function getDomainTaxCategories(category: string, options?: DomainKnowledgeOptions): string[] {
+  const knowledge: any = resolveKnowledge(category, options);
   return knowledge?.taxCategories || [];
 }
 
@@ -54,8 +66,8 @@ export function getDomainTaxCategories(category: string): string[] {
  * @param category - Business category
  * @returns Array of unit strings
  */
-export function getDomainUnits(category: string): string[] {
-  const knowledge: any = getDomainKnowledge(category);
+export function getDomainUnits(category: string, options?: DomainKnowledgeOptions): string[] {
+  const knowledge: any = resolveKnowledge(category, options);
   return knowledge?.units || ['pcs'];
 }
 
@@ -65,9 +77,14 @@ export function getDomainUnits(category: string): string[] {
  * @param category - Business category
  * @returns Default tax percentage
  */
-export function getDomainDefaultTax(category: string): number {
-  const knowledge: any = getDomainKnowledge(category);
-  return knowledge?.defaultTax || 0;
+export function getDomainDefaultTax(category: string, options?: DomainKnowledgeOptions): number {
+  const knowledge: any = resolveKnowledge(category, options);
+  const domainTax = Number(knowledge?.defaultTax);
+  if (Number.isFinite(domainTax) && domainTax > 0) return domainTax;
+  if (options?.countryIso) {
+    return getRegionalStandards(options.countryIso).defaultTaxRate;
+  }
+  return Number.isFinite(domainTax) ? domainTax : 0;
 }
 
 /**
@@ -137,14 +154,25 @@ export function isManufacturingEnabled(category: string): boolean {
 }
 
 /**
- * Get manufacturing process configuration for a domain
+ * Normalized manufacturing hints for BOM / production UIs.
+ * Supports both legacy keys (defaultLossPercent, allowWastageTracking) and
+ * UI keys (defaultLoss, trackWastage) so callers never see undefined%.
  */
 export function getManufacturingConfig(category: string) {
   const knowledge: any = getDomainKnowledge(category);
-  return knowledge?.manufacturingConfig || {
-    defaultLossPercent: 0,
-    allowWastageTracking: false,
-    processSteps: []
+  const raw = knowledge?.manufacturingConfig || {};
+  const defaultLoss = Number(
+    raw.defaultLoss ?? raw.defaultLossPercent ?? raw.recommendedWastagePercent ?? 0
+  );
+  const safeLoss = Number.isFinite(defaultLoss) ? defaultLoss : 0;
+  const trackWastage = Boolean(raw.trackWastage ?? raw.allowWastageTracking ?? false);
+  return {
+    ...raw,
+    defaultLoss: safeLoss,
+    defaultLossPercent: safeLoss,
+    trackWastage,
+    allowWastageTracking: trackWastage,
+    processSteps: Array.isArray(raw.processSteps) ? raw.processSteps : [],
   };
 }
 
@@ -196,8 +224,12 @@ export function isSizeColorMatrixEnabled(category: string): boolean {
  * @param product - Existing product object (optional)
  * @returns Object with default field values
  */
-export function getDomainDefaults(category: string, product: any = null): any {
-  const knowledge: any = getDomainKnowledge(category);
+export function getDomainDefaults(
+  category: string,
+  product: any = null,
+  options?: DomainKnowledgeOptions
+): any {
+  const knowledge: any = resolveKnowledge(category, options);
   const defaults: any = {
     unit: knowledge?.units?.[0] || 'pcs',
     taxPercent: knowledge?.defaultTax || 0,
@@ -209,7 +241,7 @@ export function getDomainDefaults(category: string, product: any = null): any {
   if (!product) {
     const stockFields = ['minStock', 'maxStock', 'reorderPoint', 'reorderQuantity', 'leadTime', 'shelfLife'];
     stockFields.forEach(field => {
-      const intelligentVal = getIntelligentDefaults(category, field);
+      const intelligentVal = getIntelligentDefaults(category, field, options);
       if (intelligentVal !== undefined) {
         defaults[field] = intelligentVal;
       }
@@ -219,23 +251,18 @@ export function getDomainDefaults(category: string, product: any = null): any {
   // Initialize domain-specific fields with empty strings if not present in product
   const productFields = knowledge?.productFields || [];
   productFields.forEach((field: string) => {
-    // Standardize to lowercase key (internal representation)
-    const key = normalizeKey(field);
+    const key = resolveDomainFieldKey(field, category);
 
     // Skip standard fields that are handled separately in the UI
     const skipFields = ['hsncode', 'saccode', 'name', 'sku', 'barcode', 'price', 'mrp', 'costprice'];
     if (!skipFields.includes(key)) {
-      // Priority: 
-      // 1. Exact normalized key (articleno)
-      // 2. Snake_case key (article_no)
-      // 3. Original field name as key (Article No)
-      // 4. Config default
-      const val = product?.domain_data?.[key] ||
-        product?.domain_data?.[field.toLowerCase().replace(/\s+/g, '_')] ||
-        product?.[key] ||
-        product?.domain_data?.[field];
+      const val =
+        readDomainFieldValue(product?.domain_data, field, category) ??
+        product?.[key] ??
+        product?.[normalizeKey(field)];
 
-      defaults[key] = val || (knowledge?.fieldConfig?.[key]?.default ?? '');
+      const configDefault = knowledge?.fieldConfig?.[key]?.default;
+      defaults[key] = val ?? (configDefault != null && configDefault !== '' ? configDefault : '');
     }
   });
 
@@ -279,15 +306,12 @@ export function validateDomainProduct(
     // Some fields might be optional (legacy check)
     const optionalFields = ['HSN Code', 'SAC Code', 'Description'];
     if (!optionalFields.includes(field)) {
-      // Use normalized key for lookup
-      const fieldKey = normalizeKey(field);
-
-      // product might use raw keys or flattened keys. 
-      // ProductForm uses field.toLowerCase().replace(/\s+/g, '') which is NOT fully normalized (it keeps parens).
-      // We should check both.
-      // Better: Check if we have the value under normalized key OR the form-generated key.
-      const formKey = field.toLowerCase().replace(/\s+/g, '');
-      const value = product[fieldKey as keyof Product] || product[formKey as keyof Product];
+      // Use normalized key for lookup (top-level or domain_data)
+      const fieldKey = resolveDomainFieldKey(field, category);
+      const value =
+        product[fieldKey as keyof Product] ||
+        product[normalizeKey(field) as keyof Product] ||
+        readDomainFieldValue((product as any).domain_data, field, category);
 
       if ((value === undefined || value === '' || value === null) && fieldKey !== 'hsncode') {
         errors[fieldKey] = `${field} is required for ${category} products`;
@@ -335,8 +359,8 @@ export function validateDomainProduct(
  * @param category - Business category
  * @returns Array of feature names
  */
-export function getDomainInventoryFeatures(category: string): string[] {
-  const knowledge: any = getDomainKnowledge(category);
+export function getDomainInventoryFeatures(category: string, options?: DomainKnowledgeOptions): string[] {
+  const knowledge: any = resolveKnowledge(category, options);
   return knowledge?.inventoryFeatures || [];
 }
 
@@ -346,8 +370,8 @@ export function getDomainInventoryFeatures(category: string): string[] {
  * @param category - Business category
  * @returns Array of report names
  */
-export function getDomainReports(category: string): string[] {
-  const knowledge: any = getDomainKnowledge(category);
+export function getDomainReports(category: string, options?: DomainKnowledgeOptions): string[] {
+  const knowledge: any = resolveKnowledge(category, options);
   return knowledge?.reports || [];
 }
 
@@ -357,8 +381,8 @@ export function getDomainReports(category: string): string[] {
  * @param category - Business category
  * @returns Array of payment term strings
  */
-export function getDomainPaymentTerms(category: string): string[] {
-  const knowledge: any = getDomainKnowledge(category);
+export function getDomainPaymentTerms(category: string, options?: DomainKnowledgeOptions): string[] {
+  const knowledge: any = resolveKnowledge(category, options);
   return knowledge?.paymentTerms || ['Cash'];
 }
 
@@ -393,6 +417,206 @@ export function normalizeKey(key: string): string {
   return key.toLowerCase().replace(/[^a-z0-9]/g, '');
 }
 
+/** Legacy / label aliases → canonical domain_data keys. */
+const DOMAIN_FIELD_KEY_ALIASES: Record<string, Record<string, string>> = {
+  'auto-marketplace': {
+    make: 'vehiclemake',
+    model: 'vehiclemodel',
+    listingtype: 'condition',
+  },
+  'vehicle-dealership': {
+    make: 'vehiclemake',
+    model: 'vehiclemodel',
+  },
+  'textile-wholesale': {
+    articleno: 'articleno',
+    articlenumber: 'articleno',
+    article_no: 'articleno',
+    designno: 'designno',
+    designnumber: 'designno',
+    design_no: 'designno',
+    fabrictype: 'fabrictype',
+    fabric_type: 'fabrictype',
+    fabric: 'fabrictype',
+    korafinished: 'korafinished',
+    kora: 'korafinished',
+    widtharz: 'widtharz',
+    width: 'widtharz',
+    arz: 'widtharz',
+    thaanlength: 'thaanlength',
+    thaan_length: 'thaanlength',
+    thaan: 'thaanlength',
+    suitcutting: 'suitcutting',
+    suit_cutting: 'suitcutting',
+  },
+  'milk-shop': {
+    milktype: 'milktype',
+    milk_type: 'milktype',
+    // Only map legacy human labels — scrape "source" URLs stay as provenance.
+    bestbefore: 'expirydate',
+    expiry: 'expirydate',
+    expirydate: 'expirydate',
+    chilled: 'chilled',
+    chill: 'chilled',
+    fatpercent: 'fatpercent',
+    fat: 'fatpercent',
+    houseno: 'houseno',
+    housenumber: 'houseno',
+    house: 'houseno',
+    deliveryroute: 'deliveryroute',
+    route: 'deliveryroute',
+    dailymilkkg: 'dailymilkkg',
+    dailymilk: 'dailymilkkg',
+    deliveryactive: 'deliveryactive',
+    ondailyroute: 'deliveryactive',
+    preferredpayment: 'preferredpayment',
+    preferredpaymentmethod: 'preferredpayment',
+    preferred_payment: 'preferredpayment',
+    preferred_payment_method: 'preferredpayment',
+  },
+  'water-delivery': {
+    productcode: 'productcode',
+    product_code: 'productcode',
+    bottlesize: 'bottlesize',
+    bottle_size: 'bottlesize',
+    packtype: 'packtype',
+    pack_type: 'packtype',
+    brand: 'brand',
+    depositamount: 'depositamount',
+    deposit: 'depositamount',
+    refilltype: 'refilltype',
+    refill: 'refilltype',
+    othercompany: 'othercompany',
+    other_company: 'othercompany',
+    customertype: 'customertype',
+    customer_type: 'customertype',
+    accounttype: 'customertype',
+    account_type: 'customertype',
+    accountno: 'accountno',
+    account_no: 'accountno',
+    partyaccountno: 'accountno',
+    party_account_no: 'accountno',
+    towncode: 'towncode',
+    town_code: 'towncode',
+    city: 'city',
+    deliveryarea: 'deliveryarea',
+    delivery_area: 'deliveryarea',
+    area: 'deliveryarea',
+    postalcode: 'postalcode',
+    postal_code: 'postalcode',
+    postcode: 'postalcode',
+    zipcode: 'postalcode',
+    zip: 'postalcode',
+    areacode: 'postalcode',
+    area_code: 'postalcode',
+    houseno: 'houseno',
+    housenumber: 'houseno',
+    house: 'houseno',
+    villa: 'houseno',
+    officeno: 'houseno',
+    floorflat: 'floorflat',
+    floor_flat: 'floorflat',
+    flat: 'floorflat',
+    floor: 'floorflat',
+    proprietorname: 'proprietorname',
+    proprietor: 'proprietorname',
+    contactperson: 'proprietorname',
+    deliveryroute: 'deliveryroute',
+    route: 'deliveryroute',
+    rider: 'deliveryroute',
+    deliverydays: 'deliverydays',
+    delivery_days: 'deliverydays',
+    days: 'deliverydays',
+    dayoffollow: 'dayoffollow',
+    day_of_follow: 'dayoffollow',
+    followday: 'dayoffollow',
+    dailybottles: 'dailybottles',
+    daily_bottles: 'dailybottles',
+    productrate: 'productrate',
+    product_rate: 'productrate',
+    accountrate: 'productrate',
+    rate: 'productrate',
+    bottlesizepref: 'bottlesizepref',
+    preferredbottlesize: 'bottlesizepref',
+    bottlebalance: 'bottlebalance',
+    bottle_balance: 'bottlebalance',
+    balbottle: 'bottlebalance',
+    emptydeposit: 'emptydeposit',
+    empty_deposit: 'emptydeposit',
+    openingbalancehint: 'openingbalancehint',
+    opening_balance_hint: 'openingbalancehint',
+    prevmbal: 'openingbalancehint',
+    deliveryactive: 'deliveryactive',
+    ondailyroute: 'deliveryactive',
+    preferredpayment: 'preferredpayment',
+    preferredpaymentmethod: 'preferredpayment',
+    preferred_payment: 'preferredpayment',
+    preferred_payment_method: 'preferredpayment',
+  },
+};
+
+/**
+ * Canonical domain_data key for a productFields label or config key.
+ */
+export function resolveDomainFieldKey(field: string, category: string): string {
+  const normalized = normalizeKey(field);
+  const vertical = resolveDomainKey(category);
+  const aliases = DOMAIN_FIELD_KEY_ALIASES[vertical] || {};
+  return aliases[normalized] || normalized;
+}
+
+function resolveFieldConfig(field: string, category: string, knowledge: any) {
+  const canonical = resolveDomainFieldKey(field, category);
+  return (
+    knowledge?.fieldConfig?.[field] ||
+    knowledge?.fieldConfig?.[field.toLowerCase()] ||
+    knowledge?.fieldConfig?.[normalizeKey(field)] ||
+    knowledge?.fieldConfig?.[canonical]
+  );
+}
+
+/**
+ * Read a domain_data value using canonical + legacy keys.
+ */
+export function readDomainFieldValue(
+  domainData: Record<string, unknown> | null | undefined,
+  field: string,
+  category: string
+): unknown {
+  if (!domainData || typeof domainData !== 'object') return undefined;
+  const canonical = resolveDomainFieldKey(field, category);
+  const legacy = normalizeKey(field);
+  const direct =
+    domainData[canonical] ??
+    domainData[legacy] ??
+    domainData[field] ??
+    domainData[field.toLowerCase().replace(/\s+/g, '_')];
+
+  if (direct != null && direct !== '') return direct;
+
+  // Milk shop: seed / older rows used chill:true; never treat provenance URLs as milk type.
+  if (resolveDomainKey(category) === 'milk-shop') {
+    if (canonical === 'chilled' && domainData.chill != null && domainData.chill !== '') {
+      if (domainData.chill === true || domainData.chill === 'true' || domainData.chill === 1) {
+        return 'Yes';
+      }
+      if (domainData.chill === false || domainData.chill === 'false' || domainData.chill === 0) {
+        return 'No';
+      }
+      return domainData.chill;
+    }
+    if (canonical === 'milktype' && domainData.source != null && domainData.source !== '') {
+      const src = String(domainData.source).trim();
+      if (/^(cow|buffalo|goat|mixed|packaged)$/i.test(src)) return src.replace(/^\w/, (c) => c.toUpperCase());
+      if (/farm|collector|own dairy/i.test(src)) return 'Cow';
+      if (/^brand$/i.test(src)) return 'Packaged';
+      // URLs / scrape provenance are not milk types — ignore.
+    }
+  }
+
+  return direct;
+}
+
 /**
  * Get field label for domain-specific field
  * Maps internal field names to display labels
@@ -403,14 +627,10 @@ export function normalizeKey(key: string): string {
  */
 export function getFieldLabel(field: string, category: string): string {
   const knowledge: any = getDomainKnowledge(category);
-  // Check if domain-specific config exists for this field
-  // Normalize key to match config keys (articleno, widtharz, etc.)
-  const normalized = normalizeKey(field);
-  const config = knowledge?.fieldConfig?.[field] ||
-    knowledge?.fieldConfig?.[field.toLowerCase()] ||
-    knowledge?.fieldConfig?.[normalized];
+  const config = resolveFieldConfig(field, category, knowledge);
 
   if (config?.label) return config.label;
+  const normalized = normalizeKey(field);
 
   const fieldLabels: Record<string, string> = {
     // ... (existing mapping)
@@ -426,6 +646,10 @@ export function getFieldLabel(field: string, category: string): string {
     widtharz: 'Width (Arz)',
     fabrictype: 'Fabric Type',
     korafinished: 'Kora/Finished',
+    milktype: 'Milk Type',
+    fatpercent: 'Fat %',
+    chilled: 'Chilled',
+    expirydate: 'Best Before',
   };
 
   return fieldLabels[field] || fieldLabels[normalized] || field;
@@ -441,44 +665,44 @@ export function getFieldLabel(field: string, category: string): string {
 export function getFieldInputType(field: string, category: string): string {
   const knowledge: any = getDomainKnowledge(category);
   const normalized = normalizeKey(field);
-
-  // Check if domain-specific config exists for this field
-  const config = knowledge?.fieldConfig?.[field] ||
-    knowledge?.fieldConfig?.[field.toLowerCase()] ||
-    knowledge?.fieldConfig?.[normalized];
+  const config = resolveFieldConfig(field, category, knowledge);
 
   if (config?.type) return config.type;
 
-  // const f = field.toLowerCase(); // unused
-  const n = normalized;
+  const canonical = resolveDomainFieldKey(field, category);
+  /** Match raw label keys (e.g. `make`) and canonical domain_data keys (e.g. `vehiclemake`). */
+  const matches = (keys: string[]) => keys.includes(canonical) || keys.includes(normalized);
 
   const dateFields = [
     'expirydate', 'manufacturingdate', 'purchasedate', 'warrantystartdate', 'warrantyenddate',
-    'consumptiondate', 'eventdate', 'validity'
+    'consumptiondate', 'eventdate', 'validity',
   ];
   const numberFields = [
     'price', 'stock', 'mrp', 'weight', 'warrantyperiod', 'gsm', 'carat', 'area',
     'weightlimit', 'duration', 'unitcost', 'preptime', 'consultationfee', 'commissionrate',
-    'quantity', 'rate', 'amount', 'taxpercent', 'discountpercent'
+    'quantity', 'rate', 'amount', 'taxpercent', 'discountpercent',
+    'mileage', 'depreciation',
   ];
   const selectFields = [
     'marketlocation', 'paymentterms', 'paymentmethod', 'brokername', 'agentname',
     'qualitygrade', 'korafinished', 'fabrictype', 'sizetype', 'unit', 'status',
-    'province', 'type', 'category'
+    'province', 'type', 'category',
+    'vehiclemake', 'make', 'modelyear', 'fueltype', 'bodytype', 'condition', 'transmission',
+    'listingtype',
   ];
   const compatibilityFields = ['vehiclecompatibility', 'compatibility', 'models'];
   const oemFields = ['oemnumber', 'oemspec', 'originalpartnumber'];
   const partFields = ['partnumber', 'internalid', 'makernumber'];
   const warrantyFields = ['warrantyperiod', 'warranty'];
 
-  if (compatibilityFields.includes(n)) return 'vehicle-compatibility';
-  if (oemFields.includes(n)) return 'oem-number';
-  if (partFields.includes(n)) return 'part-number';
-  if (warrantyFields.includes(n)) return 'warranty';
+  if (matches(compatibilityFields)) return 'vehicle-compatibility';
+  if (matches(oemFields)) return 'oem-number';
+  if (matches(partFields)) return 'part-number';
+  if (matches(warrantyFields)) return 'warranty';
 
-  if (dateFields.includes(n)) return 'date';
-  if (numberFields.includes(n)) return 'number';
-  if (selectFields.includes(n)) return 'select';
+  if (matches(dateFields)) return 'date';
+  if (matches(numberFields)) return 'number';
+  if (matches(selectFields)) return 'select';
 
   return 'text';
 }
@@ -493,11 +717,7 @@ export function getFieldInputType(field: string, category: string): string {
 export function getSelectOptions(field: string, category: string): any[] {
   const knowledge: any = getDomainKnowledge(category);
   const normalized = normalizeKey(field);
-
-  // 1. Check fieldConfig first
-  const config = knowledge?.fieldConfig?.[field] ||
-    knowledge?.fieldConfig?.[field.toLowerCase()] ||
-    knowledge?.fieldConfig?.[normalized];
+  const config = resolveFieldConfig(field, category, knowledge);
 
   if (config?.options && Array.isArray(config.options)) {
     return config.options;
@@ -526,12 +746,7 @@ export function isFieldRequired(field: string, category: string): boolean {
   const knowledge: any = getDomainKnowledge(category);
   if (!knowledge) return false;
 
-  const normalized = normalizeKey(field);
-
-  // 1. Check explicit config first
-  const config = knowledge.fieldConfig?.[field] ||
-    knowledge.fieldConfig?.[field.toLowerCase()] ||
-    knowledge.fieldConfig?.[normalized];
+  const config = resolveFieldConfig(field, category, knowledge);
 
   if (config && typeof config.required === 'boolean') {
     return config.required;
@@ -593,7 +808,7 @@ export function getDomainDisplayName(category: string): string {
     'wholesale-distribution': 'Wholesale Distribution',
     'plastic-manufacturing': 'Plastic Manufacturing',
     'leather-footwear': 'Leather & Footwear',
-    'ceramics-tiles': 'Ceramics & Tiles',
+    'ceramics-tiles': 'Tiles, Marble & Stone',
     'printing-packaging': 'Printing & Packaging',
     'petrol-pump': 'Petrol Pump & Oil',
     'cold-storage': 'Cold Storage',
@@ -628,9 +843,9 @@ export function isHighPrecisionDomain(category: string): boolean {
   const precisionDomains = [
     'auto-parts', 'pharmacy', 'livestock-farm', 'poultry-farm', 
     'electronics-appliances', 'hospital-healthcare', 'diagnostic-lab',
-    'heavy-machinery'
+    'heavy-machinery', 'textile-wholesale', 'gems-jewellery',
   ];
-  return precisionDomains.includes(category);
+  return precisionDomains.includes(resolveDomainKey(category));
 }
 
 /**
@@ -656,8 +871,12 @@ export function sanitizeDomainData(data: Record<string, any>): Record<string, an
  * @param fieldName - Field name to get default for
  * @returns Intelligent default value or undefined
  */
-export function getIntelligentDefaults(category: string, fieldName: string): any {
-  const knowledge: any = getDomainKnowledge(category);
+export function getIntelligentDefaults(
+  category: string,
+  fieldName: string,
+  options?: DomainKnowledgeOptions
+): any {
+  const knowledge: any = resolveKnowledge(category, options);
   const intelligence = knowledge?.intelligence;
 
   if (!intelligence) return undefined;
@@ -733,8 +952,8 @@ export function getIntelligentDefaults(category: string, fieldName: string): any
 export function getDomainUnitPreview(field: string, category: string): string | null {
   const n = normalizeKey(field);
 
-  if (category === 'textile-wholesale' || category === 'garments') {
-    if (n.includes('length') || n.includes('cutting')) return 'Meters / Yards';
+  if (category === 'textile-wholesale') {
+    if (n.includes('length') || n.includes('cutting') || n.includes('thaan')) return 'Meters';
     if (n.includes('width') || n.includes('arz')) return 'Inches';
     if (n.includes('weight') || n.includes('gsm')) return 'GSM / Grams';
   }
@@ -815,6 +1034,16 @@ export function getDomainTableColumns(category: string, currencySymbol: string =
       width: width,
       // Custom cell renderer to handle nested domain_data
       cell: ({ row }: any) => {
+        if (key === 'unitcost') {
+          const r = row.original;
+          const v =
+            r?.domain_data?.unitcost ??
+            r?.domain_data?.unitCost ??
+            r?.cost_price;
+          if (v === 0 || v === '0') return '0';
+          if (v !== undefined && v !== null && v !== '') return v;
+          return '-';
+        }
         // Handle both flattened and nested data structures
         const val = row.original?.[key] ||
           row.original?.domain_data?.[key] ||
@@ -856,7 +1085,11 @@ export function getDomainInvoiceColumns(category: string): any[] {
 
   // 1. Traceability columns
   if (isBatchTrackingEnabled(category)) {
-    columns.push({ field: 'batch_number', header: 'Batch', width: 'w-24' });
+    columns.push({
+      field: 'batch_number',
+      header: category === 'textile-wholesale' ? 'Roll / Bale' : 'Batch',
+      width: 'w-24',
+    });
   }
 
   if (isExpiryTrackingEnabled(category)) {
@@ -871,6 +1104,9 @@ export function getDomainInvoiceColumns(category: string): any[] {
   const fields = knowledge?.productFields || [];
   const identifiers = fields.filter((f: string) => {
     const l = f.toLowerCase();
+    if (category === 'textile-wholesale') {
+      return l.includes('article') || l.includes('design') || l.includes('thaan');
+    }
     return l.includes('article') || l.includes('design') || l.includes('part') ||
       l.includes('model') || l.includes('oem') || l.includes('isbn') ||
       l.includes('fabric') || l.includes('registration') || l.includes('roll') ||

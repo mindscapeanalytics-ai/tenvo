@@ -1,11 +1,21 @@
 'use client';
 
 import MarketingLayout from '@/components/marketing/layout/MarketingLayout';
+import { MARKETING_HONEST_STATS } from '@/lib/marketing/homeVisualThemes';
+import {
+  MARKETING_CONTAINER,
+  MARKETING_H2,
+  MARKETING_LEAD,
+  MARKETING_STAT_LABEL,
+  MARKETING_STAT_VALUE,
+} from '@/lib/utils/marketingLayout';
 import Hero from '@/components/marketing/sections/Hero';
 import CaseStudyCard from '@/components/marketing/cards/CaseStudyCard';
 import CTASection from '@/components/marketing/sections/CTASection';
+import { getBookMeetingHref } from '@/lib/marketing/salesLinks';
 import { caseStudies } from '@/lib/marketing/case-studies';
 import { useState } from 'react';
+import { cn } from '@/lib/utils';
 
 export default function CaseStudiesPage() {
   const [selectedIndustry, setSelectedIndustry] = useState('all');
@@ -33,7 +43,7 @@ export default function CaseStudiesPage() {
         title={
           <>
             Real Results from <br />
-            <span className="text-wine-600">Real Businesses</span>
+            <span className="text-brand-primary">Real Businesses</span>
           </>
         }
         subtitle="See how businesses across Pakistan are transforming their operations with TENVO. From small startups to large enterprises, discover their success stories."
@@ -42,32 +52,30 @@ export default function CaseStudiesPage() {
           href: '/register'
         }}
         secondaryCTA={{
-          text: 'Schedule Demo',
-          href: '/demo'
+          text: 'Book a meeting',
+          href: getBookMeetingHref(),
         }}
       />
 
       {/* Filters and Search */}
-      <section className="py-16 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row gap-4 mb-12">
-            {/* Search */}
-            <div className="flex-1">
+      <section className="bg-white py-10 sm:py-14 lg:py-16">
+        <div className={MARKETING_CONTAINER}>
+          <div className="mb-8 flex flex-col gap-3 sm:mb-10 md:flex-row md:gap-4 lg:mb-12">
+            <div className="min-w-0 flex-1">
               <input
                 type="text"
                 placeholder="Search case studies..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-wine-500 focus:border-wine-500"
+                className="w-full rounded-xl border border-gray-300 px-4 py-3 text-base focus:border-brand-primary focus:ring-2 focus:ring-brand-primary"
               />
             </div>
 
-            {/* Industry Filter */}
-            <div className="md:w-64">
+            <div className="w-full md:w-64">
               <select
                 value={selectedIndustry}
                 onChange={(e) => setSelectedIndustry(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-wine-500 focus:border-wine-500"
+                className="w-full rounded-xl border border-gray-300 px-4 py-3 text-base focus:border-brand-primary focus:ring-2 focus:ring-brand-primary"
               >
                 {industries.map(industry => (
                   <option key={industry} value={industry}>
@@ -87,7 +95,7 @@ export default function CaseStudiesPage() {
 
           {/* Case Studies Grid */}
           {filteredCaseStudies.length > 0 ? (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div className="grid gap-5 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3 lg:gap-8">
               {filteredCaseStudies.map((caseStudy) => (
                 <CaseStudyCard key={caseStudy.slug} caseStudy={caseStudy} />
               ))}
@@ -102,7 +110,7 @@ export default function CaseStudiesPage() {
                   setSelectedIndustry('all');
                   setSearchQuery('');
                 }}
-                className="mt-4 text-wine-600 hover:underline"
+                className="mt-4 text-brand-primary hover:underline"
               >
                 Clear filters
               </button>
@@ -111,35 +119,25 @@ export default function CaseStudiesPage() {
         </div>
       </section>
 
-      {/* Stats Section */}
-      <section className="py-16 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">
-              Impact Across Industries
+      {/* Platform scope (honest, not aggregate ROI claims) */}
+      <section className="bg-gray-50 py-10 sm:py-14 lg:py-16">
+        <div className={MARKETING_CONTAINER}>
+          <div className="mb-8 space-y-3 text-center sm:mb-10 lg:mb-12">
+            <h2 className={MARKETING_H2}>
+              What teams explore on TENVO
             </h2>
-            <p className="text-gray-600">
-              Aggregate results from our customers
+            <p className={MARKETING_LEAD}>
+              Verifiable platform scope - not unverified aggregate ROI percentages
             </p>
           </div>
 
-          <div className="grid md:grid-cols-4 gap-8">
-            <div className="text-center">
-              <div className="text-4xl font-bold text-wine-600 mb-2">70%</div>
-              <div className="text-gray-600">Average Cost Reduction</div>
-            </div>
-            <div className="text-center">
-              <div className="text-4xl font-bold text-wine-600 mb-2">50%</div>
-              <div className="text-gray-600">Time Saved on Operations</div>
-            </div>
-            <div className="text-center">
-              <div className="text-4xl font-bold text-wine-600 mb-2">95%</div>
-              <div className="text-gray-600">Customer Satisfaction</div>
-            </div>
-            <div className="text-center">
-              <div className="text-4xl font-bold text-wine-600 mb-2">3x</div>
-              <div className="text-gray-600">ROI in First Year</div>
-            </div>
+          <div className="grid grid-cols-2 gap-6 md:grid-cols-4 md:gap-8">
+            {MARKETING_HONEST_STATS.map((stat) => (
+              <div key={stat.label} className="text-center">
+                <div className={cn(MARKETING_STAT_VALUE, 'mb-1 text-brand-primary sm:mb-2')}>{stat.value}</div>
+                <div className={MARKETING_STAT_LABEL}>{stat.label}</div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -153,14 +151,14 @@ export default function CaseStudiesPage() {
             Success Story?
           </>
         }
-        subtitle="Join thousands of businesses already transforming their operations with TENVO"
+        subtitle="Start your free trial and explore live demo storefronts across verticals"
         primaryCTA={{
           text: 'Start Free Trial',
           href: '/register'
         }}
         secondaryCTA={{
-          text: 'Talk to Sales',
-          href: '/contact'
+          text: 'Book a meeting',
+          href: getBookMeetingHref(),
         }}
       />
     </MarketingLayout>

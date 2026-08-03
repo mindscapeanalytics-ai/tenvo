@@ -2,6 +2,7 @@
 // v2: Removed ActionModalsHeader
 
 import React from 'react';
+import dynamic from 'next/dynamic';
 import {
     Dialog,
     DialogContent,
@@ -23,17 +24,46 @@ import {
     Truck,
     ShoppingCart,
 } from 'lucide-react';
-import { VendorForm } from '@/components/VendorForm';
-import EnhancedPOBuilder from '@/components/EnhancedPOBuilder';
-import { ProductForm } from '@/components/ProductForm';
-import { ProductWizard } from '@/components/inventory/ProductWizard';
-import { EnhancedInvoiceBuilder } from '@/components/EnhancedInvoiceBuilder';
-import { QuickInvoiceModal } from '@/components/invoice/QuickInvoiceModal';
-import { CustomerForm } from '@/components/CustomerForm';
 import toast from 'react-hot-toast';
 import { EntityDetailsDialog } from '@/components/EntityDetailsDialog';
 import { getNavItemAccess } from '@/lib/rbac/permissions';
+import { useBusiness } from '@/lib/context/BusinessContext';
 import { isPosRelevant } from '@/lib/config/domains';
+import { useResolvedBusinessId } from '@/lib/hooks/useResolvedBusinessId';
+
+const VendorForm = dynamic(
+    () => import('@/components/VendorForm').then((m) => ({ default: m.VendorForm })),
+    { ssr: false }
+);
+const EnhancedPOBuilder = dynamic(() => import('@/components/EnhancedPOBuilder'), { ssr: false });
+const ProductForm = dynamic(
+    () => import('@/components/ProductForm').then((m) => ({ default: m.ProductForm })),
+    { ssr: false }
+);
+const ProductWizard = dynamic(
+    () => import('@/components/inventory/ProductWizard').then((m) => ({ default: m.ProductWizard })),
+    { ssr: false }
+);
+const EnhancedInvoiceBuilder = dynamic(
+    () => import('@/components/EnhancedInvoiceBuilder').then((m) => ({ default: m.EnhancedInvoiceBuilder })),
+    { ssr: false }
+);
+const QuickInvoiceModal = dynamic(
+    () => import('@/components/invoice/QuickInvoiceModal').then((m) => ({ default: m.QuickInvoiceModal })),
+    { ssr: false }
+);
+const PaymentModal = dynamic(
+    () => import('@/components/invoice/PaymentModal').then((m) => ({ default: m.PaymentModal })),
+    { ssr: false }
+);
+const CustomerForm = dynamic(
+    () => import('@/components/CustomerForm').then((m) => ({ default: m.CustomerForm })),
+    { ssr: false }
+);
+const ExpenseEntryForm = dynamic(
+    () => import('@/components/ExpenseEntryForm').then((m) => ({ default: m.ExpenseEntryForm })),
+    { ssr: false }
+);
 
 export function ActionModals({
     // Visibility States
@@ -47,6 +77,10 @@ export function ActionModals({
     setShowCustomerForm,
     showInvoiceBuilder,
     setShowInvoiceBuilder,
+    showPaymentModal,
+    setShowPaymentModal,
+    selectedInvoiceForPayment,
+    setSelectedInvoiceForPayment,
 
     // Data
     editingProduct,
@@ -79,12 +113,20 @@ export function ActionModals({
     setEditingVendor,
     onSaveVendor,
 
+    // Expense quick add
+    showExpenseForm,
+    setShowExpenseForm,
+    vendors = [],
+    onExpenseSaved,
+
     // PO Props
     showPOBuilder,
     setShowPOBuilder,
     poInitialData,
     setPoInitialData,
     refreshData,
+    upsertInvoiceInState,
+    onPaymentRecorded,
     business,
     role = 'owner',
     planTier = 'free',
@@ -94,12 +136,16 @@ export function ActionModals({
     viewingItem,
     setViewingItem,
     viewingType,
-    setViewingType
+    setViewingType,
+    // User
+    user
 }) {
+    const activeBusinessId = useResolvedBusinessId(business?.id);
     const posRelevant = isPosRelevant(category, domainKnowledge);
+    const { moduleAccess } = useBusiness();
 
     const canOpenTab = (tabKey) => {
-        const access = getNavItemAccess(tabKey, role, planTier);
+        const access = getNavItemAccess(tabKey, role, planTier, business?.settings, business?.platformFeatureOverrides, moduleAccess);
         if (!access.visible) return false;
         if (access.locked) {
             toast.error(`Requires ${access.requiredPlan || 'higher'} plan`);
@@ -129,13 +175,21 @@ export function ActionModals({
 
             {/* Product Form Modal -- Wizard for new, Full form for edit */}
             <Dialog open={showProductForm} onOpenChange={setShowProductForm}>
-                <DialogContent className={editingProduct ? "max-w-4xl max-h-[90vh] overflow-y-auto" : "max-w-3xl p-0 border-none bg-transparent shadow-none"}>
+                <DialogContent
+                    hideCloseButton
+                    className={
+                        editingProduct
+                            ? 'flex max-h-[min(92dvh,900px)] w-[calc(100vw-1.5rem)] max-w-4xl flex-col gap-0 overflow-hidden p-0 sm:w-full lg:max-w-4xl lg:p-0'
+                            : 'flex max-h-[min(92dvh,900px)] w-[calc(100vw-1.5rem)] max-w-3xl flex-col gap-0 overflow-hidden border-0 bg-transparent p-0 shadow-none sm:w-full lg:max-w-3xl lg:p-0'
+                    }
+                >
                     <DialogHeader className="sr-only">
                         <DialogTitle>{editingProduct ? 'Edit Product' : 'Add New Product'}</DialogTitle>
                         <DialogDescription>
                             {editingProduct ? 'Modify the details of the selected product.' : 'Add a new product using the guided wizard.'}
                         </DialogDescription>
                     </DialogHeader>
+                    <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
                     {editingProduct ? (
                         <ProductForm
                             product={editingProduct}
@@ -161,14 +215,15 @@ export function ActionModals({
                             currency={currency}
                         />
                     )}
+                    </div>
                 </DialogContent>
             </Dialog>
 
             {/* Quick Action Modal */}
             <Dialog open={showQuickAction} onOpenChange={setShowQuickAction}>
-                <DialogContent className="max-w-xl p-8 rounded-3xl border-none shadow-2xl">
+                <DialogContent className="max-w-xl rounded-2xl border-none p-4 shadow-2xl sm:p-6">
                     <DialogHeader>
-                        <DialogTitle className="text-2xl font-black flex items-center gap-2">
+                        <DialogTitle className="text-2xl font-semibold flex items-center gap-2">
                             <span className="p-2 rounded-xl" style={{ backgroundColor: `${colors.primary}15`, color: colors.primary }}>
                                 <Plus className="w-6 h-6" />
                             </span>
@@ -208,7 +263,7 @@ export function ActionModals({
                 setShowCustomerForm(open);
                 if (!open) setEditingCustomer(null);
             }}>
-                <DialogContent className="p-0 border-none max-w-2xl bg-transparent shadow-none">
+                <DialogContent hideCloseButton className="flex max-h-[min(92vh,860px)] w-[calc(100vw-1.5rem)] max-w-2xl flex-col overflow-hidden border-none bg-transparent p-0 shadow-none sm:w-full">
                     <DialogHeader className="sr-only">
                         <DialogTitle>Customer Form</DialogTitle>
                     </DialogHeader>
@@ -248,7 +303,7 @@ export function ActionModals({
                 isOpen={showQuickInvoice}
                 onClose={() => setShowQuickInvoice(false)}
                 onSave={onSaveInvoice}
-                businessId={business?.id}
+                businessId={activeBusinessId}
                 category={category}
                 products={products}
                 customers={customers}
@@ -260,7 +315,7 @@ export function ActionModals({
                 setShowVendorForm(open);
                 if (!open) setEditingVendor(null);
             }}>
-                <DialogContent className="p-0 border-none max-w-2xl bg-transparent shadow-none">
+                <DialogContent hideCloseButton className="flex max-h-[min(92vh,860px)] w-[calc(100vw-1.5rem)] max-w-2xl flex-col overflow-hidden border-none bg-transparent p-0 shadow-none sm:w-full">
                     <DialogHeader className="sr-only">
                         <DialogTitle>Vendor Form</DialogTitle>
                     </DialogHeader>
@@ -283,12 +338,12 @@ export function ActionModals({
             </Dialog>
 
             <Dialog open={showPOBuilder} onOpenChange={setShowPOBuilder}>
-                <DialogContent className="max-w-5xl max-h-[95vh] overflow-y-auto p-0 border-none bg-transparent shadow-none">
-                    <DialogHeader className="sr-only">
+                <DialogContent className="flex max-h-[min(92dvh,900px)] w-[calc(100vw-1rem)] max-w-5xl flex-col gap-0 overflow-hidden border-none bg-transparent p-0 shadow-none sm:w-full lg:max-w-4xl xl:max-w-5xl">
+                    <div className="sr-only">
                         <DialogTitle>Purchase Order Builder</DialogTitle>
-                    </DialogHeader>
+                    </div>
                     <EnhancedPOBuilder
-                        businessId={business?.id}
+                        businessId={activeBusinessId}
                         category={category}
                         colors={colors}
                         onSuccess={() => {
@@ -299,6 +354,67 @@ export function ActionModals({
                     />
                 </DialogContent>
             </Dialog>
+
+            {/* Payment Modal */}
+            {showPaymentModal && selectedInvoiceForPayment && (
+                <PaymentModal
+                    isOpen={showPaymentModal}
+                    onClose={() => {
+                        setShowPaymentModal(false);
+                        setSelectedInvoiceForPayment(null);
+                    }}
+                    invoice={selectedInvoiceForPayment}
+                    currency={currency}
+                    onRecordPayment={async (paymentData) => {
+                        const { recordInvoicePaymentAction } = await import('@/lib/actions/standard/invoice-payments');
+                        const result = await recordInvoicePaymentAction({
+                            businessId: activeBusinessId,
+                            invoiceId: selectedInvoiceForPayment.id,
+                            amount: paymentData.amount,
+                            paymentMethod: paymentData.paymentMethod,
+                            paymentDate: paymentData.paymentDate,
+                            referenceNumber: paymentData.referenceNumber,
+                            notes: paymentData.notes,
+                            userId: user?.id
+                        });
+
+                        if (result.success) {
+                            const paidInvoice = result.invoice;
+                            if (paidInvoice?.id && typeof upsertInvoiceInState === 'function') {
+                                const patch = { id: paidInvoice.id };
+                                if (paidInvoice.payment_status != null) patch.payment_status = paidInvoice.payment_status;
+                                if (paidInvoice.status != null) patch.status = paidInvoice.status;
+                                const nextBalance = paidInvoice.balance ?? paidInvoice.new_balance;
+                                if (nextBalance !== undefined && nextBalance !== null) patch.balance = nextBalance;
+                                if (paidInvoice.grand_total != null) patch.grand_total = paidInvoice.grand_total;
+                                if (paidInvoice.invoice_number) patch.invoice_number = paidInvoice.invoice_number;
+                                if (selectedInvoiceForPayment.customer_name) {
+                                    patch.customer_name = selectedInvoiceForPayment.customer_name;
+                                }
+                                upsertInvoiceInState(patch);
+                            }
+                            setShowPaymentModal(false);
+                            setSelectedInvoiceForPayment(null);
+                            onPaymentRecorded?.(paidInvoice);
+                            // Do not refresh inventory here — sales list is already patched.
+                        } else {
+                            throw new Error(result.error || 'Failed to record payment');
+                        }
+                    }}
+                />
+            )}
+
+            {showExpenseForm && (
+                <ExpenseEntryForm
+                    vendors={vendors}
+                    category={category}
+                    onClose={() => setShowExpenseForm(false)}
+                    onSave={async () => {
+                        setShowExpenseForm(false);
+                        await onExpenseSaved?.();
+                    }}
+                />
+            )}
 
         </>
     );

@@ -4,6 +4,8 @@ import { isPlatformLevel } from '@/lib/config/platform';
 import pool from '@/lib/db';
 import { NextResponse } from 'next/server';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/admin/dashboard
  * Returns platform-wide stats for the admin dashboard.

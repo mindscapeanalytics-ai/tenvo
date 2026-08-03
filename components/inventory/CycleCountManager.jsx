@@ -3,7 +3,7 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import {
     Plus, CheckCircle2, AlertCircle, BarChart3, Download, Eye,
-    X, Save, Loader2, ChevronRight, Filter
+    X, Save, Loader2, ChevronRight, Filter, RefreshCw
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,6 +13,9 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import toast from 'react-hot-toast';
 import { formatCurrency } from '@/lib/currency';
+import { InventoryErrorCard } from './InventoryErrorBoundary';
+import { InventoryTableLoading } from './InventoryLoadingState';
+import { ResponsiveManagerHeader } from '@/components/mobile/HubSectionHeader';
 
 /**
  * Cycle Count Manager
@@ -32,6 +35,7 @@ export function CycleCountManager({
 }) {
     const [counts, setCounts] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
     const [showCreateDialog, setShowCreateDialog] = useState(false);
     const [showDetailView, setShowDetailView] = useState(false);
     const [selectedCount, setSelectedCount] = useState(null);
@@ -49,12 +53,18 @@ export function CycleCountManager({
     const loadCycleCounts = useCallback(async () => {
         try {
             setLoading(true);
+            setError(null);
             const res = await fetch(`/api/v1/inventory/cycle-counts?business_id=${businessId}`);
-            if (!res.ok) throw new Error('Failed to load cycle counts');
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => ({}));
+                throw new Error(errorData.error || `Failed to load cycle counts (${res.status})`);
+            }
             const data = await res.json();
             setCounts(data.cycleCounts || []);
-        } catch (error) {
-            toast.error('Could not load cycle counts: ' + error.message);
+        } catch (err) {
+            console.error('[CycleCountManager] Load error:', err);
+            setError(err.message || 'Failed to load cycle counts');
+            toast.error('Could not load cycle counts: ' + err.message);
         } finally {
             setLoading(false);
         }
@@ -173,23 +183,30 @@ export function CycleCountManager({
 
     return (
         <div className="space-y-4">
-            {/* Header & Actions */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h3 className="text-lg font-bold">Cycle Counts</h3>
-                    <p className="text-xs text-gray-500 mt-1">Reconcile inventory with physical counts</p>
-                </div>
-                <Button
-                    onClick={() => setShowCreateDialog(true)}
-                    className="gap-2 bg-emerald-600 hover:bg-emerald-700"
-                >
-                    <Plus className="w-4 h-4" />
-                    New Count
-                </Button>
-            </div>
+            <ResponsiveManagerHeader
+                title="Cycle Counts"
+                subtitle="Reconcile inventory with physical counts"
+                actions={[
+                    {
+                        id: 'refresh',
+                        label: 'Refresh',
+                        icon: RefreshCw,
+                        variant: 'outline',
+                        disabled: loading,
+                        onClick: loadCycleCounts,
+                    },
+                    {
+                        id: 'new',
+                        label: 'New Count',
+                        icon: Plus,
+                        className: 'bg-emerald-600 hover:bg-emerald-700 text-white',
+                        onClick: () => setShowCreateDialog(true),
+                    },
+                ]}
+            />
 
             {/* Filters */}
-            <div className="flex gap-2 overflow-x-auto">
+            <div className="flex flex-wrap gap-2">
                 {['all', 'active', 'completed', 'variance'].map(f => (
                     <Button
                         key={f}
@@ -206,11 +223,18 @@ export function CycleCountManager({
                 ))}
             </div>
 
+            {/* Error Display */}
+            {error && (
+                <InventoryErrorCard 
+                    error={error} 
+                    onRetry={loadCycleCounts}
+                    onDismiss={() => setError(null)}
+                />
+            )}
+
             {/* Cycle Counts List */}
             {loading ? (
-                <div className="flex justify-center p-8">
-                    <Loader2 className="w-6 h-6 animate-spin" />
-                </div>
+                <InventoryTableLoading rows={3} />
             ) : filteredCounts.length > 0 ? (
                 <div className="space-y-2">
                     {filteredCounts.map(count => (
@@ -245,8 +269,16 @@ export function CycleCountManager({
             ) : (
                 <Card className="border-dashed">
                     <CardContent className="p-12 text-center">
-                        <BarChart3 className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-                        <p className="text-gray-500 text-sm">No cycle counts yet. Create one to begin.</p>
+                        <BarChart3 className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                        <h4 className="text-gray-900 font-semibold mb-2">No cycle counts yet</h4>
+                        <p className="text-gray-500 text-sm mb-4">Create a cycle count to begin physical inventory reconciliation</p>
+                        <Button
+                            onClick={() => setShowCreateDialog(true)}
+                            className="gap-2 bg-emerald-600 hover:bg-emerald-700"
+                        >
+                            <Plus className="w-4 h-4" />
+                            Create First Count
+                        </Button>
                     </CardContent>
                 </Card>
             )}
@@ -446,7 +478,7 @@ function CycleCountDetailView({ count, products, onClose, onCountDownload, curre
                                 Template
                             </Button>
                         </div>
-                        <div className="overflow-x-auto">
+                        <div className="hidden overflow-x-auto lg:block">
                             <table className="w-full text-sm">
                                 <thead>
                                     <tr className="border-b bg-gray-50">
@@ -485,6 +517,42 @@ function CycleCountDetailView({ count, products, onClose, onCountDownload, curre
                                     })}
                                 </tbody>
                             </table>
+                        </div>
+                        <div className="divide-y divide-gray-100 lg:hidden">
+                            {items.map((item, idx) => {
+                                const variance_qty = (item.counted_quantity || 0) - (item.system_quantity || 0);
+                                return (
+                                    <div key={idx} className="px-3 py-3">
+                                        <p className="text-[13px] font-bold text-gray-900">{item.product_name}</p>
+                                        <p className="font-mono text-[11px] text-gray-500">{item.sku}</p>
+                                        <div className="mt-2 grid grid-cols-3 items-end gap-2 text-[11px]">
+                                            <div>
+                                                <p className="text-[10px] uppercase text-gray-400">System</p>
+                                                <p className="font-semibold tabular-nums">{item.system_quantity}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] uppercase text-gray-400">Counted</p>
+                                                <Input
+                                                    type="number"
+                                                    min="0"
+                                                    value={item.counted_quantity || ''}
+                                                    onChange={(e) => handleUpdateItemCount(idx, e.target.value)}
+                                                    className="mt-0.5 h-9 text-right text-sm"
+                                                    placeholder="0"
+                                                />
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="text-[10px] uppercase text-gray-400">Variance</p>
+                                                <p className={`font-semibold tabular-nums ${
+                                                    variance_qty > 0 ? 'text-red-600' : variance_qty < 0 ? 'text-orange-600' : ''
+                                                }`}>
+                                                    {variance_qty > 0 ? '+' : ''}{variance_qty}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
                         </div>
                     </div>
 

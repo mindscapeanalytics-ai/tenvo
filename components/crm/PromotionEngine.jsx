@@ -1,6 +1,6 @@
-﻿'use client';
+'use client';
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Gift, Plus, Percent, Tag, Calendar, Clock, Users, ShoppingBag,
@@ -12,8 +12,18 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
+import { useBusiness } from '@/lib/context/BusinessContext';
+import {
+    getPromotionsAction,
+    createPromotionAction,
+    updatePromotionAction,
+    togglePromotionAction,
+    deletePromotionAction,
+} from '@/lib/actions/standard/promotions';
+import toast from 'react-hot-toast';
 
 // --- Constants ----------------------------------------------------------------
 
@@ -109,7 +119,7 @@ function PromoFormDialog({ open, onClose, onSave, promotion = null, currency = '
                             <Gift className="w-5 h-5 text-white" />
                         </div>
                         <div>
-                            <h2 className="text-sm font-black text-gray-900">
+                            <h2 className="text-sm font-semibold text-gray-900">
                                 {isEditing ? 'Edit Promotion' : 'Create New Promotion'}
                             </h2>
                             <p className="text-[10px] text-gray-400 font-bold">
@@ -142,7 +152,7 @@ function PromoFormDialog({ open, onClose, onSave, promotion = null, currency = '
                                         <Icon className="w-5 h-5 text-white" />
                                     </div>
                                     <div className="flex-1">
-                                        <p className="text-sm font-black text-gray-900">{type.label}</p>
+                                        <p className="text-sm font-semibold text-gray-900">{type.label}</p>
                                         <p className="text-[10px] text-gray-400 mt-0.5">{type.description}</p>
                                     </div>
                                     <ChevronDown className="w-4 h-4 text-gray-300 -rotate-90" />
@@ -158,7 +168,7 @@ function PromoFormDialog({ open, onClose, onSave, promotion = null, currency = '
                         {/* Name & Description */}
                         <div className="grid grid-cols-1 gap-4">
                             <div className="space-y-1.5">
-                                <label className="text-xs font-black text-gray-700 uppercase tracking-wider">Promotion Name *</label>
+                                <label className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Promotion Name *</label>
                                 <Input
                                     value={formData.name}
                                     onChange={(e) => handleFieldChange('name', e.target.value)}
@@ -168,7 +178,7 @@ function PromoFormDialog({ open, onClose, onSave, promotion = null, currency = '
                                 />
                             </div>
                             <div className="space-y-1.5">
-                                <label className="text-xs font-black text-gray-700 uppercase tracking-wider">Description</label>
+                                <label className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Description</label>
                                 <Input
                                     value={formData.description}
                                     onChange={(e) => handleFieldChange('description', e.target.value)}
@@ -182,7 +192,7 @@ function PromoFormDialog({ open, onClose, onSave, promotion = null, currency = '
                         {(formData.type === 'percentage' || formData.type === 'fixed') && (
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-1.5">
-                                    <label className="text-xs font-black text-gray-700 uppercase tracking-wider">
+                                    <label className="text-xs font-semibold text-gray-700 uppercase tracking-wider">
                                         {formData.type === 'percentage' ? 'Discount (%)' : `Discount (${currency})`}
                                     </label>
                                     <Input
@@ -197,7 +207,7 @@ function PromoFormDialog({ open, onClose, onSave, promotion = null, currency = '
                                 </div>
                                 {formData.type === 'percentage' && (
                                     <div className="space-y-1.5">
-                                        <label className="text-xs font-black text-gray-700 uppercase tracking-wider">Max Discount ({currency})</label>
+                                        <label className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Max Discount ({currency})</label>
                                         <Input
                                             type="number"
                                             value={formData.max_discount}
@@ -215,7 +225,7 @@ function PromoFormDialog({ open, onClose, onSave, promotion = null, currency = '
                             <div className="p-4 rounded-xl bg-wine-50/50 border border-wine-200 space-y-3">
                                 <div className="flex items-center gap-2">
                                     <Gift className="w-4 h-4 text-wine-500" />
-                                    <span className="text-xs font-black text-wine-700 uppercase">Buy X Get Y Configuration</span>
+                                    <span className="text-xs font-semibold text-wine-700 uppercase">Buy X Get Y Configuration</span>
                                 </div>
                                 <div className="grid grid-cols-3 gap-3">
                                     <div className="space-y-1">
@@ -261,7 +271,7 @@ function PromoFormDialog({ open, onClose, onSave, promotion = null, currency = '
                         {formData.type === 'threshold' && (
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-1.5">
-                                    <label className="text-xs font-black text-gray-700 uppercase tracking-wider">Minimum Spend ({currency})</label>
+                                    <label className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Minimum Spend ({currency})</label>
                                     <Input
                                         type="number"
                                         value={formData.min_order}
@@ -272,7 +282,7 @@ function PromoFormDialog({ open, onClose, onSave, promotion = null, currency = '
                                     />
                                 </div>
                                 <div className="space-y-1.5">
-                                    <label className="text-xs font-black text-gray-700 uppercase tracking-wider">Discount ({currency})</label>
+                                    <label className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Discount ({currency})</label>
                                     <Input
                                         type="number"
                                         value={formData.value}
@@ -289,7 +299,7 @@ function PromoFormDialog({ open, onClose, onSave, promotion = null, currency = '
                             <div className="p-4 rounded-xl bg-orange-50/50 border border-orange-200 space-y-3">
                                 <div className="flex items-center gap-2">
                                     <Package className="w-4 h-4 text-orange-500" />
-                                    <span className="text-xs font-black text-orange-700 uppercase">Bundle Configuration</span>
+                                    <span className="text-xs font-semibold text-orange-700 uppercase">Bundle Configuration</span>
                                 </div>
                                 <div className="space-y-1.5">
                                     <label className="text-[10px] font-bold text-gray-500">Bundle Price ({currency})</label>
@@ -311,7 +321,7 @@ function PromoFormDialog({ open, onClose, onSave, promotion = null, currency = '
                         {/* Date Range */}
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-1.5">
-                                <label className="text-xs font-black text-gray-700 uppercase tracking-wider">Start Date</label>
+                                <label className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Start Date</label>
                                 <Input
                                     type="datetime-local"
                                     value={formData.start_date}
@@ -320,7 +330,7 @@ function PromoFormDialog({ open, onClose, onSave, promotion = null, currency = '
                                 />
                             </div>
                             <div className="space-y-1.5">
-                                <label className="text-xs font-black text-gray-700 uppercase tracking-wider">End Date</label>
+                                <label className="text-xs font-semibold text-gray-700 uppercase tracking-wider">End Date</label>
                                 <Input
                                     type="datetime-local"
                                     value={formData.end_date}
@@ -333,7 +343,7 @@ function PromoFormDialog({ open, onClose, onSave, promotion = null, currency = '
                         {/* Usage Limits */}
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-1.5">
-                                <label className="text-xs font-black text-gray-700 uppercase tracking-wider">Total Usage Limit</label>
+                                <label className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Total Usage Limit</label>
                                 <Input
                                     type="number"
                                     value={formData.usage_limit}
@@ -344,7 +354,7 @@ function PromoFormDialog({ open, onClose, onSave, promotion = null, currency = '
                                 />
                             </div>
                             <div className="space-y-1.5">
-                                <label className="text-xs font-black text-gray-700 uppercase tracking-wider">Per Customer Limit</label>
+                                <label className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Per Customer Limit</label>
                                 <Input
                                     type="number"
                                     value={formData.per_customer_limit}
@@ -358,7 +368,7 @@ function PromoFormDialog({ open, onClose, onSave, promotion = null, currency = '
 
                         {/* Product Scope */}
                         <div className="space-y-1.5">
-                            <label className="text-xs font-black text-gray-700 uppercase tracking-wider">Applies To</label>
+                            <label className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Applies To</label>
                             <div className="flex gap-2">
                                 {[
                                     { key: 'all', label: 'All Products' },
@@ -394,13 +404,13 @@ function PromoFormDialog({ open, onClose, onSave, promotion = null, currency = '
                 {/* Footer */}
                 <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100 bg-gray-50/50">
                     <Button variant="outline" onClick={step === 0 ? onClose : () => setStep(0)} className="h-10 rounded-xl text-xs font-bold">
-                        {step === 0 ? 'Cancel' : '<- Back'}
+                        {step === 0 ? 'Cancel' : '<-� Back'}
                     </Button>
                     {step === 1 && (
                         <Button
                             onClick={handleSave}
                             disabled={!formData.name.trim()}
-                            className="h-10 rounded-xl text-xs font-bold bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 shadow-md px-6"
+                            className="h-10 rounded-xl font-bold from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 shadow-md px-6 bg-emerald-600 hover:bg-emerald-700 text-white"
                         >
                             <CheckCircle2 className="w-4 h-4 mr-1.5" />
                             {isEditing ? 'Update Promotion' : 'Create Promotion'}
@@ -451,20 +461,20 @@ function PromoCard({ promotion, onEdit, onToggle, onDuplicate, onDelete, currenc
                             <Icon className="w-4 h-4 text-white" />
                         </div>
                         <div>
-                            <h3 className="text-sm font-black text-gray-900">{promotion.name}</h3>
-                            <Badge variant="outline" className={cn("text-[9px] mt-0.5", typeInfo.badgeColor)}>
+                            <h3 className="text-sm font-semibold text-gray-900">{promotion.name}</h3>
+                            <Badge variant="outline" className={cn("text-[10px] mt-0.5", typeInfo.badgeColor)}>
                                 {typeInfo.label}
                             </Badge>
                         </div>
                     </div>
-                    <Badge className={cn("text-[9px] font-bold border", STATUS_COLORS[status])}>
+                    <Badge className={cn("text-[10px] font-bold border", STATUS_COLORS[status])}>
                         {status}
                     </Badge>
                 </div>
 
                 {/* Value Display */}
                 <div className="flex items-center gap-3 mb-3">
-                    <div className="text-lg font-black text-gray-900">
+                    <div className="text-lg font-semibold text-gray-900">
                         {promotion.type === 'percentage' && `${promotion.value}% OFF`}
                         {promotion.type === 'fixed' && `${currency}${promotion.value} OFF`}
                         {promotion.type === 'bogo' && `Buy ${promotion.buy_qty} Get ${promotion.get_qty}`}
@@ -538,32 +548,66 @@ function PromoCard({ promotion, onEdit, onToggle, onDuplicate, onDelete, currenc
 
 // --- Main Promotion Engine ---------------------------------------------------
 
-export function PromotionEngine({ businessId, currency = 'Rs.' }) {
-    const [promotions, setPromotions] = useState([
-        // Demo data for rendering
-        {
-            id: '1', name: 'Weekend Special', type: 'percentage', value: 15,
-            is_active: true, start_date: '2026-02-20', end_date: '2026-03-20',
-            min_order: 0, max_discount: 2000, usage_limit: 100, usage_count: 34,
-            applicable_products: 'all',
-        },
-        {
-            id: '2', name: 'Buy 2 Get 1 Free', type: 'bogo',
-            buy_qty: 2, get_qty: 1, get_discount: 100,
-            is_active: true, start_date: '2026-02-01', end_date: '2026-02-28',
-            min_order: 0, usage_limit: 50, usage_count: 12, applicable_products: 'category',
-            category_filter: 'Beverages',
-        },
-        {
-            id: '3', name: 'Ramadan Bundle', type: 'bundle', bundle_price: 2500,
-            is_active: false, start_date: '2026-03-01', end_date: '2026-03-30',
-            min_order: 0, usage_limit: null, usage_count: 0, applicable_products: 'products',
-        },
-    ]);
+/**
+ * @param {string} [businessId]
+ * @param {string} [currency]
+ * @param {any[] | undefined} [seedPromotions], from campaigns hub prefetch; avoids empty spinner when tab opens.
+ * @param {() => void} [onHubRefresh], notify parent to refetch hub (counts + seed) after mutations.
+ */
+export function PromotionEngine({ businessId, currency = 'Rs.', seedPromotions, onHubRefresh }) {
+    const { business } = useBusiness();
+    const effectiveBusinessId = businessId || business?.id;
+
+    const [promotions, setPromotions] = useState(() => (Array.isArray(seedPromotions) ? seedPromotions : []));
+    const [loading, setLoading] = useState(() => !Array.isArray(seedPromotions));
+    const [loadError, setLoadError] = useState(null);
     const [showForm, setShowForm] = useState(false);
     const [editingPromo, setEditingPromo] = useState(null);
     const [filterStatus, setFilterStatus] = useState('all');
     const [searchTerm, setSearchTerm] = useState('');
+
+    const loadPromotions = useCallback(async (silent = false) => {
+        if (!effectiveBusinessId) {
+            setLoadError(null);
+            setLoading(false);
+            return;
+        }
+        if (!silent) setLoading(true);
+        setLoadError(null);
+        try {
+            const result = await getPromotionsAction(effectiveBusinessId);
+            if (result.success) {
+                setPromotions(result.promotions || []);
+            } else {
+                const msg = typeof result.error === 'string' ? result.error : 'Could not load promotions';
+                setLoadError(msg);
+                if (!silent) toast.error(msg);
+            }
+        } catch (err) {
+            console.error('[PromotionEngine] Load failed:', err);
+            const msg = err?.message || 'Failed to load promotions';
+            setLoadError(msg);
+            if (!silent) toast.error(msg);
+        } finally {
+            if (!silent) setLoading(false);
+        }
+    }, [effectiveBusinessId]);
+
+    useEffect(() => {
+        if (Array.isArray(seedPromotions)) {
+            setPromotions(seedPromotions);
+            setLoadError(null);
+        }
+    }, [seedPromotions]);
+
+    useEffect(() => {
+        if (!effectiveBusinessId) {
+            setLoading(false);
+            return;
+        }
+        const silent = Array.isArray(seedPromotions);
+        void loadPromotions(silent);
+    }, [effectiveBusinessId, seedPromotions, loadPromotions]);
 
     const filteredPromotions = useMemo(() => {
         let items = promotions;
@@ -591,28 +635,142 @@ export function PromotionEngine({ businessId, currency = 'Rs.' }) {
     }), [promotions]);
 
     const handleSave = useCallback(async (data) => {
-        if (editingPromo) {
-            setPromotions(prev => prev.map(p => p.id === editingPromo.id ? { ...p, ...data } : p));
-        } else {
-            setPromotions(prev => [...prev, { ...data, id: Date.now().toString(), usage_count: 0 }]);
+        if (!effectiveBusinessId) return;
+        try {
+            if (editingPromo) {
+                const result = await updatePromotionAction(effectiveBusinessId, editingPromo.id, data);
+                if (result.success) {
+                    toast.success('Promotion updated');
+                    await loadPromotions(!!Array.isArray(seedPromotions));
+                    onHubRefresh?.();
+                } else {
+                    toast.error(typeof result.error === 'string' ? result.error : result.error?.message || 'Failed to update promotion');
+                }
+            } else {
+                const result = await createPromotionAction(effectiveBusinessId, data);
+                if (result.success) {
+                    toast.success('Promotion created');
+                    await loadPromotions(!!Array.isArray(seedPromotions));
+                    onHubRefresh?.();
+                } else {
+                    toast.error(typeof result.error === 'string' ? result.error : result.error?.message || 'Failed to create promotion');
+                }
+            }
+        } catch (err) {
+            toast.error('An error occurred');
         }
         setEditingPromo(null);
-    }, [editingPromo]);
+    }, [editingPromo, effectiveBusinessId, loadPromotions, seedPromotions, onHubRefresh]);
 
-    const handleToggle = useCallback((promo) => {
-        setPromotions(prev => prev.map(p => p.id === promo.id ? { ...p, is_active: !p.is_active } : p));
-    }, []);
+    const handleToggle = useCallback(async (promo) => {
+        if (!effectiveBusinessId) return;
+        try {
+            const result = await togglePromotionAction(effectiveBusinessId, promo.id, !promo.is_active);
+            if (result.success) {
+                setPromotions(prev => prev.map(p => p.id === promo.id ? { ...p, is_active: !p.is_active } : p));
+                onHubRefresh?.();
+            } else {
+                toast.error('Failed to toggle promotion');
+            }
+        } catch (err) {
+            toast.error('An error occurred');
+        }
+    }, [effectiveBusinessId, onHubRefresh]);
 
-    const handleDuplicate = useCallback((promo) => {
-        setPromotions(prev => [...prev, { ...promo, id: Date.now().toString(), name: `${promo.name} (Copy)`, usage_count: 0 }]);
-    }, []);
+    const handleDuplicate = useCallback(async (promo) => {
+        if (!effectiveBusinessId) return;
+        try {
+            const { id, usage_count, created_at, updated_at, ...rest } = promo;
+            const result = await createPromotionAction(effectiveBusinessId, {
+                ...rest,
+                name: `${promo.name} (Copy)`,
+                is_active: false,
+            });
+            if (result.success) {
+                toast.success('Promotion duplicated');
+                await loadPromotions(!!Array.isArray(seedPromotions));
+                onHubRefresh?.();
+            } else {
+                toast.error('Failed to duplicate promotion');
+            }
+        } catch (err) {
+            toast.error('An error occurred');
+        }
+    }, [effectiveBusinessId, loadPromotions, seedPromotions, onHubRefresh]);
 
-    const handleDelete = useCallback((promo) => {
-        setPromotions(prev => prev.filter(p => p.id !== promo.id));
-    }, []);
+    const handleDelete = useCallback(async (promo) => {
+        if (!effectiveBusinessId) return;
+        if (!confirm(`Delete "${promo.name}"? This cannot be undone.`)) return;
+        try {
+            const result = await deletePromotionAction(effectiveBusinessId, promo.id);
+            if (result.success) {
+                toast.success('Promotion deleted');
+                setPromotions(prev => prev.filter(p => p.id !== promo.id));
+                onHubRefresh?.();
+            } else {
+                toast.error('Failed to delete promotion');
+            }
+        } catch (err) {
+            toast.error('An error occurred');
+        }
+    }, [effectiveBusinessId, onHubRefresh]);
+
+    if (loading && promotions.length === 0 && !loadError) {
+        return (
+            <div className="space-y-4 py-2" aria-busy="true" aria-label="Loading promotions">
+                <div className="grid grid-cols-3 gap-3">
+                    {[1, 2, 3].map((i) => (
+                        <Card key={i} className="border-border">
+                            <CardContent className="flex items-center gap-3 p-3">
+                                <Skeleton className="h-9 w-9 shrink-0 rounded-lg" />
+                                <div className="min-w-0 flex-1 space-y-2">
+                                    <Skeleton className="h-5 w-16" />
+                                    <Skeleton className="h-3 w-28" />
+                                </div>
+                            </CardContent>
+                        </Card>
+                    ))}
+                </div>
+                <Skeleton className="h-10 w-full max-w-xl rounded-lg" />
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+                    {[1, 2, 3, 4, 5, 6].map((i) => (
+                        <Skeleton key={i} className="h-36 rounded-xl" />
+                    ))}
+                </div>
+            </div>
+        );
+    }
+
+    if (loadError && promotions.length === 0) {
+        return (
+            <Card className="border-destructive/30 bg-destructive/5">
+                <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
+                    <AlertTriangle className="h-10 w-10 text-destructive" aria-hidden />
+                    <p className="max-w-sm text-sm text-muted-foreground">{loadError}</p>
+                    <Button variant="outline" size="sm" className="rounded-lg" onClick={() => loadPromotions(false)}>
+                        Retry
+                    </Button>
+                </CardContent>
+            </Card>
+        );
+    }
 
     return (
         <div className="space-y-6">
+            {loadError && promotions.length > 0 && (
+                <div
+                    role="alert"
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-destructive/25 bg-destructive/5 px-3 py-2 text-xs text-muted-foreground"
+                >
+                    <span className="flex items-center gap-2">
+                        <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-destructive" aria-hidden />
+                        {loadError}
+                    </span>
+                    <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => loadPromotions(false)}>
+                        Retry sync
+                    </Button>
+                </div>
+            )}
             {/* Header Stats */}
             <div className="grid grid-cols-3 gap-4">
                 {[
@@ -626,7 +784,7 @@ export function PromotionEngine({ businessId, currency = 'Rs.' }) {
                                 <stat.icon className="w-5 h-5 text-white" />
                             </div>
                             <div>
-                                <p className="text-xl font-black text-gray-900">{stat.value}</p>
+                                <p className="text-xl font-semibold text-gray-900">{stat.value}</p>
                                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{stat.label}</p>
                             </div>
                         </CardContent>
@@ -652,7 +810,7 @@ export function PromotionEngine({ businessId, currency = 'Rs.' }) {
                                 key={status}
                                 onClick={() => setFilterStatus(status)}
                                 className={cn(
-                                    "px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all",
+                                    "px-3 py-2 rounded-xl text-[10px] font-semibold uppercase tracking-wider transition-all",
                                     filterStatus === status
                                         ? "bg-brand-primary text-white shadow-md"
                                         : "bg-gray-100 text-gray-500 hover:bg-gray-200"
@@ -689,8 +847,20 @@ export function PromotionEngine({ businessId, currency = 'Rs.' }) {
                 {filteredPromotions.length === 0 && (
                     <div className="col-span-full py-16 text-center text-gray-400">
                         <Gift className="w-12 h-12 mx-auto mb-3 opacity-20" />
-                        <p className="text-sm font-bold">No promotions found</p>
-                        <p className="text-[10px] mt-1">Create your first promotion to drive sales</p>
+                        <p className="text-sm font-bold">
+                            {promotions.length === 0 ? 'No promotions yet' : 'No promotions match your filter'}
+                        </p>
+                        <p className="text-[10px] mt-1">
+                            {promotions.length === 0 ? 'Create your first promotion to drive sales' : 'Try a different filter'}
+                        </p>
+                        {promotions.length === 0 && (
+                            <button
+                                onClick={() => { setEditingPromo(null); setShowForm(true); }}
+                                className="mt-4 px-4 py-2 bg-brand-primary text-white text-xs font-bold rounded-xl hover:bg-brand-primary-dark"
+                            >
+                                Create Promotion
+                            </button>
+                        )}
                     </div>
                 )}
             </div>

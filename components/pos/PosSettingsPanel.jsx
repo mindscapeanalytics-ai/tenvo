@@ -1,0 +1,294 @@
+'use client';
+
+import { useCallback, useEffect, useState } from 'react';
+import { ScanLine, Loader2, Save } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
+import { useBusiness } from '@/lib/context/BusinessContext';
+import { posAPI } from '@/lib/api/pos';
+import { DEFAULT_POS_SETTINGS } from '@/lib/config/posSettings';
+import { resolvePosVariant } from '@/lib/config/posDomains';
+import { planHasFeatureWithPackaging } from '@/lib/subscription/effectivePlanAccess';
+import toast from 'react-hot-toast';
+
+/**
+ * Tenant POS preferences — stored at business.settings.pos
+ */
+export function PosSettingsPanel({ category }) {
+    const { business, updateBusiness, planTier } = useBusiness();
+    const businessId = business?.id;
+    const variant = resolvePosVariant(category);
+    const isRestaurant = variant === 'restaurant';
+    const canOfflinePos = planHasFeatureWithPackaging(
+        planTier,
+        'offline_pos_mode',
+        business?.settings
+    );
+    const [settings, setSettings] = useState({ ...DEFAULT_POS_SETTINGS });
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
+
+    useEffect(() => {
+        if (!businessId) return;
+        let cancelled = false;
+        (async () => {
+            setLoading(true);
+            try {
+                const res = await posAPI.getSettings(businessId);
+                if (!cancelled && res?.success && res.settings) {
+                    setSettings({ ...DEFAULT_POS_SETTINGS, ...res.settings });
+                }
+            } catch {
+                if (!cancelled) toast.error('Could not load POS settings');
+            } finally {
+                if (!cancelled) setLoading(false);
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [businessId]);
+
+    const patch = useCallback((key, value) => {
+        setSettings((prev) => ({ ...prev, [key]: value }));
+    }, []);
+
+    const handleSave = async () => {
+        if (!businessId) return;
+        setSaving(true);
+        try {
+            const res = await posAPI.updateSettings(businessId, settings);
+            if (res?.success) {
+                toast.success('POS settings saved');
+                const next = { ...DEFAULT_POS_SETTINGS, ...res.settings };
+                setSettings(next);
+                updateBusiness({
+                    settings: {
+                        ...(business?.settings || {}),
+                        pos: next,
+                    },
+                });
+            } else {
+                toast.error(res?.error || 'Save failed');
+            }
+        } catch {
+            toast.error('Save failed');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    if (!businessId) return null;
+
+    return (
+        <Card className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+            <CardHeader className="space-y-1 border-b border-slate-100 bg-gradient-to-r from-emerald-50/80 to-white pb-4 pt-5">
+                <div className="flex items-start gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-800 ring-1 ring-emerald-200/80">
+                        <ScanLine className="w-5 h-5" aria-hidden />
+                    </div>
+                    <div className="min-w-0 flex-1 space-y-1">
+                        <CardTitle className="text-base sm:text-lg font-bold tracking-tight text-slate-900">
+                            Point of sale
+                        </CardTitle>
+                        <CardDescription className="text-sm text-slate-600 font-medium leading-relaxed">
+                            Barcode, offline queue, pharmacy, and checkout defaults for your terminals.
+                        </CardDescription>
+                    </div>
+                </div>
+            </CardHeader>
+            <CardContent className="pt-6 space-y-4">
+                {loading ? (
+                    <div className="flex items-center gap-2 text-sm text-slate-500 py-4">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Loading POS settings…
+                    </div>
+                ) : (
+                    <>
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-semibold uppercase text-gray-400 tracking-widest">
+                                Barcode / scan mode
+                            </Label>
+                            <Select
+                                value={settings.barcodeMode}
+                                onValueChange={(v) => patch('barcodeMode', v)}
+                            >
+                                <SelectTrigger className="h-11 rounded-xl">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="auto">Auto (USB + camera on mobile)</SelectItem>
+                                    <SelectItem value="wedge">USB scanner only</SelectItem>
+                                    <SelectItem value="camera">Camera preferred</SelectItem>
+                                    <SelectItem value="manual">Manual entry only</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <p className="text-xs text-slate-500">
+                                Camera scanning uses your device rear camera for QR and 1D barcodes.
+                            </p>
+                        </div>
+
+                        <ToggleRow
+                            label="Auto-print receipt after sale"
+                            hint="Prints an exact-size 58mm/80mm PDF receipt to your connected printer after checkout."
+                            checked={settings.autoPrintReceipt}
+                            onCheckedChange={(v) => patch('autoPrintReceipt', v)}
+                        />
+
+                        <div className="space-y-2">
+                            <Label className="text-sm font-semibold text-slate-800">Receipt paper size</Label>
+                            <Select
+                                value={settings.paperSize === '80mm' ? '80mm' : '58mm'}
+                                onValueChange={(v) => patch('paperSize', v)}
+                            >
+                                <SelectTrigger className="h-11 rounded-xl">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="58mm">58mm thermal (compact)</SelectItem>
+                                    <SelectItem value="80mm">80mm thermal</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <p className="text-xs text-slate-500">
+                                Match your roll width. In the print dialog pick the receipt printer, Actual size (100%), and Save paper / roll paper.
+                            </p>
+                        </div>
+
+                        <ToggleRow
+                            label="Block expired products"
+                            hint="Prevents selling pharmacy or dated inventory past expiry."
+                            checked={settings.blockExpiredProducts}
+                            onCheckedChange={(v) => patch('blockExpiredProducts', v)}
+                        />
+                        <ToggleRow
+                            label="Enforce pharmacy batch (FEFO)"
+                            hint="Requires batch selection for regulated items before adding to cart."
+                            checked={settings.enforcePharmacyBatch}
+                            onCheckedChange={(v) => patch('enforcePharmacyBatch', v)}
+                        />
+                        <ToggleRow
+                            label="Enforce wholesale MOQ"
+                            hint="Validates minimum order quantity on wholesale domains."
+                            checked={settings.enforceWholesaleMoq}
+                            onCheckedChange={(v) => patch('enforceWholesaleMoq', v)}
+                        />
+                        <ToggleRow
+                            label="Offline sale queue"
+                            hint={
+                                canOfflinePos
+                                    ? 'Queue sales locally when offline; sync when connection returns.'
+                                    : 'Requires a plan with Offline POS Mode (Starter+).'
+                            }
+                            checked={settings.offlineModeEnabled && canOfflinePos}
+                            onCheckedChange={(v) => {
+                                if (!canOfflinePos) {
+                                    toast.error('Upgrade to enable Offline POS Mode');
+                                    return;
+                                }
+                                patch('offlineModeEnabled', v);
+                            }}
+                        />
+                        <ToggleRow
+                            label="Loyalty at till"
+                            hint="Show points balance and redeem for named customers with an active loyalty program."
+                            checked={settings.loyaltyAtTill !== false}
+                            onCheckedChange={(v) => patch('loyaltyAtTill', v)}
+                        />
+                        <ToggleRow
+                            label="Open cash drawer on cash sale"
+                            hint="When auto-print is off, prints a short labeled drawer slip with ESC/POS kick. With auto-print on, use your printer driver Open drawer on print (exact-size PDF receipts cannot carry ESC/POS)."
+                            checked={settings.cashDrawerKickOnCashSale !== false}
+                            onCheckedChange={(v) => patch('cashDrawerKickOnCashSale', v)}
+                        />
+
+                        <div className="space-y-2 p-4 bg-slate-50/80 rounded-2xl border border-slate-100">
+                            <Label className="font-semibold text-slate-900">Manager PIN</Label>
+                            <p className="text-xs text-slate-500 font-medium leading-relaxed">
+                                Optional 4 to 8 digit PIN for clear cart, tax exempt, large discounts, and paid out.
+                                Leave blank to disable prompts.
+                            </p>
+                            <Input
+                                type="password"
+                                inputMode="numeric"
+                                maxLength={8}
+                                value={settings.managerPin || ''}
+                                onChange={(e) => patch('managerPin', e.target.value.replace(/\D/g, ''))}
+                                placeholder="e.g. 1234"
+                                className="h-11 rounded-xl max-w-xs"
+                            />
+                            <div className="flex flex-col gap-2 pt-1">
+                                <ToggleRow
+                                    label="Require PIN to clear cart"
+                                    hint=""
+                                    checked={settings.requirePinForClear !== false}
+                                    onCheckedChange={(v) => patch('requirePinForClear', v)}
+                                />
+                                <ToggleRow
+                                    label="Require PIN for tax exempt"
+                                    hint=""
+                                    checked={settings.requirePinForTaxExempt !== false}
+                                    onCheckedChange={(v) => patch('requirePinForTaxExempt', v)}
+                                />
+                            </div>
+                            <div className="space-y-1">
+                                <Label className="text-[10px] font-semibold uppercase text-gray-400 tracking-widest">
+                                    PIN when discount % exceeds
+                                </Label>
+                                <Input
+                                    type="number"
+                                    min={0}
+                                    max={100}
+                                    value={settings.requirePinForDiscountAbove ?? 15}
+                                    onChange={(e) => patch('requirePinForDiscountAbove', Number(e.target.value) || 0)}
+                                    className="h-10 rounded-xl max-w-[8rem]"
+                                />
+                            </div>
+                        </div>
+
+                        {isRestaurant && (
+                            <ToggleRow
+                                label="Sync restaurant orders to POS ledger"
+                                hint="Posts settled dine-in / takeaway payments to the active POS session."
+                                checked={settings.syncRestaurantToPos}
+                                onCheckedChange={(v) => patch('syncRestaurantToPos', v)}
+                            />
+                        )}
+
+                        <Button
+                            className="w-full sm:w-auto rounded-xl h-11"
+                            onClick={handleSave}
+                            disabled={saving}
+                        >
+                            {saving ? (
+                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            ) : (
+                                <Save className="w-4 h-4 mr-2" />
+                            )}
+                            Save POS settings
+                        </Button>
+                    </>
+                )}
+            </CardContent>
+        </Card>
+    );
+}
+
+function ToggleRow({ label, hint, checked, onCheckedChange }) {
+    return (
+        <div className="flex items-center justify-between gap-4 p-4 bg-slate-50/80 rounded-2xl border border-slate-100">
+            <div className="min-w-0">
+                <Label className="font-semibold text-slate-900">{label}</Label>
+                <p className="text-xs text-slate-500 font-medium mt-1 leading-relaxed">{hint}</p>
+            </div>
+            <Switch checked={checked} onCheckedChange={onCheckedChange} />
+        </div>
+    );
+}

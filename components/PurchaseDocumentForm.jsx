@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Combobox } from '@/components/ui/combobox';
-import { useBusiness } from '@/lib/context/BusinessContext';
+import { useFormRegionalContext } from '@/lib/hooks/useFormRegionalContext';
 import { formatCurrency } from '@/lib/currency';
 import {
     createPurchaseAction,
@@ -72,7 +72,9 @@ export function PurchaseDocumentForm({
     initialData = null,
     category = 'retail-shop'
 }) {
-    const { business, currency } = useBusiness();
+    const { business, currency, countryIso, defaultTaxRate, taxEnabled } = useFormRegionalContext(category);
+    const domainTaxOpts = { countryIso };
+    const showTaxUi = taxEnabled !== false;
     const { language } = useLanguage();
     const t = translations[language];
 
@@ -120,14 +122,16 @@ export function PurchaseDocumentForm({
             return sum + (item.quantity * item.unit_cost);
         }, 0);
 
-        const tax_total = formData.items.reduce((sum, item) => {
-            return sum + (item.quantity * item.unit_cost * (item.tax_rate / 100));
-        }, 0);
+        const tax_total = showTaxUi
+            ? formData.items.reduce((sum, item) => {
+                return sum + (item.quantity * item.unit_cost * (item.tax_rate / 100));
+            }, 0)
+            : 0;
 
         const total_amount = subtotal + tax_total;
 
         return { subtotal, tax_total, total_amount };
-    }, [formData.items]);
+    }, [formData.items, showTaxUi]);
 
     const addItem = () => {
         setFormData(prev => ({
@@ -142,7 +146,7 @@ export function PurchaseDocumentForm({
                     unit_cost: 0,
                     batch_number: '',
                     expiry_date: null,
-                    tax_rate: getDomainDefaultTax(domainCategory)
+                    tax_rate: showTaxUi ? getDomainDefaultTax(domainCategory, domainTaxOpts) : 0
                 }
             ]
         }));
@@ -167,7 +171,9 @@ export function PurchaseDocumentForm({
                         if (product) {
                             updated.unit_cost = product.cost_price || 0;
                             updated.name = product.name;
-                            updated.tax_rate = product.tax_percent || getDomainDefaultTax(domainCategory);
+                            updated.tax_rate = showTaxUi
+                                ? (product.tax_percent || getDomainDefaultTax(domainCategory, domainTaxOpts) || defaultTaxRate || 0)
+                                : 0;
                         }
                     }
 
@@ -179,21 +185,46 @@ export function PurchaseDocumentForm({
     };
 
     const handleSave = async () => {
+        const validItems = formData.items.filter(
+            (item) => item.product_id && Number(item.quantity) > 0
+        );
+        if (validItems.length === 0) {
+            toast.error('Add at least one product line');
+            return;
+        }
+        if (!formData.vendor_id) {
+            toast.error('Please select a vendor');
+            return;
+        }
+
+        const mappedItems = validItems.map((item) => {
+            const quantity = parseFloat(item.quantity) || 0;
+            const unitCost = parseFloat(item.unit_cost) || 0;
+            const taxRate = parseFloat(item.tax_rate) || 0;
+            const lineBase = quantity * unitCost;
+            const taxAmount = lineBase * taxRate / 100;
+            return {
+                product_id: item.product_id,
+                name: item.name,
+                description: item.name || 'Item',
+                quantity,
+                unit_cost: unitCost,
+                tax_rate: taxRate,
+                total_amount: lineBase + taxAmount,
+                batch_number: item.batch_number || null,
+                expiry_date: item.expiry_date || null,
+            };
+        });
+
         // Zod schema validation
         const validation = validateWithSchema(purchaseSchema, {
             business_id: business?.id,
-            vendor_id: formData.vendor_id || null,
+            vendor_id: formData.vendor_id,
             purchase_number: `${config.prefix}-${Date.now()}`,
             date: formData.date,
             warehouse_id: formData.warehouse_id || null,
             status: config.status,
-            items: formData.items.map(item => ({
-                product_id: item.product_id || undefined,
-                name: item.name,
-                quantity: parseFloat(item.quantity) || 0,
-                unit_cost: parseFloat(item.unit_cost) || 0,
-                tax_rate: parseFloat(item.tax_rate) || 0,
-            })),
+            items: mappedItems,
             subtotal: totals.subtotal,
             tax_total: totals.tax_total,
             total_amount: totals.total_amount,
@@ -205,19 +236,20 @@ export function PurchaseDocumentForm({
             return;
         }
 
-        if (!formData.vendor_id) {
-            toast.error('Please select a vendor');
-            return;
-        }
-
         setIsSaving(true);
         try {
             const documentData = {
-                ...formData,
-                ...totals,
                 business_id: business?.id,
+                vendor_id: formData.vendor_id,
+                warehouse_id: formData.warehouse_id || null,
+                date: formData.date,
+                notes: formData.notes || null,
                 status: config.status,
-                purchase_number: `${config.prefix}-${Date.now()}`
+                purchase_number: `${config.prefix}-${Date.now()}`,
+                subtotal: totals.subtotal,
+                tax_total: totals.tax_total,
+                total_amount: totals.total_amount,
+                items: mappedItems,
             };
 
             const result = await createPurchaseAction(documentData);
@@ -257,7 +289,7 @@ export function PurchaseDocumentForm({
                             <Icon className="w-6 h-6" />
                         </div>
                         <div>
-                            <CardTitle className="text-2xl font-black uppercase tracking-tighter">{config.title}</CardTitle>
+                            <CardTitle className="text-2xl font-semibold uppercase tracking-tighter">{config.title}</CardTitle>
                             <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">
                                 {business?.name} * Procurement Module
                             </p>
@@ -268,11 +300,11 @@ export function PurchaseDocumentForm({
                     </Button>
                 </CardHeader>
 
-                <CardContent className="flex-1 overflow-y-auto p-8 space-y-8 bg-gray-50/50">
+                <CardContent className="flex-1 overflow-y-auto bg-gray-50/50 p-3 space-y-4 sm:p-6 sm:space-y-6">
                     {/* Header Info Grid */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Vendor / Supplier *</Label>
+                            <Label className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">Vendor / Supplier *</Label>
                             <Combobox
                                 options={vendors.map(v => ({
                                     value: String(v.id),
@@ -287,7 +319,7 @@ export function PurchaseDocumentForm({
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Order Date</Label>
+                            <Label className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">Order Date</Label>
                             <div className="relative">
                                 <Input
                                     type="date"
@@ -299,7 +331,7 @@ export function PurchaseDocumentForm({
                             </div>
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Expected Delivery</Label>
+                            <Label className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">Expected Delivery</Label>
                             <div className="relative">
                                 <Input
                                     type="date"
@@ -314,7 +346,7 @@ export function PurchaseDocumentForm({
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Receiving Warehouse</Label>
+                            <Label className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">Receiving Warehouse</Label>
                             <Combobox
                                 options={warehouses.map(w => ({
                                     value: String(w.id),
@@ -329,7 +361,7 @@ export function PurchaseDocumentForm({
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Shipping Address (Optional)</Label>
+                            <Label className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">Shipping Address (Optional)</Label>
                             <Input
                                 placeholder="Warehouse location or custom address..."
                                 className="h-12 border-gray-200 rounded-xl shadow-sm focus:ring-2 focus:ring-indigo-500 transition-all"
@@ -343,7 +375,7 @@ export function PurchaseDocumentForm({
                     <div className="space-y-4">
                         <div className="flex justify-between items-center">
                             <div className="flex items-center gap-2">
-                                <Label className="text-xl font-black text-gray-900 uppercase tracking-tighter">Purchase Items</Label>
+                                <Label className="text-xl font-semibold text-gray-900 uppercase tracking-tighter">Purchase Items</Label>
                                 <Badge variant="outline" className="rounded-full px-2 py-0 h-5 text-[10px] font-bold bg-white">{formData.items.length} Lines</Badge>
                             </div>
                             <Button onClick={addItem} type="button" className="bg-gray-900 border-none hover:bg-black text-white h-10 px-5 rounded-xl transition-all active:scale-95 flex items-center gap-2 shadow-lg">
@@ -356,24 +388,26 @@ export function PurchaseDocumentForm({
                             <table className="w-full text-sm">
                                 <thead className="bg-gray-50 border-b">
                                     <tr>
-                                        <th className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Product / Service</th>
-                                        <th className="px-6 py-4 text-right text-[10px] font-black text-gray-400 uppercase tracking-widest w-24">Qty</th>
-                                        <th className="px-6 py-4 text-right text-[10px] font-black text-gray-400 uppercase tracking-widest w-32">Unit Cost</th>
-                                        <th className="px-6 py-4 text-right text-[10px] font-black text-gray-400 uppercase tracking-widest w-24">Tax%</th>
-                                        <th className="px-6 py-4 text-right text-[10px] font-black text-gray-400 uppercase tracking-widest w-32">Line Total</th>
+                                        <th className="px-6 py-4 text-left text-[10px] font-semibold text-gray-400 uppercase tracking-widest">Product / Service</th>
+                                        <th className="px-6 py-4 text-right text-[10px] font-semibold text-gray-400 uppercase tracking-widest w-24">Qty</th>
+                                        <th className="px-6 py-4 text-right text-[10px] font-semibold text-gray-400 uppercase tracking-widest w-32">Unit Cost</th>
+                                        {showTaxUi && (
+                                          <th className="px-6 py-4 text-right text-[10px] font-semibold text-gray-400 uppercase tracking-widest w-24">Tax%</th>
+                                        )}
+                                        <th className="px-6 py-4 text-right text-[10px] font-semibold text-gray-400 uppercase tracking-widest w-32">Line Total</th>
                                         <th className="px-6 py-4 w-12"></th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100">
                                     {formData.items.length === 0 ? (
                                         <tr>
-                                            <td colSpan={6} className="px-6 py-12 text-center">
+                                            <td colSpan={showTaxUi ? 6 : 5} className="px-6 py-12 text-center">
                                                 <div className="flex flex-col items-center gap-2">
                                                     <div className="w-12 h-12 rounded-2xl bg-gray-50 flex items-center justify-center">
                                                         <ShoppingCart className="w-6 h-6 text-gray-300" />
                                                     </div>
                                                     <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">No items added to this order</p>
-                                                    <Button variant="link" onClick={addItem} className="text-indigo-600 font-black text-xs uppercase p-0">Click here to start adding items</Button>
+                                                    <Button variant="link" onClick={addItem} className="text-indigo-600 font-semibold text-xs uppercase p-0">Click here to start adding items</Button>
                                                 </div>
                                             </td>
                                         </tr>
@@ -413,6 +447,7 @@ export function PurchaseDocumentForm({
                                                         />
                                                     </div>
                                                 </td>
+                                                {showTaxUi && (
                                                 <td className="px-6 py-4 px-2">
                                                     <Input
                                                         type="number"
@@ -421,8 +456,12 @@ export function PurchaseDocumentForm({
                                                         onChange={(e) => updateItem(item.id, 'tax_rate', parseFloat(e.target.value) || 0)}
                                                     />
                                                 </td>
-                                                <td className="px-6 py-4 text-right font-black text-gray-900">
-                                                    {formatCurrency(item.quantity * item.unit_cost * (1 + item.tax_rate / 100), currency)}
+                                                )}
+                                                <td className="px-6 py-4 text-right font-semibold text-gray-900">
+                                                    {formatCurrency(
+                                                      item.quantity * item.unit_cost * (1 + (showTaxUi ? item.tax_rate : 0) / 100),
+                                                      currency
+                                                    )}
                                                 </td>
                                                 <td className="px-6 py-4">
                                                     <Button
@@ -446,7 +485,7 @@ export function PurchaseDocumentForm({
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
                         <div className="space-y-4">
                             <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Order Notes / Internal Instructions</Label>
+                                <Label className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">Order Notes / Internal Instructions</Label>
                                 <textarea
                                     className="w-full h-32 px-4 py-3 bg-white border border-gray-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 transition-all outline-none font-medium shadow-sm resize-none"
                                     placeholder="Tell the supplier about delivery instructions, quality checks, etc..."
@@ -461,20 +500,22 @@ export function PurchaseDocumentForm({
                                 <span className="font-bold uppercase tracking-widest text-[10px]">Net Subtotal</span>
                                 <span className="font-bold">{formatCurrency(totals.subtotal, currency)}</span>
                             </div>
+                            {showTaxUi && (
                             <div className="flex justify-between items-center text-gray-500 text-sm">
                                 <span className="font-bold uppercase tracking-widest text-[10px]">Tax Amount</span>
                                 <span className="font-bold">{formatCurrency(totals.tax_total, currency)}</span>
                             </div>
+                            )}
                             <div className="pt-4 mt-4 border-t border-dashed flex justify-between items-end">
                                 <div>
-                                    <span className="block text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 leading-none mb-2">Grand Total</span>
-                                    <span className="text-4xl font-black text-gray-900 tracking-tighter leading-none">
+                                    <span className="block text-[10px] font-semibold uppercase tracking-[0.2em] text-gray-400 leading-none mb-2">Grand Total</span>
+                                    <span className="text-4xl font-semibold text-gray-900 tracking-tighter leading-none">
                                         {formatCurrency(totals.total_amount, currency)}
                                     </span>
                                 </div>
                                 <div className="text-right">
-                                    <span className="block text-[10px] font-black uppercase tracking-widest text-green-600 bg-green-50 px-2 py-1 rounded-md mb-1">Items: {formData.items.length}</span>
-                                    <Badge className="bg-gray-100 text-gray-900 border-none font-black text-[10px] uppercase">
+                                    <span className="block text-[10px] font-semibold uppercase tracking-widest text-green-600 bg-green-50 px-2 py-1 rounded-md mb-1">Items: {formData.items.length}</span>
+                                    <Badge className="bg-gray-100 text-gray-900 border-none font-semibold text-[10px] uppercase">
                                         {currency}
                                     </Badge>
                                 </div>
@@ -484,7 +525,7 @@ export function PurchaseDocumentForm({
                 </CardContent>
 
                 <div className="p-6 bg-white border-t flex justify-between items-center bg-gray-50/80 backdrop-blur-md">
-                    <Button variant="ghost" onClick={onClose} disabled={isSaving} className="font-black text-xs uppercase tracking-widest text-gray-400 hover:text-gray-900">
+                    <Button variant="ghost" onClick={onClose} disabled={isSaving} className="font-semibold text-xs uppercase tracking-widest text-gray-400 hover:text-gray-900">
                         Cancel & Close
                     </Button>
                     <div className="flex gap-4">
@@ -494,16 +535,16 @@ export function PurchaseDocumentForm({
                             onClick={() => {
                                 toast.success('Draft saved locally');
                             }}
-                            className="h-12 px-6 rounded-xl border-gray-200 font-black text-xs uppercase tracking-widest hover:bg-gray-100"
+                            className="h-12 px-6 rounded-xl border-gray-200 font-semibold text-xs uppercase tracking-widest hover:bg-gray-100"
                         >
                             Save Draft
                         </Button>
                         <Button
                             disabled={isSaving}
                             onClick={handleSave}
-                            className={`h-12 px-10 rounded-xl ${THEME_CLASSES[config.theme]?.saveBtn} text-white font-black text-xs uppercase tracking-widest active:scale-95 transition-all flex items-center gap-2`}
+                            className={`h-12 px-10 rounded-xl ${THEME_CLASSES[config.theme]?.saveBtn} text-white font-semibold text-xs uppercase tracking-widest active:scale-95 transition-all flex items-center gap-2`}
                         >
-                            {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                            {isSaving ? <Loader2 className="w-4 h-4 animate-spin bg-emerald-600 hover:bg-emerald-700 text-white" /> : <Save className="w-4 h-4" />}
                             Process {config.title}
                         </Button>
                     </div>

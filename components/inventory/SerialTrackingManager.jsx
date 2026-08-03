@@ -5,11 +5,13 @@ import { Scan, Check, X, AlertCircle, Package, Shield, Calendar, Plus, Search } 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { hubDialogContentClass } from '@/lib/utils/formMobileStyles';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { useSerialTracking } from '@/lib/hooks/useSerialTracking';
 import toast from 'react-hot-toast';
+import { ResponsiveManagerHeader } from '@/components/mobile/HubSectionHeader';
 
 /**
  * SerialTrackingManager Component
@@ -193,31 +195,28 @@ export function SerialTrackingManager({ businessId, productId, warehouseId, prod
 
     return (
         <div className="space-y-6">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h3 className="text-lg font-semibold text-gray-900">Serial Number Management</h3>
-                    <p className="text-sm text-gray-600">{product?.name || 'Product'}</p>
-                </div>
-                <div className="flex gap-2">
-                    <Button
-                        onClick={() => setShowBulkDialog(true)}
-                        variant="outline"
-                        disabled={!productId}
-                    >
-                        <Plus className="w-4 h-4 mr-2" />
-                        Bulk Add
-                    </Button>
-                    <Button
-                        onClick={() => setShowAddDialog(true)}
-                        className="bg-wine hover:bg-wine/90"
-                        disabled={!productId}
-                    >
-                        <Plus className="w-4 h-4 mr-2" />
-                        Add Serial
-                    </Button>
-                </div>
-            </div>
+            <ResponsiveManagerHeader
+                title="Serial Number Management"
+                subtitle={product?.name || 'Product'}
+                actions={[
+                    {
+                        id: 'bulk',
+                        label: 'Bulk Add',
+                        icon: Plus,
+                        variant: 'outline',
+                        disabled: !productId,
+                        onClick: () => setShowBulkDialog(true),
+                    },
+                    {
+                        id: 'add',
+                        label: 'Add Serial',
+                        icon: Plus,
+                        className: 'bg-wine hover:bg-wine/90 text-white',
+                        disabled: !productId,
+                        onClick: () => setShowAddDialog(true),
+                    },
+                ]}
+            />
 
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -384,7 +383,7 @@ export function SerialTrackingManager({ businessId, productId, warehouseId, prod
 
             {/* Add Serial Dialog */}
             <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-                <DialogContent>
+                <DialogContent className={hubDialogContentClass({ maxWidth: 'lg:max-w-lg' })}>
                     <DialogHeader>
                         <DialogTitle>Register New Serial</DialogTitle>
                         <DialogDescription>
@@ -458,7 +457,7 @@ export function SerialTrackingManager({ businessId, productId, warehouseId, prod
                             <Button
                                 type="submit"
                                 disabled={loading}
-                                className="bg-wine hover:bg-wine/90"
+                                className=" bg-emerald-600 hover:bg-emerald-700 text-white"
                             >
                                 <Check className="w-4 h-4 mr-2" />
                                 {loading ? 'Registering...' : 'Register Serial'}
@@ -470,7 +469,7 @@ export function SerialTrackingManager({ businessId, productId, warehouseId, prod
 
             {/* Bulk Add Dialog */}
             <Dialog open={showBulkDialog} onOpenChange={setShowBulkDialog}>
-                <DialogContent>
+                <DialogContent className={hubDialogContentClass({ maxWidth: 'lg:max-w-lg' })}>
                     <DialogHeader>
                         <DialogTitle>Bulk Add Serial Numbers</DialogTitle>
                         <DialogDescription>

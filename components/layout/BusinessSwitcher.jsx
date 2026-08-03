@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import toast from 'react-hot-toast';
+import notify, { TOAST_IDS } from '@/lib/utils/appToast';
 import {
     Building2, ChevronDown, Check, Plus, Loader2,
     Store, UtensilsCrossed, Factory, Truck, ShoppingCart
@@ -11,6 +11,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useBusiness } from '@/lib/context/BusinessContext';
 import { getJoinedBusinessesAction } from '@/lib/actions/basic/business';
+import { persistJoinedBusinessesList } from '@/lib/utils/businessClientCache';
 
 const DOMAIN_ICONS = {
     'retail-shop': Store,
@@ -63,12 +64,12 @@ export function BusinessSwitcher({ isCollapsed = false }) {
                 const nextBusinesses = result.businesses || [];
                 setBusinesses(nextBusinesses);
                 if (typeof window !== 'undefined') {
-                    localStorage.setItem('joinedBusinesses', JSON.stringify(nextBusinesses));
+                    persistJoinedBusinessesList(nextBusinesses);
                 }
             }
         } catch (err) {
             console.error('Failed to fetch businesses:', err);
-            toast.error('Could not refresh business list');
+                notify.error('Could not refresh business list');
         } finally {
             setLoading(false);
         }
@@ -89,10 +90,12 @@ export function BusinessSwitcher({ isCollapsed = false }) {
         try {
             const result = await switchBusinessByDomain(biz.domain);
             if (result.success) {
-                toast.success(`Switched to ${biz.name}`);
+                notify.success(`Switched to ${biz.name}`, {
+                    id: `${TOAST_IDS.BUSINESS_SWITCH}:${biz.domain}`,
+                });
                 router.push(`/business/${biz.domain}?tab=dashboard`);
             } else {
-                toast.error(result.error || 'Unable to switch business');
+                notify.error(result.error || 'Unable to switch business');
             }
         } finally {
             setSwitching(null);
@@ -217,7 +220,7 @@ export function BusinessSwitcher({ isCollapsed = false }) {
                                 <button
                                     onClick={() => {
                                         setIsOpen(false);
-                                        router.push('/register');
+                                        router.push('/register?new=1');
                                     }}
                                     className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-gray-50 transition-colors text-left"
                                 >

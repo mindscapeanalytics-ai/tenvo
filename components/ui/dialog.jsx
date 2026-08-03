@@ -33,24 +33,37 @@ DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
  * @property {string} [className]
  * @property {React.ReactNode} [children]
  */
-/** @type {React.ForwardRefExoticComponent<DialogContentProps & React.HTMLAttributes<HTMLDivElement>>} */
+/** @type {React.ForwardRefExoticComponent<DialogContentProps & React.HTMLAttributes<HTMLDivElement> & { hideCloseButton?: boolean }>} */
 const DialogContent = React.forwardRef(
-  ({ className, children, ...props }, ref) => (
+  ({ className, children, hideCloseButton = false, ...props }, ref) => (
     <DialogPortal>
       <DialogOverlay />
       <DialogPrimitive.Content
         ref={ref}
+        // Opt out of Radix's required Description when callers omit DialogDescription.
+        // Callers can still pass aria-describedby via props to override.
+        aria-describedby={undefined}
         className={cn(
-          'fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-white p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg',
+          'fixed z-50 grid w-full gap-4 border bg-white shadow-lg duration-200',
+          'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
+          /* Desktop — centered modal with zoom */
+          'lg:left-[50%] lg:top-[50%] lg:max-w-lg lg:translate-x-[-50%] lg:translate-y-[-50%] lg:p-6 lg:rounded-lg',
+          'lg:data-[state=closed]:zoom-out-95 lg:data-[state=open]:zoom-in-95',
+          'lg:data-[state=closed]:slide-out-to-left-1/2 lg:data-[state=closed]:slide-out-to-top-[48%]',
+          'lg:data-[state=open]:slide-in-from-left-1/2 lg:data-[state=open]:slide-in-from-top-[48%]',
+          /* Mobile — bottom sheet, no zoom animation */
+          'max-lg:inset-x-2 max-lg:bottom-[max(0.5rem,env(safe-area-inset-bottom))] max-lg:top-auto max-lg:max-h-[min(92dvh,900px)] max-lg:translate-x-0 max-lg:translate-y-0 max-lg:overflow-y-auto max-lg:overscroll-contain max-lg:rounded-2xl max-lg:p-4',
           className
         )}
         {...props}
       >
         {children}
-        <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-white transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-gray-950 focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-gray-100 data-[state=open]:text-gray-500">
-          <X className="h-4 w-4" />
-          <span className="sr-only">Close</span>
-        </DialogPrimitive.Close>
+        {!hideCloseButton && (
+          <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-white transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-gray-950 focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-gray-100 data-[state=open]:text-gray-500">
+            <X className="h-4 w-4" />
+            <span className="sr-only">Close</span>
+          </DialogPrimitive.Close>
+        )}
       </DialogPrimitive.Content>
     </DialogPortal>
   )
@@ -78,7 +91,7 @@ DialogHeader.displayName = 'DialogHeader';
 const DialogFooter = ({ className, ...props }) => (
   <div
     className={cn(
-      'flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2',
+      'flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:space-x-2 sm:gap-0',
       className
     )}
     {...props}

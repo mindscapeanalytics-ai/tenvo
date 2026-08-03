@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -210,10 +210,10 @@ export function WorkflowBuilder({ businessId }) {
             <div className="space-y-6">
                 <div className="flex items-center justify-between">
                     <div>
-                        <h3 className="text-lg font-black text-gray-900">Workflow Templates</h3>
+                        <h3 className="text-lg font-semibold text-gray-900">Workflow Templates</h3>
                         <p className="text-sm text-gray-400">Pre-built approval flows. Click to customize or create your own.</p>
                     </div>
-                    <Button onClick={createNew} className="h-9 text-xs font-bold rounded-xl bg-indigo-600 hover:bg-indigo-700">
+                    <Button onClick={createNew} className="h-9 font-bold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white">
                         <Plus className="w-4 h-4 mr-1.5" /> New Workflow
                     </Button>
                 </div>
@@ -275,7 +275,7 @@ export function WorkflowBuilder({ businessId }) {
                 <Button variant="outline" className="h-8 text-xs font-bold rounded-lg" onClick={() => setShowNodePicker(true)}>
                     <Plus className="w-3.5 h-3.5 mr-1.5" /> Add Step
                 </Button>
-                <Button className="h-8 text-xs font-bold rounded-lg bg-indigo-600 hover:bg-indigo-700" onClick={saveWorkflow}>
+                <Button className="h-8 font-bold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white" onClick={saveWorkflow}>
                     <Save className="w-3.5 h-3.5 mr-1.5" /> Save
                 </Button>
             </div>
@@ -346,7 +346,7 @@ export function WorkflowBuilder({ businessId }) {
                                                             ? 'bg-indigo-50 border border-indigo-200 text-indigo-700' : 'hover:bg-gray-50'
                                                     )}
                                                 >
-                                                    <t.icon className="w-4 h-4" />
+                                                    <t.icon className="w-4 h-4 bg-emerald-600 hover:bg-emerald-700 text-white" />
                                                     {t.label}
                                                 </button>
                                             ))}
@@ -442,7 +442,7 @@ export function WorkflowBuilder({ businessId }) {
             <Dialog open={showNodePicker} onOpenChange={setShowNodePicker}>
                 <DialogContent className="sm:max-w-sm rounded-2xl">
                     <DialogHeader>
-                        <DialogTitle className="text-lg font-black">Add Step</DialogTitle>
+                        <DialogTitle className="text-lg font-semibold">Add Step</DialogTitle>
                         <DialogDescription>Choose a step type to add to your workflow.</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-2 mt-2">

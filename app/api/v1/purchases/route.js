@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import pool from '@/lib/db';
@@ -5,6 +6,7 @@ import { withApiAuth } from '@/lib/api/_shared/middleware';
 import { apiSuccess, apiError } from '@/lib/api/_shared/response';
 import { parsePagination, buildPaginationMeta } from '@/lib/api/_shared/pagination';
 import { createPurchaseAction } from '@/lib/actions/standard/purchase';
+import { PURCHASE_STATUS_VALUES } from '@/lib/constants/purchaseStatus';
 
 /**
  * Purchase API Routes
@@ -215,7 +217,7 @@ const createPurchaseSchema = z.object({
     warehouse_id: z.string().uuid().optional().nullable(),
     purchase_number: z.string().min(1, 'Purchase number is required'),
     date: z.string().optional(),
-    status: z.enum(['draft', 'received', 'cancelled']).optional().default('received'),
+    status: z.enum(PURCHASE_STATUS_VALUES).optional().default('draft'),
     notes: z.string().optional().nullable(),
     subtotal: z.number().min(0).default(0),
     tax_total: z.number().min(0).default(0),
@@ -223,30 +225,19 @@ const createPurchaseSchema = z.object({
     items: z.array(purchaseItemSchema).min(1, 'At least one item is required')
 });
 
-export const POST = withApiAuth(async (request, { businessId, session, role }) => {
+export const POST = withApiAuth(async (request, { businessId, session, role, parsedBody }) => {
     try {
-        // Check role permissions - viewers cannot create purchases
         if (role === 'viewer') {
-            return apiError(
-                'FORBIDDEN',
-                'Insufficient permissions. Viewers cannot create purchases.',
-                403
-            );
+            return apiError('FORBIDDEN', 'Insufficient permissions. Viewers cannot create purchases.', 403);
         }
 
-        // Parse and validate request body
-        const body = await request.json();
+        // Use pre-parsed body from middleware (stream already consumed)
+        const body = parsedBody || {};
 
-        // Ensure business_id matches authenticated business
         if (body.business_id && body.business_id !== businessId) {
-            return apiError(
-                'BUSINESS_MISMATCH',
-                'Business ID in request body does not match authenticated business',
-                400
-            );
+            return apiError('BUSINESS_MISMATCH', 'Business ID in request body does not match authenticated business', 400);
         }
 
-        // Set business_id from authenticated context
         body.business_id = businessId;
 
         // Validate with Zod schema
@@ -324,3 +315,4 @@ export const POST = withApiAuth(async (request, { businessId, session, role }) =
         );
     }
 });
+

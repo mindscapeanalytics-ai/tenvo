@@ -1,0 +1,407 @@
+/**
+ * Validates cross-domain audit fixes (no DB required).
+ * Run: npx tsx scripts/verify-audit-fixes.mjs
+ */
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+import { resolveDomainKey } from '../lib/config/domainKeyAliases.js';
+import {
+  resolveDomainPackageForVertical,
+  buildRegistrationFromDomainPackage,
+  getDomainPackage,
+} from '../lib/config/domainPackages.js';
+import {
+  shouldSeedRichCatalogOnRegistration,
+  PACKAGE_RICH_CATALOG_VERTICALS,
+  SUPERMARKET_REGISTRATION_VERTICALS,
+} from '../lib/onboarding/registrationRichVerticals.js';
+import {
+  isFashionEditorialStore,
+  FASHION_EDITORIAL_CANONICALS,
+  FASHION_EDITORIAL_EXCLUDED,
+} from '../lib/storefront/fashionEditorial.js';
+import { resolveRegistrationStorefrontDefaults } from '../lib/onboarding/registrationStorefrontDefaults.js';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const root = join(__dirname, '..');
+const failures = [];
+
+function assert(condition, message) {
+  if (!condition) failures.push(message);
+}
+
+function read(relPath) {
+  return readFileSync(join(root, relPath), 'utf8');
+}
+
+// --- Static wiring ---
+
+const resolveSrc = read('lib/tenancy/resolveStorefrontBusiness.js');
+assert(
+  resolveSrc.includes('queryBusinessByDomainSegment(normalizedDomain, client)') &&
+    resolveSrc.includes('segmentRow?.id === redisCached.id'),
+  'Redis cache hit must revalidate domain → tenant mapping via Postgres (primary + custom domains)'
+);
+
+const widgetsSrc = read('lib/actions/dashboard/widgets.js');
+for (const fn of ['getTodaysSales', 'getCycleCountTasks', 'getTaxCalculations', 'getTeamPerformance']) {
+  const idx = widgetsSrc.indexOf(`export async function ${fn}`);
+  assert(idx >= 0, `${fn} must exist`);
+  const body = widgetsSrc.slice(idx, idx + 400);
+  assert(body.includes('withGuard'), `${fn} must call withGuard`);
+}
+
+const reorderSrc = read('lib/actions/standard/inventory/reorder.js');
+assert(
+  reorderSrc.includes('Alert and business context are required'),
+  'dismissLowStockAlertAction must require businessId'
+);
+assert(
+  read('lib/services/ReorderAutomationService.js').includes('WHERE id = $1 AND business_id = $2::uuid'),
+  'dismissLowStockAlert must scope UPDATE by business_id'
+);
+
+const businessSrc = read('lib/actions/basic/business.js');
+assert(businessSrc.includes('resolveRegistrationCategoryKey'), 'createBusiness must canonicalize category');
+assert(
+  businessSrc.includes('domainKey: registrationCategory') &&
+    !businessSrc.includes('domainKey: normalizedCategory'),
+  'provisionRegistrationSeed must use canonical registrationCategory'
+);
+assert(
+  businessSrc.includes('resolveBusinessDomainPackageKey') &&
+    businessSrc.includes('domainPackageKey: resolvedPackageKey'),
+  'seedRegistrationInventoryAction must pass domain package key for rich seed gate'
+);
+assert(
+  businessSrc.includes('seoKeywords') && businessSrc.includes('seoSettingsPatch'),
+  'createBusiness must route seoKeywords into settings.seo (not businesses columns)'
+);
+assert(
+  businessSrc.includes('await invalidateStorefrontTenant(result.id)') ||
+    businessSrc.includes('await invalidateStorefrontTenant(result.id);'),
+  'createBusiness must invalidate storefront cache after successful registration seed'
+);
+assert(
+  businessSrc.includes('seedFailed'),
+  'createBusiness must surface seedFailed when registration seed throws'
+);
+assert(
+  businessSrc.includes('PUBLIC_STOREFRONT_SETTING_KEYS') &&
+    businessSrc.includes('business_settings.update'),
+  'completeRegistrationSetupAction must dual-write public chrome into business_settings'
+);
+assert(
+  businessSrc.includes('...registrationStorefront.businessMedia'),
+  'createBusiness still spreads Prisma-safe businessMedia'
+);
+
+const syncServiceSrc = read('lib/services/StorefrontSyncService.js');
+assert(
+  syncServiceSrc.includes('WHERE id = $2 AND business_id = $3::uuid') ||
+    syncServiceSrc.includes('WHERE id = $2 AND business_id = $3'),
+  'syncInventoryToStorefront UPDATE must scope by business_id'
+);
+assert(
+  syncServiceSrc.includes("businessId is required") &&
+    !syncServiceSrc.includes('businessId = null'),
+  'updateStockAvailability must require businessId (no unscoped UPDATE)'
+);
+
+const cartSrc = read('app/api/storefront/[businessDomain]/cart/sync/route.js');
+assert(cartSrc.includes('status: 503') && cartSrc.includes('synced: false'), 'cart/sync must fail closed on error');
+
+const pkgSrc = read('lib/config/domainPackages.js');
+assert(
+  pkgSrc.includes('resolveDomainKey(String(verticalKey).trim())') &&
+    pkgSrc.includes('resolveDomainKey(v) === canonical'),
+  'resolveDomainPackageForVertical must resolve aliases'
+);
+
+// --- Behavioral ---
+
+assert(resolveDomainKey('grocery') === 'supermarket', 'grocery alias → supermarket');
+assert(SUPERMARKET_REGISTRATION_VERTICALS.has('grocery'), 'grocery in supermarket registration set');
+
+assert(isFashionEditorialStore('boutique-fashion') === true, 'boutique-fashion is editorial');
+assert(isFashionEditorialStore('textile-wholesale') === true, 'textile-wholesale is editorial');
+assert(isFashionEditorialStore('gems-jewellery') === false, 'gems-jewellery excluded from editorial');
+assert(isFashionEditorialStore('textile-mill') === false, 'textile-mill excluded from editorial');
+assert(isFashionEditorialStore('leather-footwear') === false, 'leather-footwear uses elevated footwear, not editorial');
+assert(!FASHION_EDITORIAL_CANONICALS.has('gems-jewellery'), 'gems-jewellery not in editorial canonicals');
+assert(FASHION_EDITORIAL_EXCLUDED.has('textile-mill'), 'textile-mill in editorial excluded set');
+
+assert(
+  shouldSeedRichCatalogOnRegistration('pharmacy', 'US', { domainPackageKey: 'pharmacy-commerce' }),
+  'pharmacy-commerce package seeds pharmacy catalog outside PK'
+);
+assert(
+  shouldSeedRichCatalogOnRegistration('furniture', 'US', { domainPackageKey: 'furniture-commerce' }),
+  'furniture-commerce package seeds furniture catalog outside PK'
+);
+assert(
+  shouldSeedRichCatalogOnRegistration('garments', 'US', { domainPackageKey: 'clothing-commerce' }),
+  'clothing-commerce package seeds garments outside PK'
+);
+assert(
+  shouldSeedRichCatalogOnRegistration('textile-wholesale', 'US', { domainPackageKey: 'clothing-commerce' }),
+  'clothing-commerce package seeds textile-wholesale outside PK'
+);
+assert(
+  !shouldSeedRichCatalogOnRegistration('garments', 'US', {}),
+  'garments without PK or package must not rich-seed'
+);
+
+const pkgTextile = resolveDomainPackageForVertical('textile');
+assert(
+  pkgTextile?.key === 'clothing-commerce',
+  'textile alias resolves to clothing-commerce package'
+);
+const pkgApparel = resolveDomainPackageForVertical('apparel');
+assert(
+  pkgApparel?.key === 'clothing-commerce',
+  'apparel alias resolves to clothing-commerce package'
+);
+
+const regFromTextileAlias = buildRegistrationFromDomainPackage('clothing-commerce', {
+  verticalKey: 'textile',
+});
+assert(
+  regFromTextileAlias.category === 'textile-wholesale',
+  'registration package resolves textile alias to textile-wholesale vertical'
+);
+assert(
+  regFromTextileAlias.settingsPatch?.packaging?.feature_overrides?.manufacturing === false,
+  'clothing-commerce + textile-wholesale packaging must disable manufacturing'
+);
+assert(
+  regFromTextileAlias.settingsPatch?.packaging?.feature_overrides?.batch_tracking === true,
+  'clothing-commerce + textile-wholesale packaging must enable batch_tracking'
+);
+
+const clothingPkg = getDomainPackage('clothing-commerce');
+assert(
+  clothingPkg?.demoStoreDomain === 'demo-textile',
+  'clothing-commerce demo store should point at demo-textile'
+);
+
+const wholesaleStorefront = resolveRegistrationStorefrontDefaults({
+  domainKey: 'textile-wholesale',
+  businessName: 'Jama Cloth Traders',
+  regional: { countryName: 'Pakistan', countryCode: 'PK', currency: 'PKR', locale: 'en-PK' },
+  domainPackageKey: null,
+});
+assert(
+  !Object.prototype.hasOwnProperty.call(wholesaleStorefront.businessMedia || {}, 'keywords'),
+  'registration businessMedia must never include keywords (Prisma businesses has no such column)'
+);
+assert(
+  wholesaleStorefront.storefrontExtras?.storefront?.fashion?.showReadyToWear === false,
+  'PK textile-wholesale registration fashion seed hides RTW'
+);
+assert(
+  wholesaleStorefront.storefrontExtras?.storefront?.fashion?.saleMosaic?.title === 'Trade offers' ||
+    wholesaleStorefront.storefrontExtras?.storefront?.fashion?.saleMosaic?.columns?.some(
+      (c) => c.tiles?.some((t) => /lawn|khaddar|imported|bridal/i.test(t.label || ''))
+    ),
+  'textile-wholesale sale mosaic should be fabric trade tiles'
+);
+
+const autoPartsCreateSafe = resolveRegistrationStorefrontDefaults({
+  domainKey: 'auto-parts',
+  businessName: 'Auto Store',
+  regional: { countryName: 'Pakistan', countryCode: 'PK', currency: 'PKR', locale: 'en-PK' },
+});
+assert(
+  !Object.prototype.hasOwnProperty.call(autoPartsCreateSafe.businessMedia || {}, 'keywords'),
+  'auto-parts businessMedia must omit keywords'
+);
+assert(
+  typeof autoPartsCreateSafe.seoKeywords === 'string' && autoPartsCreateSafe.seoKeywords.length > 0,
+  'auto-parts seoKeywords must be set for settings.seo'
+);
+
+const supermarketCreateSafe = resolveRegistrationStorefrontDefaults({
+  domainKey: 'supermarket',
+  businessName: 'Fresh Mart',
+  regional: { countryName: 'Pakistan', countryCode: 'PK', currency: 'PKR', locale: 'en-PK' },
+});
+assert(
+  typeof supermarketCreateSafe.businessDescription === 'string',
+  'supermarket registration must resolve (getSupermarketFamilyProfileExtras imported)'
+);
+assert(
+  SUPERMARKET_REGISTRATION_VERTICALS.has('supermarket'),
+  'supermarket is a registration vertical'
+);
+
+// Editorial seed only when rich catalog gate passes
+const editorialPk = resolveRegistrationStorefrontDefaults({
+  domainKey: 'boutique-fashion',
+  businessName: 'Test Boutique',
+  regional: { countryName: 'Pakistan', countryCode: 'PK', currency: 'PKR', locale: 'en-PK' },
+  domainPackageKey: null,
+});
+assert(
+  editorialPk.storefrontExtras?.storefront?.fashion?.showUnstitched !== undefined ||
+    editorialPk.storefrontExtras?.storefront?.fashion,
+  'PK boutique with rich seed gets fashion editorial defaults'
+);
+
+const editorialNonPkNoPkg = resolveRegistrationStorefrontDefaults({
+  domainKey: 'boutique-fashion',
+  businessName: 'Test Boutique',
+  regional: { countryName: 'United States', countryCode: 'US', currency: 'USD', locale: 'en-US' },
+  domainPackageKey: null,
+});
+const fashionSeedNonPk =
+  editorialNonPkNoPkg.storefrontExtras?.storefront?.fashion;
+assert(!fashionSeedNonPk || Object.keys(fashionSeedNonPk).length === 0, 'non-PK boutique without package skips editorial seed');
+
+const editorialMill = resolveRegistrationStorefrontDefaults({
+  domainKey: 'textile-mill',
+  businessName: 'Test Mill',
+  regional: { countryName: 'Pakistan', countryCode: 'PK', currency: 'PKR', locale: 'en-PK' },
+  domainPackageKey: null,
+});
+const millFashion = editorialMill.storefrontExtras?.storefront?.fashion;
+assert(!millFashion || Object.keys(millFashion).length === 0, 'textile-mill must not get editorial seed');
+
+assert(PACKAGE_RICH_CATALOG_VERTICALS.has('pharmacy-commerce'), 'PACKAGE_RICH_CATALOG_VERTICALS includes pharmacy');
+
+const productRefSrc = read('lib/utils/storefrontProductRef.js');
+assert(
+  productRefSrc.includes('id = $1::uuid AND business_id = $2::uuid') &&
+    !productRefSrc.includes('if (isStorefrontProductUuid(ref)) return ref;'),
+  'resolveStorefrontProductId must verify UUID ownership before returning'
+);
+
+const productsSrc = read('lib/actions/storefront/products.js');
+assert(
+  productsSrc.includes('rejectInvalidStorefrontBusinessId') &&
+    productsSrc.includes('Valid business ID is required'),
+  'storefront product actions must validate businessId UUID'
+);
+assert(
+  productsSrc.includes('resolveStorefrontProductId(client, productId, businessId)') &&
+    productsSrc.includes('fetchRelatedProductsUncached'),
+  'getRelatedProducts must resolve product refs with tenant ownership'
+);
+
+const checkoutCartSrc = read('lib/storefront/validateCheckoutCart.js');
+assert(
+  !checkoutCartSrc.includes('if (isStorefrontProductUuid(ref)) return ref;'),
+  'checkout cart resolver must not trust raw client UUIDs'
+);
+
+const catalogAccessSrc = read('lib/storefront/assertPublicStorefrontCatalogAccess.js');
+assert(
+  catalogAccessSrc.includes('bs.settings AS settings') &&
+    catalogAccessSrc.includes('approval_status') &&
+    catalogAccessSrc.includes('isApprovalBlocked'),
+  'public catalog UUID gate must use business_settings + approval_status'
+);
+
+const approvalSrc = read('lib/actions/admin/registrationApproval.js');
+assert(
+  approvalSrc.includes('invalidateStorefrontTenant(result.id)') &&
+    approvalSrc.includes('[approveRegistration]'),
+  'approveRegistration must invalidate storefront tenant cache'
+);
+assert(
+  approvalSrc.includes('[rejectRegistration] storefront invalidate') &&
+    approvalSrc.includes('[requestMoreInfo] storefront invalidate'),
+  'reject/requestMoreInfo must invalidate storefront tenant cache'
+);
+
+const usersSrc = read('lib/actions/admin/users.js');
+assert(
+  usersSrc.includes('session.user.id !== userId') &&
+    usersSrc.includes('inviteEmail') &&
+    usersSrc.includes('auth.api.getSession'),
+  'acceptInvitation must bind session userId and invitation email'
+);
+assert(
+  usersSrc.includes('logUserActivity') && usersSrc.includes('withGuard(businessId'),
+  'logUserActivity must require authenticated tenant membership'
+);
+
+const verificationSrc = read('lib/actions/auth/verification.js');
+assert(
+  verificationSrc.includes('requireSessionUser') &&
+    !verificationSrc.includes('export async function generateVerificationToken'),
+  'verification actions must be session-bound; token generator stays internal'
+);
+
+const middlewareSrc = read('lib/api/_shared/middleware.js');
+assert(
+  middlewareSrc.includes('withApiPermission') &&
+    middlewareSrc.includes('platform_api_access'),
+  'API middleware must expose withApiPermission and platform cross-tenant audit'
+);
+
+assert(
+  read('app/api/v1/inventory/cycle-counts/[id]/route.js').includes("withApiPermission('inventory.adjust_stock'"),
+  'cycle-count PATCH must require inventory.adjust_stock'
+);
+assert(
+  read('app/api/v1/finance/journal-entries/route.js').includes("withApiPermission('finance.view_gl'"),
+  'journal-entries GET must require finance.view_gl'
+);
+assert(
+  read('lib/actions/standard/report.js').includes("checkAuth(businessId, null, 'finance.manage_accounts'"),
+  'reconcilePendingStorefrontGlAction must require finance.manage_accounts'
+);
+
+const accountingSrc = read('lib/actions/basic/accounting.js');
+assert(
+  read('lib/actions/basic/accounting.js').includes('if (!txClient)') &&
+    read('lib/actions/basic/accounting.js').includes('finance.view_gl'),
+  'getGLAccountByType/getGLAccountsByTypes must auth when not called in tx'
+);
+
+const dataCtxSrc = read('lib/context/DataContext.js');
+assert(
+  !dataCtxSrc.includes('clearHubShellCache(businessId)'),
+  'local state patches must not clear full hub shell cache on every upsert'
+);
+assert(
+  dataCtxSrc.includes('fetchInventory({ force: true, detailLevel: \'grid\', fullCatalog: true })') &&
+    dataCtxSrc.includes('refreshAllData'),
+  'refreshAllData must include inventory grid resync'
+);
+assert(
+  read('components/InventoryManager.jsx').includes('scheduleAnalyticsRefresh') &&
+    read('components/InventoryManager.jsx').includes('runCatalogResync') &&
+    read('components/InventoryManager.jsx').includes('resyncCatalog'),
+  'InventoryManager must split soft refresh vs catalog resync'
+);
+assert(
+  read('app/business/[category]/components/DashboardTabs.jsx').includes('resyncCatalog') &&
+    read('app/business/[category]/components/DashboardTabs.jsx').includes("detailLevel: 'grid', fullCatalog: true"),
+  'DashboardTabs must wire resyncCatalog to full grid catalog fetch'
+);
+assert(
+  read('app/business/[category]/DashboardClient.jsx').includes('invoiceSnapshot') &&
+    read('app/business/[category]/DashboardClient.jsx').includes("detailLevel: 'grid'"),
+  'invoice delete must prefer local stock restore; update uses soft grid refresh'
+);
+assert(
+  read('components/FinancialReports.jsx').includes('refreshKey') &&
+    read('components/finance/FinanceHub.jsx').includes('statementsRefreshKey'),
+  'FinancialReports must invalidate on FinanceHub force refresh'
+);
+assert(
+  read('components/finance/FinanceHub.jsx').includes('navigateHubTab') &&
+    !read('components/finance/FinanceHub.jsx').includes('window.location.href = url.toString()'),
+  'Finance payments CTA must use soft hub tab navigation'
+);
+
+if (failures.length) {
+  console.error('verify-audit-fixes FAILED');
+  for (const f of failures) console.error(' -', f);
+  process.exit(1);
+}
+
+console.log('verify-audit-fixes OK');

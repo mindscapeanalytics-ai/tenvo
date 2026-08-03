@@ -1,5 +1,6 @@
 'use client';
 
+import { BRAND_PRIMARY } from '@/lib/theme/brandTokens';
 import { memo } from 'react';
 import { Portlet } from '@/components/ui/portlet';
 import {
@@ -8,6 +9,8 @@ import {
     RadialBar
 } from 'recharts';
 import { TrendingUp } from 'lucide-react';
+import { HUB_MICRO_LABEL, HUB_STAT_VALUE } from '@/lib/utils/typography';
+import { cn } from '@/lib/utils';
 
 interface KPIMeterProps {
     title?: string;
@@ -18,6 +21,12 @@ interface KPIMeterProps {
     color?: string;
     trendValue?: number;
     trendLabel?: string;
+    className?: string;
+    additionalMetrics?: Array<{
+        label: string;
+        value: string;
+        trend?: 'up' | 'down';
+    }>;
 }
 
 export const KPIMeter = memo(function KPIMeter({
@@ -26,9 +35,11 @@ export const KPIMeter = memo(function KPIMeter({
     target = 100,
     prefix = "",
     suffix = "%",
-    color = "#2F5BFF",
+    color = BRAND_PRIMARY,
     trendValue = 0,
-    trendLabel = "vs previous period"
+    trendLabel = "vs previous period",
+    className,
+    additionalMetrics = []
 }: KPIMeterProps) {
     const safeValue = Math.max(0, Math.min(Number(value) || 0, Number(target) || 100));
     const valueColor = safeValue >= 90 ? '#059669' : safeValue >= 70 ? color : '#B45309';
@@ -39,14 +50,14 @@ export const KPIMeter = memo(function KPIMeter({
     ];
 
     return (
-        <Portlet title={title}>
-            <div className="flex flex-col items-center justify-center">
-                <div className="h-[180px] w-full relative">
+        <Portlet title={title} className={cn('flex flex-col', className)}>
+            <div className="flex flex-col items-center gap-2">
+                <div className="relative flex h-[8rem] w-full shrink-0 items-center justify-center sm:h-[9rem]">
                     <ResponsiveContainer width="100%" height="100%">
                         <RadialBarChart
                             cx="50%"
-                            cy="50%"
-                            innerRadius="70%"
+                            cy="58%"
+                            innerRadius="68%"
                             outerRadius="100%"
                             barSize={12}
                             data={data}
@@ -60,30 +71,63 @@ export const KPIMeter = memo(function KPIMeter({
                         </RadialBarChart>
                     </ResponsiveContainer>
 
-                    {/* Centered Value */}
-                    <div className="absolute inset-0 flex flex-col items-center justify-center pt-8">
-                        <span className="text-3xl font-black text-gray-900 leading-none">
+                    {/* Centered Value — sit in gauge bowl */}
+                    <div className="pointer-events-none absolute inset-x-0 top-[42%] flex flex-col items-center justify-center">
+                        <span className="text-3xl font-semibold leading-none text-gray-900 tabular-nums">
                             {prefix}{safeValue}{suffix}
                         </span>
-                        <div className="flex items-center gap-1 mt-1">
-                            <TrendingUp className={`w-3 h-3 ${trendValue >= 0 ? 'text-emerald-500' : 'text-red-500 rotate-180'}`} />
-                            <span className={`text-[9px] font-black uppercase tracking-wide ${trendValue >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                        <div className="mt-1.5 flex max-w-[90%] items-center justify-center gap-1 px-1">
+                            <TrendingUp className={`h-3 w-3 shrink-0 ${trendValue >= 0 ? 'text-emerald-500' : 'text-red-500 rotate-180'}`} />
+                            <span className={`text-center text-[10px] font-semibold uppercase tracking-wide leading-tight ${trendValue >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                                 {trendValue >= 0 ? '+' : ''}{trendValue}% {trendLabel}
                             </span>
                         </div>
                     </div>
                 </div>
 
-                <div className="w-full grid grid-cols-2 gap-4 border-t border-gray-100 pt-4">
-                    <div className="text-center">
-                        <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest mb-1">Current</p>
-                        <p className="text-sm font-black text-gray-800 tracking-tight">{prefix}{safeValue}{suffix}</p>
+                <div className="flex w-full items-center justify-between gap-2 border-t border-gray-100 pt-2.5 sm:justify-center sm:gap-6">
+                    <div className="min-w-0 flex-1 text-center sm:flex-none">
+                        <p className={cn(HUB_MICRO_LABEL, 'mb-1 text-neutral-400')}>Current</p>
+                        <p className={cn(HUB_STAT_VALUE, 'text-sm text-neutral-800 tabular-nums')}>{prefix}{safeValue}{suffix}</p>
                     </div>
-                    <div className="text-center">
-                        <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest mb-1">Target</p>
-                        <p className="text-sm font-black text-gray-800 tracking-tight">{prefix}{target}{suffix}</p>
+                    <div className="hidden h-8 w-px shrink-0 bg-gray-200 sm:block" aria-hidden />
+                    <div className="min-w-0 flex-1 text-center sm:flex-none">
+                        <p className={cn(HUB_MICRO_LABEL, 'mb-1 text-neutral-400')}>Target</p>
+                        <p className={cn(HUB_STAT_VALUE, 'text-sm text-neutral-800 tabular-nums')}>{prefix}{target}{suffix}</p>
+                    </div>
+                    <div className="hidden h-8 w-px shrink-0 bg-gray-200 sm:block" aria-hidden />
+                    <div className="min-w-0 flex-1 text-center sm:flex-none">
+                        <p className={cn(HUB_MICRO_LABEL, 'mb-1 text-neutral-400')}>Gap</p>
+                        <p className={cn(HUB_STAT_VALUE, 'text-sm text-red-600 tabular-nums')}>{Math.max(0, target - safeValue)}{suffix}</p>
                     </div>
                 </div>
+
+                {additionalMetrics && additionalMetrics.length > 0 && (
+                    <div className="mt-2 grid w-full grid-cols-3 gap-2 border-t border-gray-100 pt-2.5">
+                        {additionalMetrics.map((metric, idx) => (
+                            <div key={idx} className="px-1 text-center sm:px-2">
+                                <p className={cn(HUB_MICRO_LABEL, 'mb-1 truncate text-neutral-400')}>{metric.label}</p>
+                                <div className="flex items-center justify-center gap-1">
+                                    {metric.trend && (
+                                        <TrendingUp 
+                                            className={cn(
+                                                'h-3 w-3',
+                                                metric.trend === 'up' ? 'text-emerald-500' : 'text-red-500 rotate-180'
+                                            )} 
+                                        />
+                                    )}
+                                    <p className={cn(
+                                        HUB_STAT_VALUE, 
+                                        'text-xs',
+                                        metric.trend === 'up' ? 'text-emerald-600' : metric.trend === 'down' ? 'text-red-600' : 'text-neutral-800'
+                                    )}>
+                                        {metric.value}
+                                    </p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
         </Portlet>
     );

@@ -27,11 +27,47 @@ export function ContactForm({ onSuccess, className = '' }) {
   const nameInputRef = useRef(null);
   const textareaRef = useRef(null);
 
-  const MAX_MESSAGE_LENGTH = 1000;
+  /** Aligned with /api/marketing/contact message clip (1200). */
+  const MAX_MESSAGE_LENGTH = 1200;
 
   // Auto-focus on first field
   useEffect(() => {
     nameInputRef.current?.focus();
+  }, []);
+
+  // Pre-fill from /contact?topic=…&planTier=… (e.g. pricing → logged-in upgrade path).
+  // Subject must stay one of the API-allowed select values (see /api/marketing/contact).
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const topic = params.get('topic');
+      const planTier = params.get('planTier');
+      if (!topic && !planTier) return;
+      setFormData((prev) => {
+        if ((prev.subject && prev.subject.trim()) || (prev.message && prev.message.trim().length > 20)) {
+          return prev;
+        }
+        let subject = 'general';
+        if (topic === 'subscription' || planTier) subject = 'sales';
+        else if (topic === 'support' || topic === 'technical') subject = 'support';
+        else if (topic === 'billing') subject = 'billing';
+        else if (topic === 'partnership') subject = 'partnership';
+        else if (topic === 'feedback') subject = 'feedback';
+
+        const lines = ['(Submitted from TENVO contact page)'];
+        if (topic) lines.push(`Visitor topic: ${topic}`);
+        if (planTier) lines.push(`Interested plan tier: ${planTier}`);
+        lines.push('Please reach out about TENVO plans, billing options, or a demo.');
+        return {
+          ...prev,
+          subject,
+          message: lines.join('\n'),
+        };
+      });
+    } catch {
+      /* noop */
+    }
   }, []);
 
   const validationRules = {
@@ -106,6 +142,26 @@ export function ContactForm({ onSuccess, className = '' }) {
     setIsSubmitting(true);
     setErrors({});
 
+    let messageBody = formData.message;
+    if (typeof window !== 'undefined') {
+      try {
+        const p = new URLSearchParams(window.location.search);
+        const utmKeys = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'gclid', 'fbclid'];
+        const parts = utmKeys.map((k) => {
+          const v = p.get(k);
+          return v ? `${k}=${v}` : null;
+        }).filter(Boolean);
+        if (parts.length && !messageBody.includes('\n---\nAttribution:')) {
+          messageBody = `${messageBody}\n\n---\nAttribution: ${parts.join(' | ')}`;
+        }
+      } catch {
+        /* noop */
+      }
+      if (messageBody.length > 1200) {
+        messageBody = messageBody.slice(0, 1200);
+      }
+    }
+
     try {
       const response = await fetch('/api/marketing/contact', {
         method: 'POST',
@@ -117,7 +173,7 @@ export function ContactForm({ onSuccess, className = '' }) {
           email: formData.email,
           phone: formData.phone,
           subject: formData.subject,
-          message: formData.message
+          message: messageBody
         }),
       });
 
@@ -165,8 +221,9 @@ export function ContactForm({ onSuccess, className = '' }) {
   };
 
   return (
-    <form 
-      onSubmit={handleSubmit} 
+    <form
+      data-testid="marketing-contact-form"
+      onSubmit={handleSubmit}
       className={`space-y-6 ${className}`}
       noValidate
     >
@@ -199,7 +256,7 @@ export function ContactForm({ onSuccess, className = '' }) {
           name="name"
           value={formData.name}
           onChange={handleChange}
-          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-wine-500 focus:border-wine-500 transition-colors ${
+          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-brand-primary focus:border-brand-primary transition-colors ${
             errors.name ? 'border-red-500' : 'border-gray-300'
           }`}
           placeholder="John Doe"
@@ -228,7 +285,7 @@ export function ContactForm({ onSuccess, className = '' }) {
           name="email"
           value={formData.email}
           onChange={handleChange}
-          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-wine-500 focus:border-wine-500 transition-colors ${
+          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-brand-primary focus:border-brand-primary transition-colors ${
             errors.email ? 'border-red-500' : 'border-gray-300'
           }`}
           placeholder="john@example.com"
@@ -257,7 +314,7 @@ export function ContactForm({ onSuccess, className = '' }) {
           name="phone"
           value={formData.phone}
           onChange={handleChange}
-          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-wine-500 focus:border-wine-500 transition-colors ${
+          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-brand-primary focus:border-brand-primary transition-colors ${
             errors.phone ? 'border-red-500' : 'border-gray-300'
           }`}
           placeholder="+92 300 1234567"
@@ -285,7 +342,7 @@ export function ContactForm({ onSuccess, className = '' }) {
           name="subject"
           value={formData.subject}
           onChange={handleChange}
-          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-wine-500 focus:border-wine-500 transition-colors ${
+          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-brand-primary focus:border-brand-primary transition-colors ${
             errors.subject ? 'border-red-500' : 'border-gray-300'
           }`}
           aria-required="true"
@@ -335,7 +392,7 @@ export function ContactForm({ onSuccess, className = '' }) {
           value={formData.message}
           onChange={handleChange}
           rows={4}
-          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-wine-500 focus:border-wine-500 transition-colors resize-none ${
+          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-brand-primary focus:border-brand-primary transition-colors resize-none ${
             errors.message ? 'border-red-500' : 'border-gray-300'
           }`}
           placeholder="Tell us how we can help you..."
@@ -381,7 +438,7 @@ export function ContactForm({ onSuccess, className = '' }) {
       <button
         type="submit"
         disabled={isSubmitting}
-        className="w-full px-6 py-4 bg-wine-600 text-white font-semibold rounded-lg hover:bg-wine-700 focus:outline-none focus:ring-2 focus:ring-wine-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        className="w-full px-6 py-4 bg-emerald-600 text-white font-semibold rounded-lg hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {isSubmitting ? 'Sending...' : 'Send Message'}
       </button>

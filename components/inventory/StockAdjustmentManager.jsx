@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Plus, Minus, RotateCcw, Package, AlertTriangle, Check, X, Clock, User } from 'lucide-react';
+import { Plus, Minus, RotateCcw, AlertTriangle, Check, X, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useStockAdjustment } from '@/lib/hooks/useStockAdjustment';
 import toast from 'react-hot-toast';
+import { ResponsiveManagerHeader } from '@/components/mobile/HubSectionHeader';
 
 /**
  * StockAdjustmentManager Component
@@ -48,8 +49,7 @@ export function StockAdjustmentManager({
         createAdjustment,
         approveAdjustment,
         rejectAdjustment,
-        refreshAdjustments
-    } = useStockAdjustment(businessId);
+    } = useStockAdjustment(businessId, { approvalThreshold });
 
     const [showAdjustmentDialog, setShowAdjustmentDialog] = useState(false);
     const [showApprovalsDialog, setShowApprovalsDialog] = useState(false);
@@ -91,8 +91,6 @@ export function StockAdjustmentManager({
         }
 
         const quantityChange = parseFloat(formData.quantity_change);
-        const adjustmentValue = Math.abs(quantityChange) * (product.cost_price || 0);
-        const requiresApproval = adjustmentValue > approvalThreshold;
 
         try {
             await createAdjustment({
@@ -101,14 +99,9 @@ export function StockAdjustmentManager({
                 quantity_change: formData.adjustment_type === 'increase' ? quantityChange : -quantityChange,
                 reason_code: formData.reason_code,
                 reason_notes: formData.reason_notes,
-                requires_approval: requiresApproval
             });
 
-            if (requiresApproval) {
-                toast.success('Adjustment submitted for approval');
-            } else {
-                toast.success('Stock adjusted successfully');
-            }
+            toast.success('Stock adjusted successfully');
 
             setFormData({
                 product_id: '',
@@ -195,30 +188,29 @@ export function StockAdjustmentManager({
 
     return (
         <div className="space-y-6">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h3 className="text-xl font-bold">Stock Adjustments</h3>
-                    <p className="text-sm text-gray-500">Adjust stock quantities with reasons and approvals</p>
-                </div>
-                <div className="flex gap-2">
-                    {pendingApprovals.length > 0 && (
-                        <Button
-                            onClick={() => setShowApprovalsDialog(true)}
-                            variant="outline"
-                            className="relative"
-                        >
-                            <Clock className="w-4 h-4 mr-2" />
-                            Pending Approvals
-                            <Badge className="ml-2 bg-yellow-500">{pendingApprovals.length}</Badge>
-                        </Button>
-                    )}
-                    <Button onClick={() => setShowAdjustmentDialog(true)} className="bg-wine hover:bg-wine/90">
-                        <RotateCcw className="w-4 h-4 mr-2" />
-                        New Adjustment
-                    </Button>
-                </div>
-            </div>
+            <ResponsiveManagerHeader
+                title="Stock Adjustments"
+                subtitle="Adjust stock quantities with reasons and approvals"
+                actions={[
+                    ...(pendingApprovals.length > 0
+                        ? [{
+                            id: 'pending',
+                            label: 'Pending Approvals',
+                            icon: Clock,
+                            variant: 'outline',
+                            badge: pendingApprovals.length,
+                            onClick: () => setShowApprovalsDialog(true),
+                        }]
+                        : []),
+                    {
+                        id: 'new',
+                        label: 'New Adjustment',
+                        icon: RotateCcw,
+                        className: 'bg-wine hover:bg-wine/90 text-white',
+                        onClick: () => setShowAdjustmentDialog(true),
+                    },
+                ]}
+            />
 
             {/* Summary Stats */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -309,14 +301,14 @@ export function StockAdjustmentManager({
 
             {/* New Adjustment Dialog */}
             <Dialog open={showAdjustmentDialog} onOpenChange={setShowAdjustmentDialog}>
-                <DialogContent className="max-w-2xl">
-                    <DialogHeader>
+                <DialogContent className="max-w-2xl w-[calc(100vw-1.5rem)] sm:w-full max-h-[min(92vh,900px)] flex flex-col gap-0 overflow-hidden p-0">
+                    <DialogHeader className="shrink-0 px-6 pt-6 pb-2">
                         <DialogTitle>Stock Adjustment</DialogTitle>
                         <DialogDescription>
                             Record a stock increase or decrease with a specific reason for auditing.
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="space-y-4">
+                    <div className="space-y-4 px-6 pb-6 overflow-y-auto min-h-0 flex-1">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label>Product *</Label>
@@ -352,7 +344,7 @@ export function StockAdjustmentManager({
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label>Adjustment Type *</Label>
                                 <select
@@ -440,7 +432,7 @@ export function StockAdjustmentManager({
                             >
                                 {formData.adjustment_type === 'increase' ? (
                                     <>
-                                        <Plus className="w-4 h-4 mr-2" />
+                                        <Plus className="w-4 h-4 mr-2 bg-emerald-600 hover:bg-emerald-700 text-white" />
                                         {requiresApproval ? 'Submit for Approval' : 'Increase Stock'}
                                     </>
                                 ) : (
@@ -457,14 +449,14 @@ export function StockAdjustmentManager({
 
             {/* Pending Approvals Dialog */}
             <Dialog open={showApprovalsDialog} onOpenChange={setShowApprovalsDialog}>
-                <DialogContent className="max-w-3xl">
-                    <DialogHeader>
+                <DialogContent className="max-w-3xl w-[calc(100vw-1.5rem)] sm:w-full max-h-[min(92vh,900px)] flex flex-col gap-0 overflow-hidden p-0">
+                    <DialogHeader className="shrink-0 px-6 pt-6 pb-2">
                         <DialogTitle>Pending Approvals</DialogTitle>
                         <DialogDescription>
                             Review and approve or reject stock adjustments
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="space-y-4 max-h-[60vh] overflow-y-auto">
+                    <div className="space-y-4 overflow-y-auto min-h-0 flex-1 px-6 pb-6">
                         {pendingApprovals.map((approval) => (
                             <Card key={approval.id} className="border-yellow-200">
                                 <CardContent className="pt-6">
@@ -479,7 +471,7 @@ export function StockAdjustmentManager({
                                             {getAdjustmentTypeBadge(approval.quantity_change)}
                                         </div>
 
-                                        <div className="grid grid-cols-2 gap-4 text-sm">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                                             <div>
                                                 <p className="text-gray-600">Requested By</p>
                                                 <p className="font-medium">{approval.created_by || 'Unknown'}</p>
