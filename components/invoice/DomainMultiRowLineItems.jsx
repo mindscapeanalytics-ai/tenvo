@@ -133,7 +133,11 @@ export function DomainMultiRowLineItems({
   showTax = true,
 }) {
   const domainCols = getDomainInvoiceColumns(category);
-  const unitOptions = getDomainUnits(category) || ['pcs', 'sqft', 'm', 'kg', 'box'];
+  const isTextileDomain = category === 'textile-wholesale' || category === 'textile';
+  const defaultUnits = isTextileDomain
+    ? ['meter', 'thaan', 'gaz', 'suit', 'guth', 'pcs', 'kg']
+    : ['pcs', 'sqft', 'm', 'kg', 'box'];
+  const unitOptions = getDomainUnits(category) || defaultUnits;
   const brandAccent = colors.primary || '#10B981';
 
   // Calculator modal state
@@ -258,7 +262,16 @@ export function DomainMultiRowLineItems({
           const rate = Number(item.rate || 0);
           const discountPct = Number(item.discount || 0);
           const taxPct = showTax ? Number(item.taxPercent || 0) : 0;
-          const base = qty * rate;
+          
+          const textileConv = isTextileDomain ? resolveTextileLineQty(item) : null;
+          const effectiveBilledQty =
+            textileConv?.totalMeters &&
+            item._rate_basis !== 'per_thaan' &&
+            item._rate_basis !== 'per_suit'
+              ? textileConv.totalMeters
+              : qty;
+
+          const base = effectiveBilledQty * rate;
           const discountVal = (base * discountPct) / 100;
           const taxable = base - discountVal;
           const taxVal = (taxable * taxPct) / 100;

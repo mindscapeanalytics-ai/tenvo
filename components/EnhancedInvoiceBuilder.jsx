@@ -175,6 +175,19 @@ export function EnhancedInvoiceBuilder({
       ewayBill: '',
       placeOfSupply: '',
       vehicleAgreement: initialData?.taxDetails?.vehicleAgreement || initialData?.tax_details?.vehicleAgreement || {},
+      biltiDetails: initialData?.biltiDetails || initialData?.taxDetails?.biltiDetails || initialData?.tax_details?.biltiDetails || {
+        transportName: '',
+        biltiNo: '',
+        destinationCity: '',
+        baleCount: '',
+        freightStatus: 'To Pay',
+        freightCharges: 0,
+      },
+      brokerDetails: initialData?.brokerDetails || initialData?.taxDetails?.brokerDetails || initialData?.tax_details?.brokerDetails || {
+        brokerName: '',
+        brokerCommission: '',
+      },
+      lathaFoldingCharges: initialData?.lathaFoldingCharges || initialData?.taxDetails?.lathaFoldingCharges || 0,
     };
 
     if (initialData) {
@@ -426,13 +439,21 @@ export function EnhancedInvoiceBuilder({
           }
 
           // Calculate amount (Forward calculation)
-          if (field === 'quantity' || field === 'rate' || field === 'discount' || field === 'taxPercent' || field === 'productId') {
-            const qty = Number(updated.quantity) || 0;
+          if (field === 'quantity' || field === 'rate' || field === 'discount' || field === 'taxPercent' || field === 'productId' || field === 'unit' || field === 'thaan_length' || field === 'suit_cutting') {
+            const isTextileDomain = category === 'textile-wholesale' || category === 'textile';
+            const textileConv = isTextileDomain ? resolveTextileLineQty(updated) : null;
+            const effectiveQty =
+              textileConv?.totalMeters &&
+              updated._rate_basis !== 'per_thaan' &&
+              updated._rate_basis !== 'per_suit'
+                ? textileConv.totalMeters
+                : (Number(updated.quantity) || 0);
+
             const rate = Number(updated.rate) || 0;
             const disc = Number(updated.discount) || 0;
             const tax = Number(updated.taxPercent) || 0;
 
-            const baseAmount = qty * rate;
+            const baseAmount = effectiveQty * rate;
             const discountAmount = (baseAmount * disc) / 100;
             const taxableAmount = baseAmount - discountAmount;
             const taxAmount = (taxableAmount * tax) / 100;
@@ -469,8 +490,17 @@ export function EnhancedInvoiceBuilder({
 
   // Calculate totals - supports both GST and Pakistani tax
   const calculateTotals = useMemo(() => {
+    const isTextileDomain = category === 'textile-wholesale' || category === 'textile';
     const subtotal = invoice.items.reduce((sum, item) => {
-      const baseAmount = Number(item.quantity || 0) * Number(item.rate || 0);
+      const textileConv = isTextileDomain ? resolveTextileLineQty(item) : null;
+      const effectiveQty =
+        textileConv?.totalMeters &&
+        item._rate_basis !== 'per_thaan' &&
+        item._rate_basis !== 'per_suit'
+          ? textileConv.totalMeters
+          : (Number(item.quantity) || 0);
+
+      const baseAmount = effectiveQty * Number(item.rate || 0);
       const discountAmount = (baseAmount * Number(item.discount || 0)) / 100;
       return sum + baseAmount - discountAmount;
     }, 0);
@@ -1777,6 +1807,114 @@ export function EnhancedInvoiceBuilder({
           <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
             {/* Left Box: Payment Gateway, Notes, Workflow (lg:col-span-7) */}
             <div className="lg:col-span-7 space-y-4">
+              {/* Karachi Wholesale Market Transport, Bilti & Broker Details */}
+              {(category === 'textile-wholesale' || category === 'textile') && (
+                <div className="rounded-xl border border-indigo-200 bg-indigo-50/40 p-4 shadow-xs space-y-3">
+                  <div className="flex items-center justify-between border-b border-indigo-100 pb-2">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-indigo-900 flex items-center gap-1.5">
+                      <Building2 className="w-4 h-4 text-indigo-600" />
+                      Karachi Wholesale Market Transport, Bilti & Broker Details
+                    </h4>
+                    <Badge variant="outline" className="bg-indigo-100 text-indigo-800 border-indigo-300 text-[10px] font-semibold">
+                      Textile Wholesale
+                    </Badge>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">Adda / Transport Name</Label>
+                      <Input
+                        placeholder="e.g. Faisalabad Express / Tariq Adda"
+                        value={invoice.biltiDetails?.transportName || ''}
+                        onChange={(e) =>
+                          setInvoice((prev) => ({
+                            ...prev,
+                            biltiDetails: { ...prev.biltiDetails, transportName: e.target.value },
+                          }))
+                        }
+                        className="h-8.5 text-xs bg-white shadow-2xs border-slate-200"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">Bilti / GR #</Label>
+                      <Input
+                        placeholder="e.g. B-48920"
+                        value={invoice.biltiDetails?.biltiNo || ''}
+                        onChange={(e) =>
+                          setInvoice((prev) => ({
+                            ...prev,
+                            biltiDetails: { ...prev.biltiDetails, biltiNo: e.target.value },
+                          }))
+                        }
+                        className="h-8.5 text-xs bg-white font-mono shadow-2xs border-slate-200"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">Booking Station / City</Label>
+                      <Input
+                        placeholder="e.g. Faisalabad / Multan / Quetta"
+                        value={invoice.biltiDetails?.destinationCity || ''}
+                        onChange={(e) =>
+                          setInvoice((prev) => ({
+                            ...prev,
+                            biltiDetails: { ...prev.biltiDetails, destinationCity: e.target.value },
+                          }))
+                        }
+                        className="h-8.5 text-xs bg-white shadow-2xs border-slate-200"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">Total Bales / Packages</Label>
+                      <Input
+                        type="number"
+                        placeholder="e.g. 3"
+                        value={invoice.biltiDetails?.baleCount || ''}
+                        onChange={(e) =>
+                          setInvoice((prev) => ({
+                            ...prev,
+                            biltiDetails: { ...prev.biltiDetails, baleCount: e.target.value },
+                          }))
+                        }
+                        className="h-8.5 text-xs bg-white shadow-2xs border-slate-200 font-mono"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">Broker / Agent Name</Label>
+                      <Input
+                        placeholder="e.g. Haji Usman Broker"
+                        value={invoice.brokerDetails?.brokerName || ''}
+                        onChange={(e) =>
+                          setInvoice((prev) => ({
+                            ...prev,
+                            brokerDetails: { ...prev.brokerDetails, brokerName: e.target.value },
+                          }))
+                        }
+                        className="h-8.5 text-xs bg-white shadow-2xs border-slate-200"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">Broker Commission</Label>
+                      <Input
+                        placeholder="e.g. 1% or Rs 500"
+                        value={invoice.brokerDetails?.brokerCommission || ''}
+                        onChange={(e) =>
+                          setInvoice((prev) => ({
+                            ...prev,
+                            brokerDetails: { ...prev.brokerDetails, brokerCommission: e.target.value },
+                          }))
+                        }
+                        className="h-8.5 text-xs bg-white shadow-2xs border-slate-200"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Payment Gateway Selector */}
               {isPakistaniDomain && (
                 <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs space-y-2">
