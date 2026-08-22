@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import {
     Shield, Users, Building2, Search, RefreshCcw,
     TrendingUp, UserPlus, Clock, X, Eye, Edit2, Ban,
-    Loader2, ChevronLeft,
+    Loader2, ChevronLeft, LayoutGrid,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
