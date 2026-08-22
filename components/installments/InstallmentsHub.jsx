@@ -81,6 +81,8 @@ export function InstallmentsHub({ business, products = [], customers = [], curre
   const [downPaymentType, setDownPaymentType] = useState('pct'); // 'pct' | 'amount'
   const [downPaymentPct, setDownPaymentPct] = useState(20);
   const [downPaymentAmountInput, setDownPaymentAmountInput] = useState(100000);
+  const [downPaymentPaid, setDownPaymentPaid] = useState(true);
+  const [downPaymentMethod, setDownPaymentMethodState] = useState('Cash');
   const [markupRatePct, setMarkupRatePct] = useState(18);
   const [tenureMonths, setTenureMonths] = useState(24);
   const [frequency, setFrequency] = useState('monthly'); // 'monthly' | 'quarterly' | 'yearly'
@@ -165,8 +167,12 @@ export function InstallmentsHub({ business, products = [], customers = [], curre
       installmentAmount: calculatedSummary.installmentAmount,
       totalFinancedPayable: calculatedSummary.totalFinancedPayable,
       frequency: calculatedSummary.frequency,
+      includeDownPaymentEntry: true,
+      downPaymentAmount: calculatedSummary.downPaymentAmount,
+      downPaymentPaid,
+      downPaymentMethod,
     });
-  }, [startDate, calculatedSummary]);
+  }, [startDate, calculatedSummary, downPaymentPaid, downPaymentMethod]);
 
   // Summary Metrics for Ledger
   const ledgerMetrics = useMemo(() => {
@@ -215,6 +221,8 @@ export function InstallmentsHub({ business, products = [], customers = [], curre
     setDownPaymentType('pct');
     setDownPaymentPct(20);
     setDownPaymentAmountInput(100000);
+    setDownPaymentPaid(true);
+    setDownPaymentMethodState('Cash');
     setMarkupRatePct(18);
     setTenureMonths(24);
     setFrequency('monthly');
@@ -256,6 +264,8 @@ export function InstallmentsHub({ business, products = [], customers = [], curre
         totalPrice,
         downPaymentAmount: downPaymentType === 'amount' ? downPaymentAmountInput : calculatedSummary.downPaymentAmount,
         downPaymentPct: calculatedSummary.downPaymentPct,
+        downPaymentPaid,
+        downPaymentMethod,
         markupRatePct,
         tenureMonths,
         frequency,
@@ -703,6 +713,33 @@ export function InstallmentsHub({ business, products = [], customers = [], curre
                       className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm font-semibold tabular-nums text-slate-900 focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                     />
                   )}
+
+                  {/* Advance / Down Payment Received Status */}
+                  <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-slate-50 p-2.5 border border-slate-200 dark:bg-slate-800/60 dark:border-slate-700/60">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={downPaymentPaid}
+                        onChange={(e) => setDownPaymentPaid(e.target.checked)}
+                        className="h-4 w-4 rounded accent-red-600"
+                      />
+                      <span>Down / Advance Payment Paid Upon Booking</span>
+                    </label>
+
+                    {downPaymentPaid && (
+                      <select
+                        value={downPaymentMethod}
+                        onChange={(e) => setDownPaymentMethodState(e.target.value)}
+                        className="rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs font-semibold text-slate-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                      >
+                        <option value="Cash">Cash</option>
+                        <option value="Bank Transfer">Bank Transfer</option>
+                        <option value="JazzCash">JazzCash</option>
+                        <option value="EasyPaisa">EasyPaisa</option>
+                        <option value="Cheque">Cheque</option>
+                      </select>
+                    )}
+                  </div>
                 </div>
 
                 <div>
@@ -869,18 +906,34 @@ export function InstallmentsHub({ business, products = [], customers = [], curre
                   Payment Schedule Preview
                 </p>
                 <div className="max-h-56 overflow-y-auto space-y-1.5 rounded-xl border border-slate-200 dark:border-slate-800 p-2 text-xs">
-                  {liveSchedule.map((s) => (
-                    <div
-                      key={s.installment_no}
-                      className="flex items-center justify-between rounded-lg bg-slate-50 dark:bg-slate-800/40 p-2 text-slate-700 dark:text-slate-300"
-                    >
-                      <span className="font-semibold">Installment #{s.installment_no}</span>
-                      <span className="text-slate-500 dark:text-slate-400">{s.due_date}</span>
-                      <span className="font-bold text-slate-900 dark:text-white tabular-nums">
-                        {formatCurrency(s.amount, currency)}
-                      </span>
-                    </div>
-                  ))}
+                  {liveSchedule.map((s) => {
+                    const isDown = Number(s.installment_no) === 0;
+                    return (
+                      <div
+                        key={s.installment_no}
+                        className={cn(
+                          'flex items-center justify-between rounded-lg p-2 text-slate-700 dark:text-slate-300',
+                          isDown
+                            ? 'bg-amber-50/80 border border-amber-200/80 dark:bg-amber-950/30 dark:border-amber-900/40'
+                            : 'bg-slate-50 dark:bg-slate-800/40'
+                        )}
+                      >
+                        <span className="font-semibold flex items-center gap-1.5">
+                          {isDown ? (
+                            <span className="rounded bg-amber-600 px-1.5 py-0.5 text-[10px] font-bold text-white uppercase">
+                              Advance / Down
+                            </span>
+                          ) : (
+                            `Installment #${s.installment_no}`
+                          )}
+                        </span>
+                        <span className="text-slate-500 dark:text-slate-400">{s.due_date}</span>
+                        <span className="font-bold text-slate-900 dark:text-white tabular-nums">
+                          {formatCurrency(s.amount, currency)}
+                        </span>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -967,7 +1020,7 @@ export function InstallmentsHub({ business, products = [], customers = [], curre
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                     {plans.map((p) => {
                       const sched = Array.isArray(p.schedule_data) ? p.schedule_data : [];
-                      const paidCount = sched.filter((s) => s.status === 'paid').length;
+                      const paidCount = sched.filter((s) => s.status === 'paid' && Number(s.installment_no) > 0).length;
                       const isComplete = p.status === 'completed';
 
                       return (
@@ -1119,12 +1172,16 @@ export function InstallmentsHub({ business, products = [], customers = [], curre
                 {(Array.isArray(selectedPlanForDetails.schedule_data) ? selectedPlanForDetails.schedule_data : []).map(
                   (s) => {
                     const isPaid = s.status === 'paid';
+                    const isDown = Number(s.installment_no) === 0;
+
                     return (
                       <div
                         key={s.installment_no}
                         className={cn(
                           'flex items-center justify-between rounded-xl p-3 border text-xs sm:text-sm',
-                          isPaid
+                          isDown
+                            ? 'border-amber-200 bg-amber-50/50 dark:border-amber-900/60 dark:bg-amber-950/30'
+                            : isPaid
                             ? 'border-emerald-200 bg-emerald-50/40 dark:border-emerald-900/50 dark:bg-emerald-950/20'
                             : 'border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-800/40'
                         )}
@@ -1133,13 +1190,25 @@ export function InstallmentsHub({ business, products = [], customers = [], curre
                           <div
                             className={cn(
                               'flex h-7 w-7 items-center justify-center rounded-full font-bold text-xs',
-                              isPaid ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300'
+                              isDown
+                                ? 'bg-amber-600 text-white'
+                                : isPaid
+                                ? 'bg-emerald-600 text-white'
+                                : 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300'
                             )}
                           >
                             {isPaid ? <Check className="h-4 w-4" /> : `#${s.installment_no}`}
                           </div>
                           <div>
-                            <p className="font-bold text-slate-900 dark:text-white">Installment #{s.installment_no}</p>
+                            <p className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                              {isDown ? (
+                                <span className="rounded bg-amber-600 px-2 py-0.5 text-[10px] font-bold text-white uppercase">
+                                  Advance / Down Payment
+                                </span>
+                              ) : (
+                                `Installment #${s.installment_no}`
+                              )}
+                            </p>
                             <p className="text-xs text-slate-500">Due: {s.due_date}</p>
                           </div>
                         </div>
@@ -1150,7 +1219,7 @@ export function InstallmentsHub({ business, products = [], customers = [], curre
                           </p>
                           {isPaid ? (
                             <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                              Paid on {s.paid_date} ({s.payment_method})
+                              Paid on {s.paid_date} ({s.payment_method || 'Cash'})
                             </p>
                           ) : (
                             <span className="text-xs text-amber-600 dark:text-amber-400 font-semibold">Pending</span>
@@ -1226,7 +1295,9 @@ export function InstallmentsHub({ business, products = [], customers = [], curre
                   : []
                 ).map((s) => (
                   <option key={s.installment_no} value={s.installment_no}>
-                    Installment #{s.installment_no} — Due {s.due_date} ({s.status.toUpperCase()})
+                    {Number(s.installment_no) === 0
+                      ? `Installment #0 — Advance / Down Payment (${s.status.toUpperCase()})`
+                      : `Installment #${s.installment_no} — Due ${s.due_date} (${s.status.toUpperCase()})`}
                   </option>
                 ))}
               </select>

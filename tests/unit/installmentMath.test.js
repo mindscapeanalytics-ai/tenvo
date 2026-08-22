@@ -61,6 +61,7 @@ describe('Installment Math & Financial Calculations Engine', () => {
       installmentAmount: 50000,
       totalFinancedPayable: 150000,
       frequency: 'monthly',
+      includeDownPaymentEntry: false,
     });
 
     expect(schedule).toHaveLength(3);
@@ -72,4 +73,32 @@ describe('Installment Math & Financial Calculations Engine', () => {
     expect(schedule[1].due_date).toBe('2026-10-01');
     expect(schedule[2].due_date).toBe('2026-11-01');
   });
+
+  it('generates Installment #0 for Advance / Down Payment when requested', () => {
+    const startDate = '2026-09-01';
+    const schedule = generateInstallmentSchedule({
+      startDate,
+      numberOfInstallments: 3,
+      installmentAmount: 50000,
+      totalFinancedPayable: 150000,
+      frequency: 'monthly',
+      includeDownPaymentEntry: true,
+      downPaymentAmount: 100000,
+      downPaymentPaid: true,
+      downPaymentMethod: 'Bank Transfer',
+    });
+
+    expect(schedule).toHaveLength(4); // Installment #0 + 3 monthly installments
+    expect(schedule[0].installment_no).toBe(0);
+    expect(schedule[0].type).toBe('down_payment');
+    expect(schedule[0].amount).toBe(100000);
+    expect(schedule[0].status).toBe('paid');
+    expect(schedule[0].payment_method).toBe('Bank Transfer');
+
+    expect(schedule[1].installment_no).toBe(1);
+    expect(schedule[1].type).toBe('monthly');
+    expect(schedule[1].amount).toBe(50000);
+    expect(schedule[1].status).toBe('pending');
+  });
 });
+
